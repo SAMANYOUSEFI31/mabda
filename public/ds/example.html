@@ -1,0 +1,15 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="bundle.css"></head>
+<body><div id="root"></div>
+<script src="lib/react.production.min.js"></script><script src="lib/react-dom.production.min.js"></script><script src="bundle.js"></script>
+<script>
+const h=React.createElement,B=Bushido;
+function App(){const [v,setV]=React.useState('a');return h(B.ToastProvider,null,h('div',{style:{padding:24,display:'grid',gap:16,maxWidth:640}},
+ h('h1',{className:'heading-md'},'آزمون بسته'),
+ h(B.SegmentedControl,{label:'x',items:[{id:'a',label:'گروه ۱'},{id:'b',label:'گروه ۲'}],value:v,onChange:setV}),
+ h(B.TextField,{label:'نام',hint:'راهنما'}),
+ h(B.Select,{label:'سطح',options:[{value:'1',label:'۱'},{value:'2',label:'۲'}],placeholder:'انتخاب'}),
+ h(B.Table,{caption:'t',columns:[{key:'n',label:'نام'},{key:'p',label:'امتیاز',numeric:true}],rows:[{n:'علی',p:'۳ از ۵'}]}),
+ h(B.Button,{variant:'primary'},'ذخیره')));}
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script></body></html>

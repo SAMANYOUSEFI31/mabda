@@ -1,0 +1,6 @@
+{
+  "name": "مبدأ — منبع حقیقت کسب‌وکار",
+  "description": "پلتفرم تبدیل دانش و گفتگوهای پراکنده به دارایی‌های منسجم، با موتور تحلیل شکاف (Gap Engine)، درخت دانش نوع‌دار و Context Replay.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
