@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable } from '../types';
 import { Alert, Badge, Button, Card, Divider, Markdown, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
 import { PlanLine } from './AiNotices';
+import { halfPriceRebuildAvailable } from '../core/impactEngine';
+import type { StaleAsset } from '../core/impactEngine';
 import { BlockView } from './BlockView';
 import { contextDraftFromBlock } from '../core/blocks';
 
@@ -16,6 +18,8 @@ interface ContextReplayCardProps {
   onOpenContextObject: (obj: ContextObject) => void;
   onRebuild: (deliverable: GeneratedDeliverable) => void;
   isRebuilding?: boolean;
+  /** present when a Context this asset was built from has changed */
+  stale?: StaleAsset;
 }
 
 
@@ -25,14 +29,19 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   onOpenContextObject,
   onRebuild,
   isRebuilding = false,
+  stale,
 }) => {
   const [showCritique, setShowCritique] = useState(false);
   const [showRawContext, setShowRawContext] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const usedObjects = (deliverable.usedContextIds || [])
-    .map((id) => allContextObjects.find((c) => c.id === id))
-    .filter(Boolean) as ContextObject[];
+  // exactly what was injected: id + the version the model saw; the object may have moved on since
+  const usedObjects = (deliverable.usedContext || [])
+    .map((ref) => ({ ref, obj: allContextObjects.find((c) => c.id === ref.id) }))
+    .filter((x): x is { ref: typeof x.ref; obj: ContextObject } => !!x.obj);
+  const halfPrice = halfPriceRebuildAvailable(deliverable, stale);
+  // chat-made assets have no workstream spec, so there is nothing to rebuild automatically
+  const canRebuild = deliverable.workstreamId !== 'chat';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(deliverable.content);
@@ -48,6 +57,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           <div className="flex flex-wrap items-center gap-inline-sm">
             <h3 className="title text-text-default">{deliverable.title}</h3>
             <ModeBadge value={deliverable.executionMode} />
+            {stale && <Badge intent="warning" icon="TriangleAlert">قدیمی</Badge>}
             {deliverable.rebuildCount > 0 && (
               <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>
             )}
@@ -74,6 +84,26 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           )}
         </div>
       </div>
+
+      {stale && (
+        <Alert
+          intent="warning"
+          title="این دارایی قدیمی شده است"
+          action={
+            canRebuild ? (
+              <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
+                {halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
+              </Button>
+            ) : undefined
+          }
+        >
+          <ul className="list-inside list-disc">
+            {stale.reasons.map((r) => (
+              <li key={`${r.objectId}-${r.kind}`}>{r.message}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
 
       {deliverable.validationFailed && (
         <Alert intent="warning" title="اعتبارسنج این خروجی را کامل تأیید نکرد">
@@ -145,24 +175,26 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         </div>
 
         <div className="flex flex-wrap gap-inline-sm">
-          {usedObjects.map((ctx) => (
+          {usedObjects.map(({ ref, obj: ctx }) => (
             <Button
-              key={ctx.id}
+              key={`${ref.id}-${ref.version}`}
               variant="secondary"
               size="sm"
               title="مشاهده و اصلاح این Context"
               onClick={() => onOpenContextObject(ctx)}
             >
               {ctx.title}
-              <span className="caption ms-inline-xs text-text-subtle">({TYPE_META[ctx.type].label})</span>
+              <span className="caption ms-inline-xs text-text-subtle">
+                ({TYPE_META[ctx.type].label} · نسخهٔ {formatNumber(ref.version)}{ctx.version !== ref.version ? `، اکنون ${formatNumber(ctx.version)}` : ''})
+              </span>
             </Button>
           ))}
         </div>
 
         {showRawContext && (
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md">
-            {usedObjects.map((ctx) => (
-              <div key={ctx.id} className="rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+            {usedObjects.map(({ ref, obj: ctx }) => (
+              <div key={`${ref.id}-${ref.version}`} className="rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
                 <span className="label-md mb-stack-xs block text-text-default">{ctx.title}</span>
                 <span className="body-sm text-text-subtle">{ctx.content}</span>
               </div>
@@ -171,14 +203,20 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         )}
 
         <Divider />
+        {canRebuild && (
         <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-center">
           <span className="body-sm text-text-subtle">
-            آیا دانشی را تغییر دادی؟ بازسازی با نصف قیمت ({formatNumber(Math.ceil(deliverable.creditCost * 0.5))} اعتبار) انجام می‌شود.
+            {halfPrice
+              ? `دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ بازسازی یک‌بار برای این تغییر با نصف قیمت (حدود ${formatNumber(Math.ceil(deliverable.creditCost * 0.5))} اعتبار) انجام می‌شود.`
+              : stale
+              ? 'تخفیف نصف‌قیمت برای این تغییر قبلاً استفاده شده است.'
+              : 'دانشی تغییر نکرده؛ بازسازی با قیمت کامل انجام می‌شود.'}
           </span>
           <Button variant="secondary" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
-            بازسازی با ۵۰٪ تخفیف
+            {halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
           </Button>
         </div>
+        )}
       </div>
     </Card>
   );

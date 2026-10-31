@@ -6,6 +6,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { AiPlan, GenerationResult, UsageSummary } from '../types';
 import {
+  ContextDraft,
+  TreeNode,
+  UsedContextRef,
   ChatMessage,
   ChatMode,
   ChatSession,
@@ -19,9 +22,9 @@ import { asAiError, streamChat } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
-import { DEFAULT_TREE_NODES } from '../core/specs';
+import { flatten, subtreeIds, ancestorIds } from '../core/nodeTree';
 import {
-  Badge, Button, Card, Dialog, Icon, IconButton, Markdown, SegmentedControl, Spinner, Switch, Tag, TextField,
+  Badge, Button, Card, Dialog, Icon, IconButton, Markdown, SegmentedControl, Select, Spinner, Switch, Tag, TextField,
   formatJalaliShort, formatNumber, formatTime, useToast,
 } from '../ui';
 import type { IconName } from '../ui';
@@ -29,27 +32,31 @@ import type { IconName } from '../ui';
 interface SmartChatProps {
   currentWorkspace: Workspace;
   allContextObjects: ContextObject[];
-  onAddContextObject: (obj: ContextObject) => void;
+  nodes: TreeNode[];
+  /** sessions as stored on the server */
+  initialSessions: ChatSession[];
+  onSaveSession: (session: ChatSession) => void;
+  onDeleteSession: (sessionId: string) => void;
+  /** open the chat already scoped to this node (from the tree) */
+  initialScopeNodeId?: string;
+  onAddContextObject: (obj: ContextDraft) => void;
   onIncrementChatCount: () => void;
   /** opens the Context dialog with a prefilled *Proposed* draft */
   onOpenContextModal: (obj: ContextObject) => void;
-  onSaveBlockAsAsset: (block: import('../types').ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary }) => void;
+  onSaveBlockAsAsset: (block: import('../types').ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary; usedContext?: UsedContextRef[] }) => void;
   /** ledger + credits for a finished chat turn */
   onRecordChatUsage: (result: GenerationResult, creditCost: number, deep: boolean) => void;
   onOpenAiSettings: () => void;
 }
 
-const TRUTH_NODES: Array<{ id: string; label: string; icon: IconName }> = [
-  { id: 'business', label: 'کسب‌وکار', icon: 'Building2' },
-  { id: 'brand', label: 'هویت و برند', icon: 'Palette' },
-  { id: 'product', label: 'محصول و ارزش', icon: 'Package' },
-  { id: 'offer', label: 'آفر و قیمت', icon: 'TagIcon' },
-  { id: 'content', label: 'محتوا و قیف', icon: 'FileText' },
-];
-
 export const SmartChat: React.FC<SmartChatProps> = ({
   currentWorkspace,
   allContextObjects,
+  nodes,
+  initialSessions,
+  onSaveSession,
+  onDeleteSession,
+  initialScopeNodeId,
   onAddContextObject,
   onIncrementChatCount,
   onOpenContextModal,
@@ -58,8 +65,6 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   onOpenAiSettings,
 }) => {
   const ai = useAiStatus();
-  const storageKey = `mabda_chat_sessions_${currentWorkspace.id}`;
-
   const createInitialSession = (): ChatSession => ({
     id: `session_${Date.now()}`,
     workspaceId: currentWorkspace.id,
@@ -84,24 +89,16 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     ],
   });
 
-  // Sessions state
+  // Sessions come from the server; an interrupted stream is shown as an aborted request (retryable), never as a half answer
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // a stream interrupted by closing the tab is shown as an aborted request (retryable), never as a half answer
-          return (parsed as ChatSession[]).map((sess) => ({
-            ...sess,
-            messages: sess.messages.map((m) => (m.streaming ? { ...m, streaming: false, blocks: undefined, content: '', error: { kind: 'aborted' as const, message: 'درخواست ناتمام ماند. دوباره تلاش کن.', retryable: true } } : m)),
-          }));
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse chat sessions:', e);
+    if (initialSessions.length > 0) {
+      return initialSessions.map((sess) => ({
+        ...sess,
+        messages: sess.messages.map((m) => (m.streaming ? { ...m, streaming: false, blocks: undefined, content: '', error: { kind: 'aborted' as const, message: 'درخواست ناتمام ماند. دوباره تلاش کن.', retryable: true } } : m)),
+      }));
     }
-    return [createInitialSession()];
+    const first = createInitialSession();
+    return [initialScopeNodeId ? { ...first, scopeNodeId: initialScopeNodeId } : first];
   });
 
   const [activeSessionId, setActiveSessionId] = useState<string>(() => {
@@ -124,10 +121,18 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Sync to localStorage
+  // Persist changed sessions to the server (debounced; never while an answer is still streaming)
+  const saved = useRef<Map<string, string>>(new Map(initialSessions.map((x) => [x.id, JSON.stringify(x)])));
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(sessions));
-  }, [sessions, storageKey]);
+    const t = setTimeout(() => {
+      for (const sess of sessions) {
+        if (sess.messages.some((m) => m.streaming)) continue;
+        const json = JSON.stringify(sess);
+        if (saved.current.get(sess.id) !== json) { saved.current.set(sess.id, json); onSaveSession(sess); }
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [sessions, onSaveSession]);
 
   // Ensure activeSessionId is valid
   useEffect(() => {
@@ -186,6 +191,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     if (!sessionId) return;
     const remaining = sessions.filter((s) => s.id !== sessionId);
     setSessions(remaining);
+    saved.current.delete(sessionId);
+    onDeleteSession(sessionId);
     if (activeSessionId === sessionId) {
       setActiveSessionId(remaining[0].id);
     }
@@ -255,7 +262,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
    * Streams one assistant answer for `userMsg`. The placeholder message fills in block by block;
    * on failure it becomes an error message with a retry button — there is no canned reply.
    */
-  const runAssistant = async (sessionId: string, userMsg: ChatMessage, history: ChatMessage[], chatMode: ChatMode, focusNodeIds: string[]) => {
+  const runAssistant = async (sessionId: string, userMsg: ChatMessage, history: ChatMessage[], chatMode: ChatMode, focusNodeIds: string[], scopeNodeId?: string) => {
     const deep = userMsg.executionMode === 'deep';
     const placeholder: ChatMessage = {
       id: `msg_a_${Date.now()}`, role: 'assistant', content: '', timestamp: new Date().toISOString(),
@@ -270,7 +277,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       const result = await streamChat(
         {
           message: userMsg.content,
-          contextList: allContextObjects,
+          workspaceId: currentWorkspace.id,
+          scopeNodeId,
           focusNodeIds,
           chatMode,
           deep,
@@ -289,8 +297,9 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         blocks: result.blocks,
         plan: result.plan,
         usage: result.usage,
+        usedContext: result.usedContext,
         creditCost: credits,
-        groundedCount: allContextObjects.filter((c) => c.status === 'Confirmed').length,
+        groundedCount: inScope.filter((c) => c.status === 'Confirmed').length,
       });
       onRecordChatUsage(result, credits, deep);
     } catch (err) {
@@ -341,7 +350,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     );
     setInput('');
     onIncrementChatCount();
-    await runAssistant(activeSession.id, userMsg, updatedMessages, activeSession.chatMode, activeSession.selectedNodeIds);
+    await runAssistant(activeSession.id, userMsg, updatedMessages, activeSession.chatMode, activeSession.selectedNodeIds, activeSession.scopeNodeId);
   };
 
   /** Retry a failed answer: remove the error message and ask again with the same user message. */
@@ -352,7 +361,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     if (idx < 0 || !userMsg) return;
     const before = activeSession.messages.slice(0, idx);
     setSessions((prev) => prev.map((s) => (s.id === activeSession.id ? { ...s, messages: before } : s)));
-    await runAssistant(activeSession.id, userMsg, before, activeSession.chatMode, activeSession.selectedNodeIds);
+    await runAssistant(activeSession.id, userMsg, before, activeSession.chatMode, activeSession.selectedNodeIds, activeSession.scopeNodeId);
   };
 
   const updateBlocks = (messageId: string, fn: (b: import('../types').ContentBlock) => import('../types').ContentBlock) =>
@@ -368,10 +377,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   const handleApproveProposal = (block: import('../types').ContentBlock, messageId: string) => {
     if (!block.proposal) return;
     const p = block.proposal;
-    onAddContextObject({
-      id: `ctx_sug_${Date.now()}`, workspaceId: currentWorkspace.id, type: p.type, status: 'Confirmed', provenance: 'AI Suggested',
-      title: p.title, content: p.content, nodeId: p.nodeId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    });
+    onAddContextObject({ workspaceId: currentWorkspace.id, type: p.type, status: 'Confirmed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId });
     updateBlocks(messageId, (b) => (b.id === block.id ? { ...b, proposal: undefined } : b));
   };
   const handleDismissProposal = (block: import('../types').ContentBlock, messageId: string) =>
@@ -401,14 +407,17 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     },
   ];
 
-  // Grounded count in current session
+  // Grounded count in current session: node chat = the node's sub-tree + its ancestors; otherwise the chips or the whole tree
   const selectedNodes = activeSession.selectedNodeIds || [];
-  const groundedCount =
-    selectedNodes.length === 0
-      ? allContextObjects.length
-      : allContextObjects.filter((c) => selectedNodes.includes(c.nodeId)).length;
+  const scope = activeSession.scopeNodeId && nodes.some((n) => n.id === activeSession.scopeNodeId) ? activeSession.scopeNodeId : undefined;
+  const live = allContextObjects.filter((c) => c.status !== 'Archived' && c.status !== 'Superseded');
+  const scopeIds = scope ? new Set([...subtreeIds(nodes, scope), ...ancestorIds(nodes, scope)]) : null;
+  const inScope = scopeIds ? live.filter((c) => scopeIds.has(c.nodeId)) : live;
+  const groundedCount = !scope && selectedNodes.length > 0 ? live.filter((c) => selectedNodes.includes(c.nodeId)).length : inScope.length;
 
-  const nodeLabel = (id: string) => DEFAULT_TREE_NODES.find((n) => n.id === id)?.label ?? id;
+  const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+  const handleScope = (nodeId: string) =>
+    setSessions((prev) => prev.map((x) => (x.id === activeSession.id ? { ...x, scopeNodeId: nodeId || undefined, selectedNodeIds: [], updatedAt: new Date().toISOString() } : x)));
 
   return (
     <Card padding="none" className="relative flex h-chat flex-col overflow-hidden">
@@ -455,19 +464,35 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} شیء دانش</Badge>
         </div>
 
-        <div className="flex items-center gap-inline-sm overflow-x-auto" role="group" aria-label="کانتکست هدف گفتگو">
-          <span className="caption shrink-0 text-text-subtle">کانتکست هدف:</span>
-          <Tag selected={selectedNodes.length === 0} onToggle={handleSelectAllNodes}>
-            همهٔ درخت ({formatNumber(allContextObjects.length)})
-          </Tag>
-          {TRUTH_NODES.map((node) => {
-            const count = allContextObjects.filter((c) => c.nodeId === node.id).length;
-            return (
-              <Tag key={node.id} selected={selectedNodes.includes(node.id)} onToggle={() => handleToggleNode(node.id)}>
-                {node.label} ({formatNumber(count)})
+        <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
+          <div className="sm:w-overlay-xs">
+            <Select
+              label="محدودهٔ گفتگو"
+              value={activeSession.scopeNodeId ?? ''}
+              onChange={(e) => handleScope(e.target.value)}
+              options={[{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]}
+            />
+          </div>
+          {scope ? (
+            <p className="caption text-text-subtle">
+              گفتگو فقط به «{nodeLabel(scope)}»، زیرشاخه‌ها و والدهایش (برای ارث‌بری) وصل است؛ پیشنهاد به‌روزرسانی هم فقط برای همین شاخه و زیرشاخه‌هایش ساخته می‌شود.
+            </p>
+          ) : (
+            <div className="flex items-center gap-inline-sm overflow-x-auto" role="group" aria-label="کانتکست هدف گفتگو">
+              <span className="caption shrink-0 text-text-subtle">کانتکست هدف:</span>
+              <Tag selected={selectedNodes.length === 0} onToggle={handleSelectAllNodes}>
+                همهٔ درخت ({formatNumber(live.length)})
               </Tag>
-            );
-          })}
+              {nodes.map((node) => {
+                const count = live.filter((c) => c.nodeId === node.id).length;
+                return (
+                  <Tag key={node.id} selected={selectedNodes.includes(node.id)} onToggle={() => handleToggleNode(node.id)}>
+                    {node.label} ({formatNumber(count)})
+                  </Tag>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -596,7 +621,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                           key={b.id}
                           block={b}
                           onAddToContext={m.streaming ? undefined : (blk) => onOpenContextModal(contextDraftFromBlock(blk, currentWorkspace.id))}
-                          onSaveAsAsset={m.streaming ? undefined : (blk) => onSaveBlockAsAsset(blk, { title: activeSession.title, plan: m.plan, usage: m.usage })}
+                          onSaveAsAsset={m.streaming ? undefined : (blk) => onSaveBlockAsAsset(blk, { title: activeSession.title, plan: m.plan, usage: m.usage, usedContext: m.usedContext })}
                           onApproveProposal={m.streaming ? undefined : (blk) => handleApproveProposal(blk, m.id)}
                           onDismissProposal={(blk) => handleDismissProposal(blk, m.id)}
                         />

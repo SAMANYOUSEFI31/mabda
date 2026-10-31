@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../types';
 import { DEFAULT_TREE_NODES } from '../core/specs';
+import type { TreeNode } from '../types';
 import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber } from '../ui';
 
 interface GapEnginePanelProps {
@@ -14,6 +15,7 @@ interface GapEnginePanelProps {
   onAnswerGap: (gap: GapItem, answer: string) => void;
   onIgnoreGap: (gap: GapItem) => void;
   onProceedAnyway: () => void;
+  nodes?: TreeNode[];
 }
 
 export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
@@ -22,13 +24,14 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
   onAnswerGap,
   onIgnoreGap,
   onProceedAnyway,
+  nodes,
 }) => {
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [expandedGapKey, setExpandedGapKey] = useState<string | null>(
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
   );
 
-  const nodeLabel = (id: string) => DEFAULT_TREE_NODES.find((n) => n.id === id)?.label ?? id;
+  const nodeLabel = (id: string) => (nodes ?? DEFAULT_TREE_NODES).find((n) => n.id === id)?.label ?? id;
   const submitCustom = (gap: GapItem) => {
     const v = customAnswers[gap.key]?.trim();
     if (v) onAnswerGap(gap, v);

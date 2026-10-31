@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { ContextReplayCard } from './ContextReplayCard';
+import type { StaleAsset } from '../core/impactEngine';
 import { Button, Card, EmptyState, Tabs, formatNumber, useToast } from '../ui';
 
 interface AssetLibraryProps {
@@ -15,6 +16,7 @@ interface AssetLibraryProps {
   onOpenContextModal: (obj: ContextObject) => void;
   onPromoteToContext: (del: GeneratedDeliverable) => void;
   onRebuild: (del: GeneratedDeliverable) => void;
+  stale: StaleAsset[];
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -24,6 +26,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onOpenContextModal,
   onPromoteToContext,
   onRebuild,
+  stale,
 }) => {
   const [filter, setFilter] = useState<string>('all');
   const toast = useToast();
@@ -31,6 +34,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   const filtered = deliverables.filter((d) => {
     if (d.workspaceId !== currentWorkspace.id) return false;
     if (filter === 'all') return true;
+    if (filter === 'stale') return stale.some((x) => x.deliverableId === d.id);
     return d.workstreamId === filter;
   });
 
@@ -61,6 +65,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         onChange={setFilter}
         items={[
           { id: 'all', label: `تمام دارایی‌ها (${formatNumber(deliverables.length)})` },
+          ...(stale.length > 0 ? [{ id: 'stale', label: `قدیمی (${formatNumber(stale.length)})` }] : []),
           { id: 'main_positioning', label: 'پایهٔ موقعیت‌یابی' },
           { id: 'instagram_foundation', label: 'اینستاگرام' },
           { id: 'freelance_profile', label: 'پروفایل فریلنسری' },
@@ -80,6 +85,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
               <ContextReplayCard
                 deliverable={del}
                 allContextObjects={allContextObjects}
+                stale={stale.find((x) => x.deliverableId === del.id)}
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
               />

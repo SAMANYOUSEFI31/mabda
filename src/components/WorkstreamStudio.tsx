@@ -5,7 +5,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ContextDraft,
   ContextObject,
+  TreeNode,
   DeliverableSpec,
   ExecutionMode,
   GeneratedDeliverable,
@@ -14,7 +16,9 @@ import {
 } from '../types';
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../types';
 import { WORKSTREAM_SPECS } from '../core/specs';
-import { calculateReadinessAndGaps, resolveActiveContextsForNode } from '../core/contextEngine';
+import { calculateReadinessAndGaps } from '../core/contextEngine';
+import { halfPriceRebuildAvailable } from '../core/impactEngine';
+import type { StaleAsset } from '../core/impactEngine';
 import { calculateCreditCost, creditModeForPlan, effectiveCredits, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../core/creditEngine';
 import { GapEnginePanel } from './GapEnginePanel';
 import { ContextReplayCard } from './ContextReplayCard';
@@ -36,11 +40,17 @@ interface WorkstreamStudioProps {
   selectedSpecId?: string;
   onSelectSpecId?: (id: string) => void;
   onAddCustomSpec: (spec: WorkstreamSpec) => void;
-  onAddContextObject: (obj: ContextObject) => void;
-  onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary) => void;
+  /** assets that are stale because the Context they were built from changed */
+  stale: StaleAsset[];
+  nodes: TreeNode[];
+  onAddContextObject: (obj: ContextDraft) => void;
+  onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild') => void;
   onOpenAiSettings: () => void;
   onOpenContextModal: (obj: ContextObject) => void;
   onOpenLedger: () => void;
+  /** an asset the user asked to rebuild from the library: the studio runs it once on mount/arrival */
+  pendingRebuild?: GeneratedDeliverable | null;
+  onPendingRebuildHandled?: () => void;
 }
 
 export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
@@ -51,11 +61,15 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   selectedSpecId: externalSelectedSpecId,
   onSelectSpecId: externalOnSelectSpecId,
   onAddCustomSpec,
+  stale,
+  nodes,
   onAddContextObject,
   onSaveDeliverable,
   onOpenContextModal,
   onOpenLedger,
   onOpenAiSettings,
+  pendingRebuild,
+  onPendingRebuildHandled,
 }) => {
   const ai = useAiStatus();
   const [internalSelectedSpecId, setInternalSelectedSpecId] = useState<string>(
@@ -102,14 +116,14 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     setPreviewState('loading');
     setPreviewError(null);
     const t = setTimeout(() => {
-      previewPlan({ executionMode, jobKind, text: `${currentDeliverableSpec.title}\n${currentDeliverableSpec.acceptanceCriteria.join('\n')}`, contextList: allContextObjects }, ctl.signal)
+      previewPlan({ executionMode, jobKind, text: `${currentDeliverableSpec.title}\n${currentDeliverableSpec.acceptanceCriteria.join('\n')}`, workspaceId: currentWorkspace.id }, ctl.signal)
         .then((p) => { setPreview(p); setPreviewState('ready'); })
         .catch((e) => { if (ctl.signal.aborted) return; setPreview(null); setPreviewState('error'); setPreviewError(asAiError(e)); });
     }, 250);
     return () => { clearTimeout(t); ctl.abort(); };
     // contexts only matter for their size; re-plan when the deliverable, mode or availability changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ai.available, executionMode, currentDeliverableSpec.id, jobKind]);
+  }, [ai.available, executionMode, currentDeliverableSpec.id, jobKind, currentWorkspace.id]);
 
   const costArgs = { deliverableType: currentDeliverableSpec.type, baseCreditCost: currentDeliverableSpec.baseCreditCost };
   const planCredits = preview ? previewCredits({ ...costArgs, plan: preview.plan }) : null;
@@ -122,16 +136,28 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const STAGE_FA: Record<StageName, string> = {
     decision: 'تعیین حالت اجرا', chat: 'نوشتن پاسخ', draft: 'نوشتن پیش‌نویس', critique: 'نقد پیش‌نویس',
     revise: 'اصلاح بر پایهٔ نقد', validate: 'اعتبارسنجی با معیارهای پذیرش', upgrade: 'ارتقا به مدل قوی‌تر و بازنویسی',
+    extract: 'استخراج دانش',
   };
   const TIER_FA: Record<Tier, string> = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' };
 
+  const findSpec = (workstreamId: string, deliverableId: string): { spec: WorkstreamSpec; del: DeliverableSpec } | undefined => {
+    const spec = specs.find((x) => x.id === workstreamId) ?? specs.find((x) => x.deliverables.some((d) => d.id === deliverableId));
+    const del = spec?.deliverables.find((d) => d.id === deliverableId);
+    return spec && del ? { spec, del } : undefined;
+  };
+
   const handleGenerate = async (isRebuild = false, rebuildTarget?: GeneratedDeliverable) => {
-    const cost = isRebuild ? rebuildCredits(creditCost) : creditCost;
-    if (!ai.byok && currentWorkspace.creditsRemaining < cost) {
-      toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
-      onOpenLedger();
+    // a rebuild always rebuilds the asset it was clicked on (its own spec + mode), not whatever is selected on screen
+    const found = isRebuild && rebuildTarget ? findSpec(rebuildTarget.workstreamId, rebuildTarget.deliverableId) : undefined;
+    if (isRebuild && !found) {
+      toast.show({ intent: 'info', message: 'مشخصات این دارایی (جریان کار) پیدا نشد یا از گفتگو ساخته شده؛ بازسازی خودکار ندارد. دوباره بسازش.' });
       return;
     }
+    const runSpec = found?.del ?? currentDeliverableSpec;
+    const runMode: ExecutionMode = isRebuild && rebuildTarget ? rebuildTarget.executionMode : executionMode;
+    const staleOfTarget = rebuildTarget ? stale.find((s) => s.deliverableId === rebuildTarget.id) : undefined;
+    // half price only for an asset made stale by a Context change, once per change
+    const halfPrice = !!(isRebuild && rebuildTarget && halfPriceRebuildAvailable(rebuildTarget, staleOfTarget));
 
     lastRun.current = { rebuild: isRebuild, target: rebuildTarget };
     setGenError(null);
@@ -141,44 +167,57 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     abortRef.current = ctl;
 
     try {
-      // Context relevant to the workstream
-      const relevantContexts = resolveActiveContextsForNode('content', allContextObjects);
+      // the plan shown to the user is the plan that runs; for a rebuild it is previewed for that asset first
+      let runPreview = preview;
+      if (isRebuild && rebuildTarget) {
+        runPreview = await previewPlan({ executionMode: runMode, jobKind: runSpec.type === 'Asset' ? 'asset' : 'deliverable', text: `${runSpec.title}\n${runSpec.acceptanceCriteria.join('\n')}`, workspaceId: currentWorkspace.id }, ctl.signal);
+      }
+      const base = runPreview ? previewCredits({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, plan: runPreview.plan }) : calculateCreditCost({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, executionMode: runMode });
+      const cost = halfPrice ? rebuildCredits(base) : base;
+      if (!ai.byok && currentWorkspace.creditsRemaining < cost) {
+        toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
+        onOpenLedger();
+        return;
+      }
+      setStageLabel('در حال آماده‌سازی…');
 
       const result = await generateDeliverableApi(
         {
-          deliverableId: currentDeliverableSpec.id,
-          deliverableTitle: currentDeliverableSpec.title,
-          deliverableType: currentDeliverableSpec.type,
-          acceptanceCriteria: currentDeliverableSpec.acceptanceCriteria,
-          contextObjects: relevantContexts,
-          contextList: allContextObjects,
-          executionMode,
-          preview: preview ?? undefined,
+          deliverableId: runSpec.id,
+          deliverableTitle: runSpec.title,
+          deliverableType: runSpec.type,
+          acceptanceCriteria: runSpec.acceptanceCriteria,
+          workspaceId: currentWorkspace.id,
+          targetNodeId: 'content',
+          executionMode: runMode,
+          preview: runPreview ?? undefined,
         },
         { onStage: (stage, tier) => setStageLabel(`${STAGE_FA[stage]} (مدل ${TIER_FA[tier]})`) },
         ctl.signal,
       );
 
       const newDeliverable: GeneratedDeliverable = {
-        id: `del_run_${Date.now()}`,
+        id: isRebuild && rebuildTarget ? rebuildTarget.id : `del_run_${Date.now()}`,
         workspaceId: currentWorkspace.id,
-        workstreamId: currentSpec.id,
-        deliverableId: currentDeliverableSpec.id,
-        title: currentDeliverableSpec.title,
+        workstreamId: isRebuild && rebuildTarget ? rebuildTarget.workstreamId : currentSpec.id,
+        deliverableId: runSpec.id,
+        title: runSpec.title,
         content: result.markdown,
         blocks: result.blocks,
         plan: result.plan,
         usage: result.usage,
         validationFailed: result.validationFailed,
-        executionMode,
+        executionMode: runMode,
         creditCost: effectiveCredits(cost, result.usage.byok),
-        usedContextIds: result.usedContextIds,
+        usedContext: result.usedContext,
+        usedFileChunks: result.usedFileChunks,
         critiqueFeedback: result.critiqueFeedback,
         rebuildCount: isRebuild && rebuildTarget ? rebuildTarget.rebuildCount + 1 : 0,
+        halfPriceUsedFor: halfPrice ? staleOfTarget?.signature : rebuildTarget?.halfPriceUsedFor,
         createdAt: new Date().toISOString(),
       };
 
-      onSaveDeliverable(newDeliverable, newDeliverable.creditCost, result.usage);
+      onSaveDeliverable(newDeliverable, newDeliverable.creditCost, result.usage, isRebuild ? 'rebuild' : 'new');
       setActiveTab('history');
     } catch (err) {
       const info = asAiError(err);
@@ -189,6 +228,17 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       if (abortRef.current === ctl) abortRef.current = null;
     }
   };
+
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!pendingRebuild) { handled.current = null; return; }
+    if (handled.current === pendingRebuild.id || isGenerating) return;
+    handled.current = pendingRebuild.id;
+    setActiveTab('history');
+    onPendingRebuildHandled?.();
+    void handleGenerate(true, pendingRebuild);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRebuild]);
 
   // Filter deliverables generated for this workstream
   const workstreamDeliverables = allDeliverables.filter(
@@ -421,6 +471,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 title: '',
                 content: '',
                 nodeId,
+                version: 1,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               });
@@ -428,11 +479,11 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           />
 
           <GapEnginePanel
+            nodes={nodes}
             spec={currentSpec}
             readiness={readiness}
             onAnswerGap={(gap, answer) => {
-              const newObj: ContextObject = {
-                id: `ctx_gap_${Date.now()}`,
+              const newObj: ContextDraft = {
                 workspaceId: currentWorkspace.id,
                 type: gap.importance === 'required' ? 'Decision' : 'Fact',
                 status: 'Confirmed',
@@ -440,8 +491,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 title: gap.label,
                 content: answer,
                 nodeId: gap.nodeId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
               };
               onAddContextObject(newObj);
             }}
@@ -479,6 +528,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   key={del.id}
                   deliverable={del}
                   allContextObjects={allContextObjects}
+                  stale={stale.find((x) => x.deliverableId === del.id)}
                   onOpenContextObject={onOpenContextModal}
                   onRebuild={(target) => handleGenerate(true, target)}
                   isRebuilding={isGenerating}

@@ -23,6 +23,9 @@ export interface ContextObject {
   updatedAt: string;
 }
 
+/** what the UI hands over to be saved: the server assigns id, version and timestamps */
+export type ContextDraft = Omit<ContextObject, 'id' | 'version' | 'createdAt' | 'updatedAt'> & Partial<Pick<ContextObject, 'id' | 'version' | 'createdAt' | 'updatedAt'>>;
+
 export type RelationshipType = 'belongs_to' | 'depends_on' | 'supersedes' | 'derived_from';
 
 export interface ContextRelationship {
@@ -213,6 +216,8 @@ export interface ChatMessage {
   /** set when the request failed — the UI shows it with a retry button instead of any answer text */
   error?: AiErrorInfo;
   streaming?: boolean;
+  /** exact objects (id + version) injected for this answer — saved with an asset made from one of its blocks */
+  usedContext?: UsedContextRef[];
   groundedNodeIds?: string[];
   groundedCount?: number;
   reasoningNotes?: string;
@@ -274,3 +279,4 @@ export interface Workspace {
   createdAt: string;
 }
 export * from './ai';
+export * from './state';

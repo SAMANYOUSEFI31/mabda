@@ -39,8 +39,9 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
     forGenerate(workspaceId, { targetNodeId, title, criteria }) {
       const s = scopeOf(workspaceId);
       const nodes = repo.listNodes(s);
+      // '*' = the whole workspace (onboarding's first asset uses every fact the user just confirmed)
       const target = targetNodeId && nodes.some((n) => n.id === targetNodeId) ? targetNodeId : 'content';
-      const chain = new Set(ancestorIds(nodes, target));
+      const chain = targetNodeId === '*' ? new Set(nodes.map((n) => n.id)) : new Set(ancestorIds(nodes, target));
       return {
         contextObjects: lite(s, chain), contextList: lite(s), nodeLabels: Object.fromEntries(nodes.map((n) => [n.id, n.label])),
         excerpts: files.excerpts(s, `${title}\n${criteria.join('\n')}`),
