@@ -32,6 +32,7 @@ export function contextDraftFromBlock(block: ContentBlock, workspaceId: string, 
     title: p?.title ?? titleFromMarkdown(block.markdown),
     content: p?.content ?? block.markdown,
     nodeId: p?.nodeId ?? 'business',
+    version: 1,
     createdAt: now,
     updatedAt: now,
   };

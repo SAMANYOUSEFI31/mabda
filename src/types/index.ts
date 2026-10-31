@@ -15,7 +15,9 @@ export interface ContextObject {
   provenance: ContextProvenance;
   title: string;
   content: string;
-  nodeId: string; // 'business' | 'brand' | 'product' | 'offer' | 'content'
+  nodeId: string; // id of a TreeNode in the same workspace
+  /** starts at 1; +1 on every edit of title/content/type (see server/db/repo.ts); a superseding object continues the number */
+  version: number;
   supersededById?: string;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +38,49 @@ export interface TreeNode {
   label: string;
   parentId?: string;
   description: string;
+  /** system nodes can only be renamed: no delete, no move */
+  isSystem?: boolean;
+  /** position among siblings */
+  order?: number;
+}
+
+/** Free-form note on a node. Never injected into the model; «extract» turns it into Proposed objects. */
+export interface Note {
+  id: string;
+  workspaceId: string;
+  nodeId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Exactly which version of which object was injected into the model when an asset was produced. */
+export interface UsedContextRef {
+  id: string;
+  version: number;
+}
+
+export interface UsedFileChunk {
+  fileId: string;
+  index: number;
+}
+
+export type FileStatus = 'uploaded' | 'processing' | 'ready' | 'failed';
+
+export interface StoredFile {
+  id: string;
+  workspaceId: string;
+  nodeId?: string;
+  name: string;
+  mime: string;
+  sizeBytes: number;
+  status: FileStatus;
+  /** estimated tokens of the extracted text (this is what the monthly quota counts) */
+  tokens: number;
+  chunkCount: number;
+  summary?: string;
+  error?: string;
+  createdAt: string;
 }
 
 export interface WorkstreamSpec {
@@ -119,7 +164,11 @@ export interface GeneratedDeliverable {
   content: string;
   executionMode: ExecutionMode;
   creditCost: number;
-  usedContextIds: string[]; // for Context Replay
+  /** the exact objects (id + version) injected into the model — Context Replay and the impact engine read this */
+  usedContext: UsedContextRef[];
+  usedFileChunks?: UsedFileChunk[];
+  /** staleness signature for which the one-time half-price rebuild was already used */
+  halfPriceUsedFor?: string;
   critiqueFeedback?: {
     score: number;
     strengths: string[];
@@ -177,6 +226,8 @@ export interface ChatSession {
   updatedAt: string;
   chatMode: ChatMode;
   selectedNodeIds: string[]; // specific nodes selected for grounding, or empty for all
+  /** node chat: grounded in this node (+ ancestors) and allowed to propose updates only inside its sub-tree */
+  scopeNodeId?: string;
   messages: ChatMessage[];
 }
 
@@ -198,7 +249,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

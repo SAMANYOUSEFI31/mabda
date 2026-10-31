@@ -162,3 +162,34 @@ export const CHAT_DEEP_CREDITS = 5;
 export function chatCredits(deep: boolean): number {
   return deep ? CHAT_DEEP_CREDITS : 0;
 }
+
+/** Monthly free file-processing quota per plan, in tokens of extracted text. */
+export const FILE_QUOTA_TOKENS: Record<PlanId, number> = { starter: 150_000, pro: 500_000, max: 1_500_000 };
+/** Over the quota: 2 credits per started 20k tokens (decisions v3.1 §6). */
+export const FILE_OVERAGE_TOKENS_PER_UNIT = 20_000;
+export const FILE_OVERAGE_CREDITS_PER_UNIT = 2;
+
+export interface FileCharge {
+  quota: number;
+  usedBefore: number;
+  remainingBefore: number;
+  withinQuota: boolean;
+  /** tokens of this file that fall beyond the quota */
+  excessTokens: number;
+  credits: number;
+}
+
+/** What processing a file of `tokens` costs given what was already processed this month. */
+export function fileProcessingCharge(planId: PlanId, usedThisMonth: number, tokens: number): FileCharge {
+  const quota = FILE_QUOTA_TOKENS[planId] ?? FILE_QUOTA_TOKENS.starter;
+  const remainingBefore = Math.max(0, quota - usedThisMonth);
+  const excessTokens = Math.max(0, Math.min(tokens, tokens - remainingBefore));
+  return {
+    quota,
+    usedBefore: usedThisMonth,
+    remainingBefore,
+    withinQuota: excessTokens === 0,
+    excessTokens,
+    credits: Math.ceil(excessTokens / FILE_OVERAGE_TOKENS_PER_UNIT) * FILE_OVERAGE_CREDITS_PER_UNIT,
+  };
+}

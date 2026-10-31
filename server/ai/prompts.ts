@@ -13,7 +13,7 @@ export const CORE_TEXT = `هویت محصول: «مبدأ» یعنی نقطهٔ 
 اصول: کاربر «چه» را تعیین می‌کند و مبدأ «چطور» را؛ انسجام مهم‌تر از حجم است؛ ساختار خودِ دارایی است.`;
 
 export const BLOCKS_INSTRUCTION = `قالب پاسخ: فقط یک شیء JSON با کلید blocks.
-هر بلوک: { "id": "b1", "kind": heading|paragraph|list|table|fact|decision|constraint|question, "markdown": "متن Markdown همان بلوک", "proposal"?: { "type": Fact|Decision|Constraint, "title": "...", "content": "...", "nodeId": business|brand|product|offer|content, "reason": "..." } }.
+هر بلوک: { "id": "b1", "kind": heading|paragraph|list|table|fact|decision|constraint|question, "markdown": "متن Markdown همان بلوک", "proposal"?: { "type": Fact|Decision|Constraint, "title": "...", "content": "...", "nodeId": یکی از شناسه‌های گرهٔ مجاز که در درخواست آمده, "reason": "..." } }.
 - markdown را کامل و خوانا بنویس (جدول با GFM، فهرست با - ).
 - proposal را فقط برای بلوک‌هایی بگذار که دانش تازه‌ای می‌سازند و باید با تأیید کاربر وارد منبع حقیقت شوند.
 - هیچ متنی بیرون از JSON ننویس.`;
@@ -35,3 +35,9 @@ issues فهرست اصلاح‌های مشخص و قابل اجراست (هر م
 
 export const DECISION_INSTRUCTION = `تو لایهٔ تصمیم هستی. برای هر سؤال دقیقاً یکی از گزینه‌ها را انتخاب کن و احتمال (۰ تا ۱) درستیِ انتخابت را بده.
 فقط JSON بده. گزینه‌ای خارج از فهرست نده.`;
+
+export const EXTRACT_INSTRUCTION = `کار: از متن زیر فقط واقعیت‌ها، تصمیم‌ها و محدودیت‌هایی را استخراج کن که صریحاً در متن آمده‌اند.
+خروجی: فقط یک شیء JSON با کلید objects (و در صورت درخواست summary).
+هر object: { "type": Fact|Decision|Constraint, "title": "عنوان کوتاه", "content": "یک تا سه جمله", "nodeId": "یکی از گره‌های مجاز" }.
+- چیزی را حدس نزن و اضافه نکن؛ اگر چیزی استخراج‌شدنی نیست، objects را خالی بگذار.
+- هر مورد مستقل و قابل تأیید توسط کاربر باشد (این‌ها «پیشنهادی» ثبت می‌شوند، نه واقعیت).`;

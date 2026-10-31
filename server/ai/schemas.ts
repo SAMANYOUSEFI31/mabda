@@ -21,7 +21,7 @@ export const BLOCKS_SCHEMA = {
               type: { type: 'string', enum: [...PROPOSAL_TYPES] },
               title: { type: 'string' },
               content: { type: 'string' },
-              nodeId: { type: 'string', enum: [...NODE_IDS] },
+              nodeId: { type: 'string' },
               reason: { type: 'string' },
             },
             required: ['type', 'title', 'content', 'nodeId'],
@@ -77,3 +77,24 @@ export function decisionSchema(ids: string[], optionsById: Record<string, string
     required: ['answers'],
   };
 }
+
+export const EXTRACT_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    objects: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: [...PROPOSAL_TYPES] },
+          title: { type: 'string' },
+          content: { type: 'string' },
+          nodeId: { type: 'string' },
+        },
+        required: ['type', 'title', 'content'],
+      },
+    },
+  },
+  required: ['objects'],
+} as const;

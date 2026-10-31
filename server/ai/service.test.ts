@@ -99,7 +99,8 @@ test('generate: previewed plan is honoured (credits shown = credits charged) and
   const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
   assert.deepEqual(done.result.plan, preview.plan);
   assert.equal(done.result.usage.stages[0].stage, 'decision');
-  assert.deepEqual(done.result.usedContextIds, ['c1'], 'Proposed context is not reported as used');
+  // lineage = exactly what was injected: the Confirmed object and the (labelled) Proposed one, with their versions
+  assert.deepEqual(done.result.usedContext, [{ id: 'c1', version: 1 }, { id: 'c2', version: 1 }]);
   assert.ok(ev.some((e) => e.type === 'stage' && e.stage === 'validate'));
 });
 
@@ -160,4 +161,61 @@ test('error mapping and decision-answer validation', () => {
   assert.deepEqual(validateAnswers({ answers: [{ id: 'd', choice: 'easy', probability: 1.7 }] }, q), [{ id: 'd', choice: 'easy', probability: 1 }]);
   assert.throws(() => validateAnswers({ answers: [{ id: 'd', choice: 'weird', probability: 0.5 }] }, q));
   assert.throws(() => validateAnswers({}, q));
+});
+
+const NODES = ['business', 'u1', 'u2'];
+
+test('usedContext records the exact versions that were injected (Superseded/Archived are not injected, so not recorded)', async () => {
+  const p = new MockProvider((c) => (isDecision(c) ? decide('medium', 'drafting') : JSON.stringify(c.schema).includes('passedCriteria') ? verdict() : { blocks: [block('b1', 'x')] }));
+  const { service } = serviceWith(p);
+  const ev = await collect((emit) => service.generate('user-12345678', {
+    deliverableId: 'd', deliverableTitle: 't', deliverableType: 'Deliverable', acceptanceCriteria: ['م'], userMode: 'auto',
+    contextObjects: [
+      { id: 'a', type: 'Decision', status: 'Confirmed', title: 'مخاطب', content: 'x', nodeId: 'business', version: 3 },
+      { id: 'old', type: 'Decision', status: 'Superseded', title: 'قدیمی', content: 'x', nodeId: 'business', version: 2 },
+    ],
+    contextList: [{ id: 'k', type: 'Constraint', status: 'Confirmed', title: 'بدون تخفیف', content: 'x', nodeId: 'offer', version: 2 }, { id: 'noise', type: 'Fact', status: 'Confirmed', title: 'نامرتبط', content: 'x', nodeId: 'offer', version: 1 }],
+  }, emit));
+  const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
+  assert.deepEqual(done.result.usedContext, [{ id: 'a', version: 3 }, { id: 'k', version: 2 }]);
+  const prompt = JSON.stringify(p.calls.filter((c) => c.kind !== 'structured' || !isDecision(c)).map((c) => c.prompt));
+  assert.ok(!prompt.includes('نامرتبط'), 'unrelated context is not injected, hence not recorded');
+});
+
+test('node chat: proposals outside the scope are clamped into it; file excerpts are labelled unconfirmed; notes never appear', async () => {
+  const reply = { blocks: [{ id: 'b1', kind: 'decision', markdown: 'ok', proposal: { type: 'Decision', title: 'پیشنهاد', content: 'متن', nodeId: 'business' } }, { id: 'b2', kind: 'decision', markdown: 'ok2', proposal: { type: 'Fact', title: 'داخل', content: 'متن', nodeId: 'u2' } }] };
+  const p = new MockProvider((c) => (c.kind === 'stream' ? reply : decisions));
+  const { service } = serviceWith(p);
+  const ev = await collect((emit) => service.chat('user-12345678', {
+    message: 'قیمت را عوض کنیم؟', contextList: [], mode: 'auto', allowedNodeIds: ['u1', 'u2'], scopeNodeId: 'u1', nodeLabels: { u1: 'کمپین', u2: 'اینستاگرام' },
+    excerpts: [{ fileId: 'f1', fileName: 'brief.pdf', index: 2, text: 'متن مرتبط فایل' }],
+  }, emit));
+  const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
+  assert.equal(done.result.blocks[0].proposal?.nodeId, 'u1', 'clamped to the scope node');
+  assert.equal(done.result.blocks[1].proposal?.nodeId, 'u2', 'inside the sub-tree: kept');
+  assert.deepEqual(done.result.usedFileChunks, [{ fileId: 'f1', index: 2 }]);
+  const chat = p.calls.find((c) => c.kind === 'stream')!;
+  assert.match(chat.prompt.user, /تأییدنشده؛ واقعیت قطعی نیست[\s\S]*brief\.pdf · بخش 3/);
+  assert.ok(!chat.prompt.prefix?.includes('متن مرتبط فایل'), 'excerpts never enter the stable prefix');
+  void NODES;
+});
+
+test('extract runs once on the cheap tier and returns sanitised Proposed candidates (no routing call)', async () => {
+  const p = new MockProvider((c) => (c.kind === 'structured' ? { summary: 'خلاصه', objects: [
+    { type: 'Decision', title: 'مخاطب', content: 'فریلنسرها', nodeId: 'u2' },
+    { type: 'Weird', title: 'x', content: 'y' },
+    { type: 'Fact', title: 'بی‌گره', content: 'z', nodeId: 'unknown' },
+    { type: 'Fact', title: '', content: 'z' },
+  ] } : null));
+  const { service } = serviceWith(p);
+  const r = await service.extract('user-12345678', { kind: 'file', text: 'متن', nodeId: 'u1', nodes: [{ id: 'u1', label: 'الف' }, { id: 'u2', label: 'ب' }], wantSummary: true });
+  assert.equal(p.calls.length, 1);
+  assert.equal(p.calls[0].spec.tier.provider, 'gemini');
+  assert.deepEqual(r.objects.map((o) => [o.title, o.nodeId]), [['مخاطب', 'u2'], ['بی‌گره', 'u1']]);
+  assert.equal(r.summary, 'خلاصه');
+  assert.equal(r.truncated, false);
+  assert.equal(r.usage.stages[0].stage, 'extract');
+  assert.equal(r.usage.stages[0].tier, 'cheap');
+  const long = await service.extract('user-12345678', { kind: 'file', text: 'کلمه '.repeat(40000), nodeId: 'u1', nodes: [{ id: 'u1', label: 'الف' }] });
+  assert.equal(long.truncated, true);
 });
