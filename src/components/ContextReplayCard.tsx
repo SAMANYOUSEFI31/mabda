@@ -72,7 +72,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       </div>
 
       {/* Main content */}
-      <div className="body-sm whitespace-pre-line rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
+      <div className="body-md whitespace-pre-line rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
         {deliverable.content}
       </div>
 
@@ -137,7 +137,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               onClick={() => onOpenContextObject(ctx)}
             >
               {ctx.title}
-              <span className="caption text-text-subtle">({TYPE_META[ctx.type].label})</span>
+              <span className="caption ms-inline-xs text-text-subtle">({TYPE_META[ctx.type].label})</span>
             </Button>
           ))}
         </div>

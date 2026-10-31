@@ -417,6 +417,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               size="sm"
               iconStart="MessageSquare"
               aria-expanded={isSidebarOpen}
+              aria-label="نشست‌های گفتگو"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               title="مشاهدهٔ نشست‌های گفتگو"
             >
@@ -550,7 +551,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                       <Icon name={p.icon} size="md" className="text-icon-subtle" />
                       {p.label}
                     </span>
-                    <p className="caption line-clamp-2 text-text-subtle">{p.text}</p>
+                    <p className="body-sm line-clamp-2 text-text-subtle">{p.text}</p>
                   </Card>
                 ))}
               </div>
@@ -560,7 +561,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           {activeSession.messages.map((m) => (
             <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
               <div
-                className={`body-sm w-fit max-w-full rounded-container border p-inset-lg sm:max-w-prose ${
+                className={`w-fit max-w-full rounded-container border p-inset-lg sm:max-w-prose ${
                   m.role === 'user'
                     ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
                     : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'
@@ -573,7 +574,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                   </div>
                 )}
 
-                <div className="whitespace-pre-line">{m.content}</div>
+                <div className="body-md whitespace-pre-line">{m.content}</div>
 
                 <div className="caption mt-stack-sm flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
                   <span className="tabular-nums">{formatTime(m.timestamp)}</span>

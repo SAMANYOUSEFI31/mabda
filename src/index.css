@@ -1,3 +1,11 @@
+/*
+ * Layer order matters: /ds/bundle.css is unlayered upstream, which would beat every Tailwind utility
+ * (a `flex` on a Card would lose to `.bsh-card{display:block}`). It is imported into the `ds` layer,
+ * above Tailwind's preflight (base) and below utilities, so component classes style the kit and
+ * utilities can still adjust layout on top. The file itself is read-only and never edited.
+ */
+@layer theme, base, ds, components, utilities;
+@import "../public/ds/bundle.css" layer(ds);
 @import "tailwindcss";
 @import "./ui/bushido-theme.css";
 @import "./ui/mabda-tokens.css";
@@ -49,3 +57,11 @@
 @utility pb-safe-inset {
   padding-block-end: max(var(--inset-md), var(--safe-bottom));
 }
+
+/* ---- Kit adjustments on top of /ds/bundle.css (read-only) ---- */
+/* icon buttons never shrink inside flex rows (keeps the 44px target) */
+.bsh-iconbtn { flex: none; }
+/* tabs wrapper must be allowed to shrink so tab lists scroll instead of widening the page */
+.bsh-tabs-wrap { min-inline-size: 0; max-inline-size: 100%; }
+/* toggle tags are interactive controls: full touch target */
+.bsh-tag--toggle { min-block-size: var(--touch-target-min); }

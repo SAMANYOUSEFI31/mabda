@@ -71,7 +71,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = ({
                           <StatusBadge value={obj.status} />
                         </div>
                       </div>
-                      <p className="body-sm line-clamp-3 text-text-subtle">{obj.content}</p>
+                      <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
                       <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
                         <span>منبع: {PROVENANCE_LABEL[obj.provenance]}</span>
                         <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>

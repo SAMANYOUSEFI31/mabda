@@ -20,7 +20,7 @@ import { ContextReplayCard } from './ContextReplayCard';
 import { generateDeliverableApi } from '../services/apiClient';
 import { CustomSpecModal } from './CustomSpecModal';
 import { KnowledgeGapChart } from './KnowledgeGapChart';
-import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, ReadinessBadge, Spinner, Tabs, formatNumber, useToast } from '../ui';
+import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Tabs, formatNumber, useToast } from '../ui';
 
 interface WorkstreamStudioProps {
   currentWorkspace: Workspace;
@@ -161,19 +161,21 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     <div className="flex flex-col gap-stack-lg">
       {/* Spec selector + readiness summary */}
       <Card padding="lg" className="flex flex-col justify-between gap-inline-lg md:flex-row md:items-end">
-        <div className="flex min-w-space-0 flex-col gap-stack-sm">
-          <span className="label-md text-text-subtle">جریان کار فعال (Workstream Spec)</span>
-          <div className="flex flex-wrap items-center gap-inline-sm">
-            <Tabs
-              label="جریان‌های کار"
-              value={selectedSpecId}
-              onChange={(id) => {
-                const s = specs.find((x) => x.id === id);
-                setSelectedSpecId(id);
-                if (s?.deliverables[0]) setSelectedDeliverableId(s.deliverables[0].id);
-              }}
-              items={specs.map((s) => ({ id: s.id, label: s.title }))}
-            />
+        <div className="flex min-w-space-0 flex-1 flex-col gap-stack-sm">
+          <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
+            <div className="min-w-overlay-xs sm:flex-1">
+              <Select
+                label="جریان کار فعال (Workstream Spec)"
+                value={selectedSpecId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const s = specs.find((x) => x.id === id);
+                  setSelectedSpecId(id);
+                  if (s?.deliverables[0]) setSelectedDeliverableId(s.deliverables[0].id);
+                }}
+                options={specs.map((s) => ({ value: s.id, label: s.title }))}
+              />
+            </div>
             <Button variant="secondary" iconStart="Plus" onClick={() => setIsCustomSpecModalOpen(true)}>
               تعریف جریان کار سفارشی
             </Button>
@@ -192,9 +194,9 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         value={activeTab}
         onChange={(id) => setActiveTab(id as typeof activeTab)}
         items={[
-          { id: 'create', label: 'تولید خروجی جدید' },
-          { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `رادار و شکاف‌ها (${formatNumber(readiness.gaps.length)})` : 'رادار و شکاف‌ها' },
-          { id: 'history', label: `خروجی‌های تولیدشده (${formatNumber(workstreamDeliverables.length)})` },
+          { id: 'create', label: 'تولید' },
+          { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `شکاف‌ها (${formatNumber(readiness.gaps.length)})` : 'شکاف‌ها' },
+          { id: 'history', label: `خروجی‌ها (${formatNumber(workstreamDeliverables.length)})` },
         ]}
       />
 
@@ -222,9 +224,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     selected={selectedDeliverableId === del.id}
                     onClick={() => setSelectedDeliverableId(del.id)}
                     leading={<span className="label-sm tabular-nums">{formatNumber(del.order)}</span>}
-                    title={del.title}
+                    title={
+                      <span className="flex flex-wrap items-center gap-inline-sm">
+                        {del.title}
+                        {workstreamDeliverables.some((d) => d.deliverableId === del.id) && <Badge intent="success">تولیدشده</Badge>}
+                      </span>
+                    }
                     description={del.description}
-                    trailing={workstreamDeliverables.some((d) => d.deliverableId === del.id) ? <Badge intent="success">تولیدشده</Badge> : undefined}
                   />
                 ))}
               </List>
@@ -254,7 +260,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   <span className="label-md text-text-default">انتخاب سطح اجرا و عمق کار</span>
                   <span className="caption text-text-subtle">اصل P1: کاربر «چه» را تعیین می‌کند، مبدأ «چطور» را.</span>
                 </div>
-                <div className="grid grid-cols-2 gap-inline-sm sm:grid-cols-4">
+                <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
                   <OptionCard
                     title="سریع"
                     description="تک‌مرحله‌ای"

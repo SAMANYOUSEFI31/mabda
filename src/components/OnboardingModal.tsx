@@ -208,7 +208,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
             <Alert intent="success" title="نخستین دارایی تو در کمتر از ۱۰ دقیقه ساخته شد">
               این دارایی از این لحظه در منبع حقیقت قفل است.
             </Alert>
-            <div className="body-sm whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-default">
+            <div className="body-md whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-default">
               {generatedOutput.content}
             </div>
             <Card padding="lg" className="flex flex-col gap-stack-sm">

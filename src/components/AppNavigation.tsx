@@ -79,7 +79,6 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
         <Card padding="md" className="flex flex-col gap-stack-sm">
           <Select
             label="فضای کاری فعال"
-            size="sm"
             value={currentWorkspace.id}
             onChange={(e) => {
               if (e.target.value === '__new__') {
@@ -139,7 +138,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
           </div>
           <Progress value={creditPercentage} label="اعتبار باقی‌مانده" showValue={false} intent={creditPercentage > 15 ? 'success' : 'warning'} />
           <div className="flex items-center justify-between caption text-text-subtle">
-            <span>پلن {plan.title}</span>
+            <span>پلن {plan.title.split(' ')[0]}</span>
             <span className="inline-flex items-center gap-inline-xs">ارتقا یا تغییر پلن <Icon name="ChevronLeft" size="sm" className="bsh-flip" /></span>
           </div>
         </Card>

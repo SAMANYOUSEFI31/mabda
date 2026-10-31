@@ -212,7 +212,7 @@ export function NavItem({ label, icon, trailing, selected, nested = false, onCli
       onClick={onClick}
       aria-current={selected ? 'page' : undefined}
       className={cx(
-        'flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md text-start transition-colors',
+        'flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md py-inset-xs text-start transition-colors',
         nested ? 'body-sm' : 'label-md',
         selected
           ? 'bg-bg-selected text-text-default'
@@ -221,7 +221,7 @@ export function NavItem({ label, icon, trailing, selected, nested = false, onCli
       )}
     >
       {icon && <Icon name={icon} size="lg" className="text-icon-subtle" />}
-      <span className="min-w-space-0 flex-1 truncate">{label}</span>
+      <span className="min-w-space-0 flex-1 break-words">{label}</span>
       {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtlest">{trailing}</span>}
     </button>
   );
