@@ -36,8 +36,10 @@ import { CustomSpecModal } from './components/CustomSpecModal';
 import { PLANS } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
+import { Button, Dialog, SegmentedControl, TextField, formatNumber, useToast } from './ui';
 
 export default function App() {
+  const toast = useToast();
   // 1. Workspaces state with localStorage persistence
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
     const saved = localStorage.getItem('mabda_workspaces');
@@ -226,7 +228,7 @@ export default function App() {
           : w
       )
     );
-    alert(`پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.`);
+    toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
   };
 
   const handleAddCredits = (amount: number) => {
@@ -237,7 +239,7 @@ export default function App() {
           : w
       )
     );
-    alert(`${amount} اعتبار به حساب این فضای کاری اضافه شد.`);
+    toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
   };
 
   const handleCreateWorkspace = (e: React.FormEvent) => {
@@ -246,9 +248,10 @@ export default function App() {
 
     const currentPlan = PLANS[currentWorkspace.planId] || PLANS.pro;
     if (workspaces.length >= currentPlan.workspaceLimit) {
-      alert(
-        `سقف فضای کاری در پلن ${currentPlan.title} (${currentPlan.workspaceLimit} عدد) پر شده است. برای افزودن، پلن خود را ارتقا دهید.`
-      );
+      toast.show({
+        intent: 'warning',
+        message: `سقف فضای کاری در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
+      });
       return;
     }
 
@@ -284,7 +287,7 @@ export default function App() {
     };
 
     setContextObjects((prev) => [newContext, ...prev]);
-    alert('این خروجی به عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به عنوان Context معتبر استفاده می‌شود.');
+    toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
   };
 
   const handleExportAllData = () => {
@@ -323,11 +326,11 @@ export default function App() {
     setSpecs(WORKSTREAM_SPECS);
     setIsAccountModalOpen(false);
 
-    alert('درخواست حذف حساب کاربری با موفقیت ثبت شد. تمام نشست‌ها پایان یافت و طبق اصل حریم خصوصی (F1) اطلاعات طی مهلت قانونی ۳۰ روزه از سیستم پاک می‌شود.');
+    toast.show({ intent: 'info', message: 'درخواست حذف حساب ثبت شد. تمام نشست‌ها پایان یافت و اطلاعات طی مهلت ۳۰ روزه از سیستم پاک می‌شود (F1).', duration: 8000 });
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col md:flex-row font-sans selection:bg-[#9f1239] selection:text-white pb-24 md:pb-0">
+    <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
       <AppNavigation
         currentWorkspace={currentWorkspace}
@@ -351,7 +354,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-space-0">
         {/* Desktop Minimal Top Status Bar with Breadcrumbs & Quick Actions */}
         <TopStatusBar
           currentWorkspace={currentWorkspace}
@@ -367,7 +370,7 @@ export default function App() {
         />
 
         {/* Main Canvas */}
-        <main className="max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 space-y-6">
+        <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {/* Contradiction Detection Banner */}
           <ContradictionBanner
             contradictions={contradictions}
@@ -376,40 +379,26 @@ export default function App() {
 
         {/* TAB 1: Context & Source of Truth */}
         {activeTab === 'context' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-stack-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">
+                <h1 className="text-heading-md font-bold text-text-default">
                   منبع حقیقت: {currentWorkspace.name}
                 </h1>
-                <p className="text-xs text-[#a1a1aa] mt-1">
+                <p className="text-body-sm text-text-subtle mt-stack-xs">
                   «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
                 </p>
               </div>
 
-              {/* View Switcher: Document vs Table */}
-              <div className="flex items-center gap-2 bg-[#18181b] border border-[#27272a] p-1 rounded-lg text-xs self-start sm:self-auto">
-                <button
-                  onClick={() => setContextViewMode('doc')}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                    contextViewMode === 'doc'
-                      ? 'bg-[#e11d48] text-white shadow-xs'
-                      : 'text-[#a1a1aa] hover:text-white'
-                  }`}
-                >
-                  نمای سند (Document View)
-                </button>
-                <button
-                  onClick={() => setContextViewMode('table')}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                    contextViewMode === 'table'
-                      ? 'bg-[#e11d48] text-white shadow-xs'
-                      : 'text-[#a1a1aa] hover:text-white'
-                  }`}
-                >
-                  نمای جدول (Table View)
-                </button>
-              </div>
+              <SegmentedControl
+                label="نمای منبع حقیقت"
+                value={contextViewMode}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'table')}
+                items={[
+                  { id: 'doc', label: 'نمای سند', icon: 'FileText' },
+                  { id: 'table', label: 'نمای جدول', icon: 'Table2' },
+                ]}
+              />
             </div>
 
             {contextViewMode === 'doc' ? (
@@ -464,7 +453,7 @@ export default function App() {
 
         {/* TAB 3: Smart Chat */}
         {activeTab === 'chat' && (
-          <div className="space-y-2">
+          <div className="space-y-stack-sm">
             <SmartChat
               currentWorkspace={currentWorkspace}
               allContextObjects={workspaceContexts}
@@ -556,58 +545,30 @@ export default function App() {
         }}
       />
 
-      {/* New Workspace Modal */}
-      {isNewWorkspaceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs text-right">
-          <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-white">ایجاد فضای کاری جدید (Workspace)</h3>
-              <button
-                onClick={() => setIsNewWorkspaceModalOpen(false)}
-                className="text-[#a1a1aa] hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateWorkspace} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-[#fafafa] font-semibold mb-1">
-                  نام فضای کاری یا نام برند:
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً: استودیو دیزاین نوین"
-                  value={newWsName}
-                  onChange={(e) => setNewWsName(e.target.value)}
-                  className="w-full bg-[#09090b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
-                />
-              </div>
-
-              <div className="p-3 bg-[#09090b] rounded-lg border border-[#27272a] text-[#a1a1aa] leading-relaxed">
-                هر فضای کاری به طور کامل داده‌های منبع حقیقت، دارایی‌ها و تاریخچه جداگانه‌ای دارد (اصل P6).
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewWorkspaceModalOpen(false)}
-                  className="px-3.5 py-1.5 text-xs text-[#a1a1aa] hover:text-white"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors"
-                >
-                  ایجاد فضای کاری
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* New workspace dialog */}
+      <Dialog
+        open={isNewWorkspaceModalOpen}
+        onClose={() => setIsNewWorkspaceModalOpen(false)}
+        size="sm"
+        title="ایجاد فضای کاری جدید"
+        description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد (اصل P6)."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
+            <Button variant="primary" type="submit" form="new-workspace-form">ایجاد فضای کاری</Button>
+          </>
+        }
+      >
+        <form id="new-workspace-form" onSubmit={handleCreateWorkspace}>
+          <TextField
+            label="نام فضای کاری یا نام برند"
+            required
+            placeholder="مثلاً: استودیو دیزاین نوین"
+            value={newWsName}
+            onChange={(e) => setNewWsName(e.target.value)}
+          />
+        </form>
+      </Dialog>
 
     </div>
   );

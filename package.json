@@ -1,15 +1,19 @@
 {
-  "name": "react-example",
+  "name": "mabda",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "start": "node server.ts",
-    "build": "vite build",
+    "build": "node scripts/check-design.mjs && vite build",
+    "check:design": "node scripts/check-design.mjs",
+    "screens": "node scripts/screens.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -1,0 +1,201 @@
+/*
+ * Mabda semantic aliases.
+ * Domain colors (Object type, status, gap, readiness, execution mode, ledger) are NOT new colors:
+ * each alias points at a Bushido intent (neutral | info | success | warning | danger).
+ * Components must use these aliases (or <Badge intent>) — never a raw palette step or hex.
+ * Meaning is always paired with a label/icon; color alone never carries it.
+ */
+:root {
+  /* type: fact -> info */
+  --mabda-type-fact-bg: var(--bg-info-subtle);
+  --mabda-type-fact-fg: var(--text-info);
+  --mabda-type-fact-border: var(--border-info-subtle);
+  --mabda-type-fact-icon: var(--icon-info);
+  /* type: decision -> neutral */
+  --mabda-type-decision-bg: var(--bg-neutral-subtle);
+  --mabda-type-decision-fg: var(--text-subtle);
+  --mabda-type-decision-border: var(--border-default);
+  --mabda-type-decision-icon: var(--icon-subtle);
+  /* type: constraint -> warning */
+  --mabda-type-constraint-bg: var(--bg-warning-subtle);
+  --mabda-type-constraint-fg: var(--text-warning);
+  --mabda-type-constraint-border: var(--border-warning-subtle);
+  --mabda-type-constraint-icon: var(--icon-warning);
+  /* type: asset -> success */
+  --mabda-type-asset-bg: var(--bg-success-subtle);
+  --mabda-type-asset-fg: var(--text-success);
+  --mabda-type-asset-border: var(--border-success-subtle);
+  --mabda-type-asset-icon: var(--icon-success);
+  /* status: confirmed -> success */
+  --mabda-status-confirmed-bg: var(--bg-success-subtle);
+  --mabda-status-confirmed-fg: var(--text-success);
+  --mabda-status-confirmed-border: var(--border-success-subtle);
+  --mabda-status-confirmed-icon: var(--icon-success);
+  /* status: proposed -> info */
+  --mabda-status-proposed-bg: var(--bg-info-subtle);
+  --mabda-status-proposed-fg: var(--text-info);
+  --mabda-status-proposed-border: var(--border-info-subtle);
+  --mabda-status-proposed-icon: var(--icon-info);
+  /* status: needs-review -> warning */
+  --mabda-status-needs-review-bg: var(--bg-warning-subtle);
+  --mabda-status-needs-review-fg: var(--text-warning);
+  --mabda-status-needs-review-border: var(--border-warning-subtle);
+  --mabda-status-needs-review-icon: var(--icon-warning);
+  /* status: superseded -> neutral */
+  --mabda-status-superseded-bg: var(--bg-neutral-subtle);
+  --mabda-status-superseded-fg: var(--text-subtle);
+  --mabda-status-superseded-border: var(--border-default);
+  --mabda-status-superseded-icon: var(--icon-subtle);
+  /* status: archived -> neutral */
+  --mabda-status-archived-bg: var(--bg-neutral-subtle);
+  --mabda-status-archived-fg: var(--text-subtle);
+  --mabda-status-archived-border: var(--border-default);
+  --mabda-status-archived-icon: var(--icon-subtle);
+  /* gap: required -> danger */
+  --mabda-gap-required-bg: var(--bg-danger-subtle);
+  --mabda-gap-required-fg: var(--text-danger);
+  --mabda-gap-required-border: var(--border-danger-subtle);
+  --mabda-gap-required-icon: var(--icon-danger);
+  /* gap: suggested -> warning */
+  --mabda-gap-suggested-bg: var(--bg-warning-subtle);
+  --mabda-gap-suggested-fg: var(--text-warning);
+  --mabda-gap-suggested-border: var(--border-warning-subtle);
+  --mabda-gap-suggested-icon: var(--icon-warning);
+  /* gap: optional -> neutral */
+  --mabda-gap-optional-bg: var(--bg-neutral-subtle);
+  --mabda-gap-optional-fg: var(--text-subtle);
+  --mabda-gap-optional-border: var(--border-default);
+  --mabda-gap-optional-icon: var(--icon-subtle);
+  /* ready: ready -> success */
+  --mabda-ready-ready-bg: var(--bg-success-subtle);
+  --mabda-ready-ready-fg: var(--text-success);
+  --mabda-ready-ready-border: var(--border-success-subtle);
+  --mabda-ready-ready-icon: var(--icon-success);
+  /* ready: needs-work -> warning */
+  --mabda-ready-needs-work-bg: var(--bg-warning-subtle);
+  --mabda-ready-needs-work-fg: var(--text-warning);
+  --mabda-ready-needs-work-border: var(--border-warning-subtle);
+  --mabda-ready-needs-work-icon: var(--icon-warning);
+  /* ready: blocked -> danger */
+  --mabda-ready-blocked-bg: var(--bg-danger-subtle);
+  --mabda-ready-blocked-fg: var(--text-danger);
+  --mabda-ready-blocked-border: var(--border-danger-subtle);
+  --mabda-ready-blocked-icon: var(--icon-danger);
+  /* mode: fast -> neutral */
+  --mabda-mode-fast-bg: var(--bg-neutral-subtle);
+  --mabda-mode-fast-fg: var(--text-subtle);
+  --mabda-mode-fast-border: var(--border-default);
+  --mabda-mode-fast-icon: var(--icon-subtle);
+  /* mode: auto -> info */
+  --mabda-mode-auto-bg: var(--bg-info-subtle);
+  --mabda-mode-auto-fg: var(--text-info);
+  --mabda-mode-auto-border: var(--border-info-subtle);
+  --mabda-mode-auto-icon: var(--icon-info);
+  /* mode: critique -> success */
+  --mabda-mode-critique-bg: var(--bg-success-subtle);
+  --mabda-mode-critique-fg: var(--text-success);
+  --mabda-mode-critique-border: var(--border-success-subtle);
+  --mabda-mode-critique-icon: var(--icon-success);
+  /* mode: sensitive -> warning */
+  --mabda-mode-sensitive-bg: var(--bg-warning-subtle);
+  --mabda-mode-sensitive-fg: var(--text-warning);
+  --mabda-mode-sensitive-border: var(--border-warning-subtle);
+  --mabda-mode-sensitive-icon: var(--icon-warning);
+  /* ledger: completed -> success */
+  --mabda-ledger-completed-bg: var(--bg-success-subtle);
+  --mabda-ledger-completed-fg: var(--text-success);
+  --mabda-ledger-completed-border: var(--border-success-subtle);
+  --mabda-ledger-completed-icon: var(--icon-success);
+  /* ledger: refunded -> info */
+  --mabda-ledger-refunded-bg: var(--bg-info-subtle);
+  --mabda-ledger-refunded-fg: var(--text-info);
+  --mabda-ledger-refunded-border: var(--border-info-subtle);
+  --mabda-ledger-refunded-icon: var(--icon-info);
+}
+
+@theme inline {
+  --color-mabda-type-fact-bg: var(--mabda-type-fact-bg);
+  --color-mabda-type-fact-fg: var(--mabda-type-fact-fg);
+  --color-mabda-type-fact-border: var(--mabda-type-fact-border);
+  --color-mabda-type-fact-icon: var(--mabda-type-fact-icon);
+  --color-mabda-type-decision-bg: var(--mabda-type-decision-bg);
+  --color-mabda-type-decision-fg: var(--mabda-type-decision-fg);
+  --color-mabda-type-decision-border: var(--mabda-type-decision-border);
+  --color-mabda-type-decision-icon: var(--mabda-type-decision-icon);
+  --color-mabda-type-constraint-bg: var(--mabda-type-constraint-bg);
+  --color-mabda-type-constraint-fg: var(--mabda-type-constraint-fg);
+  --color-mabda-type-constraint-border: var(--mabda-type-constraint-border);
+  --color-mabda-type-constraint-icon: var(--mabda-type-constraint-icon);
+  --color-mabda-type-asset-bg: var(--mabda-type-asset-bg);
+  --color-mabda-type-asset-fg: var(--mabda-type-asset-fg);
+  --color-mabda-type-asset-border: var(--mabda-type-asset-border);
+  --color-mabda-type-asset-icon: var(--mabda-type-asset-icon);
+  --color-mabda-status-confirmed-bg: var(--mabda-status-confirmed-bg);
+  --color-mabda-status-confirmed-fg: var(--mabda-status-confirmed-fg);
+  --color-mabda-status-confirmed-border: var(--mabda-status-confirmed-border);
+  --color-mabda-status-confirmed-icon: var(--mabda-status-confirmed-icon);
+  --color-mabda-status-proposed-bg: var(--mabda-status-proposed-bg);
+  --color-mabda-status-proposed-fg: var(--mabda-status-proposed-fg);
+  --color-mabda-status-proposed-border: var(--mabda-status-proposed-border);
+  --color-mabda-status-proposed-icon: var(--mabda-status-proposed-icon);
+  --color-mabda-status-needs-review-bg: var(--mabda-status-needs-review-bg);
+  --color-mabda-status-needs-review-fg: var(--mabda-status-needs-review-fg);
+  --color-mabda-status-needs-review-border: var(--mabda-status-needs-review-border);
+  --color-mabda-status-needs-review-icon: var(--mabda-status-needs-review-icon);
+  --color-mabda-status-superseded-bg: var(--mabda-status-superseded-bg);
+  --color-mabda-status-superseded-fg: var(--mabda-status-superseded-fg);
+  --color-mabda-status-superseded-border: var(--mabda-status-superseded-border);
+  --color-mabda-status-superseded-icon: var(--mabda-status-superseded-icon);
+  --color-mabda-status-archived-bg: var(--mabda-status-archived-bg);
+  --color-mabda-status-archived-fg: var(--mabda-status-archived-fg);
+  --color-mabda-status-archived-border: var(--mabda-status-archived-border);
+  --color-mabda-status-archived-icon: var(--mabda-status-archived-icon);
+  --color-mabda-gap-required-bg: var(--mabda-gap-required-bg);
+  --color-mabda-gap-required-fg: var(--mabda-gap-required-fg);
+  --color-mabda-gap-required-border: var(--mabda-gap-required-border);
+  --color-mabda-gap-required-icon: var(--mabda-gap-required-icon);
+  --color-mabda-gap-suggested-bg: var(--mabda-gap-suggested-bg);
+  --color-mabda-gap-suggested-fg: var(--mabda-gap-suggested-fg);
+  --color-mabda-gap-suggested-border: var(--mabda-gap-suggested-border);
+  --color-mabda-gap-suggested-icon: var(--mabda-gap-suggested-icon);
+  --color-mabda-gap-optional-bg: var(--mabda-gap-optional-bg);
+  --color-mabda-gap-optional-fg: var(--mabda-gap-optional-fg);
+  --color-mabda-gap-optional-border: var(--mabda-gap-optional-border);
+  --color-mabda-gap-optional-icon: var(--mabda-gap-optional-icon);
+  --color-mabda-ready-ready-bg: var(--mabda-ready-ready-bg);
+  --color-mabda-ready-ready-fg: var(--mabda-ready-ready-fg);
+  --color-mabda-ready-ready-border: var(--mabda-ready-ready-border);
+  --color-mabda-ready-ready-icon: var(--mabda-ready-ready-icon);
+  --color-mabda-ready-needs-work-bg: var(--mabda-ready-needs-work-bg);
+  --color-mabda-ready-needs-work-fg: var(--mabda-ready-needs-work-fg);
+  --color-mabda-ready-needs-work-border: var(--mabda-ready-needs-work-border);
+  --color-mabda-ready-needs-work-icon: var(--mabda-ready-needs-work-icon);
+  --color-mabda-ready-blocked-bg: var(--mabda-ready-blocked-bg);
+  --color-mabda-ready-blocked-fg: var(--mabda-ready-blocked-fg);
+  --color-mabda-ready-blocked-border: var(--mabda-ready-blocked-border);
+  --color-mabda-ready-blocked-icon: var(--mabda-ready-blocked-icon);
+  --color-mabda-mode-fast-bg: var(--mabda-mode-fast-bg);
+  --color-mabda-mode-fast-fg: var(--mabda-mode-fast-fg);
+  --color-mabda-mode-fast-border: var(--mabda-mode-fast-border);
+  --color-mabda-mode-fast-icon: var(--mabda-mode-fast-icon);
+  --color-mabda-mode-auto-bg: var(--mabda-mode-auto-bg);
+  --color-mabda-mode-auto-fg: var(--mabda-mode-auto-fg);
+  --color-mabda-mode-auto-border: var(--mabda-mode-auto-border);
+  --color-mabda-mode-auto-icon: var(--mabda-mode-auto-icon);
+  --color-mabda-mode-critique-bg: var(--mabda-mode-critique-bg);
+  --color-mabda-mode-critique-fg: var(--mabda-mode-critique-fg);
+  --color-mabda-mode-critique-border: var(--mabda-mode-critique-border);
+  --color-mabda-mode-critique-icon: var(--mabda-mode-critique-icon);
+  --color-mabda-mode-sensitive-bg: var(--mabda-mode-sensitive-bg);
+  --color-mabda-mode-sensitive-fg: var(--mabda-mode-sensitive-fg);
+  --color-mabda-mode-sensitive-border: var(--mabda-mode-sensitive-border);
+  --color-mabda-mode-sensitive-icon: var(--mabda-mode-sensitive-icon);
+  --color-mabda-ledger-completed-bg: var(--mabda-ledger-completed-bg);
+  --color-mabda-ledger-completed-fg: var(--mabda-ledger-completed-fg);
+  --color-mabda-ledger-completed-border: var(--mabda-ledger-completed-border);
+  --color-mabda-ledger-completed-icon: var(--mabda-ledger-completed-icon);
+  --color-mabda-ledger-refunded-bg: var(--mabda-ledger-refunded-bg);
+  --color-mabda-ledger-refunded-fg: var(--mabda-ledger-refunded-fg);
+  --color-mabda-ledger-refunded-border: var(--mabda-ledger-refunded-border);
+  --color-mabda-ledger-refunded-icon: var(--mabda-ledger-refunded-icon);
+}

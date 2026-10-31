@@ -1,34 +1,67 @@
+/*
+ * Layer order matters: /ds/bundle.css is unlayered upstream, which would beat every Tailwind utility
+ * (a `flex` on a Card would lose to `.bsh-card{display:block}`). It is imported into the `ds` layer,
+ * above Tailwind's preflight (base) and below utilities, so component classes style the kit and
+ * utilities can still adjust layout on top. The file itself is read-only and never edited.
+ */
+@layer theme, base, ds, components, utilities;
+@import "../public/ds/bundle.css" layer(ds);
 @import "tailwindcss";
+@import "./ui/bushido-theme.css";
+@import "./ui/mabda-tokens.css";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  :root {
-    color-scheme: dark;
-  }
+  html { font-family: var(--font-sans); background: var(--surface-page); color: var(--text-default); }
   body {
-    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: var(--surface-page, #09090b);
-    color: var(--text-primary, #fafafa);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-16);
+    line-height: var(--line-height-relaxed);
+    background-color: var(--surface-page);
+    color: var(--text-default);
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
   }
-  /* RTL numeric and Persian styling helpers */
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  h1, h2, h3, h4, h5, h6, p { margin: 0; }
+  /* one focus ring, same as bundle.css controls */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--focus-width) solid var(--border-focus);
+    outline-offset: var(--focus-offset);
   }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
-/* Custom scrollbars matching Bushido design system */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Scrollbars use semantic tokens too. */
+* { scrollbar-width: thin; scrollbar-color: var(--border-bold) transparent; }
+
+/* Overrides for two physical-direction rules in /ds/bundle.css (that file is read-only). */
+.bsh-tooltip { inset-inline: 0; margin-inline: auto; transform: none; }
+
+/* Wider dialog for multi-column content (plans). Same breakpoint as bundle.css dialogs (640px). */
+@media (min-width: 640px) {
+  .bsh-dialog--xl { max-inline-size: var(--container-lg); }
 }
-::-webkit-scrollbar-track {
-  background: var(--neutral-950, #09090b);
+
+/* Chat panel height: viewport minus app chrome on phones, a fixed comfortable height from md up (built from space tokens). */
+@utility h-chat {
+  block-size: calc(100dvh - var(--space-32));
+  @media (min-width: 768px) {
+    block-size: calc(var(--space-40) * 4.5);
+  }
 }
-::-webkit-scrollbar-thumb {
-  background: var(--neutral-800, #27272a);
-  border-radius: 3px;
+/* Bottom padding that respects the device safe area. */
+@utility pb-safe-inset {
+  padding-block-end: max(var(--inset-md), var(--safe-bottom));
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--neutral-700, #3f3f46);
-}
+
+/* ---- Kit adjustments on top of /ds/bundle.css (read-only) ---- */
+/* icon buttons never shrink inside flex rows (keeps the 44px target) */
+.bsh-iconbtn { flex: none; }
+/* tabs wrapper must be allowed to shrink so tab lists scroll instead of widening the page */
+.bsh-tabs-wrap { min-inline-size: 0; max-inline-size: 100%; }
+/* toggle tags are interactive controls: full touch target */
+.bsh-tag--toggle { min-block-size: var(--touch-target-min); }

@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Workspace } from '../types';
+import { Badge, Button, Card, Dialog, Icon } from '../ui';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -21,103 +22,79 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   onExportAllData,
   onDeleteAccount,
 }) => {
-  if (!isOpen) return null;
-
-  const [phone, setPhone] = useState('۰۹۱۲۳۴۵۶۷۸۹');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [isVerified, setIsVerified] = useState(true);
+  const [phone] = useState('09123456789');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
+  const closeAll = () => {
+    setDeleteConfirm(false);
+    onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs text-right animate-in fade-in">
-      <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-          <div>
-            <h3 className="text-base font-bold text-white">حساب کاربری (User Account — F1)</h3>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
-              ورود با موبایل و کد یکبارمصرف، خروجی داده و حریم خصوصی
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-[#a1a1aa] hover:text-white p-1 rounded-md hover:bg-[#27272a] transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-4 text-xs">
-          {/* Mobile phone info */}
-          <div className="bg-[#09090b] p-3.5 rounded-xl border border-[#27272a] space-y-2">
-            <span className="text-[#a1a1aa] block font-medium">شماره موبایل ثبت‌شده:</span>
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-white text-sm" dir="ltr">
-                {phone}
-              </span>
-              <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-2 py-0.5 rounded font-bold">
-                تأییدشده با پیامک ✓
-              </span>
+    <>
+      <Dialog
+        open={isOpen && !deleteConfirm}
+        onClose={closeAll}
+        title="حساب کاربری"
+        description="ورود با موبایل و کد یکبارمصرف، خروجی داده و حریم خصوصی"
+      >
+        <div className="flex flex-col gap-stack-md">
+          <Card padding="lg" className="flex flex-col gap-stack-sm">
+            <span className="label-md text-text-subtle">شمارهٔ موبایل ثبت‌شده</span>
+            <div className="flex items-center justify-between gap-inline-md">
+              <span className="code text-text-default" dir="ltr">{phone}</span>
+              <Badge intent="success">تأییدشده با پیامک</Badge>
             </div>
-          </div>
+          </Card>
 
-          {/* Privacy statement */}
-          <div className="bg-[#09090b] p-3.5 rounded-xl border border-[#27272a] space-y-1.5 text-[#a1a1aa] leading-relaxed">
-            <span className="font-bold text-white block">حریم خصوصی داده‌ها:</span>
-            <p>
+          <Card padding="lg" className="flex flex-col gap-stack-xs">
+            <span className="label-md text-text-default">حریم خصوصی داده‌ها</span>
+            <p className="body-sm text-text-subtle">
               داده‌های منبع حقیقت و گفتگوهای شما رمزنگاری‌شده نگهداری می‌شوند و هرگز برای آموزش مدل‌های عمومی استفاده نمی‌شوند.
             </p>
+          </Card>
+
+          <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
+            <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>
+            <Button variant="secondary" iconStart="Download" fullWidth onClick={onExportAllData}>
+              خروجی گرفتن از تمام داده‌های منبع حقیقت (JSON)
+            </Button>
           </div>
 
-          {/* Export data */}
-          <div className="pt-2 border-t border-[#27272a] space-y-2">
-            <span className="font-bold text-white block">پشتیبان‌گیری و خروجی داده:</span>
-            <button
-              onClick={onExportAllData}
-              className="w-full py-2 px-3 text-xs font-semibold text-white bg-[#09090b] hover:bg-[#27272a] border border-[#27272a] hover:border-[#52525b] rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <span>📥</span>
-              <span>خروجی گرفتن از تمام داده‌های منبع حقیقت (JSON)</span>
-            </button>
-          </div>
-
-          {/* Delete account */}
-          <div className="pt-2 border-t border-[#27272a] space-y-2">
-            <span className="font-bold text-[#fb7185] block">منطقه خطر (حذف حساب):</span>
-            {!deleteConfirm ? (
-              <button
-                onClick={() => setDeleteConfirm(true)}
-                className="w-full py-2 px-3 text-xs font-medium text-[#fb7185] bg-[#4c0519]/20 hover:bg-[#4c0519]/40 border border-[#e11d48]/40 rounded-lg transition-colors"
-              >
-                درخواست حذف حساب و پاکسازی داده‌ها
-              </button>
-            ) : (
-              <div className="p-3 bg-[#4c0519]/40 border border-[#e11d48] rounded-lg space-y-2 text-[#fecdd3]">
-                <p>
-                  معیار پذیرش F1: حذف حساب همهٔ داده‌ها را ظرف ۳۰ روز به طور برگشت‌ناپذیر پاک می‌کند.
-                </p>
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    onClick={() => setDeleteConfirm(false)}
-                    className="px-3 py-1 text-xs text-[#a1a1aa] hover:text-white"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    onClick={() => {
-                      onDeleteAccount();
-                      onClose();
-                    }}
-                    className="px-3 py-1 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded"
-                  >
-                    تأیید نهایی حذف حساب
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
+            <span className="label-md inline-flex items-center gap-inline-xs text-text-danger">
+              <Icon name="OctagonAlert" size="md" />
+              منطقهٔ خطر
+            </span>
+            <Button variant="danger" iconStart="Trash2" fullWidth onClick={() => setDeleteConfirm(true)}>
+              درخواست حذف حساب و پاکسازی داده‌ها
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </Dialog>
+
+      <Dialog
+        alert
+        size="sm"
+        open={isOpen && deleteConfirm}
+        onClose={() => setDeleteConfirm(false)}
+        title="حذف حساب؟"
+        description="حذف حساب همهٔ داده‌ها را ظرف ۳۰ روز به‌طور برگشت‌ناپذیر پاک می‌کند. اگر مطمئن نیستی، انصراف بده."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteConfirm(false)}>انصراف</Button>
+            <Button
+              variant="danger-bold"
+              onClick={() => {
+                onDeleteAccount();
+                closeAll();
+              }}
+            >
+              حذف حساب
+            </Button>
+          </>
+        }
+      />
+    </>
   );
 };

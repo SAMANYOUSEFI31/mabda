@@ -6,6 +6,7 @@
 import React from 'react';
 import { ContextObject, TreeNode } from '../types';
 import { DEFAULT_TREE_NODES } from '../core/specs';
+import { Badge, Button, Card, EmptyState, PROVENANCE_LABEL, StatusBadge, TypeBadge, formatNumber } from '../ui';
 
 interface ContextTreeDocViewProps {
   objects: ContextObject[];
@@ -25,112 +26,57 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = ({
   );
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-8 text-right">
-      <div className="border-b border-[#27272a] pb-4 flex items-center justify-between">
+    <Card padding="xl" className="flex flex-col gap-stack-xl">
+      <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">سند منبع حقیقت (Document View)</h2>
-          <p className="text-xs text-[#a1a1aa] mt-1">
-            داده همون UI است (اصل P6)؛ هر تیتر یک شیء نوع‌دار از دانش است که کلیک روی آن فوراً امکان ویرایش را می‌دهد.
+          <h2 className="heading-sm text-text-default">سند منبع حقیقت</h2>
+          <p className="body-sm mt-stack-xs text-text-subtle">
+            داده همان UI است (اصل P6)؛ هر تیتر یک شیء نوع‌دار از دانش است و با زدن روی آن ویرایشش می‌کنی.
           </p>
         </div>
-        <span className="text-xs text-[#a1a1aa] bg-[#09090b] px-3 py-1 rounded-md border border-[#27272a]">
-          {activeObjects.length} قلم دانش فعال
-        </span>
+        <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>
       </div>
 
-      <div className="space-y-8">
+      <div className="flex flex-col gap-stack-xl">
         {nodes.map((node, index) => {
           const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
 
           return (
-            <section key={node.id} className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-[#27272a]/60">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-[#e11d48]">0{index + 1}.</span>
-                  <h3 className="text-lg font-bold text-white">{node.label}</h3>
-                  <span className="text-xs text-[#7d7d86] hidden sm:inline">
-                    ({node.description})
-                  </span>
+            <section key={node.id} className="flex flex-col gap-stack-md" aria-labelledby={`node-${node.id}`}>
+              <div className="flex items-center justify-between gap-inline-md border-b border-border-subtle pb-inset-sm">
+                <div className="flex min-w-space-0 flex-wrap items-baseline gap-x-inline-sm">
+                  <span className="label-md tabular-nums text-text-subtlest">{formatNumber(index + 1)}.</span>
+                  <h3 id={`node-${node.id}`} className="heading-xs text-text-default">{node.label}</h3>
+                  <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>
                 </div>
-                <button
-                  onClick={() => onAddNewToNode(node.id)}
-                  className="text-xs text-[#fb7185] hover:text-white px-2 py-1 rounded hover:bg-[#27272a] transition-colors"
-                >
-                  + افزودن به این شاخه
-                </button>
+                <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddNewToNode(node.id)}>
+                  افزودن به این شاخه
+                </Button>
               </div>
 
               {nodeObjects.length === 0 ? (
-                <div className="p-4 rounded-lg bg-[#09090b]/40 border border-[#27272a] border-dashed text-xs text-[#7d7d86] flex items-center justify-between">
-                  <span>هیچ موردی در این شاخه ثبت نشده است.</span>
-                  <button
-                    onClick={() => onAddNewToNode(node.id)}
-                    className="text-[#e11d48] font-medium hover:underline"
-                  >
-                    ثبت اولین مورد
-                  </button>
-                </div>
+                <EmptyState
+                  icon="Inbox"
+                  title="هنوز موردی در این شاخه ثبت نشده"
+                  action={<Button variant="secondary" size="sm" onClick={() => onAddNewToNode(node.id)}>ثبت اولین مورد</Button>}
+                />
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
                   {nodeObjects.map((obj) => (
-                    <article
-                      key={obj.id}
-                      onClick={() => onSelectObject(obj)}
-                      className={`p-4 rounded-lg border transition-all cursor-pointer text-right group ${
-                        obj.status === 'Proposed'
-                          ? 'bg-[#18181b]/80 border-[#f59e0b]/40 hover:border-[#f59e0b]'
-                          : obj.status === 'Needs Review'
-                          ? 'bg-[#18181b]/80 border-[#38bdf8]/40 hover:border-[#38bdf8]'
-                          : 'bg-[#09090b] border-[#27272a] hover:border-[#52525b]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <h4 className="font-semibold text-white text-sm group-hover:text-[#fb7185] transition-colors">
-                          {obj.title}
-                        </h4>
-                        <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
-                          <span
-                            className={`px-1.5 py-0.5 rounded font-medium ${
-                              obj.type === 'Decision'
-                                ? 'bg-[#e11d48]/15 text-[#fb7185]'
-                                : obj.type === 'Constraint'
-                                ? 'bg-[#f59e0b]/15 text-[#fbbf24]'
-                                : obj.type === 'Asset'
-                                ? 'bg-[#10b981]/15 text-[#34d399]'
-                                : 'bg-[#0284c7]/15 text-[#38bdf8]'
-                            }`}
-                          >
-                            {obj.type}
-                          </span>
-                          <span
-                            className={`px-1.5 py-0.5 rounded ${
-                              obj.status === 'Confirmed'
-                                ? 'text-[#10b981] bg-[#10b981]/10'
-                                : obj.status === 'Proposed'
-                                ? 'text-[#f59e0b] bg-[#f59e0b]/10'
-                                : 'text-[#38bdf8] bg-[#38bdf8]/10'
-                            }`}
-                          >
-                            {obj.status === 'Confirmed'
-                              ? 'تأییدشده'
-                              : obj.status === 'Proposed'
-                              ? 'پیشنهادی'
-                              : 'نیاز به بررسی'}
-                          </span>
+                    <Card key={obj.id} padding="lg" onClick={() => onSelectObject(obj)} className="flex flex-col gap-stack-sm">
+                      <div className="flex items-start justify-between gap-inline-sm">
+                        <h4 className="title text-text-default">{obj.title}</h4>
+                        <div className="flex shrink-0 flex-wrap justify-end gap-inline-xs">
+                          <TypeBadge value={obj.type} />
+                          <StatusBadge value={obj.status} />
                         </div>
                       </div>
-
-                      <p className="text-xs text-[#d4d4d8] leading-relaxed line-clamp-3">
-                        {obj.content}
-                      </p>
-
-                      <div className="mt-3 pt-2 border-t border-[#27272a]/40 flex items-center justify-between text-[11px] text-[#7d7d86]">
-                        <span>منبع: {obj.provenance}</span>
-                        <span className="text-[#a1a1aa] group-hover:text-white transition-colors">
-                          ویرایش یا مشاهده &larr;
-                        </span>
+                      <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
+                      <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
+                        <span>منبع: {PROVENANCE_LABEL[obj.provenance]}</span>
+                        <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>
                       </div>
-                    </article>
+                    </Card>
                   ))}
                 </div>
               )}
@@ -138,6 +84,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = ({
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 };

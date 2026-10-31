@@ -5,6 +5,8 @@
 
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../types';
+import { DEFAULT_TREE_NODES } from '../core/specs';
+import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber } from '../ui';
 
 interface GapEnginePanelProps {
   spec: WorkstreamSpec;
@@ -26,190 +28,111 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
   );
 
+  const nodeLabel = (id: string) => DEFAULT_TREE_NODES.find((n) => n.id === id)?.label ?? id;
+  const submitCustom = (gap: GapItem) => {
+    const v = customAnswers[gap.key]?.trim();
+    if (v) onAnswerGap(gap, v);
+  };
+
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-6 text-right">
-      {/* Header & Readiness Gauge */}
-      <div className="border-b border-[#27272a] pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-white">موتور تحلیل شکاف‌ها (Gap Engine)</h3>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
-                readiness.status === 'ready'
-                  ? 'bg-[#10b981]/15 text-[#34d399]'
-                  : readiness.status === 'needs_work'
-                  ? 'bg-[#f59e0b]/15 text-[#fbbf24]'
-                  : 'bg-[#e11d48]/15 text-[#fb7185]'
-              }`}
-            >
-              {readiness.status === 'ready'
-                ? 'آماده تولید'
-                : readiness.status === 'needs_work'
-                ? 'آمادگی متوسط'
-                : 'نیاز به داده‌های پایه'}
-            </span>
+    <Card padding="xl" className="flex flex-col gap-stack-lg">
+      {/* Header & readiness */}
+      <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
+        <div className="flex flex-col gap-stack-xs">
+          <div className="flex flex-wrap items-center gap-inline-sm">
+            <h3 className="heading-xs text-text-default">موتور تحلیل شکاف‌ها (Gap Engine)</h3>
+            <ReadinessBadge value={readiness.status} />
           </div>
-          <p className="text-xs text-[#a1a1aa] mt-1 leading-relaxed">
-            {readiness.summary}
-          </p>
+          <p className="body-sm text-text-subtle">{readiness.summary}</p>
         </div>
 
-        {/* Readiness Score Pill & Progress */}
-        <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] px-4 py-2.5 rounded-xl shrink-0">
-          <div className="text-left">
-            <span className="text-[11px] text-[#a1a1aa] block">میزان آمادگی (Readiness)</span>
-            <span className="text-xl font-bold text-white tabular-nums">
-              {readiness.score}٪
-            </span>
-          </div>
-          <div className="w-16 h-2 bg-[#27272a] rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${
-                readiness.score >= 85
-                  ? 'bg-[#10b981]'
-                  : readiness.score >= 50
-                  ? 'bg-[#f59e0b]'
-                  : 'bg-[#e11d48]'
-              }`}
-              style={{ width: `${readiness.score}%` }}
-            />
-          </div>
+        <div className="flex min-w-overlay-xs shrink-0 flex-col gap-stack-xs rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-md">
+          <span className="caption text-text-subtle">میزان آمادگی (Readiness)</span>
+          <span className="text-numeric-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪</span>
+          <Progress value={readiness.score} label="آمادگی خروجی" showValue={false} intent={readiness.score >= 85 ? 'success' : 'warning'} />
         </div>
       </div>
 
-      {/* Free Gap Cost Notice (Principle P3) */}
-      <div className="bg-[#09090b] p-3 rounded-lg border border-[#27272a] flex items-center justify-between text-xs text-[#a1a1aa]">
-        <div className="flex items-center gap-2">
-          <span className="text-[#38bdf8] font-bold">اصل P3:</span>
-          <span>تحلیل Gap و ساختاردهی به دانش برای کاربر کاملاً رایگان است؛ هزینه تنها برای خروجی‌های تأییدشده است.</span>
-        </div>
-        <span className="text-[11px] text-[#10b981] font-semibold bg-[#10b981]/10 px-2 py-0.5 rounded">
-          ۰ اعتبار (Free)
-        </span>
+      {/* Free gap cost notice (P3) */}
+      <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
+        <p className="body-sm text-text-subtle">
+          <span className="label-md text-text-info">اصل P3: </span>
+          تحلیل Gap و ساختاردهی به دانش برای کاربر کاملاً رایگان است؛ هزینه فقط برای خروجی‌های تأییدشده است.
+        </p>
+        <Badge intent="success">۰ اعتبار</Badge>
       </div>
 
-      {/* Gaps List */}
-      <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-white">
-          شکاف‌های شناسایی‌شده ({readiness.gaps.length} مورد):
-        </h4>
+      {/* Gaps */}
+      <div className="flex flex-col gap-stack-md">
+        <h4 className="title text-text-default">شکاف‌های شناسایی‌شده ({formatNumber(readiness.gaps.length)} مورد)</h4>
 
         {readiness.gaps.length === 0 ? (
-          <div className="p-6 rounded-lg bg-[#09090b] border border-[#10b981]/30 text-center space-y-2">
-            <p className="text-[#34d399] font-bold text-sm">
-              هیچ شکافی وجود ندارد! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.
-            </p>
-            <p className="text-xs text-[#a1a1aa]">
-              می‌توانید خروجی‌های این جریان کاری را با حداکثر انسجام و غنای تخصصی تولید نمایید.
-            </p>
+          <div className="flex flex-col items-center gap-stack-sm rounded-control-sm border border-border-success-subtle bg-surface-sunken p-inset-xl text-center">
+            <Icon name="CircleCheck" size="2xl" className="text-icon-success" />
+            <p className="title text-text-success">هیچ شکافی وجود ندارد! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.</p>
+            <p className="body-sm text-text-subtle">می‌توانی خروجی‌های این جریان کاری را با حداکثر انسجام و غنای تخصصی تولید کنی.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-stack-md">
             {readiness.gaps.map((gap, idx) => {
               const isExpanded = expandedGapKey === gap.key;
-
               return (
-                <div
-                  key={gap.key}
-                  className={`border rounded-xl transition-all overflow-hidden ${
-                    gap.importance === 'required'
-                      ? 'border-[#e11d48]/30 bg-[#09090b]'
-                      : 'border-[#27272a] bg-[#09090b]/60'
-                  }`}
-                >
-                  <div
+                <div key={gap.key} className="overflow-hidden rounded-control border border-border-default bg-surface-sunken">
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
                     onClick={() => setExpandedGapKey(isExpanded ? null : gap.key)}
-                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#18181b]/50 transition-colors"
+                    className="flex min-h-touch-comfortable w-full items-center justify-between gap-inline-md p-inset-lg text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] flex items-center justify-center text-xs font-mono">
-                        {idx + 1}
+                    <span className="flex items-start gap-inline-md">
+                      <span className="grid size-space-6 shrink-0 place-items-center rounded-pill bg-bg-neutral-subtle label-sm tabular-nums text-text-subtle">
+                        {formatNumber(idx + 1)}
                       </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white text-sm">
-                            {gap.label}
-                          </span>
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              gap.importance === 'required'
-                                ? 'bg-[#e11d48]/20 text-[#fb7185] font-bold'
-                                : 'bg-[#27272a] text-[#a1a1aa]'
-                            }`}
-                          >
-                            {gap.importance === 'required' ? 'الزامی' : 'پیشنهادی'}
-                          </span>
-                          {gap.status === 'ambiguous' && (
-                            <span className="text-[10px] bg-[#f59e0b]/20 text-[#fbbf24] px-1.5 py-0.5 rounded">
-                              مبهم
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#a1a1aa] mt-0.5">{gap.question}</p>
-                      </div>
-                    </div>
-
-                    <span className="text-xs text-[#7d7d86]">
-                      {isExpanded ? 'بستن ▲' : 'پاسخ و تکمیل ▼'}
+                      <span className="flex flex-col gap-stack-xs">
+                        <span className="flex flex-wrap items-center gap-inline-sm">
+                          <span className="title text-text-default">{gap.label}</span>
+                          <GapBadge value={gap.importance} />
+                          {gap.status === 'ambiguous' && <Badge intent="warning">مبهم</Badge>}
+                        </span>
+                        <span className="body-sm text-text-subtle">{gap.question}</span>
+                      </span>
                     </span>
-                  </div>
+                    <span className="inline-flex shrink-0 items-center gap-inline-xs body-sm text-text-subtle">
+                      {isExpanded ? 'بستن' : 'پاسخ و تکمیل'}
+                      <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size="md" />
+                    </span>
+                  </button>
 
                   {isExpanded && (
-                    <div className="p-4 border-t border-[#27272a] bg-[#18181b]/80 space-y-3">
-                      <p className="text-xs text-[#d4d4d8] font-medium">
-                        گزینه‌های پیشنهادی برای ثبت سریع در منبع حقیقت:
-                      </p>
-
-                      <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-stack-md border-t border-border-default bg-surface-raised p-inset-lg">
+                      <p className="label-md text-text-default">گزینه‌های پیشنهادی برای ثبت سریع در منبع حقیقت:</p>
+                      <div className="flex flex-wrap gap-inline-sm">
                         {gap.suggestedAnswers.map((ans, aIdx) => (
-                          <button
-                            key={aIdx}
-                            onClick={() => onAnswerGap(gap, ans)}
-                            className="text-xs text-right bg-[#09090b] hover:bg-[#27272a] text-[#fafafa] border border-[#27272a] hover:border-[#e11d48] px-3 py-1.5 rounded-lg transition-all"
-                          >
+                          <Button key={aIdx} variant="secondary" onClick={() => onAnswerGap(gap, ans)}>
                             «{ans}»
-                          </button>
+                          </Button>
                         ))}
                       </div>
 
-                      {/* Custom answer input */}
-                      <div className="flex items-center gap-2 pt-2">
-                        <input
-                          type="text"
-                          placeholder="یا پاسخ دقیق خود را اینجا بنویسید..."
+                      <div className="flex flex-col items-stretch gap-inline-sm sm:flex-row sm:items-end">
+                        <TextField
+                          label="یا پاسخ دقیق خودت را بنویس"
+                          placeholder="پاسخ…"
                           value={customAnswers[gap.key] || ''}
-                          onChange={(e) =>
-                            setCustomAnswers({ ...customAnswers, [gap.key]: e.target.value })
-                          }
+                          onChange={(e) => setCustomAnswers({ ...customAnswers, [gap.key]: e.target.value })}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && customAnswers[gap.key]?.trim()) {
-                              onAnswerGap(gap, customAnswers[gap.key].trim());
-                            }
+                            if (e.key === 'Enter') submitCustom(gap);
                           }}
-                          className="flex-1 bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
                         />
-                        <button
-                          onClick={() => {
-                            if (customAnswers[gap.key]?.trim()) {
-                              onAnswerGap(gap, customAnswers[gap.key].trim());
-                            }
-                          }}
-                          disabled={!customAnswers[gap.key]?.trim()}
-                          className="px-3 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-40 rounded-lg transition-colors"
-                        >
+                        <Button variant="secondary" disabled={!customAnswers[gap.key]?.trim()} onClick={() => submitCustom(gap)}>
                           ثبت پاسخ
-                        </button>
+                        </Button>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-[#27272a]/40 text-xs text-[#a1a1aa]">
-                        <button
-                          onClick={() => onIgnoreGap(gap)}
-                          className="hover:text-white transition-colors text-[11px]"
-                        >
-                          نادیده گرفتن این شکاف
-                        </button>
-                        <span className="text-[11px] text-[#7d7d86]">
-                          پاسخ مستقیم به عنوان یک شیء تأییدشده در شاخه {gap.nodeId} ثبت می‌شود.
+                      <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md sm:flex-row sm:items-center sm:justify-between">
+                        <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این شکاف</Button>
+                        <span className="caption text-text-subtle">
+                          پاسخ مستقیم به‌عنوان یک شیء تأییدشده در شاخهٔ «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
                         </span>
                       </div>
                     </div>
@@ -221,20 +144,16 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
         )}
       </div>
 
-      {/* Permission to continue even with gaps */}
       {readiness.gaps.length > 0 && (
-        <div className="pt-2 flex items-center justify-between border-t border-[#27272a]">
-          <span className="text-xs text-[#f59e0b]">
-            نکته مبدأ: Gap راهنماست نه درِ بسته؛ در صورت تمایل می‌توانید با همین اطلاعات ادامه دهید.
+        <div className="flex flex-col gap-inline-md border-t border-border-default pt-inset-md sm:flex-row sm:items-center sm:justify-between">
+          <span className="body-sm text-text-warning">
+            نکتهٔ مبدأ: Gap راهنماست نه درِ بسته؛ اگر بخواهی می‌توانی با همین اطلاعات ادامه بدهی.
           </span>
-          <button
-            onClick={onProceedAnyway}
-            className="px-3 py-1.5 text-xs font-medium text-[#d4d4d8] hover:text-white bg-[#27272a] hover:bg-[#3f3f46] rounded-lg transition-colors"
-          >
-            ادامه با هشدار کیفیت کمتر &larr;
-          </button>
+          <Button variant="secondary" iconEnd="ArrowLeft" onClick={onProceedAnyway}>
+            ادامه با هشدار کیفیت کمتر
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 };

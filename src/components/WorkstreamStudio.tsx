@@ -20,6 +20,7 @@ import { ContextReplayCard } from './ContextReplayCard';
 import { generateDeliverableApi } from '../services/apiClient';
 import { CustomSpecModal } from './CustomSpecModal';
 import { KnowledgeGapChart } from './KnowledgeGapChart';
+import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Tabs, formatNumber, useToast } from '../ui';
 
 interface WorkstreamStudioProps {
   currentWorkspace: Workspace;
@@ -65,6 +66,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const [generationPhase, setGenerationPhase] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'create' | 'gap_analysis' | 'history'>('create');
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
+  const toast = useToast();
 
   const currentSpec =
     specs.find((s) => s.id === selectedSpecId) || specs[0] || WORKSTREAM_SPECS[0];
@@ -86,7 +88,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
 
   const handleGenerate = async (isRebuild = false, rebuildTarget?: GeneratedDeliverable) => {
     if (currentWorkspace.creditsRemaining < creditCost) {
-      alert('اعتبار ناکافی است. می‌توانید از بخش دفتر کل بسته اعتباری تهیه کنید.');
+      toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
       onOpenLedger();
       return;
     }
@@ -135,7 +137,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       setActiveTab('history');
     } catch (err: any) {
       console.error(err);
-      alert('خطا در تولید خروجی. لطفاً دوباره تلاش کنید.');
+      toast.show({ intent: 'danger', message: 'خروجی ساخته نشد. دوباره تلاش کن.' });
     } finally {
       setIsGenerating(false);
       setGenerationPhase('');
@@ -147,352 +149,183 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     (d) => d.workstreamId === currentSpec.id && d.workspaceId === currentWorkspace.id
   );
 
+  const requiredMissing = readiness.gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length;
+  const modeCost = (m: ExecutionMode) =>
+    calculateCreditCost({
+      deliverableType: currentDeliverableSpec.type,
+      executionMode: m,
+      baseCreditCost: currentDeliverableSpec.baseCreditCost,
+    });
+
   return (
-    <div className="space-y-6 text-right">
-      {/* Spec Selector Strip */}
-      <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span className="text-[11px] text-[#a1a1aa] block mb-1">جریان کار فعال (Workstream Spec):</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {specs.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setSelectedSpecId(s.id);
-                  if (s.deliverables[0]) {
-                    setSelectedDeliverableId(s.deliverables[0].id);
-                  }
+    <div className="flex flex-col gap-stack-lg">
+      {/* Spec selector + readiness summary */}
+      <Card padding="lg" className="flex flex-col justify-between gap-inline-lg md:flex-row md:items-end">
+        <div className="flex min-w-space-0 flex-1 flex-col gap-stack-sm">
+          <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
+            <div className="min-w-overlay-xs sm:flex-1">
+              <Select
+                label="جریان کار فعال (Workstream Spec)"
+                value={selectedSpecId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const s = specs.find((x) => x.id === id);
+                  setSelectedSpecId(id);
+                  if (s?.deliverables[0]) setSelectedDeliverableId(s.deliverables[0].id);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  selectedSpecId === s.id
-                    ? 'bg-[#e11d48] text-white shadow-sm'
-                    : 'bg-[#09090b] text-[#a1a1aa] hover:text-white border border-[#27272a]'
-                }`}
-              >
-                {s.title}
-              </button>
-            ))}
-            <button
-              onClick={() => setIsCustomSpecModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#fb7185] hover:text-white bg-[#09090b] hover:bg-[#27272a] border border-[#e11d48]/50 transition-colors"
-            >
-              + تعریف جریان کار سفارشی (Spec)
-            </button>
-          </div>
-        </div>
-
-        {/* Readiness summary badge */}
-        <div className="flex items-center gap-2 bg-[#09090b] border border-[#27272a] px-3.5 py-2 rounded-lg shrink-0">
-          <span className="text-xs text-[#a1a1aa]">وضعیت Gap Engine:</span>
-          <span
-            className={`text-xs font-bold tabular-nums ${
-              readiness.score >= 85
-                ? 'text-[#10b981]'
-                : readiness.score >= 50
-                ? 'text-[#f59e0b]'
-                : 'text-[#e11d48]'
-            }`}
-          >
-            {readiness.score}٪ آماده
-          </span>
-          <button
-            onClick={() => setActiveTab('gap_analysis')}
-            className="text-[11px] text-[#fb7185] hover:underline mr-2"
-          >
-            بررسی شکاف‌ها &larr;
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs: Create Deliverable / Gap Analysis / Generated History */}
-      <div className="flex items-center gap-2 border-b border-[#27272a] pb-2 text-xs font-medium">
-        <button
-          onClick={() => setActiveTab('create')}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            activeTab === 'create'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          تولید خروجی جدید
-        </button>
-        <button
-          onClick={() => setActiveTab('gap_analysis')}
-          className={`px-4 py-2 rounded-lg transition-colors relative flex items-center gap-2 ${
-            activeTab === 'gap_analysis'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          <span>🕸️ رادار و تحلیل شکاف‌ها (Gap Radar)</span>
-          {readiness.gaps.length > 0 && (
-            <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            activeTab === 'history'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          خروجی‌های تولیدشده ({workstreamDeliverables.length})
-        </button>
-      </div>
-
-      {/* TAB 1: Create Deliverable */}
-      {activeTab === 'create' && (
-        <div className="space-y-4">
-          {/* Quick Gap Alert Banner in Create tab */}
-          <div className="bg-[#121215] border border-[#27272a] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold font-mono text-xs ${
-                  readiness.score >= 80
-                    ? 'bg-[#10b981]/15 text-[#10b981]'
-                    : readiness.score >= 50
-                    ? 'bg-[#f59e0b]/15 text-[#f59e0b]'
-                    : 'bg-[#e11d48]/15 text-[#e11d48]'
-                }`}
-              >
-                {readiness.score}٪
-              </div>
-              <div>
-                <span className="font-semibold text-white">
-                  وضعیت آمادگی منبع حقیقت: {readiness.status === 'ready' ? 'تأییدشده' : 'نیازمند تکمیل مدارک'}
-                </span>
-                <p className="text-[#a1a1aa] text-[11px] mt-0.5">
-                  {readiness.gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length === 0
-                    ? 'تمامی پیش‌نیازهای الزامی در درخت حقیقت موجود است. خروجی با حداکثر دقت تولید خواهد شد.'
-                    : `تعداد ${readiness.gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length} شکاف بحرانی در دانش کسب‌وکار شناسایی شد.`}
-                </p>
-              </div>
+                options={specs.map((s) => ({ value: s.id, label: s.title }))}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('gap_analysis')}
-              className="px-3.5 py-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#3f3f46] text-[#e4e4e7] hover:text-white transition-colors shrink-0 flex items-center gap-1.5"
-            >
-              <span>مشاهده رادار و برطرف‌سازی شکاف‌ها</span>
-              <span>&larr;</span>
-            </button>
+            <Button variant="secondary" iconStart="Plus" onClick={() => setIsCustomSpecModalOpen(true)}>
+              تعریف جریان کار سفارشی
+            </Button>
           </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Deliverables list */}
-          <div className="lg:col-span-1 space-y-3">
-            <h3 className="text-sm font-bold text-white mb-2">خروجی‌ها به ترتیب ترتیب ارزش (Spec Sequence):</h3>
-            {currentSpec.deliverables.map((del) => {
-              const isSelected = selectedDeliverableId === del.id;
-              const hasGenerated = workstreamDeliverables.some((d) => d.deliverableId === del.id);
+        </div>
 
-              return (
-                <div
-                  key={del.id}
-                  onClick={() => setSelectedDeliverableId(del.id)}
-                  className={`p-3.5 rounded-xl border text-right cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-[#18181b] border-[#e11d48] shadow-sm'
-                      : 'bg-[#09090b] border-[#27272a] hover:border-[#52525b]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] text-[10px] font-mono flex items-center justify-center">
-                        {del.order}
-                      </span>
-                      <h4 className="text-xs font-semibold text-white">{del.title}</h4>
-                    </div>
-                    {hasGenerated && (
-                      <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded">
-                        تولیدشده ✓
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-[#a1a1aa] leading-relaxed line-clamp-2">
-                    {del.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-sm">
+          <span className="body-sm text-text-subtle">وضعیت Gap Engine:</span>
+          <span className="label-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪ آماده</span>
+          <Button size="sm" variant="ghost" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>بررسی شکاف‌ها</Button>
+        </div>
+      </Card>
 
-          {/* Execution Configuration & Trigger */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-5">
-              <div>
-                <span className="text-[11px] text-[#e11d48] font-bold block mb-1">
-                  خروجی انتخابی (گام {currentDeliverableSpec.order} از {currentSpec.deliverables.length})
+      <Tabs
+        label="بخش‌های استودیو"
+        value={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+        items={[
+          { id: 'create', label: 'تولید' },
+          { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `شکاف‌ها (${formatNumber(readiness.gaps.length)})` : 'شکاف‌ها' },
+          { id: 'history', label: `خروجی‌ها (${formatNumber(workstreamDeliverables.length)})` },
+        ]}
+      />
+
+      {/* TAB 1: create */}
+      {activeTab === 'create' && (
+        <div className="flex flex-col gap-stack-md">
+          <Alert
+            intent={requiredMissing === 0 ? 'success' : 'warning'}
+            title={`وضعیت آمادگی منبع حقیقت: ${readiness.status === 'ready' ? 'تأییدشده' : 'نیازمند تکمیل مدارک'} (${formatNumber(readiness.score)}٪)`}
+            action={<Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>مشاهدهٔ رادار و برطرف‌سازی شکاف‌ها</Button>}
+          >
+            {requiredMissing === 0
+              ? 'تمامی پیش‌نیازهای الزامی در درخت حقیقت موجود است. خروجی با حداکثر دقت تولید می‌شود.'
+              : `${formatNumber(requiredMissing)} شکاف بحرانی در دانش کسب‌وکار شناسایی شد.`}
+          </Alert>
+
+          <div className="grid grid-cols-1 gap-inline-xl lg:grid-cols-3">
+            {/* Deliverables list */}
+            <div className="flex flex-col gap-stack-sm lg:col-span-1">
+              <h3 className="title text-text-default">خروجی‌ها به ترتیب ارزش (Spec Sequence)</h3>
+              <List label="خروجی‌های این جریان کار">
+                {currentSpec.deliverables.map((del) => (
+                  <ListItem
+                    key={del.id}
+                    selected={selectedDeliverableId === del.id}
+                    onClick={() => setSelectedDeliverableId(del.id)}
+                    leading={<span className="label-sm tabular-nums">{formatNumber(del.order)}</span>}
+                    title={
+                      <span className="flex flex-wrap items-center gap-inline-sm">
+                        {del.title}
+                        {workstreamDeliverables.some((d) => d.deliverableId === del.id) && <Badge intent="success">تولیدشده</Badge>}
+                      </span>
+                    }
+                    description={del.description}
+                  />
+                ))}
+              </List>
+            </div>
+
+            {/* Execution */}
+            <Card padding="xl" className="flex flex-col gap-stack-lg lg:col-span-2">
+              <div className="flex flex-col gap-stack-xs">
+                <span className="label-md text-text-subtle">
+                  خروجی انتخابی (گام {formatNumber(currentDeliverableSpec.order)} از {formatNumber(currentSpec.deliverables.length)})
                 </span>
-                <h3 className="text-lg font-bold text-white">{currentDeliverableSpec.title}</h3>
-                <p className="text-xs text-[#d4d4d8] mt-1 leading-relaxed">
-                  {currentDeliverableSpec.description}
-                </p>
+                <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>
+                <p className="body-sm text-text-default">{currentDeliverableSpec.description}</p>
               </div>
 
-              {/* Acceptance Criteria Checklist */}
-              <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-4 space-y-2">
-                <span className="text-xs font-semibold text-white block">
-                  معیار پذیرش خروجی (Acceptance Checklist):
-                </span>
-                <ul className="text-xs text-[#a1a1aa] space-y-1 list-disc list-inside">
+              <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+                <span className="label-md text-text-default">معیار پذیرش خروجی (Acceptance Checklist)</span>
+                <ul className="body-sm list-inside list-disc text-text-subtle">
                   {currentDeliverableSpec.acceptanceCriteria.map((c, idx) => (
-                    <li key={idx} className="leading-relaxed">
-                      {c}
-                    </li>
+                    <li key={idx}>{c}</li>
                   ))}
                 </ul>
               </div>
 
-              {/* Mode Selector */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-white">انتخاب سطح اجرا و عمق کار:</span>
-                  <span className="text-[#a1a1aa]">اصل P1: کاربر «چه» را تعیین می‌کند، مبدأ «چطور» را.</span>
+              <div className="flex flex-col gap-stack-sm" role="group" aria-label="سطح اجرا و عمق کار">
+                <div className="flex flex-col justify-between gap-inline-xs sm:flex-row sm:items-center">
+                  <span className="label-md text-text-default">انتخاب سطح اجرا و عمق کار</span>
+                  <span className="caption text-text-subtle">اصل P1: کاربر «چه» را تعیین می‌کند، مبدأ «چطور» را.</span>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button
-                    type="button"
+                <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
+                  <OptionCard
+                    title="سریع"
+                    description="تک‌مرحله‌ای"
+                    meta={`${formatNumber(modeCost('fast'))} اعتبار`}
+                    selected={executionMode === 'fast'}
                     onClick={() => setExecutionMode('fast')}
-                    className={`p-3 rounded-lg border text-right transition-all ${
-                      executionMode === 'fast'
-                        ? 'border-[#e11d48] bg-[#e11d48]/10 text-white font-bold'
-                        : 'border-[#27272a] bg-[#09090b] text-[#a1a1aa] hover:border-[#3f3f46]'
-                    }`}
-                  >
-                    <span className="block text-xs font-bold text-white">سریع (Fast)</span>
-                    <span className="text-[10px] text-[#a1a1aa] block mt-1">تک‌مرحله‌ای</span>
-                    <span className="text-[11px] text-[#fb7185] mt-1 block tabular-nums">
-                      {calculateCreditCost({
-                        deliverableType: currentDeliverableSpec.type,
-                        executionMode: 'fast',
-                        baseCreditCost: currentDeliverableSpec.baseCreditCost,
-                      })}{' '}
-                      اعتبار
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
+                  />
+                  <OptionCard
+                    title="متعادل (Auto)"
+                    badge={<Badge intent="success" icon={false}>۱۰٪ تخفیف</Badge>}
+                    description="پیش‌فرض بهینه"
+                    meta={`${formatNumber(modeCost('auto'))} اعتبار`}
+                    selected={executionMode === 'auto'}
                     onClick={() => setExecutionMode('auto')}
-                    className={`p-3 rounded-lg border text-right transition-all ${
-                      executionMode === 'auto'
-                        ? 'border-[#e11d48] bg-[#e11d48]/10 text-white font-bold'
-                        : 'border-[#27272a] bg-[#09090b] text-[#a1a1aa] hover:border-[#3f3f46]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">متعادل (Auto)</span>
-                      <span className="text-[9px] text-[#10b981] bg-[#10b981]/15 px-1 py-0.2 rounded">
-                        ۱۰٪ تخفیف
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#a1a1aa] block mt-1">پیش‌فرض بهینه</span>
-                    <span className="text-[11px] text-[#fb7185] mt-1 block tabular-nums">
-                      {calculateCreditCost({
-                        deliverableType: currentDeliverableSpec.type,
-                        executionMode: 'auto',
-                        baseCreditCost: currentDeliverableSpec.baseCreditCost,
-                      })}{' '}
-                      اعتبار
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
+                  />
+                  <OptionCard
+                    title="عمیق (Critique)"
+                    description="پیش‌نویس + نقد + اصلاح"
+                    meta={`${formatNumber(modeCost('critique'))} اعتبار`}
+                    selected={executionMode === 'critique'}
                     disabled={!plan.allowedModes.includes('critique')}
                     onClick={() => setExecutionMode('critique')}
-                    className={`p-3 rounded-lg border text-right transition-all ${
-                      executionMode === 'critique'
-                        ? 'border-[#e11d48] bg-[#e11d48]/10 text-white font-bold'
-                        : 'border-[#27272a] bg-[#09090b] text-[#a1a1aa] hover:border-[#3f3f46] disabled:opacity-40'
-                    }`}
-                  >
-                    <span className="block text-xs font-bold text-white">عمیق (Critique)</span>
-                    <span className="text-[10px] text-[#a1a1aa] block mt-1">پیش‌نویس + نقد + اصلاح</span>
-                    <span className="text-[11px] text-[#fb7185] mt-1 block tabular-nums">
-                      {calculateCreditCost({
-                        deliverableType: currentDeliverableSpec.type,
-                        executionMode: 'critique',
-                        baseCreditCost: currentDeliverableSpec.baseCreditCost,
-                      })}{' '}
-                      اعتبار
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
+                  />
+                  <OptionCard
+                    title="حالت حساس"
+                    badge={<Badge intent="neutral" icon={false}>Max</Badge>}
+                    description="نقد + Gap + تناقض"
+                    meta={`${formatNumber(modeCost('sensitive'))} اعتبار`}
+                    selected={executionMode === 'sensitive'}
                     disabled={!plan.allowedModes.includes('sensitive')}
                     onClick={() => setExecutionMode('sensitive')}
-                    className={`p-3 rounded-lg border text-right transition-all ${
-                      executionMode === 'sensitive'
-                        ? 'border-[#e11d48] bg-[#e11d48]/10 text-white font-bold'
-                        : 'border-[#27272a] bg-[#09090b] text-[#a1a1aa] hover:border-[#3f3f46] disabled:opacity-40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">حالت حساس</span>
-                      <span className="text-[9px] text-[#fbbf24] bg-[#fbbf24]/10 px-1 py-0.2 rounded">
-                        Max
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-[#a1a1aa] block mt-1">نقد + Gap + تناقض</span>
-                    <span className="text-[11px] text-[#fb7185] mt-1 block tabular-nums">
-                      {calculateCreditCost({
-                        deliverableType: currentDeliverableSpec.type,
-                        executionMode: 'sensitive',
-                        baseCreditCost: currentDeliverableSpec.baseCreditCost,
-                      })}{' '}
-                      اعتبار
-                    </span>
-                  </button>
+                  />
                 </div>
               </div>
 
-              {/* Pre-Execution Credit Indicator (P2 Transparency) */}
-              <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div>
-                  <span className="text-[#a1a1aa]">هزینه این اجرا:</span>{' '}
-                  <span className="font-bold text-white tabular-nums">{creditCost} اعتبار</span>
-                  <span className="text-[#7d7d86] mr-2">
-                    (موجودی فعلی: {currentWorkspace.creditsRemaining} اعتبار · حدود {remainingOutputsEstimate} خروجی کامل دیگر)
+              {/* Pre-execution credit indicator (P2) */}
+              <div className="flex flex-col justify-between gap-inline-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
+                <div className="body-sm">
+                  <span className="text-text-subtle">هزینهٔ این اجرا: </span>
+                  <span className="label-md tabular-nums text-text-default">{formatNumber(creditCost)} اعتبار</span>
+                  <span className="mt-stack-xs block caption text-text-subtle">
+                    موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر
                   </span>
                 </div>
-
-                <button
-                  onClick={() => handleGenerate(false)}
-                  disabled={isGenerating}
-                  className="px-6 py-2.5 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-50 rounded-lg transition-all shadow-md whitespace-nowrap"
-                >
-                  {isGenerating ? 'در حال ساخت دارایی...' : 'ساخت دارایی (Generate)'}
-                </button>
+                <Button variant="primary" size="lg" iconStart="Sparkles" loading={isGenerating} onClick={() => handleGenerate(false)}>
+                  ساخت دارایی
+                </Button>
               </div>
 
-              {/* Generating Animation & Phase indicator */}
               {isGenerating && (
-                <div className="bg-[#0c4a6e]/20 border border-[#0284c7]/30 rounded-lg p-4 space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-[#38bdf8] font-bold">
-                    <span className="animate-spin text-base" aria-hidden="true">
-                      ⚙️
-                    </span>
-                    <span>{generationPhase}</span>
+                <Alert intent="info" title={generationPhase || 'در حال ساخت دارایی…'}>
+                  <div className="flex items-center gap-inline-sm pt-inset-xs">
+                    <Spinner size="sm" label="در حال ساخت" />
+                    <Progress indeterminate label="پیشرفت ساخت" intent="neutral" />
                   </div>
-                  <div className="w-full bg-[#27272a] h-1.5 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#0284c7] animate-pulse rounded-full w-3/4" />
-                  </div>
-                </div>
+                </Alert>
               )}
-            </div>
+            </Card>
           </div>
-        </div>
         </div>
       )}
 
-      {/* TAB 2: Visual Knowledge Gap Radar & Gap Engine Panel */}
+      {/* TAB 2: gap radar & panel */}
       {activeTab === 'gap_analysis' && (
-        <div className="space-y-6">
-          {/* Visual Radar & Bar Chart */}
+        <div className="flex flex-col gap-stack-lg">
           <KnowledgeGapChart
             currentSpec={currentSpec}
             allContextObjects={allContextObjects}
@@ -513,7 +346,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             }}
           />
 
-          {/* Interactive Gap resolution cards */}
           <GapEnginePanel
             spec={currentSpec}
             readiness={readiness}
@@ -533,40 +365,29 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               onAddContextObject(newObj);
             }}
             onIgnoreGap={(gap) => {
-              alert(`شکاف «${gap.label}» نادیده گرفته شد و مانع ادامه روند نخواهد شد.`);
+              toast.show({ intent: 'info', message: `شکاف «${gap.label}» نادیده گرفته شد و مانع ادامهٔ روند نخواهد شد.` });
             }}
             onProceedAnyway={() => setActiveTab('create')}
           />
         </div>
       )}
 
-      {/* TAB 3: History & Context Replay */}
+      {/* TAB 3: history & context replay */}
       {activeTab === 'history' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-            <h3 className="text-base font-bold text-white">
-              دارایی‌های تولیدشده در این جریان کاری ({workstreamDeliverables.length})
-            </h3>
-            <button
-              onClick={() => setActiveTab('create')}
-              className="text-xs text-[#fb7185] hover:text-white"
-            >
-              + تولید مورد جدید
-            </button>
+        <div className="flex flex-col gap-stack-lg">
+          <div className="flex items-center justify-between gap-inline-md border-b border-border-default pb-inset-md">
+            <h3 className="title text-text-default">دارایی‌های تولیدشده در این جریان کار ({formatNumber(workstreamDeliverables.length)})</h3>
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>تولید مورد جدید</Button>
           </div>
 
           {workstreamDeliverables.length === 0 ? (
-            <div className="p-8 text-center bg-[#18181b] border border-[#27272a] rounded-xl text-xs text-[#a1a1aa] space-y-3">
-              <p>هنوز خروجی‌ای برای این جریان کاری تولید نشده است.</p>
-              <button
-                onClick={() => setActiveTab('create')}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#e11d48] rounded-lg"
-              >
-                تولید اولین دارایی
-              </button>
-            </div>
+            <EmptyState
+              icon="Package"
+              title="هنوز خروجی‌ای برای این جریان کار تولید نشده"
+              action={<Button variant="primary" onClick={() => setActiveTab('create')}>تولید اولین دارایی</Button>}
+            />
           ) : (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-stack-lg">
               {workstreamDeliverables.map((del) => (
                 <ContextReplayCard
                   key={del.id}
@@ -581,7 +402,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         </div>
       )}
 
-      {/* Custom Spec Modal */}
       <CustomSpecModal
         isOpen={isCustomSpecModalOpen}
         onClose={() => setIsCustomSpecModalOpen(false)}

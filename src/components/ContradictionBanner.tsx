@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Contradiction } from '../types';
+import { Alert, Button, Card, TypeBadge, formatNumber } from '../ui';
 
 interface ContradictionBannerProps {
   contradictions: Contradiction[];
@@ -18,63 +19,29 @@ export const ContradictionBanner: React.FC<ContradictionBannerProps> = ({
   if (contradictions.length === 0) return null;
 
   return (
-    <div className="bg-[#451a03]/80 border border-[#f59e0b]/40 rounded-xl p-4 mb-6 text-sm text-[#fde68a]">
-      <div className="flex items-start gap-3">
-        <span className="text-xl" aria-hidden="true">
-          ⚠️
-        </span>
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-white text-base">
-              تشخیص تناقض در منبع حقیقت ({contradictions.length} مورد)
-            </h4>
-            <span className="text-xs text-[#fbbf24] bg-[#78350f] px-2 py-0.5 rounded">
-              اصل P4: انسجام مهم‌تر از حجم است
-            </span>
-          </div>
-
-          {contradictions.map((contra) => (
-            <div
-              key={contra.id}
-              className="bg-[#18181b] border border-[#f59e0b]/30 rounded-lg p-3.5 space-y-2 text-xs"
-            >
-              <p className="text-[#fde68a] font-medium leading-relaxed">
-                {contra.reason}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                <div className="bg-[#09090b] p-2.5 rounded border border-[#27272a] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#a1a1aa] font-medium">مورد اول: {contra.itemA.title}</span>
-                    <span className="text-[10px] text-[#fb7185]">{contra.itemA.type}</span>
+    <Alert intent="warning" title={`تشخیص تناقض در منبع حقیقت (${formatNumber(contradictions.length)} مورد)`} className="mb-stack-lg">
+      <div className="flex flex-col gap-stack-md pt-inset-sm">
+        <p className="text-text-subtle">انسجام مهم‌تر از حجم است: یکی از دو مورد را تثبیت کنید تا دیگری بایگانی شود.</p>
+        {contradictions.map((contra) => (
+          <Card key={contra.id} padding="md" className="flex flex-col gap-stack-sm">
+            <p className="label-md text-text-default">{contra.reason}</p>
+            <div className="grid grid-cols-1 gap-inline-md md:grid-cols-2">
+              {([['اول', contra.itemA, contra.itemB], ['دوم', contra.itemB, contra.itemA]] as const).map(([ordinal, keep, drop]) => (
+                <div key={keep.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+                  <div className="flex items-center justify-between gap-inline-sm">
+                    <span className="label-md text-text-default">مورد {ordinal}: {keep.title}</span>
+                    <TypeBadge value={keep.type} />
                   </div>
-                  <p className="text-[#fafafa]">{contra.itemA.content}</p>
-                  <button
-                    onClick={() => onResolve(contra.id, contra.itemA.id, contra.itemB.id)}
-                    className="mt-2 w-full py-1 px-2 text-center text-xs font-semibold bg-[#27272a] hover:bg-[#3f3f46] text-white rounded transition-colors"
-                  >
-                    تثبیت این مورد و بایگانی مورد دوم
-                  </button>
+                  <p className="body-sm text-text-subtle">{keep.content}</p>
+                  <Button variant="secondary" size="sm" fullWidth onClick={() => onResolve(contra.id, keep.id, drop.id)}>
+                    تثبیت این مورد و بایگانی مورد {ordinal === 'اول' ? 'دوم' : 'اول'}
+                  </Button>
                 </div>
-
-                <div className="bg-[#09090b] p-2.5 rounded border border-[#27272a] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#a1a1aa] font-medium">مورد دوم: {contra.itemB.title}</span>
-                    <span className="text-[10px] text-[#fb7185]">{contra.itemB.type}</span>
-                  </div>
-                  <p className="text-[#fafafa]">{contra.itemB.content}</p>
-                  <button
-                    onClick={() => onResolve(contra.id, contra.itemB.id, contra.itemA.id)}
-                    className="mt-2 w-full py-1 px-2 text-center text-xs font-semibold bg-[#27272a] hover:bg-[#3f3f46] text-white rounded transition-colors"
-                  >
-                    تثبیت این مورد و بایگانی مورد اول
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </Card>
+        ))}
       </div>
-    </div>
+    </Alert>
   );
 };

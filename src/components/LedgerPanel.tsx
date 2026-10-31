@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { LedgerEntry, PlanId, Workspace } from '../types';
 import { PLANS } from '../core/creditEngine';
+import { Badge, Button, Card, LedgerStatusBadge, MODE_META, ModeBadge, Stat, Table, Tabs, formatNumber, formatTime, formatUsd } from '../ui';
 
 interface LedgerPanelProps {
   currentWorkspace: Workspace;
@@ -26,274 +27,151 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
   const totalCreditsUsed = ledgerEntries.reduce((sum, e) => sum + e.creditCost, 0);
   const totalAiCostUsd = ledgerEntries.reduce((sum, e) => sum + e.estimatedAiCostUsd, 0);
 
+  const redLines: Array<{ title: string; text: string }> = [
+    {
+      title: 'سهم هزینهٔ AI از درآمد کاربر',
+      text: 'آستانهٔ هشدار: بیشتر از ۵۰٪ درآمد. در شبیه‌سازی ۲۰ هزار کاربرهٔ مبدأ، هزینهٔ AI در مصرف متوسط بین ۱۷٪ تا ۱۸٪ درآمد خالص کنترل شده است.',
+    },
+    {
+      title: 'هزینهٔ واقعی هر اعتبار',
+      text: 'آستانهٔ قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفتهٔ متوالی. در این حالت وزن اعتبار یا جدول routing مدل‌ها اصلاح می‌شود.',
+    },
+    {
+      title: 'بازسازی با نصف قیمت',
+      text: 'برای جلوگیری از سوءاستفاده، بازسازی با ۵۰٪ تخفیف فقط یک بار به ازای هر ویرایش Context مجاز است (اصلاحیهٔ ممیزی شمارهٔ ۷).',
+    },
+    {
+      title: 'سقف فضای کاری در پلن Max',
+      text: 'با استناد به اصل P5 (بدون وعدهٔ نامحدود)، سقف فضای کاری Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.',
+    },
+  ];
+
   return (
-    <div className="space-y-6 text-right">
-      {/* Header Overview Banner */}
-      <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#27272a] pb-4 mb-4">
+    <div className="flex flex-col gap-stack-lg">
+      <Card padding="xl" className="flex flex-col gap-stack-lg">
+        <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
           <div>
-            <h2 className="text-xl font-bold text-white">دفتر کل، اقتصاد و اعتبارها (Usage Ledger)</h2>
-            <p className="text-xs text-[#a1a1aa] mt-1">
-              اصل P5 (اقتصاد صادقانه): شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانه روزانه و هزینه‌های زیرساخت AI.
+            <h2 className="heading-sm text-text-default">دفتر کل، اقتصاد و اعتبارها</h2>
+            <p className="body-sm mt-stack-xs text-text-subtle">
+              اصل P5 (اقتصاد صادقانه): شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.
             </p>
           </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => onAddCredits(100)}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-[#09090b] hover:bg-[#27272a] border border-[#e11d48] rounded-lg transition-colors"
-            >
-              + خرید بسته ۱۰۰ اعتبار (۴ دلار)
-            </button>
-            <button
-              onClick={() => onAddCredits(300)}
-              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors"
-            >
-              + خرید بسته ۳۰۰ اعتبار (۱۰٫۵ دلار)
-            </button>
+          <div className="flex flex-wrap items-center gap-inline-md">
+            <Button variant="secondary" iconStart="Plus" onClick={() => onAddCredits(100)}>بستهٔ ۱۰۰ اعتبار (۴ دلار)</Button>
+            <Button variant="primary" iconStart="Plus" onClick={() => onAddCredits(300)}>بستهٔ ۳۰۰ اعتبار (۱۰٫۵ دلار)</Button>
           </div>
         </div>
 
-        {/* 4 KPI blocks */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-          <div className="bg-[#09090b] p-3.5 rounded-lg border border-[#27272a] space-y-1">
-            <span className="text-[#a1a1aa] block">اعتبار باقی‌مانده</span>
-            <span className="text-xl font-bold text-white tabular-nums">
-              {currentWorkspace.creditsRemaining}
-            </span>
-            <span className="text-[10px] text-[#10b981] block">پلن {plan.title.split(' ')[0]}</span>
-          </div>
-
-          <div className="bg-[#09090b] p-3.5 rounded-lg border border-[#27272a] space-y-1">
-            <span className="text-[#a1a1aa] block">مجموع اعتبار مصرف‌شده</span>
-            <span className="text-xl font-bold text-white tabular-nums">
-              {totalCreditsUsed}
-            </span>
-            <span className="text-[10px] text-[#a1a1aa] block">در تمام خروجی‌ها</span>
-          </div>
-
-          <div className="bg-[#09090b] p-3.5 rounded-lg border border-[#27272a] space-y-1">
-            <span className="text-[#a1a1aa] block">گفتگوی Auto امروز</span>
-            <span className="text-xl font-bold text-white tabular-nums">
-              {currentWorkspace.todayChatCount} / {plan.dailyChatLimit}
-            </span>
-            <span className="text-[10px] text-[#a1a1aa] block">سقف منصفانه روزانه</span>
-          </div>
-
-          <div className="bg-[#09090b] p-3.5 rounded-lg border border-[#27272a] space-y-1">
-            <span className="text-[#a1a1aa] block">تخمین هزینه زیرساخت AI</span>
-            <span className="text-xl font-bold text-[#10b981] tabular-nums">
-              ${totalAiCostUsd.toFixed(4)}
-            </span>
-            <span className="text-[10px] text-[#a1a1aa] block">حاشیه سود پایدار (P5)</span>
-          </div>
+        <div className="grid grid-cols-2 gap-inline-lg sm:grid-cols-4">
+          <Stat label="اعتبار باقی‌مانده" value={formatNumber(currentWorkspace.creditsRemaining)} delta={`پلن ${plan.title.split(' ')[0]}`} />
+          <Stat label="مجموع اعتبار مصرف‌شده" value={formatNumber(totalCreditsUsed)} delta="در تمام خروجی‌ها" />
+          <Stat
+            label="گفتگوی Auto امروز"
+            value={`${formatNumber(currentWorkspace.todayChatCount)} / ${formatNumber(plan.dailyChatLimit)}`}
+            delta="سقف منصفانهٔ روزانه"
+          />
+          <Stat label="تخمین هزینهٔ زیرساخت AI" value={formatUsd(totalAiCostUsd, 4)} delta="حاشیهٔ سود پایدار (P5)" />
         </div>
-      </div>
+      </Card>
 
-      {/* Sub tabs */}
-      <div className="flex items-center gap-2 border-b border-[#27272a] pb-2 text-xs">
-        <button
-          onClick={() => setActiveSubTab('ledger')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            activeSubTab === 'ledger'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          جدول تراکنش‌های Ledger ({ledgerEntries.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('plans')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            activeSubTab === 'plans'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          مقایسه و ارتقای پلن‌ها
-        </button>
-        <button
-          onClick={() => setActiveSubTab('economics')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
-            activeSubTab === 'economics'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
-          }`}
-        >
-          خطوط قرمز اقتصادی (Red Lines)
-        </button>
-      </div>
+      <Tabs
+        label="بخش‌های دفتر کل"
+        value={activeSubTab}
+        onChange={(id) => setActiveSubTab(id as typeof activeSubTab)}
+        items={[
+          { id: 'ledger', label: `تراکنش‌های Ledger (${formatNumber(ledgerEntries.length)})` },
+          { id: 'plans', label: 'مقایسه و ارتقای پلن‌ها' },
+          { id: 'economics', label: 'خطوط قرمز اقتصادی' },
+        ]}
+      />
 
-      {/* Subtab 1: Ledger Table */}
       {activeSubTab === 'ledger' && (
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs">
-              <thead className="bg-[#09090b] text-[#a1a1aa] uppercase border-b border-[#27272a]">
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-semibold">زمان</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">عملیات / کار</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">الگوی اجرا</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">توکن ورودی/خروجی</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">اعتبار کسرشده</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">هزینه AI</th>
-                  <th scope="col" className="px-3 py-3 font-semibold">وضعیت</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#27272a]/60">
-                {ledgerEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-[#27272a]/20 transition-colors">
-                    <td className="px-4 py-3 text-[#7d7d86] whitespace-nowrap tabular-nums">
-                      {new Date(entry.timestamp).toLocaleTimeString('fa-IR')}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-white whitespace-nowrap">
-                      {entry.action}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span className="text-[11px] bg-[#09090b] border border-[#27272a] px-2 py-0.5 rounded text-[#d4d4d8]">
-                        {entry.mode}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-[#a1a1aa] whitespace-nowrap tabular-nums">
-                      {entry.inputTokens} / {entry.outputTokens}
-                    </td>
-                    <td className="px-3 py-3 font-bold text-white whitespace-nowrap tabular-nums">
-                      {entry.creditCost === 0 ? (
-                        <span className="text-[#10b981]">رایگان (Auto)</span>
-                      ) : (
-                        <span>{entry.creditCost} اعتبار</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-[#10b981] whitespace-nowrap tabular-nums">
-                      ${entry.estimatedAiCostUsd.toFixed(4)}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-2 py-0.5 rounded">
-                        موفق
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Table
+          caption="تراکنش‌های Ledger"
+          rows={ledgerEntries as unknown as Array<Record<string, unknown> & LedgerEntry>}
+          empty="هنوز تراکنشی ثبت نشده است."
+          columns={[
+            { key: 'timestamp', label: 'زمان', render: (e) => <span className="tabular-nums text-text-subtle">{formatTime(e.timestamp)}</span> },
+            { key: 'action', label: 'عملیات / کار', render: (e) => <span className="label-md text-text-default">{e.action}</span> },
+            {
+              key: 'mode',
+              label: 'الگوی اجرا',
+              render: (e) => e.mode in MODE_META
+                ? <ModeBadge value={e.mode as keyof typeof MODE_META} />
+                : <Badge intent="neutral" icon={false}>{e.mode === 'chat_deep' ? 'گفتگوی عمیق' : 'گفتگوی Auto'}</Badge>,
+            },
+            { key: 'tokens', label: 'توکن ورودی / خروجی', numeric: true, render: (e) => `${formatNumber(e.inputTokens)} / ${formatNumber(e.outputTokens)}` },
+            {
+              key: 'creditCost',
+              label: 'اعتبار کسرشده',
+              numeric: true,
+              render: (e) => (e.creditCost === 0 ? <span className="text-text-success">رایگان (Auto)</span> : `${formatNumber(e.creditCost)} اعتبار`),
+            },
+            { key: 'estimatedAiCostUsd', label: 'هزینهٔ AI', numeric: true, render: (e) => formatUsd(e.estimatedAiCostUsd, 4) },
+            { key: 'status', label: 'وضعیت', render: (e) => <LedgerStatusBadge value={e.status} /> },
+          ]}
+        />
       )}
 
-      {/* Subtab 2: Plans Comparison */}
       {activeSubTab === 'plans' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-inline-xl md:grid-cols-3">
           {(Object.keys(PLANS) as PlanId[]).map((pid) => {
             const p = PLANS[pid];
             const isCurrent = currentWorkspace.planId === pid;
-
             return (
-              <div
-                key={pid}
-                className={`bg-[#18181b] rounded-xl p-6 border flex flex-col justify-between transition-all ${
-                  isCurrent ? 'border-[#e11d48] shadow-md ring-1 ring-[#e11d48]' : 'border-[#27272a]'
-                }`}
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-white">{p.title}</h3>
-                    {isCurrent && (
-                      <span className="text-[10px] bg-[#e11d48] text-white px-2 py-0.5 rounded font-semibold">
-                        پلن فعلی
-                      </span>
-                    )}
+              <Card key={pid} padding="xl" selected={isCurrent || undefined} className="flex h-full flex-col justify-between gap-stack-xl">
+                <div className="flex flex-col gap-stack-md">
+                  <div className="flex items-center justify-between gap-inline-sm">
+                    <h3 className="title text-text-default">{p.title}</h3>
+                    {isCurrent && <Badge intent="neutral" emphasis="bold" icon="Check">پلن فعلی</Badge>}
                   </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-white tabular-nums">${p.priceMonthlyUsd}</span>
-                      <span className="text-xs text-[#a1a1aa]">/ ماهانه</span>
+                  <div className="flex flex-col gap-stack-xs">
+                    <div className="flex items-baseline gap-inline-xs">
+                      <span className="text-numeric-md text-text-default">{formatUsd(p.priceMonthlyUsd, 0)}</span>
+                      <span className="body-sm text-text-subtle">در ماه</span>
                     </div>
-                    <span className="text-xs text-[#7d7d86] block">
-                      معادل حدود {p.priceMonthlyToman.toLocaleString('fa-IR')} تومان
-                    </span>
+                    <span className="body-sm text-text-subtle">معادل حدود {formatNumber(p.priceMonthlyToman)} تومان</span>
                   </div>
-
-                  <div className="pt-3 border-t border-[#27272a] space-y-2.5 text-xs text-[#d4d4d8]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#a1a1aa]">اعتبار ماهانه:</span>
-                      <span className="font-bold text-white tabular-nums">{p.creditsMonthly} اعتبار</span>
+                  <dl className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md body-sm">
+                    <div className="flex items-center justify-between gap-inline-sm">
+                      <dt className="text-text-subtle">اعتبار ماهانه</dt>
+                      <dd className="label-md tabular-nums text-text-default">{formatNumber(p.creditsMonthly)} اعتبار</dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#a1a1aa]">سقف ورک‌اسپیس:</span>
-                      <span className="font-bold text-white tabular-nums">{p.workspaceLimit} فضای کاری</span>
+                    <div className="flex items-center justify-between gap-inline-sm">
+                      <dt className="text-text-subtle">سقف فضای کاری</dt>
+                      <dd className="label-md tabular-nums text-text-default">{formatNumber(p.workspaceLimit)} فضای کاری</dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#a1a1aa]">سقف منصفانه گفتگو:</span>
-                      <span className="font-bold text-white tabular-nums">{p.dailyChatLimit} پیام در روز</span>
+                    <div className="flex items-center justify-between gap-inline-sm">
+                      <dt className="text-text-subtle">سقف منصفانهٔ گفتگو</dt>
+                      <dd className="label-md tabular-nums text-text-default">{formatNumber(p.dailyChatLimit)} پیام در روز</dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#a1a1aa]">حالت‌های مجاز:</span>
-                      <span className="font-bold text-[#fb7185]">{p.allowedModes.join('، ')}</span>
+                    <div className="flex flex-col gap-stack-xs">
+                      <dt className="text-text-subtle">حالت‌های مجاز</dt>
+                      <dd className="flex flex-wrap gap-inline-xs">{p.allowedModes.map((m) => <ModeBadge key={m} value={m} />)}</dd>
                     </div>
-                  </div>
+                  </dl>
                 </div>
-
-                <div className="pt-6">
-                  {isCurrent ? (
-                    <button
-                      disabled
-                      className="w-full py-2 text-xs font-semibold text-[#a1a1aa] bg-[#09090b] border border-[#27272a] rounded-lg cursor-default"
-                    >
-                      فعال برای این فضای کاری
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onChangePlan(pid)}
-                      className="w-full py-2 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shadow-sm"
-                    >
-                      انتخاب این پلن
-                    </button>
-                  )}
-                </div>
-              </div>
+                <Button variant="secondary" fullWidth disabled={isCurrent} onClick={() => onChangePlan(pid)}>
+                  {isCurrent ? 'فعال برای این فضای کاری' : 'انتخاب این پلن'}
+                </Button>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* Subtab 3: Red Lines & Economics */}
       {activeSubTab === 'economics' && (
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-6 text-xs text-[#d4d4d8]">
-          <h3 className="text-sm font-bold text-white">
-            اصول و شاخص‌های خط قرمز در Ledger (بخش اقتصاد واحد PRD)
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#09090b] p-4 rounded-lg border border-[#27272a] space-y-2">
-              <span className="text-white font-bold block">سهم هزینه AI از درآمد کاربر:</span>
-              <p className="text-[#a1a1aa] leading-relaxed">
-                آستانه هشدار: بیشتر از ۵۰٪ درآمد. در شبیه‌سازی ۲۰ هزار کاربره مبدأ، هزینه AI در مصرف متوسط بین ۱۷٪ تا ۱۸٪ درآمد خالص کنترل شده است.
-              </p>
-            </div>
-
-            <div className="bg-[#09090b] p-4 rounded-lg border border-[#27272a] space-y-2">
-              <span className="text-white font-bold block">هزینه واقعی هر اعتبار:</span>
-              <p className="text-[#a1a1aa] leading-relaxed">
-                آستانه قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفته متوالی. در این حالت وزن اعتبار یا جدول routing مدل‌ها به طور خودکار اصلاح می‌شود.
-              </p>
-            </div>
-
-            <div className="bg-[#09090b] p-4 rounded-lg border border-[#27272a] space-y-2">
-              <span className="text-white font-bold block">بازسازی با نصف قیمت:</span>
-              <p className="text-[#a1a1aa] leading-relaxed">
-                برای جلوگیری از سوءاستفاده، بازسازی ۵۰٪ تخفیف تنها یک بار به ازای هر ویرایش Context مجاز است (اصلاحیه ممیزی شماره ۷).
-              </p>
-            </div>
-
-            <div className="bg-[#09090b] p-4 rounded-lg border border-[#27272a] space-y-2">
-              <span className="text-white font-bold block">سقف ورک‌اسپیس در پلن Max:</span>
-              <p className="text-[#a1a1aa] leading-relaxed">
-                با استناد به اصل P5 (بدون وعده نامحدود)، سقف ورک‌اسپیس Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.
-              </p>
-            </div>
+        <Card padding="xl" className="flex flex-col gap-stack-lg">
+          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در Ledger (بخش اقتصاد واحد PRD)</h3>
+          <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
+            {redLines.map((r) => (
+              <div key={r.title} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+                <span className="label-md text-text-default">{r.title}</span>
+                <p className="body-sm text-text-subtle">{r.text}</p>
+              </div>
+            ))}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

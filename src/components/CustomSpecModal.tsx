@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { WorkstreamSpec } from '../types';
+import { Button, Card, Dialog, Select, TextField } from '../ui';
 
 interface CustomSpecModalProps {
   isOpen: boolean;
@@ -12,13 +13,23 @@ interface CustomSpecModalProps {
   onSaveSpec: (spec: WorkstreamSpec) => void;
 }
 
-export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
-  isOpen,
-  onClose,
-  onSaveSpec,
-}) => {
-  if (!isOpen) return null;
+/** Form state resets on every open: the stateful part mounts fresh when the modal opens. */
+export const CustomSpecModal: React.FC<CustomSpecModalProps> = (props) =>
+  props.isOpen ? <CustomSpecForm {...props} /> : null;
 
+const NODE_OPTIONS = [
+  { value: 'business', label: 'کسب‌وکار و بنیان' },
+  { value: 'brand', label: 'برند و پیام' },
+  { value: 'product', label: 'محصول و خدمت' },
+  { value: 'offer', label: 'آفر و قیمت‌گذاری' },
+  { value: 'content', label: 'محتوا و بازاریابی' },
+];
+const DEL_TYPE_OPTIONS = [
+  { value: 'Asset', label: 'Asset (کوچک و سریع)' },
+  { value: 'Deliverable', label: 'Deliverable (اصلی و تفصیلی)' },
+];
+
+const CustomSpecForm: React.FC<CustomSpecModalProps> = ({ onClose, onSaveSpec }) => {
   const [title, setTitle] = useState('');
   const [target, setTarget] = useState('');
   const [description, setDescription] = useState('');
@@ -99,188 +110,66 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs text-right animate-in fade-in">
-      <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-white">تعریف جریان کار سفارشی (Custom Workstream Spec)</h3>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
-              اصل F8: هر Workstream یک spec داده‌محور است؛ پیش‌نیازها و خروجی‌های خود را تعریف کنید.
-            </p>
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      title="تعریف جریان کار سفارشی"
+      description="اصل F8: هر Workstream یک spec داده‌محور است؛ پیش‌نیازها و خروجی‌های خودت را تعریف کن."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>انصراف</Button>
+          <Button variant="primary" type="submit" form="custom-spec-form" iconEnd="ArrowLeft">ذخیره و فعال‌سازی این Spec</Button>
+        </>
+      }
+    >
+      <form id="custom-spec-form" onSubmit={handleSubmit} className="flex flex-col gap-stack-lg">
+        <Card padding="lg" className="flex flex-col gap-stack-md">
+          <h4 className="title text-text-default">۱. مشخصات کلی جریان کار</h4>
+          <TextField
+            label="عنوان جریان کار"
+            required
+            placeholder="مثلاً: طراحی کمپین عرضهٔ محصول، نگارش پروپوزال، تدوین کتابچهٔ برند…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <TextField
+            label="هدف و مقصد کار (Target)"
+            required
+            placeholder="چه نتیجهٔ مشخصی باید برای کسب‌وکار یا کارفرما ساخته شود؟"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          />
+        </Card>
+
+        <Card padding="lg" className="flex flex-col gap-stack-md">
+          <h4 className="title text-text-default">۲. الزامات دانش (Required Contexts برای Gap Engine)</h4>
+          <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
+            <TextField label="پیش‌نیاز اول" value={reqLabel1} onChange={(e) => setReqLabel1(e.target.value)} />
+            <Select label="شاخه در درخت دانش" value={reqNode1} onChange={(e) => setReqNode1(e.target.value)} options={NODE_OPTIONS} />
+            <TextField label="پیش‌نیاز دوم" value={reqLabel2} onChange={(e) => setReqLabel2(e.target.value)} />
+            <Select label="شاخه در درخت دانش" value={reqNode2} onChange={(e) => setReqNode2(e.target.value)} options={NODE_OPTIONS} />
           </div>
-          <button
-            onClick={onClose}
-            className="text-[#a1a1aa] hover:text-white p-1 rounded-md hover:bg-[#27272a] transition-colors"
-          >
-            ✕
-          </button>
-        </div>
+        </Card>
 
-        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
-          {/* Workstream Info */}
-          <div className="space-y-3 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-white text-[#fb7185]">۱. مشخصات کلی جریان کار:</h4>
-            <div>
-              <label className="block text-[#fafafa] font-semibold mb-1">
-                عنوان جریان کار <span className="text-[#e11d48]">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="مثلاً: طراحی کمپین پرتاب محصول، نگارش پروپوزال، تدوین کتابچه برند..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
-              />
-            </div>
+        <Card padding="lg" className="flex flex-col gap-stack-md">
+          <h4 className="title text-text-default">۳. خروجی‌ها و معیارهای پذیرش (Deliverables)</h4>
 
-            <div>
-              <label className="block text-[#fafafa] font-semibold mb-1">
-                هدف و مقصد کار (Target) <span className="text-[#e11d48]">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="چه نتیجه مشخصی باید برای کسب‌وکار یا کارفرما خلق شود؟"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
-              />
-            </div>
-          </div>
-
-          {/* Context Requirements */}
-          <div className="space-y-3 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-[#38bdf8]">۲. الزامات دانش (Required Contexts برای Gap Engine):</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[#a1a1aa] mb-1">پیش‌نیاز اول:</label>
-                <input
-                  type="text"
-                  value={reqLabel1}
-                  onChange={(e) => setReqLabel1(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[#a1a1aa] mb-1">شاخه در درخت دانش:</label>
-                <select
-                  value={reqNode1}
-                  onChange={(e) => setReqNode1(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
-                >
-                  <option value="business">کسب‌وکار و بنیان</option>
-                  <option value="brand">برند و پیام</option>
-                  <option value="product">محصول و خدمت</option>
-                  <option value="offer">آفر و قیمت‌گذاری</option>
-                  <option value="content">محتوا و بازاریابی</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#a1a1aa] mb-1">پیش‌نیاز دوم:</label>
-                <input
-                  type="text"
-                  value={reqLabel2}
-                  onChange={(e) => setReqLabel2(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[#a1a1aa] mb-1">شاخه در درخت دانش:</label>
-                <select
-                  value={reqNode2}
-                  onChange={(e) => setReqNode2(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
-                >
-                  <option value="business">کسب‌وکار و بنیان</option>
-                  <option value="brand">برند و پیام</option>
-                  <option value="product">محصول و خدمت</option>
-                  <option value="offer">آفر و قیمت‌گذاری</option>
-                  <option value="content">محتوا و بازاریابی</option>
-                </select>
-              </div>
-            </div>
+          <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+            <span className="label-md text-text-default">خروجی اول (گام ۱)</span>
+            <Select label="نوع خروجی" value={delType1} onChange={(e) => setDelType1(e.target.value as 'Asset' | 'Deliverable')} options={DEL_TYPE_OPTIONS} />
+            <TextField label="عنوان خروجی اول" value={delTitle1} onChange={(e) => setDelTitle1(e.target.value)} />
+            <TextField label="معیار پذیرش خروجی اول" hint="با «،» جدا کن" value={delCriteria1} onChange={(e) => setDelCriteria1(e.target.value)} />
           </div>
 
-          {/* Deliverables */}
-          <div className="space-y-4 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-[#34d399]">۳. خروجی‌ها و معیارهای پذیرش (Deliverables):</h4>
-
-            <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">خروجی اول (گام ۱):</span>
-                <select
-                  value={delType1}
-                  onChange={(e) => setDelType1(e.target.value as any)}
-                  className="bg-[#09090b] border border-[#27272a] rounded p-1 text-[11px] text-white"
-                >
-                  <option value="Asset">Asset (کوچک و سریع)</option>
-                  <option value="Deliverable">Deliverable (اصلی و تفصیلی)</option>
-                </select>
-              </div>
-              <input
-                type="text"
-                placeholder="عنوان خروجی اول"
-                value={delTitle1}
-                onChange={(e) => setDelTitle1(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-2 text-white"
-              />
-              <input
-                type="text"
-                placeholder="معیار پذیرش خروجی اول (با کاما جدا کنید)"
-                value={delCriteria1}
-                onChange={(e) => setDelCriteria1(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-1.5 text-white text-[11px]"
-              />
-            </div>
-
-            <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">خروجی دوم (گام ۲):</span>
-                <select
-                  value={delType2}
-                  onChange={(e) => setDelType2(e.target.value as any)}
-                  className="bg-[#09090b] border border-[#27272a] rounded p-1 text-[11px] text-white"
-                >
-                  <option value="Deliverable">Deliverable (اصلی و تفصیلی)</option>
-                  <option value="Asset">Asset (کوچک و سریع)</option>
-                </select>
-              </div>
-              <input
-                type="text"
-                placeholder="عنوان خروجی دوم"
-                value={delTitle2}
-                onChange={(e) => setDelTitle2(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-2 text-white"
-              />
-              <input
-                type="text"
-                placeholder="معیار پذیرش خروجی دوم (با کاما جدا کنید)"
-                value={delCriteria2}
-                onChange={(e) => setDelCriteria2(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-1.5 text-white text-[11px]"
-              />
-            </div>
+          <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+            <span className="label-md text-text-default">خروجی دوم (گام ۲)</span>
+            <Select label="نوع خروجی" value={delType2} onChange={(e) => setDelType2(e.target.value as 'Asset' | 'Deliverable')} options={[...DEL_TYPE_OPTIONS].reverse()} />
+            <TextField label="عنوان خروجی دوم" value={delTitle2} onChange={(e) => setDelTitle2(e.target.value)} />
+            <TextField label="معیار پذیرش خروجی دوم" hint="با «،» جدا کن" value={delCriteria2} onChange={(e) => setDelCriteria2(e.target.value)} />
           </div>
-
-          <div className="pt-3 border-t border-[#27272a] flex items-center justify-between">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-1.5 text-xs text-[#a1a1aa] hover:text-white"
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shadow-sm"
-            >
-              ذخیره و فعال‌سازی این Spec &larr;
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </Card>
+      </form>
+    </Dialog>
   );
 };
