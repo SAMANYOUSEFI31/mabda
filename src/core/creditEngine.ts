@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ExecutionMode, PlanId, WorkspacePlan } from '../types';
+import { AiPlan, ExecutionMode, PlanId, WorkspacePlan } from '../types';
 
 export const PLANS: Record<PlanId, WorkspacePlan> = {
   starter: {
@@ -124,4 +124,41 @@ export function checkChatFairUse(planId: PlanId, todayChatCount: number): {
     limit,
     remaining,
   };
+}
+
+/**
+ * Which price row an AI plan is charged at. The plan is what the router actually decided (shown to the user
+ * BEFORE the run), so Auto that escalates is priced at the level it escalated to.
+ *  - sensitive mode → sensitive
+ *  - critique pattern, or any frontier-tier run → critique
+ *  - single on the cheap tier, or the explicit "fast" mode → fast
+ *  - everything else (balanced single/cascade) → auto
+ */
+export function creditModeForPlan(plan: Pick<AiPlan, 'pattern' | 'tier' | 'userMode'>): ExecutionMode {
+  if (plan.userMode === 'sensitive') return 'sensitive';
+  if (plan.pattern === 'critique' || plan.tier === 'frontier') return 'critique';
+  if (plan.userMode === 'fast' || (plan.pattern === 'single' && plan.tier === 'cheap')) return 'fast';
+  return 'auto';
+}
+
+/** Credits shown before running (and charged after): derived from the plan, not from the button the user pressed. */
+export function previewCredits(params: Omit<CalculateCostParams, 'executionMode'> & { plan: Pick<AiPlan, 'pattern' | 'tier' | 'userMode'> }): number {
+  const { plan, ...rest } = params;
+  return calculateCreditCost({ ...rest, executionMode: creditModeForPlan(plan) });
+}
+
+/** Bring-your-own-key requests never consume credits (tokens and cost are still written to the ledger). */
+export function effectiveCredits(cost: number, byok: boolean): number {
+  return byok ? 0 : cost;
+}
+
+/** Rebuilding after a context change costs half (once per change). */
+export function rebuildCredits(cost: number): number {
+  return Math.ceil(cost * 0.5);
+}
+
+/** Chat: Auto is free (fair-use capped), "deep" costs 5 credits. */
+export const CHAT_DEEP_CREDITS = 5;
+export function chatCredits(deep: boolean): number {
+  return deep ? CHAT_DEEP_CREDITS : 0;
 }

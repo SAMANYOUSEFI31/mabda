@@ -128,6 +128,12 @@ export interface GeneratedDeliverable {
   };
   rebuildCount: number;
   createdAt: string;
+  /** `content` is Markdown; blocks keep the per-block structure for Context/asset actions */
+  blocks?: ContentBlock[];
+  plan?: AiPlan;
+  usage?: UsageSummary;
+  /** the validator did not approve the final output (shown honestly) */
+  validationFailed?: boolean;
 }
 
 export interface ContextSuggestion {
@@ -139,6 +145,8 @@ export interface ContextSuggestion {
   reason: string;
 }
 
+import type { AiErrorInfo, AiPlan, ContentBlock, UsageSummary } from './ai';
+
 export type ChatMode = 'discovery' | 'audit' | 'advisor';
 
 export interface ChatMessage {
@@ -149,6 +157,13 @@ export interface ChatMessage {
   executionMode: 'auto' | 'deep';
   creditCost: number;
   suggestions?: ContextSuggestion[];
+  /** structured answer (Markdown blocks); `content` is the same text as Markdown */
+  blocks?: ContentBlock[];
+  plan?: AiPlan;
+  usage?: UsageSummary;
+  /** set when the request failed — the UI shows it with a retry button instead of any answer text */
+  error?: AiErrorInfo;
+  streaming?: boolean;
   groundedNodeIds?: string[];
   groundedCount?: number;
   reasoningNotes?: string;
@@ -189,6 +204,12 @@ export interface LedgerEntry {
   outputTokens: number;
   estimatedAiCostUsd: number;
   status: 'completed' | 'refunded';
+  /** real usage (absent on seed data) */
+  cachedTokens?: number;
+  thinkingTokens?: number;
+  plan?: AiPlan;
+  stages?: import('./ai').StageUsage[];
+  byok?: boolean;
 }
 
 export interface Workspace {
@@ -201,3 +222,4 @@ export interface Workspace {
   todayChatCount: number;
   createdAt: string;
 }
+export * from './ai';

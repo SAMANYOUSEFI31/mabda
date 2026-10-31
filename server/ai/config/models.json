@@ -1,0 +1,60 @@
+{
+  "_comment": [
+    "Single source of truth for model ids, thinking parameters and prices. NO model id may appear anywhere else in the code.",
+    "Environment of the first version: only Google AI Studio free-tier keys, so all three tiers map to Gemini models.",
+    "Mapping and why:",
+    "  cheap    -> lightest Flash-Lite: classification, decisions, validation and Auto chat are short, structured and frequent.",
+    "  balanced -> Flash: best free model for drafting/chat quality per latency; default for deliverables.",
+    "  frontier -> strongest free-tier model (Pro) for escalations and explicit sensitive runs; Flash is the last candidate if Pro is not free for the key.",
+    "`candidates` is an ordered preference list. At server start (and when a BYOK key is saved) the key's model list is fetched",
+    "and the FIRST candidate that exists and supports generateContent is used; a warning is logged if it is not the first one.",
+    "The ids below were NOT verifiable in the authoring sandbox (no outbound access to the Gemini API) — the startup check is what makes them trustworthy.",
+    "Prices are public LIST prices per 1M tokens (USD), used only for the ledger. Free-tier calls cost the user nothing but are still recorded at list price",
+    "so unit economics can be measured before paid providers are added. Re-verify at every pricing review (see docs/PRD.md, review dates)."
+  ],
+  "pricedAt": "2026-10-31",
+  "timeoutsMs": { "chat": 30000, "deliverable": 120000, "decision": 15000, "validator": 30000 },
+  "tiers": {
+    "cheap": {
+      "provider": "gemini",
+      "candidates": ["gemini-2.5-flash-lite", "gemini-flash-lite-latest"],
+      "requiresExplicitSelection": false,
+      "maxOutputTokens": 8192,
+      "thinking": {
+        "supported": true,
+        "param": "thinkingBudget",
+        "_comment": "effort -> provider parameter. thinkingBudget: 0 = off, -1 = dynamic, otherwise a token budget.",
+        "map": { "minimal": 0, "low": 512, "medium": 2048, "high": 8192, "max": -1 },
+        "budgetTokens": { "minimal": 0, "low": 512, "medium": 2048, "high": 8192, "max": 16384 }
+      },
+      "pricing": { "inputPerM": 0.10, "cachedInputPerM": 0.025, "outputPerM": 0.40 }
+    },
+    "balanced": {
+      "provider": "gemini",
+      "candidates": ["gemini-2.5-flash", "gemini-flash-latest"],
+      "requiresExplicitSelection": false,
+      "maxOutputTokens": 16384,
+      "thinking": {
+        "supported": true,
+        "param": "thinkingBudget",
+        "map": { "minimal": 0, "low": 1024, "medium": 4096, "high": 12288, "max": -1 },
+        "budgetTokens": { "minimal": 0, "low": 1024, "medium": 4096, "high": 12288, "max": 24576 }
+      },
+      "pricing": { "inputPerM": 0.30, "cachedInputPerM": 0.075, "outputPerM": 2.50 }
+    },
+    "frontier": {
+      "provider": "gemini",
+      "candidates": ["gemini-2.5-pro", "gemini-pro-latest", "gemini-2.5-flash"],
+      "requiresExplicitSelection": false,
+      "maxOutputTokens": 32768,
+      "thinking": {
+        "supported": true,
+        "param": "thinkingBudget",
+        "_comment": "Pro cannot switch thinking off, so 'minimal' maps to the smallest allowed budget.",
+        "map": { "minimal": 128, "low": 1024, "medium": 4096, "high": 16384, "max": -1 },
+        "budgetTokens": { "minimal": 128, "low": 1024, "medium": 4096, "high": 16384, "max": 32768 }
+      },
+      "pricing": { "inputPerM": 1.25, "cachedInputPerM": 0.31, "outputPerM": 10.00 }
+    }
+  }
+}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ContextObject,
   DeliverableSpec,
@@ -12,12 +12,18 @@ import {
   Workspace,
   WorkstreamSpec,
 } from '../types';
+import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../types';
 import { WORKSTREAM_SPECS } from '../core/specs';
 import { calculateReadinessAndGaps, resolveActiveContextsForNode } from '../core/contextEngine';
-import { calculateCreditCost, estimateRemainingOutputs, PLANS } from '../core/creditEngine';
+import { calculateCreditCost, creditModeForPlan, effectiveCredits, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../core/creditEngine';
 import { GapEnginePanel } from './GapEnginePanel';
 import { ContextReplayCard } from './ContextReplayCard';
-import { generateDeliverableApi } from '../services/apiClient';
+import { asAiError, generateDeliverableApi, previewPlan } from '../services/apiClient';
+import type { PlanPreview } from '../services/apiClient';
+import { useAiStatus } from '../services/aiStatus';
+import { AiErrorNotice, PlanLine } from './AiNotices';
+import { BlockView } from './BlockView';
+import { contextDraftFromBlock } from '../core/blocks';
 import { CustomSpecModal } from './CustomSpecModal';
 import { KnowledgeGapChart } from './KnowledgeGapChart';
 import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Tabs, formatNumber, useToast } from '../ui';
@@ -31,7 +37,8 @@ interface WorkstreamStudioProps {
   onSelectSpecId?: (id: string) => void;
   onAddCustomSpec: (spec: WorkstreamSpec) => void;
   onAddContextObject: (obj: ContextObject) => void;
-  onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number) => void;
+  onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary) => void;
+  onOpenAiSettings: () => void;
   onOpenContextModal: (obj: ContextObject) => void;
   onOpenLedger: () => void;
 }
@@ -48,7 +55,9 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onSaveDeliverable,
   onOpenContextModal,
   onOpenLedger,
+  onOpenAiSettings,
 }) => {
+  const ai = useAiStatus();
   const [internalSelectedSpecId, setInternalSelectedSpecId] = useState<string>(
     specs[0]?.id || 'main_positioning'
   );
@@ -63,7 +72,14 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   );
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('auto');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationPhase, setGenerationPhase] = useState<string>('');
+  const [stageLabel, setStageLabel] = useState<string>('');
+  const [genError, setGenError] = useState<AiErrorInfo | null>(null);
+  const lastRun = useRef<{ rebuild: boolean; target?: GeneratedDeliverable } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+  const [preview, setPreview] = useState<PlanPreview | null>(null);
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [previewError, setPreviewError] = useState<AiErrorInfo | null>(null);
   const [activeTab, setActiveTab] = useState<'create' | 'gap_analysis' | 'history'>('create');
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
   const toast = useToast();
@@ -77,46 +93,71 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const readiness = calculateReadinessAndGaps(currentSpec, allContextObjects);
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
-  // Credit calculation
-  const creditCost = calculateCreditCost({
-    deliverableType: currentDeliverableSpec.type,
-    executionMode,
-    baseCreditCost: currentDeliverableSpec.baseCreditCost,
-  });
+  // The router's plan for the selected deliverable + mode. Credits are derived from it BEFORE the run,
+  // and the same plan is sent back to the server so the charge equals the preview.
+  const jobKind = currentDeliverableSpec.type === 'Asset' ? 'asset' : 'deliverable';
+  useEffect(() => {
+    if (!ai.available) { setPreview(null); setPreviewState('idle'); return; }
+    const ctl = new AbortController();
+    setPreviewState('loading');
+    setPreviewError(null);
+    const t = setTimeout(() => {
+      previewPlan({ executionMode, jobKind, text: `${currentDeliverableSpec.title}\n${currentDeliverableSpec.acceptanceCriteria.join('\n')}`, contextList: allContextObjects }, ctl.signal)
+        .then((p) => { setPreview(p); setPreviewState('ready'); })
+        .catch((e) => { if (ctl.signal.aborted) return; setPreview(null); setPreviewState('error'); setPreviewError(asAiError(e)); });
+    }, 250);
+    return () => { clearTimeout(t); ctl.abort(); };
+    // contexts only matter for their size; re-plan when the deliverable, mode or availability changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ai.available, executionMode, currentDeliverableSpec.id, jobKind]);
+
+  const costArgs = { deliverableType: currentDeliverableSpec.type, baseCreditCost: currentDeliverableSpec.baseCreditCost };
+  const planCredits = preview ? previewCredits({ ...costArgs, plan: preview.plan }) : null;
+  const creditCost = planCredits ?? calculateCreditCost({ ...costArgs, executionMode });
+  const chargedPreview = effectiveCredits(creditCost, ai.byok);
+  const planMode = preview ? creditModeForPlan(preview.plan) : executionMode;
 
   const remainingOutputsEstimate = estimateRemainingOutputs(currentWorkspace.creditsRemaining);
 
+  const STAGE_FA: Record<StageName, string> = {
+    decision: 'تعیین حالت اجرا', chat: 'نوشتن پاسخ', draft: 'نوشتن پیش‌نویس', critique: 'نقد پیش‌نویس',
+    revise: 'اصلاح بر پایهٔ نقد', validate: 'اعتبارسنجی با معیارهای پذیرش', upgrade: 'ارتقا به مدل قوی‌تر و بازنویسی',
+  };
+  const TIER_FA: Record<Tier, string> = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' };
+
   const handleGenerate = async (isRebuild = false, rebuildTarget?: GeneratedDeliverable) => {
-    if (currentWorkspace.creditsRemaining < creditCost) {
+    const cost = isRebuild ? rebuildCredits(creditCost) : creditCost;
+    if (!ai.byok && currentWorkspace.creditsRemaining < cost) {
       toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
       onOpenLedger();
       return;
     }
 
+    lastRun.current = { rebuild: isRebuild, target: rebuildTarget };
+    setGenError(null);
     setIsGenerating(true);
-    setGenerationPhase('مرحله ۱/۴: سنجش زمینه و تزریق حافظه پایدار منبع حقیقت...');
+    setStageLabel('در حال آماده‌سازی…');
+    const ctl = new AbortController();
+    abortRef.current = ctl;
 
     try {
-      setTimeout(() => {
-        setGenerationPhase('مرحله ۲/۴: تولید پیش‌نویس ساختاری با مدل هوش مصنوعی...');
-      }, 700);
-
-      setTimeout(() => {
-        setGenerationPhase('مرحله ۳/۴: اجرای چک‌لیست پذیرش و اعتبارسنجی منتقد (Validator)...');
-      }, 1500);
-
       // Context relevant to the workstream
       const relevantContexts = resolveActiveContextsForNode('content', allContextObjects);
 
-      const response = await generateDeliverableApi({
-        deliverableId: currentDeliverableSpec.id,
-        deliverableTitle: currentDeliverableSpec.title,
-        acceptanceCriteria: currentDeliverableSpec.acceptanceCriteria,
-        contextObjects: relevantContexts,
-        executionMode,
-      });
-
-      setGenerationPhase('مرحله ۴/۴: ذخیره‌سازی دارایی و ثبت در Context Replay...');
+      const result = await generateDeliverableApi(
+        {
+          deliverableId: currentDeliverableSpec.id,
+          deliverableTitle: currentDeliverableSpec.title,
+          deliverableType: currentDeliverableSpec.type,
+          acceptanceCriteria: currentDeliverableSpec.acceptanceCriteria,
+          contextObjects: relevantContexts,
+          contextList: allContextObjects,
+          executionMode,
+          preview: preview ?? undefined,
+        },
+        { onStage: (stage, tier) => setStageLabel(`${STAGE_FA[stage]} (مدل ${TIER_FA[tier]})`) },
+        ctl.signal,
+      );
 
       const newDeliverable: GeneratedDeliverable = {
         id: `del_run_${Date.now()}`,
@@ -124,23 +165,28 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         workstreamId: currentSpec.id,
         deliverableId: currentDeliverableSpec.id,
         title: currentDeliverableSpec.title,
-        content: response.content,
+        content: result.markdown,
+        blocks: result.blocks,
+        plan: result.plan,
+        usage: result.usage,
+        validationFailed: result.validationFailed,
         executionMode,
-        creditCost: isRebuild ? Math.ceil(creditCost * 0.5) : creditCost,
-        usedContextIds: response.usedContextIds,
-        critiqueFeedback: response.critiqueFeedback,
+        creditCost: effectiveCredits(cost, result.usage.byok),
+        usedContextIds: result.usedContextIds,
+        critiqueFeedback: result.critiqueFeedback,
         rebuildCount: isRebuild && rebuildTarget ? rebuildTarget.rebuildCount + 1 : 0,
         createdAt: new Date().toISOString(),
       };
 
-      onSaveDeliverable(newDeliverable, newDeliverable.creditCost);
+      onSaveDeliverable(newDeliverable, newDeliverable.creditCost, result.usage);
       setActiveTab('history');
-    } catch (err: any) {
-      console.error(err);
-      toast.show({ intent: 'danger', message: 'خروجی ساخته نشد. دوباره تلاش کن.' });
+    } catch (err) {
+      const info = asAiError(err);
+      if (!(info.kind === 'aborted' && ctl.signal.aborted)) setGenError(info);
     } finally {
       setIsGenerating(false);
-      setGenerationPhase('');
+      setStageLabel('');
+      if (abortRef.current === ctl) abortRef.current = null;
     }
   };
 
@@ -296,27 +342,62 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 </div>
               </div>
 
-              {/* Pre-execution credit indicator (P2) */}
+              {/* Pre-execution credit indicator (P2): derived from the router's plan, the same plan is executed */}
+              {!ai.available && (
+                <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>
+                  برای ساخت دارایی، کلید API لازم است.
+                </Alert>
+              )}
+              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} onOpenSettings={onOpenAiSettings} />}
               <div className="flex flex-col justify-between gap-inline-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
-                <div className="body-sm">
-                  <span className="text-text-subtle">هزینهٔ این اجرا: </span>
-                  <span className="label-md tabular-nums text-text-default">{formatNumber(creditCost)} اعتبار</span>
-                  <span className="mt-stack-xs block caption text-text-subtle">
+                <div className="body-sm flex flex-col gap-stack-xs">
+                  <div>
+                    <span className="text-text-subtle">هزینهٔ این اجرا: </span>
+                    {previewState === 'loading' ? (
+                      <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
+                    ) : (
+                      <span className="label-md tabular-nums text-text-default">
+                        {ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}
+                      </span>
+                    )}
+                  </div>
+                  {preview && previewState === 'ready' && (
+                    <>
+                      <span className="caption text-text-subtle">
+                        {preview.plan.reason}
+                        {planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
+                      </span>
+                      {ai.byok && <span className="caption text-text-subtle">با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.</span>}
+                    </>
+                  )}
+                  <span className="caption text-text-subtle">
                     موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر
                   </span>
                 </div>
-                <Button variant="primary" size="lg" iconStart="Sparkles" loading={isGenerating} onClick={() => handleGenerate(false)}>
-                  ساخت دارایی
-                </Button>
+                {isGenerating ? (
+                  <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>
+                ) : (
+                  <Button variant="primary" size="lg" iconStart="Sparkles" disabled={previewState !== 'ready'} onClick={() => handleGenerate(false)}>
+                    ساخت دارایی
+                  </Button>
+                )}
               </div>
 
               {isGenerating && (
-                <Alert intent="info" title={generationPhase || 'در حال ساخت دارایی…'}>
+                <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}>
                   <div className="flex items-center gap-inline-sm pt-inset-xs">
                     <Spinner size="sm" label="در حال ساخت" />
                     <Progress indeterminate label="پیشرفت ساخت" intent="neutral" />
                   </div>
                 </Alert>
+              )}
+
+              {genError && !isGenerating && (
+                <AiErrorNotice
+                  error={genError}
+                  onOpenSettings={onOpenAiSettings}
+                  onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }}
+                />
               )}
             </Card>
           </div>
@@ -380,6 +461,11 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>تولید مورد جدید</Button>
           </div>
 
+          {genError && !isGenerating && activeTab === 'history' && (
+            <AiErrorNotice error={genError} onOpenSettings={onOpenAiSettings} onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }} />
+          )}
+          {isGenerating && <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}><Progress indeterminate label="پیشرفت ساخت" intent="neutral" /></Alert>}
+
           {workstreamDeliverables.length === 0 ? (
             <EmptyState
               icon="Package"
@@ -395,6 +481,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   allContextObjects={allContextObjects}
                   onOpenContextObject={onOpenContextModal}
                   onRebuild={(target) => handleGenerate(true, target)}
+                  isRebuilding={isGenerating}
                 />
               ))}
             </div>

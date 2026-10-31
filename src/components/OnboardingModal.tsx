@@ -5,14 +5,18 @@
 
 import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
-import { generateDeliverableApi } from '../services/apiClient';
-import { Alert, Button, Card, Dialog, Icon, Progress, TextField, Textarea, formatNumber, useToast } from '../ui';
+import { asAiError, generateDeliverableApi } from '../services/apiClient';
+import { useAiStatus } from '../services/aiStatus';
+import { AiErrorNotice } from './AiNotices';
+import type { AiErrorInfo } from '../types';
+import { Alert, Button, Card, Dialog, Icon, Markdown, Progress, TextField, Textarea, formatNumber } from '../ui';
 
 interface OnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentWorkspace: Workspace;
   onCompleteOnboarding: (newObjects: ContextObject[], firstDeliverable: GeneratedDeliverable) => void;
+  onOpenAiSettings: () => void;
 }
 
 /** Wizard state resets on every open: the stateful part mounts fresh when the modal opens. */
@@ -25,7 +29,9 @@ const STEP_TITLES = [
   'گام سوم: لحظهٔ Aha — اولین دارایی با Context Replay',
 ];
 
-const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCompleteOnboarding }) => {
+const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCompleteOnboarding, onOpenAiSettings }) => {
+  const ai = useAiStatus();
+  const [genError, setGenError] = useState<AiErrorInfo | null>(null);
   const [step, setStep] = useState<number>(1);
   const [domain, setDomain] = useState('مشاوره استراتژی برند و دیزاین سیستم');
   const [audience, setAudience] = useState('سولو فاندرها، فریلنسرها و مشاوران مستقل');
@@ -33,12 +39,12 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
   const [valProp, setValProp] = useState('تبدیل دانش پراکنده به یک منبع حقیقت یکپارچه و ساخت دارایی‌های منسجم با Context Replay');
   const [differentiation, setDifferentiation] = useState('دانش ساختاریافته نوع‌دار با موتور تحلیل شکاف (Gap Engine) و بازسازی نصف‌قیمت');
 
-  const toast = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState<GeneratedDeliverable | null>(null);
 
   const handleCreateAndGenerate = async () => {
     setIsGenerating(true);
+    setGenError(null);
 
     const now = new Date().toISOString();
     const createdObjects: ContextObject[] = [
@@ -108,12 +114,14 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
       const response = await generateDeliverableApi({
         deliverableId: 'del_positioning_statement',
         deliverableTitle: 'جملهٔ موقعیت‌یابی اختصاصی (First Asset)',
+        deliverableType: 'Asset',
         acceptanceCriteria: [
           'عدم وجود ادعاهای عمومی و کلیشه‌ای',
           'اشاره صریح به مخاطب هدف و معضل محوری',
           'انعکاس تمایز ساختاری مبدأ',
         ],
         contextObjects: createdObjects,
+        contextList: createdObjects,
         executionMode: 'auto',
       });
 
@@ -123,7 +131,11 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         workstreamId: 'main_positioning',
         deliverableId: 'del_positioning_statement',
         title: 'جملهٔ موقعیت‌یابی اختصاصی (First Asset)',
-        content: response.content,
+        content: response.markdown,
+        blocks: response.blocks,
+        plan: response.plan,
+        usage: response.usage,
+        validationFailed: response.validationFailed,
         executionMode: 'auto',
         creditCost: 2,
         usedContextIds: createdObjects.map((c) => c.id),
@@ -136,8 +148,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
       onCompleteOnboarding(createdObjects, firstAsset);
       setStep(3); // Result & Replay step
     } catch (e) {
-      console.error(e);
-      toast.show({ intent: 'danger', message: 'اولین دارایی ساخته نشد. دوباره تلاش کن.' });
+      setGenError(asAiError(e));
     } finally {
       setIsGenerating(false);
     }
@@ -164,7 +175,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         ) : step === 2 ? (
           <>
             <Button variant="ghost" onClick={() => setStep(1)}>بازگشت و اصلاح</Button>
-            <Button variant="primary" loading={isGenerating} onClick={handleCreateAndGenerate}>
+            <Button variant="primary" loading={isGenerating} disabled={!ai.available} onClick={handleCreateAndGenerate}>
               تأیید همه و ساخت اولین دارایی
             </Button>
           </>
@@ -200,6 +211,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
               ))}
             </div>
             <Alert intent="success" title="آمادگی برای تولید اولین دارایی (جملهٔ موقعیت‌یابی): ۱۰۰٪ کامل" />
+            {!ai.available && <AiErrorNotice error={{ kind: 'no_key', message: 'برای ساخت اولین دارایی، کلید API لازم است.', retryable: false }} onOpenSettings={onOpenAiSettings} />}
+            {genError && <AiErrorNotice error={genError} onRetry={handleCreateAndGenerate} retrying={isGenerating} onOpenSettings={onOpenAiSettings} />}
           </div>
         )}
 
@@ -208,9 +221,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
             <Alert intent="success" title="نخستین دارایی تو در کمتر از ۱۰ دقیقه ساخته شد">
               این دارایی از این لحظه در منبع حقیقت قفل است.
             </Alert>
-            <div className="body-md whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-default">
-              {generatedOutput.content}
-            </div>
+            <div className="rounded-control border border-border-default bg-surface-sunken p-inset-lg"><Markdown>{generatedOutput.content}</Markdown></div>
             <Card padding="lg" className="flex flex-col gap-stack-sm">
               <span className="label-md inline-flex items-center gap-inline-xs text-text-default">
                 <Icon name="Lightbulb" size="md" className="text-icon-subtle" />

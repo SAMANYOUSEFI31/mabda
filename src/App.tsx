@@ -37,6 +37,12 @@ import { PLANS } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
 import { Button, Dialog, SegmentedControl, TextField, formatNumber, useToast } from './ui';
+import { AiSettingsModal } from './components/AiSettingsModal';
+import { AiStatusBanner } from './components/AiNotices';
+import { ledgerEntryFromUsage } from './core/ledger';
+import { titleFromMarkdown } from './core/blocks';
+import { chatCredits } from './core/creditEngine';
+import type { AiPlan, ContentBlock, GenerationResult, UsageSummary } from './types';
 
 export default function App() {
   const toast = useToast();
@@ -91,6 +97,7 @@ export default function App() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
+  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [newWsName, setNewWsName] = useState('');
 
@@ -177,11 +184,11 @@ export default function App() {
     );
   };
 
-  // Deliverable creation & ledger tracking
-  const handleSaveDeliverable = (del: GeneratedDeliverable, creditCost: number) => {
+  // Deliverable creation & ledger tracking (usage is the real provider usage returned by the server)
+  const handleSaveDeliverable = (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary) => {
     setDeliverables((prev) => [del, ...prev]);
 
-    // deduct credits
+    // deduct credits (creditCost is already 0 for BYOK)
     setWorkspaces((prev) =>
       prev.map((w) =>
         w.id === currentWorkspace.id
@@ -190,20 +197,58 @@ export default function App() {
       )
     );
 
-    // add to ledger
-    const newLedger: LedgerEntry = {
-      id: `led_${Date.now()}`,
-      timestamp: new Date().toISOString(),
+    setLedgerEntries((prev) => [
+      ledgerEntryFromUsage({
+        workspaceId: currentWorkspace.id,
+        action: `تولید: ${del.title} (${del.executionMode})`,
+        mode: del.executionMode,
+        creditCost,
+        usage,
+        plan: del.plan,
+      }),
+      ...prev,
+    ]);
+  };
+
+  /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
+  const handleRecordChatUsage = (result: GenerationResult, creditCost: number, deep: boolean) => {
+    if (creditCost > 0) {
+      setWorkspaces((prev) => prev.map((w) => (w.id === currentWorkspace.id ? { ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) } : w)));
+    }
+    setLedgerEntries((prev) => [
+      ledgerEntryFromUsage({
+        workspaceId: currentWorkspace.id,
+        action: deep ? 'گفتگوی عمیق' : 'گفتگوی Auto',
+        mode: deep ? 'chat_deep' : 'chat_auto',
+        creditCost,
+        usage: result.usage,
+        plan: result.plan,
+        id: `led_chat_${Date.now()}`,
+      }),
+      ...prev,
+    ]);
+  };
+
+  /** Save one chat block as an asset (Markdown). No credits: the AI cost was already recorded with the chat turn. */
+  const handleSaveBlockAsAsset = (block: ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary }) => {
+    const now = new Date().toISOString();
+    const asset: GeneratedDeliverable = {
+      id: `del_chat_${Date.now()}`,
       workspaceId: currentWorkspace.id,
-      action: `تولید: ${del.title} (${del.executionMode})`,
-      mode: del.executionMode,
-      creditCost,
-      inputTokens: 1600 + del.usedContextIds.length * 150,
-      outputTokens: del.content.length * 2,
-      estimatedAiCostUsd: creditCost * 0.005,
-      status: 'completed',
+      workstreamId: 'chat',
+      deliverableId: `chat_${block.id}`,
+      title: titleFromMarkdown(block.markdown),
+      content: block.markdown,
+      blocks: [block],
+      plan: source.plan,
+      executionMode: 'auto',
+      creditCost: 0,
+      usedContextIds: [],
+      rebuildCount: 0,
+      createdAt: now,
     };
-    setLedgerEntries((prev) => [newLedger, ...prev]);
+    setDeliverables((prev) => [asset, ...prev]);
+    toast.show({ intent: 'success', message: 'در کتابخانهٔ دارایی‌ها ذخیره شد (Markdown).' });
   };
 
   const handleIncrementChatCount = () => {
@@ -371,6 +416,8 @@ export default function App() {
 
         {/* Main Canvas */}
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
+          <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />
+
           {/* Contradiction Detection Banner */}
           <ContradictionBanner
             contradictions={contradictions}
@@ -448,6 +495,7 @@ export default function App() {
               setIsContextModalOpen(true);
             }}
             onOpenLedger={() => setActiveTab('ledger')}
+            onOpenAiSettings={() => setIsAiSettingsOpen(true)}
           />
         )}
 
@@ -459,6 +507,13 @@ export default function App() {
               allContextObjects={workspaceContexts}
               onAddContextObject={handleSaveContextObject}
               onIncrementChatCount={handleIncrementChatCount}
+              onOpenContextModal={(obj) => {
+                setSelectedContextObject(obj);
+                setIsContextModalOpen(true);
+              }}
+              onSaveBlockAsAsset={handleSaveBlockAsAsset}
+              onRecordChatUsage={handleRecordChatUsage}
+              onOpenAiSettings={() => setIsAiSettingsOpen(true)}
             />
           </div>
         )}
@@ -511,7 +566,15 @@ export default function App() {
         onCompleteOnboarding={(newContexts, firstDeliverable) => {
           setContextObjects((prev) => [...newContexts, ...prev]);
           setDeliverables((prev) => [firstDeliverable, ...prev]);
+          if (firstDeliverable.usage) {
+            const usage = firstDeliverable.usage;
+            setLedgerEntries((prev) => [
+              ledgerEntryFromUsage({ workspaceId: currentWorkspace.id, action: 'اولین دارایی (Onboarding)', mode: 'auto', creditCost: 0, usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }),
+              ...prev,
+            ]);
+          }
         }}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
       />
 
       {/* Plan Selection Modal (Starter / Pro / Max - F6) */}
@@ -532,6 +595,10 @@ export default function App() {
         currentWorkspace={currentWorkspace}
         onExportAllData={handleExportAllData}
         onDeleteAccount={handleDeleteAccount}
+        onOpenAiSettings={() => {
+          setIsAccountModalOpen(false);
+          setIsAiSettingsOpen(true);
+        }}
       />
 
       {/* Custom Spec Modal (F8) */}
@@ -544,6 +611,8 @@ export default function App() {
           setActiveTab('workstreams');
         }}
       />
+
+      <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />
 
       {/* New workspace dialog */}
       <Dialog

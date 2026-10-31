@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import type { AiPlan, GenerationResult, UsageSummary } from '../types';
 import {
   ChatMessage,
   ChatMode,
@@ -12,11 +13,15 @@ import {
   ContextSuggestion,
   Workspace,
 } from '../types';
-import { checkChatFairUse, PLANS } from '../core/creditEngine';
-import { sendChatMessage } from '../services/apiClient';
+import { checkChatFairUse, chatCredits, effectiveCredits, PLANS } from '../core/creditEngine';
+import { contextDraftFromBlock } from '../core/blocks';
+import { asAiError, streamChat } from '../services/apiClient';
+import { useAiStatus } from '../services/aiStatus';
+import { AiErrorNotice, PlanLine } from './AiNotices';
+import { BlockView } from './BlockView';
 import { DEFAULT_TREE_NODES } from '../core/specs';
 import {
-  Badge, Button, Card, Dialog, EmptyState, Icon, IconButton, SegmentedControl, Spinner, Switch, Tag, TextField, TypeBadge,
+  Badge, Button, Card, Dialog, Icon, IconButton, Markdown, SegmentedControl, Spinner, Switch, Tag, TextField,
   formatJalaliShort, formatNumber, formatTime, useToast,
 } from '../ui';
 import type { IconName } from '../ui';
@@ -26,6 +31,12 @@ interface SmartChatProps {
   allContextObjects: ContextObject[];
   onAddContextObject: (obj: ContextObject) => void;
   onIncrementChatCount: () => void;
+  /** opens the Context dialog with a prefilled *Proposed* draft */
+  onOpenContextModal: (obj: ContextObject) => void;
+  onSaveBlockAsAsset: (block: import('../types').ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary }) => void;
+  /** ledger + credits for a finished chat turn */
+  onRecordChatUsage: (result: GenerationResult, creditCost: number, deep: boolean) => void;
+  onOpenAiSettings: () => void;
 }
 
 const TRUTH_NODES: Array<{ id: string; label: string; icon: IconName }> = [
@@ -41,7 +52,12 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   allContextObjects,
   onAddContextObject,
   onIncrementChatCount,
+  onOpenContextModal,
+  onSaveBlockAsAsset,
+  onRecordChatUsage,
+  onOpenAiSettings,
 }) => {
+  const ai = useAiStatus();
   const storageKey = `mabda_chat_sessions_${currentWorkspace.id}`;
 
   const createInitialSession = (): ChatSession => ({
@@ -74,7 +90,13 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // a stream interrupted by closing the tab is shown as an aborted request (retryable), never as a half answer
+          return (parsed as ChatSession[]).map((sess) => ({
+            ...sess,
+            messages: sess.messages.map((m) => (m.streaming ? { ...m, streaming: false, blocks: undefined, content: '', error: { kind: 'aborted' as const, message: 'درخواست ناتمام ماند. دوباره تلاش کن.', retryable: true } } : m)),
+          }));
+        }
       }
     } catch (e) {
       console.warn('Failed to parse chat sessions:', e);
@@ -219,6 +241,72 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     );
   };
 
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const patchMessage = (sessionId: string, messageId: string, patch: Partial<ChatMessage>) =>
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...s, updatedAt: new Date().toISOString(), messages: s.messages.map((m) => (m.id === messageId ? { ...m, ...patch } : m)) } : s
+      )
+    );
+
+  /**
+   * Streams one assistant answer for `userMsg`. The placeholder message fills in block by block;
+   * on failure it becomes an error message with a retry button — there is no canned reply.
+   */
+  const runAssistant = async (sessionId: string, userMsg: ChatMessage, history: ChatMessage[], chatMode: ChatMode, focusNodeIds: string[]) => {
+    const deep = userMsg.executionMode === 'deep';
+    const placeholder: ChatMessage = {
+      id: `msg_a_${Date.now()}`, role: 'assistant', content: '', timestamp: new Date().toISOString(),
+      executionMode: userMsg.executionMode, creditCost: 0, streaming: true, blocks: [],
+    };
+    setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, messages: [...s.messages, placeholder] } : s)));
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    setIsLoading(true);
+    let live: ChatMessage['blocks'] = [];
+    try {
+      const result = await streamChat(
+        {
+          message: userMsg.content,
+          contextList: allContextObjects,
+          focusNodeIds,
+          chatMode,
+          deep,
+          history: history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+        },
+        {
+          onPlan: (plan) => patchMessage(sessionId, placeholder.id, { plan }),
+          onBlock: (block) => { live = [...(live ?? []), block]; patchMessage(sessionId, placeholder.id, { blocks: live }); },
+        },
+        ctl.signal,
+      );
+      const credits = effectiveCredits(chatCredits(deep), result.usage.byok);
+      patchMessage(sessionId, placeholder.id, {
+        streaming: false,
+        content: result.markdown,
+        blocks: result.blocks,
+        plan: result.plan,
+        usage: result.usage,
+        creditCost: credits,
+        groundedCount: allContextObjects.filter((c) => c.status === 'Confirmed').length,
+      });
+      onRecordChatUsage(result, credits, deep);
+    } catch (err) {
+      const info = asAiError(err);
+      if (info.kind === 'aborted' && ctl.signal.aborted) {
+        // user pressed stop: drop the unfinished answer entirely
+        setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, messages: s.messages.filter((m) => m.id !== placeholder.id) } : s)));
+      } else {
+        patchMessage(sessionId, placeholder.id, { streaming: false, blocks: undefined, content: '', error: info });
+      }
+    } finally {
+      setIsLoading(false);
+      if (abortRef.current === ctl) abortRef.current = null;
+    }
+  };
+
   // Send message
   const handleSend = async (e?: React.FormEvent, customText?: string) => {
     if (e) e.preventDefault();
@@ -229,6 +317,10 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       toast.show({ intent: 'warning', message: 'سقف سخت گفتگوی روزانه پر شده است. فردا برگرد یا پلنت را ارتقا بده.' });
       return;
     }
+    if (isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true) && !ai.byok) {
+      toast.show({ intent: 'warning', message: 'اعتبار برای گفتگوی عمیق کافی نیست.' });
+      return;
+    }
 
     const userMsg: ChatMessage = {
       id: `msg_u_${Date.now()}`,
@@ -236,142 +328,54 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       content: messageContent,
       timestamp: new Date().toISOString(),
       executionMode: isDeepMode ? 'deep' : 'auto',
-      creditCost: isDeepMode ? 5 : 0,
+      creditCost: 0,
     };
 
-    // Append user message immediately
     const updatedMessages = [...activeSession.messages, userMsg];
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSession.id
-          ? {
-              ...s,
-              title: s.messages.length <= 1 ? messageContent.slice(0, 30) : s.title,
-              messages: updatedMessages,
-              updatedAt: new Date().toISOString(),
-            }
+          ? { ...s, title: s.messages.length <= 1 ? messageContent.slice(0, 30) : s.title, messages: updatedMessages, updatedAt: new Date().toISOString() }
           : s
       )
     );
-
     setInput('');
-    setIsLoading(true);
     onIncrementChatCount();
-
-    try {
-      const activeContexts = allContextObjects.filter(
-        (o) => o.status === 'Confirmed' || o.status === 'Proposed'
-      );
-
-      const response = await sendChatMessage({
-        message: userMsg.content,
-        contextList: activeContexts,
-        executionMode: userMsg.executionMode,
-        chatMode: activeSession.chatMode,
-        selectedNodeIds: activeSession.selectedNodeIds,
-        history: updatedMessages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
-      });
-
-      const assistantMsg: ChatMessage = {
-        id: `msg_a_${Date.now()}`,
-        role: 'assistant',
-        content: response.reply,
-        timestamp: new Date().toISOString(),
-        executionMode: userMsg.executionMode,
-        creditCost: userMsg.creditCost,
-        suggestions: response.suggestions,
-        groundedNodeIds: response.groundedNodeIds,
-        groundedCount: response.groundedCount,
-        reasoningNotes: response.reasoningNotes,
-      };
-
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSession.id
-            ? {
-                ...s,
-                messages: [...updatedMessages, assistantMsg],
-                updatedAt: new Date().toISOString(),
-              }
-            : s
-        )
-      );
-    } catch (err) {
-      console.error(err);
-      const errorMsg: ChatMessage = {
-        id: `msg_err_${Date.now()}`,
-        role: 'assistant',
-        content: 'پیام دریافت شد و با زمینه محلی تطبیق یافت.',
-        timestamp: new Date().toISOString(),
-        executionMode: 'auto',
-        creditCost: 0,
-      };
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === activeSession.id ? { ...s, messages: [...updatedMessages, errorMsg] } : s
-        )
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    await runAssistant(activeSession.id, userMsg, updatedMessages, activeSession.chatMode, activeSession.selectedNodeIds);
   };
 
-  // Suggestion actions
-  const handleApproveSuggestion = (sug: ContextSuggestion, messageId: string) => {
-    const newObj: ContextObject = {
-      id: `ctx_sug_${Date.now()}`,
-      workspaceId: currentWorkspace.id,
-      type: sug.type,
-      status: 'Confirmed',
-      provenance: 'AI Suggested',
-      title: sug.title,
-      content: sug.content,
-      nodeId: sug.nodeId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  /** Retry a failed answer: remove the error message and ask again with the same user message. */
+  const handleRetry = async (errorMsgId: string) => {
+    if (isLoading) return;
+    const idx = activeSession.messages.findIndex((m) => m.id === errorMsgId);
+    const userMsg = [...activeSession.messages.slice(0, idx)].reverse().find((m) => m.role === 'user');
+    if (idx < 0 || !userMsg) return;
+    const before = activeSession.messages.slice(0, idx);
+    setSessions((prev) => prev.map((s) => (s.id === activeSession.id ? { ...s, messages: before } : s)));
+    await runAssistant(activeSession.id, userMsg, before, activeSession.chatMode, activeSession.selectedNodeIds);
+  };
 
-    onAddContextObject(newObj);
-
-    // remove suggestion from session UI
+  const updateBlocks = (messageId: string, fn: (b: import('../types').ContentBlock) => import('../types').ContentBlock) =>
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSession.id
-          ? {
-              ...s,
-              messages: s.messages.map((m) =>
-                m.id === messageId
-                  ? {
-                      ...m,
-                      suggestions: m.suggestions?.filter((item) => item.id !== sug.id),
-                    }
-                  : m
-              ),
-            }
+          ? { ...s, messages: s.messages.map((m) => (m.id === messageId && m.blocks ? { ...m, blocks: m.blocks.map(fn) } : m)) }
           : s
       )
     );
-  };
 
-  const handleDismissSuggestion = (sugId: string, messageId: string) => {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSession.id
-          ? {
-              ...s,
-              messages: s.messages.map((m) =>
-                m.id === messageId
-                  ? {
-                      ...m,
-                      suggestions: m.suggestions?.filter((item) => item.id !== sugId),
-                    }
-                  : m
-              ),
-            }
-          : s
-      )
-    );
+  // Proposal actions (explicit user approval is what creates Confirmed context)
+  const handleApproveProposal = (block: import('../types').ContentBlock, messageId: string) => {
+    if (!block.proposal) return;
+    const p = block.proposal;
+    onAddContextObject({
+      id: `ctx_sug_${Date.now()}`, workspaceId: currentWorkspace.id, type: p.type, status: 'Confirmed', provenance: 'AI Suggested',
+      title: p.title, content: p.content, nodeId: p.nodeId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+    updateBlocks(messageId, (b) => (b.id === block.id ? { ...b, proposal: undefined } : b));
   };
+  const handleDismissProposal = (block: import('../types').ContentBlock, messageId: string) =>
+    updateBlocks(messageId, (b) => (b.id === block.id ? { ...b, proposal: undefined } : b));
 
   // Calculate gaps for prompt starters
   const gapsPrompts: Array<{ label: string; text: string; icon: IconName }> = [
@@ -470,7 +474,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       {/* 2. Body: sessions drawer + messages */}
       <div className="relative flex flex-1 overflow-hidden">
         {isSidebarOpen && (
-          <div className="absolute inset-y-space-0 end-space-0 z-dropdown flex w-full max-w-overlay-xs flex-col gap-stack-sm border-s border-border-default bg-surface-overlay p-inset-md shadow-overlay">
+          <div className="absolute inset-y-space-0 end-space-0 z-raised flex w-full max-w-overlay-xs flex-col gap-stack-sm border-s border-border-default bg-surface-overlay p-inset-md shadow-overlay">
             <div className="flex items-center justify-between border-b border-border-default pb-inset-sm">
               <span className="label-md text-text-default">نشست‌های گفتگوی تو</span>
               <IconButton icon="X" label="بستن فهرست گفتگوها" size="sm" onClick={() => setIsSidebarOpen(false)} />
@@ -558,67 +562,74 @@ export const SmartChat: React.FC<SmartChatProps> = ({
             </Card>
           )}
 
-          {activeSession.messages.map((m) => (
-            <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
-              <div
-                className={`w-fit max-w-full rounded-container border p-inset-lg sm:max-w-prose ${
-                  m.role === 'user'
-                    ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
-                    : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'
-                }`}
-              >
-                {m.role === 'assistant' && m.groundedCount !== undefined && m.groundedCount > 0 && (
-                  <div className="mb-stack-sm flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
-                    <Badge intent="success" icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
-                    {m.executionMode === 'deep' && <Badge intent="info" icon={false}>تحلیل چندوجهی</Badge>}
+          {activeSession.messages.map((m) => {
+            const isIntro = m.id.startsWith('msg_welcome');
+            return (
+              <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
+                {isIntro ? (
+                  // fixed product intro, not a model answer
+                  <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-prose">{m.content}</div>
+                ) : m.error ? (
+                  <div className="w-full sm:max-w-prose">
+                    <AiErrorNotice error={m.error} onRetry={() => void handleRetry(m.id)} retrying={isLoading} onOpenSettings={onOpenAiSettings} />
+                  </div>
+                ) : (
+                  <div
+                    className={`flex w-fit max-w-full flex-col gap-stack-md rounded-container border p-inset-lg sm:max-w-prose ${
+                      m.role === 'user'
+                        ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
+                        : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'
+                    }`}
+                  >
+                    {m.role === 'assistant' && !m.streaming && m.groundedCount !== undefined && m.groundedCount > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
+                        <Badge intent="success" icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
+                        {m.executionMode === 'deep' && <Badge intent="info" icon={false}>تحلیل چندوجهی</Badge>}
+                      </div>
+                    )}
+
+                    {m.role === 'user' ? (
+                      <div className="body-md whitespace-pre-line">{m.content}</div>
+                    ) : m.blocks && m.blocks.length > 0 ? (
+                      m.blocks.map((b) => (
+                        <BlockView
+                          key={b.id}
+                          block={b}
+                          onAddToContext={m.streaming ? undefined : (blk) => onOpenContextModal(contextDraftFromBlock(blk, currentWorkspace.id))}
+                          onSaveAsAsset={m.streaming ? undefined : (blk) => onSaveBlockAsAsset(blk, { title: activeSession.title, plan: m.plan, usage: m.usage })}
+                          onApproveProposal={m.streaming ? undefined : (blk) => handleApproveProposal(blk, m.id)}
+                          onDismissProposal={(blk) => handleDismissProposal(blk, m.id)}
+                        />
+                      ))
+                    ) : m.content ? (
+                      <Markdown>{m.content}</Markdown>
+                    ) : m.streaming ? (
+                      <div className="body-sm flex items-center gap-inline-sm text-text-subtle">
+                        <Spinner size="sm" label="در حال نوشتن" />
+                        {m.plan ? 'در حال نوشتن…' : 'در حال تعیین حالت اجرا…'}
+                      </div>
+                    ) : null}
+
+                    {m.role === 'assistant' && m.streaming && m.blocks && m.blocks.length > 0 && (
+                      <div className="body-sm flex items-center gap-inline-sm text-text-subtle"><Spinner size="sm" label="در حال نوشتن" />در حال نوشتن…</div>
+                    )}
+
+                    <div className="caption flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
+                      <span className="tabular-nums">{formatTime(m.timestamp)}</span>
+                      {m.role === 'user' ? (
+                        <span>{m.executionMode === 'deep' ? `حالت عمیق (${formatNumber(chatCredits(true))} اعتبار)` : 'حالت Auto (۰ اعتبار)'}</span>
+                      ) : null}
+                    </div>
+                    {m.role === 'assistant' && !m.streaming && m.plan && <PlanLine plan={m.plan} usage={m.usage} credits={m.creditCost} />}
                   </div>
                 )}
-
-                <div className="body-md whitespace-pre-line">{m.content}</div>
-
-                <div className="caption mt-stack-sm flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
-                  <span className="tabular-nums">{formatTime(m.timestamp)}</span>
-                  <span>{m.executionMode === 'deep' ? 'حالت عمیق (۵ اعتبار)' : 'حالت Auto (۰ اعتبار)'}</span>
-                </div>
               </div>
+            );
+          })}
 
-              {m.suggestions && m.suggestions.length > 0 && (
-                <div className="mt-stack-md flex w-full flex-col gap-stack-sm sm:max-w-prose">
-                  {m.suggestions.map((sug) => (
-                    <Card key={sug.id} padding="md" className="flex flex-col gap-stack-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                        <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
-                          <Icon name="Lightbulb" size="md" className="text-icon-warning" />
-                          پیشنهاد ثبت در منبع حقیقت: {sug.title}
-                        </span>
-                        <span className="flex items-center gap-inline-xs">
-                          <TypeBadge value={sug.type} />
-                          <Badge intent="neutral" icon={false}>شاخه: {nodeLabel(sug.nodeId)}</Badge>
-                        </span>
-                      </div>
-
-                      <p className="body-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md text-text-default">{sug.content}</p>
-
-                      <div className="flex flex-col justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm sm:flex-row sm:items-center">
-                        <span className="caption text-text-subtle">{sug.reason || 'استخراج مستقیم از گفتگوی کاربر با مبدأ'}</span>
-                        <div className="flex items-center gap-inline-sm self-end sm:self-auto">
-                          <Button variant="ghost" size="sm" onClick={() => handleDismissSuggestion(sug.id, m.id)}>رد کردن</Button>
-                          <Button variant="secondary" size="sm" iconStart="Check" onClick={() => handleApproveSuggestion(sug, m.id)}>
-                            تأیید و افزودن به منبع حقیقت
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isLoading && (
+          {isLoading && activeSession.messages.every((m) => !m.streaming) && (
             <div className="body-sm flex w-fit items-center gap-inline-md rounded-control border border-border-default bg-surface-sunken p-inset-md text-text-subtle">
               <Spinner size="md" label="در حال پردازش" />
-              <span>مبدأ در حال تطبیق با منبع حقیقت و استخراج تصمیمات است…</span>
             </div>
           )}
 
@@ -639,14 +650,18 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               aria-label="پیام شما"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…"
-              disabled={isLoading}
+              placeholder={ai.available ? 'دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…' : 'برای شروع، کلید هوش مصنوعی را تنظیم کن'}
+              disabled={isLoading || !ai.available}
               size="lg"
             />
           </div>
-          <Button variant="primary" size="lg" type="submit" iconEnd="Send" loading={isLoading} disabled={!input.trim() && !isLoading}>
-            {isDeepMode ? 'ارسال عمیق' : 'ارسال'}
-          </Button>
+          {isLoading ? (
+            <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>
+          ) : (
+            <Button variant="primary" size="lg" type="submit" iconEnd="Send" disabled={!input.trim() || !ai.available}>
+              {isDeepMode ? 'ارسال عمیق' : 'ارسال'}
+            </Button>
+          )}
         </form>
       </div>
 
