@@ -7,12 +7,15 @@ import React, { useState } from 'react';
 import type { ContextObject, Note, TreeNode } from '../types';
 import { canDelete, canMove, contentOf, flatten, subtreeIds } from '../core/nodeTree';
 import { Alert, Button, Dialog, Select, TextField, Textarea, formatNumber } from '../ui';
+import { CoachPanel } from './CoachPanel';
+import type { LedgerEntry } from '../types';
 
 export type NodeDialogState =
   | { kind: 'create'; parentId: string }
   | { kind: 'rename'; nodeId: string }
   | { kind: 'move'; nodeId: string }
   | { kind: 'delete'; nodeId: string }
+  | { kind: 'coach'; nodeId: string }
   | null;
 
 interface Props {
@@ -21,7 +24,13 @@ interface Props {
   objects: ContextObject[];
   notes: Note[];
   onClose: () => void;
-  onCreate: (parentId: string, label: string, description: string) => Promise<void>;
+  workspaceId: string;
+  /** returns the id of the created node (the Coach opens for it right after) */
+  onCreate: (parentId: string, label: string, description: string) => Promise<string>;
+  onOpenCoach: (nodeId: string) => void;
+  onSaveProposals: (proposals: Array<{ type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }>) => Promise<void>;
+  onLedger: (ledger: LedgerEntry[]) => void;
+  onOpenAiSettings: () => void;
   onRename: (nodeId: string, label: string, description: string) => Promise<void>;
   onMove: (nodeId: string, parentId: string) => Promise<void>;
   onDelete: (nodeId: string, transferTo?: string) => Promise<void>;
@@ -33,17 +42,27 @@ const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
 
-const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, onClose, onCreate, onRename, onMove, onDelete }) => {
+const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
   const node = 'nodeId' in state ? nodes.find((n) => n.id === state.nodeId) : undefined;
   const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : '');
   const [description, setDescription] = useState(state.kind === 'rename' ? node?.description ?? '' : '');
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const run = async (fn: () => Promise<void>) => {
+  const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     try { await fn(); onClose(); } finally { setBusy(false); }
   };
+
+  if (state.kind === 'coach') {
+    const n = nodes.find((x) => x.id === state.nodeId);
+    if (!n) return null;
+    return (
+      <Dialog open onClose={onClose} size="lg" title={`Context Coach برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد Context؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
+        <CoachPanel workspaceId={workspaceId} scope="node" nodeId={n.id} nodes={nodes} seedText={[n.label, n.description].filter(Boolean).join(': ')} onSaveProposals={onSaveProposals} onLedger={onLedger} onOpenAiSettings={onOpenAiSettings} />
+      </Dialog>
+    );
+  }
 
   if (state.kind === 'create' || state.kind === 'rename') {
     const parent = nodes.find((n) => n.id === (state.kind === 'create' ? state.parentId : ''));
@@ -53,7 +72,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? `گرهٔ جدید زیر «${parent?.label ?? ''}»` : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'rename' && node?.isSystem ? 'گرهٔ سیستمی است: فقط نامش قابل تغییر است، حذف و جابه‌جایی ندارد.' : undefined}
+        description={state.kind === 'rename' && node?.isSystem ? 'گرهٔ سیستمی است: فقط نامش قابل تغییر است، حذف و جابه‌جایی ندارد.' : state.kind === 'create' ? 'بعد از ساخت گره، Context Coach برای روشن‌کردن آن باز می‌شود.' : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -69,7 +88,11 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
           onSubmit={(e) => {
             e.preventDefault();
             if (!label.trim()) return;
-            void run(() => (state.kind === 'create' ? onCreate(state.parentId, label.trim(), description.trim()) : onRename(state.nodeId, label.trim(), description.trim())));
+            if (state.kind === 'create') {
+              // the dialog is replaced by the Coach for the new node (no close in between)
+              setBusy(true);
+              onCreate(state.parentId, label.trim(), description.trim()).then(onOpenCoach).catch(() => undefined).finally(() => setBusy(false));
+            } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}
         >
           <TextField label="نام گره" required autoFocus value={label} onChange={(e) => setLabel(e.target.value)} placeholder="مثلاً: کمپین پاییز" />

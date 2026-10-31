@@ -17,6 +17,8 @@ export interface WorkspaceState {
   specs: WorkstreamSpec[];
   files: StoredFile[];
   stale: StaleAsset[];
+  /** decision-layer «مبهم» verdicts per object (valid for the version they carry) */
+  judgments: Record<string, { version: number; ambiguous: boolean; reason: string }>;
 }
 
 export interface ImpactInfo {
@@ -49,3 +51,11 @@ export interface ProcessedFile {
   workspace: Workspace;
   quota: FileQuotaInfo;
 }
+
+export interface CoachResultInfo {
+  questions: string[];
+  ambiguities: Array<{ quote: string; why: string }>;
+  proposals: Array<{ type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }>;
+}
+
+export interface CoachQuota { used: number; limit: number; remaining: number }

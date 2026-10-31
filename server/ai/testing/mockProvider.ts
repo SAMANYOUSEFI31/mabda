@@ -38,6 +38,14 @@ export class MockProvider implements ModelProvider {
 }
 
 export const block = (id: string, markdown: string, extra: object = {}) => ({ id, kind: 'paragraph', markdown, ...extra });
-export const verdict = (o: Partial<{ passed: boolean; score: number; failed: string[]; guard: string[] }> = {}) => ({
-  passed: o.passed ?? true, score: o.score ?? 90, passedCriteria: ['معیار ۱'], failedCriteria: o.failed ?? [], guardrailViolations: o.guard ?? [], strengths: ['لحن صریح'],
-});
+/** True when the call is the decision layer asked for per-item reasons (the validator / gap judge). */
+export const isCheckCall = (c: { schema?: unknown }) => { const j = JSON.stringify(c.schema ?? ''); return j.includes('probability') && j.includes('"reason"'); };
+/** Answers every check question: criteria `c*`/gap `o*` pass, guardrails `g*` ok, unless listed in `bad`. */
+export const answerChecks = (c: { schema?: unknown }, bad: string[] = [], probability = 0.9) => {
+  const ids = (c.schema as { properties: { answers: { items: { properties: { id: { enum: string[] } } } } } }).properties.answers.items.properties.id.enum;
+  return { answers: ids.map((id) => {
+    const isBad = bad.includes(id);
+    const choice = id.startsWith('g') ? (isBad ? 'violated' : 'ok') : id.startsWith('o') ? (isBad ? 'ambiguous' : 'clear') : isBad ? 'fail' : 'pass';
+    return { id, choice, probability, reason: isBad ? `دلیل رد ${id}` : `دلیل قبول ${id}` };
+  }) };
+};

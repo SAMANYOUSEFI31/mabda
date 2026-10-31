@@ -11,7 +11,7 @@ import { SessionResolver } from './ai/session.ts';
 import { ByokVault } from './ai/byok.ts';
 import { loadModelsConfig } from './ai/config.ts';
 import { AiService } from './ai/service.ts';
-import { MockProvider, block, verdict } from './ai/testing/mockProvider.ts';
+import { MockProvider, block, answerChecks, isCheckCall } from './ai/testing/mockProvider.ts';
 
 const cfg = loadModelsConfig();
 const KEY = 'AIzaSy' + 'x'.repeat(30);
@@ -40,7 +40,7 @@ const isDecision = (c: { schema?: unknown }) => JSON.stringify(c.schema ?? '').i
 const decide = { answers: [{ id: 'taskKind', choice: 'chat', probability: 0.9 }, { id: 'difficulty', choice: 'easy', probability: 0.9 }, { id: 'importance', choice: 'low', probability: 0.9 }] };
 
 test('scenario: change the audience → assets become stale with a reason → rebuild path (API level)', async () => {
-  const t = await boot((c) => (c.kind === 'stream' ? { blocks: [block('b1', 'ok')] } : isDecision(c) ? decide : JSON.stringify(c.schema).includes('passedCriteria') ? verdict() : { blocks: [block('b1', 'متن تازه')] }));
+  const t = await boot((c) => (c.kind === 'stream' ? { blocks: [block('b1', 'ok')] } : isCheckCall(c) ? answerChecks(c) : isDecision(c) ? decide : { blocks: [block('b1', 'متن تازه')] }));
   try {
     const boot1 = await t.call('POST', '/bootstrap', {});
     assert.equal(boot1.json.workspaces.length, 2, 'first run seeds the sample workspaces');
@@ -148,5 +148,68 @@ test('files over the API: 25MB cap and type check', async () => {
     const r2 = await fetch(`${t.base}/workspaces/ws_studio/files`, { method: 'POST', body: big });
     assert.equal(r2.status, 413);
     assert.match(((await r2.json()) as any).error.message, /۲۵ مگابایت/);
+  } finally { t.close(); }
+});
+
+const specOf = (id: string, deps: Array<[string, string[]]>) => ({
+  id, title: 'جریان سفارشی', target: 'هدف', description: '', requiredContext: [], suggestedContext: [], optionalContext: [], guardrails: ['بدون وعدهٔ بی‌پشتوانه'],
+  deliverables: deps.map(([did, dependsOn], i) => ({ id: did, title: `خروجی ${did}`, type: 'Asset', description: '', order: i + 1, dependsOn, outputBand: 'short', baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 }, acceptanceCriteria: ['معیار'] })),
+});
+
+test('custom specs: Pro and above only, cycles are refused with the cycle named', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const ok = await t.call('PUT', '/workspaces/ws_studio/specs/s1', specOf('s1', [['a', []], ['b', ['a']]]));
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.json.spec.deliverables[1].dependsOn, ['a']);
+    const cyc = await t.call('PUT', '/workspaces/ws_studio/specs/s2', specOf('s2', [['a', ['b']], ['b', ['a']]]));
+    assert.equal(cyc.status, 400);
+    assert.match(cyc.json.error.message, /چرخه‌ای/);
+    const starter = await t.call('PUT', '/workspaces/ws_course/specs/s3', specOf('s3', [['a', []]]));
+    assert.equal(starter.status, 403);
+    assert.match(starter.json.error.message, /Pro/);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.specs.length, 1);
+  } finally { t.close(); }
+});
+
+test('gap: ambiguity is judged once per object version and cached; editing the object asks again', async () => {
+  const t = await boot((c) => (isCheckCall(c) ? answerChecks(c, ['o0']) : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r1 = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_audience'] });
+    assert.deepEqual([r1.json.judgments.ctx_audience.ambiguous, r1.json.judgments.ctx_audience.version], [true, 1]);
+    const calls = t.p.calls.length;
+    await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_audience'] });
+    assert.equal(t.p.calls.length, calls, 'cached: no second model call');
+    assert.ok(r1.json.ledger.some((l: any) => l.mode === 'gap_judge' && l.creditCost === 0));
+    await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'مخاطب دقیق‌تر: طراحان فریلنسر ارشد' });
+    await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_audience'] });
+    assert.equal(t.p.calls.length, calls + 1);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.judgments.ctx_audience.version, 2);
+  } finally { t.close(); }
+});
+
+test('Context Coach: separate daily cap per plan, counted only after a successful answer', async () => {
+  let fail = false;
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('ambiguities') ? (fail ? Object.assign(new Error('x'), { status: 500 }) : { questions: ['چه کسی؟'], ambiguities: [], proposals: [{ type: 'Fact', title: 'الف', content: 'ب', nodeId: 'business' }] }) : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const q0 = (await t.call('GET', '/workspaces/ws_course/coach/quota')).json;
+    assert.deepEqual([q0.limit, q0.used], [5, 0], 'starter: 5 per day');
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/coach/quota')).json.limit, 15, 'pro: 15 per day');
+    fail = true;
+    assert.notEqual((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' })).status, 200);
+    assert.equal((await t.call('GET', '/workspaces/ws_course/coach/quota')).json.used, 0, 'failed answers are not counted');
+    fail = false;
+    for (let i = 0; i < 5; i++) assert.equal((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' })).status, 200);
+    const sixth = await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' });
+    assert.equal(sixth.status, 429);
+    assert.match(sixth.json.error.message, /سقف روزانه/);
+    // the coach only proposes: nothing was written to the tree
+    const st = (await t.call('GET', '/workspaces/ws_course/state')).json;
+    assert.equal(st.objects.length, 0);
+    assert.ok(st.ledger.some((l: any) => l.mode === 'coach'));
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'onboarding', nodeId: 'business', text: 'متن' })).status, 200, 'the other workspace has its own cap');
   } finally { t.close(); }
 });

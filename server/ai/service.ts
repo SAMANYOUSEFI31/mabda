@@ -5,12 +5,12 @@ import { BlockStreamParser, blocksToMarkdown, normalizeBlock, parseBlocks } from
 import { buildPrompt, estimateTokens, injectedRefs } from './context.ts';
 import type { ContextObjectLite, FileExcerpt } from './context.ts';
 import { ModelDecisionLayer } from './decision.ts';
-import type { DecisionLayer } from './decision.ts';
+import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
 import { runPipeline } from './pipeline.ts';
-import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, EXTRACT_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
-import { BLOCKS_SCHEMA, EXTRACT_SCHEMA } from './schemas.ts';
-import { route, sanitizePlan } from './router.ts';
+import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
+import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA } from './schemas.ts';
+import { applyBand, route, sanitizePlan } from './router.ts';
 import { StageRunner, sumUsage } from './runner.ts';
 import type { SessionResolver } from './session.ts';
 
@@ -46,6 +46,13 @@ export interface GenerateRequest {
   decisionUsage?: unknown;
   nodeLabels?: Record<string, string>;
   excerpts?: FileExcerpt[];
+  /** workstream goal (for the critic and the drafter) */
+  specTarget?: string;
+  /** rules of the workstream spec; Confirmed Constraint objects are added automatically */
+  specGuardrails?: string[];
+  outputBand?: 'short' | 'medium' | 'long';
+  /** finished outputs this deliverable depends on (its inputs) */
+  dependencyOutputs?: Array<{ title: string; markdown: string }>;
 }
 
 export type Emit = (e: AiStreamEvent) => void;
@@ -63,6 +70,25 @@ export interface ExtractRequest {
   nodeId: string;
   nodes: Array<{ id: string; label: string }>;
   wantSummary?: boolean;
+}
+
+export interface CoachRequest {
+  scope: 'onboarding' | 'node';
+  text: string;
+  nodeId: string;
+  nodeLabel?: string;
+  nodeDescription?: string;
+  nodes: Array<{ id: string; label: string }>;
+  /** one-line summaries of Confirmed context near the node */
+  existing?: string[];
+  history?: Array<{ role: 'user' | 'coach'; content: string }>;
+}
+
+export interface CoachResult {
+  questions: string[];
+  ambiguities: Array<{ quote: string; why: string }>;
+  proposals: ExtractedObject[];
+  usage: UsageSummary;
 }
 
 export interface ExtractedObject { type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }
@@ -209,15 +235,19 @@ export class AiService {
         plan = r.plan;
         if (r.decisionUsage) prior.push(r.decisionUsage);
       }
+      plan = applyBand(plan, jobKind, req.outputBand, this.cfg);
       emit({ type: 'plan', plan });
 
       // What the model sees = the contexts relevant to this deliverable + every Confirmed Constraint (guardrails always apply).
       // This exact set is what Context Replay and the impact engine record (id + version).
       const seen = new Set(req.contextObjects.map((c) => c.id));
       const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && !seen.has(c.id))];
-      const guardrails = all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}`);
+      // guardrails = the spec's own rules + every Confirmed Constraint of the workspace (applied automatically)
+      const guardrails = [...new Set([...(req.specGuardrails ?? []).map((g) => g.trim()).filter(Boolean), ...all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}`)])];
       const task = [
         `## کار: ${req.deliverableTitle}`,
+        req.specTarget ? `هدف جریان کار: ${req.specTarget}` : '',
+        req.dependencyOutputs?.length ? `## خروجی‌های قبلی این جریان کار (ورودی این خروجی؛ با آن‌ها سازگار بمان)\n${req.dependencyOutputs.map((d) => `### ${d.title}\n${d.markdown}`).join('\n\n')}` : '',
         'فقط بر پایهٔ دانش تأییدشده بنویس و از کلی‌گویی و ادعای بی‌پشتوانه پرهیز کن.',
         req.contextObjects.length ? `دانش مرتبط با این خروجی: ${req.contextObjects.map((c) => c.title).join('، ')}` : '',
         req.rebuildNotes ? `نکات بازسازی: ${req.rebuildNotes}` : '',
@@ -225,13 +255,13 @@ export class AiService {
       const prompt = buildPrompt({ contexts: all, task, nodeLabels: req.nodeLabels, excerpts: req.excerpts });
 
       const out = await runPipeline({
-        runner, plan, prompt, acceptanceCriteria: req.acceptanceCriteria, guardrails, cfg: this.cfg,
+        runner, plan, prompt, acceptanceCriteria: req.acceptanceCriteria, guardrails, cfg: this.cfg, decisions: this.decisions(runner), specTarget: req.specTarget,
         onStage: (stage, tier) => emit({ type: 'stage', stage, tier }),
       });
       const stages = [...prior, ...out.stages];
       const result: GenerationResult = {
         blocks: out.blocks, markdown: out.markdown, plan, usage: usageSummary(stages, session.source === 'byok'),
-        critiqueFeedback: out.critiqueFeedback, validationFailed: out.validationFailed,
+        critiqueFeedback: out.critiqueFeedback, validationFailed: out.validationFailed, checks: out.checks,
         usedContext: injectedRefs(all), usedFileChunks: (req.excerpts ?? []).map((e) => ({ fileId: e.fileId, index: e.index })),
       };
       emit({ type: 'done', result });
@@ -275,6 +305,66 @@ export class AiService {
       }
       const summary = req.wantSummary && typeof v.summary === 'string' && v.summary.trim() ? v.summary.trim() : undefined;
       return { summary, objects, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
+    } finally { dl.done(); }
+  }
+
+  /**
+   * Gap «مبهم» detection: the decision layer judges, per Context object version, whether the text is too vague to build on.
+   * One batched call; the caller caches the answers per (id, version). Meaning decides — not text length.
+   */
+  async judgeAmbiguity(userId: string, items: Array<{ id: string; title: string; content: string }>, parent?: AbortSignal): Promise<{ judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }>; usage?: UsageSummary }> {
+    if (!items.length) return { judgments: {} };
+    const dl = this.deadline(this.cfg.timeoutsMs.validator, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId);
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const questions: DecisionQuestion[] = items.map((it, i) => ({
+        id: `o${i}`, question: `آیا این Context برای ساختن خروجی به‌اندازهٔ کافی روشن و مشخص است یا مبهم؟ «${it.title}»: ${it.content}`, options: ['clear', 'ambiguous'], reason: true,
+      }));
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش کسب‌وکار (نه طول متن؛ معنا)', stage: 'decision' }, questions);
+      const judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }> = {};
+      res.answers.forEach((a, i) => { judgments[items[i].id] = { ambiguous: a.choice === 'ambiguous', reason: a.reason ?? '', probability: a.probability }; });
+      return { judgments, usage: res.usage ? usageSummary([res.usage], session.source === 'byok') : undefined };
+    } finally { dl.done(); }
+  }
+
+  /**
+   * Context Coach (balanced tier): asks clarifying questions, points at ambiguity and drafts PROPOSED objects.
+   * It never writes anything itself — the caller saves proposals only when the user agrees.
+   */
+  async coach(userId: string, req: CoachRequest, parent?: AbortSignal): Promise<CoachResult> {
+    const dl = this.deadline(this.cfg.timeoutsMs.chat, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId);
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const user = [
+        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر گرهٔ «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح گره: ${req.nodeDescription}` : ''}`,
+        `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        req.existing?.length ? `## دانش تأییدشدهٔ موجود\n${req.existing.map((c) => `- ${c}`).join('\n')}` : '',
+        req.history?.length ? `## گفتگوی قبلی با Coach\n${req.history.map((m) => `${m.role === 'user' ? 'کاربر' : 'Coach'}: ${m.content}`).join('\n')}` : '',
+        `## متن کاربر\n${req.text}`,
+      ].filter(Boolean).join('\n\n');
+      const r = await runner.structured(
+        { stage: 'coach', tier: 'balanced', effort: 'low', maxTokens: 2500, timeoutMs: this.cfg.timeoutsMs.chat },
+        { system: `${SYSTEM_PROMPT}\n\n${COACH_INSTRUCTION}`, user },
+        COACH_SCHEMA,
+      );
+      const v = (r.value ?? {}) as { questions?: unknown; ambiguities?: unknown; proposals?: unknown };
+      if (!Array.isArray(v.questions) || !Array.isArray(v.ambiguities) || !Array.isArray(v.proposals)) throw new AiError('bad_output', { stage: 'coach', detail: 'shape' });
+      const allowed = new Set(req.nodes.map((n) => n.id));
+      const types = ['Fact', 'Decision', 'Constraint'];
+      const str = (x: unknown) => (typeof x === 'string' ? x.trim() : '');
+      const proposals: ExtractedObject[] = [];
+      for (const o of v.proposals.slice(0, 6) as Array<Record<string, unknown>>) {
+        if (!o || !str(o.title) || !str(o.content) || !types.includes(o.type as string)) continue;
+        proposals.push({ type: o.type as ExtractedObject['type'], title: str(o.title), content: str(o.content), nodeId: typeof o.nodeId === 'string' && allowed.has(o.nodeId) ? o.nodeId : req.nodeId });
+      }
+      return {
+        questions: (v.questions as unknown[]).map(str).filter(Boolean).slice(0, 4),
+        ambiguities: (v.ambiguities as Array<Record<string, unknown>>).map((a) => ({ quote: str(a?.quote), why: str(a?.why) })).filter((a) => a.quote && a.why).slice(0, 6),
+        proposals,
+        usage: usageSummary([r.usage], session.source === 'byok'),
+      };
     } finally { dl.done(); }
   }
 }

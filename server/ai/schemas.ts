@@ -34,20 +34,6 @@ export const BLOCKS_SCHEMA = {
   required: ['blocks'],
 } as const;
 
-export const VALIDATION_SCHEMA = {
-  type: 'object',
-  properties: {
-    passed: { type: 'boolean' },
-    score: { type: 'number' },
-    passedCriteria: { type: 'array', items: { type: 'string' } },
-    failedCriteria: { type: 'array', items: { type: 'string' } },
-    guardrailViolations: { type: 'array', items: { type: 'string' } },
-    strengths: { type: 'array', items: { type: 'string' } },
-    notes: { type: 'string' },
-  },
-  required: ['passed', 'score', 'passedCriteria', 'failedCriteria', 'guardrailViolations', 'strengths'],
-} as const;
-
 export const CRITIQUE_SCHEMA = {
   type: 'object',
   properties: {
@@ -57,7 +43,7 @@ export const CRITIQUE_SCHEMA = {
   required: ['issues', 'strengths'],
 } as const;
 
-export function decisionSchema(ids: string[], optionsById: Record<string, string[]>) {
+export function decisionSchema(ids: string[], optionsById: Record<string, string[]>, withReason = false) {
   return {
     type: 'object',
     properties: {
@@ -69,8 +55,9 @@ export function decisionSchema(ids: string[], optionsById: Record<string, string
             id: { type: 'string', enum: ids },
             choice: { type: 'string', enum: [...new Set(Object.values(optionsById).flat())] },
             probability: { type: 'number' },
+            ...(withReason ? { reason: { type: 'string' } } : {}),
           },
-          required: ['id', 'choice', 'probability'],
+          required: withReason ? ['id', 'choice', 'probability', 'reason'] : ['id', 'choice', 'probability'],
         },
       },
     },
@@ -97,4 +84,21 @@ export const EXTRACT_SCHEMA = {
     },
   },
   required: ['objects'],
+} as const;
+
+export const COACH_SCHEMA = {
+  type: 'object',
+  properties: {
+    questions: { type: 'array', items: { type: 'string' } },
+    ambiguities: { type: 'array', items: { type: 'object', properties: { quote: { type: 'string' }, why: { type: 'string' } }, required: ['quote', 'why'] } },
+    proposals: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { type: { type: 'string', enum: [...PROPOSAL_TYPES] }, title: { type: 'string' }, content: { type: 'string' }, nodeId: { type: 'string' } },
+        required: ['type', 'title', 'content'],
+      },
+    },
+  },
+  required: ['questions', 'ambiguities', 'proposals'],
 } as const;

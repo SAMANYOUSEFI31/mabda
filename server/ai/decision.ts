@@ -1,4 +1,4 @@
-import type { StageUsage } from '../../src/types/ai.ts';
+import type { StageName, StageUsage } from '../../src/types/ai.ts';
 import { DECISION_INSTRUCTION } from './prompts.ts';
 import { AiError } from './errors.ts';
 import { decisionSchema } from './schemas.ts';
@@ -14,6 +14,8 @@ export interface DecisionQuestion {
   id: string;
   question: string;
   options: string[];
+  /** ask for a one-sentence Persian reason with the choice */
+  reason?: boolean;
 }
 
 export interface DecisionAnswer {
@@ -21,6 +23,7 @@ export interface DecisionAnswer {
   choice: string;
   /** 0..1 probability that `choice` is right */
   probability: number;
+  reason?: string;
 }
 
 export interface DecisionState {
@@ -28,6 +31,8 @@ export interface DecisionState {
   text: string;
   /** small structured facts the questions may rely on */
   facts?: Record<string, string | number | boolean>;
+  /** how the call appears in the ledger (default: decision) */
+  stage?: StageName;
 }
 
 export interface DecisionResult {
@@ -49,7 +54,8 @@ export function validateAnswers(raw: unknown, questions: DecisionQuestion[]): De
     if (!a || !q.options.includes(a.choice)) throw new AiError('bad_output', { stage: 'decision', detail: `bad answer for ${q.id}` });
     const p = Number(a.probability);
     if (!Number.isFinite(p)) throw new AiError('bad_output', { stage: 'decision', detail: `bad probability for ${q.id}` });
-    return { id: q.id, choice: a.choice, probability: Math.min(1, Math.max(0, p)) };
+    const reason = typeof a.reason === 'string' && a.reason.trim() ? a.reason.trim() : undefined;
+    return { id: q.id, choice: a.choice, probability: Math.min(1, Math.max(0, p)), ...(q.reason ? { reason: reason ?? '' } : {}) };
   });
 }
 
@@ -58,17 +64,18 @@ export class ModelDecisionLayer implements DecisionLayer {
 
   async decide(state: DecisionState, questions: DecisionQuestion[]): Promise<DecisionResult> {
     const optionsById = Object.fromEntries(questions.map((q) => [q.id, q.options]));
+    const withReason = questions.some((q) => q.reason);
     const user = [
       '## موضوع قضاوت',
       state.text,
       state.facts ? `## واقعیت‌ها\n${Object.entries(state.facts).map(([k, v]) => `- ${k}: ${v}`).join('\n')}` : '',
       '## سؤال‌ها',
-      ...questions.map((q) => `- id=${q.id}: ${q.question}\n  گزینه‌ها: ${q.options.join(' | ')}`),
+      ...questions.map((q) => `- id=${q.id}: ${q.question}\n  گزینه‌ها: ${q.options.join(' | ')}${q.reason ? '\n  (یک جملهٔ فارسی دلیل هم بنویس: reason)' : ''}`),
     ].filter(Boolean).join('\n');
     const r = await this.runner.structured(
-      { stage: 'decision', tier: 'cheap', effort: 'minimal', maxTokens: 400, timeoutMs: this.timeoutMs },
+      { stage: state.stage ?? 'decision', tier: 'cheap', effort: 'minimal', maxTokens: withReason ? Math.min(6000, 300 + 160 * questions.length) : 400, timeoutMs: withReason ? Math.max(this.timeoutMs, 30_000) : this.timeoutMs },
       { system: DECISION_INSTRUCTION, user },
-      decisionSchema(questions.map((q) => q.id), optionsById),
+      decisionSchema(questions.map((q) => q.id), optionsById, withReason),
     );
     return { answers: validateAnswers(r.value, questions), usage: r.usage };
   }

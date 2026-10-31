@@ -1,11 +1,12 @@
-import type { AiPlan, ContentBlock, CritiqueFeedback, StageUsage, Tier } from '../../src/types/ai.ts';
-import { modelsConfig, nextTier } from './config.ts';
+import type { AiPlan, CheckResult, ContentBlock, CritiqueFeedback, StageUsage, Tier } from '../../src/types/ai.ts';
+import { modelsConfig, nextTier, TIERS } from './config.ts';
 import type { ModelsConfig } from './config.ts';
 import { blocksToMarkdown, parseBlocks } from './blocks.ts';
 import { AiError } from './errors.ts';
-import { BLOCKS_INSTRUCTION, CRITIQUE_INSTRUCTION, VALIDATOR_INSTRUCTION } from './prompts.ts';
+import { BLOCKS_INSTRUCTION, CRITIQUE_INSTRUCTION } from './prompts.ts';
+import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import type { Prompt } from './providers/provider.ts';
-import { BLOCKS_SCHEMA, CRITIQUE_SCHEMA, VALIDATION_SCHEMA } from './schemas.ts';
+import { BLOCKS_SCHEMA, CRITIQUE_SCHEMA } from './schemas.ts';
 import type { StageRunner } from './runner.ts';
 
 export const VALIDATION_PASS_SCORE = 70;
@@ -22,23 +23,8 @@ export interface ValidationVerdict {
 
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : []);
 
-/** The model proposes a verdict; the rule is ours: no failed criterion, no guardrail violation, score ≥ threshold. */
-export function normalizeVerdict(raw: unknown): ValidationVerdict {
-  const r = raw as Record<string, unknown> | null;
-  if (!r || typeof r !== 'object' || typeof r.passed !== 'boolean') throw new AiError('bad_output', { stage: 'validate', detail: 'verdict shape' });
-  const score = Math.min(100, Math.max(0, Number(r.score) || 0));
-  const failedCriteria = strArr(r.failedCriteria);
-  const guardrailViolations = strArr(r.guardrailViolations);
-  return {
-    passed: r.passed && failedCriteria.length === 0 && guardrailViolations.length === 0 && score >= VALIDATION_PASS_SCORE,
-    score,
-    passedCriteria: strArr(r.passedCriteria),
-    failedCriteria,
-    guardrailViolations,
-    strengths: strArr(r.strengths).slice(0, 3),
-    notes: typeof r.notes === 'string' ? r.notes : undefined,
-  };
-}
+/** A check passes only when the decision layer says so AND is at least this sure (otherwise it is reported as failed, honestly). */
+export const CHECK_PASS_PROBABILITY = 0.6;
 
 export interface PipelineInput {
   runner: StageRunner;
@@ -48,6 +34,10 @@ export interface PipelineInput {
   acceptanceCriteria: string[];
   /** confirmed Constraint objects, rendered as one-line rules */
   guardrails: string[];
+  /** judges every criterion and guardrail (cheap tier by default) */
+  decisions: DecisionLayer;
+  /** goal of the workstream, for the critic */
+  specTarget?: string;
   cfg?: ModelsConfig;
   onStage?: (stage: StageUsage['stage'], tier: Tier) => void;
 }
@@ -57,6 +47,7 @@ export interface PipelineOutput {
   markdown: string;
   stages: StageUsage[];
   verdict?: ValidationVerdict;
+  checks?: CheckResult[];
   critiqueFeedback?: CritiqueFeedback;
   validationFailed: boolean;
   /** final tier that produced the answer (differs from plan.tier after an upgrade) */
@@ -80,27 +71,61 @@ async function draft(input: PipelineInput, tier: Tier, stage: 'draft' | 'upgrade
   return parseBlocks(r.value);
 }
 
-async function validate(input: PipelineInput, blocks: ContentBlock[], stages: StageUsage[]): Promise<ValidationVerdict> {
+/**
+ * Validator = the decision layer asked one closed question per acceptance criterion and per guardrail
+ * (pass/fail + reason + probability). The rule is ours: every check must pass.
+ */
+export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'acceptanceCriteria' | 'guardrails' | 'onStage'>, blocks: ContentBlock[], stages: StageUsage[]): Promise<{ verdict: ValidationVerdict; checks: CheckResult[] }> {
+  const criteria = input.acceptanceCriteria.filter((c) => c.trim());
+  const guardrails = input.guardrails.filter((g) => g.trim());
+  if (criteria.length + guardrails.length === 0) {
+    return { verdict: { passed: true, score: 100, passedCriteria: [], failedCriteria: [], guardrailViolations: [], strengths: [] }, checks: [] };
+  }
   input.onStage?.('validate', 'cheap');
-  const cfg = input.cfg ?? modelsConfig;
-  const user = [
-    '## خروجی برای بازبینی',
-    blocksToMarkdown(blocks),
-    `## ${criteriaBlock(input.acceptanceCriteria)}`,
-    input.guardrails.length ? `## گاردریل‌ها (نباید نقض شوند)\n${input.guardrails.map((g) => `- ${g}`).join('\n')}` : '## گاردریل‌ها\nنیست.',
-  ].join('\n\n');
-  const r = await input.runner.structured(
-    { stage: 'validate', tier: 'cheap', effort: 'low', maxTokens: 1500, timeoutMs: cfg.timeoutsMs.validator },
-    { system: VALIDATOR_INSTRUCTION, user },
-    VALIDATION_SCHEMA,
-  );
-  stages.push(r.usage);
-  return normalizeVerdict(r.value);
+  const questions: DecisionQuestion[] = [
+    ...criteria.map((c, i): DecisionQuestion => ({ id: `c${i}`, question: `آیا خروجی این معیار پذیرش را برآورده می‌کند؟ «${c}»`, options: ['pass', 'fail'], reason: true })),
+    ...guardrails.map((g, i): DecisionQuestion => ({ id: `g${i}`, question: `آیا خروجی این گاردریل را رعایت می‌کند؟ «${g}»`, options: ['ok', 'violated'], reason: true })),
+  ];
+  const res = await input.decisions.decide({ text: `## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
+  if (res.usage) stages.push(res.usage);
+  const checks: CheckResult[] = res.answers.map((a) => {
+    const isGuard = a.id.startsWith('g');
+    const text = isGuard ? guardrails[Number(a.id.slice(1))] : criteria[Number(a.id.slice(1))];
+    const said = isGuard ? a.choice === 'ok' : a.choice === 'pass';
+    const sure = a.probability >= CHECK_PASS_PROBABILITY;
+    const reason = a.reason || (said ? 'رعایت شده است.' : 'رعایت نشده است.');
+    return {
+      kind: isGuard ? 'guardrail' : 'criterion', text, passed: said && sure, probability: a.probability,
+      reason: said && !sure ? `اطمینان کم (${Math.round(a.probability * 100)}٪): ${reason}` : reason,
+    };
+  });
+  const failed = checks.filter((c) => !c.passed);
+  const verdict: ValidationVerdict = {
+    passed: failed.length === 0,
+    score: Math.round((100 * (checks.length - failed.length)) / checks.length),
+    passedCriteria: checks.filter((c) => c.kind === 'criterion' && c.passed).map((c) => c.text),
+    failedCriteria: failed.filter((c) => c.kind === 'criterion').map((c) => c.text),
+    guardrailViolations: failed.filter((c) => c.kind === 'guardrail').map((c) => c.text),
+    strengths: [],
+  };
+  return { verdict, checks };
 }
 
-const feedbackFrom = (v: ValidationVerdict, improvements: string[]): CritiqueFeedback => ({
+/**
+ * The critic must not be the model that wrote the draft: a tier on ANOTHER provider if config has one,
+ * otherwise another tier of the same provider. Explicit-only tiers are not picked in Auto.
+ */
+export function pickCriticTier(draftTier: Tier, plan: AiPlan, cfg: ModelsConfig = modelsConfig): Tier {
+  const allowed = TIERS.filter((t) => t !== draftTier && (plan.userMode !== 'auto' || !cfg.tiers[t].requiresExplicitSelection));
+  const other = allowed.filter((t) => cfg.tiers[t].provider !== cfg.tiers[draftTier].provider);
+  const pool = other.length ? other : allowed;
+  const prefer: Tier[] = draftTier === 'frontier' ? ['balanced', 'cheap'] : ['balanced', 'frontier', 'cheap'];
+  return prefer.find((t) => pool.includes(t)) ?? pool[0] ?? draftTier;
+}
+
+const feedbackFrom = (v: ValidationVerdict, improvements: string[], strengths: string[] = v.strengths): CritiqueFeedback => ({
   score: Math.round(v.score),
-  strengths: v.strengths,
+  strengths,
   improvementsMade: improvements,
   checklistPassed: v.passedCriteria,
 });
@@ -123,7 +148,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineOutput>
 
   if (plan.pattern === 'cascade') {
     let blocks = await draft(input, plan.tier, 'draft', '', stages);
-    let verdict = await validate(input, blocks, stages);
+    let { verdict, checks } = await runChecks(input, blocks, stages);
     let finalTier = plan.tier;
     let improvements: string[] = [];
     if (!verdict.passed) {
@@ -133,23 +158,36 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineOutput>
         const feedback = `\n\nپیش‌نویس قبلی رد شد. موارد رد‌شده:\n${improvements.map((x) => `- ${x}`).join('\n') || '- امتیاز کافی نبود'}\nپیش‌نویس قبلی:\n${blocksToMarkdown(blocks)}\n\nنسخهٔ کامل و اصلاح‌شده را بنویس.`;
         blocks = await draft(input, up, 'upgrade', feedback, stages);
         finalTier = up;
-        verdict = await validate(input, blocks, stages);
+        ({ verdict, checks } = await runChecks(input, blocks, stages));
       }
     }
-    return { blocks, markdown: blocksToMarkdown(blocks), stages, verdict, critiqueFeedback: feedbackFrom(verdict, improvements), validationFailed: !verdict.passed, finalTier };
+    return { blocks, markdown: blocksToMarkdown(blocks), stages, verdict, checks, critiqueFeedback: feedbackFrom(verdict, improvements), validationFailed: !verdict.passed, finalTier };
   }
 
-  // critique: draft → critique → revise → validate
-  let blocks = await draft(input, plan.tier, 'draft', '', stages);
-  input.onStage?.('critique', plan.tier);
+  // critique: draft (balanced or above) → read-only critic on another provider/tier → ONE revision → validator
+  const draftTier: Tier = plan.tier === 'cheap' ? 'balanced' : plan.tier;
+  let blocks = await draft(input, draftTier, 'draft', '', stages);
+  const criticTier = pickCriticTier(draftTier, plan, cfg);
+  input.onStage?.('critique', criticTier);
+  const gr = input.guardrails.filter((g) => g.trim());
   const cr = await input.runner.structured(
-    { stage: 'critique', tier: plan.tier, effort: 'low', maxTokens: 2000, timeoutMs: cfg.timeoutsMs.validator },
-    { system: CRITIQUE_INSTRUCTION, user: `## پیش‌نویس\n${blocksToMarkdown(blocks)}\n\n## ${criteriaBlock(input.acceptanceCriteria)}\n\n## دانش تأییدشده\n${input.prompt.prefix ?? ''}` },
+    { stage: 'critique', tier: criticTier, effort: 'low', maxTokens: 2000, timeoutMs: cfg.timeoutsMs.validator },
+    {
+      system: CRITIQUE_INSTRUCTION,
+      user: [
+        input.specTarget ? `## هدف جریان کار\n${input.specTarget}` : '',
+        `## ${criteriaBlock(input.acceptanceCriteria)}`,
+        gr.length ? `## گاردریل‌ها\n${gr.map((g) => `- ${g}`).join('\n')}` : '',
+        `## دانش تأییدشده\n${input.prompt.prefix ?? ''}`,
+        `## پیش‌نویس\n${blocksToMarkdown(blocks)}`,
+      ].filter(Boolean).join('\n\n'),
+    },
     CRITIQUE_SCHEMA,
   );
   stages.push(cr.usage);
   const issues = strArr((cr.value as { issues?: unknown })?.issues);
-  blocks = await draft(input, plan.tier, 'revise', `\n\nپیش‌نویس:\n${blocksToMarkdown(blocks)}\n\nاصلاح‌های لازم:\n${issues.map((x) => `- ${x}`).join('\n') || '- نیازی به اصلاح بزرگ نیست؛ پیش‌نویس را صیقل بده.'}\n\nنسخهٔ نهایی را کامل بنویس.`, stages);
-  const verdict = await validate(input, blocks, stages);
-  return { blocks, markdown: blocksToMarkdown(blocks), stages, verdict, critiqueFeedback: feedbackFrom(verdict, issues), validationFailed: !verdict.passed, finalTier: plan.tier };
+  const strengths = strArr((cr.value as { strengths?: unknown })?.strengths).slice(0, 3);
+  blocks = await draft(input, draftTier, 'revise', `\n\nپیش‌نویس:\n${blocksToMarkdown(blocks)}\n\nاصلاح‌های لازم:\n${issues.map((x) => `- ${x}`).join('\n') || '- نیازی به اصلاح بزرگ نیست؛ پیش‌نویس را صیقل بده.'}\n\nنسخهٔ نهایی را کامل بنویس.`, stages);
+  const { verdict, checks } = await runChecks(input, blocks, stages);
+  return { blocks, markdown: blocksToMarkdown(blocks), stages, verdict, checks, critiqueFeedback: feedbackFrom(verdict, issues, strengths), validationFailed: !verdict.passed, finalTier: draftTier };
 }

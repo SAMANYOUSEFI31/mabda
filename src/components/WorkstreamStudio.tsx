@@ -16,7 +16,9 @@ import {
 } from '../types';
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../types';
 import { WORKSTREAM_SPECS } from '../core/specs';
-import { calculateReadinessAndGaps } from '../core/contextEngine';
+import { calculateReadinessAndGaps, objectsToJudge } from '../core/contextEngine';
+import type { AmbiguityMap } from '../core/contextEngine';
+import { lockOf, lockReason, topologicalOrder } from '../core/specGraph';
 import { halfPriceRebuildAvailable } from '../core/impactEngine';
 import type { StaleAsset } from '../core/impactEngine';
 import { calculateCreditCost, creditModeForPlan, effectiveCredits, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../core/creditEngine';
@@ -28,7 +30,6 @@ import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
 import { contextDraftFromBlock } from '../core/blocks';
-import { CustomSpecModal } from './CustomSpecModal';
 import { KnowledgeGapChart } from './KnowledgeGapChart';
 import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Tabs, formatNumber, useToast } from '../ui';
 
@@ -39,7 +40,11 @@ interface WorkstreamStudioProps {
   specs: WorkstreamSpec[];
   selectedSpecId?: string;
   onSelectSpecId?: (id: string) => void;
-  onAddCustomSpec: (spec: WorkstreamSpec) => void;
+  /** opens the spec editor (new, or the given custom spec) */
+  onOpenSpecEditor: (spec?: WorkstreamSpec) => void;
+  /** Gap ambiguity verdicts from the decision layer, per object version */
+  judgments: AmbiguityMap;
+  onJudge: (objectIds: string[]) => Promise<void>;
   /** assets that are stale because the Context they were built from changed */
   stale: StaleAsset[];
   nodes: TreeNode[];
@@ -60,7 +65,9 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   specs,
   selectedSpecId: externalSelectedSpecId,
   onSelectSpecId: externalOnSelectSpecId,
-  onAddCustomSpec,
+  onOpenSpecEditor,
+  judgments,
+  onJudge,
   stale,
   nodes,
   onAddContextObject,
@@ -95,16 +102,29 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [previewError, setPreviewError] = useState<AiErrorInfo | null>(null);
   const [activeTab, setActiveTab] = useState<'create' | 'gap_analysis' | 'history'>('create');
-  const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
   const toast = useToast();
 
   const currentSpec =
     specs.find((s) => s.id === selectedSpecId) || specs[0] || WORKSTREAM_SPECS[0];
+  // execution order = dependency graph (dependencies first); a cyclic spec cannot be saved, the fallback is only defensive
+  const orderedDeliverables = (() => { try { return topologicalOrder(currentSpec.deliverables); } catch { return [...currentSpec.deliverables].sort((a, b) => a.order - b.order); } })();
   const currentDeliverableSpec =
-    currentSpec.deliverables.find((d) => d.id === selectedDeliverableId) ||
-    currentSpec.deliverables[0];
+    orderedDeliverables.find((d) => d.id === selectedDeliverableId) ||
+    orderedDeliverables[0];
+  const isCustomSpec = !WORKSTREAM_SPECS.some((s) => s.id === currentSpec.id);
 
-  const readiness = calculateReadinessAndGaps(currentSpec, allContextObjects);
+  const readiness = calculateReadinessAndGaps(currentSpec, allContextObjects, [], judgments);
+
+  // Gap ambiguity: ask the decision layer once per object version (cached on the server)
+  const judgeRequested = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!ai.available || activeTab === 'create') return;
+    const todo = objectsToJudge(currentSpec, allContextObjects).filter((o) => judgments[o.id]?.version !== o.version && !judgeRequested.current.has(`${o.id}@${o.version}`));
+    if (!todo.length) return;
+    todo.forEach((o) => judgeRequested.current.add(`${o.id}@${o.version}`));
+    void onJudge(todo.map((o) => o.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ai.available, activeTab, currentSpec.id, allContextObjects, judgments]);
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
   // The router's plan for the selected deliverable + mode. Credits are derived from it BEFORE the run,
@@ -136,7 +156,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const STAGE_FA: Record<StageName, string> = {
     decision: 'تعیین حالت اجرا', chat: 'نوشتن پاسخ', draft: 'نوشتن پیش‌نویس', critique: 'نقد پیش‌نویس',
     revise: 'اصلاح بر پایهٔ نقد', validate: 'اعتبارسنجی با معیارهای پذیرش', upgrade: 'ارتقا به مدل قوی‌تر و بازنویسی',
-    extract: 'استخراج دانش',
+    extract: 'استخراج دانش', coach: 'Context Coach',
   };
   const TIER_FA: Record<Tier, string> = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' };
 
@@ -154,6 +174,11 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       return;
     }
     const runSpec = found?.del ?? currentDeliverableSpec;
+    const runWorkstream = found?.spec ?? currentSpec;
+    const runLock = lockOf(runSpec, runWorkstream.deliverables, builtIds);
+    if (runLock.locked) { toast.show({ intent: 'warning', message: lockReason(runLock) }); return; }
+    // the finished assets this output depends on (their text is read by the server from the database)
+    const dependencyAssetIds = (runSpec.dependsOn ?? []).map((dep) => workstreamDeliverables.find((d) => d.deliverableId === dep)?.id).filter((x): x is string => !!x);
     const runMode: ExecutionMode = isRebuild && rebuildTarget ? rebuildTarget.executionMode : executionMode;
     const staleOfTarget = rebuildTarget ? stale.find((s) => s.deliverableId === rebuildTarget.id) : undefined;
     // half price only for an asset made stale by a Context change, once per change
@@ -189,6 +214,10 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           acceptanceCriteria: runSpec.acceptanceCriteria,
           workspaceId: currentWorkspace.id,
           targetNodeId: 'content',
+          specTarget: runWorkstream.target,
+          specGuardrails: runWorkstream.guardrails,
+          outputBand: runSpec.outputBand,
+          dependencyAssetIds,
           executionMode: runMode,
           preview: runPreview ?? undefined,
         },
@@ -211,6 +240,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         creditCost: effectiveCredits(cost, result.usage.byok),
         usedContext: result.usedContext,
         usedFileChunks: result.usedFileChunks,
+        checks: result.checks,
         critiqueFeedback: result.critiqueFeedback,
         rebuildCount: isRebuild && rebuildTarget ? rebuildTarget.rebuildCount + 1 : 0,
         halfPriceUsedFor: halfPrice ? staleOfTarget?.signature : rebuildTarget?.halfPriceUsedFor,
@@ -245,6 +275,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     (d) => d.workstreamId === currentSpec.id && d.workspaceId === currentWorkspace.id
   );
 
+  const builtIds = new Set(workstreamDeliverables.map((d) => d.deliverableId));
+  const lock = lockOf(currentDeliverableSpec, currentSpec.deliverables, builtIds);
   const requiredMissing = readiness.gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length;
   const modeCost = (m: ExecutionMode) =>
     calculateCreditCost({
@@ -267,14 +299,15 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   const id = e.target.value;
                   const s = specs.find((x) => x.id === id);
                   setSelectedSpecId(id);
-                  if (s?.deliverables[0]) setSelectedDeliverableId(s.deliverables[0].id);
+                  if (s?.deliverables.length) { try { setSelectedDeliverableId(topologicalOrder(s.deliverables)[0].id); } catch { setSelectedDeliverableId(s.deliverables[0].id); } }
                 }}
                 options={specs.map((s) => ({ value: s.id, label: s.title }))}
               />
             </div>
-            <Button variant="secondary" iconStart="Plus" onClick={() => setIsCustomSpecModalOpen(true)}>
+            <Button variant="secondary" iconStart="Plus" onClick={() => onOpenSpecEditor()}>
               تعریف جریان کار سفارشی
             </Button>
+            {isCustomSpec && <Button variant="secondary" iconStart="Pencil" onClick={() => onOpenSpecEditor(currentSpec)}>ویرایش</Button>}
           </div>
         </div>
 
@@ -314,21 +347,25 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             <div className="flex flex-col gap-stack-sm lg:col-span-1">
               <h3 className="title text-text-default">خروجی‌ها به ترتیب ارزش (Spec Sequence)</h3>
               <List label="خروجی‌های این جریان کار">
-                {currentSpec.deliverables.map((del) => (
-                  <ListItem
-                    key={del.id}
-                    selected={selectedDeliverableId === del.id}
-                    onClick={() => setSelectedDeliverableId(del.id)}
-                    leading={<span className="label-sm tabular-nums">{formatNumber(del.order)}</span>}
-                    title={
-                      <span className="flex flex-wrap items-center gap-inline-sm">
-                        {del.title}
-                        {workstreamDeliverables.some((d) => d.deliverableId === del.id) && <Badge intent="success">تولیدشده</Badge>}
-                      </span>
-                    }
-                    description={del.description}
-                  />
-                ))}
+                {orderedDeliverables.map((del, idx) => {
+                  const dl = lockOf(del, currentSpec.deliverables, builtIds);
+                  return (
+                    <ListItem
+                      key={del.id}
+                      selected={selectedDeliverableId === del.id}
+                      onClick={() => setSelectedDeliverableId(del.id)}
+                      leading={<span className="label-sm tabular-nums">{formatNumber(idx + 1)}</span>}
+                      title={
+                        <span className="flex flex-wrap items-center gap-inline-sm">
+                          {del.title}
+                          {builtIds.has(del.id) && <Badge intent="success">تولیدشده</Badge>}
+                          {dl.locked && <Badge intent="neutral" icon="Lock">قفل</Badge>}
+                        </span>
+                      }
+                      description={dl.locked ? lockReason(dl) : del.description}
+                    />
+                  );
+                })}
               </List>
             </div>
 
@@ -336,11 +373,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             <Card padding="xl" className="flex flex-col gap-stack-lg lg:col-span-2">
               <div className="flex flex-col gap-stack-xs">
                 <span className="label-md text-text-subtle">
-                  خروجی انتخابی (گام {formatNumber(currentDeliverableSpec.order)} از {formatNumber(currentSpec.deliverables.length)})
+                  خروجی انتخابی (گام {formatNumber(orderedDeliverables.indexOf(currentDeliverableSpec) + 1)} از {formatNumber(orderedDeliverables.length)})
                 </span>
                 <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>
                 <p className="body-sm text-text-default">{currentDeliverableSpec.description}</p>
               </div>
+
+              {lock.locked && <Alert intent="warning" title="این خروجی هنوز قفل است">{lockReason(lock)}</Alert>}
 
               <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
                 <span className="label-md text-text-default">معیار پذیرش خروجی (Acceptance Checklist)</span>
@@ -349,6 +388,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <li key={idx}>{c}</li>
                   ))}
                 </ul>
+                {(currentSpec.guardrails?.length ?? 0) > 0 && (
+                  <>
+                    <span className="label-md mt-stack-sm text-text-default">گاردریل‌های این جریان کار</span>
+                    <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
+                  </>
+                )}
+                <span className="caption text-text-subtle">Constraintهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
               </div>
 
               <div className="flex flex-col gap-stack-sm" role="group" aria-label="سطح اجرا و عمق کار">
@@ -427,7 +473,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 {isGenerating ? (
                   <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>
                 ) : (
-                  <Button variant="primary" size="lg" iconStart="Sparkles" disabled={previewState !== 'ready'} onClick={() => handleGenerate(false)}>
+                  <Button variant="primary" size="lg" iconStart="Sparkles" disabled={previewState !== 'ready' || lock.locked} onClick={() => handleGenerate(false)}>
                     ساخت دارایی
                   </Button>
                 )}
@@ -539,17 +585,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         </div>
       )}
 
-      <CustomSpecModal
-        isOpen={isCustomSpecModalOpen}
-        onClose={() => setIsCustomSpecModalOpen(false)}
-        onSaveSpec={(newSpec) => {
-          onAddCustomSpec(newSpec);
-          setSelectedSpecId(newSpec.id);
-          if (newSpec.deliverables[0]) {
-            setSelectedDeliverableId(newSpec.deliverables[0].id);
-          }
-        }}
-      />
     </div>
   );
 };

@@ -33,7 +33,7 @@ export interface AiPlan {
   decisions: Array<{ id: string; choice: string; probability: number }>;
 }
 
-export type StageName = 'decision' | 'extract' | 'chat' | 'draft' | 'critique' | 'revise' | 'validate' | 'upgrade';
+export type StageName = 'decision' | 'extract' | 'coach' | 'chat' | 'draft' | 'critique' | 'revise' | 'validate' | 'upgrade';
 
 export interface TokenUsage {
   /** prompt tokens that were NOT served from cache */
@@ -98,6 +98,16 @@ export interface AiErrorInfo {
   stage?: StageName;
 }
 
+/** One acceptance criterion or guardrail checked by the decision layer. */
+export interface CheckResult {
+  kind: 'criterion' | 'guardrail';
+  text: string;
+  passed: boolean;
+  reason: string;
+  /** probability the decision layer gave to its own verdict */
+  probability: number;
+}
+
 export interface CritiqueFeedback {
   score: number;
   strengths: string[];
@@ -114,6 +124,7 @@ export interface GenerationResult {
   critiqueFeedback?: CritiqueFeedback;
   /** true if the validator rejected the final output (shown honestly in the UI) */
   validationFailed?: boolean;
+  checks?: CheckResult[];
   usedContext: import('./index').UsedContextRef[];
   usedFileChunks?: import('./index').UsedFileChunk[];
 }

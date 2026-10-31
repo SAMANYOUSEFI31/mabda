@@ -123,6 +123,28 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       </div>
       <PlanLine plan={deliverable.plan} usage={deliverable.usage} credits={deliverable.creditCost} />
 
+      {deliverable.checks && deliverable.checks.length > 0 && (
+        <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg" aria-label="نتیجهٔ بررسی معیارها و گاردریل‌ها">
+          <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+            <span className="label-md text-text-default">معیارهای پذیرش و گاردریل‌ها</span>
+            <Badge intent={deliverable.checks.every((c) => c.passed) ? 'success' : 'warning'} icon={false}>
+              {formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} برقرار
+            </Badge>
+          </div>
+          <ul className="flex flex-col gap-stack-xs">
+            {deliverable.checks.map((c, i) => (
+              <li key={i} className="flex items-start gap-inline-sm">
+                <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
+                <div className="flex min-w-space-0 flex-col">
+                  <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'گاردریل: ' : ''}{c.text}</span>
+                  <span className="caption text-text-subtle">{c.reason}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Critique breakdown */}
       {showCritique && deliverable.critiqueFeedback && (
         <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-info-subtle bg-bg-info-subtle p-inset-lg">

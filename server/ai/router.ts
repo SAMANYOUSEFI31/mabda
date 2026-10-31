@@ -28,7 +28,13 @@ export const TASK_KINDS: TaskKind[] = ['chat', 'extraction', 'drafting', 'strate
 export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 export const IMPORTANCES: Importance[] = ['low', 'medium', 'high'];
 
-/** Default length bands per job (words). Deliverable specs can narrow these later. */
+/** Spec-chosen length (short / medium / long) per job kind, in words. `medium` equals the default band. */
+export const BAND_CHOICES: Record<'asset' | 'deliverable', Record<'short' | 'medium' | 'long', OutputBand>> = {
+  asset: { short: { minWords: 60, maxWords: 200 }, medium: { minWords: 120, maxWords: 450 }, long: { minWords: 400, maxWords: 900 } },
+  deliverable: { short: { minWords: 200, maxWords: 500 }, medium: { minWords: 350, maxWords: 1000 }, long: { minWords: 900, maxWords: 2000 } },
+};
+
+/** Default length bands per job (words). */
 export const BANDS: Record<JobKind, OutputBand> = {
   chat: { minWords: 40, maxWords: 250 },
   asset: { minWords: 120, maxWords: 450 },
@@ -187,4 +193,11 @@ export function sanitizePlan(raw: unknown, cfg: ModelsConfig = modelsConfig): Ai
     upgraded: Boolean(p.upgraded), userMode: p.userMode, jobKind: p.jobKind,
     decisions: Array.isArray(p.decisions) ? p.decisions.slice(0, 6).map((d) => ({ id: String(d.id), choice: String(d.choice), probability: Number(d.probability) || 0 })) : [],
   };
+}
+
+/** The deliverable spec's own length choice overrides the router's default band (tokens follow the band). */
+export function applyBand(plan: AiPlan, jobKind: JobKind, choice: 'short' | 'medium' | 'long' | undefined, cfg: ModelsConfig = modelsConfig): AiPlan {
+  if (!choice || jobKind === 'chat') return plan;
+  const band = BAND_CHOICES[jobKind][choice];
+  return { ...plan, outputBand: band, maxTokens: maxTokensFor(band, plan.tier, plan.effort, cfg) };
 }
