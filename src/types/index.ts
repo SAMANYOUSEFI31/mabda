@@ -201,3 +201,4 @@ export interface Workspace {
   todayChatCount: number;
   createdAt: string;
 }
+export * from './ai';
