@@ -11,7 +11,11 @@ import { userOf as aiUserOf } from '../ai/routes.ts';
 import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
+import { ancestorIds } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
+import { validateSpec } from '../../src/core/specGraph.ts';
+import { PLANS } from '../../src/core/creditEngine.ts';
+import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 
 /** One local user until real accounts exist. Every table already carries user_id + workspace_id. */
@@ -111,7 +115,64 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.post('/workspaces/:wid/ledger', wrap((req, res) => { res.json({ entry: repo.addLedger(scopeOf(req), body(req) as LedgerEntry) }); }));
   router.put('/workspaces/:wid/sessions/:id', wrap((req, res) => { res.json({ session: repo.saveSession(scopeOf(req), body(req) as ChatSession) }); }));
   router.delete('/workspaces/:wid/sessions/:id', wrap((req, res) => { repo.deleteSession(scopeOf(req), req.params.id); res.json({ ok: true }); }));
-  router.put('/workspaces/:wid/specs/:id', wrap((req, res) => { res.json({ spec: repo.saveSpec(scopeOf(req), body(req) as WorkstreamSpec) }); }));
+  router.put('/workspaces/:wid/specs/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    if (!PLANS[ws.planId]?.customSpecs) throw new RepoError('forbidden', 'ساخت و ویرایش جریان کار سفارشی از پلن Pro به بالا فعال است.');
+    const spec = body(req) as WorkstreamSpec;
+    if (spec.id !== req.params.id) throw new RepoError('invalid', 'شناسهٔ spec نامطابق است.');
+    const issues = validateSpec(spec);
+    if (issues.length) throw new RepoError('invalid', issues.map((i) => i.message).join(' '));
+    res.json({ spec: repo.saveSpec(s, spec) });
+  }));
+
+  // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
+  const today = () => new Date().toISOString().slice(0, 10);
+  router.post('/workspaces/:wid/gap/judge', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const ids = Array.isArray(body(req).objectIds) ? (body(req).objectIds as unknown[]).map(String) : [];
+    const have = repo.listJudgments(s);
+    const todo = ids.map((id) => repo.getObject(s, id)).filter((o): o is NonNullable<typeof o> => !!o && have[o.id]?.version !== o.version);
+    if (todo.length) {
+      const ctl = new AbortController();
+      res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+      const r = await ai.judgeAmbiguity(aiUserOf(req), todo.map((o) => ({ id: o.id, title: o.title, content: o.content })), ctl.signal);
+      for (const o of todo) { const j = r.judgments[o.id]; if (j) repo.saveJudgment(s, o.id, o.version, j); }
+      // the decision-layer call is free for the user (PRD P3) but its real tokens/cost are in the ledger
+      if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
+    }
+    res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s) });
+  }));
+
+  const coachQuota = (s: Scope) => {
+    const limit = PLANS[repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId].coachDailyLimit;
+    const used = repo.dailyUsage(s, today(), 'coach');
+    return { used, limit, remaining: Math.max(0, limit - used) };
+  };
+  router.get('/workspaces/:wid/coach/quota', wrap((req, res) => { res.json(coachQuota(scopeOf(req))); }));
+  router.post('/workspaces/:wid/coach', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const text = String(b.text ?? '').trim();
+    if (!text) throw new RepoError('invalid', 'متنی برای Coach نوشته نشده است.');
+    if (coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ Context Coach برای پلن این فضای کاری پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
+    const nodes = repo.listNodes(s);
+    const nodeId = nodes.some((n) => n.id === b.nodeId) ? String(b.nodeId) : 'business';
+    const node = nodes.find((n) => n.id === nodeId);
+    const chain = new Set(ancestorIds(nodes, nodeId));
+    const existing = repo.listObjects(s).filter((o) => o.status === 'Confirmed' && chain.has(o.nodeId)).slice(0, 12).map((o) => `${o.title}: ${o.content}`);
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const r = await ai.coach(aiUserOf(req), {
+      scope: b.scope === 'onboarding' ? 'onboarding' : 'node', text, nodeId, nodeLabel: node?.label, nodeDescription: node?.description,
+      nodes: nodes.map((n) => ({ id: n.id, label: n.label })), existing,
+      history: Array.isArray(b.history) ? (b.history as Array<{ role: 'user' | 'coach'; content: string }>).slice(-6) : undefined,
+    }, ctl.signal);
+    repo.addDailyUsage(s, today(), 'coach'); // counted only after a successful answer
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'Context Coach', mode: 'coach', creditCost: 0, usage: r.usage, id: newId('led') }));
+    const { usage: _u, ...result } = r;
+    res.json({ result, quota: coachQuota(s), ledger: repo.listLedger(s) });
+  }));
 
   // ── files ──────────────────────────────────────────────────────────
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
@@ -137,7 +198,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (err instanceof FileExtractError) return void res.status(422).json({ error: { code: 'unreadable', message: err.message } });
     if (err instanceof multer.MulterError) return void res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: { code: err.code, message: err.code === 'LIMIT_FILE_SIZE' ? 'حجم فایل بیشتر از ۲۵ مگابایت است.' : 'ارسال فایل نامعتبر بود.' } });
     const a = toAiError(err);
-    res.status(a.kind === 'bad_request' ? 400 : a.kind === 'no_key' || a.kind === 'invalid_key' || a.kind === 'disabled' ? 401 : 502).json({ error: a.toInfo() });
+    res.status(a.kind === 'bad_request' ? 400 : a.kind === 'quota' ? 429 : a.kind === 'no_key' || a.kind === 'invalid_key' || a.kind === 'disabled' ? 401 : 502).json({ error: a.toInfo() });
   });
 
   return { router, files };

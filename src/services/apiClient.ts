@@ -201,6 +201,11 @@ export async function generateDeliverableApi(
     workspaceId: string;
     /** node whose ancestor chain is the relevant context (default: content) */
     targetNodeId?: string;
+    /** the workstream spec: goal, own guardrails, length, and the finished assets this output depends on */
+    specTarget?: string;
+    specGuardrails?: string[];
+    outputBand?: 'short' | 'medium' | 'long';
+    dependencyAssetIds?: string[];
     executionMode: ExecutionMode;
     rebuildNotes?: string;
     /** the plan previewed to the user (credits shown = credits charged) */
@@ -216,6 +221,7 @@ export async function generateDeliverableApi(
       body: JSON.stringify({
         deliverableId: params.deliverableId, deliverableTitle: params.deliverableTitle, deliverableType: params.deliverableType,
         acceptanceCriteria: params.acceptanceCriteria, workspaceId: params.workspaceId, targetNodeId: params.targetNodeId,
+        specTarget: params.specTarget, specGuardrails: params.specGuardrails, outputBand: params.outputBand, dependencyAssetIds: params.dependencyAssetIds,
         userMode: toUserMode(params.executionMode), rebuildNotes: params.rebuildNotes,
         plan: params.preview?.plan, decisionUsage: params.preview?.decisionUsage,
       }),

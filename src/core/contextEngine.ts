@@ -47,31 +47,53 @@ export function resolveActiveContextsForNode(
   });
 }
 
+/** What the decision layer said about one object version: is it too vague to build on? */
+export interface AmbiguityJudgment {
+  version: number;
+  ambiguous: boolean;
+  reason: string;
+}
+export type AmbiguityMap = Record<string, AmbiguityJudgment>;
+
+const activeOf = (objects: ContextObject[]) => objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
+
+/** The object that fills a required item, if any (same matching rule the readiness uses). */
+export function findForRequired(req: WorkstreamSpec['requiredContext'][number], objects: ContextObject[]): ContextObject | undefined {
+  return activeOf(objects).find(
+    (o) => (o.title.toLowerCase().includes(req.label.toLowerCase()) || o.content.toLowerCase().includes(req.key.toLowerCase()) || o.nodeId === req.nodeId) && o.content.trim().length > 0
+  );
+}
+
+/** Objects whose ambiguity is worth judging for this spec: the ones that fill required items. */
+export function objectsToJudge(spec: WorkstreamSpec, objects: ContextObject[]): ContextObject[] {
+  const seen = new Map<string, ContextObject>();
+  for (const req of spec.requiredContext) {
+    const f = findForRequired(req, objects);
+    if (f) seen.set(f.id, f);
+  }
+  return [...seen.values()];
+}
+
 /**
- * Analyzes gaps and calculates readiness for a specific Workstream spec
+ * Analyzes gaps and calculates readiness for a specific Workstream spec.
+ * «مبهم» is a semantic judgement: it comes from the decision layer (`ambiguity`, per object version) or from the
+ * user's own «Needs Review» status — never from how long the text is.
  */
 export function calculateReadinessAndGaps(
   spec: WorkstreamSpec,
   objects: ContextObject[],
-  _relationships: ContextRelationship[] = []
+  _relationships: ContextRelationship[] = [],
+  ambiguity: AmbiguityMap = {}
 ): ReadinessResult {
-  const activeObjects = objects.filter(
-    (o) => o.status !== 'Archived' && o.status !== 'Superseded'
-  );
+  const activeObjects = activeOf(objects);
 
   const gaps: GapItem[] = [];
   let confirmedRequiredCount = 0;
 
   // 1. Check Required Contexts
   for (const req of spec.requiredContext) {
-    // Find matching object in active objects
-    const found = activeObjects.find(
-      (o) =>
-        (o.title.toLowerCase().includes(req.label.toLowerCase()) ||
-          o.content.toLowerCase().includes(req.key.toLowerCase()) ||
-          o.nodeId === req.nodeId) &&
-        o.content.trim().length > 15
-    );
+    const found = findForRequired(req, objects);
+    const judged = found && ambiguity[found.id]?.version === found.version ? ambiguity[found.id] : undefined;
 
     if (!found) {
       gaps.push({
@@ -84,14 +106,14 @@ export function calculateReadinessAndGaps(
         suggestedAnswers: generateSuggestedAnswers(req.key),
         dependsOn: req.dependsOn,
       });
-    } else if (found.status === 'Needs Review' || found.content.trim().length < 30) {
+    } else if (found.status === 'Needs Review' || judged?.ambiguous) {
       gaps.push({
         key: req.key,
         label: req.label,
         importance: 'required',
         nodeId: req.nodeId,
         status: 'ambiguous',
-        question: `مورد «${found.title}» نیاز به شفاف‌سازی دارد: آیا این توضیح به اندازه کافی دقیق است؟`,
+        question: `مورد «${found.title}» مبهم است${judged?.reason ? `: ${judged.reason}` : ' و نیاز به بازبینی دارد.'} می‌خواهی دقیق‌ترش کنی؟`,
         suggestedAnswers: [found.content, 'تکمیل با جزئیات بیشتر', 'تأیید همین متن'],
         dependsOn: req.dependsOn,
       });

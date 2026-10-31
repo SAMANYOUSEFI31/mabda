@@ -11,7 +11,7 @@ import { buildPrompt } from './context.ts';
 import { AiError, toAiError } from './errors.ts';
 import { validateAnswers } from './decision.ts';
 import { loadModelsConfig } from './config.ts';
-import { MockProvider, block, verdict } from './testing/mockProvider.ts';
+import { MockProvider, block, answerChecks, isCheckCall } from './testing/mockProvider.ts';
 import type { AiStreamEvent } from '../../src/types/ai.ts';
 
 const cfg = loadModelsConfig();
@@ -85,7 +85,7 @@ test('BYOK: the user key wins, is marked byok in usage, and is encrypted at rest
 });
 
 test('generate: previewed plan is honoured (credits shown = credits charged) and its decision tokens are in the ledger', async () => {
-  const p = new MockProvider((c) => (isDecision(c) ? decide('medium', 'drafting') : JSON.stringify(c.schema).includes('passedCriteria') ? verdict() : { blocks: [block('b1', 'متن خروجی')] }));
+  const p = new MockProvider((c) => (isCheckCall(c) ? answerChecks(c) : isDecision(c) ? decide('medium', 'drafting') : { blocks: [block('b1', 'متن خروجی')] }));
   const { service } = serviceWith(p);
   const preview = await service.previewPlan('user-12345678', { userMode: 'auto', jobKind: 'deliverable', text: 'جملهٔ موقعیت‌یابی', contextList: [] });
   assert.ok(preview.decisionUsage);
@@ -166,7 +166,7 @@ test('error mapping and decision-answer validation', () => {
 const NODES = ['business', 'u1', 'u2'];
 
 test('usedContext records the exact versions that were injected (Superseded/Archived are not injected, so not recorded)', async () => {
-  const p = new MockProvider((c) => (isDecision(c) ? decide('medium', 'drafting') : JSON.stringify(c.schema).includes('passedCriteria') ? verdict() : { blocks: [block('b1', 'x')] }));
+  const p = new MockProvider((c) => (isCheckCall(c) ? answerChecks(c) : isDecision(c) ? decide('medium', 'drafting') : { blocks: [block('b1', 'x')] }));
   const { service } = serviceWith(p);
   const ev = await collect((emit) => service.generate('user-12345678', {
     deliverableId: 'd', deliverableTitle: 't', deliverableType: 'Deliverable', acceptanceCriteria: ['م'], userMode: 'auto',
@@ -218,4 +218,61 @@ test('extract runs once on the cheap tier and returns sanitised Proposed candida
   assert.equal(r.usage.stages[0].tier, 'cheap');
   const long = await service.extract('user-12345678', { kind: 'file', text: 'کلمه '.repeat(40000), nodeId: 'u1', nodes: [{ id: 'u1', label: 'الف' }] });
   assert.equal(long.truncated, true);
+});
+
+test('generate: spec guardrails + Confirmed Constraints are both checked; each criterion/guardrail gets pass/fail + reason; band + dependency outputs are honoured', async () => {
+  const p = new MockProvider((c) => (isCheckCall(c) ? answerChecks(c, ['g0']) : isDecision(c) ? decide('medium', 'drafting') : { blocks: [block('b1', 'خروجی')] }));
+  const { service } = serviceWith(p);
+  const ev = await collect((emit) => service.generate('user-12345678', {
+    deliverableId: 'd', deliverableTitle: 'کتابچه', deliverableType: 'Deliverable', acceptanceCriteria: ['معیار الف', 'معیار ب'], userMode: 'fast',
+    specTarget: 'ساخت کتابچهٔ برند', specGuardrails: ['از واژهٔ «ارزان» استفاده نکن'], outputBand: 'long',
+    dependencyOutputs: [{ title: 'جمله موقعیت‌یابی', markdown: 'متن قبلی ما' }],
+    contextObjects: [{ id: 'k', type: 'Constraint', status: 'Confirmed', title: 'بدون تخفیف', content: 'تخفیف نداریم', nodeId: 'offer', version: 1 }],
+  }, emit));
+  assert.equal(ev.find((e) => e.type === 'plan') && (ev.find((e) => e.type === 'plan') as Extract<AiStreamEvent, { type: 'plan' }>).plan.outputBand.maxWords, 2000);
+  const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
+  // fast = single → no validator; use auto to validate
+  assert.equal(done.result.checks, undefined);
+  const ev2 = await collect((emit) => service.generate('user-12345678', {
+    deliverableId: 'd', deliverableTitle: 'کتابچه', deliverableType: 'Deliverable', acceptanceCriteria: ['معیار الف', 'معیار ب'], userMode: 'auto',
+    specGuardrails: ['از واژهٔ «ارزان» استفاده نکن'],
+    contextObjects: [{ id: 'k', type: 'Constraint', status: 'Confirmed', title: 'بدون تخفیف', content: 'تخفیف نداریم', nodeId: 'offer', version: 1 }],
+  }, emit));
+  const r = (ev2.at(-1) as Extract<AiStreamEvent, { type: 'done' }>).result;
+  assert.deepEqual(r.checks?.map((k) => [k.kind, k.text, k.passed]), [
+    ['criterion', 'معیار الف', true], ['criterion', 'معیار ب', true],
+    ['guardrail', 'از واژهٔ «ارزان» استفاده نکن', false], ['guardrail', 'بدون تخفیف: تخفیف نداریم', true],
+  ]);
+  assert.equal(r.checks![2].reason, 'دلیل رد g0');
+  assert.equal(r.validationFailed, true);
+  const draft = p.calls.find((c) => c.kind === 'structured' && JSON.stringify(c.schema).includes('blocks'))!;
+  assert.match(draft.prompt.user, /هدف جریان کار: ساخت کتابچهٔ برند/);
+  assert.match(draft.prompt.user, /جمله موقعیت‌یابی[\s\S]*متن قبلی ما/);
+});
+
+test('gap: ambiguity is one batched decision call, judged by meaning, with a reason per object', async () => {
+  const p = new MockProvider((c) => (isCheckCall(c) ? answerChecks(c, ['o1']) : null));
+  const { service } = serviceWith(p);
+  const r = await service.judgeAmbiguity('user-12345678', [{ id: 'a', title: 'مخاطب', content: 'فریلنسرهای ارشد طراحی' }, { id: 'b', title: 'هدف', content: 'رشد خوب' }]);
+  assert.equal(p.calls.length, 1);
+  assert.deepEqual([r.judgments.a.ambiguous, r.judgments.b.ambiguous], [false, true]);
+  assert.equal(r.judgments.b.reason, 'دلیل رد o1');
+  assert.equal(r.usage?.stages[0].tier, 'cheap');
+  assert.deepEqual((await service.judgeAmbiguity('user-12345678', [])).judgments, {});
+});
+
+test('Context Coach: balanced tier, questions + ambiguities + PROPOSALS only (clamped to known nodes), nothing is saved by it', async () => {
+  const p = new MockProvider((c) => (c.kind === 'structured' && JSON.stringify(c.schema).includes('ambiguities') ? {
+    questions: ['مخاطب دقیقاً کیست؟', 'q2', 'q3', 'q4', 'q5'], ambiguities: [{ quote: 'مشتری خوب', why: 'معیار ندارد' }, { quote: '', why: 'x' }],
+    proposals: [{ type: 'Decision', title: 'مخاطب', content: 'فریلنسرها', nodeId: 'ghost' }, { type: 'Nope', title: 'x', content: 'y' }],
+  } : null));
+  const { service } = serviceWith(p);
+  const r = await service.coach('user-12345678', { scope: 'node', text: 'مشتری خوب می‌خواهیم', nodeId: 'u1', nodeLabel: 'کمپین', nodes: [{ id: 'u1', label: 'کمپین' }] });
+  assert.equal(p.calls.length, 1);
+  assert.equal(r.usage.stages[0].tier, 'balanced');
+  assert.equal(r.usage.stages[0].stage, 'coach');
+  assert.equal(r.questions.length, 4);
+  assert.deepEqual(r.ambiguities, [{ quote: 'مشتری خوب', why: 'معیار ندارد' }]);
+  assert.deepEqual(r.proposals.map((o) => [o.title, o.nodeId]), [['مخاطب', 'u1']]);
+  assert.match(p.calls[0].prompt.user, /کمپین/);
 });

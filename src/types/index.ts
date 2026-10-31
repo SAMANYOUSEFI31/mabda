@@ -111,7 +111,11 @@ export interface WorkstreamSpec {
     nodeId: string;
   }>;
   deliverables: Array<DeliverableSpec>;
+  /** rules every output of this workstream must obey; Confirmed Constraint objects are applied on top automatically */
+  guardrails?: string[];
 }
+
+export type OutputBandId = 'short' | 'medium' | 'long';
 
 export interface DeliverableSpec {
   id: string;
@@ -119,6 +123,10 @@ export interface DeliverableSpec {
   type: 'Asset' | 'Deliverable';
   description: string;
   order: number;
+  /** ids of other deliverables of the same spec that must exist before this one can be built (graph, no cycles) */
+  dependsOn?: string[];
+  /** length of the output; default depends on the type */
+  outputBand?: OutputBandId;
   baseCreditCost: {
     fast: number;
     auto: number;
@@ -172,6 +180,8 @@ export interface GeneratedDeliverable {
   usedFileChunks?: UsedFileChunk[];
   /** staleness signature for which the one-time half-price rebuild was already used */
   halfPriceUsedFor?: string;
+  /** per-criterion / per-guardrail validator results shown under the output */
+  checks?: import('./ai').CheckResult[];
   critiqueFeedback?: {
     score: number;
     strengths: string[];
@@ -247,6 +257,10 @@ export interface WorkspacePlan {
   workspaceLimit: number;
   dailyChatLimit: number;
   allowedModes: ExecutionMode[];
+  /** may create and edit custom workstream specs */
+  customSpecs: boolean;
+  /** Context Coach sessions per day (separate from chat) */
+  coachDailyLimit: number;
 }
 
 export interface LedgerEntry {
@@ -254,7 +268,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

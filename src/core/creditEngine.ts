@@ -15,6 +15,8 @@ export const PLANS: Record<PlanId, WorkspacePlan> = {
     workspaceLimit: 1,
     dailyChatLimit: 30,
     allowedModes: ['fast', 'auto'],
+    customSpecs: false,
+    coachDailyLimit: 5,
   },
   pro: {
     id: 'pro',
@@ -25,6 +27,8 @@ export const PLANS: Record<PlanId, WorkspacePlan> = {
     workspaceLimit: 3,
     dailyChatLimit: 70,
     allowedModes: ['fast', 'auto', 'critique'],
+    customSpecs: true,
+    coachDailyLimit: 15,
   },
   max: {
     id: 'max',
@@ -35,6 +39,8 @@ export const PLANS: Record<PlanId, WorkspacePlan> = {
     workspaceLimit: 10,
     dailyChatLimit: 140,
     allowedModes: ['fast', 'auto', 'critique', 'sensitive'],
+    customSpecs: true,
+    coachDailyLimit: 40,
   },
 };
 

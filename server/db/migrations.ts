@@ -128,6 +128,26 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    name: 'decision-layer judgments (gap ambiguity per object version) + daily usage counters (Context Coach)',
+    up(db) {
+      db.exec(`
+        CREATE TABLE context_judgments (
+          object_id TEXT NOT NULL, version INTEGER NOT NULL, kind TEXT NOT NULL,
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          ambiguous INTEGER NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL,
+          PRIMARY KEY (object_id, version, kind)
+        );
+        CREATE INDEX idx_judgments_ws ON context_judgments(workspace_id);
+
+        CREATE TABLE daily_usage (
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (workspace_id, day, kind)
+        );
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -408,6 +408,29 @@ export class Repo {
     return this.fileUsage(s, period);
   }
 
+  // ── decision-layer judgments + daily counters ───────────────────────────
+  /** latest judgment per object, valid only for the version it was made on */
+  listJudgments(s: Scope): Record<string, { version: number; ambiguous: boolean; reason: string }> {
+    const out: Record<string, { version: number; ambiguous: boolean; reason: string }> = {};
+    const rows = this.db.prepare("SELECT object_id, version, ambiguous, reason FROM context_judgments WHERE workspace_id = ? AND user_id = ? AND kind = 'ambiguity' ORDER BY version").all(s.workspaceId, s.userId) as Array<Record<string, unknown>>;
+    for (const r of rows) out[r.object_id as string] = { version: r.version as number, ambiguous: !!r.ambiguous, reason: r.reason as string };
+    return out;
+  }
+
+  saveJudgment(s: Scope, objectId: string, version: number, j: { ambiguous: boolean; reason: string }) {
+    this.db.prepare("INSERT OR REPLACE INTO context_judgments (object_id, version, kind, user_id, workspace_id, ambiguous, reason, created_at) VALUES (?,?,'ambiguity',?,?,?,?,?)")
+      .run(objectId, version, s.userId, s.workspaceId, j.ambiguous ? 1 : 0, j.reason, now());
+  }
+
+  dailyUsage(s: Scope, day: string, kind: string): number {
+    return (this.db.prepare('SELECT count FROM daily_usage WHERE workspace_id = ? AND day = ? AND kind = ? AND user_id = ?').get(s.workspaceId, day, kind, s.userId) as { count: number } | undefined)?.count ?? 0;
+  }
+
+  addDailyUsage(s: Scope, day: string, kind: string): number {
+    this.db.prepare('INSERT INTO daily_usage (user_id, workspace_id, day, kind, count) VALUES (?,?,?,?,1) ON CONFLICT(workspace_id, day, kind) DO UPDATE SET count = count + 1').run(s.userId, s.workspaceId, day, kind);
+    return this.dailyUsage(s, day, kind);
+  }
+
   // ── whole-workspace state + one-time legacy import ───────────────────────
   state(s: Scope) {
     this.assertWorkspace(s);
@@ -418,6 +441,7 @@ export class Repo {
       nodes: this.listNodes(s), objects, relationships: this.listRelationships(s), notes: this.listNotes(s),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
       stale: computeStaleAssets(deliverables, objects),
+      judgments: this.listJudgments(s),
     };
   }
 

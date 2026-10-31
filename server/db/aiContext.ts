@@ -36,7 +36,7 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
       return { contextList: lite(s), nodeLabels, excerpts };
     },
 
-    forGenerate(workspaceId, { targetNodeId, title, criteria }) {
+    forGenerate(workspaceId, { targetNodeId, title, criteria, dependencyAssetIds }) {
       const s = scopeOf(workspaceId);
       const nodes = repo.listNodes(s);
       // '*' = the whole workspace (onboarding's first asset uses every fact the user just confirmed)
@@ -45,6 +45,8 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
       return {
         contextObjects: lite(s, chain), contextList: lite(s), nodeLabels: Object.fromEntries(nodes.map((n) => [n.id, n.label])),
         excerpts: files.excerpts(s, `${title}\n${criteria.join('\n')}`),
+        // finished outputs this deliverable depends on, read from the database (not from the browser)
+        dependencyOutputs: (dependencyAssetIds ?? []).map((id) => repo.getDeliverable(s, id)).filter((d): d is NonNullable<typeof d> => !!d).map((d) => ({ title: d.title, markdown: d.content })),
       };
     },
   };

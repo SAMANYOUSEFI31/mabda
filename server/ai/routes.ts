@@ -17,7 +17,7 @@ export const managedAiEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABD
  */
 export interface ContextSource {
   forChat(workspaceId: string, o: { scopeNodeId?: string; message: string }): Partial<ChatRequest>;
-  forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[] }): Partial<GenerateRequest>;
+  forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[]; dependencyAssetIds?: string[] }): Partial<GenerateRequest>;
 }
 
 const USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
@@ -107,10 +107,13 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
       contextList: b.contextList ? asArray(b.contextList) : undefined,
       userMode: (['auto', 'fast', 'deep', 'sensitive'].includes(b.userMode) ? b.userMode : 'auto') as UserMode,
       rebuildNotes: typeof b.rebuildNotes === 'string' ? b.rebuildNotes : undefined, plan: b.plan, decisionUsage: b.decisionUsage,
+      specTarget: typeof b.specTarget === 'string' ? b.specTarget : undefined,
+      specGuardrails: asArray<unknown>(b.specGuardrails).filter((g): g is string => typeof g === 'string').slice(0, 50),
+      outputBand: ['short', 'medium', 'long'].includes(b.outputBand) ? b.outputBand : undefined,
     };
     try {
       if (opts.source && typeof b.workspaceId === 'string') {
-        gen = { ...gen, ...opts.source.forGenerate(b.workspaceId, { targetNodeId: typeof b.targetNodeId === 'string' ? b.targetNodeId : undefined, title: b.deliverableTitle, criteria: gen.acceptanceCriteria }) };
+        gen = { ...gen, ...opts.source.forGenerate(b.workspaceId, { targetNodeId: typeof b.targetNodeId === 'string' ? b.targetNodeId : undefined, title: b.deliverableTitle, criteria: gen.acceptanceCriteria, dependencyAssetIds: asArray<unknown>(b.dependencyAssetIds).filter((x): x is string => typeof x === 'string').slice(0, 20) }) };
       }
     } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
     await service.generate(userId, gen, out.emit, out.signal);
