@@ -5,7 +5,10 @@
 
 import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable } from '../types';
-import { Badge, Button, Card, Divider, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
+import { Alert, Badge, Button, Card, Divider, Markdown, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
+import { PlanLine } from './AiNotices';
+import { BlockView } from './BlockView';
+import { contextDraftFromBlock } from '../core/blocks';
 
 interface ContextReplayCardProps {
   deliverable: GeneratedDeliverable;
@@ -14,6 +17,7 @@ interface ContextReplayCardProps {
   onRebuild: (deliverable: GeneratedDeliverable) => void;
   isRebuilding?: boolean;
 }
+
 
 export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   deliverable,
@@ -71,10 +75,23 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="body-md whitespace-pre-line rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
-        {deliverable.content}
+      {deliverable.validationFailed && (
+        <Alert intent="warning" title="اعتبارسنج این خروجی را کامل تأیید نکرد">
+          بعد از تلاش و ارتقای مدل هم بعضی معیارهای پذیرش یا گاردریل‌ها برقرار نبود. پیش از استفاده خودت بازبینی کن یا دوباره بساز.
+        </Alert>
+      )}
+
+      {/* Main content (Markdown; blocks keep per-block actions) */}
+      <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
+        {deliverable.blocks && deliverable.blocks.length > 0 ? (
+          deliverable.blocks.map((b) => (
+            <BlockView key={b.id} block={b} onAddToContext={(blk) => onOpenContextObject(contextDraftFromBlock(blk, deliverable.workspaceId))} />
+          ))
+        ) : (
+          <Markdown>{deliverable.content}</Markdown>
+        )}
       </div>
+      <PlanLine plan={deliverable.plan} usage={deliverable.usage} credits={deliverable.creditCost} />
 
       {/* Critique breakdown */}
       {showCritique && deliverable.critiqueFeedback && (

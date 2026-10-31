@@ -13,3 +13,4 @@ export { Tabs, SegmentedControl, Table, List, ListItem, BottomNav, NavItem, Brea
 export type { TabItem, TableColumn } from './Navigation.tsx';
 export * from './format.ts';
 export * from './mabda.tsx';
+export { Markdown } from './Markdown.tsx';

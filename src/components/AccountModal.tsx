@@ -13,6 +13,7 @@ interface AccountModalProps {
   currentWorkspace: Workspace;
   onExportAllData: () => void;
   onDeleteAccount: () => void;
+  onOpenAiSettings: () => void;
 }
 
 export const AccountModal: React.FC<AccountModalProps> = ({
@@ -21,6 +22,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   currentWorkspace,
   onExportAllData,
   onDeleteAccount,
+  onOpenAiSettings,
 }) => {
   const [phone] = useState('09123456789');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -53,6 +55,11 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               داده‌های منبع حقیقت و گفتگوهای شما رمزنگاری‌شده نگهداری می‌شوند و هرگز برای آموزش مدل‌های عمومی استفاده نمی‌شوند.
             </p>
           </Card>
+
+          <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
+            <span className="label-md text-text-default">هوش مصنوعی</span>
+            <Button variant="secondary" iconStart="Settings" fullWidth onClick={onOpenAiSettings}>کلید API من (BYOK) و وضعیت مدل‌ها</Button>
+          </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
             <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>

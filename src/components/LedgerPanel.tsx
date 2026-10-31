@@ -27,6 +27,9 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
   const totalCreditsUsed = ledgerEntries.reduce((sum, e) => sum + e.creditCost, 0);
   const totalAiCostUsd = ledgerEntries.reduce((sum, e) => sum + e.estimatedAiCostUsd, 0);
 
+  const TIER_FA = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' } as const;
+  const EFFORT_FA = { minimal: 'حداقل', low: 'کم', medium: 'متوسط', high: 'زیاد', max: 'بیشینه' } as const;
+  const PATTERN_FA = { single: 'تک‌مرحله‌ای', cascade: 'آبشاری', critique: 'نقد و اصلاح' } as const;
   const redLines: Array<{ title: string; text: string }> = [
     {
       title: 'سهم هزینهٔ AI از درآمد کاربر',
@@ -70,7 +73,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
             value={`${formatNumber(currentWorkspace.todayChatCount)} / ${formatNumber(plan.dailyChatLimit)}`}
             delta="سقف منصفانهٔ روزانه"
           />
-          <Stat label="تخمین هزینهٔ زیرساخت AI" value={formatUsd(totalAiCostUsd, 4)} delta="حاشیهٔ سود پایدار (P5)" />
+          <Stat label="هزینهٔ زیرساخت AI (مصرف ثبت‌شده)" value={formatUsd(totalAiCostUsd, 4)} delta="حاشیهٔ سود پایدار (P5)" />
         </div>
       </Card>
 
@@ -100,12 +103,32 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
                 ? <ModeBadge value={e.mode as keyof typeof MODE_META} />
                 : <Badge intent="neutral" icon={false}>{e.mode === 'chat_deep' ? 'گفتگوی عمیق' : 'گفتگوی Auto'}</Badge>,
             },
-            { key: 'tokens', label: 'توکن ورودی / خروجی', numeric: true, render: (e) => `${formatNumber(e.inputTokens)} / ${formatNumber(e.outputTokens)}` },
+            {
+              key: 'plan',
+              label: 'مدل و الگو',
+              render: (e) => e.plan ? (
+                <span className="flex flex-col gap-stack-xs caption text-text-subtle">
+                  <span>{TIER_FA[e.stages?.filter((x) => x.stage !== 'decision' && x.stage !== 'validate').at(-1)?.tier ?? e.plan.tier]} · {EFFORT_FA[e.plan.effort]} · {PATTERN_FA[e.plan.pattern]}</span>
+                  {e.byok && <Badge intent="info" icon="Lock">کلید شخصی</Badge>}
+                </span>
+              ) : <span className="caption text-text-subtlest">—</span>,
+            },
+            {
+              key: 'tokens',
+              label: 'توکن ورودی / خروجی',
+              numeric: true,
+              render: (e) => (
+                <span className="flex flex-col">
+                  <span>{formatNumber(e.inputTokens)} / {formatNumber(e.outputTokens)}</span>
+                  {(e.cachedTokens || e.thinkingTokens) ? <span className="caption text-text-subtle">cache {formatNumber(e.cachedTokens ?? 0)} · thinking {formatNumber(e.thinkingTokens ?? 0)}</span> : null}
+                </span>
+              ),
+            },
             {
               key: 'creditCost',
               label: 'اعتبار کسرشده',
               numeric: true,
-              render: (e) => (e.creditCost === 0 ? <span className="text-text-success">رایگان (Auto)</span> : `${formatNumber(e.creditCost)} اعتبار`),
+              render: (e) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (Auto)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
             },
             { key: 'estimatedAiCostUsd', label: 'هزینهٔ AI', numeric: true, render: (e) => formatUsd(e.estimatedAiCostUsd, 4) },
             { key: 'status', label: 'وضعیت', render: (e) => <LedgerStatusBadge value={e.status} /> },

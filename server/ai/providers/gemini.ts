@@ -9,8 +9,9 @@ export class GeminiProvider implements ModelProvider {
   readonly id = 'gemini';
   private readonly client: GoogleGenAI;
 
-  constructor(apiKey: string, client?: GoogleGenAI) {
-    this.client = client ?? new GoogleGenAI({ apiKey });
+  /** `baseUrl` is for local API stand-ins in integration tests (MABDA_GEMINI_BASE_URL); production leaves it unset. */
+  constructor(apiKey: string, client?: GoogleGenAI, baseUrl = process.env.MABDA_GEMINI_BASE_URL) {
+    this.client = client ?? new GoogleGenAI({ apiKey, ...(baseUrl ? { httpOptions: { baseUrl } } : {}) });
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {

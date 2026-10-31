@@ -56,7 +56,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   nodes = DEFAULT_TREE_NODES,
   defaultNodeId = 'business',
 }) => {
-  const isEditing = !!object;
+  const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
 
   const [title, setTitle] = useState(object?.title || '');
   const [content, setContent] = useState(object?.content || '');

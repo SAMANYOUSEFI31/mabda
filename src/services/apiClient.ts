@@ -3,166 +3,231 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ContextObject, ContextSuggestion, ExecutionMode } from '../types';
+import type {
+  AiErrorInfo, AiPlan, AiStatus, AiStreamEvent, ContentBlock, ContextObject, ExecutionMode, GenerationResult, JobKind,
+  StageName, StageUsage, Tier, UserMode,
+} from '../types';
 
-export async function sendChatMessage(params: {
-  message: string;
-  contextList: ContextObject[];
-  executionMode: 'auto' | 'deep';
-  chatMode?: 'discovery' | 'audit' | 'advisor';
-  selectedNodeIds?: string[];
-  history?: Array<{ role: string; content: string }>;
-}): Promise<{
-  reply: string;
-  suggestions: ContextSuggestion[];
-  reasoningNotes?: string;
-  groundedNodeIds?: string[];
-  groundedCount?: number;
-}> {
-  const effectiveNodeIds = params.selectedNodeIds && params.selectedNodeIds.length > 0
-    ? params.selectedNodeIds
-    : ['business', 'brand', 'product', 'offer', 'content'];
+/**
+ * Talks to /api/ai/*. There is NO local fallback: every failure is a structured AiClientError that the UI
+ * shows with a retry button. The server limits (chat 30s, deliverable 120s) are the real timeouts;
+ * the client adds a small margin so the server's structured error wins the race.
+ */
+const CLIENT_TIMEOUT_MS = { chat: 35_000, deliverable: 125_000, short: 25_000 } as const;
 
-  const filteredContext = params.contextList.filter(
-    (c) => effectiveNodeIds.includes(c.nodeId)
+export class AiClientError extends Error {
+  constructor(public readonly info: AiErrorInfo) {
+    super(info.message);
+    this.name = 'AiClientError';
+  }
+}
+
+const USER_KEY = 'mabda_user_id';
+/** Opaque browser-generated id; the server keys the BYOK vault by it until real accounts exist. */
+export function getUserId(): string {
+  let id = localStorage.getItem(USER_KEY);
+  if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+    id = `u_${crypto.randomUUID().replace(/-/g, '')}`;
+    localStorage.setItem(USER_KEY, id);
+  }
+  return id;
+}
+
+const headers = () => ({ 'Content-Type': 'application/json', 'x-mabda-user': getUserId() });
+
+const networkError = (aborted: boolean, timedOut: boolean): AiClientError =>
+  new AiClientError(
+    timedOut
+      ? { kind: 'timeout', message: 'پاسخ به‌موقع نرسید. دوباره تلاش کن.', retryable: true }
+      : aborted
+      ? { kind: 'aborted', message: 'درخواست لغو شد.', retryable: true }
+      : { kind: 'provider', message: 'ارتباط با سرور برقرار نشد. اینترنت و اجرای سرور را بررسی کن و دوباره تلاش کن.', retryable: true },
   );
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6500);
+interface Guard { signal: AbortSignal; done: () => void; timedOut: () => boolean }
+function guard(ms: number, external?: AbortSignal): Guard {
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, ms);
+  const onExt = () => ctl.abort();
+  external?.addEventListener('abort', onExt, { once: true });
+  return { signal: ctl.signal, timedOut: () => timedOut, done: () => { clearTimeout(timer); external?.removeEventListener('abort', onExt); } };
+}
 
+async function errorFromResponse(res: Response): Promise<AiClientError> {
+  try {
+    const body = await res.json();
+    if (body?.error?.kind) return new AiClientError(body.error as AiErrorInfo);
+  } catch { /* not JSON */ }
+  return new AiClientError({ kind: 'provider', message: `خطای سرور (${res.status}). دوباره تلاش کن.`, retryable: res.status >= 500 });
+}
+
+/** Reads an NDJSON body, calling `onEvent` per line. Resolves with the `done` result or throws the `error` event. */
+async function readStream(res: Response, onEvent: (e: AiStreamEvent) => void): Promise<GenerationResult> {
+  if (!res.body) throw new AiClientError({ kind: 'provider', message: 'پاسخ سرور خالی بود.', retryable: true });
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let result: GenerationResult | null = null;
+  const handle = (line: string) => {
+    if (!line.trim()) return;
+    const ev = JSON.parse(line) as AiStreamEvent;
+    if (ev.type === 'error') throw new AiClientError(ev.error);
+    if (ev.type === 'done') result = ev.result;
+    onEvent(ev);
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf('\n')) >= 0) { handle(buf.slice(0, i)); buf = buf.slice(i + 1); }
+  }
+  handle(buf);
+  if (!result) throw new AiClientError({ kind: 'provider', message: 'پاسخ ناقص بود (ارتباط وسط کار قطع شد). دوباره تلاش کن.', retryable: true });
+  return result;
+}
+
+async function post<T>(path: string, body: unknown, ms: number, external?: AbortSignal): Promise<T> {
+  const g = guard(ms, external);
+  try {
+    const res = await fetch(path, { method: 'POST', headers: headers(), body: JSON.stringify(body), signal: g.signal });
+    if (!res.ok) throw await errorFromResponse(res);
+    return (await res.json()) as T;
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
+}
+
+const lite = (c: ContextObject) => ({ id: c.id, type: c.type, status: c.status, title: c.title, content: c.content, nodeId: c.nodeId, createdAt: c.createdAt });
+
+export async function getAiStatus(signal?: AbortSignal): Promise<AiStatus> {
+  const g = guard(CLIENT_TIMEOUT_MS.short, signal);
+  try {
+    const res = await fetch('/api/ai/status', { headers: headers(), signal: g.signal });
+    if (!res.ok) throw await errorFromResponse(res);
+    return (await res.json()) as AiStatus;
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
+}
+
+export async function putByokKey(apiKey: string): Promise<{ last4: string }> {
+  const g = guard(CLIENT_TIMEOUT_MS.short);
+  try {
+    const res = await fetch('/api/ai/byok', { method: 'PUT', headers: headers(), body: JSON.stringify({ apiKey }), signal: g.signal });
+    if (!res.ok) throw await errorFromResponse(res);
+    return (await res.json()) as { last4: string };
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
+}
+export async function deleteByokKey(): Promise<void> {
+  const g = guard(CLIENT_TIMEOUT_MS.short);
+  try {
+    const res = await fetch('/api/ai/byok', { method: 'DELETE', headers: headers(), signal: g.signal });
+    if (!res.ok) throw await errorFromResponse(res);
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
+}
+
+/** UI "execution mode" → router user mode (critique is the router's "deep"). */
+export const toUserMode = (m: ExecutionMode): UserMode => (m === 'critique' ? 'deep' : m);
+
+export interface PlanPreview { plan: AiPlan; decisionUsage?: StageUsage }
+
+/** Ask the router what it would do (no generation) so credits can be shown before the run. */
+export function previewPlan(params: { executionMode: ExecutionMode; jobKind: JobKind; text: string; contextList: ContextObject[] }, signal?: AbortSignal): Promise<PlanPreview> {
+  return post('/api/ai/plan', { userMode: toUserMode(params.executionMode), jobKind: params.jobKind, text: params.text, contextList: params.contextList.map(lite) }, CLIENT_TIMEOUT_MS.short, signal);
+}
+
+export interface ChatHandlers {
+  onPlan?: (plan: AiPlan) => void;
+  onBlock?: (block: ContentBlock) => void;
+  onStage?: (stage: StageName, tier: Tier) => void;
+}
+
+/** Streams a chat answer as structured blocks. Rejects with AiClientError. */
+export async function streamChat(
+  params: {
+    message: string;
+    contextList: ContextObject[];
+    focusNodeIds?: string[];
+    chatMode?: 'discovery' | 'audit' | 'advisor';
+    deep: boolean;
+    history?: Array<{ role: string; content: string }>;
+  },
+  handlers: ChatHandlers = {},
+  signal?: AbortSignal,
+): Promise<GenerationResult> {
+  const g = guard(CLIENT_TIMEOUT_MS.chat, signal);
+  try {
     const res = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: headers(), signal: g.signal,
       body: JSON.stringify({
-        ...params,
-        contextList: filteredContext,
+        message: params.message, contextList: params.contextList.map(lite), focusNodeIds: params.focusNodeIds ?? [],
+        chatMode: params.chatMode, mode: params.deep ? 'deep' : 'auto', history: params.history ?? [],
       }),
-      signal: controller.signal,
     });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      throw new Error(`Chat error status: ${res.status}`);
-    }
-    const data = await res.json();
-    return {
-      reply: data.reply,
-      suggestions: data.suggestions || [],
-      reasoningNotes: data.reasoningNotes || `تطبیق داده‌شده با ${filteredContext.length} شیء دانش در شاخه‌های [${effectiveNodeIds.join(', ')}]`,
-      groundedNodeIds: effectiveNodeIds,
-      groundedCount: filteredContext.length,
-    };
-  } catch (error) {
-    console.warn('Chat API fetch bypassed, using instant client fallback:', error);
-    const text = params.message.toLowerCase();
-    const suggestions: ContextSuggestion[] = [];
-    const mode = params.chatMode || 'discovery';
-
-    // Smart suggestion extractor
-    if (text.includes('تصمیم') || text.includes('می‌خواهیم') || text.includes('قصد داریم') || text.includes('متمرکز')) {
-      const isOffer = text.includes('قیمت') || text.includes('تومان') || text.includes('هزینه');
-      const isBrand = text.includes('لحن') || text.includes('نام') || text.includes('شعار');
-      const isContent = text.includes('محتوا') || text.includes('قیف') || text.includes('پست');
-      const nodeId = isOffer ? 'offer' : isBrand ? 'brand' : isContent ? 'content' : 'business';
-
-      suggestions.push({
-        id: `sug_cl_${Date.now()}`,
-        type: 'Decision',
-        nodeId,
-        title: isOffer ? 'تصمیم مدل قیمت‌گذاری و آفر' : isBrand ? 'تصمیم هویت و لحن برند' : 'تصمیم کلان راهبردی',
-        content: params.message.trim(),
-        reason: 'استخراج مستقیم از گفتگوی کاربر بر اساس اصل P6 مبدأ (ساختار، خود دارایی است)',
-      });
-    } else if (text.includes('مشتری') || text.includes('مخاطب') || text.includes('فریلنسر') || text.includes('تیم')) {
-      suggestions.push({
-        id: `sug_cl_aud_${Date.now()}`,
-        type: 'Fact',
-        nodeId: 'business',
-        title: 'تعریف ویژگی‌های مخاطب هدف (ICP)',
-        content: params.message.trim(),
-        reason: 'شناسایی مشخصات بخش بازار و پرسونای کلیدی',
-      });
-    } else if (text.includes('قیمت') || text.includes('تومان') || text.includes('دلار') || text.includes('تعرفه')) {
-      suggestions.push({
-        id: `sug_cl_prc_${Date.now()}`,
-        type: 'Constraint',
-        nodeId: 'offer',
-        title: 'قید مرز مالی و قیمت‌گذاری',
-        content: params.message.trim(),
-        reason: 'شناسایی مرز تجاری و تعهدات مالی',
-      });
-    }
-
-    let reply = '';
-    if (mode === 'audit') {
-      reply = `🔍 **ممیزی تطابق با منبع حقیقت (Truth Tree Audit):**\n\nپیام شما با ${filteredContext.length} قلم دادهٔ قطعی (Confirmed) در شاخه‌های [${effectiveNodeIds.join('، ')}] ارزیابی شد.\n\n• **بررسی عدم تعارض:** مغایرت آشکاری با اصول پایه‌ای منبع حقیقت مشاهده نشد.\n• **ارزیابی انسجام:** بیانات شما ساختار تصمیمات قبلی را تقویت می‌کند.\n\n${suggestions.length > 0 ? '💡 یک شیء جدید برای به‌روزرسانی منبع حقیقت در کادر زیر پیشنهاد شده است.' : 'می‌توانید برای تست تعارض یا تغییر متغیرهای بازار، فرضیه جدیدی مطرح کنید.'}`;
-    } else if (mode === 'advisor') {
-      reply = `📊 **مشاوره راهبردی و تدوین آفر (Mabda Advisor):**\n\nبا تکیه بر اصول اقتصاد صادقانه (P5) و هم‌راستایی زنجیره ارزش:\n\n۱. **تحلیل زاویه ورود:** پیشنهادی که مطرح کردید باید مستقیماً «هزینه عدم اقدام» را برای مشتری برجسته کند نه فقط امکانات محصول را.\n۲. **تفکیک ارزش از زمان:** اطمینان حاصل کنید که خروجی نهایی به صورت دارایی مستقل (Asset) تحویل داده شود تا مقیاس‌پذیری حفظ گردد.\n۳. **گام بعدی:** تثبیت این تصمیم در منبع حقیقت باعث می‌شود تمام کارهای بعدی (سایت، آفر، پروتکل) به‌طور خودکار این اصل را رعایت کنند.`;
-    } else {
-      reply = `✅ پیام شما دریافت و تحلیل شد.\n\nدر متدولوژی مبدأ، گفتگوی آزاد صرفاً یک ابزار کشف است و دارایی اصلی زمانی شکل می‌گیرد که تصمیمات به صورت کانتکست ساخت‌یافته درختی ثبت شوند.\n\n${
-        suggestions.length > 0
-          ? 'نکته‌ای که فرمودید دارای بار راهبردی است و در کادر پایین برای ثبت در منبع حقیقت (شاخه مربوطه) استخراج گردید. با زدن دکمه «تأیید و افزودن به دانش»، فوراً به عنوان سنگ بنای تمام خروجی‌های بعدی منظور خواهد شد.'
-          : `این پیام در نشست گفتگو ثبت شد و در فرآیند استدلال جاری مدنظر قرار دارد. این نشست هم‌اکنون به شاخه‌های [${effectiveNodeIds.join('، ')}] متصل است.`
-      }`;
-    }
-
-    return {
-      reply,
-      suggestions,
-      reasoningNotes: `بررسی فوری بر پایه ${filteredContext.length} شیء دانش تأییدشده در شاخه‌های [${effectiveNodeIds.join(', ')}]`,
-      groundedNodeIds: effectiveNodeIds,
-      groundedCount: filteredContext.length,
-    };
-  }
+    if (!res.ok) throw await errorFromResponse(res);
+    return await readStream(res, (e) => {
+      if (e.type === 'plan') handlers.onPlan?.(e.plan);
+      else if (e.type === 'block') handlers.onBlock?.(e.block);
+      else if (e.type === 'stage') handlers.onStage?.(e.stage, e.tier);
+    });
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
 }
 
-export async function generateDeliverableApi(params: {
-  deliverableId: string;
-  deliverableTitle: string;
-  acceptanceCriteria: string[];
-  contextObjects: ContextObject[];
-  executionMode: ExecutionMode;
-  rebuildNotes?: string;
-}): Promise<{
-  content: string;
-  critiqueFeedback: any;
-  usedContextIds: string[];
-}> {
+export interface GenerateHandlers {
+  onPlan?: (plan: AiPlan) => void;
+  onStage?: (stage: StageName, tier: Tier) => void;
+}
+
+export async function generateDeliverableApi(
+  params: {
+    deliverableId: string;
+    deliverableTitle: string;
+    deliverableType: 'Asset' | 'Deliverable';
+    acceptanceCriteria: string[];
+    contextObjects: ContextObject[];
+    contextList: ContextObject[];
+    executionMode: ExecutionMode;
+    rebuildNotes?: string;
+    /** the plan previewed to the user (credits shown = credits charged) */
+    preview?: PlanPreview;
+  },
+  handlers: GenerateHandlers = {},
+  signal?: AbortSignal,
+): Promise<GenerationResult> {
+  const g = guard(CLIENT_TIMEOUT_MS.deliverable, signal);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-    const res = await fetch('/api/ai/generate-deliverable', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-      signal: controller.signal,
+    const res = await fetch('/api/ai/generate', {
+      method: 'POST', headers: headers(), signal: g.signal,
+      body: JSON.stringify({
+        deliverableId: params.deliverableId, deliverableTitle: params.deliverableTitle, deliverableType: params.deliverableType,
+        acceptanceCriteria: params.acceptanceCriteria, contextObjects: params.contextObjects.map(lite), contextList: params.contextList.map(lite),
+        userMode: toUserMode(params.executionMode), rebuildNotes: params.rebuildNotes,
+        plan: params.preview?.plan, decisionUsage: params.preview?.decisionUsage,
+      }),
     });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      throw new Error(`Deliverable generation error status: ${res.status}`);
-    }
-    return await res.json();
-  } catch (error) {
-    console.warn('Deliverable API fetch bypassed, using instant client fallback:', error);
-    const audience =
-      params.contextObjects.find((c) => c.title.includes('مخاطب') || c.nodeId === 'business')?.content ||
-      'فریلنسرها و مشاوران مستقل';
-    const valProp =
-      params.contextObjects.find((c) => c.title.includes('ارزش') || c.nodeId === 'product')?.content ||
-      'تبدیل دانش پراکنده به دارایی پایدار با منبع حقیقت';
-
-    return {
-      content: `### ${params.deliverableTitle} (نسخهٔ ${params.executionMode === 'critique' ? 'Critique' : 'Auto'})\n\nبرای **${audience}**، این خروجی بر اساس منبع حقیقت کسب‌وکار تدوین شده است تا **${valProp}** را تضمین کند.\n\n#### ستون‌های اصلی:\n۱. هم‌راستایی کامل با فکت‌ها و تصمیمات ثبت‌شده.\n۲. حذف کلی‌گویی و انطباق با معیارهای پذیرش.\n۳. قابلیت بازسازی لحظه‌ای با Context Replay.`,
-      critiqueFeedback: {
-        score: 91,
-        strengths: ['انطباق با هویت کسب‌وکار', 'لحن صریح و کاربردی'],
-        improvementsMade: ['حذف حواشی و تدوین ساختار تحویل‌پذیر'],
-        checklistPassed: params.acceptanceCriteria.length > 0 ? params.acceptanceCriteria : ['انطباق با هویت'],
-      },
-      usedContextIds: params.contextObjects.map((c) => c.id),
-    };
-  }
+    if (!res.ok) throw await errorFromResponse(res);
+    return await readStream(res, (e) => {
+      if (e.type === 'plan') handlers.onPlan?.(e.plan);
+      else if (e.type === 'stage') handlers.onStage?.(e.stage, e.tier);
+    });
+  } catch (e) {
+    if (e instanceof AiClientError) throw e;
+    throw networkError(g.signal.aborted, g.timedOut());
+  } finally { g.done(); }
 }
+
+export const asAiError = (e: unknown): AiErrorInfo =>
+  e instanceof AiClientError ? e.info : { kind: 'provider', message: 'خطای ناشناخته. دوباره تلاش کن.', retryable: true };
