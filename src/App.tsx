@@ -327,7 +327,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col md:flex-row font-sans selection:bg-[#9f1239] selection:text-white pb-24 md:pb-0">
+    <div className="min-h-screen bg-surface-sunken text-text-default flex flex-col md:flex-row font-sans selection:bg-bg-brand-bold-hover selection:text-text-default pb-inset-lg md:pb-space-0">
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
       <AppNavigation
         currentWorkspace={currentWorkspace}
@@ -351,7 +351,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-space-0">
         {/* Desktop Minimal Top Status Bar with Breadcrumbs & Quick Actions */}
         <TopStatusBar
           currentWorkspace={currentWorkspace}
@@ -367,7 +367,7 @@ export default function App() {
         />
 
         {/* Main Canvas */}
-        <main className="max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 space-y-6">
+        <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {/* Contradiction Detection Banner */}
           <ContradictionBanner
             contradictions={contradictions}
@@ -376,35 +376,35 @@ export default function App() {
 
         {/* TAB 1: Context & Source of Truth */}
         {activeTab === 'context' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-stack-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
               <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">
+                <h1 className="text-heading-md font-bold text-text-default">
                   منبع حقیقت: {currentWorkspace.name}
                 </h1>
-                <p className="text-xs text-[#a1a1aa] mt-1">
+                <p className="text-body-sm text-text-subtle mt-stack-xs">
                   «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
                 </p>
               </div>
 
               {/* View Switcher: Document vs Table */}
-              <div className="flex items-center gap-2 bg-[#18181b] border border-[#27272a] p-1 rounded-lg text-xs self-start sm:self-auto">
+              <div className="flex items-center gap-inline-sm bg-surface-raised border border-border-default p-inset-xs rounded-control-sm text-body-sm self-start sm:self-auto">
                 <button
                   onClick={() => setContextViewMode('doc')}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-colors ${
                     contextViewMode === 'doc'
-                      ? 'bg-[#e11d48] text-white shadow-xs'
-                      : 'text-[#a1a1aa] hover:text-white'
+                      ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                      : 'text-text-subtle hover:text-text-default'
                   }`}
                 >
                   نمای سند (Document View)
                 </button>
                 <button
                   onClick={() => setContextViewMode('table')}
-                  className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                  className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-colors ${
                     contextViewMode === 'table'
-                      ? 'bg-[#e11d48] text-white shadow-xs'
-                      : 'text-[#a1a1aa] hover:text-white'
+                      ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                      : 'text-text-subtle hover:text-text-default'
                   }`}
                 >
                   نمای جدول (Table View)
@@ -464,7 +464,7 @@ export default function App() {
 
         {/* TAB 3: Smart Chat */}
         {activeTab === 'chat' && (
-          <div className="space-y-2">
+          <div className="space-y-stack-sm">
             <SmartChat
               currentWorkspace={currentWorkspace}
               allContextObjects={workspaceContexts}
@@ -558,21 +558,21 @@ export default function App() {
 
       {/* New Workspace Modal */}
       {isNewWorkspaceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs text-right">
-          <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-white">ایجاد فضای کاری جدید (Workspace)</h3>
+        <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
+          <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-overlay-md p-inset-xl space-y-stack-lg shadow-overlay">
+            <div className="flex items-center justify-between border-b border-border-default pb-inset-md">
+              <h3 className="text-body-md font-bold text-text-default">ایجاد فضای کاری جدید (Workspace)</h3>
               <button
                 onClick={() => setIsNewWorkspaceModalOpen(false)}
-                className="text-[#a1a1aa] hover:text-white"
+                className="text-text-subtle hover:text-text-default"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateWorkspace} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateWorkspace} className="space-y-stack-md text-body-sm">
               <div>
-                <label className="block text-[#fafafa] font-semibold mb-1">
+                <label className="block text-text-default font-semibold mb-stack-xs">
                   نام فضای کاری یا نام برند:
                 </label>
                 <input
@@ -581,25 +581,25 @@ export default function App() {
                   placeholder="مثلاً: استودیو دیزاین نوین"
                   value={newWsName}
                   onChange={(e) => setNewWsName(e.target.value)}
-                  className="w-full bg-[#09090b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
+                  className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
                 />
               </div>
 
-              <div className="p-3 bg-[#09090b] rounded-lg border border-[#27272a] text-[#a1a1aa] leading-relaxed">
+              <div className="p-inset-md bg-surface-sunken rounded-control-sm border border-border-default text-text-subtle leading-relaxed">
                 هر فضای کاری به طور کامل داده‌های منبع حقیقت، دارایی‌ها و تاریخچه جداگانه‌ای دارد (اصل P6).
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-inline-sm pt-inset-sm">
                 <button
                   type="button"
                   onClick={() => setIsNewWorkspaceModalOpen(false)}
-                  className="px-3.5 py-1.5 text-xs text-[#a1a1aa] hover:text-white"
+                  className="px-inset-lg py-inset-sm text-body-sm text-text-subtle hover:text-text-default"
                 >
                   انصراف
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors"
+                  className="px-inset-lg py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors"
                 >
                   ایجاد فضای کاری
                 </button>

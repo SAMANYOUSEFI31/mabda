@@ -30,51 +30,51 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs text-right animate-in fade-in">
-      <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+    <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
+      <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-overlay-md shadow-overlay p-inset-xl space-y-stack-lg">
+        <div className="flex items-center justify-between border-b border-border-default pb-inset-md">
           <div>
-            <h3 className="text-base font-bold text-white">حساب کاربری (User Account — F1)</h3>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
+            <h3 className="text-body-md font-bold text-text-default">حساب کاربری (User Account — F1)</h3>
+            <p className="text-body-sm text-text-subtle mt-stack-xs">
               ورود با موبایل و کد یکبارمصرف، خروجی داده و حریم خصوصی
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#a1a1aa] hover:text-white p-1 rounded-md hover:bg-[#27272a] transition-colors"
+            className="text-text-subtle hover:text-text-default p-inset-xs rounded-control-sm hover:bg-interaction-hover transition-colors"
           >
             ✕
           </button>
         </div>
 
-        <div className="space-y-4 text-xs">
+        <div className="space-y-stack-md text-body-sm">
           {/* Mobile phone info */}
-          <div className="bg-[#09090b] p-3.5 rounded-xl border border-[#27272a] space-y-2">
-            <span className="text-[#a1a1aa] block font-medium">شماره موبایل ثبت‌شده:</span>
+          <div className="bg-surface-sunken p-inset-lg rounded-control border border-border-default space-y-stack-sm">
+            <span className="text-text-subtle block font-semibold">شماره موبایل ثبت‌شده:</span>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-white text-sm" dir="ltr">
+              <span className="font-mono text-text-default text-body-md" dir="ltr">
                 {phone}
               </span>
-              <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-2 py-0.5 rounded font-bold">
+              <span className="text-caption text-text-success bg-bg-success-subtle px-inset-sm py-inset-xs rounded-indicator font-bold">
                 تأییدشده با پیامک ✓
               </span>
             </div>
           </div>
 
           {/* Privacy statement */}
-          <div className="bg-[#09090b] p-3.5 rounded-xl border border-[#27272a] space-y-1.5 text-[#a1a1aa] leading-relaxed">
-            <span className="font-bold text-white block">حریم خصوصی داده‌ها:</span>
+          <div className="bg-surface-sunken p-inset-lg rounded-control border border-border-default space-y-stack-sm text-text-subtle leading-relaxed">
+            <span className="font-bold text-text-default block">حریم خصوصی داده‌ها:</span>
             <p>
               داده‌های منبع حقیقت و گفتگوهای شما رمزنگاری‌شده نگهداری می‌شوند و هرگز برای آموزش مدل‌های عمومی استفاده نمی‌شوند.
             </p>
           </div>
 
           {/* Export data */}
-          <div className="pt-2 border-t border-[#27272a] space-y-2">
-            <span className="font-bold text-white block">پشتیبان‌گیری و خروجی داده:</span>
+          <div className="pt-inset-sm border-t border-border-default space-y-stack-sm">
+            <span className="font-bold text-text-default block">پشتیبان‌گیری و خروجی داده:</span>
             <button
               onClick={onExportAllData}
-              className="w-full py-2 px-3 text-xs font-semibold text-white bg-[#09090b] hover:bg-[#27272a] border border-[#27272a] hover:border-[#52525b] rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full py-inset-sm px-inset-md text-body-sm font-semibold text-text-default bg-surface-sunken hover:bg-interaction-hover border border-border-default hover:border-border-bold rounded-control-sm transition-colors flex items-center justify-center gap-inline-sm"
             >
               <span>📥</span>
               <span>خروجی گرفتن از تمام داده‌های منبع حقیقت (JSON)</span>
@@ -82,24 +82,24 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           </div>
 
           {/* Delete account */}
-          <div className="pt-2 border-t border-[#27272a] space-y-2">
-            <span className="font-bold text-[#fb7185] block">منطقه خطر (حذف حساب):</span>
+          <div className="pt-inset-sm border-t border-border-default space-y-stack-sm">
+            <span className="font-bold text-text-brand block">منطقه خطر (حذف حساب):</span>
             {!deleteConfirm ? (
               <button
                 onClick={() => setDeleteConfirm(true)}
-                className="w-full py-2 px-3 text-xs font-medium text-[#fb7185] bg-[#4c0519]/20 hover:bg-[#4c0519]/40 border border-[#e11d48]/40 rounded-lg transition-colors"
+                className="w-full py-inset-sm px-inset-md text-body-sm font-semibold text-text-brand bg-bg-brand-subtle hover:bg-bg-brand-subtle border border-border-brand-subtle rounded-control-sm transition-colors"
               >
                 درخواست حذف حساب و پاکسازی داده‌ها
               </button>
             ) : (
-              <div className="p-3 bg-[#4c0519]/40 border border-[#e11d48] rounded-lg space-y-2 text-[#fecdd3]">
+              <div className="p-inset-md bg-bg-brand-subtle border border-border-brand rounded-control-sm space-y-stack-sm text-text-brand">
                 <p>
                   معیار پذیرش F1: حذف حساب همهٔ داده‌ها را ظرف ۳۰ روز به طور برگشت‌ناپذیر پاک می‌کند.
                 </p>
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div className="flex items-center justify-end gap-inline-sm pt-inset-xs">
                   <button
                     onClick={() => setDeleteConfirm(false)}
-                    className="px-3 py-1 text-xs text-[#a1a1aa] hover:text-white"
+                    className="px-inset-md py-inset-xs text-body-sm text-text-subtle hover:text-text-default"
                   >
                     انصراف
                   </button>
@@ -108,7 +108,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                       onDeleteAccount();
                       onClose();
                     }}
-                    className="px-3 py-1 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded"
+                    className="px-inset-md py-inset-xs text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-indicator"
                   >
                     تأیید نهایی حذف حساب
                   </button>

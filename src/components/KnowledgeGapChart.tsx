@@ -115,30 +115,30 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
   const isReady = readiness.status === 'ready';
 
   return (
-    <div className="bg-[#121215] border border-[#27272a] rounded-2xl p-5 sm:p-6 space-y-6 text-right transition-all shadow-xl">
+    <div className="bg-surface-raised border border-border-default rounded-container p-inset-lg sm:p-inset-xl space-y-stack-lg text-end transition-all shadow-overlay">
       {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg border-b border-border-default pb-inset-lg">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#e11d48] animate-pulse" />
-            <h3 className="text-base font-bold text-white tracking-tight">
+          <div className="flex items-center gap-inline-sm">
+            <span className="w-space-3 h-space-3 rounded-pill bg-bg-brand-bold" />
+            <h3 className="text-body-md font-bold text-text-default">
               رادار و تحلیل بصری شکاف‌های دانش (Knowledge Gap Radar)
             </h3>
           </div>
-          <p className="text-xs text-[#a1a1aa] mt-1">
+          <p className="text-body-sm text-text-subtle mt-stack-xs">
             مقایسه هوشمند میان «دانش تأییدشده در منبع حقیقت» با «اهداف و نیازمندی‌های این جریان کار»
           </p>
         </div>
 
         {/* View Switcher: Radar vs Bar */}
-        <div className="flex items-center gap-1 bg-[#18181b] border border-[#27272a] p-1 rounded-xl text-xs self-start sm:self-auto">
+        <div className="flex items-center gap-inline-xs bg-surface-raised border border-border-default p-inset-xs rounded-control text-body-sm self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setChartType('radar')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+            className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-all flex items-center gap-inline-sm ${
               chartType === 'radar'
-                ? 'bg-[#e11d48] text-white shadow-xs'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             <span>🕸️</span>
@@ -147,10 +147,10 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
           <button
             type="button"
             onClick={() => setChartType('bar')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+            className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-all flex items-center gap-inline-sm ${
               chartType === 'bar'
-                ? 'bg-[#e11d48] text-white shadow-xs'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             <span>📊</span>
@@ -160,60 +160,60 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
       </div>
 
       {/* High-level KPI Badges */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3">
-          <span className="text-[#a1a1aa] block text-[11px]">نمره آمادگی جریان</span>
-          <div className="flex items-baseline gap-1 mt-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-inline-md text-body-sm">
+        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
+          <span className="text-text-subtle block text-caption">نمره آمادگی جریان</span>
+          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
             <span
-              className={`text-2xl font-bold font-mono ${
+              className={`text-heading-md font-bold font-mono ${
                 readiness.score >= 80
-                  ? 'text-[#10b981]'
+                  ? 'text-text-success'
                   : readiness.score >= 50
-                  ? 'text-[#f59e0b]'
-                  : 'text-[#e11d48]'
+                  ? 'text-text-warning'
+                  : 'text-text-brand'
               }`}
             >
               {readiness.score}٪
             </span>
-            <span className="text-[10px] text-[#71717a]">از ۱۰۰</span>
+            <span className="text-caption text-text-subtlest">از ۱۰۰</span>
           </div>
         </div>
 
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3">
-          <span className="text-[#a1a1aa] block text-[11px]">شکاف‌های بحرانی مسدودکننده</span>
-          <div className="flex items-baseline gap-1 mt-1">
+        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
+          <span className="text-text-subtle block text-caption">شکاف‌های بحرانی مسدودکننده</span>
+          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
             <span
-              className={`text-2xl font-bold font-mono ${
-                missingRequiredCount > 0 ? 'text-[#e11d48]' : 'text-[#10b981]'
+              className={`text-heading-md font-bold font-mono ${
+                missingRequiredCount > 0 ? 'text-text-brand' : 'text-text-success'
               }`}
             >
               {missingRequiredCount}
             </span>
-            <span className="text-[10px] text-[#71717a]">حوزه بدون مدرک</span>
+            <span className="text-caption text-text-subtlest">حوزه بدون مدرک</span>
           </div>
         </div>
 
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3">
-          <span className="text-[#a1a1aa] block text-[11px]">فرصت‌های بهبود تکمیلی</span>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-2xl font-bold font-mono text-[#38bdf8]">
+        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
+          <span className="text-text-subtle block text-caption">فرصت‌های بهبود تکمیلی</span>
+          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
+            <span className="text-heading-md font-bold font-mono text-text-info">
               {missingSuggestedCount}
             </span>
-            <span className="text-[10px] text-[#71717a]">پیشنهاد ارتقا</span>
+            <span className="text-caption text-text-subtlest">پیشنهاد ارتقا</span>
           </div>
         </div>
 
-        <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-3">
-          <span className="text-[#a1a1aa] block text-[11px]">وضعیت تولید دارایی</span>
-          <div className="mt-1 flex items-center gap-1.5">
+        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
+          <span className="text-text-subtle block text-caption">وضعیت تولید دارایی</span>
+          <div className="mt-stack-xs flex items-center gap-inline-sm">
             <span
-              className={`w-2 h-2 rounded-full ${
-                isReady ? 'bg-[#10b981]' : 'bg-[#e11d48]'
+              className={`w-space-2 h-space-2 rounded-pill ${
+                isReady ? 'bg-bg-success-bold' : 'bg-bg-brand-bold'
               }`}
             />
             <span
-              className={`font-semibold text-xs ${
-                isReady ? 'text-[#10b981]' : 'text-[#e11d48]'
+              className={`font-semibold text-body-sm ${
+                isReady ? 'text-text-success' : 'text-text-brand'
               }`}
             >
               {isReady ? 'آماده تولید باکیفیت' : 'نیاز به رفع کسری'}
@@ -223,7 +223,7 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
       </div>
 
       {/* Main Chart Canvas */}
-      <div className="h-72 sm:h-80 w-full flex items-center justify-center pt-2" dir="ltr">
+      <div className="h-space-40 sm:h-space-8 w-full flex items-center justify-center pt-inset-sm" dir="ltr">
         {chartType === 'radar' ? (
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
@@ -325,17 +325,17 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
       </div>
 
       {/* Interactive Domain Drill-Down Bar */}
-      <div className="space-y-3 pt-2 border-t border-[#27272a]">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-white">
+      <div className="space-y-stack-md pt-inset-sm border-t border-border-default">
+        <div className="flex items-center justify-between text-body-sm">
+          <span className="font-semibold text-text-default">
             بررسی سریع وضعیت حوزه‌ها (برای مشاهده جزئیات یا ثبت فکت کلیک کنید):
           </span>
-          <span className="text-[#a1a1aa] text-[11px]">
+          <span className="text-text-subtle text-caption">
             راهنما: سبز = کامل | قرمز = کسری بحرانی | نارنجی = فرصت ارتقا
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-inline-sm">
           {chartData.map((node) => {
             const isMissingRequired = requiredNodeIds.includes(node.nodeId) && node.countConfirmed === 0;
             const isMissingSuggested = suggestedNodeIds.includes(node.nodeId) && node.countConfirmed === 0;
@@ -349,42 +349,42 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
                   setActiveNodeId(activeNodeId === node.nodeId ? null : node.nodeId);
                   if (onSelectNodeFilter) onSelectNodeFilter(node.nodeId);
                 }}
-                className={`p-2.5 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                className={`p-inset-md rounded-control border text-end transition-all flex flex-col justify-between ${
                   activeNodeId === node.nodeId
-                    ? 'border-[#e11d48] bg-[#e11d48]/10 ring-1 ring-[#e11d48]'
+                    ? 'border-border-brand bg-bg-brand-subtle ring-1 ring-border-brand'
                     : isMissingRequired
-                    ? 'border-[#e11d48]/40 bg-[#e11d48]/5 hover:border-[#e11d48]'
+                    ? 'border-border-brand-subtle bg-bg-brand-subtle hover:border-border-brand'
                     : isMissingSuggested
-                    ? 'border-[#f59e0b]/40 bg-[#f59e0b]/5 hover:border-[#f59e0b]'
-                    : 'border-[#27272a] bg-[#18181b] hover:border-[#3f3f46]'
+                    ? 'border-border-warning-subtle bg-bg-warning-subtle hover:border-border-warning'
+                    : 'border-border-default bg-surface-raised hover:border-border-bold'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-white truncate">
+                  <span className="text-caption font-bold text-text-default truncate">
                     {node.fullLabel.split(' ')[0]}
                   </span>
                   <span
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-space-2 h-space-2 rounded-pill ${
                       isMissingRequired
-                        ? 'bg-[#e11d48]'
+                        ? 'bg-bg-brand-bold'
                         : isMissingSuggested
-                        ? 'bg-[#f59e0b]'
+                        ? 'bg-bg-warning-bold'
                         : isFull
-                        ? 'bg-[#10b981]'
-                        : 'bg-[#38bdf8]'
+                        ? 'bg-bg-success-bold'
+                        : 'bg-bg-info-bold'
                     }`}
                   />
                 </div>
 
-                <div className="mt-2 flex items-baseline justify-between text-[10px]">
-                  <span className="text-[#a1a1aa]">{node.countConfirmed} مدرک تاییدشده</span>
+                <div className="mt-stack-sm flex items-baseline justify-between text-caption">
+                  <span className="text-text-subtle">{node.countConfirmed} مدرک تاییدشده</span>
                   <span
                     className={`font-mono font-bold ${
                       isMissingRequired
-                        ? 'text-[#e11d48]'
+                        ? 'text-text-brand'
                         : isMissingSuggested
-                        ? 'text-[#f59e0b]'
-                        : 'text-[#10b981]'
+                        ? 'text-text-warning'
+                        : 'text-text-success'
                     }`}
                   >
                     {node['پوشش دانش موجود']}٪
@@ -397,22 +397,22 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
 
         {/* Selected Node Action Drawer */}
         {selectedNodeData && (
-          <div className="p-3.5 bg-[#18181b] border border-[#27272a] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
-            <div className="space-y-0.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-white">{selectedNodeData.fullLabel}</span>
+          <div className="p-inset-lg bg-surface-raised border border-border-default rounded-control flex flex-col sm:flex-row sm:items-center justify-between gap-inline-md">
+            <div className="space-y-stack-xs text-body-sm">
+              <div className="flex items-center gap-inline-sm">
+                <span className="font-bold text-text-default">{selectedNodeData.fullLabel}</span>
                 {selectedNodeData.isRequired && (
-                  <span className="text-[10px] text-[#e11d48] font-semibold bg-[#e11d48]/15 px-2 py-0.5 rounded">
+                  <span className="text-caption text-text-brand font-semibold bg-bg-brand-subtle px-inset-sm py-inset-xs rounded-indicator">
                     پیش‌نیاز الزامی این کار
                   </span>
                 )}
                 {selectedNodeData.isSuggested && (
-                  <span className="text-[10px] text-[#38bdf8] font-semibold bg-[#38bdf8]/15 px-2 py-0.5 rounded">
+                  <span className="text-caption text-text-info font-semibold bg-bg-info-subtle px-inset-sm py-inset-xs rounded-indicator">
                     پیشنهادی برای کیفیت حداکثری
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-[#a1a1aa]">
+              <p className="text-caption text-text-subtle">
                 وضعیت: {selectedNodeData.countConfirmed} فکت تأییدشده در درخت حقیقت، پوشش{' '}
                 {selectedNodeData['پوشش دانش موجود']}٪ از نیاز.
                 {selectedNodeData['شکاف دانشی'] > 0
@@ -428,7 +428,7 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
                   onOpenContextModalForNode(selectedNodeData.nodeId);
                 }
               }}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+              className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shrink-0 flex items-center justify-center gap-inline-sm shadow-raised"
             >
               <span>+</span>
               <span>ثبت مستقیم شیء دانش در {selectedNodeData.nodeName}</span>

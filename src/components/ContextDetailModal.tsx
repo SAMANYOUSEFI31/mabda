@@ -80,33 +80,33 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs text-right animate-in fade-in">
-      <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
+    <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
+      <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-form max-h-[90vh] overflow-y-auto shadow-overlay p-inset-xl space-y-stack-lg">
+        <div className="flex items-center justify-between border-b border-border-default pb-inset-lg">
           <div>
-            <h3 className="text-lg font-bold text-white">
+            <h3 className="text-heading-xs font-bold text-text-default">
               {isSupersedingMode
                 ? 'جایگزینی تصمیم (Supersedes) — حفظ تاریخچه'
                 : isEditing
                 ? 'ویرایش شیء در منبع حقیقت'
                 : 'ثبت شیء جدید در منبع حقیقت'}
             </h3>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
+            <p className="text-body-sm text-text-subtle mt-stack-xs">
               اصل P6: ساختار، خودِ دارایی است. هیچ تصمیمی بدون منشأ و دسته‌بندی رها نمی‌شود.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#a1a1aa] hover:text-white p-1 rounded-md hover:bg-[#27272a] transition-colors"
+            className="text-text-subtle hover:text-text-default p-inset-xs rounded-control-sm hover:bg-interaction-hover transition-colors"
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-stack-md text-body-sm">
           <div>
-            <label className="block text-[#d4d4d8] font-medium mb-1.5">
-              عنوان شیء (کوتاه و گویا) <span className="text-[#e11d48]">*</span>
+            <label className="block text-text-default font-semibold mb-stack-sm">
+              عنوان شیء (کوتاه و گویا) <span className="text-text-brand">*</span>
             </label>
             <input
               type="text"
@@ -114,20 +114,20 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="مثلاً: مخاطب هدف اصلی، مرز عدم تخفیف، لحن برند..."
-              className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#e11d48]"
+              className="w-full bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-text-default text-body-sm focus:outline-none focus:border-border-brand"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-inline-md">
             <div>
-              <label className="block text-[#d4d4d8] font-medium mb-1.5">
+              <label className="block text-text-default font-semibold mb-stack-sm">
                 نوع شیء (Context Type)
               </label>
               <select
                 aria-label="نوع شیء دانش"
                 value={type}
                 onChange={(e) => setType(e.target.value as ContextType)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-text-default text-body-sm focus:outline-none focus:border-border-brand"
               >
                 <option value="Fact">Fact (واقعیت اثبات‌شده)</option>
                 <option value="Decision">Decision (تصمیم آگاهانه)</option>
@@ -137,14 +137,14 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[#d4d4d8] font-medium mb-1.5">
+              <label className="block text-text-default font-semibold mb-stack-sm">
                 وضعیت (Status)
               </label>
               <select
                 aria-label="وضعیت شیء دانش"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ContextStatus)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-text-default text-body-sm focus:outline-none focus:border-border-brand"
               >
                 <option value="Confirmed">Confirmed (تأییدشده و فعال)</option>
                 <option value="Proposed">Proposed (پیشنهادی - وارد خروجی نمی‌شود)</option>
@@ -155,16 +155,16 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-inline-md">
             <div>
-              <label className="block text-[#d4d4d8] font-medium mb-1.5">
+              <label className="block text-text-default font-semibold mb-stack-sm">
                 شاخه در درخت دانش (Tree Node)
               </label>
               <select
                 aria-label="شاخه در درخت دانش"
                 value={nodeId}
                 onChange={(e) => setNodeId(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-text-default text-body-sm focus:outline-none focus:border-border-brand"
               >
                 {nodes.map((n) => (
                   <option key={n.id} value={n.id}>
@@ -175,14 +175,14 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[#d4d4d8] font-medium mb-1.5">
+              <label className="block text-text-default font-semibold mb-stack-sm">
                 منبع (Provenance)
               </label>
               <select
                 aria-label="منبع شیء دانش"
                 value={provenance}
                 onChange={(e) => setProvenance(e.target.value as ContextProvenance)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-text-default text-body-sm focus:outline-none focus:border-border-brand"
               >
                 <option value="User Input">User Input (ورودی مستقیم کاربر)</option>
                 <option value="Onboarding">Onboarding (فرم شروع سریع)</option>
@@ -194,8 +194,8 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-[#d4d4d8] font-medium mb-1.5">
-              محتوای دقیق دانش <span className="text-[#e11d48]">*</span>
+            <label className="block text-text-default font-semibold mb-stack-sm">
+              محتوای دقیق دانش <span className="text-text-brand">*</span>
             </label>
             <textarea
               required
@@ -203,13 +203,13 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="توضیح کامل فکت، تصمیم یا خط قرمز به زبان صریح..."
-              className="w-full bg-[#09090b] border border-[#27272a] rounded-lg p-3 text-white text-xs leading-relaxed focus:outline-none focus:border-[#e11d48]"
+              className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default text-body-sm leading-relaxed focus:outline-none focus:border-border-brand"
             />
           </div>
 
           {isSupersedingMode && (
-            <div className="bg-[#4c0519]/40 border border-[#e11d48]/40 p-3 rounded-lg space-y-1.5">
-              <label className="block text-[#fb7185] font-semibold">
+            <div className="bg-bg-brand-subtle border border-border-brand-subtle p-inset-md rounded-control-sm space-y-stack-sm">
+              <label className="block text-text-brand font-semibold">
                 دلیل جایگزینی این تصمیم قبلی:
               </label>
               <input
@@ -217,22 +217,22 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
                 value={supersedeReason}
                 onChange={(e) => setSupersedeReason(e.target.value)}
                 placeholder="مثلاً: تغییر رویکرد استراتژیک پس از بازخورد مشتریان"
-                className="w-full bg-[#09090b] border border-[#27272a] rounded px-3 py-1.5 text-xs text-white"
+                className="w-full bg-surface-sunken border border-border-default rounded-indicator px-inset-md py-inset-sm text-body-sm text-text-default"
               />
-              <p className="text-[11px] text-[#a1a1aa]">
+              <p className="text-caption text-text-subtle">
                 تصمیم قبلی پاک نخواهد شد؛ بلکه با رابطه supersedes در تاریخچه منبع حقیقت باقی می‌ماند.
               </p>
             </div>
           )}
 
-          <div className="pt-4 border-t border-[#27272a] flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="pt-inset-lg border-t border-border-default flex flex-wrap items-center justify-between gap-inline-md">
+            <div className="flex items-center gap-inline-sm">
               {isEditing && !isSupersedingMode && (
                 <>
                   <button
                     type="button"
                     onClick={() => setIsSupersedingMode(true)}
-                    className="px-3 py-1.5 text-xs font-medium text-[#fbbf24] bg-[#78350f]/30 hover:bg-[#78350f]/60 rounded-lg transition-colors border border-[#f59e0b]/30"
+                    className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-warning bg-bg-warning-subtle hover:bg-bg-warning-subtle rounded-control-sm transition-colors border border-border-warning-subtle"
                   >
                     جایگزینی تصمیم (Supersede)
                   </button>
@@ -244,7 +244,7 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
                         onClose();
                       }
                     }}
-                    className="px-3 py-1.5 text-xs font-medium text-[#fb7185] hover:bg-[#4c0519]/30 rounded-lg transition-colors"
+                    className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-brand hover:bg-bg-brand-subtle rounded-control-sm transition-colors"
                   >
                     بایگانی
                   </button>
@@ -252,17 +252,17 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-inline-sm">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-1.5 text-xs font-medium text-[#a1a1aa] hover:text-white rounded-lg hover:bg-[#27272a] transition-colors"
+                className="px-inset-lg py-inset-sm text-body-sm font-semibold text-text-subtle hover:text-text-default rounded-control-sm hover:bg-interaction-hover transition-colors"
               >
                 انصراف
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shadow-sm"
+                className="px-inset-lg py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shadow-raised"
               >
                 {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیره تغییرات' : 'ثبت در منبع حقیقت'}
               </button>

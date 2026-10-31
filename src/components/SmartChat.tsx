@@ -392,45 +392,45 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       : allContextObjects.filter((c) => selectedNodes.includes(c.nodeId)).length;
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-2xl flex flex-col h-[calc(100dvh-130px)] md:h-[720px] text-right shadow-xl overflow-hidden relative font-sans">
+    <div className="bg-surface-raised border border-border-default rounded-container flex flex-col h-[calc(100dvh-130px)] md:h-[720px] text-end shadow-overlay overflow-hidden relative font-sans">
       {/* 1. Header with Sessions Bar, Grounding Indicator & Mode Switcher */}
-      <div className="p-3 sm:p-4 border-b border-[#27272a] bg-[#0c0c0e] shrink-0 space-y-3">
+      <div className="p-inset-md sm:p-inset-lg border-b border-border-default bg-surface-sunken shrink-0 space-y-stack-md">
         {/* Top bar row: Title, Session Switcher, New Chat Button */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-inline-sm">
+          <div className="flex items-center gap-inline-sm min-w-space-0">
             {/* Sidebar toggle for sessions on mobile & desktop */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="px-2.5 py-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-xs text-[#fafafa] flex items-center gap-1.5 transition-colors shrink-0"
+              className="px-inset-md py-inset-sm rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default text-body-sm text-text-default flex items-center gap-inline-sm transition-colors shrink-0"
               title="مشاهده نشست‌های گفتگو"
             >
               <span>💬</span>
               <span className="font-semibold hidden sm:inline">گفتگوها</span>
-              <span className="text-[10px] text-[#71717a] font-mono">({sessions.length})</span>
+              <span className="text-caption text-text-subtlest font-mono">({sessions.length})</span>
             </button>
 
             {/* Current Active Session Title */}
             <div className="truncate">
-              <h3 className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-2">
+              <h3 className="text-body-sm sm:text-body-md font-bold text-text-default truncate flex items-center gap-inline-sm">
                 <span>{activeSession.title}</span>
               </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-inline-sm shrink-0">
             {/* New Chat Button */}
             <button
               onClick={handleCreateNewSession}
-              className="px-3 py-1.5 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors flex items-center gap-1 shadow-xs"
+              className="px-inset-md py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors flex items-center gap-inline-xs shadow-raised"
             >
               <span>+</span>
               <span>گفتگوی جدید</span>
             </button>
 
             {/* Daily Fair Use Badge */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[11px] bg-[#18181b] border border-[#27272a] px-2.5 py-1 rounded-lg">
-              <span className="text-[#a1a1aa]">مصرف روزانه:</span>
-              <span className="font-bold text-white tabular-nums">
+            <div className="hidden lg:flex items-center gap-inline-sm text-caption bg-surface-raised border border-border-default px-inset-md py-inset-xs rounded-control-sm">
+              <span className="text-text-subtle">مصرف روزانه:</span>
+              <span className="font-bold text-text-default tabular-nums">
                 {currentWorkspace.todayChatCount}/{plan.dailyChatLimit}
               </span>
             </div>
@@ -438,14 +438,14 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         </div>
 
         {/* Second Row: Chat Modes (Discovery / Contradiction Audit / Strategic Advisor) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#1f1f23]">
-          <div className="flex items-center gap-1 bg-[#121215] border border-[#27272a] p-1 rounded-lg text-xs overflow-x-auto max-w-full">
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm pt-inset-xs border-t border-border-subtle">
+          <div className="flex items-center gap-inline-xs bg-surface-raised border border-border-default p-inset-xs rounded-control-sm text-body-sm overflow-x-auto max-w-full">
             <button
               onClick={() => handleChangeMode('discovery')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
                 activeSession.chatMode === 'discovery'
-                  ? 'bg-[#e11d48] text-white shadow-xs'
-                  : 'text-[#a1a1aa] hover:text-white'
+                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                  : 'text-text-subtle hover:text-text-default'
               }`}
             >
               <span>💡</span>
@@ -454,10 +454,10 @@ export const SmartChat: React.FC<SmartChatProps> = ({
 
             <button
               onClick={() => handleChangeMode('audit')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
                 activeSession.chatMode === 'audit'
-                  ? 'bg-[#e11d48] text-white shadow-xs'
-                  : 'text-[#a1a1aa] hover:text-white'
+                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                  : 'text-text-subtle hover:text-text-default'
               }`}
             >
               <span>🛡️</span>
@@ -466,10 +466,10 @@ export const SmartChat: React.FC<SmartChatProps> = ({
 
             <button
               onClick={() => handleChangeMode('advisor')}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
+              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
                 activeSession.chatMode === 'advisor'
-                  ? 'bg-[#e11d48] text-white shadow-xs'
-                  : 'text-[#a1a1aa] hover:text-white'
+                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
+                  : 'text-text-subtle hover:text-text-default'
               }`}
             >
               <span>📈</span>
@@ -478,22 +478,22 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           </div>
 
           {/* Grounding Status badge */}
-          <div className="text-[11px] text-[#a1a1aa] flex items-center gap-1.5 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+          <div className="text-caption text-text-subtle flex items-center gap-inline-sm shrink-0">
+            <span className="w-space-2 h-space-2 rounded-pill bg-bg-success-bold" />
             <span>متصل به {groundedCount} شیء دانش</span>
           </div>
         </div>
 
         {/* Third Row: Truth Tree Grounding Selector (انتخاب کانتکست هدف گفتگو) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-[11px]">
-          <span className="text-[#71717a] shrink-0 text-[10px] pl-1">کانتکست هدف:</span>
+        <div className="flex items-center gap-inline-sm overflow-x-auto no-scrollbar pt-inset-xs text-caption">
+          <span className="text-text-subtlest shrink-0 text-caption ps-inset-xs">کانتکست هدف:</span>
 
           <button
             onClick={handleSelectAllNodes}
-            className={`px-2 py-0.5 rounded-md text-[11px] border transition-colors shrink-0 ${
+            className={`px-inset-sm py-inset-xs rounded-control-sm text-caption border transition-colors shrink-0 ${
               selectedNodes.length === 0
-                ? 'bg-[#27272a] text-white border-[#3f3f46]'
-                : 'text-[#a1a1aa] border-transparent hover:text-white hover:bg-[#18181b]'
+                ? 'bg-bg-neutral-subtle text-text-default border-border-bold'
+                : 'text-text-subtle border-transparent hover:text-text-default hover:bg-surface-raised'
             }`}
           >
             همه درخت ({allContextObjects.length})
@@ -506,15 +506,15 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <button
                 key={node.id}
                 onClick={() => handleToggleNode(node.id)}
-                className={`px-2 py-0.5 rounded-md text-[11px] border flex items-center gap-1 transition-colors shrink-0 ${
+                className={`px-inset-sm py-inset-xs rounded-control-sm text-caption border flex items-center gap-inline-xs transition-colors shrink-0 ${
                   isSelected
-                    ? 'bg-[#e11d48]/20 text-[#fb7185] border-[#e11d48]/50 font-medium'
-                    : 'text-[#a1a1aa] border-transparent hover:text-white hover:bg-[#18181b]'
+                    ? 'bg-bg-brand-subtle text-text-brand border-border-brand-subtle font-semibold'
+                    : 'text-text-subtle border-transparent hover:text-text-default hover:bg-surface-raised'
                 }`}
               >
                 <span>{node.icon}</span>
                 <span>{node.label}</span>
-                <span className="text-[10px] opacity-70">({count})</span>
+                <span className="text-caption opacity-70">({count})</span>
               </button>
             );
           })}
@@ -525,28 +525,28 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sessions Sidebar / Drawer */}
         {isSidebarOpen && (
-          <div className="absolute inset-y-0 right-0 z-30 w-72 max-w-[85%] bg-[#121215] border-l border-[#27272a] shadow-2xl flex flex-col p-3 animate-in slide-in-from-right-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#27272a]">
-              <span className="text-xs font-bold text-white">نشست‌های گفتگوی شما</span>
+          <div className="absolute inset-y-space-0 end-space-0 z-dropdown w-container-overlay-xs max-w-[85%] bg-surface-raised border-s border-border-default shadow-overlay flex flex-col p-inset-md slide-in-from-right-4">
+            <div className="flex items-center justify-between pb-inset-md border-b border-border-default">
+              <span className="text-body-sm font-bold text-text-default">نشست‌های گفتگوی شما</span>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="text-[#a1a1aa] hover:text-white p-1 text-xs"
+                className="text-text-subtle hover:text-text-default p-inset-xs text-body-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="my-2">
+            <div className="my-stack-sm">
               <button
                 onClick={handleCreateNewSession}
-                className="w-full py-2 px-3 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors flex items-center justify-center gap-1 shadow-xs"
+                className="w-full py-inset-sm px-inset-md text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors flex items-center justify-center gap-inline-xs shadow-raised"
               >
                 <span>+</span>
                 <span>شروع گفتگوی جدید</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+            <div className="flex-1 overflow-y-auto space-y-stack-sm pe-inset-xs">
               {sessions.map((sess) => {
                 const isActive = sess.id === activeSession.id;
                 const isEditing = editingSessionId === sess.id;
@@ -558,16 +558,16 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                       setActiveSessionId(sess.id);
                       setIsSidebarOpen(false);
                     }}
-                    className={`group p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex flex-col gap-1 ${
+                    className={`group p-inset-md rounded-control border text-body-sm cursor-pointer transition-all flex flex-col gap-inline-xs ${
                       isActive
-                        ? 'bg-[#18181b] border-[#e11d48]/50 text-white shadow-xs'
-                        : 'bg-transparent border-transparent hover:bg-[#18181b]/60 text-[#a1a1aa] hover:text-white'
+                        ? 'bg-surface-raised border-border-brand-subtle text-text-default shadow-raised'
+                        : 'bg-transparent border-transparent hover:bg-surface-raised text-text-subtle hover:text-text-default'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center justify-between gap-inline-xs">
                       {isEditing ? (
                         <div
-                          className="flex items-center gap-1 w-full"
+                          className="flex items-center gap-inline-xs w-full"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
@@ -577,38 +577,38 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleSaveSessionTitle(sess.id);
                             }}
-                            className="bg-[#09090b] border border-[#27272a] rounded px-1.5 py-0.5 text-xs text-white w-full"
+                            className="bg-surface-sunken border border-border-default rounded-indicator px-inset-sm py-inset-xs text-body-sm text-text-default w-full"
                             autoFocus
                           />
                           <button
                             onClick={() => handleSaveSessionTitle(sess.id)}
-                            className="text-[#10b981] hover:text-white px-1"
+                            className="text-text-success hover:text-text-default px-inset-xs"
                           >
                             ✓
                           </button>
                         </div>
                       ) : (
-                        <span className="font-semibold truncate flex-1 text-right">
+                        <span className="font-semibold truncate flex-1 text-end">
                           {sess.title}
                         </span>
                       )}
 
                       {!isEditing && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-inline-xs opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingSessionId(sess.id);
                               setSessionEditTitle(sess.title);
                             }}
-                            className="text-[#a1a1aa] hover:text-white p-0.5 text-[11px]"
+                            className="text-text-subtle hover:text-text-default p-inset-xs text-caption"
                             title="تغییر نام"
                           >
                             ✏️
                           </button>
                           <button
                             onClick={(e) => handleDeleteSession(sess.id, e)}
-                            className="text-[#f43f5e] hover:text-[#fb7185] p-0.5 text-[11px]"
+                            className="text-text-brand hover:text-text-brand p-inset-xs text-caption"
                             title="حذف نشست"
                           >
                             🗑️
@@ -617,7 +617,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-[#71717a]">
+                    <div className="flex items-center justify-between text-caption text-text-subtlest">
                       <span>{sess.messages.length} پیام</span>
                       <span>
                         {new Date(sess.updatedAt).toLocaleDateString('fa-IR', {
@@ -634,32 +634,32 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         )}
 
         {/* Messages Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-inset-md sm:p-inset-lg space-y-stack-md">
           {/* Prompt Starters when chat is young */}
           {activeSession.messages.length <= 2 && (
-            <div className="bg-[#121215] border border-[#27272a] rounded-xl p-3 sm:p-4 space-y-2.5 animate-in fade-in">
+            <div className="bg-surface-raised border border-border-default rounded-control p-inset-md sm:p-inset-lg space-y-stack-sm">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <span className="text-body-sm font-bold text-text-default flex items-center gap-inline-sm">
                   <span>⚡</span>
                   <span>پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی:</span>
                 </span>
-                <span className="text-[10px] text-[#71717a]">یک کلیک برای آغاز</span>
+                <span className="text-caption text-text-subtlest">یک کلیک برای آغاز</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-inline-sm pt-inset-xs">
                 {gapsPrompts.map((p, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSend(undefined, p.text)}
-                    className="text-right p-2.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] hover:border-[#3f3f46] text-xs transition-all group"
+                    className="text-end p-inset-md rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default hover:border-border-bold text-body-sm transition-all group"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-inline-sm">
                       <span>{p.icon}</span>
-                      <span className="font-semibold text-white group-hover:text-[#fb7185] transition-colors">
+                      <span className="font-semibold text-text-default group-hover:text-text-brand transition-colors">
                         {p.label}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#a1a1aa] mt-1 line-clamp-2 leading-relaxed">
+                    <p className="text-caption text-text-subtle mt-stack-xs line-clamp-2 leading-relaxed">
                       {p.text}
                     </p>
                   </button>
@@ -676,34 +676,34 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               }`}
             >
               <div
-                className={`max-w-[92%] sm:max-w-[85%] rounded-2xl p-3.5 sm:p-4 text-xs leading-relaxed ${
+                className={`max-w-[92%] sm:max-w-[85%] rounded-container p-inset-lg sm:p-inset-lg text-body-sm leading-relaxed ${
                   m.role === 'user'
-                    ? 'bg-[#e11d48] text-white rounded-br-none shadow-md'
-                    : 'bg-[#0c0c0e] text-[#fafafa] border border-[#27272a] rounded-bl-none shadow-sm'
+                    ? 'bg-bg-brand-bold text-text-default rounded-ee-none shadow-overflow'
+                    : 'bg-surface-sunken text-text-default border border-border-default rounded-es-none shadow-raised'
                 }`}
               >
                 {/* Assistant Grounding Badge */}
                 {m.role === 'assistant' && m.groundedCount !== undefined && m.groundedCount > 0 && (
-                  <div className="mb-2 pb-2 border-b border-[#27272a] flex items-center justify-between text-[10px] text-[#10b981]">
-                    <span className="flex items-center gap-1">
+                  <div className="mb-stack-sm pb-inset-sm border-b border-border-default flex items-center justify-between text-caption text-text-success">
+                    <span className="flex items-center gap-inline-xs">
                       <span>🛡️</span>
                       <span>بررسی و تطبیق با {m.groundedCount} شیء دانش تأییدشده</span>
                     </span>
                     {m.executionMode === 'deep' && (
-                      <span className="text-[#fbbf24] bg-[#f59e0b]/10 px-1 rounded">
+                      <span className="text-text-warning bg-bg-warning-subtle px-inset-xs rounded-indicator">
                         تحلیل چندوجهی
                       </span>
                     )}
                   </div>
                 )}
 
-                <div className="whitespace-pre-line selection:bg-white/20">{m.content}</div>
+                <div className="whitespace-pre-line selection:bg-bg-neutral-subtle-pressed">{m.content}</div>
 
                 <div
-                  className={`mt-2.5 pt-1.5 border-t text-[10px] flex items-center justify-between gap-3 ${
+                  className={`mt-stack-sm pt-inset-sm border-t text-caption flex items-center justify-between gap-inline-md ${
                     m.role === 'user'
-                      ? 'border-white/20 text-white/80'
-                      : 'border-[#27272a] text-[#71717a]'
+                      ? 'border-border-bold text-text-default'
+                      : 'border-border-default text-text-subtlest'
                   }`}
                 >
                   <span>
@@ -720,46 +720,46 @@ export const SmartChat: React.FC<SmartChatProps> = ({
 
               {/* Context Suggestions Cards (F13 & P6 - Structure is the Asset) */}
               {m.suggestions && m.suggestions.length > 0 && (
-                <div className="w-[92%] sm:w-[85%] mt-3 space-y-2">
+                <div className="w-[92%] sm:w-[85%] mt-stack-md space-y-stack-sm">
                   {m.suggestions.map((sug) => (
                     <div
                       key={sug.id}
-                      className="bg-[#0e0e11] border border-[#f59e0b]/40 rounded-xl p-3 sm:p-4 space-y-2.5 text-xs animate-in fade-in shadow-md"
+                      className="bg-surface-sunken border border-border-warning-subtle rounded-control p-inset-md sm:p-inset-lg space-y-stack-sm text-body-sm shadow-overflow"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">💡</span>
-                          <span className="font-bold text-[#fde68a]">
+                      <div className="flex items-center justify-between gap-inline-sm">
+                        <div className="flex items-center gap-inline-sm">
+                          <span className="text-body-md">💡</span>
+                          <span className="font-bold text-text-warning">
                             پیشنهاد ثبت در منبع حقیقت: {sug.title}
                           </span>
-                          <span className="text-[10px] bg-[#f59e0b]/20 text-[#fbbf24] px-1.5 py-0.5 rounded font-mono">
+                          <span className="text-caption bg-bg-warning-subtle text-text-warning px-inset-sm py-inset-xs rounded-indicator font-mono">
                             {sug.type}
                           </span>
                         </div>
-                        <span className="text-[10px] text-[#a1a1aa] bg-[#18181b] px-2 py-0.5 rounded border border-[#27272a]">
+                        <span className="text-caption text-text-subtle bg-surface-raised px-inset-sm py-inset-xs rounded-indicator border border-border-default">
                           شاخه: {sug.nodeId}
                         </span>
                       </div>
 
-                      <p className="text-[#fafafa] bg-[#18181b] p-2.5 rounded-lg border border-[#27272a] leading-relaxed">
+                      <p className="text-text-default bg-surface-raised p-inset-md rounded-control-sm border border-border-default leading-relaxed">
                         {sug.content}
                       </p>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-[#1f1f23]">
-                        <span className="text-[11px] text-[#71717a]">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-sm pt-inset-xs border-t border-border-subtle">
+                        <span className="text-caption text-text-subtlest">
                           {sug.reason || 'استخراج مستقیم از گفتگوی کاربر با مبدأ'}
                         </span>
 
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <div className="flex items-center gap-inline-sm self-end sm:self-auto">
                           <button
                             onClick={() => handleDismissSuggestion(sug.id, m.id)}
-                            className="px-2.5 py-1 text-xs text-[#a1a1aa] hover:text-white rounded hover:bg-[#27272a] transition-colors"
+                            className="px-inset-md py-inset-xs text-body-sm text-text-subtle hover:text-text-default rounded-indicator hover:bg-interaction-hover transition-colors"
                           >
                             رد کردن
                           </button>
                           <button
                             onClick={() => handleApproveSuggestion(sug, m.id)}
-                            className="px-3.5 py-1 text-xs font-semibold text-white bg-[#10b981] hover:bg-[#059669] rounded-lg transition-colors shadow-xs"
+                            className="px-inset-lg py-inset-xs text-body-sm font-semibold text-text-default bg-bg-success-bold hover:bg-bg-success-bold-hover rounded-control-sm transition-colors shadow-raised"
                           >
                             تأیید و افزودن به منبع حقیقت ✓
                           </button>
@@ -773,8 +773,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-2.5 text-xs text-[#a1a1aa] bg-[#0c0c0e] p-3 rounded-xl border border-[#27272a] w-fit animate-pulse">
-              <span className="animate-spin text-sm">⚙️</span>
+            <div className="flex items-center gap-inline-md text-body-sm text-text-subtle bg-surface-sunken p-inset-md rounded-control border border-border-default w-fit">
+              <span className="animate-spin text-body-md">⚙️</span>
               <span>مبدأ در حال تطبیق با منبع حقیقت و استخراج تصمیمات است...</span>
             </div>
           )}
@@ -784,39 +784,39 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       </div>
 
       {/* 3. Sticky Input Area with Mobile Ergonomics */}
-      <div className="p-3 bg-[#0c0c0e] border-t border-[#27272a] space-y-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between text-xs text-[#a1a1aa]">
+      <div className="p-inset-md bg-surface-sunken border-t border-border-default space-y-stack-sm shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between text-body-sm text-text-subtle">
           {/* Toggle for Deep Mode */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+          <label className="flex items-center gap-inline-sm cursor-pointer select-none">
             <input
               type="checkbox"
               checked={isDeepMode}
               onChange={(e) => setIsDeepMode(e.target.checked)}
-              className="accent-[#e11d48]"
+              className="accent-bg-brand-bold"
             />
-            <span className={isDeepMode ? 'text-white font-bold text-xs' : 'text-[#a1a1aa] text-xs'}>
+            <span className={isDeepMode ? 'text-text-default font-bold text-body-sm' : 'text-text-subtle text-body-sm'}>
               حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)
             </span>
           </label>
 
-          <span className="text-[10px] sm:text-[11px] text-[#71717a]">
+          <span className="text-caption sm:text-caption text-text-subtlest">
             {isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان بدون کنتور'}
           </span>
         </div>
 
-        <form onSubmit={handleSend} className="flex items-center gap-2">
+        <form onSubmit={handleSend} className="flex items-center gap-inline-sm">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="درباره ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی خود بنویسید..."
             disabled={isLoading}
-            className="flex-1 bg-[#18181b] border border-[#27272a] focus:border-[#e11d48] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors"
+            className="flex-1 bg-surface-raised border border-border-default focus:border-border-brand rounded-control px-inset-lg py-inset-md text-body-sm text-text-default focus:outline-none transition-colors"
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="px-4 sm:px-6 py-2.5 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-40 rounded-xl transition-all whitespace-nowrap shadow-sm shrink-0"
+            className="px-inset-lg sm:px-inset-xl py-inset-md text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover disabled:opacity-40 rounded-control transition-all whitespace-nowrap shadow-raised shrink-0"
           >
             {isLoading ? 'در حال ارسال...' : isDeepMode ? 'ارسال عمیق' : 'ارسال'}
           </button>

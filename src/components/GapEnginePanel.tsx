@@ -27,19 +27,19 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
   );
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-6 text-right">
+    <div className="bg-surface-raised border border-border-default rounded-control p-inset-xl space-y-stack-lg text-end">
       {/* Header & Readiness Gauge */}
-      <div className="border-b border-[#27272a] pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b border-border-default pb-inset-lg flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-white">موتور تحلیل شکاف‌ها (Gap Engine)</h3>
+          <div className="flex items-center gap-inline-sm">
+            <h3 className="text-heading-xs font-bold text-text-default">موتور تحلیل شکاف‌ها (Gap Engine)</h3>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
+              className={`text-caption px-inset-sm py-inset-xs rounded-indicator font-semibold ${
                 readiness.status === 'ready'
-                  ? 'bg-[#10b981]/15 text-[#34d399]'
+                  ? 'bg-bg-success-subtle text-text-success'
                   : readiness.status === 'needs_work'
-                  ? 'bg-[#f59e0b]/15 text-[#fbbf24]'
-                  : 'bg-[#e11d48]/15 text-[#fb7185]'
+                  ? 'bg-bg-warning-subtle text-text-warning'
+                  : 'bg-bg-brand-subtle text-text-brand'
               }`}
             >
               {readiness.status === 'ready'
@@ -49,27 +49,27 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                 : 'نیاز به داده‌های پایه'}
             </span>
           </div>
-          <p className="text-xs text-[#a1a1aa] mt-1 leading-relaxed">
+          <p className="text-body-sm text-text-subtle mt-stack-xs leading-relaxed">
             {readiness.summary}
           </p>
         </div>
 
         {/* Readiness Score Pill & Progress */}
-        <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] px-4 py-2.5 rounded-xl shrink-0">
-          <div className="text-left">
-            <span className="text-[11px] text-[#a1a1aa] block">میزان آمادگی (Readiness)</span>
-            <span className="text-xl font-bold text-white tabular-nums">
+        <div className="flex items-center gap-inline-md bg-surface-sunken border border-border-default px-inset-lg py-inset-md rounded-control shrink-0">
+          <div className="text-start">
+            <span className="text-caption text-text-subtle block">میزان آمادگی (Readiness)</span>
+            <span className="text-heading-sm font-bold text-text-default tabular-nums">
               {readiness.score}٪
             </span>
           </div>
-          <div className="w-16 h-2 bg-[#27272a] rounded-full overflow-hidden">
+          <div className="w-space-16 h-space-2 bg-bg-neutral-subtle rounded-pill overflow-hidden">
             <div
-              className={`h-full transition-all duration-500 ${
+              className={`h-full transition-all ${
                 readiness.score >= 85
-                  ? 'bg-[#10b981]'
+                  ? 'bg-bg-success-bold'
                   : readiness.score >= 50
-                  ? 'bg-[#f59e0b]'
-                  : 'bg-[#e11d48]'
+                  ? 'bg-bg-warning-bold'
+                  : 'bg-bg-brand-bold'
               }`}
               style={{ width: `${readiness.score}%` }}
             />
@@ -78,94 +78,94 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       </div>
 
       {/* Free Gap Cost Notice (Principle P3) */}
-      <div className="bg-[#09090b] p-3 rounded-lg border border-[#27272a] flex items-center justify-between text-xs text-[#a1a1aa]">
-        <div className="flex items-center gap-2">
-          <span className="text-[#38bdf8] font-bold">اصل P3:</span>
+      <div className="bg-surface-sunken p-inset-md rounded-control-sm border border-border-default flex items-center justify-between text-body-sm text-text-subtle">
+        <div className="flex items-center gap-inline-sm">
+          <span className="text-text-info font-bold">اصل P3:</span>
           <span>تحلیل Gap و ساختاردهی به دانش برای کاربر کاملاً رایگان است؛ هزینه تنها برای خروجی‌های تأییدشده است.</span>
         </div>
-        <span className="text-[11px] text-[#10b981] font-semibold bg-[#10b981]/10 px-2 py-0.5 rounded">
+        <span className="text-caption text-text-success font-semibold bg-bg-success-subtle px-inset-sm py-inset-xs rounded-indicator">
           ۰ اعتبار (Free)
         </span>
       </div>
 
       {/* Gaps List */}
-      <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-white">
+      <div className="space-y-stack-md">
+        <h4 className="text-body-md font-semibold text-text-default">
           شکاف‌های شناسایی‌شده ({readiness.gaps.length} مورد):
         </h4>
 
         {readiness.gaps.length === 0 ? (
-          <div className="p-6 rounded-lg bg-[#09090b] border border-[#10b981]/30 text-center space-y-2">
-            <p className="text-[#34d399] font-bold text-sm">
+          <div className="p-inset-xl rounded-control-sm bg-surface-sunken border border-border-success-subtle text-center space-y-stack-sm">
+            <p className="text-text-success font-bold text-body-md">
               هیچ شکافی وجود ندارد! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.
             </p>
-            <p className="text-xs text-[#a1a1aa]">
+            <p className="text-body-sm text-text-subtle">
               می‌توانید خروجی‌های این جریان کاری را با حداکثر انسجام و غنای تخصصی تولید نمایید.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-stack-md">
             {readiness.gaps.map((gap, idx) => {
               const isExpanded = expandedGapKey === gap.key;
 
               return (
                 <div
                   key={gap.key}
-                  className={`border rounded-xl transition-all overflow-hidden ${
+                  className={`border rounded-control transition-all overflow-hidden ${
                     gap.importance === 'required'
-                      ? 'border-[#e11d48]/30 bg-[#09090b]'
-                      : 'border-[#27272a] bg-[#09090b]/60'
+                      ? 'border-border-brand-subtle bg-surface-sunken'
+                      : 'border-border-default bg-surface-sunken'
                   }`}
                 >
                   <div
                     onClick={() => setExpandedGapKey(isExpanded ? null : gap.key)}
-                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#18181b]/50 transition-colors"
+                    className="p-inset-lg flex items-center justify-between cursor-pointer hover:bg-surface-raised transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 h-5 rounded-full bg-[#27272a] text-[#a1a1aa] flex items-center justify-center text-xs font-mono">
+                    <div className="flex items-center gap-inline-md">
+                      <span className="w-space-5 h-space-5 rounded-pill bg-bg-neutral-subtle text-text-subtle flex items-center justify-center text-body-sm font-mono">
                         {idx + 1}
                       </span>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white text-sm">
+                        <div className="flex items-center gap-inline-sm">
+                          <span className="font-semibold text-text-default text-body-md">
                             {gap.label}
                           </span>
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            className={`text-caption px-inset-sm py-inset-xs rounded-indicator ${
                               gap.importance === 'required'
-                                ? 'bg-[#e11d48]/20 text-[#fb7185] font-bold'
-                                : 'bg-[#27272a] text-[#a1a1aa]'
+                                ? 'bg-bg-brand-subtle text-text-brand font-bold'
+                                : 'bg-bg-neutral-subtle text-text-subtle'
                             }`}
                           >
                             {gap.importance === 'required' ? 'الزامی' : 'پیشنهادی'}
                           </span>
                           {gap.status === 'ambiguous' && (
-                            <span className="text-[10px] bg-[#f59e0b]/20 text-[#fbbf24] px-1.5 py-0.5 rounded">
+                            <span className="text-caption bg-bg-warning-subtle text-text-warning px-inset-sm py-inset-xs rounded-indicator">
                               مبهم
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#a1a1aa] mt-0.5">{gap.question}</p>
+                        <p className="text-body-sm text-text-subtle mt-stack-xs">{gap.question}</p>
                       </div>
                     </div>
 
-                    <span className="text-xs text-[#7d7d86]">
+                    <span className="text-body-sm text-text-subtlest">
                       {isExpanded ? 'بستن ▲' : 'پاسخ و تکمیل ▼'}
                     </span>
                   </div>
 
                   {isExpanded && (
-                    <div className="p-4 border-t border-[#27272a] bg-[#18181b]/80 space-y-3">
-                      <p className="text-xs text-[#d4d4d8] font-medium">
+                    <div className="p-inset-lg border-t border-border-default bg-surface-raised space-y-stack-md">
+                      <p className="text-body-sm text-text-default font-semibold">
                         گزینه‌های پیشنهادی برای ثبت سریع در منبع حقیقت:
                       </p>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-inline-sm">
                         {gap.suggestedAnswers.map((ans, aIdx) => (
                           <button
                             key={aIdx}
                             onClick={() => onAnswerGap(gap, ans)}
-                            className="text-xs text-right bg-[#09090b] hover:bg-[#27272a] text-[#fafafa] border border-[#27272a] hover:border-[#e11d48] px-3 py-1.5 rounded-lg transition-all"
+                            className="text-body-sm text-end bg-surface-sunken hover:bg-interaction-hover text-text-default border border-border-default hover:border-border-brand px-inset-md py-inset-sm rounded-control-sm transition-all"
                           >
                             «{ans}»
                           </button>
@@ -173,7 +173,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                       </div>
 
                       {/* Custom answer input */}
-                      <div className="flex items-center gap-2 pt-2">
+                      <div className="flex items-center gap-inline-sm pt-inset-sm">
                         <input
                           type="text"
                           placeholder="یا پاسخ دقیق خود را اینجا بنویسید..."
@@ -186,7 +186,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                               onAnswerGap(gap, customAnswers[gap.key].trim());
                             }
                           }}
-                          className="flex-1 bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
+                          className="flex-1 bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-body-sm text-text-default focus:outline-none focus:border-border-brand"
                         />
                         <button
                           onClick={() => {
@@ -195,20 +195,20 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                             }
                           }}
                           disabled={!customAnswers[gap.key]?.trim()}
-                          className="px-3 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] disabled:opacity-40 rounded-lg transition-colors"
+                          className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover disabled:opacity-40 rounded-control-sm transition-colors"
                         >
                           ثبت پاسخ
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-[#27272a]/40 text-xs text-[#a1a1aa]">
+                      <div className="flex items-center justify-between pt-inset-sm border-t border-border-subtle text-body-sm text-text-subtle">
                         <button
                           onClick={() => onIgnoreGap(gap)}
-                          className="hover:text-white transition-colors text-[11px]"
+                          className="hover:text-text-default transition-colors text-caption"
                         >
                           نادیده گرفتن این شکاف
                         </button>
-                        <span className="text-[11px] text-[#7d7d86]">
+                        <span className="text-caption text-text-subtlest">
                           پاسخ مستقیم به عنوان یک شیء تأییدشده در شاخه {gap.nodeId} ثبت می‌شود.
                         </span>
                       </div>
@@ -223,13 +223,13 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
 
       {/* Permission to continue even with gaps */}
       {readiness.gaps.length > 0 && (
-        <div className="pt-2 flex items-center justify-between border-t border-[#27272a]">
-          <span className="text-xs text-[#f59e0b]">
+        <div className="pt-inset-sm flex items-center justify-between border-t border-border-default">
+          <span className="text-body-sm text-text-warning">
             نکته مبدأ: Gap راهنماست نه درِ بسته؛ در صورت تمایل می‌توانید با همین اطلاعات ادامه دهید.
           </span>
           <button
             onClick={onProceedAnyway}
-            className="px-3 py-1.5 text-xs font-medium text-[#d4d4d8] hover:text-white bg-[#27272a] hover:bg-[#3f3f46] rounded-lg transition-colors"
+            className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-default hover:text-text-default bg-bg-neutral-subtle hover:bg-interaction-hover rounded-control-sm transition-colors"
           >
             ادامه با هشدار کیفیت کمتر &larr;
           </button>

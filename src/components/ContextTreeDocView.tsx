@@ -25,90 +25,90 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = ({
   );
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-8 text-right">
-      <div className="border-b border-[#27272a] pb-4 flex items-center justify-between">
+    <div className="bg-surface-raised border border-border-default rounded-control p-inset-xl space-y-stack-xl text-end">
+      <div className="border-b border-border-default pb-inset-lg flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">سند منبع حقیقت (Document View)</h2>
-          <p className="text-xs text-[#a1a1aa] mt-1">
+          <h2 className="text-heading-sm font-bold text-text-default">سند منبع حقیقت (Document View)</h2>
+          <p className="text-body-sm text-text-subtle mt-stack-xs">
             داده همون UI است (اصل P6)؛ هر تیتر یک شیء نوع‌دار از دانش است که کلیک روی آن فوراً امکان ویرایش را می‌دهد.
           </p>
         </div>
-        <span className="text-xs text-[#a1a1aa] bg-[#09090b] px-3 py-1 rounded-md border border-[#27272a]">
+        <span className="text-body-sm text-text-subtle bg-surface-sunken px-inset-md py-inset-xs rounded-control-sm border border-border-default">
           {activeObjects.length} قلم دانش فعال
         </span>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-stack-xl">
         {nodes.map((node, index) => {
           const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
 
           return (
-            <section key={node.id} className="space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-[#27272a]/60">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-[#e11d48]">0{index + 1}.</span>
-                  <h3 className="text-lg font-bold text-white">{node.label}</h3>
-                  <span className="text-xs text-[#7d7d86] hidden sm:inline">
+            <section key={node.id} className="space-y-stack-md">
+              <div className="flex items-center justify-between pb-inset-sm border-b border-border-subtle">
+                <div className="flex items-center gap-inline-sm">
+                  <span className="text-body-sm font-mono text-text-brand">0{index + 1}.</span>
+                  <h3 className="text-heading-xs font-bold text-text-default">{node.label}</h3>
+                  <span className="text-body-sm text-text-subtlest hidden sm:inline">
                     ({node.description})
                   </span>
                 </div>
                 <button
                   onClick={() => onAddNewToNode(node.id)}
-                  className="text-xs text-[#fb7185] hover:text-white px-2 py-1 rounded hover:bg-[#27272a] transition-colors"
+                  className="text-body-sm text-text-brand hover:text-text-default px-inset-sm py-inset-xs rounded-indicator hover:bg-interaction-hover transition-colors"
                 >
                   + افزودن به این شاخه
                 </button>
               </div>
 
               {nodeObjects.length === 0 ? (
-                <div className="p-4 rounded-lg bg-[#09090b]/40 border border-[#27272a] border-dashed text-xs text-[#7d7d86] flex items-center justify-between">
+                <div className="p-inset-lg rounded-control-sm bg-surface-sunken border border-border-default border-dashed text-body-sm text-text-subtlest flex items-center justify-between">
                   <span>هیچ موردی در این شاخه ثبت نشده است.</span>
                   <button
                     onClick={() => onAddNewToNode(node.id)}
-                    className="text-[#e11d48] font-medium hover:underline"
+                    className="text-text-brand font-semibold hover:underline"
                   >
                     ثبت اولین مورد
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-inline-lg">
                   {nodeObjects.map((obj) => (
                     <article
                       key={obj.id}
                       onClick={() => onSelectObject(obj)}
-                      className={`p-4 rounded-lg border transition-all cursor-pointer text-right group ${
+                      className={`p-inset-lg rounded-control-sm border transition-all cursor-pointer text-end group ${
                         obj.status === 'Proposed'
-                          ? 'bg-[#18181b]/80 border-[#f59e0b]/40 hover:border-[#f59e0b]'
+                          ? 'bg-surface-raised border-border-warning-subtle hover:border-border-warning'
                           : obj.status === 'Needs Review'
-                          ? 'bg-[#18181b]/80 border-[#38bdf8]/40 hover:border-[#38bdf8]'
-                          : 'bg-[#09090b] border-[#27272a] hover:border-[#52525b]'
+                          ? 'bg-surface-raised border-border-info-subtle hover:border-border-info'
+                          : 'bg-surface-sunken border-border-default hover:border-border-bold'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <h4 className="font-semibold text-white text-sm group-hover:text-[#fb7185] transition-colors">
+                      <div className="flex items-center justify-between gap-inline-sm mb-stack-sm">
+                        <h4 className="font-semibold text-text-default text-body-md group-hover:text-text-brand transition-colors">
                           {obj.title}
                         </h4>
-                        <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+                        <div className="flex items-center gap-inline-sm shrink-0 text-caption">
                           <span
-                            className={`px-1.5 py-0.5 rounded font-medium ${
+                            className={`px-inset-sm py-inset-xs rounded-indicator font-semibold ${
                               obj.type === 'Decision'
-                                ? 'bg-[#e11d48]/15 text-[#fb7185]'
+                                ? 'bg-bg-brand-subtle text-text-brand'
                                 : obj.type === 'Constraint'
-                                ? 'bg-[#f59e0b]/15 text-[#fbbf24]'
+                                ? 'bg-bg-warning-subtle text-text-warning'
                                 : obj.type === 'Asset'
-                                ? 'bg-[#10b981]/15 text-[#34d399]'
-                                : 'bg-[#0284c7]/15 text-[#38bdf8]'
+                                ? 'bg-bg-success-subtle text-text-success'
+                                : 'bg-bg-info-subtle text-text-info'
                             }`}
                           >
                             {obj.type}
                           </span>
                           <span
-                            className={`px-1.5 py-0.5 rounded ${
+                            className={`px-inset-sm py-inset-xs rounded-indicator ${
                               obj.status === 'Confirmed'
-                                ? 'text-[#10b981] bg-[#10b981]/10'
+                                ? 'text-text-success bg-bg-success-subtle'
                                 : obj.status === 'Proposed'
-                                ? 'text-[#f59e0b] bg-[#f59e0b]/10'
-                                : 'text-[#38bdf8] bg-[#38bdf8]/10'
+                                ? 'text-text-warning bg-bg-warning-subtle'
+                                : 'text-text-info bg-bg-info-subtle'
                             }`}
                           >
                             {obj.status === 'Confirmed'
@@ -120,13 +120,13 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = ({
                         </div>
                       </div>
 
-                      <p className="text-xs text-[#d4d4d8] leading-relaxed line-clamp-3">
+                      <p className="text-body-sm text-text-default leading-relaxed line-clamp-3">
                         {obj.content}
                       </p>
 
-                      <div className="mt-3 pt-2 border-t border-[#27272a]/40 flex items-center justify-between text-[11px] text-[#7d7d86]">
+                      <div className="mt-stack-md pt-inset-sm border-t border-border-subtle flex items-center justify-between text-caption text-text-subtlest">
                         <span>منبع: {obj.provenance}</span>
-                        <span className="text-[#a1a1aa] group-hover:text-white transition-colors">
+                        <span className="text-text-subtle group-hover:text-text-default transition-colors">
                           ویرایش یا مشاهده &larr;
                         </span>
                       </div>

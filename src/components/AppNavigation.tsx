@@ -57,30 +57,30 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
   );
 
   const navContent = (
-    <div className="flex flex-col h-full justify-between text-right font-sans select-none">
+    <div className="flex flex-col h-full justify-between text-end font-sans select-none">
       {/* Top Section: Brand & Workspace Switcher */}
-      <div className="space-y-4">
+      <div className="space-y-stack-md">
         {/* Brand identity */}
-        <div className="flex items-center justify-between px-2 pt-1">
-          <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-xl bg-[#e11d48] flex items-center justify-center text-white font-bold text-base shadow-sm">
+        <div className="flex items-center justify-between px-inset-sm pt-inset-xs">
+          <div className="flex items-center gap-inline-md">
+            <span className="w-space-8 h-space-8 rounded-control bg-bg-brand-bold flex items-center justify-center text-text-default font-bold text-body-md shadow-raised">
               م
             </span>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold tracking-tight text-white leading-none">
+              <div className="flex items-center gap-inline-sm">
+                <span className="text-body-md font-bold text-text-default leading-tight">
                   مبدأ
                 </span>
-                <span className="text-[10px] text-[#71717a] font-mono">v3.0</span>
+                <span className="text-caption text-text-subtlest font-mono">v3.0</span>
               </div>
-              <span className="text-[10px] text-[#a1a1aa] block mt-0.5">منبع حقیقت کسب‌وکار</span>
+              <span className="text-caption text-text-subtle block mt-stack-xs">منبع حقیقت کسب‌وکار</span>
             </div>
           </div>
 
           {/* Close button for mobile drawer */}
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden text-[#a1a1aa] hover:text-white p-1"
+            className="md:hidden text-text-subtle hover:text-text-default p-inset-xs"
             aria-label="بستن منو"
           >
             ✕
@@ -88,10 +88,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
         </div>
 
         {/* Workspace Switcher Card */}
-        <div className="bg-[#121215] border border-[#27272a] rounded-xl p-2.5 space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-[#a1a1aa]">
+        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md space-y-stack-sm">
+          <div className="flex items-center justify-between text-caption text-text-subtle">
             <span>فضای کاری فعال:</span>
-            <span className="text-[10px] text-[#10b981] font-semibold bg-[#10b981]/10 px-1.5 py-0.2 rounded">
+            <span className="text-caption text-text-success font-semibold bg-bg-success-subtle px-inset-sm py-inset-lg rounded-indicator">
               پلن {plan.title.split(' ')[0]}
             </span>
           </div>
@@ -109,7 +109,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                   if (ws) onSelectWorkspace(ws);
                 }
               }}
-              className="w-full bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46] text-[#fafafa] text-xs py-2 px-2.5 rounded-lg focus:outline-none focus:border-[#e11d48] cursor-pointer transition-colors truncate"
+              className="w-full bg-surface-raised border border-border-default hover:border-border-bold text-text-default text-body-sm py-inset-sm px-inset-md rounded-control-sm focus:outline-none focus:border-border-brand cursor-pointer transition-colors truncate"
             >
               {allWorkspaces.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -122,7 +122,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
         </div>
 
         {/* Primary Navigation Links */}
-        <nav className="space-y-1 text-xs" aria-label="بخش‌های اصلی نرم‌افزار">
+        <nav className="space-y-stack-xs text-body-sm" aria-label="بخش‌های اصلی نرم‌افزار">
           {/* Item 1: Source of Truth */}
           <div>
             <button
@@ -130,38 +130,38 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 onTabChange('context');
                 setIsMobileMenuOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+              className={`w-full flex items-center justify-between px-inset-md py-inset-md rounded-control transition-all ${
                 activeTab === 'context'
-                  ? 'bg-[#18181b] text-white font-bold border border-[#27272a] shadow-xs'
-                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/50'
+                  ? 'bg-surface-raised text-text-default font-bold border border-border-default shadow-raised'
+                  : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="text-base">📖</span>
+              <div className="flex items-center gap-inline-md">
+                <span className="text-body-md">📖</span>
                 <span>منبع حقیقت (Source of Truth)</span>
               </div>
-              <span className="text-[10px] font-mono text-[#71717a]">{contextCount}</span>
+              <span className="text-caption font-mono text-text-subtlest">{contextCount}</span>
             </button>
 
             {/* Sub-modes for Context View (Document vs Table) */}
             {activeTab === 'context' && (
-              <div className="mr-8 mt-1 space-y-0.5 border-r border-[#27272a] pr-2 text-[11px]">
+              <div className="me-inline-xl mt-stack-xs space-y-stack-xs border-e border-border-default pe-inset-sm text-caption">
                 <button
                   onClick={() => onChangeContextViewMode('doc')}
-                  className={`w-full text-right py-1 px-2 rounded-md transition-colors ${
+                  className={`w-full text-end py-inset-xs px-inset-sm rounded-control-sm transition-colors ${
                     contextViewMode === 'doc'
-                      ? 'text-[#e11d48] font-bold bg-[#e11d48]/10'
-                      : 'text-[#a1a1aa] hover:text-white'
+                      ? 'text-text-brand font-bold bg-bg-brand-subtle'
+                      : 'text-text-subtle hover:text-text-default'
                   }`}
                 >
                   • نمای سندی و درختی
                 </button>
                 <button
                   onClick={() => onChangeContextViewMode('table')}
-                  className={`w-full text-right py-1 px-2 rounded-md transition-colors ${
+                  className={`w-full text-end py-inset-xs px-inset-sm rounded-control-sm transition-colors ${
                     contextViewMode === 'table'
-                      ? 'text-[#e11d48] font-bold bg-[#e11d48]/10'
-                      : 'text-[#a1a1aa] hover:text-white'
+                      ? 'text-text-brand font-bold bg-bg-brand-subtle'
+                      : 'text-text-subtle hover:text-text-default'
                   }`}
                 >
                   • نمای پایگاه‌داده و جدول
@@ -177,31 +177,31 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 onTabChange('workstreams');
                 setIsMobileMenuOpen(false);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+              className={`w-full flex items-center justify-between px-inset-md py-inset-md rounded-control transition-all ${
                 activeTab === 'workstreams'
-                  ? 'bg-[#18181b] text-white font-bold border border-[#27272a] shadow-xs'
-                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/50'
+                  ? 'bg-surface-raised text-text-default font-bold border border-border-default shadow-raised'
+                  : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="text-base">⚙️</span>
+              <div className="flex items-center gap-inline-md">
+                <span className="text-body-md">⚙️</span>
                 <span>استودیو جریان‌های کار & رادار</span>
               </div>
-              <span className="text-[10px] text-[#fb7185] bg-[#e11d48]/10 px-1.5 py-0.2 rounded font-mono">
+              <span className="text-caption text-text-brand bg-bg-brand-subtle px-inset-sm py-inset-lg rounded-indicator font-mono">
                 {specs.length}
               </span>
             </button>
 
             {/* Sub-menu of defined workstreams */}
-            <div className="mr-8 mt-1.5 space-y-1 border-r border-[#27272a] pr-2 text-[11px]">
-              <div className="flex items-center justify-between text-[10px] text-[#71717a] pb-0.5">
+            <div className="me-inline-xl mt-stack-sm space-y-stack-xs border-e border-border-default pe-inset-sm text-caption">
+              <div className="flex items-center justify-between text-caption text-text-subtlest pb-inset-xs">
                 <span>جریان‌های تعریف‌شده:</span>
                 <button
                   onClick={() => {
                     onOpenCustomSpecModal();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="text-[#fb7185] hover:underline"
+                  className="text-text-brand hover:underline"
                 >
                   + جدید
                 </button>
@@ -215,10 +215,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                     onSelectSpecId(s.id);
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`w-full text-right py-1.5 px-2 rounded-md transition-all truncate block ${
+                  className={`w-full text-end py-inset-sm px-inset-sm rounded-control-sm transition-all truncate block ${
                     activeTab === 'workstreams' && selectedSpecId === s.id
-                      ? 'text-white font-bold bg-[#18181b] border border-[#3f3f46]'
-                      : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/30'
+                      ? 'text-text-default font-bold bg-surface-raised border border-border-bold'
+                      : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
                   }`}
                 >
                   {s.title}
@@ -233,17 +233,17 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
               onTabChange('chat');
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+            className={`w-full flex items-center justify-between px-inset-md py-inset-md rounded-control transition-all ${
               activeTab === 'chat'
-                ? 'bg-[#18181b] text-white font-bold border border-[#27272a] shadow-xs'
-                : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/50'
+                ? 'bg-surface-raised text-text-default font-bold border border-border-default shadow-raised'
+                : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className="text-base">💬</span>
+            <div className="flex items-center gap-inline-md">
+              <span className="text-body-md">💬</span>
               <span>گفتگو و استخراج دانش</span>
             </div>
-            <span className="text-[10px] font-mono text-[#71717a]">
+            <span className="text-caption font-mono text-text-subtlest">
               {todayChatCount}/{plan.dailyChatLimit}
             </span>
           </button>
@@ -254,17 +254,17 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
               onTabChange('assets');
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+            className={`w-full flex items-center justify-between px-inset-md py-inset-md rounded-control transition-all ${
               activeTab === 'assets'
-                ? 'bg-[#18181b] text-white font-bold border border-[#27272a] shadow-xs'
-                : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/50'
+                ? 'bg-surface-raised text-text-default font-bold border border-border-default shadow-raised'
+                : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className="text-base">📦</span>
+            <div className="flex items-center gap-inline-md">
+              <span className="text-body-md">📦</span>
               <span>کتابخانه دارایی‌ها (Assets)</span>
             </div>
-            <span className="text-[10px] font-mono text-[#71717a]">{deliverablesCount}</span>
+            <span className="text-caption font-mono text-text-subtlest">{deliverablesCount}</span>
           </button>
 
           {/* Item 5: Ledger & Economics */}
@@ -273,55 +273,55 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
               onTabChange('ledger');
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+            className={`w-full flex items-center justify-between px-inset-md py-inset-md rounded-control transition-all ${
               activeTab === 'ledger'
-                ? 'bg-[#18181b] text-white font-bold border border-[#27272a] shadow-xs'
-                : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]/50'
+                ? 'bg-surface-raised text-text-default font-bold border border-border-default shadow-raised'
+                : 'text-text-subtle hover:text-text-default hover:bg-surface-raised'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className="text-base">💳</span>
+            <div className="flex items-center gap-inline-md">
+              <span className="text-body-md">💳</span>
               <span>دفتر کل و شفافیت مالی</span>
             </div>
-            <span className="text-[10px] text-[#10b981] font-mono">✓</span>
+            <span className="text-caption text-text-success font-mono">✓</span>
           </button>
         </nav>
       </div>
 
       {/* Bottom Section: Credit Gauge, Onboarding, and User Account */}
-      <div className="pt-4 mt-4 border-t border-[#27272a] space-y-3">
+      <div className="pt-inset-lg mt-stack-md border-t border-border-default space-y-stack-md">
         {/* Credits Gauge Card */}
         <div
           onClick={() => {
             onOpenPlanModal();
             setIsMobileMenuOpen(false);
           }}
-          className="bg-[#121215] hover:bg-[#18181b] border border-[#27272a] hover:border-[#3f3f46] rounded-xl p-3 cursor-pointer transition-all space-y-2"
+          className="bg-surface-raised hover:bg-surface-raised border border-border-default hover:border-border-bold rounded-control p-inset-md cursor-pointer transition-all space-y-stack-sm"
           title="مشاهده پلن‌ها و افزایش اعتبار"
         >
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#a1a1aa]">موجودی اعتبار:</span>
-            <span className="font-bold text-white font-mono">
+          <div className="flex items-center justify-between text-body-sm">
+            <span className="text-text-subtle">موجودی اعتبار:</span>
+            <span className="font-bold text-text-default font-mono">
               {currentWorkspace.creditsRemaining} / {plan.creditsMonthly}
             </span>
           </div>
 
-          <div className="w-full bg-[#27272a] h-1.5 rounded-full overflow-hidden">
+          <div className="w-full bg-bg-neutral-subtle h-space-1 rounded-pill overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${
+              className={`h-full rounded-pill transition-all ${
                 creditPercentage > 40
-                  ? 'bg-[#10b981]'
+                  ? 'bg-bg-success-bold'
                   : creditPercentage > 15
-                  ? 'bg-[#f59e0b]'
-                  : 'bg-[#e11d48]'
+                  ? 'bg-bg-warning-bold'
+                  : 'bg-bg-brand-bold'
               }`}
               style={{ width: `${creditPercentage}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-[#71717a]">
+          <div className="flex items-center justify-between text-caption text-text-subtlest">
             <span>پلن {plan.title}</span>
-            <span className="text-[#fb7185] hover:underline">ارتقا یا تغییر &larr;</span>
+            <span className="text-text-brand hover:underline">ارتقا یا تغییر &larr;</span>
           </div>
         </div>
 
@@ -331,7 +331,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
             onOpenOnboarding();
             setIsMobileMenuOpen(false);
           }}
-          className="w-full py-2 px-3 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-xl transition-colors shadow-xs flex items-center justify-center gap-1.5"
+          className="w-full py-inset-sm px-inset-md text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control transition-colors shadow-raised flex items-center justify-center gap-inline-sm"
         >
           <span>⚡</span>
           <span>راه‌اندازی ۱۰ دقیقه‌ای برند</span>
@@ -343,20 +343,20 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
             onOpenAccountModal();
             setIsMobileMenuOpen(false);
           }}
-          className="flex items-center justify-between p-2 rounded-xl hover:bg-[#18181b] border border-transparent hover:border-[#27272a] cursor-pointer transition-all"
+          className="flex items-center justify-between p-inset-sm rounded-control hover:bg-surface-raised border border-transparent hover:border-border-default cursor-pointer transition-all"
         >
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-7 h-7 rounded-lg bg-[#27272a] flex items-center justify-center text-sm">
+          <div className="flex items-center gap-inline-sm text-body-sm">
+            <span className="w-space-8 h-space-8 rounded-control-sm bg-bg-neutral-subtle flex items-center justify-center text-body-md">
               👤
             </span>
             <div>
-              <span className="text-[#fafafa] font-semibold block text-[11px]" dir="ltr">
+              <span className="text-text-default font-semibold block text-caption" dir="ltr">
                 ۰۹۱۲۳۴۵۶۷۸۹
               </span>
-              <span className="text-[10px] text-[#10b981]">حساب تأییدشده ✓</span>
+              <span className="text-caption text-text-success">حساب تأییدشده ✓</span>
             </div>
           </div>
-          <span className="text-xs text-[#71717a]">⚙️</span>
+          <span className="text-body-sm text-text-subtlest">⚙️</span>
         </div>
       </div>
     </div>
@@ -365,38 +365,38 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
   return (
     <>
       {/* Desktop Persistent Sidebar (RTL: on the right) */}
-      <aside className="hidden md:flex w-72 h-screen sticky top-0 bg-[#09090b] border-l border-[#27272a] p-4 flex-col shrink-0 z-30 overflow-y-auto">
+      <aside className="hidden md:flex w-container-overlay-xs h-screen sticky top-space-0 bg-surface-sunken border-s border-border-default p-inset-lg flex-col shrink-0 z-dropdown overflow-y-auto">
         {navContent}
       </aside>
 
       {/* Mobile Top Minimal Bar */}
-      <header className="md:hidden sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-md border-b border-[#27272a] px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+      <header className="md:hidden sticky top-space-0 z-sticky bg-surface-sunken border-b border-border-default px-inset-lg py-inset-md flex items-center justify-between">
+        <div className="flex items-center gap-inline-md">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="w-8 h-8 rounded-lg bg-[#18181b] border border-[#27272a] flex items-center justify-center text-white text-sm"
+            className="w-space-8 h-space-8 rounded-control-sm bg-surface-raised border border-border-default flex items-center justify-center text-text-default text-body-md"
             aria-label="باز کردن منو"
           >
             ☰
           </button>
-          <div className="flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-md bg-[#e11d48] flex items-center justify-center text-white font-bold text-xs">
+          <div className="flex items-center gap-inline-sm">
+            <span className="w-space-6 h-space-6 rounded-control-sm bg-bg-brand-bold flex items-center justify-center text-text-default font-bold text-body-sm">
               م
             </span>
-            <span className="font-bold text-white text-sm">مبدأ</span>
+            <span className="font-bold text-text-default text-body-md">مبدأ</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-inline-sm text-body-sm">
           <button
             onClick={onOpenPlanModal}
-            className="px-2.5 py-1 rounded-lg bg-[#18181b] border border-[#27272a] text-[#fafafa] font-mono text-[11px]"
+            className="px-inset-md py-inset-xs rounded-control-sm bg-surface-raised border border-border-default text-text-default font-mono text-caption"
           >
             {currentWorkspace.creditsRemaining} cr
           </button>
           <button
             onClick={onOpenAccountModal}
-            className="w-7 h-7 rounded-lg bg-[#18181b] border border-[#27272a] flex items-center justify-center text-xs"
+            className="w-space-8 h-space-8 rounded-control-sm bg-surface-raised border border-border-default flex items-center justify-center text-body-sm"
             aria-label="پروفایل"
           >
             👤
@@ -408,11 +408,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
       {isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
-          className="md:hidden fixed inset-0 z-50 flex justify-end bg-black/80 backdrop-blur-xs animate-in fade-in"
+          className="md:hidden fixed inset-space-0 z-dialog flex justify-end bg-bg-scrim"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-4/5 max-w-sm h-full bg-[#09090b] border-l border-[#27272a] p-4 flex flex-col shadow-2xl"
+            className="w-4/5 max-w-overlay-sm h-full bg-surface-sunken border-s border-border-default p-inset-lg flex flex-col shadow-overlay"
           >
             {navContent}
           </div>
@@ -422,56 +422,56 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
       {/* Mobile Bottom Navigation Bar (Apple / Google Design Standard) */}
       <nav
         aria-label="منوی پایینی موبایل"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#09090b]/95 backdrop-blur-md border-t border-[#27272a] flex items-center justify-around px-2 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="md:hidden fixed bottom-space-0 start-space-0 end-space-0 z-sticky bg-surface-sunken border-t border-border-default flex items-center justify-around px-inset-sm py-inset-sm pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
         <button
           onClick={() => onTabChange('context')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors flex-1 ${
+          className={`flex flex-col items-center justify-center py-inset-xs px-inset-sm rounded-control-sm transition-colors flex-1 ${
             activeTab === 'context'
-              ? 'text-[#e11d48] font-bold'
-              : 'text-[#71717a] hover:text-[#fafafa]'
+              ? 'text-text-brand font-bold'
+              : 'text-text-subtlest hover:text-text-default'
           }`}
         >
-          <span className="text-lg leading-none">📖</span>
-          <span className="text-[10px] mt-1">منبع حقیقت</span>
+          <span className="text-heading-xs leading-tight">📖</span>
+          <span className="text-caption mt-stack-xs">منبع حقیقت</span>
         </button>
 
         <button
           onClick={() => onTabChange('workstreams')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors flex-1 ${
+          className={`flex flex-col items-center justify-center py-inset-xs px-inset-sm rounded-control-sm transition-colors flex-1 ${
             activeTab === 'workstreams'
-              ? 'text-[#e11d48] font-bold'
-              : 'text-[#71717a] hover:text-[#fafafa]'
+              ? 'text-text-brand font-bold'
+              : 'text-text-subtlest hover:text-text-default'
           }`}
         >
-          <span className="text-lg leading-none">⚡</span>
-          <span className="text-[10px] mt-1">جریان‌ها</span>
+          <span className="text-heading-xs leading-tight">⚡</span>
+          <span className="text-caption mt-stack-xs">جریان‌ها</span>
         </button>
 
         <button
           onClick={() => onTabChange('chat')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors flex-1 relative ${
+          className={`flex flex-col items-center justify-center py-inset-xs px-inset-sm rounded-control-sm transition-colors flex-1 relative ${
             activeTab === 'chat'
-              ? 'text-[#e11d48] font-bold'
-              : 'text-[#71717a] hover:text-[#fafafa]'
+              ? 'text-text-brand font-bold'
+              : 'text-text-subtlest hover:text-text-default'
           }`}
         >
-          <span className="text-lg leading-none">💬</span>
-          <span className="text-[10px] mt-1">گفتگو</span>
+          <span className="text-heading-xs leading-tight">💬</span>
+          <span className="text-caption mt-stack-xs">گفتگو</span>
         </button>
 
         <button
           onClick={() => onTabChange('assets')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors flex-1 relative ${
+          className={`flex flex-col items-center justify-center py-inset-xs px-inset-sm rounded-control-sm transition-colors flex-1 relative ${
             activeTab === 'assets'
-              ? 'text-[#e11d48] font-bold'
-              : 'text-[#71717a] hover:text-[#fafafa]'
+              ? 'text-text-brand font-bold'
+              : 'text-text-subtlest hover:text-text-default'
           }`}
         >
-          <span className="text-lg leading-none">📦</span>
-          <span className="text-[10px] mt-1">دارایی‌ها</span>
+          <span className="text-heading-xs leading-tight">📦</span>
+          <span className="text-caption mt-stack-xs">دارایی‌ها</span>
           {deliverablesCount > 0 && (
-            <span className="absolute top-1 right-2.5 w-3.5 h-3.5 rounded-full bg-[#18181b] border border-[#27272a] text-[9px] font-mono flex items-center justify-center text-[#a1a1aa]">
+            <span className="absolute top-space-1 end-space-3 w-space-4 h-space-4 rounded-pill bg-surface-raised border border-border-default text-[9px] font-mono flex items-center justify-center text-text-subtle">
               {deliverablesCount}
             </span>
           )}
@@ -479,14 +479,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
 
         <button
           onClick={() => onTabChange('ledger')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors flex-1 ${
+          className={`flex flex-col items-center justify-center py-inset-xs px-inset-sm rounded-control-sm transition-colors flex-1 ${
             activeTab === 'ledger'
-              ? 'text-[#e11d48] font-bold'
-              : 'text-[#71717a] hover:text-[#fafafa]'
+              ? 'text-text-brand font-bold'
+              : 'text-text-subtlest hover:text-text-default'
           }`}
         >
-          <span className="text-lg leading-none">💳</span>
-          <span className="text-[10px] mt-1">دفتر کل</span>
+          <span className="text-heading-xs leading-tight">💳</span>
+          <span className="text-caption mt-stack-xs">دفتر کل</span>
         </button>
       </nav>
     </>

@@ -35,22 +35,22 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
   };
 
   return (
-    <div className="hidden md:flex items-center justify-between px-8 py-3.5 border-b border-[#27272a] bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-20">
+    <div className="hidden md:flex items-center justify-between px-inset-2xl py-inset-lg border-b border-border-default bg-surface-sunken sticky top-space-0 z-sticky">
       {/* Breadcrumb Path */}
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-[#71717a]">مبدأ</span>
-        <span className="text-[#3f3f46]">/</span>
-        <span className="text-[#a1a1aa] font-medium">{currentWorkspace.name}</span>
-        <span className="text-[#3f3f46]">/</span>
-        <span className="text-white font-semibold">{tabLabels[activeTab] || activeTab}</span>
+      <div className="flex items-center gap-inline-sm text-body-sm">
+        <span className="text-text-subtlest">مبدأ</span>
+        <span className="text-text-disabled">/</span>
+        <span className="text-text-subtle font-semibold">{currentWorkspace.name}</span>
+        <span className="text-text-disabled">/</span>
+        <span className="text-text-default font-semibold">{tabLabels[activeTab] || activeTab}</span>
       </div>
 
       {/* Status Indicators & Actions */}
-      <div className="flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-inline-md text-body-sm">
         {/* Contradiction indicator if active */}
         {contradictions.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-[#e11d48]/10 border border-[#e11d48]/30 text-[#fb7185] px-2.5 py-1 rounded-lg">
-            <span className="w-2 h-2 rounded-full bg-[#e11d48] animate-pulse" />
+          <div className="flex items-center gap-inline-sm bg-bg-brand-subtle border border-border-brand-subtle text-text-brand px-inset-md py-inset-xs rounded-control-sm">
+            <span className="w-space-2 h-space-2 rounded-pill bg-bg-brand-bold" />
             <span className="font-semibold">{contradictions.length} تناقض نیازمند حل</span>
           </div>
         )}
@@ -58,16 +58,16 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
         {/* Plan badge */}
         <button
           onClick={onOpenPlanModal}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] text-[#a1a1aa] hover:text-white transition-colors"
+          className="flex items-center gap-inline-sm px-inset-md py-inset-xs rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default text-text-subtle hover:text-text-default transition-colors"
         >
           <span>پلن:</span>
-          <span className="font-semibold text-white">{plan.title}</span>
+          <span className="font-semibold text-text-default">{plan.title}</span>
         </button>
 
         {/* Quick Context Add button */}
         <button
           onClick={onOpenContextModal}
-          className="px-3 py-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#3f3f46] text-[#fafafa] font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
+          className="px-inset-md py-inset-sm rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-bold text-text-default font-semibold transition-colors flex items-center gap-inline-sm shadow-raised"
         >
           <span>+</span>
           <span>ثبت شیء دانش</span>
@@ -76,7 +76,7 @@ export const TopStatusBar: React.FC<TopStatusBarProps> = ({
         {/* Quick Custom Spec button */}
         <button
           onClick={onOpenCustomSpecModal}
-          className="px-3 py-1.5 rounded-lg bg-[#e11d48] hover:bg-[#be123c] text-white font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
+          className="px-inset-md py-inset-sm rounded-control-sm bg-bg-brand-bold hover:bg-bg-brand-bold-hover text-text-default font-semibold transition-colors flex items-center gap-inline-sm shadow-raised"
         >
           <span>+</span>
           <span>جریان کار سفارشی</span>

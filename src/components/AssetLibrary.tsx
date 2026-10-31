@@ -44,20 +44,20 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-right">
+    <div className="space-y-stack-lg text-end">
       {/* Header */}
-      <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface-raised border border-border-default rounded-control p-inset-xl flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
         <div>
-          <h2 className="text-xl font-bold text-white">کتابخانه دارایی‌ها (Asset Library)</h2>
-          <p className="text-xs text-[#a1a1aa] mt-1">
+          <h2 className="text-heading-sm font-bold text-text-default">کتابخانه دارایی‌ها (Asset Library)</h2>
+          <p className="text-body-sm text-text-subtle mt-stack-xs">
             اصل P4: محصول برای دارایی منسجم بهینه می‌شود، نه تعداد پیام. هر خروجی می‌تواند خودش Context کارهای بعدی شود.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-inline-sm shrink-0">
           <button
             onClick={handleExportJson}
-            className="px-3 py-1.5 text-xs font-semibold text-[#d4d4d8] hover:text-white bg-[#09090b] border border-[#27272a] hover:border-[#52525b] rounded-lg transition-colors"
+            className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-default hover:text-text-default bg-surface-sunken border border-border-default hover:border-border-bold rounded-control-sm transition-colors"
           >
             خروجی گرفتن JSON
           </button>
@@ -65,49 +65,49 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
       </div>
 
       {exportNotice && (
-        <div className="bg-[#10b981]/20 border border-[#10b981]/40 text-[#34d399] p-3 rounded-lg text-xs">
+        <div className="bg-bg-success-subtle border border-border-success-subtle text-text-success p-inset-md rounded-control-sm text-body-sm">
           {exportNotice}
         </div>
       )}
 
       {/* Filter strip */}
-      <div className="flex items-center gap-2 border-b border-[#27272a] pb-2 text-xs">
+      <div className="flex items-center gap-inline-sm border-b border-border-default pb-inset-sm text-body-sm">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-inset-md py-inset-sm rounded-control-sm transition-colors ${
             filter === 'all'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
+              ? 'bg-surface-raised text-text-default font-bold border border-border-bold'
+              : 'text-text-subtle hover:text-text-default'
           }`}
         >
           تمام دارایی‌ها ({deliverables.length})
         </button>
         <button
           onClick={() => setFilter('main_positioning')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-inset-md py-inset-sm rounded-control-sm transition-colors ${
             filter === 'main_positioning'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
+              ? 'bg-surface-raised text-text-default font-bold border border-border-bold'
+              : 'text-text-subtle hover:text-text-default'
           }`}
         >
           پایهٔ موقعیت‌یابی
         </button>
         <button
           onClick={() => setFilter('instagram_foundation')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-inset-md py-inset-sm rounded-control-sm transition-colors ${
             filter === 'instagram_foundation'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
+              ? 'bg-surface-raised text-text-default font-bold border border-border-bold'
+              : 'text-text-subtle hover:text-text-default'
           }`}
         >
           اینستاگرام
         </button>
         <button
           onClick={() => setFilter('freelance_profile')}
-          className={`px-3 py-1.5 rounded-lg transition-colors ${
+          className={`px-inset-md py-inset-sm rounded-control-sm transition-colors ${
             filter === 'freelance_profile'
-              ? 'bg-[#18181b] text-white font-bold border border-[#3f3f46]'
-              : 'text-[#a1a1aa] hover:text-white'
+              ? 'bg-surface-raised text-text-default font-bold border border-border-bold'
+              : 'text-text-subtle hover:text-text-default'
           }`}
         >
           پروفایل فریلنسری
@@ -116,12 +116,12 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
 
       {/* Deliverables feed */}
       {filtered.length === 0 ? (
-        <div className="p-12 text-center bg-[#18181b] border border-[#27272a] rounded-xl text-xs text-[#a1a1aa] space-y-3">
-          <p className="text-sm">هیچ دارایی‌ای با فیلتر انتخابی یافت نشد.</p>
+        <div className="p-inset-2xl text-center bg-surface-raised border border-border-default rounded-control text-body-sm text-text-subtle space-y-stack-md">
+          <p className="text-body-md">هیچ دارایی‌ای با فیلتر انتخابی یافت نشد.</p>
           <p>می‌توانید از بخش جریان‌های کار، نخستین دارایی را با اتکا به Gap Engine تولید کنید.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-stack-lg">
           {filtered.map((del) => (
             <div key={del.id} className="relative group">
               <ContextReplayCard
@@ -130,10 +130,10 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
               />
-              <div className="mt-2 flex items-center justify-end">
+              <div className="mt-stack-sm flex items-center justify-end">
                 <button
                   onClick={() => onPromoteToContext(del)}
-                  className="text-xs text-[#10b981] hover:text-[#34d399] bg-[#09090b] border border-[#10b981]/30 hover:border-[#10b981] px-3 py-1 rounded-md transition-colors"
+                  className="text-body-sm text-text-success hover:text-text-success bg-surface-sunken border border-border-success-subtle hover:border-border-success px-inset-md py-inset-xs rounded-control-sm transition-colors"
                 >
                   تبدیل این خروجی به Context جدید (برای کارهای آینده) &larr;
                 </button>

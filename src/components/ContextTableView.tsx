@@ -44,37 +44,37 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   };
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-xl p-6 space-y-4 text-right">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#27272a] pb-4">
+    <div className="bg-surface-raised border border-border-default rounded-control p-inset-xl space-y-stack-md text-end">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-inline-lg border-b border-border-default pb-inset-lg">
         <div>
-          <h2 className="text-xl font-bold text-white">جدول پایگاه دانش (Table View)</h2>
-          <p className="text-xs text-[#a1a1aa] mt-1">
+          <h2 className="text-heading-sm font-bold text-text-default">جدول پایگاه دانش (Table View)</h2>
+          <p className="text-body-sm text-text-subtle mt-stack-xs">
             مشاهده، فیلتر چندبعدی و جستجو در ردیف‌های Context با ساختار و منشأ شفاف
           </p>
         </div>
         <button
           onClick={onAddNew}
-          className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors whitespace-nowrap"
+          className="px-inset-lg py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors whitespace-nowrap"
         >
           + تعریف شیء جدید (Context)
         </button>
       </div>
 
       {/* Filter bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-inline-md">
         <input
           type="text"
           placeholder="جستجو در عنوان یا متن..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
+          className="bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-body-sm text-text-default focus:outline-none focus:border-border-brand"
         />
 
         <select
           aria-label="فیلتر بر اساس نوع شیء"
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
-          className="bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
+          className="bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-body-sm text-text-default focus:outline-none focus:border-border-brand"
         >
           <option value="all">تمام انواع (Fact, Decision...)</option>
           <option value="Fact">Fact (واقعیت)</option>
@@ -87,7 +87,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           aria-label="فیلتر بر اساس وضعیت"
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
-          className="bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
+          className="bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-body-sm text-text-default focus:outline-none focus:border-border-brand"
         >
           <option value="all">تمام وضعیت‌ها</option>
           <option value="Confirmed">تأییدشده (Confirmed)</option>
@@ -101,7 +101,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           aria-label="فیلتر بر اساس شاخه درخت"
           value={selectedNode}
           onChange={(e) => setSelectedNode(e.target.value)}
-          className="bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#e11d48]"
+          className="bg-surface-sunken border border-border-default rounded-control-sm px-inset-md py-inset-sm text-body-sm text-text-default focus:outline-none focus:border-border-brand"
         >
           <option value="all">تمام شاخه‌ها</option>
           {nodes.map((n) => (
@@ -113,9 +113,9 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       </div>
 
       {/* Mobile Card List (Hidden on md+) */}
-      <div className="block md:hidden space-y-2.5">
+      <div className="block md:hidden space-y-stack-sm">
         {filteredObjects.length === 0 ? (
-          <div className="p-6 text-center text-[#7d7d86] bg-[#09090b] rounded-xl border border-[#27272a]">
+          <div className="p-inset-xl text-center text-text-subtlest bg-surface-sunken rounded-control border border-border-default">
             هیچ داده‌ای با فیلترهای انتخابی یافت نشد.
           </div>
         ) : (
@@ -123,38 +123,38 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
             <div
               key={obj.id}
               onClick={() => onSelectObject(obj)}
-              className="bg-[#09090b] border border-[#27272a] rounded-xl p-3.5 space-y-2 cursor-pointer hover:border-[#3f3f46] transition-all"
+              className="bg-surface-sunken border border-border-default rounded-control p-inset-lg space-y-stack-sm cursor-pointer hover:border-border-bold transition-all"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-white text-xs">{obj.title}</span>
+              <div className="flex items-center justify-between gap-inline-sm">
+                <span className="font-bold text-text-default text-body-sm">{obj.title}</span>
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                  className={`px-inset-sm py-inset-xs rounded-indicator text-caption font-semibold ${
                     obj.type === 'Decision'
-                      ? 'bg-[#e11d48]/20 text-[#fb7185]'
+                      ? 'bg-bg-brand-subtle text-text-brand'
                       : obj.type === 'Constraint'
-                      ? 'bg-[#f59e0b]/20 text-[#fbbf24]'
+                      ? 'bg-bg-warning-subtle text-text-warning'
                       : obj.type === 'Asset'
-                      ? 'bg-[#10b981]/20 text-[#34d399]'
-                      : 'bg-[#0284c7]/20 text-[#38bdf8]'
+                      ? 'bg-bg-success-subtle text-text-success'
+                      : 'bg-bg-info-subtle text-text-info'
                   }`}
                 >
                   {obj.type}
                 </span>
               </div>
 
-              <p className="text-[11px] text-[#a1a1aa] line-clamp-2 leading-relaxed">
+              <p className="text-caption text-text-subtle line-clamp-2 leading-relaxed">
                 {obj.content}
               </p>
 
-              <div className="flex items-center justify-between text-[10px] pt-1 border-t border-[#1f1f23] text-[#71717a]">
+              <div className="flex items-center justify-between text-caption pt-inset-xs border-t border-border-subtle text-text-subtlest">
                 <span>شاخه: {getNodeLabel(obj.nodeId)}</span>
                 <span
-                  className={`px-1.5 py-0.5 rounded ${
+                  className={`px-inset-sm py-inset-xs rounded-indicator ${
                     obj.status === 'Confirmed'
-                      ? 'text-[#10b981] bg-[#10b981]/10'
+                      ? 'text-text-success bg-bg-success-subtle'
                       : obj.status === 'Proposed'
-                      ? 'text-[#f59e0b] bg-[#f59e0b]/10'
-                      : 'text-[#a1a1aa] bg-[#27272a]'
+                      ? 'text-text-warning bg-bg-warning-subtle'
+                      : 'text-text-subtle bg-bg-neutral-subtle'
                   }`}
                 >
                   {obj.status === 'Confirmed'
@@ -170,23 +170,23 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       </div>
 
       {/* Desktop Table View (Hidden on mobile) */}
-      <div className="hidden md:block overflow-x-auto border border-[#27272a] rounded-lg">
-        <table className="w-full text-right text-xs">
-          <thead className="bg-[#09090b] text-[#a1a1aa] uppercase border-b border-[#27272a]">
+      <div className="hidden md:block overflow-x-auto border border-border-default rounded-control-sm">
+        <table className="w-full text-end text-body-sm">
+          <thead className="bg-surface-sunken text-text-subtle uppercase border-b border-border-default">
             <tr>
-              <th scope="col" className="px-4 py-3 font-semibold">عنوان</th>
-              <th scope="col" className="px-3 py-3 font-semibold">نوع</th>
-              <th scope="col" className="px-3 py-3 font-semibold">وضعیت</th>
-              <th scope="col" className="px-3 py-3 font-semibold">شاخه</th>
-              <th scope="col" className="px-3 py-3 font-semibold">منبع (Provenance)</th>
-              <th scope="col" className="px-4 py-3 font-semibold">محتوا</th>
-              <th scope="col" className="px-3 py-3 font-semibold">اقدام</th>
+              <th scope="col" className="px-inset-lg py-inset-md font-semibold">عنوان</th>
+              <th scope="col" className="px-inset-md py-inset-md font-semibold">نوع</th>
+              <th scope="col" className="px-inset-md py-inset-md font-semibold">وضعیت</th>
+              <th scope="col" className="px-inset-md py-inset-md font-semibold">شاخه</th>
+              <th scope="col" className="px-inset-md py-inset-md font-semibold">منبع (Provenance)</th>
+              <th scope="col" className="px-inset-lg py-inset-md font-semibold">محتوا</th>
+              <th scope="col" className="px-inset-md py-inset-md font-semibold">اقدام</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#27272a]/60">
+          <tbody className="divide-y divide-border-subtle">
             {filteredObjects.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-[#7d7d86]">
+                <td colSpan={7} className="px-inset-lg py-inset-2xl text-center text-text-subtlest">
                   هیچ داده‌ای با فیلترهای انتخابی یافت نشد.
                 </td>
               </tr>
@@ -195,36 +195,36 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
                 <tr
                   key={obj.id}
                   onClick={() => onSelectObject(obj)}
-                  className="hover:bg-[#27272a]/30 transition-colors cursor-pointer group"
+                  className="hover:bg-interaction-hover transition-colors cursor-pointer group"
                 >
-                  <td className="px-4 py-3 font-medium text-white group-hover:text-[#fb7185] transition-colors whitespace-nowrap">
+                  <td className="px-inset-lg py-inset-md font-semibold text-text-default group-hover:text-text-brand transition-colors whitespace-nowrap">
                     {obj.title}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-inset-md py-inset-md whitespace-nowrap">
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                      className={`px-inset-sm py-inset-xs rounded-indicator text-caption font-semibold ${
                         obj.type === 'Decision'
-                          ? 'bg-[#e11d48]/15 text-[#fb7185]'
+                          ? 'bg-bg-brand-subtle text-text-brand'
                           : obj.type === 'Constraint'
-                          ? 'bg-[#f59e0b]/15 text-[#fbbf24]'
+                          ? 'bg-bg-warning-subtle text-text-warning'
                           : obj.type === 'Asset'
-                          ? 'bg-[#10b981]/15 text-[#34d399]'
-                          : 'bg-[#0284c7]/15 text-[#38bdf8]'
+                          ? 'bg-bg-success-subtle text-text-success'
+                          : 'bg-bg-info-subtle text-text-info'
                       }`}
                     >
                       {obj.type}
                     </span>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-inset-md py-inset-md whitespace-nowrap">
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] ${
+                      className={`px-inset-sm py-inset-xs rounded-indicator text-caption ${
                         obj.status === 'Confirmed'
-                          ? 'text-[#10b981] bg-[#10b981]/10'
+                          ? 'text-text-success bg-bg-success-subtle'
                           : obj.status === 'Proposed'
-                          ? 'text-[#f59e0b] bg-[#f59e0b]/10'
+                          ? 'text-text-warning bg-bg-warning-subtle'
                           : obj.status === 'Needs Review'
-                          ? 'text-[#38bdf8] bg-[#38bdf8]/10'
-                          : 'text-[#7d7d86] bg-[#27272a]'
+                          ? 'text-text-info bg-bg-info-subtle'
+                          : 'text-text-subtlest bg-bg-neutral-subtle'
                       }`}
                     >
                       {obj.status === 'Confirmed'
@@ -238,22 +238,22 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
                         : 'بایگانی'}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-[#d4d4d8] whitespace-nowrap">
+                  <td className="px-inset-md py-inset-md text-text-default whitespace-nowrap">
                     {getNodeLabel(obj.nodeId)}
                   </td>
-                  <td className="px-3 py-3 text-[#a1a1aa] whitespace-nowrap">
+                  <td className="px-inset-md py-inset-md text-text-subtle whitespace-nowrap">
                     {obj.provenance}
                   </td>
-                  <td className="px-4 py-3 text-[#a1a1aa] max-w-xs truncate">
+                  <td className="px-inset-lg py-inset-md text-text-subtle max-w-overlay-xs truncate">
                     {obj.content}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-left">
+                  <td className="px-inset-md py-inset-md whitespace-nowrap text-start">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectObject(obj);
                       }}
-                      className="text-xs text-[#a1a1aa] hover:text-white bg-[#27272a] hover:bg-[#3f3f46] px-2.5 py-1 rounded transition-colors"
+                      className="text-body-sm text-text-subtle hover:text-text-default bg-bg-neutral-subtle hover:bg-interaction-hover px-inset-md py-inset-xs rounded-indicator transition-colors"
                     >
                       ویرایش
                     </button>

@@ -33,19 +33,19 @@ export const Header: React.FC<HeaderProps> = ({
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
   return (
-    <header className="border-b border-[#27272a] bg-[#09090b] sticky top-0 z-40 px-3 sm:px-6 py-2">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-6">
+    <header className="border-b border-border-default bg-surface-sunken sticky top-space-0 z-sticky px-inset-md sm:px-inset-xl py-inset-sm">
+      <div className="max-w-wide mx-auto flex items-center justify-between gap-inline-sm sm:gap-inline-xl">
         {/* Zone 1: Single text element wordmark */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-inline-sm shrink-0">
           <button
             onClick={() => onTabChange('context')}
-            className="flex items-center gap-1.5 group text-right focus:outline-none"
+            className="flex items-center gap-inline-sm group text-end focus:outline-none"
             aria-label="صفحه اصلی مبدأ"
           >
-            <span className="w-7 h-7 rounded-lg bg-[#e11d48] flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:bg-[#be123c] transition-colors">
+            <span className="w-space-8 h-space-8 rounded-control-sm bg-bg-brand-bold flex items-center justify-center text-text-default font-bold text-body-md shadow-raised group-hover:bg-bg-brand-bold-hover transition-colors">
               م
             </span>
-            <span className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">
+            <span className="text-body-md sm:text-heading-xs font-bold text-text-default leading-tight">
               مبدأ
             </span>
           </button>
@@ -53,55 +53,55 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 2: Navigation Links */}
         <nav
-          className="hidden md:flex items-center gap-1.5 lg:gap-3 text-xs lg:text-sm font-medium"
+          className="hidden md:flex items-center gap-inline-sm lg:gap-inline-md text-body-sm lg:text-body-md font-semibold"
           aria-label="بخش‌های اصلی برنامه"
         >
           <button
             onClick={() => onTabChange('context')}
-            className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            className={`px-inset-md py-inset-sm rounded-control-sm transition-colors whitespace-nowrap ${
               activeTab === 'context'
-                ? 'bg-[#18181b] text-white font-semibold border border-[#3f3f46]'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-surface-raised text-text-default font-semibold border border-border-bold'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             دانش و منبع حقیقت
           </button>
           <button
             onClick={() => onTabChange('workstreams')}
-            className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            className={`px-inset-md py-inset-sm rounded-control-sm transition-colors whitespace-nowrap ${
               activeTab === 'workstreams'
-                ? 'bg-[#18181b] text-white font-semibold border border-[#3f3f46]'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-surface-raised text-text-default font-semibold border border-border-bold'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             جریان‌های کار و Gap
           </button>
           <button
             onClick={() => onTabChange('chat')}
-            className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            className={`px-inset-md py-inset-sm rounded-control-sm transition-colors whitespace-nowrap ${
               activeTab === 'chat'
-                ? 'bg-[#18181b] text-white font-semibold border border-[#3f3f46]'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-surface-raised text-text-default font-semibold border border-border-bold'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             گفتگوی هوشمند
           </button>
           <button
             onClick={() => onTabChange('assets')}
-            className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            className={`px-inset-md py-inset-sm rounded-control-sm transition-colors whitespace-nowrap ${
               activeTab === 'assets'
-                ? 'bg-[#18181b] text-white font-semibold border border-[#3f3f46]'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-surface-raised text-text-default font-semibold border border-border-bold'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             دارایی‌ها و Replay
           </button>
           <button
             onClick={() => onTabChange('ledger')}
-            className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+            className={`px-inset-md py-inset-sm rounded-control-sm transition-colors whitespace-nowrap ${
               activeTab === 'ledger'
-                ? 'bg-[#18181b] text-white font-semibold border border-[#3f3f46]'
-                : 'text-[#a1a1aa] hover:text-white'
+                ? 'bg-surface-raised text-text-default font-semibold border border-border-bold'
+                : 'text-text-subtle hover:text-text-default'
             }`}
           >
             دفتر کل و اعتبارها
@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Zone 3: Primary Action & Workspace Selector */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-inline-sm sm:gap-inline-md shrink-0">
           {/* Workspace select dropdown */}
           <div className="relative">
             <select
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
                   if (ws) onSelectWorkspace(ws);
                 }
               }}
-              className="bg-[#18181b] border border-[#27272a] text-[#fafafa] text-xs py-1.5 px-2 rounded-lg focus:outline-none focus:border-[#e11d48] cursor-pointer max-w-[140px] sm:max-w-[220px] truncate"
+              className="bg-surface-raised border border-border-default text-text-default text-body-sm py-inset-sm px-inset-sm rounded-control-sm focus:outline-none focus:border-border-brand cursor-pointer max-w-[140px] sm:max-w-[220px] truncate"
             >
               {allWorkspaces.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -138,13 +138,13 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenPlanModal}
             title="مشاهده و تغییر پلن کاربری"
-            className="flex items-center gap-1.5 bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] hover:border-[#52525b] px-2.5 py-1.5 rounded-lg text-xs transition-colors shrink-0"
+            className="flex items-center gap-inline-sm bg-surface-raised hover:bg-interaction-hover border border-border-default hover:border-border-bold px-inset-md py-inset-sm rounded-control-sm text-body-sm transition-colors shrink-0"
           >
-            <span className="text-[#a1a1aa] hidden sm:inline">اعتبار:</span>
-            <span className="font-bold text-[#fafafa] tabular-nums">
+            <span className="text-text-subtle hidden sm:inline">اعتبار:</span>
+            <span className="font-bold text-text-default tabular-nums">
               {currentWorkspace.creditsRemaining}
             </span>
-            <span className="text-[10px] text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded font-bold">
+            <span className="text-caption text-text-success bg-bg-success-subtle px-inset-sm py-inset-xs rounded-indicator font-bold">
               {plan.title.split(' ')[0]}
             </span>
           </button>
@@ -153,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenAccountModal}
             title="حساب کاربری و حریم خصوصی"
-            className="w-8 h-8 rounded-lg bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] hover:border-[#52525b] flex items-center justify-center text-xs text-[#d4d4d8] transition-colors shrink-0"
+            className="w-space-8 h-space-8 rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default hover:border-border-bold flex items-center justify-center text-body-sm text-text-default transition-colors shrink-0"
             aria-label="حساب کاربری"
           >
             👤
@@ -162,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* 10-Minute Onboarding Button */}
           <button
             onClick={onOpenOnboarding}
-            className="hidden sm:block px-3 py-1.5 text-xs font-semibold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shadow-xs whitespace-nowrap shrink-0"
+            className="hidden sm:block px-inset-md py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shadow-raised whitespace-nowrap shrink-0"
           >
             Onboarding سریع
           </button>

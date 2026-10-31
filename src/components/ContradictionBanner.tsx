@@ -18,17 +18,17 @@ export const ContradictionBanner: React.FC<ContradictionBannerProps> = ({
   if (contradictions.length === 0) return null;
 
   return (
-    <div className="bg-[#451a03]/80 border border-[#f59e0b]/40 rounded-xl p-4 mb-6 text-sm text-[#fde68a]">
-      <div className="flex items-start gap-3">
-        <span className="text-xl" aria-hidden="true">
+    <div className="bg-bg-warning-subtle border border-border-warning-subtle rounded-control p-inset-lg mb-stack-lg text-body-md text-text-warning">
+      <div className="flex items-start gap-inline-md">
+        <span className="text-heading-sm" aria-hidden="true">
           ⚠️
         </span>
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 space-y-stack-md">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-white text-base">
+            <h4 className="font-bold text-text-default text-body-md">
               تشخیص تناقض در منبع حقیقت ({contradictions.length} مورد)
             </h4>
-            <span className="text-xs text-[#fbbf24] bg-[#78350f] px-2 py-0.5 rounded">
+            <span className="text-body-sm text-text-warning bg-bg-warning-subtle px-inset-sm py-inset-xs rounded-indicator">
               اصل P4: انسجام مهم‌تر از حجم است
             </span>
           </div>
@@ -36,36 +36,36 @@ export const ContradictionBanner: React.FC<ContradictionBannerProps> = ({
           {contradictions.map((contra) => (
             <div
               key={contra.id}
-              className="bg-[#18181b] border border-[#f59e0b]/30 rounded-lg p-3.5 space-y-2 text-xs"
+              className="bg-surface-raised border border-border-warning-subtle rounded-control-sm p-inset-lg space-y-stack-sm text-body-sm"
             >
-              <p className="text-[#fde68a] font-medium leading-relaxed">
+              <p className="text-text-warning font-semibold leading-relaxed">
                 {contra.reason}
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                <div className="bg-[#09090b] p-2.5 rounded border border-[#27272a] space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-inline-md pt-inset-sm">
+                <div className="bg-surface-sunken p-inset-md rounded-indicator border border-border-default space-y-stack-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#a1a1aa] font-medium">مورد اول: {contra.itemA.title}</span>
-                    <span className="text-[10px] text-[#fb7185]">{contra.itemA.type}</span>
+                    <span className="text-text-subtle font-semibold">مورد اول: {contra.itemA.title}</span>
+                    <span className="text-caption text-text-brand">{contra.itemA.type}</span>
                   </div>
-                  <p className="text-[#fafafa]">{contra.itemA.content}</p>
+                  <p className="text-text-default">{contra.itemA.content}</p>
                   <button
                     onClick={() => onResolve(contra.id, contra.itemA.id, contra.itemB.id)}
-                    className="mt-2 w-full py-1 px-2 text-center text-xs font-semibold bg-[#27272a] hover:bg-[#3f3f46] text-white rounded transition-colors"
+                    className="mt-stack-sm w-full py-inset-xs px-inset-sm text-center text-body-sm font-semibold bg-bg-neutral-subtle hover:bg-interaction-hover text-text-default rounded-indicator transition-colors"
                   >
                     تثبیت این مورد و بایگانی مورد دوم
                   </button>
                 </div>
 
-                <div className="bg-[#09090b] p-2.5 rounded border border-[#27272a] space-y-1">
+                <div className="bg-surface-sunken p-inset-md rounded-indicator border border-border-default space-y-stack-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#a1a1aa] font-medium">مورد دوم: {contra.itemB.title}</span>
-                    <span className="text-[10px] text-[#fb7185]">{contra.itemB.type}</span>
+                    <span className="text-text-subtle font-semibold">مورد دوم: {contra.itemB.title}</span>
+                    <span className="text-caption text-text-brand">{contra.itemB.type}</span>
                   </div>
-                  <p className="text-[#fafafa]">{contra.itemB.content}</p>
+                  <p className="text-text-default">{contra.itemB.content}</p>
                   <button
                     onClick={() => onResolve(contra.id, contra.itemB.id, contra.itemA.id)}
-                    className="mt-2 w-full py-1 px-2 text-center text-xs font-semibold bg-[#27272a] hover:bg-[#3f3f46] text-white rounded transition-colors"
+                    className="mt-stack-sm w-full py-inset-xs px-inset-sm text-center text-body-sm font-semibold bg-bg-neutral-subtle hover:bg-interaction-hover text-text-default rounded-indicator transition-colors"
                   >
                     تثبیت این مورد و بایگانی مورد اول
                   </button>

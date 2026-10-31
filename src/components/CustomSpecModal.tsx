@@ -99,30 +99,30 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xs text-right animate-in fade-in">
-      <div className="bg-[#18181b] border border-[#27272a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
+    <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
+      <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-form max-h-[90vh] overflow-y-auto shadow-overlay p-inset-xl sm:p-inset-2xl space-y-stack-lg">
+        <div className="flex items-center justify-between border-b border-border-default pb-inset-lg">
           <div>
-            <h3 className="text-lg font-bold text-white">تعریف جریان کار سفارشی (Custom Workstream Spec)</h3>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
+            <h3 className="text-heading-xs font-bold text-text-default">تعریف جریان کار سفارشی (Custom Workstream Spec)</h3>
+            <p className="text-body-sm text-text-subtle mt-stack-xs">
               اصل F8: هر Workstream یک spec داده‌محور است؛ پیش‌نیازها و خروجی‌های خود را تعریف کنید.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#a1a1aa] hover:text-white p-1 rounded-md hover:bg-[#27272a] transition-colors"
+            className="text-text-subtle hover:text-text-default p-inset-xs rounded-control-sm hover:bg-interaction-hover transition-colors"
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-stack-lg text-body-sm">
           {/* Workstream Info */}
-          <div className="space-y-3 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-white text-[#fb7185]">۱. مشخصات کلی جریان کار:</h4>
+          <div className="space-y-stack-md bg-surface-sunken p-inset-lg rounded-control border border-border-default">
+            <h4 className="text-body-sm font-bold text-text-default text-text-brand">۱. مشخصات کلی جریان کار:</h4>
             <div>
-              <label className="block text-[#fafafa] font-semibold mb-1">
-                عنوان جریان کار <span className="text-[#e11d48]">*</span>
+              <label className="block text-text-default font-semibold mb-stack-xs">
+                عنوان جریان کار <span className="text-text-brand">*</span>
               </label>
               <input
                 type="text"
@@ -130,13 +130,13 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
                 placeholder="مثلاً: طراحی کمپین پرتاب محصول، نگارش پروپوزال، تدوین کتابچه برند..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
               />
             </div>
 
             <div>
-              <label className="block text-[#fafafa] font-semibold mb-1">
-                هدف و مقصد کار (Target) <span className="text-[#e11d48]">*</span>
+              <label className="block text-text-default font-semibold mb-stack-xs">
+                هدف و مقصد کار (Target) <span className="text-text-brand">*</span>
               </label>
               <input
                 type="text"
@@ -144,30 +144,30 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
                 placeholder="چه نتیجه مشخصی باید برای کسب‌وکار یا کارفرما خلق شود؟"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2.5 text-white focus:outline-none focus:border-[#e11d48]"
+                className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
               />
             </div>
           </div>
 
           {/* Context Requirements */}
-          <div className="space-y-3 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-[#38bdf8]">۲. الزامات دانش (Required Contexts برای Gap Engine):</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-stack-md bg-surface-sunken p-inset-lg rounded-control border border-border-default">
+            <h4 className="text-body-sm font-bold text-text-info">۲. الزامات دانش (Required Contexts برای Gap Engine):</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-inline-md">
               <div>
-                <label className="block text-[#a1a1aa] mb-1">پیش‌نیاز اول:</label>
+                <label className="block text-text-subtle mb-stack-xs">پیش‌نیاز اول:</label>
                 <input
                   type="text"
                   value={reqLabel1}
                   onChange={(e) => setReqLabel1(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
+                  className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-sm text-text-default"
                 />
               </div>
               <div>
-                <label className="block text-[#a1a1aa] mb-1">شاخه در درخت دانش:</label>
+                <label className="block text-text-subtle mb-stack-xs">شاخه در درخت دانش:</label>
                 <select
                   value={reqNode1}
                   onChange={(e) => setReqNode1(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
+                  className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-sm text-text-default"
                 >
                   <option value="business">کسب‌وکار و بنیان</option>
                   <option value="brand">برند و پیام</option>
@@ -178,20 +178,20 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[#a1a1aa] mb-1">پیش‌نیاز دوم:</label>
+                <label className="block text-text-subtle mb-stack-xs">پیش‌نیاز دوم:</label>
                 <input
                   type="text"
                   value={reqLabel2}
                   onChange={(e) => setReqLabel2(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
+                  className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-sm text-text-default"
                 />
               </div>
               <div>
-                <label className="block text-[#a1a1aa] mb-1">شاخه در درخت دانش:</label>
+                <label className="block text-text-subtle mb-stack-xs">شاخه در درخت دانش:</label>
                 <select
                   value={reqNode2}
                   onChange={(e) => setReqNode2(e.target.value)}
-                  className="w-full bg-[#18181b] border border-[#27272a] rounded-lg p-2 text-white"
+                  className="w-full bg-surface-raised border border-border-default rounded-control-sm p-inset-sm text-text-default"
                 >
                   <option value="business">کسب‌وکار و بنیان</option>
                   <option value="brand">برند و پیام</option>
@@ -204,16 +204,16 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
           </div>
 
           {/* Deliverables */}
-          <div className="space-y-4 bg-[#09090b] p-4 rounded-xl border border-[#27272a]">
-            <h4 className="text-xs font-bold text-[#34d399]">۳. خروجی‌ها و معیارهای پذیرش (Deliverables):</h4>
+          <div className="space-y-stack-md bg-surface-sunken p-inset-lg rounded-control border border-border-default">
+            <h4 className="text-body-sm font-bold text-text-success">۳. خروجی‌ها و معیارهای پذیرش (Deliverables):</h4>
 
-            <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2">
+            <div className="p-inset-md bg-surface-raised rounded-control-sm border border-border-default space-y-stack-sm">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">خروجی اول (گام ۱):</span>
+                <span className="font-semibold text-text-default">خروجی اول (گام ۱):</span>
                 <select
                   value={delType1}
                   onChange={(e) => setDelType1(e.target.value as any)}
-                  className="bg-[#09090b] border border-[#27272a] rounded p-1 text-[11px] text-white"
+                  className="bg-surface-sunken border border-border-default rounded-indicator p-inset-xs text-caption text-text-default"
                 >
                   <option value="Asset">Asset (کوچک و سریع)</option>
                   <option value="Deliverable">Deliverable (اصلی و تفصیلی)</option>
@@ -224,24 +224,24 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
                 placeholder="عنوان خروجی اول"
                 value={delTitle1}
                 onChange={(e) => setDelTitle1(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-2 text-white"
+                className="w-full bg-surface-sunken border border-border-default rounded-indicator p-inset-sm text-text-default"
               />
               <input
                 type="text"
                 placeholder="معیار پذیرش خروجی اول (با کاما جدا کنید)"
                 value={delCriteria1}
                 onChange={(e) => setDelCriteria1(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-1.5 text-white text-[11px]"
+                className="w-full bg-surface-sunken border border-border-default rounded-indicator p-inset-sm text-text-default text-caption"
               />
             </div>
 
-            <div className="p-3 bg-[#18181b] rounded-lg border border-[#27272a] space-y-2">
+            <div className="p-inset-md bg-surface-raised rounded-control-sm border border-border-default space-y-stack-sm">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">خروجی دوم (گام ۲):</span>
+                <span className="font-semibold text-text-default">خروجی دوم (گام ۲):</span>
                 <select
                   value={delType2}
                   onChange={(e) => setDelType2(e.target.value as any)}
-                  className="bg-[#09090b] border border-[#27272a] rounded p-1 text-[11px] text-white"
+                  className="bg-surface-sunken border border-border-default rounded-indicator p-inset-xs text-caption text-text-default"
                 >
                   <option value="Deliverable">Deliverable (اصلی و تفصیلی)</option>
                   <option value="Asset">Asset (کوچک و سریع)</option>
@@ -252,29 +252,29 @@ export const CustomSpecModal: React.FC<CustomSpecModalProps> = ({
                 placeholder="عنوان خروجی دوم"
                 value={delTitle2}
                 onChange={(e) => setDelTitle2(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-2 text-white"
+                className="w-full bg-surface-sunken border border-border-default rounded-indicator p-inset-sm text-text-default"
               />
               <input
                 type="text"
                 placeholder="معیار پذیرش خروجی دوم (با کاما جدا کنید)"
                 value={delCriteria2}
                 onChange={(e) => setDelCriteria2(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded p-1.5 text-white text-[11px]"
+                className="w-full bg-surface-sunken border border-border-default rounded-indicator p-inset-sm text-text-default text-caption"
               />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#27272a] flex items-center justify-between">
+          <div className="pt-inset-md border-t border-border-default flex items-center justify-between">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs text-[#a1a1aa] hover:text-white"
+              className="px-inset-lg py-inset-sm text-body-sm text-text-subtle hover:text-text-default"
             >
               انصراف
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-[#e11d48] hover:bg-[#be123c] rounded-lg transition-colors shadow-sm"
+              className="px-inset-lg py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shadow-raised"
             >
               ذخیره و فعال‌سازی این Spec &larr;
             </button>
