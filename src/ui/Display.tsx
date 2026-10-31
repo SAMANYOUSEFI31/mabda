@@ -81,7 +81,7 @@ export function Avatar({ name, size = 'md', className }: { name: string; size?: 
 
 /* ---------------- Card / Divider / Stat / EmptyState ---------------- */
 export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'> {
-  padding?: 'md' | 'lg' | 'xl';
+  padding?: 'none' | 'md' | 'lg' | 'xl';
   interactive?: boolean;
   href?: string;
   onClick?: (e: React.SyntheticEvent) => void;
@@ -91,7 +91,7 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
 
 export function Card({ interactive = false, href, selected, padding = 'lg', className, children, onClick, ...rest }: CardProps) {
   const isInteractive = interactive || Boolean(href) || Boolean(onClick);
-  const cls = cx('bsh-card', `bsh-card--pad-${padding}`, isInteractive && 'bsh-card--interactive', selected && 'is-selected', className);
+  const cls = cx('bsh-card', padding !== 'none' && `bsh-card--pad-${padding}`, isInteractive && 'bsh-card--interactive', selected && 'is-selected', className);
   if (href) return <a href={href} className={cls} onClick={onClick}>{children}</a>;
   if (isInteractive) {
     return (
@@ -233,6 +233,22 @@ export function Tooltip({ content, children, side = 'top', forceOpen = false }: 
     >
       {cloneElement(children, { 'aria-describedby': id })}
       <span role="tooltip" id={id} className={cx('bsh-tooltip', 'body-sm', side === 'bottom' && 'is-bottom', (open || forceOpen) && 'is-open')}>{content}</span>
+    </span>
+  );
+}
+
+/* ---------------- BrandMark (product identity; the only non-button use of the brand color) ---------------- */
+export function BrandMark({ size = 'md', className }: { size?: 'sm' | 'md'; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        'grid place-items-center rounded-control bg-bg-brand-bold text-text-on-brand',
+        size === 'md' ? 'size-control-sm label-lg' : 'size-space-6 label-sm rounded-control-sm',
+        className,
+      )}
+    >
+      م
     </span>
   );
 }

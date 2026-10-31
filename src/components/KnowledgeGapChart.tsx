@@ -20,6 +20,31 @@ import {
   Legend,
 } from 'recharts';
 import { ContextObject, WorkstreamSpec, ReadinessResult } from '../types';
+import { Badge, Button, Card, Icon, SegmentedControl, Stat, formatNumber } from '../ui';
+import type { IconName } from '../ui';
+
+/** Chart colors are Bushido semantic tokens (chart-* / text-* / border-*), resolved by the browser. */
+const CHART = {
+  grid: 'var(--border-default)',
+  axis: 'var(--border-bold)',
+  tick: 'var(--text-subtle)',
+  tickStrong: 'var(--text-default)',
+  coverage: 'var(--chart-categorical-3)',
+  target: 'var(--chart-categorical-4)',
+  gap: 'var(--chart-categorical-2)',
+  font: 'var(--font-sans)',
+} as const;
+
+const TOOLTIP_STYLE = {
+  backgroundColor: 'var(--surface-overlay)',
+  borderColor: 'var(--border-default)',
+  borderRadius: 'var(--radius-control)',
+  color: 'var(--text-default)',
+  fontFamily: CHART.font,
+  direction: 'rtl' as const,
+  fontSize: 14,
+  boxShadow: 'var(--shadow-overlay)',
+};
 
 const NODE_LABELS: Record<string, string> = {
   business: 'کسب‌وکار و اهداف',
@@ -114,328 +139,150 @@ export const KnowledgeGapChart: React.FC<KnowledgeGapChartProps> = ({
   ).length;
   const isReady = readiness.status === 'ready';
 
+  const COVERAGE = 'پوشش دانش موجود';
+  const TARGET = 'هدف موردنیاز';
+  const GAP = 'شکاف دانشی';
+
   return (
-    <div className="bg-surface-raised border border-border-default rounded-container p-inset-lg sm:p-inset-xl space-y-stack-lg text-end transition-all shadow-overlay">
-      {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg border-b border-border-default pb-inset-lg">
+    <Card padding="xl" className="flex flex-col gap-stack-lg">
+      {/* Header and controls */}
+      <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-inline-sm">
-            <span className="w-space-3 h-space-3 rounded-pill bg-bg-brand-bold" />
-            <h3 className="text-body-md font-bold text-text-default">
-              رادار و تحلیل بصری شکاف‌های دانش (Knowledge Gap Radar)
-            </h3>
-          </div>
-          <p className="text-body-sm text-text-subtle mt-stack-xs">
-            مقایسه هوشمند میان «دانش تأییدشده در منبع حقیقت» با «اهداف و نیازمندی‌های این جریان کار»
+          <h3 className="title text-text-default">رادار و تحلیل بصری شکاف‌های دانش</h3>
+          <p className="body-sm mt-stack-xs text-text-subtle">
+            مقایسهٔ «دانش تأییدشده در منبع حقیقت» با «اهداف و نیازمندی‌های این جریان کار»
           </p>
         </div>
-
-        {/* View Switcher: Radar vs Bar */}
-        <div className="flex items-center gap-inline-xs bg-surface-raised border border-border-default p-inset-xs rounded-control text-body-sm self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setChartType('radar')}
-            className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-all flex items-center gap-inline-sm ${
-              chartType === 'radar'
-                ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                : 'text-text-subtle hover:text-text-default'
-            }`}
-          >
-            <span>🕸️</span>
-            <span>نمودار راداری</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setChartType('bar')}
-            className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-all flex items-center gap-inline-sm ${
-              chartType === 'bar'
-                ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                : 'text-text-subtle hover:text-text-default'
-            }`}
-          >
-            <span>📊</span>
-            <span>نمودار میله‌ای</span>
-          </button>
-        </div>
+        <SegmentedControl
+          label="نوع نمودار"
+          value={chartType}
+          onChange={(id) => setChartType(id as 'radar' | 'bar')}
+          items={[
+            { id: 'radar', label: 'راداری', icon: 'Target' },
+            { id: 'bar', label: 'میله‌ای', icon: 'ChartColumn' },
+          ]}
+        />
       </div>
 
-      {/* High-level KPI Badges */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-inline-md text-body-sm">
-        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
-          <span className="text-text-subtle block text-caption">نمره آمادگی جریان</span>
-          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
-            <span
-              className={`text-heading-md font-bold font-mono ${
-                readiness.score >= 80
-                  ? 'text-text-success'
-                  : readiness.score >= 50
-                  ? 'text-text-warning'
-                  : 'text-text-brand'
-              }`}
-            >
-              {readiness.score}٪
-            </span>
-            <span className="text-caption text-text-subtlest">از ۱۰۰</span>
-          </div>
-        </div>
-
-        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
-          <span className="text-text-subtle block text-caption">شکاف‌های بحرانی مسدودکننده</span>
-          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
-            <span
-              className={`text-heading-md font-bold font-mono ${
-                missingRequiredCount > 0 ? 'text-text-brand' : 'text-text-success'
-              }`}
-            >
-              {missingRequiredCount}
-            </span>
-            <span className="text-caption text-text-subtlest">حوزه بدون مدرک</span>
-          </div>
-        </div>
-
-        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
-          <span className="text-text-subtle block text-caption">فرصت‌های بهبود تکمیلی</span>
-          <div className="flex items-baseline gap-inline-xs mt-stack-xs">
-            <span className="text-heading-md font-bold font-mono text-text-info">
-              {missingSuggestedCount}
-            </span>
-            <span className="text-caption text-text-subtlest">پیشنهاد ارتقا</span>
-          </div>
-        </div>
-
-        <div className="bg-surface-raised border border-border-default rounded-control p-inset-md">
-          <span className="text-text-subtle block text-caption">وضعیت تولید دارایی</span>
-          <div className="mt-stack-xs flex items-center gap-inline-sm">
-            <span
-              className={`w-space-2 h-space-2 rounded-pill ${
-                isReady ? 'bg-bg-success-bold' : 'bg-bg-brand-bold'
-              }`}
-            />
-            <span
-              className={`font-semibold text-body-sm ${
-                isReady ? 'text-text-success' : 'text-text-brand'
-              }`}
-            >
-              {isReady ? 'آماده تولید باکیفیت' : 'نیاز به رفع کسری'}
-            </span>
-          </div>
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-inline-md sm:grid-cols-4">
+        <Stat label="نمرهٔ آمادگی جریان" value={`${formatNumber(readiness.score)}٪`} delta="از ۱۰۰" />
+        <Stat
+          label="شکاف‌های بحرانی مسدودکننده"
+          value={formatNumber(missingRequiredCount)}
+          delta="حوزهٔ بدون مدرک"
+          trend={missingRequiredCount > 0 ? 'down' : 'up'}
+        />
+        <Stat label="فرصت‌های بهبود تکمیلی" value={formatNumber(missingSuggestedCount)} delta="پیشنهاد ارتقا" />
+        <Stat
+          label="وضعیت تولید دارایی"
+          value={isReady ? 'آماده' : 'ناقص'}
+          delta={isReady ? 'تولید باکیفیت ممکن است' : 'نیاز به رفع کسری'}
+          trend={isReady ? 'up' : 'down'}
+        />
       </div>
 
-      {/* Main Chart Canvas */}
-      <div className="h-space-40 sm:h-space-8 w-full flex items-center justify-center pt-inset-sm" dir="ltr">
+      {/* Chart canvas (direction forced so chart axes keep their conventional orientation) */}
+      <div className="mx-auto aspect-square w-full max-w-overlay-lg sm:aspect-4/3" dir="ltr" role="img" aria-label="نمودار پوشش دانش در شش حوزهٔ منبع حقیقت">
         {chartType === 'radar' ? (
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
-              <PolarGrid stroke="#27272a" />
-              <PolarAngleAxis
-                dataKey="nodeName"
-                tick={{ fill: '#e4e4e7', fontSize: 11, fontFamily: 'Vazirmatn' }}
-              />
-              <PolarRadiusAxis
-                angle={30}
-                domain={[0, 100]}
-                stroke="#3f3f46"
-                tick={{ fill: '#71717a', fontSize: 9 }}
-              />
-              <Radar
-                name="هدف موردنیاز"
-                dataKey="هدف موردنیاز"
-                stroke="#38bdf8"
-                fill="#38bdf8"
-                fillOpacity={0.12}
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-              />
-              <Radar
-                name="پوشش دانش موجود"
-                dataKey="پوشش دانش موجود"
-                stroke="#e11d48"
-                fill="#e11d48"
-                fillOpacity={0.4}
-                strokeWidth={2}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#18181b',
-                  borderColor: '#27272a',
-                  borderRadius: '12px',
-                  color: '#fafafa',
-                  fontFamily: 'Vazirmatn',
-                  textAlign: 'right',
-                  direction: 'rtl',
-                  fontSize: '11px',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-                }}
-                formatter={(value: any, name: any) => [`${value}٪`, name]}
-              />
-              <Legend
-                wrapperStyle={{
-                  paddingTop: '12px',
-                  fontSize: '11px',
-                  fontFamily: 'Vazirmatn',
-                }}
-              />
+            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
+              <PolarGrid stroke={CHART.grid} />
+              <PolarAngleAxis dataKey="nodeName" tick={{ fill: CHART.tickStrong, fontSize: 14, fontFamily: CHART.font }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} stroke={CHART.axis} tick={{ fill: CHART.tick, fontSize: 12 }} />
+              <Radar name={TARGET} dataKey={TARGET} stroke={CHART.target} fill={CHART.target} fillOpacity={0.12} strokeDasharray="4 4" strokeWidth={2} />
+              <Radar name={COVERAGE} dataKey={COVERAGE} stroke={CHART.coverage} fill={CHART.coverage} fillOpacity={0.4} strokeWidth={2} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: any, name: any) => [`${formatNumber(Number(value))}٪`, name]} />
+              <Legend wrapperStyle={{ paddingTop: 12, fontSize: 14, fontFamily: CHART.font }} />
             </RadarChart>
           </ResponsiveContainer>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 10, left: 10, bottom: 25 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-              <XAxis
-                dataKey="nodeName"
-                tick={{ fill: '#a1a1aa', fontSize: 11, fontFamily: 'Vazirmatn' }}
-                stroke="#3f3f46"
-              />
-              <YAxis
-                stroke="#3f3f46"
-                tick={{ fill: '#71717a', fontSize: 10 }}
-                domain={[0, 100]}
-                unit="٪"
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#18181b',
-                  borderColor: '#27272a',
-                  borderRadius: '12px',
-                  color: '#fafafa',
-                  fontFamily: 'Vazirmatn',
-                  textAlign: 'right',
-                  direction: 'rtl',
-                  fontSize: '11px',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-                }}
-                formatter={(value: any, name: any) => [`${value}٪`, name]}
-              />
-              <Legend
-                wrapperStyle={{
-                  paddingTop: '8px',
-                  fontSize: '11px',
-                  fontFamily: 'Vazirmatn',
-                }}
-              />
-              <Bar dataKey="پوشش دانش موجود" fill="#e11d48" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="شکاف دانشی" fill="#f59e0b" radius={[4, 4, 0, 0]} opacity={0.7} />
+            <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 25 }}> {/* check:design-ignore recharts API key names */}
+              <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} vertical={false} />
+              <XAxis dataKey="nodeName" tick={{ fill: CHART.tick, fontSize: 12, fontFamily: CHART.font }} stroke={CHART.axis} />
+              <YAxis stroke={CHART.axis} tick={{ fill: CHART.tick, fontSize: 12 }} domain={[0, 100]} unit="٪" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value: any, name: any) => [`${formatNumber(Number(value))}٪`, name]} />
+              <Legend wrapperStyle={{ paddingTop: 8, fontSize: 14, fontFamily: CHART.font }} />
+              <Bar dataKey={COVERAGE} fill={CHART.coverage} radius={[4, 4, 0, 0]} />
+              <Bar dataKey={GAP} fill={CHART.gap} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
 
-      {/* Interactive Domain Drill-Down Bar */}
-      <div className="space-y-stack-md pt-inset-sm border-t border-border-default">
-        <div className="flex items-center justify-between text-body-sm">
-          <span className="font-semibold text-text-default">
-            بررسی سریع وضعیت حوزه‌ها (برای مشاهده جزئیات یا ثبت فکت کلیک کنید):
-          </span>
-          <span className="text-text-subtle text-caption">
-            راهنما: سبز = کامل | قرمز = کسری بحرانی | نارنجی = فرصت ارتقا
+      {/* Domain drill-down */}
+      <div className="flex flex-col gap-stack-md border-t border-border-default pt-inset-lg">
+        <div className="flex flex-col justify-between gap-inline-sm sm:flex-row sm:items-center">
+          <span className="label-md text-text-default">بررسی سریع وضعیت حوزه‌ها (برای دیدن جزئیات یا ثبت دانش انتخاب کن)</span>
+          <span className="caption flex flex-wrap items-center gap-inline-md text-text-subtle">
+            <span className="inline-flex items-center gap-inline-xs"><Icon name="CircleCheck" size="xs" className="text-icon-success" />کامل</span>
+            <span className="inline-flex items-center gap-inline-xs"><Icon name="OctagonAlert" size="xs" className="text-icon-danger" />کسری بحرانی</span>
+            <span className="inline-flex items-center gap-inline-xs"><Icon name="TriangleAlert" size="xs" className="text-icon-warning" />فرصت ارتقا</span>
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-inline-sm">
+        <div className="grid grid-cols-2 gap-inline-sm sm:grid-cols-3 lg:grid-cols-6">
           {chartData.map((node) => {
             const isMissingRequired = requiredNodeIds.includes(node.nodeId) && node.countConfirmed === 0;
             const isMissingSuggested = suggestedNodeIds.includes(node.nodeId) && node.countConfirmed === 0;
             const isFull = node.countConfirmed >= 2;
-
+            const isActive = activeNodeId === node.nodeId;
+            const icon: IconName = isMissingRequired ? 'OctagonAlert' : isMissingSuggested ? 'TriangleAlert' : isFull ? 'CircleCheck' : 'Info';
+            const iconCls = isMissingRequired ? 'text-icon-danger' : isMissingSuggested ? 'text-icon-warning' : isFull ? 'text-icon-success' : 'text-icon-info';
             return (
               <button
                 key={node.nodeId}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => {
-                  setActiveNodeId(activeNodeId === node.nodeId ? null : node.nodeId);
+                  setActiveNodeId(isActive ? null : node.nodeId);
                   if (onSelectNodeFilter) onSelectNodeFilter(node.nodeId);
                 }}
-                className={`p-inset-md rounded-control border text-end transition-all flex flex-col justify-between ${
-                  activeNodeId === node.nodeId
-                    ? 'border-border-brand bg-bg-brand-subtle ring-1 ring-border-brand'
-                    : isMissingRequired
-                    ? 'border-border-brand-subtle bg-bg-brand-subtle hover:border-border-brand'
-                    : isMissingSuggested
-                    ? 'border-border-warning-subtle bg-bg-warning-subtle hover:border-border-warning'
-                    : 'border-border-default bg-surface-raised hover:border-border-bold'
+                className={`flex min-h-touch flex-col justify-between gap-stack-sm rounded-control border p-inset-md text-start transition-colors ${
+                  isActive
+                    ? 'border-border-selected bg-bg-selected'
+                    : 'border-border-default bg-surface-raised hover:border-border-default-hover hover:bg-interaction-hover'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-caption font-bold text-text-default truncate">
-                    {node.fullLabel.split(' ')[0]}
-                  </span>
-                  <span
-                    className={`w-space-2 h-space-2 rounded-pill ${
-                      isMissingRequired
-                        ? 'bg-bg-brand-bold'
-                        : isMissingSuggested
-                        ? 'bg-bg-warning-bold'
-                        : isFull
-                        ? 'bg-bg-success-bold'
-                        : 'bg-bg-info-bold'
-                    }`}
-                  />
-                </div>
-
-                <div className="mt-stack-sm flex items-baseline justify-between text-caption">
-                  <span className="text-text-subtle">{node.countConfirmed} مدرک تاییدشده</span>
-                  <span
-                    className={`font-mono font-bold ${
-                      isMissingRequired
-                        ? 'text-text-brand'
-                        : isMissingSuggested
-                        ? 'text-text-warning'
-                        : 'text-text-success'
-                    }`}
-                  >
-                    {node['پوشش دانش موجود']}٪
-                  </span>
-                </div>
+                <span className="flex items-center justify-between gap-inline-xs">
+                  <span className="label-md truncate text-text-default">{node.fullLabel.split(' ')[0]}</span>
+                  <Icon name={icon} size="md" className={iconCls} />
+                </span>
+                <span className="flex items-baseline justify-between gap-inline-xs caption">
+                  <span className="text-text-subtle">{formatNumber(node.countConfirmed)} مدرک تأییدشده</span>
+                  <span className="label-sm tabular-nums text-text-default">{formatNumber(node[COVERAGE])}٪</span>
+                </span>
               </button>
             );
           })}
         </div>
 
-        {/* Selected Node Action Drawer */}
         {selectedNodeData && (
-          <div className="p-inset-lg bg-surface-raised border border-border-default rounded-control flex flex-col sm:flex-row sm:items-center justify-between gap-inline-md">
-            <div className="space-y-stack-xs text-body-sm">
-              <div className="flex items-center gap-inline-sm">
-                <span className="font-bold text-text-default">{selectedNodeData.fullLabel}</span>
-                {selectedNodeData.isRequired && (
-                  <span className="text-caption text-text-brand font-semibold bg-bg-brand-subtle px-inset-sm py-inset-xs rounded-indicator">
-                    پیش‌نیاز الزامی این کار
-                  </span>
-                )}
-                {selectedNodeData.isSuggested && (
-                  <span className="text-caption text-text-info font-semibold bg-bg-info-subtle px-inset-sm py-inset-xs rounded-indicator">
-                    پیشنهادی برای کیفیت حداکثری
-                  </span>
-                )}
+          <div className="flex flex-col justify-between gap-inline-md rounded-control border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-stack-xs">
+              <div className="flex flex-wrap items-center gap-inline-sm">
+                <span className="title text-text-default">{selectedNodeData.fullLabel}</span>
+                {selectedNodeData.isRequired && <Badge intent="danger">پیش‌نیاز الزامی این کار</Badge>}
+                {selectedNodeData.isSuggested && <Badge intent="info">پیشنهادی برای کیفیت حداکثری</Badge>}
               </div>
-              <p className="text-caption text-text-subtle">
-                وضعیت: {selectedNodeData.countConfirmed} فکت تأییدشده در درخت حقیقت، پوشش{' '}
-                {selectedNodeData['پوشش دانش موجود']}٪ از نیاز.
-                {selectedNodeData['شکاف دانشی'] > 0
-                  ? ` کسری شناسایی‌شده: ${selectedNodeData['شکاف دانشی']}٪.`
-                  : ' این شاخه کامل است.'}
+              <p className="body-sm text-text-subtle">
+                وضعیت: {formatNumber(selectedNodeData.countConfirmed)} مورد تأییدشده در درخت حقیقت، پوشش {formatNumber(selectedNodeData[COVERAGE])}٪ از نیاز.
+                {selectedNodeData[GAP] > 0 ? ` کسری شناسایی‌شده: ${formatNumber(selectedNodeData[GAP])}٪.` : ' این شاخه کامل است.'}
               </p>
             </div>
-
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              iconStart="Plus"
               onClick={() => {
-                if (onOpenContextModalForNode) {
-                  onOpenContextModalForNode(selectedNodeData.nodeId);
-                }
+                if (onOpenContextModalForNode) onOpenContextModalForNode(selectedNodeData.nodeId);
               }}
-              className="px-inset-md py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shrink-0 flex items-center justify-center gap-inline-sm shadow-raised"
             >
-              <span>+</span>
-              <span>ثبت مستقیم شیء دانش در {selectedNodeData.nodeName}</span>
-            </button>
+              ثبت مستقیم شیء دانش در {selectedNodeData.nodeName}
+            </Button>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 };

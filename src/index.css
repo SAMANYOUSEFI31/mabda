@@ -32,3 +32,20 @@
 
 /* Overrides for two physical-direction rules in /ds/bundle.css (that file is read-only). */
 .bsh-tooltip { inset-inline: 0; margin-inline: auto; transform: none; }
+
+/* Wider dialog for multi-column content (plans). Same breakpoint as bundle.css dialogs (640px). */
+@media (min-width: 640px) {
+  .bsh-dialog--xl { max-inline-size: var(--container-lg); }
+}
+
+/* Chat panel height: viewport minus app chrome on phones, a fixed comfortable height from md up (built from space tokens). */
+@utility h-chat {
+  block-size: calc(100dvh - var(--space-32));
+  @media (min-width: 768px) {
+    block-size: calc(var(--space-40) * 4.5);
+  }
+}
+/* Bottom padding that respects the device safe area. */
+@utility pb-safe-inset {
+  padding-block-end: max(var(--inset-md), var(--safe-bottom));
+}

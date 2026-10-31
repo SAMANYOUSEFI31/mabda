@@ -34,14 +34,15 @@ const rules = [
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
   // ---- token (class) rules ----
-  { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black|transparent-?\\w*)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },
+  { id: 'brand', ctx: /./, notIn: /^src\/ui\//, tok: /(?:^|-)(?:bg|text|border|icon)-brand(?:-\S+)?$/, msg: 'brand color outside src/ui — brand is only for the primary Button / BrandMark (never error, warning, selection or link)' },
+  { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },
   { id: 'palette', tok: /^(?:bg|text|border|fill|stroke)-(?:white|black)(?:\/\d+)?$/, msg: 'white/black — use a semantic token' },
   { id: 'physical', tok: /^(?:-?(?:ml|mr|pl|pr|left|right|scroll-ml|scroll-mr|scroll-pl|scroll-pr)-\S+|text-(?:left|right)|float-(?:left|right)|clear-(?:left|right)|border-[lr](?:-\S+)?|rounded-(?:l|r|tl|tr|bl|br)(?:-\S+)?|-?translate-x-\S+|space-x-reverse|divide-x-reverse|origin-(?:left|right)\S*)$/, msg: 'physical left/right — use ms/me/ps/pe/start/end/text-start/text-end/border-s/e/rounded-s/e' },
   { id: 'scale', tok: new RegExp(`^-?${SPACING_PREFIX}-(?:\\d+(?:\\.\\d+)?|px)$`), msg: 'numeric scale — use space-*/inset-*/stack-*/inline-*/control-*/icon-* tokens' },
   { id: 'scale', tok: /^text-(?:xs|sm|base|lg|xl|[2-9]xl)$/, msg: 'Tailwind text size — use text-body-md / label-md / heading-* etc.' },
   { id: 'scale', ctx: /class|@apply/, tok: /^(?:shadow|rounded)$/, msg: 'bare shadow/rounded — use shadow-raised|overflow|overlay and rounded-control|container|overlay|pill' },
   { id: 'scale', tok: /^(?:font-(?:thin|extralight|light|medium|extrabold|black)|italic|not-italic|text-justify|tracking-(?:tighter|tight|normal|wide|wider|widest)|leading-(?:\d+|none|loose))$/, msg: 'type rule: weights 400/600/700 only, no italics, no justify, letter-spacing 0' },
-  { id: 'scale', tok: /^(?:shadow-(?:xs|sm|md|lg|xl|2xl|inner|none)|backdrop-blur\S*|blur\S*|drop-shadow\S*|z-\d+)$/, msg: 'non-token shadow/radius/blur/z-index — use shadow-raised|overflow|overlay, rounded-*, z-dialog …' },
+  { id: 'scale', tok: /^(?:shadow-(?:xs|sm|md|lg|xl|2xl|inner|none)|backdrop-blur(?:-\S+)?|blur(?:-\S+)?|drop-shadow(?:-\S+)?|z-\d+)$/, msg: 'non-token shadow/radius/blur/z-index — use shadow-raised|overflow|overlay, rounded-*, z-dialog …' },
 ];
 
 function* walk(path) {
@@ -74,7 +75,8 @@ for (const target of TARGETS) {
     const lines = readFileSync(file, 'utf8').split('\n');
     lines.forEach((line, i) => {
       // `theme-color` meta cannot use var(); it is the one documented raw value (same as the DS brief).
-      const exempt = /name="theme-color"/.test(line);
+      // `check:design-ignore` pragma: for APIs that force a physical key (e.g. recharts margin). Use sparingly.
+      const exempt = /name="theme-color"|check:design-ignore/.test(line);
       for (const rule of rules) {
         if (rule.line) {
           if (exempt) continue;
@@ -93,7 +95,7 @@ for (const target of TARGETS) {
           if (!raw || raw.length > 80) continue;
           const t = stripVariants(raw);
           for (const rule of rules) {
-            if (rule.tok && rule.tok.test(t) && (!rule.ctx || rule.ctx.test(line))) {
+            if (rule.tok && rule.tok.test(t) && (!rule.ctx || rule.ctx.test(line)) && (!rule.notIn || !rule.notIn.test(rel))) {
               findings.push({ rel, line: i + 1, col: line.indexOf(raw) + 1, id: rule.id, msg: rule.msg, snippet: raw });
               break;
             }

@@ -197,3 +197,42 @@ export function RadioGroup({ legend, name, options, value, defaultValue, onChang
     </div>
   );
 }
+
+/* ---------------- OptionCard (single-choice card inside a labelled group) ---------------- */
+export interface OptionCardProps {
+  title: ReactNode;
+  description?: ReactNode;
+  /** small trailing facts, e.g. credit cost */
+  meta?: ReactNode;
+  badge?: ReactNode;
+  selected?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+  className?: string;
+}
+
+export function OptionCard({ title, description, meta, badge, selected, disabled, onClick, className }: OptionCardProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={Boolean(selected)}
+      disabled={disabled}
+      onClick={onClick}
+      className={cx(
+        'flex min-h-touch flex-col gap-stack-xs rounded-control border p-inset-md text-start transition-colors',
+        selected
+          ? 'border-border-selected bg-bg-selected'
+          : 'border-border-default bg-surface-sunken hover:border-border-default-hover hover:bg-interaction-hover active:bg-interaction-pressed',
+        disabled && 'cursor-not-allowed border-border-disabled bg-bg-disabled text-text-disabled hover:bg-bg-disabled',
+        className,
+      )}
+    >
+      <span className="flex items-center justify-between gap-inline-xs">
+        <span className="label-md text-text-default">{title}</span>
+        {badge}
+      </span>
+      {description && <span className="caption text-text-subtle">{description}</span>}
+      {meta && <span className="label-sm tabular-nums text-text-default">{meta}</span>}
+    </button>
+  );
+}

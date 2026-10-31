@@ -36,8 +36,10 @@ import { CustomSpecModal } from './components/CustomSpecModal';
 import { PLANS } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
+import { Button, Dialog, SegmentedControl, TextField, formatNumber, useToast } from './ui';
 
 export default function App() {
+  const toast = useToast();
   // 1. Workspaces state with localStorage persistence
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
     const saved = localStorage.getItem('mabda_workspaces');
@@ -226,7 +228,7 @@ export default function App() {
           : w
       )
     );
-    alert(`پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.`);
+    toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
   };
 
   const handleAddCredits = (amount: number) => {
@@ -237,7 +239,7 @@ export default function App() {
           : w
       )
     );
-    alert(`${amount} اعتبار به حساب این فضای کاری اضافه شد.`);
+    toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
   };
 
   const handleCreateWorkspace = (e: React.FormEvent) => {
@@ -246,9 +248,10 @@ export default function App() {
 
     const currentPlan = PLANS[currentWorkspace.planId] || PLANS.pro;
     if (workspaces.length >= currentPlan.workspaceLimit) {
-      alert(
-        `سقف فضای کاری در پلن ${currentPlan.title} (${currentPlan.workspaceLimit} عدد) پر شده است. برای افزودن، پلن خود را ارتقا دهید.`
-      );
+      toast.show({
+        intent: 'warning',
+        message: `سقف فضای کاری در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
+      });
       return;
     }
 
@@ -284,7 +287,7 @@ export default function App() {
     };
 
     setContextObjects((prev) => [newContext, ...prev]);
-    alert('این خروجی به عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به عنوان Context معتبر استفاده می‌شود.');
+    toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
   };
 
   const handleExportAllData = () => {
@@ -323,11 +326,11 @@ export default function App() {
     setSpecs(WORKSTREAM_SPECS);
     setIsAccountModalOpen(false);
 
-    alert('درخواست حذف حساب کاربری با موفقیت ثبت شد. تمام نشست‌ها پایان یافت و طبق اصل حریم خصوصی (F1) اطلاعات طی مهلت قانونی ۳۰ روزه از سیستم پاک می‌شود.');
+    toast.show({ intent: 'info', message: 'درخواست حذف حساب ثبت شد. تمام نشست‌ها پایان یافت و اطلاعات طی مهلت ۳۰ روزه از سیستم پاک می‌شود (F1).', duration: 8000 });
   };
 
   return (
-    <div className="min-h-screen bg-surface-sunken text-text-default flex flex-col md:flex-row font-sans selection:bg-bg-brand-bold-hover selection:text-text-default pb-inset-lg md:pb-space-0">
+    <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
       <AppNavigation
         currentWorkspace={currentWorkspace}
@@ -387,29 +390,15 @@ export default function App() {
                 </p>
               </div>
 
-              {/* View Switcher: Document vs Table */}
-              <div className="flex items-center gap-inline-sm bg-surface-raised border border-border-default p-inset-xs rounded-control-sm text-body-sm self-start sm:self-auto">
-                <button
-                  onClick={() => setContextViewMode('doc')}
-                  className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-colors ${
-                    contextViewMode === 'doc'
-                      ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                      : 'text-text-subtle hover:text-text-default'
-                  }`}
-                >
-                  نمای سند (Document View)
-                </button>
-                <button
-                  onClick={() => setContextViewMode('table')}
-                  className={`px-inset-md py-inset-sm rounded-control-sm font-semibold transition-colors ${
-                    contextViewMode === 'table'
-                      ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                      : 'text-text-subtle hover:text-text-default'
-                  }`}
-                >
-                  نمای جدول (Table View)
-                </button>
-              </div>
+              <SegmentedControl
+                label="نمای منبع حقیقت"
+                value={contextViewMode}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'table')}
+                items={[
+                  { id: 'doc', label: 'نمای سند', icon: 'FileText' },
+                  { id: 'table', label: 'نمای جدول', icon: 'Table2' },
+                ]}
+              />
             </div>
 
             {contextViewMode === 'doc' ? (
@@ -556,58 +545,30 @@ export default function App() {
         }}
       />
 
-      {/* New Workspace Modal */}
-      {isNewWorkspaceModalOpen && (
-        <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
-          <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-overlay-md p-inset-xl space-y-stack-lg shadow-overlay">
-            <div className="flex items-center justify-between border-b border-border-default pb-inset-md">
-              <h3 className="text-body-md font-bold text-text-default">ایجاد فضای کاری جدید (Workspace)</h3>
-              <button
-                onClick={() => setIsNewWorkspaceModalOpen(false)}
-                className="text-text-subtle hover:text-text-default"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateWorkspace} className="space-y-stack-md text-body-sm">
-              <div>
-                <label className="block text-text-default font-semibold mb-stack-xs">
-                  نام فضای کاری یا نام برند:
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثلاً: استودیو دیزاین نوین"
-                  value={newWsName}
-                  onChange={(e) => setNewWsName(e.target.value)}
-                  className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-                />
-              </div>
-
-              <div className="p-inset-md bg-surface-sunken rounded-control-sm border border-border-default text-text-subtle leading-relaxed">
-                هر فضای کاری به طور کامل داده‌های منبع حقیقت، دارایی‌ها و تاریخچه جداگانه‌ای دارد (اصل P6).
-              </div>
-
-              <div className="flex items-center justify-end gap-inline-sm pt-inset-sm">
-                <button
-                  type="button"
-                  onClick={() => setIsNewWorkspaceModalOpen(false)}
-                  className="px-inset-lg py-inset-sm text-body-sm text-text-subtle hover:text-text-default"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="px-inset-lg py-inset-sm text-body-sm font-semibold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors"
-                >
-                  ایجاد فضای کاری
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* New workspace dialog */}
+      <Dialog
+        open={isNewWorkspaceModalOpen}
+        onClose={() => setIsNewWorkspaceModalOpen(false)}
+        size="sm"
+        title="ایجاد فضای کاری جدید"
+        description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد (اصل P6)."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
+            <Button variant="primary" type="submit" form="new-workspace-form">ایجاد فضای کاری</Button>
+          </>
+        }
+      >
+        <form id="new-workspace-form" onSubmit={handleCreateWorkspace}>
+          <TextField
+            label="نام فضای کاری یا نام برند"
+            required
+            placeholder="مثلاً: استودیو دیزاین نوین"
+            value={newWsName}
+            onChange={(e) => setNewWsName(e.target.value)}
+          />
+        </form>
+      </Dialog>
 
     </div>
   );

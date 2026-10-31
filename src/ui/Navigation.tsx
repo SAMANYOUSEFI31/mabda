@@ -191,3 +191,59 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
     </nav>
   );
 }
+
+/* ---------------- NavItem (sidebar / drawer row) ---------------- */
+export interface NavItemProps {
+  label: ReactNode;
+  icon?: IconName;
+  /** short metadata at the inline end (count, ratio) */
+  trailing?: ReactNode;
+  selected?: boolean;
+  /** indented sub-item (second level) */
+  nested?: boolean;
+  onClick?: () => void;
+  className?: string;
+}
+
+export function NavItem({ label, icon, trailing, selected, nested = false, onClick, className }: NavItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={selected ? 'page' : undefined}
+      className={cx(
+        'flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md text-start transition-colors',
+        nested ? 'body-sm' : 'label-md',
+        selected
+          ? 'bg-bg-selected text-text-default'
+          : 'text-text-subtle hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed',
+        className,
+      )}
+    >
+      {icon && <Icon name={icon} size="lg" className="text-icon-subtle" />}
+      <span className="min-w-space-0 flex-1 truncate">{label}</span>
+      {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtlest">{trailing}</span>}
+    </button>
+  );
+}
+
+/* ---------------- Breadcrumb ---------------- */
+export function Breadcrumb({ items, label = 'مسیر صفحه', className }: { items: Array<{ label: ReactNode; href?: string }>; label?: string; className?: string }) {
+  return (
+    <nav aria-label={label} className={cx('bsh-crumbs', className)}>
+      <ol>
+        {items.map((it, i) => {
+          const last = i === items.length - 1;
+          return (
+            <li key={i}>
+              {last ? <span className="bsh-crumbs__cur body-sm" aria-current="page">{it.label}</span>
+                : it.href ? <a className="bsh-crumbs__link body-sm" href={it.href}>{it.label}</a>
+                : <span className="bsh-crumbs__link body-sm">{it.label}</span>}
+              {!last && <Icon name="ChevronLeft" size="sm" className="bsh-crumbs__sep bsh-flip" />}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}

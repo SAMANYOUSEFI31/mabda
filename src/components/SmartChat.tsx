@@ -14,6 +14,12 @@ import {
 } from '../types';
 import { checkChatFairUse, PLANS } from '../core/creditEngine';
 import { sendChatMessage } from '../services/apiClient';
+import { DEFAULT_TREE_NODES } from '../core/specs';
+import {
+  Badge, Button, Card, Dialog, EmptyState, Icon, IconButton, SegmentedControl, Spinner, Switch, Tag, TextField, TypeBadge,
+  formatJalaliShort, formatNumber, formatTime, useToast,
+} from '../ui';
+import type { IconName } from '../ui';
 
 interface SmartChatProps {
   currentWorkspace: Workspace;
@@ -22,12 +28,12 @@ interface SmartChatProps {
   onIncrementChatCount: () => void;
 }
 
-const TRUTH_NODES: Array<{ id: string; label: string; icon: string }> = [
-  { id: 'business', label: 'کسب‌وکار', icon: '🏢' },
-  { id: 'brand', label: 'هویت و برند', icon: '🎨' },
-  { id: 'product', label: 'محصول و ارزش', icon: '📦' },
-  { id: 'offer', label: 'آفر و قیمت', icon: '🏷️' },
-  { id: 'content', label: 'محتوا و قیف', icon: '📝' },
+const TRUTH_NODES: Array<{ id: string; label: string; icon: IconName }> = [
+  { id: 'business', label: 'کسب‌وکار', icon: 'Building2' },
+  { id: 'brand', label: 'هویت و برند', icon: 'Palette' },
+  { id: 'product', label: 'محصول و ارزش', icon: 'Package' },
+  { id: 'offer', label: 'آفر و قیمت', icon: 'TagIcon' },
+  { id: 'content', label: 'محتوا و قیف', icon: 'FileText' },
 ];
 
 export const SmartChat: React.FC<SmartChatProps> = ({
@@ -81,6 +87,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toast = useToast();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [sessionEditTitle, setSessionEditTitle] = useState('');
 
@@ -141,20 +149,25 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     setIsSidebarOpen(false);
   };
 
-  // Delete session
+  // Delete session (asks via an alert dialog)
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (sessions.length <= 1) {
-      alert('حداقل یک جلسه گفتگو باید در سیستم باقی بماند.');
+      toast.show({ intent: 'info', message: 'حداقل یک جلسهٔ گفتگو باید در سیستم باقی بماند.' });
       return;
     }
-    if (confirm('آیا از حذف این گفتگو اطمینان دارید؟')) {
-      const remaining = sessions.filter((s) => s.id !== sessionId);
-      setSessions(remaining);
-      if (activeSessionId === sessionId) {
-        setActiveSessionId(remaining[0].id);
-      }
+    setPendingDeleteId(sessionId);
+  };
+
+  const confirmDeleteSession = () => {
+    const sessionId = pendingDeleteId;
+    if (!sessionId) return;
+    const remaining = sessions.filter((s) => s.id !== sessionId);
+    setSessions(remaining);
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(remaining[0].id);
     }
+    setPendingDeleteId(null);
   };
 
   // Rename session
@@ -213,7 +226,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     if (!messageContent || isLoading) return;
 
     if (fairUse.isHardExceeded) {
-      alert('سقف سخت گفتگوی روزانه پر شده است. لطفاً فردا مراجعه فرمایید یا پلن خود را ارتقا دهید.');
+      toast.show({ intent: 'warning', message: 'سقف سخت گفتگوی روزانه پر شده است. فردا برگرد یا پلنت را ارتقا بده.' });
       return;
     }
 
@@ -361,26 +374,26 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   };
 
   // Calculate gaps for prompt starters
-  const gapsPrompts: Array<{ label: string; text: string; icon: string }> = [
+  const gapsPrompts: Array<{ label: string; text: string; icon: IconName }> = [
     {
       label: 'تعریف مشتری ایده‌آل (ICP)',
       text: 'می‌خواهم مشتری ایده‌آل، نقطه درد اصلی و دلیل خرید او را در کسب‌وکارمان شفاف و نهایی کنیم.',
-      icon: '🎯',
+      icon: 'Target',
     },
     {
       label: 'قیمت‌گذاری و سطوح آفر',
       text: 'پیشنهادهای قیمت‌گذاری و مرزهای عدم تخفیف آفر ما چطور باید تنظیم شود تا اقتصاد صادقانه حفظ گردد؟',
-      icon: '🏷️',
+      icon: 'TagIcon',
     },
     {
       label: 'ممیزی تناقضات در وعده‌ها',
       text: 'لطفاً تمام ادعاها و تصمیماتی که تا الان در منبع حقیقت ثبت کرده‌ایم را بازبینی کن و اگر تناقضی هست نشان بده.',
-      icon: '🔍',
+      icon: 'Search',
     },
     {
       label: 'تدوین لحن و خطوط قرمز برند',
       text: 'خطوط قرمز محتوایی و لحن ارتباطی برندمان در بازار ایران را چطور ساختاریافته کنیم؟',
-      icon: '🎨',
+      icon: 'Palette',
     },
   ];
 
@@ -391,381 +404,210 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       ? allContextObjects.length
       : allContextObjects.filter((c) => selectedNodes.includes(c.nodeId)).length;
 
+  const nodeLabel = (id: string) => DEFAULT_TREE_NODES.find((n) => n.id === id)?.label ?? id;
+
   return (
-    <div className="bg-surface-raised border border-border-default rounded-container flex flex-col h-[calc(100dvh-130px)] md:h-[720px] text-end shadow-overlay overflow-hidden relative font-sans">
-      {/* 1. Header with Sessions Bar, Grounding Indicator & Mode Switcher */}
-      <div className="p-inset-md sm:p-inset-lg border-b border-border-default bg-surface-sunken shrink-0 space-y-stack-md">
-        {/* Top bar row: Title, Session Switcher, New Chat Button */}
+    <Card padding="none" className="relative flex h-chat flex-col overflow-hidden">
+      {/* 1. Header: sessions, mode, grounding */}
+      <div className="flex shrink-0 flex-col gap-stack-md border-b border-border-default bg-surface-sunken p-inset-md sm:p-inset-lg">
         <div className="flex items-center justify-between gap-inline-sm">
-          <div className="flex items-center gap-inline-sm min-w-space-0">
-            {/* Sidebar toggle for sessions on mobile & desktop */}
-            <button
+          <div className="flex min-w-space-0 items-center gap-inline-sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              iconStart="MessageSquare"
+              aria-expanded={isSidebarOpen}
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="px-inset-md py-inset-sm rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default text-body-sm text-text-default flex items-center gap-inline-sm transition-colors shrink-0"
-              title="مشاهده نشست‌های گفتگو"
+              title="مشاهدهٔ نشست‌های گفتگو"
             >
-              <span>💬</span>
-              <span className="font-semibold hidden sm:inline">گفتگوها</span>
-              <span className="text-caption text-text-subtlest font-mono">({sessions.length})</span>
-            </button>
-
-            {/* Current Active Session Title */}
-            <div className="truncate">
-              <h3 className="text-body-sm sm:text-body-md font-bold text-text-default truncate flex items-center gap-inline-sm">
-                <span>{activeSession.title}</span>
-              </h3>
-            </div>
+              <span className="hidden sm:inline">گفتگوها </span>({formatNumber(sessions.length)})
+            </Button>
+            <h3 className="title truncate text-text-default">{activeSession.title}</h3>
           </div>
 
-          <div className="flex items-center gap-inline-sm shrink-0">
-            {/* New Chat Button */}
-            <button
-              onClick={handleCreateNewSession}
-              className="px-inset-md py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors flex items-center gap-inline-xs shadow-raised"
-            >
-              <span>+</span>
-              <span>گفتگوی جدید</span>
-            </button>
-
-            {/* Daily Fair Use Badge */}
-            <div className="hidden lg:flex items-center gap-inline-sm text-caption bg-surface-raised border border-border-default px-inset-md py-inset-xs rounded-control-sm">
+          <div className="flex shrink-0 items-center gap-inline-sm">
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی جدید</Button>
+            <span className="caption hidden items-center gap-inline-sm rounded-control-sm border border-border-default bg-surface-raised px-inset-md py-inset-xs lg:flex">
               <span className="text-text-subtle">مصرف روزانه:</span>
-              <span className="font-bold text-text-default tabular-nums">
-                {currentWorkspace.todayChatCount}/{plan.dailyChatLimit}
+              <span className="label-sm tabular-nums text-text-default">
+                {formatNumber(currentWorkspace.todayChatCount)} / {formatNumber(plan.dailyChatLimit)}
               </span>
-            </div>
+            </span>
           </div>
         </div>
 
-        {/* Second Row: Chat Modes (Discovery / Contradiction Audit / Strategic Advisor) */}
-        <div className="flex flex-wrap items-center justify-between gap-inline-sm pt-inset-xs border-t border-border-subtle">
-          <div className="flex items-center gap-inline-xs bg-surface-raised border border-border-default p-inset-xs rounded-control-sm text-body-sm overflow-x-auto max-w-full">
-            <button
-              onClick={() => handleChangeMode('discovery')}
-              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
-                activeSession.chatMode === 'discovery'
-                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                  : 'text-text-subtle hover:text-text-default'
-              }`}
-            >
-              <span>💡</span>
-              <span>کشف و استخراج تصمیمات</span>
-            </button>
-
-            <button
-              onClick={() => handleChangeMode('audit')}
-              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
-                activeSession.chatMode === 'audit'
-                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                  : 'text-text-subtle hover:text-text-default'
-              }`}
-            >
-              <span>🛡️</span>
-              <span>ممیزی تناقضات</span>
-            </button>
-
-            <button
-              onClick={() => handleChangeMode('advisor')}
-              className={`px-inset-md py-inset-xs rounded-control-sm text-caption font-semibold transition-colors whitespace-nowrap flex items-center gap-inline-xs ${
-                activeSession.chatMode === 'advisor'
-                  ? 'bg-bg-brand-bold text-text-default shadow-raised'
-                  : 'text-text-subtle hover:text-text-default'
-              }`}
-            >
-              <span>📈</span>
-              <span>مشاوره آفر و بیزنس</span>
-            </button>
-          </div>
-
-          {/* Grounding Status badge */}
-          <div className="text-caption text-text-subtle flex items-center gap-inline-sm shrink-0">
-            <span className="w-space-2 h-space-2 rounded-pill bg-bg-success-bold" />
-            <span>متصل به {groundedCount} شیء دانش</span>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
+          <SegmentedControl
+            label="حالت گفتگو"
+            value={activeSession.chatMode}
+            onChange={(id) => handleChangeMode(id as ChatMode)}
+            items={[
+              { id: 'discovery', label: 'کشف و استخراج تصمیمات', icon: 'Lightbulb' },
+              { id: 'audit', label: 'ممیزی تناقضات', icon: 'Shield' },
+              { id: 'advisor', label: 'مشاورهٔ آفر و بیزنس', icon: 'TrendingUp' },
+            ]}
+          />
+          <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} شیء دانش</Badge>
         </div>
 
-        {/* Third Row: Truth Tree Grounding Selector (انتخاب کانتکست هدف گفتگو) */}
-        <div className="flex items-center gap-inline-sm overflow-x-auto no-scrollbar pt-inset-xs text-caption">
-          <span className="text-text-subtlest shrink-0 text-caption ps-inset-xs">کانتکست هدف:</span>
-
-          <button
-            onClick={handleSelectAllNodes}
-            className={`px-inset-sm py-inset-xs rounded-control-sm text-caption border transition-colors shrink-0 ${
-              selectedNodes.length === 0
-                ? 'bg-bg-neutral-subtle text-text-default border-border-bold'
-                : 'text-text-subtle border-transparent hover:text-text-default hover:bg-surface-raised'
-            }`}
-          >
-            همه درخت ({allContextObjects.length})
-          </button>
-
+        <div className="flex items-center gap-inline-sm overflow-x-auto" role="group" aria-label="کانتکست هدف گفتگو">
+          <span className="caption shrink-0 text-text-subtle">کانتکست هدف:</span>
+          <Tag selected={selectedNodes.length === 0} onToggle={handleSelectAllNodes}>
+            همهٔ درخت ({formatNumber(allContextObjects.length)})
+          </Tag>
           {TRUTH_NODES.map((node) => {
-            const isSelected = selectedNodes.includes(node.id);
             const count = allContextObjects.filter((c) => c.nodeId === node.id).length;
             return (
-              <button
-                key={node.id}
-                onClick={() => handleToggleNode(node.id)}
-                className={`px-inset-sm py-inset-xs rounded-control-sm text-caption border flex items-center gap-inline-xs transition-colors shrink-0 ${
-                  isSelected
-                    ? 'bg-bg-brand-subtle text-text-brand border-border-brand-subtle font-semibold'
-                    : 'text-text-subtle border-transparent hover:text-text-default hover:bg-surface-raised'
-                }`}
-              >
-                <span>{node.icon}</span>
-                <span>{node.label}</span>
-                <span className="text-caption opacity-70">({count})</span>
-              </button>
+              <Tag key={node.id} selected={selectedNodes.includes(node.id)} onToggle={() => handleToggleNode(node.id)}>
+                {node.label} ({formatNumber(count)})
+              </Tag>
             );
           })}
         </div>
       </div>
 
-      {/* Main Body Area: Sessions Drawer Overlay + Messages */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Sessions Sidebar / Drawer */}
+      {/* 2. Body: sessions drawer + messages */}
+      <div className="relative flex flex-1 overflow-hidden">
         {isSidebarOpen && (
-          <div className="absolute inset-y-space-0 end-space-0 z-dropdown w-container-overlay-xs max-w-[85%] bg-surface-raised border-s border-border-default shadow-overlay flex flex-col p-inset-md slide-in-from-right-4">
-            <div className="flex items-center justify-between pb-inset-md border-b border-border-default">
-              <span className="text-body-sm font-bold text-text-default">نشست‌های گفتگوی شما</span>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="text-text-subtle hover:text-text-default p-inset-xs text-body-sm"
-              >
-                ✕
-              </button>
+          <div className="absolute inset-y-space-0 end-space-0 z-dropdown flex w-full max-w-overlay-xs flex-col gap-stack-sm border-s border-border-default bg-surface-overlay p-inset-md shadow-overlay">
+            <div className="flex items-center justify-between border-b border-border-default pb-inset-sm">
+              <span className="label-md text-text-default">نشست‌های گفتگوی تو</span>
+              <IconButton icon="X" label="بستن فهرست گفتگوها" size="sm" onClick={() => setIsSidebarOpen(false)} />
             </div>
 
-            <div className="my-stack-sm">
-              <button
-                onClick={handleCreateNewSession}
-                className="w-full py-inset-sm px-inset-md text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors flex items-center justify-center gap-inline-xs shadow-raised"
-              >
-                <span>+</span>
-                <span>شروع گفتگوی جدید</span>
-              </button>
-            </div>
+            <Button variant="secondary" fullWidth iconStart="Plus" onClick={handleCreateNewSession}>شروع گفتگوی جدید</Button>
 
-            <div className="flex-1 overflow-y-auto space-y-stack-sm pe-inset-xs">
+            <ul className="flex flex-1 flex-col gap-stack-xs overflow-y-auto" aria-label="نشست‌های گفتگو">
               {sessions.map((sess) => {
                 const isActive = sess.id === activeSession.id;
                 const isEditing = editingSessionId === sess.id;
-
                 return (
-                  <div
-                    key={sess.id}
-                    onClick={() => {
-                      setActiveSessionId(sess.id);
-                      setIsSidebarOpen(false);
-                    }}
-                    className={`group p-inset-md rounded-control border text-body-sm cursor-pointer transition-all flex flex-col gap-inline-xs ${
-                      isActive
-                        ? 'bg-surface-raised border-border-brand-subtle text-text-default shadow-raised'
-                        : 'bg-transparent border-transparent hover:bg-surface-raised text-text-subtle hover:text-text-default'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-inline-xs">
-                      {isEditing ? (
-                        <div
-                          className="flex items-center gap-inline-xs w-full"
-                          onClick={(e) => e.stopPropagation()}
+                  <li key={sess.id} className={`rounded-control border p-inset-sm ${isActive ? 'border-border-selected bg-bg-selected' : 'border-transparent'}`}>
+                    {isEditing ? (
+                      <div className="flex items-end gap-inline-xs">
+                        <TextField
+                          label="نام گفتگو"
+                          size="sm"
+                          value={sessionEditTitle}
+                          autoFocus
+                          onChange={(e) => setSessionEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveSessionTitle(sess.id);
+                          }}
+                        />
+                        <IconButton icon="Check" label="ذخیرهٔ نام" onClick={() => handleSaveSessionTitle(sess.id)} />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-inline-xs">
+                        <button
+                          type="button"
+                          aria-current={isActive ? 'true' : undefined}
+                          onClick={() => {
+                            setActiveSessionId(sess.id);
+                            setIsSidebarOpen(false);
+                          }}
+                          className="flex min-h-touch min-w-space-0 flex-1 flex-col justify-center text-start"
                         >
-                          <input
-                            type="text"
-                            value={sessionEditTitle}
-                            onChange={(e) => setSessionEditTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveSessionTitle(sess.id);
-                            }}
-                            className="bg-surface-sunken border border-border-default rounded-indicator px-inset-sm py-inset-xs text-body-sm text-text-default w-full"
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleSaveSessionTitle(sess.id)}
-                            className="text-text-success hover:text-text-default px-inset-xs"
-                          >
-                            ✓
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="font-semibold truncate flex-1 text-end">
-                          {sess.title}
-                        </span>
-                      )}
-
-                      {!isEditing && (
-                        <div className="flex items-center gap-inline-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingSessionId(sess.id);
-                              setSessionEditTitle(sess.title);
-                            }}
-                            className="text-text-subtle hover:text-text-default p-inset-xs text-caption"
-                            title="تغییر نام"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteSession(sess.id, e)}
-                            className="text-text-brand hover:text-text-brand p-inset-xs text-caption"
-                            title="حذف نشست"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-caption text-text-subtlest">
-                      <span>{sess.messages.length} پیام</span>
-                      <span>
-                        {new Date(sess.updatedAt).toLocaleDateString('fa-IR', {
-                          month: 'numeric',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  </div>
+                          <span className="label-md truncate text-text-default">{sess.title}</span>
+                          <span className="caption flex justify-between gap-inline-sm text-text-subtle">
+                            <span>{formatNumber(sess.messages.length)} پیام</span>
+                            <span>{formatJalaliShort(sess.updatedAt)}</span>
+                          </span>
+                        </button>
+                        <IconButton
+                          icon="Pencil"
+                          label="تغییر نام"
+                          size="sm"
+                          onClick={() => {
+                            setEditingSessionId(sess.id);
+                            setSessionEditTitle(sess.title);
+                          }}
+                        />
+                        <IconButton icon="Trash2" label="حذف نشست" size="sm" onClick={(e) => handleDeleteSession(sess.id, e)} />
+                      </div>
+                    )}
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
         )}
 
-        {/* Messages Scroll Area */}
-        <div className="flex-1 overflow-y-auto p-inset-md sm:p-inset-lg space-y-stack-md">
-          {/* Prompt Starters when chat is young */}
+        <div className="flex flex-1 flex-col gap-stack-md overflow-y-auto p-inset-md sm:p-inset-lg">
           {activeSession.messages.length <= 2 && (
-            <div className="bg-surface-raised border border-border-default rounded-control p-inset-md sm:p-inset-lg space-y-stack-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-body-sm font-bold text-text-default flex items-center gap-inline-sm">
-                  <span>⚡</span>
-                  <span>پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی:</span>
+            <Card padding="md" className="flex flex-col gap-stack-sm">
+              <div className="flex items-center justify-between gap-inline-sm">
+                <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
+                  <Icon name="Zap" size="md" className="text-icon-subtle" />
+                  پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی
                 </span>
-                <span className="text-caption text-text-subtlest">یک کلیک برای آغاز</span>
+                <span className="caption text-text-subtle">یک انتخاب برای آغاز</span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-inline-sm pt-inset-xs">
+              <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
                 {gapsPrompts.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(undefined, p.text)}
-                    className="text-end p-inset-md rounded-control-sm bg-surface-raised hover:bg-interaction-hover border border-border-default hover:border-border-bold text-body-sm transition-all group"
-                  >
-                    <div className="flex items-center gap-inline-sm">
-                      <span>{p.icon}</span>
-                      <span className="font-semibold text-text-default group-hover:text-text-brand transition-colors">
-                        {p.label}
-                      </span>
-                    </div>
-                    <p className="text-caption text-text-subtle mt-stack-xs line-clamp-2 leading-relaxed">
-                      {p.text}
-                    </p>
-                  </button>
+                  <Card key={idx} padding="md" onClick={() => handleSend(undefined, p.text)} className="flex flex-col gap-stack-xs">
+                    <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
+                      <Icon name={p.icon} size="md" className="text-icon-subtle" />
+                      {p.label}
+                    </span>
+                    <p className="caption line-clamp-2 text-text-subtle">{p.text}</p>
+                  </Card>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {activeSession.messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex flex-col ${
-                m.role === 'user' ? 'items-start' : 'items-end'
-              }`}
-            >
+            <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
               <div
-                className={`max-w-[92%] sm:max-w-[85%] rounded-container p-inset-lg sm:p-inset-lg text-body-sm leading-relaxed ${
+                className={`body-sm w-fit max-w-full rounded-container border p-inset-lg sm:max-w-prose ${
                   m.role === 'user'
-                    ? 'bg-bg-brand-bold text-text-default rounded-ee-none shadow-overflow'
-                    : 'bg-surface-sunken text-text-default border border-border-default rounded-es-none shadow-raised'
+                    ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
+                    : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'
                 }`}
               >
-                {/* Assistant Grounding Badge */}
                 {m.role === 'assistant' && m.groundedCount !== undefined && m.groundedCount > 0 && (
-                  <div className="mb-stack-sm pb-inset-sm border-b border-border-default flex items-center justify-between text-caption text-text-success">
-                    <span className="flex items-center gap-inline-xs">
-                      <span>🛡️</span>
-                      <span>بررسی و تطبیق با {m.groundedCount} شیء دانش تأییدشده</span>
-                    </span>
-                    {m.executionMode === 'deep' && (
-                      <span className="text-text-warning bg-bg-warning-subtle px-inset-xs rounded-indicator">
-                        تحلیل چندوجهی
-                      </span>
-                    )}
+                  <div className="mb-stack-sm flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
+                    <Badge intent="success" icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
+                    {m.executionMode === 'deep' && <Badge intent="info" icon={false}>تحلیل چندوجهی</Badge>}
                   </div>
                 )}
 
-                <div className="whitespace-pre-line selection:bg-bg-neutral-subtle-pressed">{m.content}</div>
+                <div className="whitespace-pre-line">{m.content}</div>
 
-                <div
-                  className={`mt-stack-sm pt-inset-sm border-t text-caption flex items-center justify-between gap-inline-md ${
-                    m.role === 'user'
-                      ? 'border-border-bold text-text-default'
-                      : 'border-border-default text-text-subtlest'
-                  }`}
-                >
-                  <span>
-                    {new Date(m.timestamp).toLocaleTimeString('fa-IR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                  <span>
-                    {m.executionMode === 'deep' ? 'حالت عمیق (۵ اعتبار)' : 'حالت Auto (۰ اعتبار)'}
-                  </span>
+                <div className="caption mt-stack-sm flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
+                  <span className="tabular-nums">{formatTime(m.timestamp)}</span>
+                  <span>{m.executionMode === 'deep' ? 'حالت عمیق (۵ اعتبار)' : 'حالت Auto (۰ اعتبار)'}</span>
                 </div>
               </div>
 
-              {/* Context Suggestions Cards (F13 & P6 - Structure is the Asset) */}
               {m.suggestions && m.suggestions.length > 0 && (
-                <div className="w-[92%] sm:w-[85%] mt-stack-md space-y-stack-sm">
+                <div className="mt-stack-md flex w-full flex-col gap-stack-sm sm:max-w-prose">
                   {m.suggestions.map((sug) => (
-                    <div
-                      key={sug.id}
-                      className="bg-surface-sunken border border-border-warning-subtle rounded-control p-inset-md sm:p-inset-lg space-y-stack-sm text-body-sm shadow-overflow"
-                    >
-                      <div className="flex items-center justify-between gap-inline-sm">
-                        <div className="flex items-center gap-inline-sm">
-                          <span className="text-body-md">💡</span>
-                          <span className="font-bold text-text-warning">
-                            پیشنهاد ثبت در منبع حقیقت: {sug.title}
-                          </span>
-                          <span className="text-caption bg-bg-warning-subtle text-text-warning px-inset-sm py-inset-xs rounded-indicator font-mono">
-                            {sug.type}
-                          </span>
-                        </div>
-                        <span className="text-caption text-text-subtle bg-surface-raised px-inset-sm py-inset-xs rounded-indicator border border-border-default">
-                          شاخه: {sug.nodeId}
+                    <Card key={sug.id} padding="md" className="flex flex-col gap-stack-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                        <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
+                          <Icon name="Lightbulb" size="md" className="text-icon-warning" />
+                          پیشنهاد ثبت در منبع حقیقت: {sug.title}
+                        </span>
+                        <span className="flex items-center gap-inline-xs">
+                          <TypeBadge value={sug.type} />
+                          <Badge intent="neutral" icon={false}>شاخه: {nodeLabel(sug.nodeId)}</Badge>
                         </span>
                       </div>
 
-                      <p className="text-text-default bg-surface-raised p-inset-md rounded-control-sm border border-border-default leading-relaxed">
-                        {sug.content}
-                      </p>
+                      <p className="body-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md text-text-default">{sug.content}</p>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-sm pt-inset-xs border-t border-border-subtle">
-                        <span className="text-caption text-text-subtlest">
-                          {sug.reason || 'استخراج مستقیم از گفتگوی کاربر با مبدأ'}
-                        </span>
-
+                      <div className="flex flex-col justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm sm:flex-row sm:items-center">
+                        <span className="caption text-text-subtle">{sug.reason || 'استخراج مستقیم از گفتگوی کاربر با مبدأ'}</span>
                         <div className="flex items-center gap-inline-sm self-end sm:self-auto">
-                          <button
-                            onClick={() => handleDismissSuggestion(sug.id, m.id)}
-                            className="px-inset-md py-inset-xs text-body-sm text-text-subtle hover:text-text-default rounded-indicator hover:bg-interaction-hover transition-colors"
-                          >
-                            رد کردن
-                          </button>
-                          <button
-                            onClick={() => handleApproveSuggestion(sug, m.id)}
-                            className="px-inset-lg py-inset-xs text-body-sm font-semibold text-text-default bg-bg-success-bold hover:bg-bg-success-bold-hover rounded-control-sm transition-colors shadow-raised"
-                          >
-                            تأیید و افزودن به منبع حقیقت ✓
-                          </button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDismissSuggestion(sug.id, m.id)}>رد کردن</Button>
+                          <Button variant="secondary" size="sm" iconStart="Check" onClick={() => handleApproveSuggestion(sug, m.id)}>
+                            تأیید و افزودن به منبع حقیقت
+                          </Button>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               )}
@@ -773,9 +615,9 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-inline-md text-body-sm text-text-subtle bg-surface-sunken p-inset-md rounded-control border border-border-default w-fit">
-              <span className="animate-spin text-body-md">⚙️</span>
-              <span>مبدأ در حال تطبیق با منبع حقیقت و استخراج تصمیمات است...</span>
+            <div className="body-sm flex w-fit items-center gap-inline-md rounded-control border border-border-default bg-surface-sunken p-inset-md text-text-subtle">
+              <Spinner size="md" label="در حال پردازش" />
+              <span>مبدأ در حال تطبیق با منبع حقیقت و استخراج تصمیمات است…</span>
             </div>
           )}
 
@@ -783,45 +625,44 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         </div>
       </div>
 
-      {/* 3. Sticky Input Area with Mobile Ergonomics */}
-      <div className="p-inset-md bg-surface-sunken border-t border-border-default space-y-stack-sm shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between text-body-sm text-text-subtle">
-          {/* Toggle for Deep Mode */}
-          <label className="flex items-center gap-inline-sm cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isDeepMode}
-              onChange={(e) => setIsDeepMode(e.target.checked)}
-              className="accent-bg-brand-bold"
-            />
-            <span className={isDeepMode ? 'text-text-default font-bold text-body-sm' : 'text-text-subtle text-body-sm'}>
-              حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)
-            </span>
-          </label>
-
-          <span className="text-caption sm:text-caption text-text-subtlest">
-            {isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان بدون کنتور'}
-          </span>
+      {/* 3. Input */}
+      <div className="flex shrink-0 flex-col gap-stack-sm border-t border-border-default bg-surface-sunken p-inset-md pb-safe-inset">
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+          <Switch checked={isDeepMode} onChange={(e) => setIsDeepMode(e.target.checked)} label="حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)" />
+          <span className="caption text-text-subtle">{isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور'}</span>
         </div>
 
-        <form onSubmit={handleSend} className="flex items-center gap-inline-sm">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="درباره ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی خود بنویسید..."
-            disabled={isLoading}
-            className="flex-1 bg-surface-raised border border-border-default focus:border-border-brand rounded-control px-inset-lg py-inset-md text-body-sm text-text-default focus:outline-none transition-colors"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="px-inset-lg sm:px-inset-xl py-inset-md text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover disabled:opacity-40 rounded-control transition-all whitespace-nowrap shadow-raised shrink-0"
-          >
-            {isLoading ? 'در حال ارسال...' : isDeepMode ? 'ارسال عمیق' : 'ارسال'}
-          </button>
+        <form onSubmit={handleSend} className="flex items-start gap-inline-sm">
+          <div className="flex-1">
+            <TextField
+              aria-label="پیام شما"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…"
+              disabled={isLoading}
+              size="lg"
+            />
+          </div>
+          <Button variant="primary" size="lg" type="submit" iconEnd="Send" loading={isLoading} disabled={!input.trim() && !isLoading}>
+            {isDeepMode ? 'ارسال عمیق' : 'ارسال'}
+          </Button>
         </form>
       </div>
-    </div>
+
+      <Dialog
+        alert
+        size="sm"
+        open={pendingDeleteId !== null}
+        onClose={() => setPendingDeleteId(null)}
+        title="حذف این گفتگو؟"
+        description="با حذف نشست، پیام‌های آن از این دستگاه پاک می‌شود."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingDeleteId(null)}>انصراف</Button>
+            <Button variant="danger-bold" onClick={confirmDeleteSession}>حذف گفتگو</Button>
+          </>
+        }
+      />
+    </Card>
   );
 };

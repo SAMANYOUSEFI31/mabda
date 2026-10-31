@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { generateDeliverableApi } from '../services/apiClient';
+import { Alert, Button, Card, Dialog, Icon, Progress, TextField, Textarea, formatNumber, useToast } from '../ui';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -14,14 +15,17 @@ interface OnboardingModalProps {
   onCompleteOnboarding: (newObjects: ContextObject[], firstDeliverable: GeneratedDeliverable) => void;
 }
 
-export const OnboardingModal: React.FC<OnboardingModalProps> = ({
-  isOpen,
-  onClose,
-  currentWorkspace,
-  onCompleteOnboarding,
-}) => {
-  if (!isOpen) return null;
+/** Wizard state resets on every open: the stateful part mounts fresh when the modal opens. */
+export const OnboardingModal: React.FC<OnboardingModalProps> = (props) =>
+  props.isOpen ? <OnboardingWizard {...props} /> : null;
 
+const STEP_TITLES = [
+  'گام اول: ورود ۵ حقیقت اساسی کسب‌وکار',
+  'گام دوم: تأیید دانشی که مبدأ فهمید',
+  'گام سوم: لحظهٔ Aha — اولین دارایی با Context Replay',
+];
+
+const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCompleteOnboarding }) => {
   const [step, setStep] = useState<number>(1);
   const [domain, setDomain] = useState('مشاوره استراتژی برند و دیزاین سیستم');
   const [audience, setAudience] = useState('سولو فاندرها، فریلنسرها و مشاوران مستقل');
@@ -29,6 +33,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [valProp, setValProp] = useState('تبدیل دانش پراکنده به یک منبع حقیقت یکپارچه و ساخت دارایی‌های منسجم با Context Replay');
   const [differentiation, setDifferentiation] = useState('دانش ساختاریافته نوع‌دار با موتور تحلیل شکاف (Gap Engine) و بازسازی نصف‌قیمت');
 
+  const toast = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState<GeneratedDeliverable | null>(null);
 
@@ -132,201 +137,92 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       setStep(3); // Result & Replay step
     } catch (e) {
       console.error(e);
-      alert('خطا در تولید اولین دارایی.');
+      toast.show({ intent: 'danger', message: 'اولین دارایی ساخته نشد. دوباره تلاش کن.' });
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const review: Array<[string, string]> = [
+    ['حوزهٔ کسب‌وکار', domain],
+    ['مخاطب اصلی (ICP)', audience],
+    ['معضل اصلی', problem],
+    ['پیشنهاد ارزش', valProp],
+    ['تمایز کلیدی', differentiation],
+  ];
+
   return (
-    <div className="fixed inset-space-0 z-dialog flex items-center justify-center p-inset-lg bg-bg-scrim text-end">
-      <div className="bg-surface-raised border border-border-default rounded-container w-full max-w-form max-h-[90vh] overflow-y-auto shadow-overlay p-inset-xl sm:p-inset-2xl space-y-stack-lg">
-        {/* Step indicator */}
-        <div className="flex items-center justify-between border-b border-border-default pb-inset-lg">
-          <div className="flex items-center gap-inline-md">
-            <span className="w-space-8 h-space-8 rounded-control-sm bg-bg-brand-bold text-text-default flex items-center justify-center font-bold text-body-md">
-              {step}/۳
-            </span>
-            <div>
-              <h3 className="text-body-md font-bold text-text-default">
-                {step === 1
-                  ? 'گام اول: ورود ۵ حقیقت اساسی کسب‌وکار'
-                  : step === 2
-                  ? 'گام دوم: تأیید دانشی که مبدأ فهمید'
-                  : 'گام سوم: Aha Moment — اولین دارایی با Context Replay'}
-              </h3>
-              <p className="text-body-sm text-text-subtle mt-stack-xs">
-                مسیر Onboarding سریع تا اولین خروجی منسجم (کمتر از ۱۰ دقیقه)
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-text-subtle hover:text-text-default p-inset-xs rounded-control-sm hover:bg-interaction-hover transition-colors"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      title={STEP_TITLES[step - 1]}
+      description="مسیر سریع تا اولین خروجی منسجم (کمتر از ۱۰ دقیقه)"
+      footer={
+        step === 1 ? (
+          <Button variant="primary" iconEnd="ArrowLeft" onClick={() => setStep(2)}>بررسی اشیاء پیشنهادی دانش</Button>
+        ) : step === 2 ? (
+          <>
+            <Button variant="ghost" onClick={() => setStep(1)}>بازگشت و اصلاح</Button>
+            <Button variant="primary" loading={isGenerating} onClick={handleCreateAndGenerate}>
+              تأیید همه و ساخت اولین دارایی
+            </Button>
+          </>
+        ) : (
+          <Button variant="primary" iconEnd="ArrowLeft" onClick={onClose}>ورود به استودیوی مبدأ</Button>
+        )
+      }
+    >
+      <div className="flex flex-col gap-stack-lg">
+        <Progress value={step} max={3} label={`گام ${formatNumber(step)} از ۳`} showValue={false} />
 
-        {/* STEP 1: 5 Questions */}
         {step === 1 && (
-          <div className="space-y-stack-md text-body-sm">
-            <div>
-              <label className="block text-text-default font-semibold mb-stack-xs">
-                ۱. روی چه کاری کار می‌کنی؟ (حوزه تخصصی)
-              </label>
-              <input
-                type="text"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-              />
-            </div>
-
-            <div>
-              <label className="block text-text-default font-semibold mb-stack-xs">
-                ۲. مخاطب اصلی تو کیست؟ (خریدار یا کاربر ایده‌آل)
-              </label>
-              <input
-                type="text"
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-              />
-            </div>
-
-            <div>
-              <label className="block text-text-default font-semibold mb-stack-xs">
-                ۳. بزرگ‌ترین معضل و درد مشتری‌ات چیست؟
-              </label>
-              <textarea
-                rows={2}
-                value={problem}
-                onChange={(e) => setProblem(e.target.value)}
-                className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-              />
-            </div>
-
-            <div>
-              <label className="block text-text-default font-semibold mb-stack-xs">
-                ۴. راه‌حل و پیشنهاد ارزش تو چگونه این درد را حل می‌کند؟
-              </label>
-              <textarea
-                rows={2}
-                value={valProp}
-                onChange={(e) => setValProp(e.target.value)}
-                className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-              />
-            </div>
-
-            <div>
-              <label className="block text-text-default font-semibold mb-stack-xs">
-                ۵. تمایز کلیدی یا خط قرمز تو چیست؟
-              </label>
-              <input
-                type="text"
-                value={differentiation}
-                onChange={(e) => setDifferentiation(e.target.value)}
-                className="w-full bg-surface-sunken border border-border-default rounded-control-sm p-inset-md text-text-default focus:outline-none focus:border-border-brand"
-              />
-            </div>
-
-            <div className="pt-inset-lg flex justify-end">
-              <button
-                onClick={() => setStep(2)}
-                className="px-inset-lg py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors shadow-raised"
-              >
-                بررسی اشیاء پیشنهادی دانش &larr;
-              </button>
-            </div>
+          <div className="flex flex-col gap-stack-md">
+            <TextField label="۱. روی چه کاری کار می‌کنی؟ (حوزهٔ تخصصی)" value={domain} onChange={(e) => setDomain(e.target.value)} />
+            <TextField label="۲. مخاطب اصلی تو کیست؟ (خریدار یا کاربر ایده‌آل)" value={audience} onChange={(e) => setAudience(e.target.value)} />
+            <Textarea label="۳. بزرگ‌ترین معضل و درد مشتری‌ات چیست؟" rows={2} value={problem} onChange={(e) => setProblem(e.target.value)} />
+            <Textarea label="۴. راه‌حل و پیشنهاد ارزش تو چگونه این درد را حل می‌کند؟" rows={2} value={valProp} onChange={(e) => setValProp(e.target.value)} />
+            <TextField label="۵. تمایز کلیدی یا خط قرمز تو چیست؟" value={differentiation} onChange={(e) => setDifferentiation(e.target.value)} />
           </div>
         )}
 
-        {/* STEP 2: Review Proposed Objects */}
         {step === 2 && (
-          <div className="space-y-stack-md text-body-sm">
-            <p className="text-text-subtle leading-relaxed">
-              این ۵ شیء دانشی است که مبدأ استخراج کرد. در مبدأ تا زمانی که کاربر تأیید نکند، هیچ موردی وارد خروجی‌ها نمی‌شود (اصل P2):
+          <div className="flex flex-col gap-stack-md">
+            <p className="body-sm text-text-subtle">
+              این ۵ شیء دانشی است که مبدأ استخراج کرد. تا زمانی که تأیید نکنی، هیچ موردی وارد خروجی‌ها نمی‌شود (اصل P2).
             </p>
-
-            <div className="space-y-stack-sm">
-              <div className="p-inset-md rounded-control-sm bg-surface-sunken border border-border-default">
-                <span className="font-bold text-text-default block mb-stack-xs">حوزه کسب‌وکار:</span>
-                <span className="text-text-default">{domain}</span>
-              </div>
-              <div className="p-inset-md rounded-control-sm bg-surface-sunken border border-border-default">
-                <span className="font-bold text-text-default block mb-stack-xs">مخاطب اصلی (ICP):</span>
-                <span className="text-text-default">{audience}</span>
-              </div>
-              <div className="p-inset-md rounded-control-sm bg-surface-sunken border border-border-default">
-                <span className="font-bold text-text-default block mb-stack-xs">معضل اصلی:</span>
-                <span className="text-text-default">{problem}</span>
-              </div>
-              <div className="p-inset-md rounded-control-sm bg-surface-sunken border border-border-default">
-                <span className="font-bold text-text-default block mb-stack-xs">پیشنهاد ارزش:</span>
-                <span className="text-text-default">{valProp}</span>
-              </div>
-              <div className="p-inset-md rounded-control-sm bg-surface-sunken border border-border-default">
-                <span className="font-bold text-text-default block mb-stack-xs">تمایز کلیدی:</span>
-                <span className="text-text-default">{differentiation}</span>
-              </div>
+            <div className="flex flex-col gap-stack-sm">
+              {review.map(([label, value]) => (
+                <div key={label} className="rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+                  <span className="label-md mb-stack-xs block text-text-default">{label}</span>
+                  <span className="body-sm text-text-subtle">{value}</span>
+                </div>
+              ))}
             </div>
-
-            <div className="bg-bg-success-subtle border border-border-success-subtle p-inset-md rounded-control-sm text-text-success flex items-center justify-between">
-              <span>آمادگی برای تولید اولین دارایی (Positioning Statement):</span>
-              <span className="font-bold">۱۰۰٪ کامل</span>
-            </div>
-
-            <div className="pt-inset-lg flex items-center justify-between">
-              <button
-                onClick={() => setStep(1)}
-                className="px-inset-lg py-inset-sm text-body-sm text-text-subtle hover:text-text-default"
-              >
-                &rarr; بازگشت و اصلاح
-              </button>
-              <button
-                onClick={handleCreateAndGenerate}
-                disabled={isGenerating}
-                className="px-inset-lg py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover disabled:opacity-50 rounded-control-sm transition-colors shadow-raised"
-              >
-                {isGenerating ? 'در حال ساخت اولین دارایی...' : 'تأیید همه و ساخت اولین دارایی'}
-              </button>
-            </div>
+            <Alert intent="success" title="آمادگی برای تولید اولین دارایی (جملهٔ موقعیت‌یابی): ۱۰۰٪ کامل" />
           </div>
         )}
 
-        {/* STEP 3: Aha Moment Result & Context Replay */}
         {step === 3 && generatedOutput && (
-          <div className="space-y-stack-md text-body-sm">
-            <div className="bg-bg-success-subtle border border-border-success-subtle p-inset-md rounded-control-sm text-text-success font-semibold">
-              نخستین دارایی شما در کمتر از ۱۰ دقیقه ساخته شد! این دارایی از این لحظه در منبع حقیقت قفل است.
-            </div>
-
-            <div className="p-inset-lg rounded-control bg-surface-sunken border border-border-default text-text-default leading-relaxed whitespace-pre-line">
+          <div className="flex flex-col gap-stack-md">
+            <Alert intent="success" title="نخستین دارایی تو در کمتر از ۱۰ دقیقه ساخته شد">
+              این دارایی از این لحظه در منبع حقیقت قفل است.
+            </Alert>
+            <div className="body-sm whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-default">
               {generatedOutput.content}
             </div>
-
-            {/* Context Replay Aha Box */}
-            <div className="bg-surface-raised p-inset-lg rounded-control border border-border-brand-subtle space-y-stack-sm">
-              <div className="flex items-center gap-inline-sm text-text-brand font-bold">
-                <span>لحظهٔ Aha در مبدأ: Context Replay</span>
-              </div>
-              <p className="text-text-subtle leading-relaxed">
-                این خروجی به دلیل فکت‌ها و تصمیماتی که در گام اول وارد کردید مخصوص بیزنس شما ساخته شد. هر زمان هر کدام از آن ۵ تصمیم را در درخت دانش تغییر دهید، می‌توانید این خروجی را با نصف قیمت بازسازی کنید.
+            <Card padding="lg" className="flex flex-col gap-stack-sm">
+              <span className="label-md inline-flex items-center gap-inline-xs text-text-default">
+                <Icon name="Lightbulb" size="md" className="text-icon-subtle" />
+                لحظهٔ Aha در مبدأ: Context Replay
+              </span>
+              <p className="body-sm text-text-subtle">
+                این خروجی به‌دلیل واقعیت‌ها و تصمیم‌هایی که در گام اول وارد کردی، مخصوص کسب‌وکار تو ساخته شد. هر زمان یکی از آن ۵ مورد را در درخت دانش تغییر بدهی، می‌توانی این خروجی را با نصف قیمت بازسازی کنی.
               </p>
-            </div>
-
-            <div className="pt-inset-lg flex justify-end">
-              <button
-                onClick={onClose}
-                className="px-inset-xl py-inset-sm text-body-sm font-bold text-text-default bg-bg-brand-bold hover:bg-bg-brand-bold-hover rounded-control-sm transition-colors"
-              >
-                ورود به استودیوی مبدأ &larr;
-              </button>
-            </div>
+            </Card>
           </div>
         )}
       </div>
-    </div>
+    </Dialog>
   );
 };

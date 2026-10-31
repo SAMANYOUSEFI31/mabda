@@ -15,7 +15,7 @@ export interface DialogProps {
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** render in place instead of a portal (docs/previews) */
   inline?: boolean;
   /** destructive confirmation: role=alertdialog, scrim click does not close */
@@ -39,7 +39,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     const items = () => el.querySelectorAll<HTMLElement>(FOCUSABLE);
     (items()[0] || el).focus();
     // make the rest of the page inert while the dialog is open
-    const siblings = Array.from(document.body.children).filter((n) => n !== layer.current && !n.hasAttribute('inert'));
+    const siblings = Array.from(document.body.children).filter((n) => n !== layer.current && !n.hasAttribute('inert') && !n.matches('.bsh-toast-stack'));
     siblings.forEach((n) => n.setAttribute('inert', ''));
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -137,6 +137,7 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
   return (
     <ToastCtx.Provider value={{ show, dismiss }}>
       {children}
+      {createPortal(
       <div className="bsh-toast-stack" role="region" aria-label="اعلان‌ها">
         {items.map((t) => (
           <Toast
@@ -151,6 +152,7 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
           </Toast>
         ))}
       </div>
+        , document.body)}
     </ToastCtx.Provider>
   );
 }
