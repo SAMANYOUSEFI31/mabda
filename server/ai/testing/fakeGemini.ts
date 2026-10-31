@@ -25,6 +25,12 @@ function reply(body: any, attempt: { n: number }) {
     const fail = Boolean(process.env.FAKE_FAIL_FIRST) && attempt.n === 1;
     return { text: JSON.stringify({ passed: !fail, score: fail ? 52 : 91, passedCriteria: fail ? [] : ['معیار نمونه'], failedCriteria: fail ? ['معیار نمونه'] : [], guardrailViolations: [], strengths: ['(پاسخ نمونهٔ stand-in)'] }), thinking: 0 };
   }
+  if (schema.includes('"objects"')) {
+    return { text: JSON.stringify({ summary: '(stand-in — خروجی مدل نیست) خلاصهٔ آزمایشی فایل.', objects: [
+      { type: 'Fact', title: 'بودجهٔ کمپین (stand-in)', content: 'بودجهٔ کمپین پاییز پنجاه میلیون تومان است.', nodeId: 'content' },
+      { type: 'Decision', title: 'کانال اصلی (stand-in)', content: 'اینستاگرام کانال اصلی کمپین است.', nodeId: 'content' },
+    ] }), thinking: 0 };
+  }
   if (schema.includes('issues')) return { text: JSON.stringify({ issues: ['(stand-in) لحن را صریح‌تر کن'], strengths: ['ساختار'] }), thinking: 120 };
   const blocks = isChat
     ? [
