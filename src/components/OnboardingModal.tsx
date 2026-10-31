@@ -4,7 +4,8 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { ContextDraft, ContextObject, GeneratedDeliverable, Workspace } from '../types';
+import { ContextDraft, ContextObject, GeneratedDeliverable, LedgerEntry, TreeNode, Workspace } from '../types';
+import { CoachPanel } from './CoachPanel';
 import { asAiError, generateDeliverableApi } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice } from './AiNotices';
@@ -19,6 +20,9 @@ interface OnboardingModalProps {
   onCreateObjects: (drafts: ContextDraft[]) => Promise<ContextObject[]>;
   onCompleteOnboarding: (firstDeliverable: GeneratedDeliverable) => void;
   onOpenAiSettings: () => void;
+  nodes: TreeNode[];
+  onSaveProposals: (proposals: Array<{ type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }>) => Promise<void>;
+  onLedger: (ledger: LedgerEntry[]) => void;
 }
 
 /** Wizard state resets on every open: the stateful part mounts fresh when the modal opens. */
@@ -31,7 +35,7 @@ const STEP_TITLES = [
   'گام سوم: لحظهٔ Aha — اولین دارایی با Context Replay',
 ];
 
-const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCreateObjects, onCompleteOnboarding, onOpenAiSettings }) => {
+const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCreateObjects, onCompleteOnboarding, onOpenAiSettings, nodes, onSaveProposals, onLedger }) => {
   const ai = useAiStatus();
   const [genError, setGenError] = useState<AiErrorInfo | null>(null);
   const [step, setStep] = useState<number>(1);
@@ -184,6 +188,16 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
             <Textarea label="۳. بزرگ‌ترین معضل و درد مشتری‌ات چیست؟" rows={2} value={problem} onChange={(e) => setProblem(e.target.value)} />
             <Textarea label="۴. راه‌حل و پیشنهاد ارزش تو چگونه این درد را حل می‌کند؟" rows={2} value={valProp} onChange={(e) => setValProp(e.target.value)} />
             <TextField label="۵. تمایز کلیدی یا خط قرمز تو چیست؟" value={differentiation} onChange={(e) => setDifferentiation(e.target.value)} />
+            <CoachPanel
+              workspaceId={currentWorkspace.id}
+              scope="onboarding"
+              nodeId="business"
+              nodes={nodes}
+              seedText={`حوزه: ${domain}\nمخاطب: ${audience}\nمعضل: ${problem}\nراه‌حل: ${valProp}\nتمایز: ${differentiation}`}
+              onSaveProposals={onSaveProposals}
+              onLedger={onLedger}
+              onOpenAiSettings={onOpenAiSettings}
+            />
           </div>
         )}
 

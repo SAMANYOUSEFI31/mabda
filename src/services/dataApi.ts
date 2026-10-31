@@ -7,7 +7,7 @@ import type {
   ChatSession, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry,
   Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
 } from '../types';
-import type { FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
+import type { CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
 import type { StaleAsset } from '../core/impactEngine';
 import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
@@ -117,6 +117,11 @@ export const dataApi = {
   saveSession: (id: string, s: ChatSession) => call<{ session: ChatSession }>('PUT', `${ws(id)}/sessions/${s.id}`, s),
   deleteSession: (id: string, sessionId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/sessions/${sessionId}`),
   saveSpec: (id: string, s: WorkstreamSpec) => call<{ spec: WorkstreamSpec }>('PUT', `${ws(id)}/specs/${s.id}`, s),
+
+  judgeAmbiguity: (id: string, objectIds: string[]) => call<{ judgments: WorkspaceState['judgments']; ledger: LedgerEntry[] }>('POST', `${ws(id)}/gap/judge`, { objectIds }),
+  coachQuota: (id: string) => call<CoachQuota>('GET', `${ws(id)}/coach/quota`),
+  coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
+    call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),
 
   fileQuota: (id: string) => call<FileQuotaInfo>('GET', `${ws(id)}/files/quota`),
   uploadFile: (id: string, file: File, nodeId?: string) => {

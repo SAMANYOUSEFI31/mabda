@@ -19,6 +19,14 @@ function reply(body: any, attempt: { n: number }) {
   const schema = JSON.stringify(cfg.responseJsonSchema ?? cfg.responseSchema ?? {});
   const userText = JSON.stringify(body.contents ?? []);
   const isChat = userText.includes('پیام کاربر');
+  if (schema.includes('probability') && schema.includes('"reason"')) {
+    const ids: string[] = cfg.responseJsonSchema?.properties?.answers?.items?.properties?.id?.enum ?? cfg.responseSchema?.properties?.answers?.items?.properties?.id?.enum ?? [];
+    const bad = (process.env.FAKE_BAD_CHECKS ?? '').split(',').filter(Boolean);
+    return { text: JSON.stringify({ answers: ids.map((id) => ({ id, choice: bad.includes(id) ? (id[0] === 'g' ? 'violated' : id[0] === 'o' ? 'ambiguous' : 'fail') : id[0] === 'g' ? 'ok' : id[0] === 'o' ? 'clear' : 'pass', probability: 0.9, reason: bad.includes(id) ? '(stand-in) این مورد رعایت نشده است.' : '(stand-in) در متن خروجی رعایت شده است.' })) }), thinking: 0 };
+  }
+  if (schema.includes('ambiguities')) {
+    return { text: JSON.stringify({ questions: ['(stand-in) مخاطب دقیقاً چه کسانی‌اند؟', '(stand-in) بودجه چقدر است؟'], ambiguities: [{ quote: 'مشتری خوب', why: '(stand-in) معیار سنجش ندارد.' }], proposals: [{ type: 'Fact', title: 'نمونهٔ Coach (stand-in)', content: 'کسب‌وکار روی فریلنسرها تمرکز دارد.', nodeId: 'business' }] }), thinking: 0 };
+  }
   if (schema.includes('probability')) { const d = decide(schema); return { text: JSON.stringify({ answers: d.answers }), thinking: 0 }; }
   if (schema.includes('passedCriteria')) {
     attempt.n++;

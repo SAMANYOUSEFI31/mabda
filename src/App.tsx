@@ -33,7 +33,7 @@ import { LedgerPanel } from './components/LedgerPanel';
 import { OnboardingModal } from './components/OnboardingModal';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
-import { CustomSpecModal } from './components/CustomSpecModal';
+import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
@@ -120,6 +120,7 @@ export default function App() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
+  const [editingSpec, setEditingSpec] = useState<WorkstreamSpec | undefined>(undefined);
   const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [newWsName, setNewWsName] = useState('');
@@ -393,11 +394,31 @@ export default function App() {
     toast.show({ intent: 'info', message: 'درخواست حذف حساب ثبت شد. تمام نشست‌ها پایان یافت و اطلاعات طی مهلت ۳۰ روزه از سیستم پاک می‌شود (F1).', duration: 8000 });
   };
 
+  /** create or replace a custom spec (the server enforces Pro+ and refuses dependency cycles) */
   const addSpec = async (spec: WorkstreamSpec) => {
     const r = await attempt(() => dataApi.saveSpec(wid, spec));
-    if (r) patch((d) => ({ ...d, specs: [spec, ...d.specs] }));
+    if (r) patch((d) => ({ ...d, specs: d.specs.some((x) => x.id === spec.id) ? d.specs.map((x) => (x.id === spec.id ? spec : x)) : [spec, ...d.specs] }));
     return !!r;
   };
+  const openSpecEditor = (spec?: WorkstreamSpec) => { setEditingSpec(spec); setIsCustomSpecModalOpen(true); };
+
+  const handleJudge = async (objectIds: string[]) => {
+    try {
+      const r = await dataApi.judgeAmbiguity(wid, objectIds);
+      patch((d) => ({ ...d, judgments: r.judgments, ledger: r.ledger }));
+    } catch { /* the Gap panel keeps working without AI judgments; the user's own «Needs Review» still counts */ }
+  };
+
+  /** Context Coach proposals are saved as PROPOSED objects only */
+  const handleSaveProposals = async (ps: Array<{ type: ContextObject['type']; title: string; content: string; nodeId: string }>) => {
+    const out: ContextObject[] = [];
+    for (const p of ps) {
+      const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId }));
+      if (r) out.push(r.object);
+    }
+    if (out.length) patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
+  };
+  const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
   const openContext = (obj: ContextObject | null, nodeId = 'business') => {
     setSelectedContextObject(obj);
@@ -439,7 +460,7 @@ export default function App() {
         specs={specs}
         selectedSpecId={selectedSpecId}
         onSelectSpecId={setSelectedSpecId}
-        onOpenCustomSpecModal={() => setIsCustomSpecModalOpen(true)}
+        onOpenCustomSpecModal={() => openSpecEditor()}
         contextViewMode={contextViewMode}
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
@@ -455,7 +476,7 @@ export default function App() {
           activeTab={activeTab}
           contradictions={contradictions}
           onOpenContextModal={() => openContext(null)}
-          onOpenCustomSpecModal={() => setIsCustomSpecModalOpen(true)}
+          onOpenCustomSpecModal={() => openSpecEditor()}
           onOpenPlanModal={() => setIsPlanModalOpen(true)}
         />
 
@@ -542,7 +563,9 @@ export default function App() {
             nodes={nodes}
             selectedSpecId={selectedSpecId}
             onSelectSpecId={setSelectedSpecId}
-            onAddCustomSpec={(newSpec) => { void addSpec(newSpec); }}
+            onOpenSpecEditor={openSpecEditor}
+            judgments={data.judgments}
+            onJudge={handleJudge}
             onAddContextObject={handleSaveContextObject}
             onSaveDeliverable={handleSaveDeliverable}
             pendingRebuild={pendingRebuild}
@@ -623,7 +646,17 @@ export default function App() {
         objects={workspaceContexts}
         notes={data.notes}
         onClose={() => setNodeDialog(null)}
-        onCreate={(parentId, label, description) => nodeOp(() => dataApi.createNode(wid, { parentId, label, description }))}
+        workspaceId={wid}
+        onCreate={async (parentId, label, description) => {
+          const r = await attempt(() => dataApi.createNode(wid, { parentId, label, description }));
+          if (!r) throw new Error('create failed');
+          patch((d) => ({ ...d, nodes: r.nodes }));
+          return r.node.id;
+        }}
+        onOpenCoach={(nodeId) => setNodeDialog({ kind: 'coach', nodeId })}
+        onSaveProposals={handleSaveProposals}
+        onLedger={setLedger}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
         onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
         onMove={(nodeId, parentId) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId))}
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
@@ -634,6 +667,9 @@ export default function App() {
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         currentWorkspace={currentWorkspace}
+        nodes={nodes}
+        onSaveProposals={handleSaveProposals}
+        onLedger={setLedger}
         onCreateObjects={handleCreateObjects}
         onCompleteOnboarding={(firstDeliverable) => {
           void (async () => {
@@ -671,11 +707,19 @@ export default function App() {
       />
 
       {/* Custom Spec Modal (F8) */}
-      <CustomSpecModal
+      <SpecEditorModal
+        key={editingSpec?.id ?? 'new'}
         isOpen={isCustomSpecModalOpen}
         onClose={() => setIsCustomSpecModalOpen(false)}
-        onSaveSpec={(newSpec) => {
-          void addSpec(newSpec).then((ok) => { if (ok) { setSelectedSpecId(newSpec.id); setActiveTab('workstreams'); } });
+        planId={currentWorkspace.planId}
+        nodes={nodes}
+        specs={specs}
+        initial={editingSpec}
+        onUpgrade={() => setIsPlanModalOpen(true)}
+        onSaveSpec={async (newSpec) => {
+          const ok = await addSpec(newSpec);
+          if (ok) { setSelectedSpecId(newSpec.id); setActiveTab('workstreams'); }
+          return ok;
         }}
       />
 
