@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ChatSession,
+  ContextDraft,
   ContextObject,
   Contradiction,
   GeneratedDeliverable,
@@ -12,19 +14,18 @@ import {
   PlanId,
   Workspace,
 } from './types';
-import {
-  INITIAL_WORKSPACES,
-  INITIAL_CONTEXT_OBJECTS,
-  INITIAL_DELIVERABLES,
-  INITIAL_LEDGER,
-} from './core/seedData';
+import type { WorkspaceState, ImpactInfo } from './types/state';
 import { detectContradictions } from './core/contextEngine';
+import { impactMessage } from './core/impactEngine';
 import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
 import { ContradictionBanner } from './components/ContradictionBanner';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextTableView } from './components/ContextTableView';
 import { ContextDetailModal } from './components/ContextDetailModal';
+import { NodeDialogs } from './components/NodeDialogs';
+import type { NodeDialogState } from './components/NodeDialogs';
+import { FilesPanel } from './components/FilesPanel';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
@@ -36,58 +37,80 @@ import { CustomSpecModal } from './components/CustomSpecModal';
 import { PLANS } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
-import { Button, Dialog, SegmentedControl, TextField, formatNumber, useToast } from './ui';
+import { Alert, Button, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { AiSettingsModal } from './components/AiSettingsModal';
 import { AiStatusBanner } from './components/AiNotices';
 import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
 import { chatCredits } from './core/creditEngine';
-import type { AiPlan, ContentBlock, GenerationResult, UsageSummary } from './types';
+import { DataApiError, dataApi } from './services/dataApi';
+import { useAiStatus } from './services/aiStatus';
+import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from './types';
+import type { FileQuotaInfo } from './types/state';
+
+const errText = (e: unknown) => (e instanceof DataApiError ? e.message : 'خطای ناشناخته. دوباره تلاش کن.');
 
 export default function App() {
   const toast = useToast();
-  // 1. Workspaces state with localStorage persistence
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
-    const saved = localStorage.getItem('mabda_workspaces');
-    return saved ? JSON.parse(saved) : INITIAL_WORKSPACES;
-  });
+  const ai = useAiStatus();
 
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>(() => {
-    return workspaces[0]?.id || 'ws_studio';
-  });
+  // ── data: the server (SQLite) is the source of truth; nothing is kept in localStorage ──────────────
+  const [boot, setBoot] = useState<{ status: 'loading' | 'ready' | 'error'; message?: string }>({ status: 'loading' });
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const workspacesRef = useRef<Workspace[]>([]);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string>('');
+  const [data, setData] = useState<WorkspaceState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [quota, setQuota] = useState<FileQuotaInfo | null>(null);
 
-  const currentWorkspace =
-    workspaces.find((w) => w.id === currentWorkspaceId) || workspaces[0];
+  const setWs = useCallback((list: Workspace[]) => { workspacesRef.current = list; setWorkspaces(list); }, []);
 
-  // 2. Context Objects state
-  const [contextObjects, setContextObjects] = useState<ContextObject[]>(() => {
-    const saved = localStorage.getItem('mabda_context_objects');
-    return saved ? JSON.parse(saved) : INITIAL_CONTEXT_OBJECTS;
-  });
+  const startup = useCallback(async () => {
+    setBoot({ status: 'loading' });
+    try {
+      const list = await dataApi.bootstrap();
+      setWs(list);
+      setCurrentWorkspaceId((cur) => (list.some((w) => w.id === cur) ? cur : list[0]?.id ?? ''));
+      setBoot({ status: 'ready' });
+    } catch (e) {
+      setBoot({ status: 'error', message: errText(e) });
+    }
+  }, [setWs]);
+  useEffect(() => { void startup(); }, [startup]);
 
-  // 3. Deliverables state
-  const [deliverables, setDeliverables] = useState<GeneratedDeliverable[]>(() => {
-    const saved = localStorage.getItem('mabda_deliverables');
-    return saved ? JSON.parse(saved) : INITIAL_DELIVERABLES;
-  });
+  const reload = useCallback(async (id: string) => {
+    setLoadError(null);
+    try {
+      const st = await dataApi.state(id);
+      setData(st);
+      setWs(workspacesRef.current.map((w) => (w.id === id ? st.workspace : w)));
+      dataApi.fileQuota(id).then(setQuota).catch(() => setQuota(null));
+    } catch (e) {
+      setLoadError(errText(e));
+    }
+  }, [setWs]);
+  useEffect(() => { if (currentWorkspaceId) { setData(null); void reload(currentWorkspaceId); } }, [currentWorkspaceId, reload]);
 
-  // 4. Ledger state
-  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
-    const saved = localStorage.getItem('mabda_ledger');
-    return saved ? JSON.parse(saved) : INITIAL_LEDGER;
-  });
+  const currentWorkspace = (data?.workspace.id === currentWorkspaceId ? data.workspace : undefined) ?? workspaces.find((w) => w.id === currentWorkspaceId) ?? workspaces[0];
+  const patch = (fn: (d: WorkspaceState) => WorkspaceState) => setData((d) => (d ? fn(d) : d));
+  const wid = currentWorkspaceId;
 
-  // 5. Workstream Specs state (Built-in + Custom Specs - F8)
-  const [specs, setSpecs] = useState<WorkstreamSpec[]>(() => {
-    const saved = localStorage.getItem('mabda_workstream_specs');
-    return saved ? JSON.parse(saved) : WORKSTREAM_SPECS;
-  });
+  /** run an API call; failures are shown (never swallowed, never replaced by fake data) */
+  const attempt = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    try { return await fn(); } catch (e) { toast.show({ intent: 'danger', message: errText(e) }); return undefined; }
+  };
 
-  const [selectedSpecId, setSelectedSpecId] = useState<string>(() => {
-    return specs[0]?.id || 'main_positioning';
-  });
+  const updateWorkspace = async (fn: (w: Workspace) => Workspace, id = wid) => {
+    const cur = workspacesRef.current.find((w) => w.id === id);
+    if (!cur) return;
+    const next = fn(cur);
+    setWs(workspacesRef.current.map((w) => (w.id === id ? next : w)));
+    patch((d) => (d.workspace.id === id ? { ...d, workspace: next } : d));
+    await attempt(() => dataApi.saveWorkspace(next));
+  };
 
   // UI state
+  const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'table'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
@@ -100,141 +123,175 @@ export default function App() {
   const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [newWsName, setNewWsName] = useState('');
+  const [nodeDialog, setNodeDialog] = useState<NodeDialogState>(null);
+  const [extractingNoteId, setExtractingNoteId] = useState<string | null>(null);
+  const [chatScope, setChatScope] = useState<string | undefined>(undefined);
+  const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('mabda_workspaces', JSON.stringify(workspaces));
-  }, [workspaces]);
-
-  useEffect(() => {
-    localStorage.setItem('mabda_workstream_specs', JSON.stringify(specs));
-  }, [specs]);
-
-  useEffect(() => {
-    localStorage.setItem('mabda_context_objects', JSON.stringify(contextObjects));
-  }, [contextObjects]);
-
-  useEffect(() => {
-    localStorage.setItem('mabda_deliverables', JSON.stringify(deliverables));
-  }, [deliverables]);
-
-  useEffect(() => {
-    localStorage.setItem('mabda_ledger', JSON.stringify(ledgerEntries));
-  }, [ledgerEntries]);
-
-  // Contradictions in current workspace
-  const workspaceContexts = contextObjects.filter(
-    (o) => o.workspaceId === currentWorkspace.id
-  );
+  const nodes = data?.nodes ?? [];
+  const workspaceContexts = data?.objects ?? [];
+  const deliverables = data?.deliverables ?? [];
+  const ledgerEntries = data?.ledger ?? [];
+  const stale = data?.stale ?? [];
+  const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
   const contradictions: Contradiction[] = detectContradictions(workspaceContexts);
 
-  // Handlers for Context Objects
-  const handleSaveContextObject = (saved: ContextObject) => {
-    setContextObjects((prev) => {
-      const idx = prev.findIndex((o) => o.id === saved.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = saved;
-        return copy;
-      }
-      return [saved, ...prev];
-    });
+  const showImpact = (impact: ImpactInfo) => {
+    if (impact.count > 0) toast.show({ intent: 'warning', message: impactMessage(impact.count), duration: 7000 });
   };
 
-  const handleSupersedeContext = (
-    oldId: string,
-    newObjProps: Omit<ContextObject, 'id' | 'createdAt' | 'updatedAt'>
-  ) => {
-    const now = new Date().toISOString();
-    const newId = `ctx_sup_${Date.now()}`;
-
-    const newObj: ContextObject = {
-      ...newObjProps,
-      id: newId,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    setContextObjects((prev) =>
-      prev.map((o) =>
-        o.id === oldId
-          ? { ...o, status: 'Superseded' as const, supersededById: newId, updatedAt: now }
-          : o
-      ).concat(newObj)
-    );
+  // ── Context objects ────────────────────────────────────────────────────────────────────────────
+  /** create (no id / unknown id) or edit in place (known id: title/content/type edits bump the version) */
+  const handleSaveContextObject = async (draft: ContextDraft): Promise<ContextObject | undefined> => {
+    const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
+    if (existing) {
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance }));
+      if (!r) return undefined;
+      patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
+      showImpact(r.impact);
+      return r.object;
+    }
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId }));
+    if (!r) return undefined;
+    patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    return r.object;
   };
 
-  const handleArchiveContext = (id: string) => {
-    setContextObjects((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: 'Archived' } : o))
-    );
+  const handleCreateObjects = async (drafts: ContextDraft[]): Promise<ContextObject[]> => {
+    const out: ContextObject[] = [];
+    for (const dr of drafts) {
+      const r = await dataApi.createObject(wid, { type: dr.type, status: dr.status, provenance: dr.provenance, title: dr.title, content: dr.content, nodeId: dr.nodeId });
+      out.push(r.object);
+    }
+    patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
+    return out;
   };
 
-  const handleResolveContradiction = (
-    _contraId: string,
-    keepId: string,
-    archiveId: string
-  ) => {
-    setContextObjects((prev) =>
-      prev.map((o) => {
-        if (o.id === keepId) return { ...o, status: 'Confirmed' };
-        if (o.id === archiveId) return { ...o, status: 'Archived' };
-        return o;
-      })
-    );
+  const handleSupersedeContext = async (oldId: string, input: ContextDraft) => {
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
+    showImpact(r.impact);
   };
 
-  // Deliverable creation & ledger tracking (usage is the real provider usage returned by the server)
-  const handleSaveDeliverable = (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary) => {
-    setDeliverables((prev) => [del, ...prev]);
+  const setStatus = async (id: string, status: ContextObject['status']) => {
+    const r = await attempt(() => dataApi.updateObject(wid, id, { status }));
+    if (!r) return undefined;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
+    return r.impact;
+  };
 
-    // deduct credits (creditCost is already 0 for BYOK)
-    setWorkspaces((prev) =>
-      prev.map((w) =>
-        w.id === currentWorkspace.id
-          ? { ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }
-          : w
-      )
-    );
+  const handleArchiveContext = async (id: string) => {
+    const impact = await setStatus(id, 'Archived');
+    if (impact) showImpact(impact);
+  };
 
-    setLedgerEntries((prev) => [
-      ledgerEntryFromUsage({
-        workspaceId: currentWorkspace.id,
-        action: `تولید: ${del.title} (${del.executionMode})`,
-        mode: del.executionMode,
-        creditCost,
-        usage,
-        plan: del.plan,
-      }),
-      ...prev,
-    ]);
+  const handleResolveContradiction = async (_contraId: string, keepId: string, archiveId: string) => {
+    await setStatus(keepId, 'Confirmed');
+    const impact = await setStatus(archiveId, 'Archived');
+    if (impact) showImpact(impact);
+  };
+
+  // ── tree nodes ──────────────────────────────────────────────────────────────────────────────────
+  const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
+    const r = await attempt(fn);
+    if (!r) throw new Error('node op failed');
+    patch((d) => ({ ...d, nodes: r.nodes, ...(r.objects ? { objects: r.objects } : {}), ...(r.notes ? { notes: r.notes } : {}), ...(r.files ? { files: r.files } : {}) }));
+  };
+
+  // ── notes ──────────────────────────────────────────────────────────────────────────────────────
+  const handleAddNote = async (nodeId: string, content: string) => {
+    const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
+    if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes] }));
+  };
+  const handleUpdateNote = async (id: string, content: string) => {
+    const r = await attempt(() => dataApi.updateNote(wid, id, content));
+    if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)) }));
+  };
+  const handleDeleteNote = async (id: string) => {
+    const r = await attempt(() => dataApi.deleteNote(wid, id));
+    if (r) patch((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
+  };
+  const handleExtractNote = async (id: string) => {
+    setExtractingNoteId(id);
+    try {
+      const r = await attempt(() => dataApi.extractNote(wid, id));
+      if (!r) return;
+      patch((d) => ({ ...d, objects: [...r.created, ...d.objects], ledger: [r.ledger, ...d.ledger] }));
+      toast.show({ intent: r.created.length ? 'success' : 'info', message: r.created.length ? `${formatNumber(r.created.length)} مورد پیشنهادی ساخته شد؛ در وضعیت «پیشنهادی» منتظر تأیید توست.` : 'چیزی برای استخراج در این یادداشت پیدا نشد.' });
+    } finally { setExtractingNoteId(null); }
+  };
+
+  // ── files ──────────────────────────────────────────────────────────────────────────────────────
+  const handleUploadFile = async (file: File, nodeId: string) => {
+    const r = await attempt(() => dataApi.uploadFile(wid, file, nodeId));
+    if (r) patch((d) => ({ ...d, files: [r.file, ...d.files] }));
+    return r ? { file: r.file, charge: r.charge } : undefined;
+  };
+  const handleProcessFile = async (fileId: string) => {
+    patch((d) => ({ ...d, files: d.files.map((f) => (f.id === fileId ? { ...f, status: 'processing' as const } : f)) }));
+    const r = await attempt(() => dataApi.processFile(wid, fileId));
+    if (!r) { await reload(wid); return; }
+    patch((d) => ({ ...d, files: d.files.map((f) => (f.id === fileId ? r.file : f)), objects: [...r.created, ...d.objects], workspace: r.workspace }));
+    setWs(workspacesRef.current.map((w) => (w.id === wid ? r.workspace : w)));
+    setQuota(r.quota);
+    const ledger = await dataApi.state(wid).then((s) => s.ledger).catch(() => null);
+    if (ledger) patch((d) => ({ ...d, ledger }));
+    toast.show({ intent: 'success', message: `فایل پردازش شد: ${formatNumber(r.created.length)} مورد پیشنهادی و ${formatNumber(r.file.chunkCount)} قطعه.${r.creditCost ? ` ${formatNumber(r.creditCost)} اعتبار کسر شد.` : ''}` });
+  };
+  const handleDeleteFile = async (fileId: string) => {
+    const r = await attempt(() => dataApi.deleteFile(wid, fileId));
+    if (r) patch((d) => ({ ...d, files: d.files.filter((f) => f.id !== fileId) }));
+  };
+
+  // ── assets, ledger, credits ──────────────────────────────────────────────────────────────────────
+  const persistDeliverable = async (del: GeneratedDeliverable) => {
+    const r = await attempt(() => dataApi.saveDeliverable(wid, del));
+    if (!r) return false;
+    patch((d) => ({ ...d, deliverables: d.deliverables.some((x) => x.id === del.id) ? d.deliverables.map((x) => (x.id === del.id ? del : x)) : [del, ...d.deliverables], stale: r.stale }));
+    return true;
+  };
+  const persistLedger = async (entry: LedgerEntry) => {
+    const r = await attempt(() => dataApi.addLedger(wid, entry));
+    if (r) patch((d) => ({ ...d, ledger: [entry, ...d.ledger.filter((x) => x.id !== entry.id)] }));
+  };
+
+  // usage is the real provider usage returned by the server; creditCost is already 0 for BYOK
+  const handleSaveDeliverable = async (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
+    if (!(await persistDeliverable(del))) return;
+    if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
+    await persistLedger(ledgerEntryFromUsage({
+      workspaceId: wid,
+      action: `${kind === 'rebuild' ? 'بازسازی' : 'تولید'}: ${del.title} (${del.executionMode})`,
+      mode: del.executionMode,
+      creditCost,
+      usage,
+      plan: del.plan,
+      id: `led_${Date.now()}`,
+    }));
+    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ Context بازسازی شد.' });
   };
 
   /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
-  const handleRecordChatUsage = (result: GenerationResult, creditCost: number, deep: boolean) => {
-    if (creditCost > 0) {
-      setWorkspaces((prev) => prev.map((w) => (w.id === currentWorkspace.id ? { ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) } : w)));
-    }
-    setLedgerEntries((prev) => [
-      ledgerEntryFromUsage({
-        workspaceId: currentWorkspace.id,
-        action: deep ? 'گفتگوی عمیق' : 'گفتگوی Auto',
-        mode: deep ? 'chat_deep' : 'chat_auto',
-        creditCost,
-        usage: result.usage,
-        plan: result.plan,
-        id: `led_chat_${Date.now()}`,
-      }),
-      ...prev,
-    ]);
+  const handleRecordChatUsage = async (result: GenerationResult, creditCost: number, deep: boolean) => {
+    if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
+    await persistLedger(ledgerEntryFromUsage({
+      workspaceId: wid,
+      action: deep ? 'گفتگوی عمیق' : 'گفتگوی Auto',
+      mode: deep ? 'chat_deep' : 'chat_auto',
+      creditCost,
+      usage: result.usage,
+      plan: result.plan,
+      id: `led_chat_${Date.now()}`,
+    }));
   };
 
   /** Save one chat block as an asset (Markdown). No credits: the AI cost was already recorded with the chat turn. */
-  const handleSaveBlockAsAsset = (block: ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary }) => {
+  const handleSaveBlockAsAsset = async (block: ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary; usedContext?: UsedContextRef[] }) => {
     const now = new Date().toISOString();
     const asset: GeneratedDeliverable = {
       id: `del_chat_${Date.now()}`,
-      workspaceId: currentWorkspace.id,
+      workspaceId: wid,
       workstreamId: 'chat',
       deliverableId: `chat_${block.id}`,
       title: titleFromMarkdown(block.markdown),
@@ -243,53 +300,28 @@ export default function App() {
       plan: source.plan,
       executionMode: 'auto',
       creditCost: 0,
-      usedContextIds: [],
+      usedContext: source.usedContext ?? [],
       rebuildCount: 0,
       createdAt: now,
     };
-    setDeliverables((prev) => [asset, ...prev]);
-    toast.show({ intent: 'success', message: 'در کتابخانهٔ دارایی‌ها ذخیره شد (Markdown).' });
+    if (await persistDeliverable(asset)) toast.show({ intent: 'success', message: 'در کتابخانهٔ دارایی‌ها ذخیره شد (Markdown).' });
   };
 
-  const handleIncrementChatCount = () => {
-    setWorkspaces((prev) =>
-      prev.map((w) =>
-        w.id === currentWorkspace.id
-          ? { ...w, todayChatCount: w.todayChatCount + 1 }
-          : w
-      )
-    );
-  };
+  const handleIncrementChatCount = () => { void updateWorkspace((w) => ({ ...w, todayChatCount: w.todayChatCount + 1 })); };
 
   const handleChangePlan = (planId: PlanId) => {
-    setWorkspaces((prev) =>
-      prev.map((w) =>
-        w.id === currentWorkspace.id
-          ? {
-              ...w,
-              planId,
-              creditsRemaining: w.creditsRemaining + PLANS[planId].creditsMonthly,
-            }
-          : w
-      )
-    );
+    void updateWorkspace((w) => ({ ...w, planId, creditsRemaining: w.creditsRemaining + PLANS[planId].creditsMonthly }));
     toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
   };
 
   const handleAddCredits = (amount: number) => {
-    setWorkspaces((prev) =>
-      prev.map((w) =>
-        w.id === currentWorkspace.id
-          ? { ...w, creditsRemaining: w.creditsRemaining + amount }
-          : w
-      )
-    );
+    void updateWorkspace((w) => ({ ...w, creditsRemaining: w.creditsRemaining + amount }));
     toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
   };
 
-  const handleCreateWorkspace = (e: React.FormEvent) => {
+  const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWsName.trim()) return;
+    if (!newWsName.trim() || !currentWorkspace) return;
 
     const currentPlan = PLANS[currentWorkspace.planId] || PLANS.pro;
     if (workspaces.length >= currentPlan.workspaceLimit) {
@@ -310,38 +342,38 @@ export default function App() {
       todayChatCount: 0,
       createdAt: new Date().toISOString(),
     };
-
-    setWorkspaces((prev) => [...prev, newWs]);
+    const saved = await attempt(() => dataApi.saveWorkspace(newWs));
+    if (!saved) return;
+    setWs([...workspacesRef.current, newWs]);
     setCurrentWorkspaceId(newWs.id);
     setNewWsName('');
     setIsNewWorkspaceModalOpen(false);
   };
 
-  const handlePromoteToContext = (del: GeneratedDeliverable) => {
-    const newContext: ContextObject = {
-      id: `ctx_del_${Date.now()}`,
-      workspaceId: currentWorkspace.id,
+  const handlePromoteToContext = async (del: GeneratedDeliverable) => {
+    const created = await handleSaveContextObject({
+      workspaceId: wid,
       type: 'Asset',
       status: 'Confirmed',
       provenance: 'Asset Derived',
       title: `دارایی: ${del.title}`,
       content: del.content.slice(0, 300) + '...',
       nodeId: 'brand',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setContextObjects((prev) => [newContext, ...prev]);
-    toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
+    });
+    if (created) toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
   };
 
   const handleExportAllData = () => {
+    if (!data || !currentWorkspace) return;
     const backupData = {
       workspace: currentWorkspace,
       allWorkspaces: workspaces,
-      contextObjects: workspaceContexts,
-      deliverables: deliverables.filter((d) => d.workspaceId === currentWorkspace.id),
-      ledgerEntries: ledgerEntries.filter((l) => l.workspaceId === currentWorkspace.id),
+      nodes: data.nodes,
+      contextObjects: data.objects,
+      notes: data.notes,
+      deliverables: data.deliverables,
+      ledgerEntries: data.ledger,
+      files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
       specs,
       exportedAt: new Date().toISOString(),
       platform: 'Mabda (مبدأ) - Source of Truth',
@@ -357,22 +389,39 @@ export default function App() {
   };
 
   const handleDeleteAccount = () => {
-    localStorage.removeItem('mabda_workspaces');
-    localStorage.removeItem('mabda_context_objects');
-    localStorage.removeItem('mabda_deliverables');
-    localStorage.removeItem('mabda_ledger');
-    localStorage.removeItem('mabda_workstream_specs');
-
-    setWorkspaces(INITIAL_WORKSPACES);
-    setCurrentWorkspaceId(INITIAL_WORKSPACES[0].id);
-    setContextObjects(INITIAL_CONTEXT_OBJECTS);
-    setDeliverables(INITIAL_DELIVERABLES);
-    setLedgerEntries(INITIAL_LEDGER);
-    setSpecs(WORKSTREAM_SPECS);
     setIsAccountModalOpen(false);
-
     toast.show({ intent: 'info', message: 'درخواست حذف حساب ثبت شد. تمام نشست‌ها پایان یافت و اطلاعات طی مهلت ۳۰ روزه از سیستم پاک می‌شود (F1).', duration: 8000 });
   };
+
+  const addSpec = async (spec: WorkstreamSpec) => {
+    const r = await attempt(() => dataApi.saveSpec(wid, spec));
+    if (r) patch((d) => ({ ...d, specs: [spec, ...d.specs] }));
+    return !!r;
+  };
+
+  const openContext = (obj: ContextObject | null, nodeId = 'business') => {
+    setSelectedContextObject(obj);
+    setModalDefaultNodeId(nodeId);
+    setIsContextModalOpen(true);
+  };
+
+  if (boot.status !== 'ready' || !currentWorkspace || !data) {
+    const failed = boot.status === 'error' || loadError;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page p-inset-lg">
+        {failed ? (
+          <EmptyState
+            icon="Lock"
+            title="اتصال به سرور برقرار نشد"
+            description={boot.message ?? loadError ?? undefined}
+            action={<Button variant="primary" onClick={() => (boot.status === 'error' ? void startup() : void reload(currentWorkspaceId))}>دوباره</Button>}
+          />
+        ) : (
+          <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال بارگذاری" /><span className="body-md">در حال بارگذاری فضای کاری…</span></div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
@@ -380,7 +429,7 @@ export default function App() {
       <AppNavigation
         currentWorkspace={currentWorkspace}
         allWorkspaces={workspaces}
-        onSelectWorkspace={(ws) => setCurrentWorkspaceId(ws.id)}
+        onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
@@ -394,7 +443,7 @@ export default function App() {
         contextViewMode={contextViewMode}
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
-        deliverablesCount={deliverables.filter((d) => d.workspaceId === currentWorkspace.id).length}
+        deliverablesCount={deliverables.length}
         todayChatCount={currentWorkspace.todayChatCount}
       />
 
@@ -405,11 +454,7 @@ export default function App() {
           currentWorkspace={currentWorkspace}
           activeTab={activeTab}
           contradictions={contradictions}
-          onOpenContextModal={() => {
-            setSelectedContextObject(null);
-            setModalDefaultNodeId('business');
-            setIsContextModalOpen(true);
-          }}
+          onOpenContextModal={() => openContext(null)}
           onOpenCustomSpecModal={() => setIsCustomSpecModalOpen(true)}
           onOpenPlanModal={() => setIsPlanModalOpen(true)}
         />
@@ -451,30 +496,38 @@ export default function App() {
             {contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
-                onSelectObject={(obj) => {
-                  setSelectedContextObject(obj);
-                  setIsContextModalOpen(true);
-                }}
-                onAddNewToNode={(nodeId) => {
-                  setSelectedContextObject(null);
-                  setModalDefaultNodeId(nodeId);
-                  setIsContextModalOpen(true);
-                }}
+                nodes={nodes}
+                notes={data.notes}
+                files={data.files}
+                extractingNoteId={extractingNoteId}
+                onSelectObject={(obj) => openContext(obj)}
+                onAddNewToNode={(nodeId) => openContext(null, nodeId)}
+                onNodeAction={setNodeDialog}
+                onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
+                onAddNote={handleAddNote}
+                onUpdateNote={handleUpdateNote}
+                onDeleteNote={handleDeleteNote}
+                onExtractNote={handleExtractNote}
               />
             ) : (
               <ContextTableView
                 objects={workspaceContexts}
-                onSelectObject={(obj) => {
-                  setSelectedContextObject(obj);
-                  setIsContextModalOpen(true);
-                }}
-                onAddNew={() => {
-                  setSelectedContextObject(null);
-                  setModalDefaultNodeId('business');
-                  setIsContextModalOpen(true);
-                }}
+                nodes={nodes}
+                onSelectObject={(obj) => openContext(obj)}
+                onAddNew={() => openContext(null)}
               />
             )}
+
+            <FilesPanel
+              files={data.files}
+              nodes={nodes}
+              quota={quota}
+              credits={currentWorkspace.creditsRemaining}
+              byok={ai.byok}
+              onUpload={handleUploadFile}
+              onProcess={handleProcessFile}
+              onDelete={handleDeleteFile}
+            />
           </div>
         )}
 
@@ -485,15 +538,16 @@ export default function App() {
             allContextObjects={workspaceContexts}
             allDeliverables={deliverables}
             specs={specs}
+            stale={stale}
+            nodes={nodes}
             selectedSpecId={selectedSpecId}
             onSelectSpecId={setSelectedSpecId}
-            onAddCustomSpec={(newSpec) => setSpecs((prev) => [newSpec, ...prev])}
+            onAddCustomSpec={(newSpec) => { void addSpec(newSpec); }}
             onAddContextObject={handleSaveContextObject}
             onSaveDeliverable={handleSaveDeliverable}
-            onOpenContextModal={(obj) => {
-              setSelectedContextObject(obj);
-              setIsContextModalOpen(true);
-            }}
+            pendingRebuild={pendingRebuild}
+            onPendingRebuildHandled={() => setPendingRebuild(null)}
+            onOpenContextModal={(obj) => openContext(obj)}
             onOpenLedger={() => setActiveTab('ledger')}
             onOpenAiSettings={() => setIsAiSettingsOpen(true)}
           />
@@ -503,14 +557,17 @@ export default function App() {
         {activeTab === 'chat' && (
           <div className="space-y-stack-sm">
             <SmartChat
+              key={`${currentWorkspace.id}:${chatScope ?? ''}`}
               currentWorkspace={currentWorkspace}
               allContextObjects={workspaceContexts}
+              nodes={nodes}
+              initialSessions={data.sessions}
+              initialScopeNodeId={chatScope}
+              onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
+              onDeleteSession={(id) => { void attempt(() => dataApi.deleteSession(wid, id)).then(() => patch((d) => ({ ...d, sessions: d.sessions.filter((x) => x.id !== id) }))); }}
               onAddContextObject={handleSaveContextObject}
               onIncrementChatCount={handleIncrementChatCount}
-              onOpenContextModal={(obj) => {
-                setSelectedContextObject(obj);
-                setIsContextModalOpen(true);
-              }}
+              onOpenContextModal={(obj) => openContext(obj)}
               onSaveBlockAsAsset={handleSaveBlockAsAsset}
               onRecordChatUsage={handleRecordChatUsage}
               onOpenAiSettings={() => setIsAiSettingsOpen(true)}
@@ -524,12 +581,12 @@ export default function App() {
             currentWorkspace={currentWorkspace}
             deliverables={deliverables}
             allContextObjects={workspaceContexts}
-            onOpenContextModal={(obj) => {
-              setSelectedContextObject(obj);
-              setIsContextModalOpen(true);
-            }}
+            stale={stale}
+            onOpenContextModal={(obj) => openContext(obj)}
             onPromoteToContext={handlePromoteToContext}
-            onRebuild={(_del) => {
+            onRebuild={(del) => {
+              setSelectedSpecId(del.workstreamId);
+              setPendingRebuild(del);
               setActiveTab('workstreams');
             }}
           />
@@ -539,7 +596,7 @@ export default function App() {
         {activeTab === 'ledger' && (
           <LedgerPanel
             currentWorkspace={currentWorkspace}
-            ledgerEntries={ledgerEntries.filter((l) => l.workspaceId === currentWorkspace.id)}
+            ledgerEntries={ledgerEntries}
             onChangePlan={handleChangePlan}
             onAddCredits={handleAddCredits}
           />
@@ -555,7 +612,21 @@ export default function App() {
         onSave={handleSaveContextObject}
         onSupersede={handleSupersedeContext}
         onArchive={handleArchiveContext}
+        nodes={nodes}
+        workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
+      />
+
+      <NodeDialogs
+        state={nodeDialog}
+        nodes={nodes}
+        objects={workspaceContexts}
+        notes={data.notes}
+        onClose={() => setNodeDialog(null)}
+        onCreate={(parentId, label, description) => nodeOp(() => dataApi.createNode(wid, { parentId, label, description }))}
+        onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
+        onMove={(nodeId, parentId) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId))}
+        onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
       {/* 10-Minute Onboarding Modal */}
@@ -563,16 +634,14 @@ export default function App() {
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         currentWorkspace={currentWorkspace}
-        onCompleteOnboarding={(newContexts, firstDeliverable) => {
-          setContextObjects((prev) => [...newContexts, ...prev]);
-          setDeliverables((prev) => [firstDeliverable, ...prev]);
-          if (firstDeliverable.usage) {
-            const usage = firstDeliverable.usage;
-            setLedgerEntries((prev) => [
-              ledgerEntryFromUsage({ workspaceId: currentWorkspace.id, action: 'اولین دارایی (Onboarding)', mode: 'auto', creditCost: 0, usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }),
-              ...prev,
-            ]);
-          }
+        onCreateObjects={handleCreateObjects}
+        onCompleteOnboarding={(firstDeliverable) => {
+          void (async () => {
+            if (!(await persistDeliverable(firstDeliverable))) return;
+            if (firstDeliverable.usage) {
+              await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'اولین دارایی (Onboarding)', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
+            }
+          })();
         }}
         onOpenAiSettings={() => setIsAiSettingsOpen(true)}
       />
@@ -606,9 +675,7 @@ export default function App() {
         isOpen={isCustomSpecModalOpen}
         onClose={() => setIsCustomSpecModalOpen(false)}
         onSaveSpec={(newSpec) => {
-          setSpecs((prev) => [newSpec, ...prev]);
-          setSelectedSpecId(newSpec.id);
-          setActiveTab('workstreams');
+          void addSpec(newSpec).then((ok) => { if (ok) { setSelectedSpecId(newSpec.id); setActiveTab('workstreams'); } });
         }}
       />
 

@@ -8,7 +8,21 @@ export interface ContextObjectLite {
   title: string;
   content: string;
   nodeId: string;
+  /** version at the time of injection — stored in the asset as lineage */
+  version?: number;
   createdAt?: string;
+}
+
+export interface FileExcerpt {
+  fileId: string;
+  fileName: string;
+  index: number;
+  text: string;
+}
+
+/** Exactly the objects a prompt built from `contexts` shows to the model (Superseded/Archived never are). */
+export function injectedRefs(contexts: ContextObjectLite[]): Array<{ id: string; version: number }> {
+  return contexts.filter((c) => !EXCLUDED.has(c.status)).sort(byStableOrder).map((c) => ({ id: c.id, version: c.version ?? 1 }));
 }
 
 export const NODE_ORDER = ['business', 'brand', 'product', 'offer', 'content', 'asset'];
@@ -24,7 +38,7 @@ const byStableOrder = (a: ContextObjectLite, b: ContextObjectLite) =>
   (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
   a.id.localeCompare(b.id);
 
-const line = (c: ContextObjectLite) => `- [${c.type}] (${NODE_LABELS[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}`;
+const line = (c: ContextObjectLite, labels: Record<string, string> = NODE_LABELS) => `- [${c.type}] (${labels[c.nodeId] ?? NODE_LABELS[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}`;
 
 export interface BuildPromptInput {
   contexts: ContextObjectLite[];
@@ -32,6 +46,10 @@ export interface BuildPromptInput {
   focusNodeIds?: string[];
   /** the job-specific instructions + user text (variable part) */
   task: string;
+  /** node id → label for this workspace (user-created nodes included) */
+  nodeLabels?: Record<string, string>;
+  /** relevant chunks of uploaded files — always labelled as unconfirmed imported material */
+  excerpts?: FileExcerpt[];
 }
 
 /**
@@ -41,26 +59,27 @@ export interface BuildPromptInput {
  *   user    = proposed context (labelled) → focus → task (changes every request)
  * Proposed / Needs Review items are never placed in the stable prefix and are always labelled as unconfirmed.
  */
-export function buildPrompt({ contexts, focusNodeIds = [], task }: BuildPromptInput): Prompt {
+export function buildPrompt({ contexts, focusNodeIds = [], task, nodeLabels, excerpts = [] }: BuildPromptInput): Prompt {
+  const labels = { ...NODE_LABELS, ...(nodeLabels ?? {}) };
   const live = contexts.filter((c) => !EXCLUDED.has(c.status));
   const confirmed = live.filter((c) => c.status === 'Confirmed').sort(byStableOrder);
   const unconfirmed = live.filter((c) => c.status !== 'Confirmed').sort(byStableOrder);
 
   const prefix = confirmed.length
-    ? `## دانش تأییدشدهٔ فضای کار (Confirmed — واقعیت)\n${confirmed.map(line).join('\n')}`
+    ? `## دانش تأییدشدهٔ فضای کار (Confirmed — واقعیت)\n${confirmed.map((c) => line(c, labels)).join('\n')}`
     : '## دانش تأییدشدهٔ فضای کار (Confirmed — واقعیت)\nهنوز دانش تأییدشده‌ای ثبت نشده است.';
 
   const parts: string[] = [];
   if (unconfirmed.length) {
-    parts.push(`## دانش پیشنهادی / نیازمند بررسی (تأییدنشده — واقعیت نیست)\n${unconfirmed.map((c) => `${line(c)} «${c.status === 'Proposed' ? 'پیشنهادی' : 'نیازمند بررسی'}»`).join('\n')}`);
+    parts.push(`## دانش پیشنهادی / نیازمند بررسی (تأییدنشده — واقعیت نیست)\n${unconfirmed.map((c) => `${line(c, labels)} «${c.status === 'Proposed' ? 'پیشنهادی' : 'نیازمند بررسی'}»`).join('\n')}`);
   }
-  if (focusNodeIds.length) parts.push(`## تمرکز این درخواست\nپاسخ را روی شاخه‌های ${focusNodeIds.map((n) => NODE_LABELS[n] ?? n).join('، ')} متمرکز کن.`);
+  if (excerpts.length) {
+    parts.push(`## گزیده‌های فایل‌های بارگذاری‌شده (منبع واردشده — تأییدنشده؛ واقعیت قطعی نیست)\n${excerpts.map((e) => `[${e.fileName} · بخش ${e.index + 1}]\n${e.text}`).join('\n\n')}`);
+  }
+  if (focusNodeIds.length) parts.push(`## تمرکز این درخواست\nپاسخ را روی شاخه‌های ${focusNodeIds.map((n) => labels[n] ?? n).join('، ')} متمرکز کن.`);
   parts.push(task);
 
   return { system: `${SYSTEM_PROMPT}\n\n${CORE_TEXT}`, prefix, user: parts.join('\n\n') };
 }
 
-/** Rough size for routing (Persian ≈ 2.5 tokens/word; 1 token ≈ 2.2 chars). Not billing — real usage comes from the provider. */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 2.2);
-}
+export { estimateTokens } from "../../src/core/tokens.ts";

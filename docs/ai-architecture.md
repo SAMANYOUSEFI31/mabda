@@ -43,3 +43,14 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## هنوز نیست
 جایگزین (fallback) بین دو شرکت برای هر سطح (فقط Gemini)، ضریب ۱٫۵/۲ طول خروجی در UI، حساب کاربری سمت سرور (BYOK فعلاً با شناسهٔ مرورگر)، اندازه‌گیری واقعی ضریب effort (Alpha).
+
+
+## ذخیره‌سازی، نسخه و اصالت (v3.1)
+
+- **SQLite** در `server/data/mabda.sqlite` (`MABDA_DB_PATH`)، مهاجرت‌های نسخه‌دار در `server/db/migrations.ts`؛ همهٔ جدول‌ها `user_id` و `workspace_id` دارند (بعداً Postgres). فرانت فقط از `/api` می‌خواند (`src/services/dataApi.ts`)؛ دادهٔ localStorage قدیمی یک‌بار با `POST /api/bootstrap` وارد می‌شود.
+- **نسخه:** `ContextObject.version` با ویرایش عنوان/متن/نوع زیاد می‌شود (تغییر وضعیت یا جابه‌جایی گره نه). `supersede` شمارهٔ نسخه را ادامه می‌دهد و رابطهٔ `supersedes` می‌سازد.
+- **اصالت:** `GeneratedDeliverable.usedContext = [{id, version}]` دقیقاً همان چیزی است که در prompt تزریق شد (`injectedRefs` در `server/ai/context.ts`). برای خروجی‌ها = Contextهای مرتبط با گره هدف (زنجیرهٔ والدها) + همهٔ Constraintهای تأییدشده؛ برای گفتگو = همهٔ Contextهای محدودهٔ گفتگو.
+- **اثر تغییر:** `src/core/impactEngine.ts` (`computeStaleAssets`, `newlyStale`, `halfPriceRebuildAvailable`). بازسازی نصف‌قیمت یک‌بار برای هر مجموعه‌تغییر (`halfPriceUsedFor`).
+- **گره‌ها:** قوانین در `src/core/nodeTree.ts`؛ سیستمی = فقط تغییر نام. **یادداشت** هرگز تزریق نمی‌شود؛ «استخراج» فقط Proposed می‌سازد.
+- **فایل:** `server/files/*` — txt/md/pdf/docx ≤ ۲۵MB، پردازش یک‌بارِ cheap (`AiService.extract`)، قطعه‌های ~۸۰۰ توکنی، بازیابی BM25 (`src/core/retrieval.ts`) فقط از فایل‌های `ready` و در بودجهٔ ۳۰۰۰ توکن؛ سهمیهٔ ماهانهٔ توکن (Starter 150k / Pro 500k / Max 1.5M) و بیش از آن ۲ اعتبار به ازای هر ۲۰ هزار توکن (`fileProcessingCharge`).
+- **سناریوی کامل:** `node scripts/scenario-impact.mjs` (سرور واقعی + stand-in Gemini) → `docs/screens/impact-*.png`.

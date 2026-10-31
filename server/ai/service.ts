@@ -2,14 +2,14 @@ import type { AiPlan, AiStreamEvent, ContentBlock, GenerationResult, JobKind, St
 import { modelsConfig } from './config.ts';
 import type { ModelsConfig } from './config.ts';
 import { BlockStreamParser, blocksToMarkdown, normalizeBlock, parseBlocks } from './blocks.ts';
-import { buildPrompt, estimateTokens } from './context.ts';
-import type { ContextObjectLite } from './context.ts';
+import { buildPrompt, estimateTokens, injectedRefs } from './context.ts';
+import type { ContextObjectLite, FileExcerpt } from './context.ts';
 import { ModelDecisionLayer } from './decision.ts';
 import type { DecisionLayer } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
 import { runPipeline } from './pipeline.ts';
-import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT } from './prompts.ts';
-import { BLOCKS_SCHEMA } from './schemas.ts';
+import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, EXTRACT_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
+import { BLOCKS_SCHEMA, EXTRACT_SCHEMA } from './schemas.ts';
 import { route, sanitizePlan } from './router.ts';
 import { StageRunner, sumUsage } from './runner.ts';
 import type { SessionResolver } from './session.ts';
@@ -23,6 +23,12 @@ export interface ChatRequest {
   history?: Array<{ role: string; content: string }>;
   plan?: unknown;
   decisionUsage?: unknown;
+  /** node id → label of this workspace (user nodes included) */
+  nodeLabels?: Record<string, string>;
+  /** node chat: proposals are clamped to these nodes (the scope node + its sub-tree) */
+  allowedNodeIds?: string[];
+  scopeNodeId?: string;
+  excerpts?: FileExcerpt[];
 }
 
 export interface GenerateRequest {
@@ -38,9 +44,39 @@ export interface GenerateRequest {
   rebuildNotes?: string;
   plan?: unknown;
   decisionUsage?: unknown;
+  nodeLabels?: Record<string, string>;
+  excerpts?: FileExcerpt[];
 }
 
 export type Emit = (e: AiStreamEvent) => void;
+
+/** Node chats may only propose updates inside their scope. */
+export function clampProposal(b: ContentBlock, allowed?: string[], scope?: string): ContentBlock {
+  if (!b.proposal || !allowed?.length || allowed.includes(b.proposal.nodeId)) return b;
+  return { ...b, proposal: { ...b.proposal, nodeId: scope && allowed.includes(scope) ? scope : allowed[0] } };
+}
+
+export interface ExtractRequest {
+  kind: 'note' | 'file';
+  text: string;
+  /** where Proposed objects land by default */
+  nodeId: string;
+  nodes: Array<{ id: string; label: string }>;
+  wantSummary?: boolean;
+}
+
+export interface ExtractedObject { type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }
+
+export interface ExtractResult {
+  summary?: string;
+  objects: ExtractedObject[];
+  usage: UsageSummary;
+  /** the text was longer than the extraction window — only its beginning was read */
+  truncated: boolean;
+}
+
+/** Max tokens of a document read by the one-time extraction (retrieval still covers the whole file). */
+export const EXTRACT_WINDOW_TOKENS = 30_000;
 
 const sanitizeUsage = (u: unknown): StageUsage | null => {
   const x = u as Partial<StageUsage> | null;
@@ -122,10 +158,12 @@ export class AiService {
       const task = [
         CHAT_MODE_HINT[req.chatMode ?? 'discovery'],
         history ? `## تاریخچهٔ اخیر گفتگو\n${history}` : '',
+        req.allowedNodeIds?.length ? `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین گره‌ها مجاز است.` : '',
         `## پیام کاربر\n${req.message}`,
         `${BLOCKS_INSTRUCTION}\nطول هدف: ${plan.outputBand.minWords} تا ${plan.outputBand.maxWords} کلمه.`,
       ].filter(Boolean).join('\n\n');
-      const prompt = buildPrompt({ contexts: req.contextList, focusNodeIds: req.focusNodeIds, task });
+      const prompt = buildPrompt({ contexts: req.contextList, focusNodeIds: req.focusNodeIds, task, nodeLabels: req.nodeLabels, excerpts: req.excerpts });
+      const clamp = (b: ContentBlock): ContentBlock => clampProposal(b, req.allowedNodeIds, req.scopeNodeId);
 
       const s = runner.stream({ stage: 'chat', tier: plan.tier, effort: plan.effort, maxTokens: plan.maxTokens, timeoutMs: this.cfg.timeoutsMs.chat }, prompt, BLOCKS_SCHEMA);
       const parser = new BlockStreamParser();
@@ -135,15 +173,16 @@ export class AiService {
       for await (const chunk of s.chunks) {
         text += chunk;
         for (const raw of parser.push(chunk)) {
-          const b = normalizeBlock(raw, n, used);
-          if (b) { n++; emit({ type: 'block', block: b }); }
+          const nb = normalizeBlock(raw, n, used);
+          if (nb) { n++; emit({ type: 'block', block: clamp(nb) }); }
         }
       }
       stages.push(s.usage());
       let blocks: ContentBlock[];
-      try { blocks = parseBlocks(JSON.parse(text)); } catch (e) { throw e instanceof AiError ? e : new AiError('bad_output', { stage: 'chat', detail: text.slice(0, 200) }); }
+      try { blocks = parseBlocks(JSON.parse(text)).map(clamp); } catch (e) { throw e instanceof AiError ? e : new AiError('bad_output', { stage: 'chat', detail: text.slice(0, 200) }); }
       const result: GenerationResult = {
-        blocks, markdown: blocksToMarkdown(blocks), plan, usage: usageSummary(stages, session.source === 'byok'), usedContextIds: [],
+        blocks, markdown: blocksToMarkdown(blocks), plan, usage: usageSummary(stages, session.source === 'byok'),
+        usedContext: injectedRefs(req.contextList), usedFileChunks: (req.excerpts ?? []).map((e) => ({ fileId: e.fileId, index: e.index })),
       };
       emit({ type: 'done', result });
     } catch (e) {
@@ -172,7 +211,10 @@ export class AiService {
       }
       emit({ type: 'plan', plan });
 
-      const all = req.contextList ?? req.contextObjects;
+      // What the model sees = the contexts relevant to this deliverable + every Confirmed Constraint (guardrails always apply).
+      // This exact set is what Context Replay and the impact engine record (id + version).
+      const seen = new Set(req.contextObjects.map((c) => c.id));
+      const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && !seen.has(c.id))];
       const guardrails = all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}`);
       const task = [
         `## کار: ${req.deliverableTitle}`,
@@ -180,7 +222,7 @@ export class AiService {
         req.contextObjects.length ? `دانش مرتبط با این خروجی: ${req.contextObjects.map((c) => c.title).join('، ')}` : '',
         req.rebuildNotes ? `نکات بازسازی: ${req.rebuildNotes}` : '',
       ].filter(Boolean).join('\n');
-      const prompt = buildPrompt({ contexts: all, task });
+      const prompt = buildPrompt({ contexts: all, task, nodeLabels: req.nodeLabels, excerpts: req.excerpts });
 
       const out = await runPipeline({
         runner, plan, prompt, acceptanceCriteria: req.acceptanceCriteria, guardrails, cfg: this.cfg,
@@ -190,11 +232,49 @@ export class AiService {
       const result: GenerationResult = {
         blocks: out.blocks, markdown: out.markdown, plan, usage: usageSummary(stages, session.source === 'byok'),
         critiqueFeedback: out.critiqueFeedback, validationFailed: out.validationFailed,
-        usedContextIds: req.contextObjects.filter((c) => c.status === 'Confirmed').map((c) => c.id),
+        usedContext: injectedRefs(all), usedFileChunks: (req.excerpts ?? []).map((e) => ({ fileId: e.fileId, index: e.index })),
       };
       emit({ type: 'done', result });
     } catch (e) {
       emit({ type: 'error', error: toAiError(e).toInfo() });
+    } finally { dl.done(); }
+  }
+
+  /**
+   * One-time extraction on the cheap tier: Proposed objects (+ optional summary) from a note or a file.
+   * Always cheap — decisions v3.1 §6 — so no routing/decision call is made.
+   */
+  async extract(userId: string, req: ExtractRequest, parent?: AbortSignal): Promise<ExtractResult> {
+    const dl = this.deadline(req.kind === 'file' ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId);
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const maxChars = Math.floor(EXTRACT_WINDOW_TOKENS * 2.2);
+      const truncated = req.text.length > maxChars;
+      const text = truncated ? req.text.slice(0, maxChars) : req.text;
+      const nodes = req.nodes.map((n) => `${n.id}=${n.label}`).join('، ');
+      const user = [
+        EXTRACT_INSTRUCTION,
+        `## گره‌های مجاز (شناسه=نام)\n${nodes}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        req.wantSummary ? 'علاوه بر objectها، کلید summary را با خلاصهٔ ۳ تا ۵ جمله‌ای فارسی پر کن.' : 'کلید summary لازم نیست.',
+        truncated ? 'توجه: متن بلند است و فقط بخش ابتدایی آن داده شده است.' : '',
+        `## متن\n${text}`,
+      ].filter(Boolean).join('\n\n');
+      const r = await runner.structured(
+        { stage: 'extract', tier: 'cheap', effort: 'low', maxTokens: 3000, timeoutMs: req.kind === 'file' ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat },
+        { system: SYSTEM_PROMPT, user }, EXTRACT_SCHEMA,
+      );
+      const v = (r.value ?? {}) as { summary?: unknown; objects?: unknown };
+      if (!Array.isArray(v.objects)) throw new AiError('bad_output', { stage: 'extract', detail: 'missing objects array' });
+      const allowed = new Set(req.nodes.map((n) => n.id));
+      const types = ['Fact', 'Decision', 'Constraint'];
+      const objects: ExtractedObject[] = [];
+      for (const o of v.objects.slice(0, 12) as Array<Record<string, unknown>>) {
+        if (!o || typeof o.title !== 'string' || typeof o.content !== 'string' || !o.title.trim() || !o.content.trim() || !types.includes(o.type as string)) continue;
+        objects.push({ type: o.type as ExtractedObject['type'], title: o.title.trim(), content: o.content.trim(), nodeId: typeof o.nodeId === 'string' && allowed.has(o.nodeId) ? o.nodeId : req.nodeId });
+      }
+      const summary = req.wantSummary && typeof v.summary === 'string' && v.summary.trim() ? v.summary.trim() : undefined;
+      return { summary, objects, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
     } finally { dl.done(); }
   }
 }

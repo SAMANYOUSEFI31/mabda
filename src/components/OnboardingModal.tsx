@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
+import React, { useRef, useState } from 'react';
+import { ContextDraft, ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { asAiError, generateDeliverableApi } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice } from './AiNotices';
@@ -15,7 +15,9 @@ interface OnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentWorkspace: Workspace;
-  onCompleteOnboarding: (newObjects: ContextObject[], firstDeliverable: GeneratedDeliverable) => void;
+  /** saves the 5 confirmed objects on the server and returns them (with ids + versions) */
+  onCreateObjects: (drafts: ContextDraft[]) => Promise<ContextObject[]>;
+  onCompleteOnboarding: (firstDeliverable: GeneratedDeliverable) => void;
   onOpenAiSettings: () => void;
 }
 
@@ -29,7 +31,7 @@ const STEP_TITLES = [
   'گام سوم: لحظهٔ Aha — اولین دارایی با Context Replay',
 ];
 
-const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCompleteOnboarding, onOpenAiSettings }) => {
+const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCreateObjects, onCompleteOnboarding, onOpenAiSettings }) => {
   const ai = useAiStatus();
   const [genError, setGenError] = useState<AiErrorInfo | null>(null);
   const [step, setStep] = useState<number>(1);
@@ -39,6 +41,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
   const [valProp, setValProp] = useState('تبدیل دانش پراکنده به یک منبع حقیقت یکپارچه و ساخت دارایی‌های منسجم با Context Replay');
   const [differentiation, setDifferentiation] = useState('دانش ساختاریافته نوع‌دار با موتور تحلیل شکاف (Gap Engine) و بازسازی نصف‌قیمت');
 
+  /** saved once: a retry after an AI error must not create the five objects again */
+  const savedObjects = useRef<ContextObject[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState<GeneratedDeliverable | null>(null);
 
@@ -46,10 +50,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
     setIsGenerating(true);
     setGenError(null);
 
-    const now = new Date().toISOString();
-    const createdObjects: ContextObject[] = [
+    const drafts: ContextDraft[] = [
       {
-        id: `ctx_onb_${Date.now()}_1`,
         workspaceId: currentWorkspace.id,
         type: 'Fact',
         status: 'Confirmed',
@@ -57,11 +59,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         title: 'حوزهٔ کسب‌وکار و تخصص',
         content: domain,
         nodeId: 'business',
-        createdAt: now,
-        updatedAt: now,
       },
       {
-        id: `ctx_onb_${Date.now()}_2`,
         workspaceId: currentWorkspace.id,
         type: 'Decision',
         status: 'Confirmed',
@@ -69,11 +68,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         title: 'مخاطب اصلی (ICP)',
         content: audience,
         nodeId: 'business',
-        createdAt: now,
-        updatedAt: now,
       },
       {
-        id: `ctx_onb_${Date.now()}_3`,
         workspaceId: currentWorkspace.id,
         type: 'Fact',
         status: 'Confirmed',
@@ -81,11 +77,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         title: 'معضل اصلی مخاطب',
         content: problem,
         nodeId: 'business',
-        createdAt: now,
-        updatedAt: now,
       },
       {
-        id: `ctx_onb_${Date.now()}_4`,
         workspaceId: currentWorkspace.id,
         type: 'Decision',
         status: 'Confirmed',
@@ -93,11 +86,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         title: 'پیشنهاد ارزش و راه‌حل',
         content: valProp,
         nodeId: 'product',
-        createdAt: now,
-        updatedAt: now,
       },
       {
-        id: `ctx_onb_${Date.now()}_5`,
         workspaceId: currentWorkspace.id,
         type: 'Fact',
         status: 'Confirmed',
@@ -105,12 +95,11 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         title: 'تمایز کلیدی',
         content: differentiation,
         nodeId: 'brand',
-        createdAt: now,
-        updatedAt: now,
       },
     ];
 
     try {
+      savedObjects.current ??= await onCreateObjects(drafts);
       const response = await generateDeliverableApi({
         deliverableId: 'del_positioning_statement',
         deliverableTitle: 'جملهٔ موقعیت‌یابی اختصاصی (First Asset)',
@@ -120,8 +109,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
           'اشاره صریح به مخاطب هدف و معضل محوری',
           'انعکاس تمایز ساختاری مبدأ',
         ],
-        contextObjects: createdObjects,
-        contextList: createdObjects,
+        workspaceId: currentWorkspace.id,
+        targetNodeId: '*',
         executionMode: 'auto',
       });
 
@@ -138,14 +127,15 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         validationFailed: response.validationFailed,
         executionMode: 'auto',
         creditCost: 2,
-        usedContextIds: createdObjects.map((c) => c.id),
+        usedContext: response.usedContext,
+        usedFileChunks: response.usedFileChunks,
         critiqueFeedback: response.critiqueFeedback,
         rebuildCount: 0,
         createdAt: new Date().toISOString(),
       };
 
       setGeneratedOutput(firstAsset);
-      onCompleteOnboarding(createdObjects, firstAsset);
+      onCompleteOnboarding(firstAsset);
       setStep(3); // Result & Replay step
     } catch (e) {
       setGenError(asAiError(e));

@@ -33,7 +33,7 @@ export interface AiPlan {
   decisions: Array<{ id: string; choice: string; probability: number }>;
 }
 
-export type StageName = 'decision' | 'chat' | 'draft' | 'critique' | 'revise' | 'validate' | 'upgrade';
+export type StageName = 'decision' | 'extract' | 'chat' | 'draft' | 'critique' | 'revise' | 'validate' | 'upgrade';
 
 export interface TokenUsage {
   /** prompt tokens that were NOT served from cache */
@@ -114,7 +114,8 @@ export interface GenerationResult {
   critiqueFeedback?: CritiqueFeedback;
   /** true if the validator rejected the final output (shown honestly in the UI) */
   validationFailed?: boolean;
-  usedContextIds: string[];
+  usedContext: import('./index').UsedContextRef[];
+  usedFileChunks?: import('./index').UsedFileChunk[];
 }
 
 export interface AiStatus {

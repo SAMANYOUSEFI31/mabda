@@ -1,6 +1,6 @@
 import type { BlockProposal, ContentBlock } from '../../src/types/ai.ts';
 import { AiError } from './errors.ts';
-import { BLOCK_KINDS, NODE_IDS, PROPOSAL_TYPES } from './schemas.ts';
+import { BLOCK_KINDS, PROPOSAL_TYPES } from './schemas.ts';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -20,7 +20,7 @@ export function normalizeBlock(raw: unknown, index: number, used: Set<string>): 
       type: p.type as BlockProposal['type'],
       title: p.title.trim(),
       content: p.content.trim(),
-      nodeId: (NODE_IDS as readonly string[]).includes(p.nodeId as string) ? (p.nodeId as string) : 'business',
+      nodeId: typeof p.nodeId === 'string' && p.nodeId.trim() ? p.nodeId.trim() : 'business',
     };
     if (typeof p.reason === 'string' && p.reason.trim()) proposal.reason = p.reason.trim();
     block.proposal = proposal;

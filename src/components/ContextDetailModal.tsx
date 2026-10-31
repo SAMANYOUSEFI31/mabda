@@ -3,19 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { ContextObject, ContextProvenance, ContextStatus, ContextType, TreeNode } from '../types';
-import { DEFAULT_TREE_NODES } from '../core/specs';
-import { Button, Card, Dialog, Select, TextField, Textarea } from '../ui';
+import React, { useEffect, useState } from 'react';
+import { ContextDraft, ContextObject, ContextProvenance, ContextStatus, ContextType, TreeNode } from '../types';
+import { flatten } from '../core/nodeTree';
+import { dataApi } from '../services/dataApi';
+import { Badge, Button, Card, Dialog, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (saved: ContextObject) => void;
-  onSupersede: (oldId: string, newObj: Omit<ContextObject, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSave: (saved: ContextDraft) => void;
+  onSupersede: (oldId: string, newObj: ContextDraft) => void;
   onArchive: (id: string) => void;
-  nodes?: TreeNode[];
+  nodes: TreeNode[];
+  workspaceId: string;
   defaultNodeId?: string;
 }
 
@@ -53,7 +55,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   onSave,
   onSupersede,
   onArchive,
-  nodes = DEFAULT_TREE_NODES,
+  nodes,
+  workspaceId,
   defaultNodeId = 'business',
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
@@ -68,6 +71,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   );
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const [supersedeReason, setSupersedeReason] = useState('');
+  const [versions, setVersions] = useState<Array<{ version: number; title: string; content: string; createdAt: string }>>([]);
+  useEffect(() => {
+    if (!isEditing || !object) return;
+    let live = true;
+    dataApi.objectVersions(object.workspaceId, object.id).then((v) => { if (live) setVersions(v); }).catch(() => { /* history is optional */ });
+    return () => { live = false; };
+  }, [isEditing, object]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +97,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       return;
     }
 
-    const updated: ContextObject = {
-      id: object?.id || `ctx_${Date.now()}`,
-      workspaceId: object?.workspaceId || 'ws_studio',
+    const updated: ContextDraft = {
+      id: isEditing ? object!.id : undefined,
+      workspaceId: object?.workspaceId || workspaceId,
       type,
       status,
       provenance,
@@ -97,8 +107,6 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       content: content.trim(),
       nodeId,
       supersededById: object?.supersededById,
-      createdAt: object?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     onSave(updated);
@@ -161,7 +169,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
-          <Select label="شاخه در درخت دانش" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
+          <Select label="شاخه در درخت دانش" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))} />
           <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
         </div>
 
@@ -173,6 +181,22 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           onChange={(e) => setContent(e.target.value)}
           placeholder="توضیح کامل واقعیت، تصمیم یا خط قرمز به زبان صریح…"
         />
+
+        {isEditing && object && (
+          <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
+            <div className="flex flex-wrap items-center gap-inline-sm">
+              <Badge intent="neutral" icon={false}>نسخهٔ {formatNumber(object.version)}</Badge>
+              <span className="caption text-text-subtle">با هر ویرایش عنوان، متن یا نوع، شمارهٔ نسخه بالا می‌رود و دارایی‌هایی که از نسخهٔ قبلی ساخته شده‌اند «قدیمی» می‌شوند.</span>
+            </div>
+            {versions.length > 1 && (
+              <ul className="caption flex flex-col gap-stack-xs text-text-subtle" aria-label="تاریخچهٔ نسخه‌ها">
+                {versions.map((v) => (
+                  <li key={v.version}>نسخهٔ {formatNumber(v.version)} · {formatJalaliDate(v.createdAt)} · {v.content.slice(0, 70)}{v.content.length > 70 ? '…' : ''}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {isSupersedingMode && (
           <Card padding="md" className="flex flex-col gap-stack-sm">

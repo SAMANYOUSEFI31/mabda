@@ -4,7 +4,7 @@
  */
 
 import type {
-  AiErrorInfo, AiPlan, AiStatus, AiStreamEvent, ContentBlock, ContextObject, ExecutionMode, GenerationResult, JobKind,
+  AiErrorInfo, AiPlan, AiStatus, AiStreamEvent, ContentBlock, ExecutionMode, GenerationResult, JobKind,
   StageName, StageUsage, Tier, UserMode,
 } from '../types';
 
@@ -100,8 +100,6 @@ async function post<T>(path: string, body: unknown, ms: number, external?: Abort
   } finally { g.done(); }
 }
 
-const lite = (c: ContextObject) => ({ id: c.id, type: c.type, status: c.status, title: c.title, content: c.content, nodeId: c.nodeId, createdAt: c.createdAt });
-
 export async function getAiStatus(signal?: AbortSignal): Promise<AiStatus> {
   const g = guard(CLIENT_TIMEOUT_MS.short, signal);
   try {
@@ -142,8 +140,9 @@ export const toUserMode = (m: ExecutionMode): UserMode => (m === 'critique' ? 'd
 export interface PlanPreview { plan: AiPlan; decisionUsage?: StageUsage }
 
 /** Ask the router what it would do (no generation) so credits can be shown before the run. */
-export function previewPlan(params: { executionMode: ExecutionMode; jobKind: JobKind; text: string; contextList: ContextObject[] }, signal?: AbortSignal): Promise<PlanPreview> {
-  return post('/api/ai/plan', { userMode: toUserMode(params.executionMode), jobKind: params.jobKind, text: params.text, contextList: params.contextList.map(lite) }, CLIENT_TIMEOUT_MS.short, signal);
+export function previewPlan(params: { executionMode: ExecutionMode; jobKind: JobKind; text: string; workspaceId: string }, signal?: AbortSignal): Promise<PlanPreview> {
+  // the server reads the workspace context itself (workspaceId)
+  return post('/api/ai/plan', { userMode: toUserMode(params.executionMode), jobKind: params.jobKind, text: params.text, workspaceId: params.workspaceId }, CLIENT_TIMEOUT_MS.short, signal);
 }
 
 export interface ChatHandlers {
@@ -156,7 +155,9 @@ export interface ChatHandlers {
 export async function streamChat(
   params: {
     message: string;
-    contextList: ContextObject[];
+    workspaceId: string;
+    /** node chat: context = this node's sub-tree + ancestors; proposals only inside the sub-tree */
+    scopeNodeId?: string;
     focusNodeIds?: string[];
     chatMode?: 'discovery' | 'audit' | 'advisor';
     deep: boolean;
@@ -170,7 +171,7 @@ export async function streamChat(
     const res = await fetch('/api/ai/chat', {
       method: 'POST', headers: headers(), signal: g.signal,
       body: JSON.stringify({
-        message: params.message, contextList: params.contextList.map(lite), focusNodeIds: params.focusNodeIds ?? [],
+        message: params.message, workspaceId: params.workspaceId, scopeNodeId: params.scopeNodeId, focusNodeIds: params.focusNodeIds ?? [],
         chatMode: params.chatMode, mode: params.deep ? 'deep' : 'auto', history: params.history ?? [],
       }),
     });
@@ -197,8 +198,9 @@ export async function generateDeliverableApi(
     deliverableTitle: string;
     deliverableType: 'Asset' | 'Deliverable';
     acceptanceCriteria: string[];
-    contextObjects: ContextObject[];
-    contextList: ContextObject[];
+    workspaceId: string;
+    /** node whose ancestor chain is the relevant context (default: content) */
+    targetNodeId?: string;
     executionMode: ExecutionMode;
     rebuildNotes?: string;
     /** the plan previewed to the user (credits shown = credits charged) */
@@ -213,7 +215,7 @@ export async function generateDeliverableApi(
       method: 'POST', headers: headers(), signal: g.signal,
       body: JSON.stringify({
         deliverableId: params.deliverableId, deliverableTitle: params.deliverableTitle, deliverableType: params.deliverableType,
-        acceptanceCriteria: params.acceptanceCriteria, contextObjects: params.contextObjects.map(lite), contextList: params.contextList.map(lite),
+        acceptanceCriteria: params.acceptanceCriteria, workspaceId: params.workspaceId, targetNodeId: params.targetNodeId,
         userMode: toUserMode(params.executionMode), rebuildNotes: params.rebuildNotes,
         plan: params.preview?.plan, decisionUsage: params.preview?.decisionUsage,
       }),

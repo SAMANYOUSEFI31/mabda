@@ -6,13 +6,23 @@ import { AiService } from './service.ts';
 import type { ChatRequest, GenerateRequest } from './service.ts';
 import { defaultProviderFactory, SessionResolver, isValidGeminiKey } from './session.ts';
 import type { AiStreamEvent, UserMode } from '../../src/types/ai.ts';
+import type { ContextObjectLite } from './context.ts';
 
 /** Feature flag: managed AI (server-side key paid by the product). OFF by default — users bring their own key. */
 export const managedAiEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABDA_MANAGED_AI ?? '');
 
+/**
+ * Where the authoritative context comes from. When a request carries `workspaceId`, the server reads the
+ * Context (with versions), node tree and relevant file chunks itself — the browser cannot influence what is injected.
+ */
+export interface ContextSource {
+  forChat(workspaceId: string, o: { scopeNodeId?: string; message: string }): Partial<ChatRequest>;
+  forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[] }): Partial<GenerateRequest>;
+}
+
 const USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
-function userOf(req: Request): string {
+export function userOf(req: Request): string {
   const id = req.header('x-mabda-user') ?? '';
   if (!USER_ID.test(id)) throw new AiError('bad_request', { message: 'شناسهٔ کاربر نامعتبر است.', retryable: false });
   return id;
@@ -38,7 +48,7 @@ function ndjson(req: Request, res: Response) {
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionResolver; service?: AiService } = {}): { router: Router; sessions: SessionResolver } {
+export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionResolver; service?: AiService; source?: ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
   const vault = opts.vault ?? new ByokVault();
   const sessions = opts.sessions ?? new SessionResolver({ vault, managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY });
   const service = opts.service ?? new AiService({ sessions });
@@ -55,7 +65,8 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
       const jobKind = b.jobKind === 'asset' || b.jobKind === 'chat' ? b.jobKind : 'deliverable';
       const ctl = new AbortController();
       res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
-      res.json(await service.previewPlan(userOf(req), { userMode, jobKind, text: String(b.text ?? ''), contextList: asArray(b.contextList) }, ctl.signal));
+      const contextList = opts.source && typeof b.workspaceId === 'string' ? opts.source.forChat(b.workspaceId, { message: String(b.text ?? '') }).contextList ?? [] : asArray<ContextObjectLite>(b.contextList);
+      res.json(await service.previewPlan(userOf(req), { userMode, jobKind, text: String(b.text ?? ''), contextList }, ctl.signal));
     } catch (e) { fail(res, e); }
   });
 
@@ -67,10 +78,16 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     } catch (e) { return fail(res, e); }
     const out = ndjson(req, res);
     const b = req.body;
-    const chat: ChatRequest = {
+    let chat: ChatRequest = {
       message: b.message, contextList: asArray(b.contextList), focusNodeIds: asArray(b.focusNodeIds),
       chatMode: b.chatMode, mode: b.mode === 'deep' ? 'deep' : 'auto', history: asArray(b.history), plan: b.plan, decisionUsage: b.decisionUsage,
     };
+    try {
+      if (opts.source && typeof b.workspaceId === 'string') {
+        chat = { ...chat, ...opts.source.forChat(b.workspaceId, { scopeNodeId: typeof b.scopeNodeId === 'string' ? b.scopeNodeId : undefined, message: b.message }) };
+        if (asArray<string>(b.focusNodeIds).length && !chat.scopeNodeId) chat.focusNodeIds = asArray(b.focusNodeIds);
+      }
+    } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
     await service.chat(userId, chat, out.emit, out.signal);
     out.end();
   });
@@ -83,7 +100,7 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     } catch (e) { return fail(res, e); }
     const out = ndjson(req, res);
     const b = req.body;
-    const gen: GenerateRequest = {
+    let gen: GenerateRequest = {
       deliverableId: String(b.deliverableId ?? ''), deliverableTitle: b.deliverableTitle,
       deliverableType: b.deliverableType === 'Asset' ? 'Asset' : 'Deliverable',
       acceptanceCriteria: asArray<string>(b.acceptanceCriteria), contextObjects: asArray(b.contextObjects),
@@ -91,6 +108,11 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
       userMode: (['auto', 'fast', 'deep', 'sensitive'].includes(b.userMode) ? b.userMode : 'auto') as UserMode,
       rebuildNotes: typeof b.rebuildNotes === 'string' ? b.rebuildNotes : undefined, plan: b.plan, decisionUsage: b.decisionUsage,
     };
+    try {
+      if (opts.source && typeof b.workspaceId === 'string') {
+        gen = { ...gen, ...opts.source.forGenerate(b.workspaceId, { targetNodeId: typeof b.targetNodeId === 'string' ? b.targetNodeId : undefined, title: b.deliverableTitle, criteria: gen.acceptanceCriteria }) };
+      }
+    } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
     await service.generate(userId, gen, out.emit, out.signal);
     out.end();
   });
@@ -117,5 +139,5 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     } catch (e) { fail(res, e); }
   });
 
-  return { router, sessions };
+  return { router, sessions, service };
 }

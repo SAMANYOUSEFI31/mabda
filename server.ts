@@ -3,29 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import express, { Request, Response } from 'express';
+import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createAiRouter } from './server/ai/routes.ts';
+import { createApp } from './server/app.ts';
+import { openDatabase } from './server/db/database.ts';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(express.json({ limit: '10mb' }));
-
-const { router: aiRouter, sessions: aiSessions } = createAiRouter();
-app.use('/api/ai', aiRouter);
-
-/** Health check (does not call any model). */
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', managedAi: aiSessions.managedEnabled, timestamp: new Date().toISOString() });
-});
+const { app, aiSessions } = createApp(openDatabase());
 
 /** At start-up, verify the configured model ids against the managed key's model list. Never guesses. */
 async function verifyManagedModels() {

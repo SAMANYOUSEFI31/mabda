@@ -5,21 +5,21 @@
 
 import React, { useState } from 'react';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../types';
-import { DEFAULT_TREE_NODES } from '../core/specs';
+import { flatten } from '../core/nodeTree';
 import {
   Button, Card, CONTEXT_STATUS_OPTIONS, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, Select, StatusBadge, Table, TextField, TypeBadge,
 } from '../ui';
 
 interface ContextTableViewProps {
   objects: ContextObject[];
-  nodes?: TreeNode[];
+  nodes: TreeNode[];
   onSelectObject: (obj: ContextObject) => void;
   onAddNew: () => void;
 }
 
 export const ContextTableView: React.FC<ContextTableViewProps> = ({
   objects,
-  nodes = DEFAULT_TREE_NODES,
+  nodes,
   onSelectObject,
   onAddNew,
 }) => {
