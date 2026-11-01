@@ -25,6 +25,9 @@ const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is 
 
 /** A check passes only when the decision layer says so AND is at least this sure (otherwise it is reported as failed, honestly). */
 export const CHECK_PASS_PROBABILITY = 0.6;
+export const CONSISTENCY_LABEL = 'سازگاری با دانش تأییدشدهٔ کسب‌وکار';
+/** the context prefix says this when the workspace has no Confirmed knowledge (see context.ts) */
+const NO_KNOWLEDGE_MARK = 'هنوز دانش تأییدشده‌ای ثبت نشده است';
 
 export interface PipelineInput {
   runner: StageRunner;
@@ -75,27 +78,31 @@ async function draft(input: PipelineInput, tier: Tier, stage: 'draft' | 'upgrade
  * Validator = the decision layer asked one closed question per acceptance criterion and per guardrail
  * (pass/fail + reason + probability). The rule is ours: every check must pass.
  */
-export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'acceptanceCriteria' | 'guardrails' | 'onStage'>, blocks: ContentBlock[], stages: StageUsage[]): Promise<{ verdict: ValidationVerdict; checks: CheckResult[] }> {
+export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'acceptanceCriteria' | 'guardrails' | 'onStage' | 'prompt'>, blocks: ContentBlock[], stages: StageUsage[]): Promise<{ verdict: ValidationVerdict; checks: CheckResult[] }> {
   const criteria = input.acceptanceCriteria.filter((c) => c.trim());
   const guardrails = input.guardrails.filter((g) => g.trim());
-  if (criteria.length + guardrails.length === 0) {
+  // the confirmed Context the model was given (stable prefix); without any, consistency has nothing to be judged against
+  const knowledge = (input.prompt.prefix ?? '').trim();
+  const hasKnowledge = knowledge.length > 0 && !knowledge.includes(NO_KNOWLEDGE_MARK);
+  if (criteria.length + guardrails.length === 0 && !hasKnowledge) {
     return { verdict: { passed: true, score: 100, passedCriteria: [], failedCriteria: [], guardrailViolations: [], strengths: [] }, checks: [] };
   }
   input.onStage?.('validate', 'cheap');
   const questions: DecisionQuestion[] = [
     ...criteria.map((c, i): DecisionQuestion => ({ id: `c${i}`, question: `آیا خروجی این معیار پذیرش را برآورده می‌کند؟ «${c}»`, options: ['pass', 'fail'], reason: true })),
     ...guardrails.map((g, i): DecisionQuestion => ({ id: `g${i}`, question: `آیا خروجی این گاردریل را رعایت می‌کند؟ «${g}»`, options: ['ok', 'violated'], reason: true })),
+    ...(hasKnowledge ? [{ id: 'k0', question: 'آیا خروجی با «دانش تأییدشدهٔ کسب‌وکار» بالا سازگار است؟ فقط اگر ادعایی صریحاً با آن دانش نمی‌خواند یا چیزی در تضاد با آن می‌سازد، conflict بده؛ ادعاهای تازه‌ای که دانش دربارهٔ آن‌ها ساکت است تناقض نیستند.', options: ['consistent', 'conflict'], reason: true } satisfies DecisionQuestion] : []),
   ];
-  const res = await input.decisions.decide({ text: `## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
+  const res = await input.decisions.decide({ text: `${hasKnowledge ? `## دانش تأییدشدهٔ کسب‌وکار\n${knowledge}\n\n` : ''}## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
   if (res.usage) stages.push(res.usage);
   const checks: CheckResult[] = res.answers.map((a) => {
-    const isGuard = a.id.startsWith('g');
-    const text = isGuard ? guardrails[Number(a.id.slice(1))] : criteria[Number(a.id.slice(1))];
-    const said = isGuard ? a.choice === 'ok' : a.choice === 'pass';
+    const kind: CheckResult['kind'] = a.id.startsWith('g') ? 'guardrail' : a.id.startsWith('k') ? 'consistency' : 'criterion';
+    const text = kind === 'guardrail' ? guardrails[Number(a.id.slice(1))] : kind === 'consistency' ? CONSISTENCY_LABEL : criteria[Number(a.id.slice(1))];
+    const said = kind === 'guardrail' ? a.choice === 'ok' : kind === 'consistency' ? a.choice === 'consistent' : a.choice === 'pass';
     const sure = a.probability >= CHECK_PASS_PROBABILITY;
     const reason = a.reason || (said ? 'رعایت شده است.' : 'رعایت نشده است.');
     return {
-      kind: isGuard ? 'guardrail' : 'criterion', text, passed: said && sure, probability: a.probability,
+      kind, text, passed: said && sure, probability: a.probability,
       reason: said && !sure ? `مطمئن نیستم: ${reason}` : reason,
     };
   });
@@ -103,8 +110,8 @@ export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'accept
   const verdict: ValidationVerdict = {
     passed: failed.length === 0,
     score: Math.round((100 * (checks.length - failed.length)) / checks.length),
-    passedCriteria: checks.filter((c) => c.kind === 'criterion' && c.passed).map((c) => c.text),
-    failedCriteria: failed.filter((c) => c.kind === 'criterion').map((c) => c.text),
+    passedCriteria: checks.filter((c) => c.kind !== 'guardrail' && c.passed).map((c) => c.text),
+    failedCriteria: failed.filter((c) => c.kind !== 'guardrail').map((c) => c.text),
     guardrailViolations: failed.filter((c) => c.kind === 'guardrail').map((c) => c.text),
     strengths: [],
   };

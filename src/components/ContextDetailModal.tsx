@@ -109,6 +109,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       nodeId,
       supersededById: object?.supersededById,
       source: object?.source,
+      slotKey: object?.slotKey,
     };
 
     onSave(updated);

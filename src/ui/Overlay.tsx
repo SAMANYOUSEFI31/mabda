@@ -20,11 +20,13 @@ export interface DialogProps {
   inline?: boolean;
   /** destructive confirmation: role=alertdialog, scrim click does not close */
   alert?: boolean;
+  /** side panel (full-height, anchored to the inline-end edge on wide screens; a bottom sheet on phones) */
+  side?: boolean;
 }
 
 const FOCUSABLE = 'button:not(:disabled),[href],input:not(:disabled),select,textarea,[tabindex]:not([tabindex="-1"])';
 
-export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
@@ -65,7 +67,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
 
   if (!open) return null;
   const node = (
-    <div ref={layer} className={cx('bsh-dialog-layer', inline && 'is-inline')}>
+    <div ref={layer} className={cx('bsh-dialog-layer', inline && 'is-inline', side && 'is-side')}>
       <div className="bsh-scrim" onClick={alert ? undefined : onClose} aria-hidden="true" />
       <div
         ref={panel}

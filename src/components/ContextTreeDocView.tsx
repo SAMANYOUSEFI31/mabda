@@ -21,6 +21,7 @@ interface ContextTreeDocViewProps {
   onNodeAction: (state: NonNullable<NodeDialogState>) => void;
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
+  onOpenThread: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -56,13 +57,14 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             </Button>
             <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
             <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
+            <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
             <Menu
               label={`عملیات گرهٔ ${node.label}`}
               align="end"
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                { label: 'Context Coach', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
+                { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی', icon: 'Network', disabled: !!node.isSystem, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
                 { divider: true },

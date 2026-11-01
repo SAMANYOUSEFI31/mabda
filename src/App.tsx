@@ -15,11 +15,14 @@ import {
   Workspace,
 } from './types';
 import type { WorkspaceState, ImpactInfo } from './types/state';
-import { calculateReadinessAndGaps, detectContradictions } from './core/contextEngine';
+import { calculateReadinessAndGaps } from './core/contextEngine';
 import { impactMessage } from './core/impactEngine';
 import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
-import { ContradictionBanner } from './components/ContradictionBanner';
+import type { PageAction } from './components/TopStatusBar';
+import { ContradictionPanel } from './components/ContradictionPanel';
+import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
+import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
@@ -35,6 +38,9 @@ import { ContextPackDialog } from './components/ContextPackDialog';
 import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
+import { ChangesPanel } from './components/ChangesPanel';
+import { NodeThreadPanel } from './components/NodeThreadPanel';
+import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
@@ -139,7 +145,10 @@ export default function App() {
   const [packTarget, setPackTarget] = useState<PackTarget | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
+  const [threadNodeId, setThreadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
   const nodes = data?.nodes ?? [];
@@ -148,7 +157,7 @@ export default function App() {
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
-  const contradictions: Contradiction[] = detectContradictions(workspaceContexts);
+  const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
   const attentionGaps = attentionSpec
     ? calculateReadinessAndGaps(attentionSpec, workspaceContexts, data?.relationships ?? []).gaps.filter((g) => g.importance === 'required')
@@ -163,13 +172,13 @@ export default function App() {
   const handleSaveContextObject = async (draft: ContextDraft): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
       showImpact(r.impact);
       return r.object;
     }
-    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source }));
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     return r.object;
@@ -204,11 +213,32 @@ export default function App() {
     if (impact) showImpact(impact);
   };
 
-  const handleResolveContradiction = async (_contraId: string, keepId: string, archiveId: string) => {
-    await setStatus(keepId, 'Confirmed');
-    const impact = await setStatus(archiveId, 'Archived');
-    if (impact) showImpact(impact);
+  /** conflict: keep one (the other becomes Superseded) */
+  const handleKeepContradiction = async (c: Contradiction, keepId: string) => {
+    const r = await attempt(() => dataApi.resolveContradiction(wid, { aId: c.itemA.id, bId: c.itemB.id, action: 'keep', keepId }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, pairJudgments: r.pairJudgments, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: 'تناقض حل شد؛ مورد دیگر «جایگزین‌شده» است و در تاریخچه می‌ماند.' });
   };
+  /** both claims hold: move one claim to another node */
+  const handleSeparateContradiction = async (c: Contradiction, moveId: string, nodeId: string) => {
+    const r = await attempt(() => dataApi.resolveContradiction(wid, { aId: c.itemA.id, bId: c.itemB.id, action: 'separate', moveId, nodeId }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, pairJudgments: r.pairJudgments, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
+  };
+
+  // semantic contradictions: code picks the candidate pairs, the decision layer answers one closed question each (Pro and above)
+  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
+  const judgedSigs = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!pairSig || !ai.judgmentsAvailable || judgedSigs.current.has(pairSig)) return;
+    judgedSigs.current.add(pairSig);
+    dataApi.judgeContradictions(wid).then((r) => patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }))).catch(() => { /* optional: the rule-based checks still run */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairSig, ai.judgmentsAvailable, wid]);
 
   // ── tree nodes ──────────────────────────────────────────────────────────────────────────────────
   const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
@@ -456,6 +486,13 @@ export default function App() {
   };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
+  /** the one action in the top bar that fits the current page */
+  const pageAction: PageAction | undefined =
+    activeTab === 'context' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
+    : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
+    : undefined;
+
   const openContext = (obj: ContextObject | null, nodeId = 'business') => {
     setSelectedContextObject(obj);
     setModalDefaultNodeId(nodeId);
@@ -491,6 +528,10 @@ export default function App() {
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
+        onOpenLedger={() => setActiveTab('ledger')}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+        onOpenConnect={() => setIsConnectOpen(true)}
+        onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         specs={specs}
@@ -509,21 +550,14 @@ export default function App() {
         <TopStatusBar
           currentWorkspace={currentWorkspace}
           activeTab={activeTab}
-          contradictions={contradictions}
-          onOpenContextModal={() => openContext(null)}
-          onOpenCustomSpecModal={() => openSpecEditor()}
-          onOpenPlanModal={() => setIsPlanModalOpen(true)}
+          action={pageAction}
         />
 
         {/* Main Canvas */}
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
-          <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />
+          {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />}
 
-          {/* Contradiction Detection Banner */}
-          <ContradictionBanner
-            contradictions={contradictions}
-            onResolve={handleResolveContradiction}
-          />
+
 
         {/* TAB 1: Context & Source of Truth */}
         {activeTab === 'context' && (
@@ -558,12 +592,18 @@ export default function App() {
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
               onAnswerGap={(gap, answer) => { void handleSaveContextObject({
                 workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
-                title: gap.label, content: answer, nodeId: gap.nodeId,
+                title: gap.label, content: answer, nodeId: gap.nodeId, slotKey: gap.key,
               }); }}
               onOpenStudio={() => setActiveTab('workstreams')}
               onOpenAssets={() => setActiveTab('assets')}
               onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onOpenContradictions={() => document.getElementById('contradictions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
+
+            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} workspaceId={wid} objects={workspaceContexts} deliverables={deliverables} onOpenAssets={() => setActiveTab('assets')} />}
+
+            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
 
             <ProposalInbox
               objects={workspaceContexts}
@@ -574,6 +614,7 @@ export default function App() {
               onOpenImport={() => setIsImportOpen(true)}
               onOpenPack={() => setPackTarget({ title: currentWorkspace.name })}
               onOpenConnect={() => setIsConnectOpen(true)}
+              onOpenMemory={() => setIsMemoryOpen(true)}
             />
 
             {contextViewMode === 'read' ? (
@@ -594,6 +635,7 @@ export default function App() {
                 onNodeAction={setNodeDialog}
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
                 onReadNode={setReadNodeId}
+                onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
@@ -676,6 +718,7 @@ export default function App() {
             deliverables={deliverables}
             allContextObjects={workspaceContexts}
             stale={stale}
+            onGoToWorkstreams={() => setActiveTab('workstreams')}
             onOpenContextModal={(obj) => openContext(obj)}
             onPromoteToContext={handlePromoteToContext}
             onRebuild={(del) => {
@@ -799,6 +842,15 @@ export default function App() {
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <NodeThreadPanel
+        open={!!threadNodeId}
+        workspaceId={wid}
+        node={nodes.find((n) => n.id === threadNodeId) ?? null}
+        onClose={() => setThreadNodeId(null)}
+        onProposed={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
+        onSummary={(note, ledger) => patch((d) => ({ ...d, notes: [note, ...d.notes], ledger }))}
+      />
       <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
 
       <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />

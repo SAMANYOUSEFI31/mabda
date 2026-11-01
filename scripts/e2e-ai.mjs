@@ -15,8 +15,9 @@ const KEY = 'AIzaSy' + 'A'.repeat(33);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR' });
 const page = await ctx.newPage();
+const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
+page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
 const shot = (n) => page.screenshot({ path: `docs/screens/ai-${n}.png` });
 const step = (m) => console.log('•', m);
 
@@ -29,7 +30,7 @@ await page.getByText('هوش مصنوعی هنوز راه‌اندازی نشد�
 await shot('1-no-key-banner');
 
 step('BYOK: save key through the settings dialog');
-await page.getByRole('button', { name: 'تنظیم کلید API' }).first().click();
+await account('کلید هوش مصنوعی');
 await page.getByLabel('کلید Gemini API').fill(KEY);
 await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
 await page.getByText('کلید شخصی فعال').waitFor();
@@ -54,7 +55,7 @@ await shot('4-add-to-context-draft');
 await page.keyboard.press('Escape');
 
 step('workstream: credit preview comes from the router plan; generate shows real stages');
-await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("استودیوی جریان‌های کار")').click();
+await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("جریان‌های کار")').click();
 await page.getByText(/بدون کسر اعتبار/).first().waitFor({ timeout: 15000 });
 await shot('5-credit-preview');
 await page.getByRole('button', { name: 'ساخت دارایی' }).click();
@@ -64,7 +65,7 @@ await page.locator('table').first().waitFor({ timeout: 30000 });
 await shot('6-deliverable-markdown');
 
 step('ledger: row with real tokens/cost and model/pattern');
-await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("دفتر کل")').click();
+await account('مصرف و دفتر کل');
 await page.getByText('کلید شخصی').first().waitFor();
 await shot('7-ledger');
 

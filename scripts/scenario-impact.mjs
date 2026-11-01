@@ -39,8 +39,12 @@ async function scenario(width, tag) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, locale: 'fa-IR' });
   const page = await ctx.newPage();
+  const account = async (name) => {
+    if (width === 390) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
+    else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+  };
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   const shot = (n, full = false) => page.screenshot({ path: `docs/screens/impact-${tag}-${n}.png`, fullPage: full });
   const step = (m) => console.log(`[${tag}] •`, m);
   const desktop = width >= 768;
@@ -53,7 +57,7 @@ async function scenario(width, tag) {
   await page.getByText('منبع حقیقت: استودیو').waitFor();
 
   step('BYOK key');
-  await page.getByRole('button', { name: 'تنظیم کلید API' }).first().click();
+  await account('کلید هوش مصنوعی');
   await page.getByLabel('کلید Gemini API').fill(KEY);
   await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
   await page.getByText('کلید شخصی فعال').waitFor();
@@ -64,7 +68,7 @@ async function scenario(width, tag) {
   await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
   await page.getByLabel('نام گره').fill('کمپین پاییز');
   await page.getByRole('button', { name: 'ساخت گره' }).click();
-  await page.getByRole('dialog').getByText('Context Coach').first().waitFor(); // the Coach opens for the new node
+  await page.getByRole('dialog').getByText('مربی دانش').first().waitFor(); // the Coach opens for the new node
   await page.keyboard.press('Escape');
   await page.getByRole('heading', { name: 'کمپین پاییز' }).waitFor();
   await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
@@ -102,12 +106,12 @@ async function scenario(width, tag) {
   await shot('3-node-chat');
 
   step('workstream: generate an asset (records the exact context versions)');
-  await goTab('استودیوی جریان‌های کار', 'جریان‌ها');
+  await goTab('جریان‌های کار', 'جریان‌ها');
   await page.getByRole('button', { name: 'ساخت دارایی' }).waitFor();
   await page.getByText(/بدون کسر اعتبار/).first().waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: 'ساخت دارایی' }).click();
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
-  await page.getByText('Context Replay').first().waitFor({ timeout: 30000 });
+  await page.getByText('ردپای دانش').first().waitFor({ timeout: 30000 });
   await shot('4-asset-fresh');
   assert.equal(await page.getByText('قدیمی', { exact: true }).count(), 0, 'nothing is stale yet');
 
@@ -123,7 +127,7 @@ async function scenario(width, tag) {
   await shot('5-impact-toast');
 
   step('assets: «قدیمی» badge + reason + half-price rebuild');
-  await goTab('کتابخانهٔ دارایی‌ها', 'دارایی‌ها');
+  await goTab('دارایی‌ها', 'دارایی‌ها');
   await page.getByRole('tab', { name: /^قدیمی/ }).click();
   await page.getByText('این دارایی قدیمی شده است').first().waitFor();
   await page.getByText(/از نسخهٔ ۱ به ۲ تغییر کرد/).first().waitFor();
@@ -135,7 +139,7 @@ async function scenario(width, tag) {
   await shot('7-rebuilt');
 
   step('assets again: one fewer stale asset, rebuilt one is fresh and replays version 2');
-  await goTab('کتابخانهٔ دارایی‌ها', 'دارایی‌ها');
+  await goTab('دارایی‌ها', 'دارایی‌ها');
   await page.getByRole('tab', { name: /^قدیمی/ }).waitFor();
   const staleAfter = await page.getByText('این دارایی قدیمی شده است').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
@@ -144,7 +148,7 @@ async function scenario(width, tag) {
   await shot('8-after-rebuild', true);
 
   step('ledger shows the extraction, file processing and rebuild with real usage');
-  await goTab('دفتر کل', 'دفتر کل');
+  await account('مصرف و دفتر کل');
   await page.getByText(/پردازش فایل/).first().waitFor();
   await shot('9-ledger');
 

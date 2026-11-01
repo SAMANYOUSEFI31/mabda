@@ -44,8 +44,8 @@ const BAND_OPTIONS = [
   { value: 'long', label: 'بلند' },
 ];
 const TYPE_OPTIONS = [
-  { value: 'Asset', label: 'Asset (کوچک و سریع)' },
-  { value: 'Deliverable', label: 'Deliverable (اصلی و تفصیلی)' },
+  { value: 'Asset', label: 'دارایی کوچک (سریع)' },
+  { value: 'Deliverable', label: 'خروجی اصلی (تفصیلی)' },
 ];
 
 const lines = (xs: string[] = []): Line[] => xs.map((text) => ({ uid: uid(), text }));
@@ -118,7 +118,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
     return (
       <Dialog open onClose={onClose} size="sm" title="جریان کار سفارشی از پلن Pro" description={`پلن فعلی این فضای کاری ${PLANS[planId].title} است.`}
         footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" onClick={() => { onClose(); onUpgrade(); }}>ارتقای پلن</Button></>}>
-        <p className="body-md text-text-default">ساخت و ویرایش spec با خروجی‌های وابسته، معیار پذیرش و گاردریل در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
+        <p className="body-md text-text-default">ساخت و ویرایش جریان کار با خروجی‌های وابسته، معیار پذیرش و گاردریل در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
       </Dialog>
     );
   }
@@ -138,7 +138,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
             <TextField label="نام Context" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
             <Select label="شاخه" value={it.nodeId} onChange={(e) => patch({ nodeId: e.target.value })} options={nodeOptions} />
-            <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش Gap)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
+            <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش شکاف)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
           </div>
         )}
       />
@@ -161,7 +161,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
       onClose={onClose}
       size="xl"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
-      description="هر Workstream یک spec داده‌محور است: Context لازم، خروجی‌های وابسته، معیار پذیرش و گاردریل. Constraintهای تأییدشدهٔ فضای کار خودکار به‌عنوان گاردریل اعمال می‌شوند."
+      description="هر جریان کار یک مشخصهٔ داده‌محور است: Context لازم، خروجی‌های وابسته، معیار پذیرش و گاردریل. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان گاردریل اعمال می‌شوند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -186,7 +186,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
           <Textarea label="توضیح (اختیاری)" rows={2} value={draft.description} onChange={(e) => set({ description: e.target.value })} />
         </Card>
 
-        {ctxEditor('required', 'Context لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ Gap Engine دنبالشان می‌گردد.')}
+        {ctxEditor('required', 'Context لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ رادار شکاف دنبالشان می‌گردد.')}
         {ctxEditor('suggested', 'Context پیشنهادی', 'کیفیت را بالا می‌برند.')}
         {ctxEditor('optional', 'Context اختیاری', 'اگر باشد استفاده می‌شود.')}
 
@@ -239,7 +239,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
 
         <Card padding="lg" className="flex flex-col gap-stack-md">
           <div><h4 className="title text-text-default">گاردریل‌ها</h4><p className="caption text-text-subtle">قوانینی که هیچ خروجی نباید نقض کند. نقض هر کدام، خروجی را «تأییدنشده» می‌کند.</p></div>
-          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن گاردریل" add={() => ({ uid: uid(), text: '' })} empty="گاردریلی تعریف نشده؛ فقط Constraintهای تأییدشدهٔ فضای کار اعمال می‌شوند."
+          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن گاردریل" add={() => ({ uid: uid(), text: '' })} empty="گاردریلی تعریف نشده؛ فقط محدودیت‌های تأییدشدهٔ فضای کار اعمال می‌شوند."
             render={(g, p) => <TextField label="گاردریل" value={g.text} onChange={(e) => p({ text: e.target.value })} />} />
         </Card>
 

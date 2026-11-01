@@ -242,6 +242,7 @@ test('generate: spec guardrails + Confirmed Constraints are both checked; each c
   assert.deepEqual(r.checks?.map((k) => [k.kind, k.text, k.passed]), [
     ['criterion', 'معیار الف', true], ['criterion', 'معیار ب', true],
     ['guardrail', 'از واژهٔ «ارزان» استفاده نکن', false], ['guardrail', 'بدون تخفیف: تخفیف نداریم', true],
+    ['consistency', 'سازگاری با دانش تأییدشدهٔ کسب‌وکار', true],
   ]);
   assert.equal(r.checks![2].reason, 'دلیل رد g0');
   assert.equal(r.validationFailed, true);
@@ -275,4 +276,26 @@ test('Context Coach: balanced tier, questions + ambiguities + PROPOSALS only (cl
   assert.deepEqual(r.ambiguities, [{ quote: 'مشتری خوب', why: 'معیار ندارد' }]);
   assert.deepEqual(r.proposals.map((o) => [o.title, o.nodeId]), [['مخاطب', 'u1']]);
   assert.match(p.calls[0].prompt.user, /کمپین/);
+});
+
+test('contradictions: ONE closed question per candidate pair, both claims quoted, binary answer + reason, no probability leaves the server', async () => {
+  const asked: Array<{ id: string; question: string; options: string[] }> = [];
+  const fake = { async decide(_s: unknown, qs: Array<{ id: string; question: string; options: string[] }>) {
+    asked.push(...qs);
+    return { answers: qs.map((q, i) => ({ id: q.id, choice: i === 0 ? 'conflict' : 'compatible', probability: 0.93, reason: i === 0 ? 'دو قیمت متفاوت' : 'دو بخش مختلف' })) };
+  } };
+  const p = new MockProvider(() => null);
+  p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+  const sessions = new SessionResolver({ vault: vault(), managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
+  const service = new AiService({ sessions, cfg, decisionFactory: () => fake as never });
+  const r = await service.judgeContradictions('user-12345678', [
+    { key: 'a|b', a: { title: 'قیمت اشتراک', content: '۴ میلیون تومان' }, b: { title: 'قیمت', content: '۶ میلیون تومان' } },
+    { key: 'c|d', a: { title: 'لحن', content: 'صریح' }, b: { title: 'لحن کانال', content: 'رسمی' } },
+  ]);
+  assert.equal(asked.length, 2, 'exactly one question per pair');
+  assert.deepEqual(asked.map((q) => q.options), [['conflict', 'compatible'], ['conflict', 'compatible']]);
+  assert.match(asked[0].question, /ادعای الف — «قیمت اشتراک»: ۴ میلیون تومان[\s\S]*ادعای ب — «قیمت»: ۶ میلیون تومان/);
+  assert.deepEqual(r.results, { 'a|b': { conflict: true, reason: 'دو قیمت متفاوت' }, 'c|d': { conflict: false, reason: 'دو بخش مختلف' } });
+  assert.ok(!JSON.stringify(r).includes('0.93'), 'no model confidence is exposed');
+  assert.deepEqual((await service.judgeContradictions('user-12345678', [])).results, {});
 });

@@ -14,10 +14,9 @@ mkdirSync(OUT, { recursive: true });
 const SIZES = [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }];
 const TABS = [
   { id: 'context', label: 'منبع حقیقت' },
-  { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'استودیوی جریان‌های کار' },
-  { id: 'chat', label: 'گفتگو', desktopLabel: 'گفتگو و استخراج دانش' },
-  { id: 'assets', label: 'دارایی‌ها', desktopLabel: 'کتابخانهٔ دارایی‌ها' },
-  { id: 'ledger', label: 'دفتر کل', desktopLabel: 'دفتر کل و شفافیت مالی' },
+  { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'جریان‌های کار' },
+  { id: 'chat', label: 'گفتگو' },
+  { id: 'assets', label: 'دارایی‌ها' },
 ];
 
 const audit = () => {
@@ -48,10 +47,10 @@ const audit = () => {
       if (!seen.has(key)) {
         seen.add(key);
         if (fs < 12) out.tiny.push(`${fs}px "${own.slice(0, 40)}"`);
-        else if (own.length > 70 && fs < 14) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
+        else if (own.length > 45 && fs < 14) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
       }
     }
-    if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary')) {
+    if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {
       const r = el.getBoundingClientRect();
       const hitPseudo = /bsh-btn--sm|bsh-iconbtn--sm|bsh-tab\b|bsh-tag__remove|bsh-page|bsh-check__input|bsh-radio__input|bsh-switch__input/.test(el.className);
       if ((r.height < 43.5 || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
@@ -68,7 +67,7 @@ for (const size of SIZES) {
   const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR' });
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text() + ' ' + (m.location().url || '')); });
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.clear());
@@ -105,22 +104,31 @@ for (const size of SIZES) {
   await page.getByRole('button', { name: 'نشست‌های گفتگو' }).first().click(); await shoot('chat-sessions');
 
   await goTab(TABS[3]); await shoot('assets');
-  await goTab(TABS[4]); await shoot('ledger');
+
+  // everything that is not daily work lives in the account menu (desktop) / account drawer (mobile)
+  const mobile = size.width < 768;
+  const openAccount = async () => {
+    if (mobile) await page.getByRole('button', { name: 'حساب کاربری' }).first().click();
+    else await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click();
+    await page.waitForTimeout(150);
+  };
+  const accountItem = async (name) => {
+    await openAccount();
+    await (mobile ? page.getByRole('dialog').getByRole('button', { name }) : page.getByRole('menuitem', { name })).first().click();
+    await page.waitForTimeout(250);
+  };
+  await openAccount(); await shoot(mobile ? 'drawer-account' : 'menu-account'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+  await accountItem('مصرف و دفتر کل'); await shoot('ledger');
   // plan / economics tabs exist only when MABDA_MANAGED_AI is on
   const maybe = async (loc, fn) => { if (await loc.count()) await fn(loc.first()); };
   await maybe(page.getByRole('tab', { name: /پلن‌ها و اعتبار/ }), async (l) => { await l.click(); await shoot('ledger-plans'); });
   await maybe(page.getByRole('tab', { name: /خطوط قرمز/ }), async (l) => { await l.click(); await shoot('ledger-economics'); });
   await maybe(page.getByRole('tab', { name: /مصرف و سهمیه/ }), async (l) => { await l.click(); await shoot('ledger-usage'); });
 
-  // dialogs
-  if (size.width >= 768) {
-    await maybe(page.getByRole('button', { name: /راه‌اندازی ۱۰ دقیقه‌ای/ }), async (l) => { await l.click(); await shoot('dialog-onboarding'); await closeDialog(); });
-    await maybe(page.getByRole('button', { name: /09123456789/ }), async (l) => { await l.click(); await shoot('dialog-account'); await closeDialog(); });
-    await maybe(page.getByRole('button', { name: /پلن:/ }), async (l) => { await l.click(); await shoot('dialog-plans'); await closeDialog(); });
-  } else {
-    await maybe(page.getByRole('button', { name: 'باز کردن منو' }), async (l) => { await l.click(); await shoot('drawer-menu'); await closeDialog(); });
-    await maybe(page.getByRole('button', { name: /اعتبار$/ }), async (l) => { await l.click(); await shoot('dialog-plans'); await closeDialog(); });
-  }
+  await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
+  await accountItem('راه‌اندازی ۱۰ دقیقه‌ای'); await shoot('dialog-onboarding'); await closeDialog();
+  await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
+  await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect'); await closeDialog();
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();
 }

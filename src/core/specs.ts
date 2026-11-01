@@ -113,7 +113,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
     deliverables: [
       {
         id: 'del_positioning_statement',
-        title: 'جملهٔ موقعیت‌یابی (Positioning Statement)',
+        title: 'جملهٔ موقعیت‌یابی',
         type: 'Asset',
         description: 'گزاره یکپارچه و دقیق از اینکه برای چه کسی، چه ارزشی با چه تمایزی خلق می‌کنید.',
         order: 1,
@@ -127,7 +127,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
       },
       {
         id: 'del_icp_profile',
-        title: 'پروفایل مشتری آرمانی (ICP & Persona)',
+        title: 'پروفایل مشتری آرمانی',
         type: 'Deliverable',
         description: 'تحلیل عمیق انگیزه‌ها، ترس‌ها، جایگزین‌های فعلی و معیارهای تصمیم‌گیری مشتری.',
         order: 2,
@@ -140,7 +140,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
       },
       {
         id: 'del_messaging_pillars',
-        title: 'پایهٔ پیام و ستون‌های محتوایی (Messaging Pillars)',
+        title: 'پایهٔ پیام و ستون‌های محتوایی',
         type: 'Deliverable',
         description: '۴ ستون موضوعی پیوسته که اعتماد مخاطب را به راه‌حل شما به صورت طبیعی می‌سازد.',
         order: 3,
@@ -166,7 +166,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
       },
       {
         id: 'del_action_plan',
-        title: 'اقدام‌های بعدی و اولویت‌های اجرایی (Next Actions)',
+        title: 'اقدام‌های بعدی و اولویت‌های اجرایی',
         type: 'Deliverable',
         description: 'گام‌های ۳۰ روزه برای تست موقعیت‌یابی و دریافت بازخورد واقعی از بازار.',
         order: 5,
@@ -180,7 +180,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
   },
   {
     id: 'instagram_foundation',
-    title: 'پایهٔ اینستاگرام (Instagram Foundation)',
+    title: 'پایهٔ اینستاگرام',
     target: 'طراحی بایو، ۳ ستون محتوایی، قلاب‌های ریلز و ساختار استوری‌لاین',
     description: 'قالب فشرده برای کسب‌وکارهای متکی به رشد در اینستاگرام با تکیه بر اصالت دانش.',
     requiredContext: [

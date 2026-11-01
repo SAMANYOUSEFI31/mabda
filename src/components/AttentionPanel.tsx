@@ -19,12 +19,15 @@ interface Props {
   onOpenStudio: () => void;
   onOpenAssets: () => void;
   onOpenProposals: () => void;
+  onOpenContradictions: () => void;
+  /** «چه چیزی عوض شد»: opens the 7-day change feed */
+  onOpenChanges: () => void;
 }
 
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount;
@@ -38,7 +41,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
 
   const chips: Array<{ icon: IconName; label: string; count: number; onClick?: () => void; hint: string }> = [
     { icon: 'Info', label: 'سؤال باز', count: gaps.length, onClick: onOpenStudio, hint: 'برای ساخت خروجی لازم است' },
-    { icon: 'TriangleAlert', label: 'تناقض', count: contradictionCount, hint: 'دو مورد با هم نمی‌خوانند (پایین همین صفحه)' },
+    { icon: 'TriangleAlert', label: 'تناقض', count: contradictionCount, onClick: onOpenContradictions, hint: 'دو مورد با هم نمی‌خوانند (پایین همین صفحه)' },
     { icon: 'RefreshCw', label: 'خروجی قدیمی', count: staleCount, onClick: onOpenAssets, hint: 'دانش عوض شده و خروجی هنوز قدیمی است' },
     { icon: 'Inbox', label: 'پیشنهاد AI', count: proposedCount, onClick: onOpenProposals, hint: 'منتظر تأیید تو' },
   ];
@@ -76,6 +79,10 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
           );
         })}
       </ul>
+
+      <div>
+        <Button variant="ghost" size="sm" iconStart="History" onClick={onOpenChanges}>در ۷ روز اخیر چه چیزی عوض شد؟</Button>
+      </div>
 
       {questions.length > 0 && (
         <div className="flex flex-col gap-stack-md border-t border-border-default pt-inset-lg">

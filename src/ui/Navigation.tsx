@@ -201,16 +201,19 @@ export interface NavItemProps {
   selected?: boolean;
   /** indented sub-item (second level) */
   nested?: boolean;
+  /** accordion parent: true while its sub-menu is open */
+  expanded?: boolean;
   onClick?: () => void;
   className?: string;
 }
 
-export function NavItem({ label, icon, trailing, selected, nested = false, onClick, className }: NavItemProps) {
+export function NavItem({ label, icon, trailing, selected, expanded, nested = false, onClick, className }: NavItemProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={selected ? 'page' : undefined}
+      aria-expanded={expanded}
       className={cx(
         'flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md py-inset-xs text-start transition-colors',
         nested ? 'body-sm' : 'label-md',

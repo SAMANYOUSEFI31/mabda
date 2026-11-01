@@ -75,21 +75,21 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
     <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <div className="flex flex-wrap items-center gap-inline-sm">
-          <span className="label-md text-text-default">Context Coach</span>
+          <span className="label-md text-text-default">مربی دانش</span>
           <Badge intent="neutral" icon="Brain">سطح متعادل</Badge>
         </div>
         {quota && <span className="caption text-text-subtle">باقی‌ماندهٔ امروز: {formatNumber(quota.remaining)} از {formatNumber(quota.limit)}</span>}
       </div>
-      <p className="body-sm text-text-subtle">Coach سؤال روشن‌کننده می‌پرسد و ابهام را نشان می‌دهد. چیزی خودش ثبت نمی‌کند؛ فقط موارد «پیشنهادی» می‌سازد که خودت تأیید می‌کنی.</p>
+      <p className="body-sm text-text-subtle">مربی دانش سؤال روشن‌کننده می‌پرسد و ابهام را نشان می‌دهد. چیزی خودش ثبت نمی‌کند؛ فقط موارد «پیشنهادی» می‌سازد که خودت تأیید می‌کنی.</p>
 
       <Textarea label="چه چیزی را می‌خواهی روشن کنی؟" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
       {!ai.judgmentsAvailable && (
-        <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>برای Coach کلید API لازم است.</Alert>
+        <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>برای مربی دانش کلید API لازم است.</Alert>
       )}
       {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={ask}>دوباره</Button>}>{error}</Alert>}
       <div>
         <Button variant="secondary" iconStart="Sparkles" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
-          {result ? 'پرسش دوباره با پاسخ‌هایم' : 'از Coach بپرس'}
+          {result ? 'پرسش دوباره با پاسخ‌هایم' : 'از مربی دانش بپرس'}
         </Button>
       </div>
 
@@ -121,7 +121,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
             </div>
           )}
           {saved > 0 && <Alert intent="success">{formatNumber(saved)} مورد پیشنهادی ثبت شد؛ در منبع حقیقت منتظر تأیید توست.</Alert>}
-          {result.questions.length === 0 && result.ambiguities.length === 0 && result.proposals.length === 0 && <p className="body-sm text-text-subtle">Coach چیزی برای روشن‌کردن پیدا نکرد.</p>}
+          {result.questions.length === 0 && result.ambiguities.length === 0 && result.proposals.length === 0 && <p className="body-sm text-text-subtle">مربی دانش چیزی برای روشن‌کردن پیدا نکرد.</p>}
         </div>
       )}
     </div>

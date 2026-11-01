@@ -37,14 +37,15 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR' });
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   const shot = (n, full = false) => page.screenshot({ path: `docs/screens/spec-${n}.png`, fullPage: full });
   const step = (m) => console.log('•', m);
   const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).click();
+  const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('منبع حقیقت: استودیو').waitFor();
-  await page.getByRole('button', { name: 'تنظیم کلید API' }).first().click();
+  await account('کلید هوش مصنوعی');
   await page.getByLabel('کلید Gemini API').fill(KEY);
   await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
   await page.getByText('کلید شخصی فعال').waitFor();
@@ -56,8 +57,8 @@ try {
   await page.getByLabel('نام گره').fill('کمپین عرضه');
   await page.getByLabel('توضیح کوتاه (اختیاری)').fill('مشتری خوب می‌خواهیم');
   await page.getByRole('button', { name: 'ساخت گره' }).click();
-  await page.getByRole('dialog').getByText('Context Coach').first().waitFor();
-  await page.getByRole('button', { name: 'از Coach بپرس' }).click();
+  await page.getByRole('dialog').getByText('مربی دانش').first().waitFor();
+  await page.getByRole('button', { name: 'از مربی دانش بپرس' }).click();
   await page.getByText('سؤال‌های روشن‌کننده').waitFor({ timeout: 20000 });
   await page.getByText('ابهام‌ها').waitFor();
   await shot('1-coach');
@@ -66,7 +67,8 @@ try {
   await page.keyboard.press('Escape');
 
   step('spec editor: 5 outputs, dependencies, 2 guardrails; a cycle is blocked');
-  await page.getByRole('button', { name: 'جدید' }).first().click();
+  await nav('جریان‌های کار');
+  await page.getByRole('button', { name: 'جریان کار تازه' }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('عنوان جریان کار').fill('کمپین عرضهٔ محصول');
   await dlg.getByLabel('هدف (Target)').fill('ساخت بستهٔ کامل پیام و محتوا برای عرضهٔ محصول جدید');
@@ -127,9 +129,9 @@ try {
   await shot('5-all-outputs', true);
 
   step('Pro and above only: the Starter workspace gets the upgrade notice');
-  await page.getByLabel('فضای کاری فعال').selectOption({ label: 'آکادمی رشد فریلنسرها (Starter)' });
+  await account('آکادمی رشد فریلنسرها');
   await page.getByText('منبع حقیقت: آکادمی').waitFor().catch(() => {});
-  await nav('استودیوی جریان‌های کار');
+  await nav('جریان‌های کار');
   await page.getByRole('button', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();
   await shot('6-starter-gated');

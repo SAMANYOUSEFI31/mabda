@@ -27,16 +27,17 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR', permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   const shot = (n, full = false) => page.screenshot({ path: `docs/screens/paste-${n}.png`, fullPage: full });
   const step = (m) => console.log('•', m);
   const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).click();
+  const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('منبع حقیقت: استودیو').waitFor();
 
   step('studio: «کپی برای هوش مصنوعی» on an output → pack with its size');
-  await nav('استودیوی جریان‌های کار');
+  await nav('جریان‌های کار');
   await page.getByRole('button', { name: 'کپی برای هوش مصنوعی' }).click();
   await page.getByText(/حدود .* توکن/).first().waitFor();
   const pack = await page.getByLabel('پیش‌نمایش بسته (فقط‌خواندنی)').inputValue();
@@ -102,7 +103,7 @@ try {
   await page.getByText('۱ منتظر تأیید').or(page.getByText('1 منتظر تأیید')).first().waitFor();
 
   step('the pasted asset is in the library with the pack lineage');
-  await nav('کتابخانهٔ دارایی‌ها');
+  await nav('دارایی‌ها');
   await page.getByText('جملهٔ موقعیت‌یابی', { exact: true }).first().waitFor();
   await page.getByRole('button', { name: 'مشاهدهٔ ورودی‌ها' }).first().click().catch(() => {});
   await shot('5-asset-lineage', true);

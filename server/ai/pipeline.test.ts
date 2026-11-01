@@ -159,3 +159,24 @@ test('every stage is recorded with tier/model/effort for the ledger', async () =
   assert.deepEqual([d.provider, d.modelId, d.effort, d.tier], ['gemini', 'model-balanced', 'medium', 'balanced']);
   assert.ok(d.costUsd > 0);
 });
+
+test('validator sees the confirmed Context and judges consistency with it; a conflict fails the output; no knowledge → no such question', async () => {
+  const withCtx = buildPrompt({ contexts: [{ id: 'k', type: 'Fact', status: 'Confirmed', title: 'قیمت', content: 'اشتراک ماهانه ۹ دلار است', nodeId: 'offer' }, { id: 'p', type: 'Fact', status: 'Proposed', title: 'پیشنهادی', content: 'متن پیشنهادی نباید واقعیت شود', nodeId: 'offer' }], task: 'نوشتن' });
+  const p = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'اشتراک ۹۰ دلار است')] } : verdict({ failed: ['k0'] })(c)));
+  const out = await run(p, plan({ tier: 'frontier' }), { prompt: withCtx });
+  const check = p.calls.find((c) => !isBlocks(c.schema))!;
+  assert.match(check.prompt.user, /دانش تأییدشدهٔ کسب‌وکار[\s\S]*اشتراک ماهانه ۹ دلار است/, 'the validator is given the confirmed knowledge');
+  assert.ok(!check.prompt.user.includes('متن پیشنهادی نباید واقعیت شود'), 'Proposed knowledge is never given as fact');
+  const k = out.checks!.find((x) => x.kind === 'consistency')!;
+  assert.deepEqual([k.passed, k.reason], [false, 'دلیل رد k0']);
+  assert.equal(out.validationFailed, true);
+  assert.ok(out.verdict!.failedCriteria.includes('سازگاری با دانش تأییدشدهٔ کسب‌وکار'));
+
+  const none = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'x')] } : verdict()(c)));
+  const o2 = await run(none, plan({ tier: 'frontier' })); // prompt without any confirmed knowledge
+  assert.ok(!o2.checks!.some((x) => x.kind === 'consistency'));
+  const good = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'x')] } : verdict()(c)));
+  const o3 = await run(good, plan({ tier: 'frontier' }), { prompt: withCtx, acceptanceCriteria: [], guardrails: [] });
+  assert.deepEqual(o3.checks!.map((x) => x.kind), ['consistency'], 'consistency alone is a valid check set');
+  assert.equal(o3.validationFailed, false);
+});

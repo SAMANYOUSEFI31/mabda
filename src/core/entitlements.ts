@@ -55,7 +55,7 @@ export function meters(plan: PlanId, u: UsageNumbers): Meter[] {
     meter('objects', 'قلم دانش (Object)', 'قلم', u.objects, e.maxObjects),
     meter('fileTokens', 'پردازش فایل این ماه', 'توکن', u.fileTokens, e.fileTokensPerMonth),
     meter('judgments', 'قضاوت‌های امروز (لایهٔ تصمیم)', 'قضاوت', u.judgmentsToday, e.decisionJudgmentsPerDay),
-    meter('coach', 'Context Coach امروز', 'جلسه', u.coachToday, e.coachPerDay),
+    meter('coach', 'مربی دانش امروز', 'جلسه', u.coachToday, e.coachPerDay),
   ];
 }
 

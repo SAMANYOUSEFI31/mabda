@@ -188,3 +188,31 @@ test('full external-AI scenario: gaps → read context → save_asset with linea
     await c.close();
   } finally { t.close(); }
 });
+
+test('propose_context_updates with slotKey fills the Gap once confirmed (Proposed alone is not a fact); unknown slots are ignored with a note', async () => {
+  const t = await boot();
+  try {
+    const c = await t.connect((await t.token()).token);
+    const before = await t.call(c, 'get_gaps', { specId: 'main_positioning' });
+    const gap = before.data.gaps.find((g: any) => g.status === 'missing' && g.importance === 'required');
+    assert.ok(gap, 'the sample workspace has a missing required item');
+    const r = await t.call(c, 'propose_context_updates', { updates: [
+      { type: 'Fact', title: 'عنوان دلخواه که ربطی به برچسب ندارد', content: 'مسئلهٔ اصلی مشتری: توضیح دوبارهٔ کسب‌وکار به هر AI', slotKey: gap.key },
+      { type: 'Fact', title: 'ناشناخته', content: 'متن', slotKey: 'not_a_slot' },
+    ] });
+    assert.match(r.data.results[1].note, /هیچ شکافی نیست/);
+    const saved = t.repo.listObjects({ userId: 'local', workspaceId: 'ws_studio' });
+    const mine = saved.find((o) => o.title.startsWith('عنوان دلخواه'))!;
+    assert.equal(mine.slotKey, gap.key);
+    assert.equal(mine.status, 'Proposed');
+    assert.equal(saved.find((o) => o.title === 'ناشناخته')!.slotKey, undefined);
+    const afterProposed = await t.call(c, 'get_gaps', { specId: 'main_positioning' });
+    assert.equal(afterProposed.data.gaps.find((g: any) => g.key === gap.key)?.status !== 'missing', true, 'a Proposed object fills the slot (counted partially) …');
+    t.repo.updateObject({ userId: 'local', workspaceId: 'ws_studio' }, mine.id, { status: 'Confirmed' });
+    const after = await t.call(c, 'get_gaps', { specId: 'main_positioning' });
+    assert.equal(after.data.gaps.some((g: any) => g.key === gap.key), false, '… and once the user confirms it the gap is closed');
+    const ctx = await t.call(c, 'get_context', { statuses: ['Confirmed'] });
+    assert.equal(ctx.data.facts.find((f: any) => f.id === mine.id).slotKey, gap.key);
+    await c.close();
+  } finally { t.close(); }
+});

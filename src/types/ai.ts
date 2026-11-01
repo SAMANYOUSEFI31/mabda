@@ -100,7 +100,8 @@ export interface AiErrorInfo {
 
 /** One acceptance criterion or guardrail checked by the decision layer. */
 export interface CheckResult {
-  kind: 'criterion' | 'guardrail';
+  /** `consistency` = the validator's check of the output against the confirmed Context */
+  kind: 'criterion' | 'guardrail' | 'consistency';
   text: string;
   passed: boolean;
   reason: string;

@@ -14,6 +14,8 @@ export interface ObjectSource {
   label?: string;
   /** why the AI suggested it (shown in the inbox) */
   reason?: string;
+  /** the exact passage of the source text this was taken from (verified to occur in it) */
+  quote?: string;
   at: string;
 }
 
@@ -31,6 +33,8 @@ export interface ContextObject {
   supersededById?: string;
   /** set on objects that were SUGGESTED (Proposed): where from and when */
   source?: ObjectSource;
+  /** the Gap item (spec requiredContext/suggestedContext `key`) this object fills; objects without it are matched by title (legacy data only) */
+  slotKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -168,7 +172,11 @@ export interface ReadinessResult {
   summary: string;
 }
 
+/** how a contradiction was found: deterministic rule, or the decision layer's answer for a candidate pair */
+export type ContradictionSource = 'rule' | 'semantic';
+
 export interface Contradiction {
+  source?: ContradictionSource;
   id: string;
   itemA: ContextObject;
   itemB: ContextObject;
@@ -282,7 +290,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

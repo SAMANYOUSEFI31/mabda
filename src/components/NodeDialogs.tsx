@@ -58,7 +58,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
     const n = nodes.find((x) => x.id === state.nodeId);
     if (!n) return null;
     return (
-      <Dialog open onClose={onClose} size="lg" title={`Context Coach برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد Context؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
+      <Dialog open onClose={onClose} size="lg" title={`مربی دانش برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد دانش؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
         <CoachPanel workspaceId={workspaceId} scope="node" nodeId={n.id} nodes={nodes} seedText={[n.label, n.description].filter(Boolean).join(': ')} onSaveProposals={onSaveProposals} onLedger={onLedger} onOpenAiSettings={onOpenAiSettings} />
       </Dialog>
     );
@@ -72,7 +72,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? `گرهٔ جدید زیر «${parent?.label ?? ''}»` : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'rename' && node?.isSystem ? 'گرهٔ سیستمی است: فقط نامش قابل تغییر است، حذف و جابه‌جایی ندارد.' : state.kind === 'create' ? 'بعد از ساخت گره، Context Coach برای روشن‌کردن آن باز می‌شود.' : undefined}
+        description={state.kind === 'rename' && node?.isSystem ? 'گرهٔ سیستمی است: فقط نامش قابل تغییر است، حذف و جابه‌جایی ندارد.' : state.kind === 'create' ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>

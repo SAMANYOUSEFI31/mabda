@@ -32,42 +32,21 @@ export const AiErrorNotice: React.FC<{ error: AiErrorInfo; onRetry?: () => void;
   );
 };
 
-/** Top-of-app guidance when no key is configured (or the server is unreachable). Not a fake answer — a setup hint. */
+/**
+ * One-line setup hint, shown only on pages that need AI (workstreams, chat). It is guidance, not an answer.
+ * Config warnings (unverified model ids…) live in the AI settings dialog, not here.
+ */
 export const AiStatusBanner: React.FC<{ onOpenSettings: () => void }> = ({ onOpenSettings }) => {
   const { status, error, loading, refresh } = useAiStatus();
   if (loading && !status && !error) return null;
-
-  if (error) {
-    return (
-      <Alert intent="danger" title="سرور هوش مصنوعی در دسترس نیست" action={<Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void refresh()}>بررسی دوباره</Button>}>
-        {error.message}
-      </Alert>
-    );
-  }
-  if (!status) return null;
-  if (!status.available) {
-    return (
-      <Alert
-        intent="warning"
-        title="هوش مصنوعی هنوز راه‌اندازی نشده"
-        action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenSettings}>تنظیم کلید API</Button>}
-      >
-        <ol className="list-decimal ps-inset-xl">
-          <li>یک کلید Gemini از Google AI Studio بگیر (سهمیهٔ رایگان کافی است).</li>
-          <li>روی «تنظیم کلید API» بزن و کلید را وارد کن؛ کلید رمزنگاری‌شده روی سرور ذخیره می‌شود.</li>
-          <li>برای توسعه می‌توانی به‌جای آن در فایل <span dir="ltr" className="code">.env</span> مقدار <span dir="ltr" className="code">MABDA_MANAGED_AI=on</span> و <span dir="ltr" className="code">GEMINI_API_KEY</span> را بگذاری.</li>
-        </ol>
-        {status.unavailable && <p className="mt-stack-xs body-sm text-text-subtle">{status.unavailable.message}</p>}
-      </Alert>
-    );
-  }
-  if (status.warnings.length) {
-    return (
-      <Alert intent="info" title="هشدار پیکربندی مدل‌ها">
-        <ul className="list-disc ps-inset-xl">{status.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
-      </Alert>
-    );
-  }
+  const bar = (tone: 'warning' | 'danger', text: string, action: React.ReactNode) => (
+    <div role="status" className={`flex flex-wrap items-center justify-between gap-inline-md rounded-control-sm border px-inset-md py-inset-xs ${tone === 'danger' ? 'border-border-danger-subtle bg-bg-danger-subtle' : 'border-border-warning-subtle bg-bg-warning-subtle'}`}>
+      <span className="flex items-center gap-inline-sm body-sm text-text-default"><Icon name="TriangleAlert" size="sm" className={tone === 'danger' ? 'text-icon-danger' : 'text-icon-warning'} />{text}</span>
+      {action}
+    </div>
+  );
+  if (error) return bar('danger', 'ارتباط با سرور برقرار نشد.', <Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void refresh()}>بررسی دوباره</Button>);
+  if (status && !status.available) return bar('warning', 'برای ساخت خروجی و گفتگو، کلید هوش مصنوعی لازم است.', <Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenSettings}>تنظیم کلید</Button>);
   return null;
 };
 

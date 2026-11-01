@@ -98,9 +98,9 @@ export const dataApi = {
   deleteNode: (id: string, nodeId: string, transferTo?: string) =>
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; files: StoredFile[] }>('DELETE', `${ws(id)}/nodes/${nodeId}${transferTo ? `?transferTo=${encodeURIComponent(transferTo)}` : ''}`),
 
-  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource }) =>
+  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string }) =>
     call<{ object: ContextObject }>('POST', `${ws(id)}/objects`, input),
-  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance'>>) =>
+  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>>) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
   supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string }) =>
     call<{ object: ContextObject; previous: ContextObject; impact: ImpactInfo; relationships: ContextRelationship[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/supersede`, input),
@@ -119,6 +119,15 @@ export const dataApi = {
   saveSpec: (id: string, s: WorkstreamSpec) => call<{ spec: WorkstreamSpec }>('PUT', `${ws(id)}/specs/${s.id}`, s),
 
   judgeAmbiguity: (id: string, objectIds: string[]) => call<{ judgments: WorkspaceState['judgments']; ledger: LedgerEntry[] }>('POST', `${ws(id)}/gap/judge`, { objectIds }),
+  judgeContradictions: (id: string) => call<{ pairJudgments: WorkspaceState['pairJudgments']; ledger: LedgerEntry[]; judged: number; limited: boolean }>('POST', `${ws(id)}/contradictions/judge`, {}),
+  resolveContradiction: (id: string, input: { aId: string; bId: string; action: 'keep'; keepId: string } | { aId: string; bId: string; action: 'separate'; moveId: string; nodeId: string }) =>
+    call<{ objects: ContextObject[]; relationships: ContextRelationship[]; pairJudgments: WorkspaceState['pairJudgments']; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/contradictions/resolve`, input),
+  changes: (id: string, days = 7) => call<{ days: number; versions: import('../core/changeFeed').VersionRow[] }>('GET', `${ws(id)}/changes?days=${days}`),
+  importMemory: (id: string, input: { text: string; sourceLabel: string }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
+  threadTurn: (id: string, nodeId: string, input: { message: string; history: Array<{ role: string; content: string }> }) =>
+    call<{ blocks: import('../types/ai').ContentBlock[]; markdown: string; created: ContextObject[]; ledger: LedgerEntry[] }>('POST', `${ws(id)}/threads/${encodeURIComponent(nodeId)}/turn`, input),
+  threadFinish: (id: string, nodeId: string, transcript: Array<{ role: string; content: string }>) =>
+    call<{ note: Note; ledger: LedgerEntry[] }>('POST', `${ws(id)}/threads/${encodeURIComponent(nodeId)}/finish`, { transcript }),
   coachQuota: (id: string) => call<CoachQuota>('GET', `${ws(id)}/coach/quota`),
   coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),

@@ -74,24 +74,26 @@ const labelCore = (label: string) => normalizeFa(label.replace(/\([^)]*\)/g, '')
 
 /**
  * Does this object fill that required/suggested item?
- * The binding is the object's TITLE (the Gap flow, the MCP and the AI proposals all title the object with the
- * item's label). Living in the same node, or mentioning the item's English key in the text, is NOT enough —
- * that made one unrelated fact "fill" every item of its node.
+ *  1. an object with an explicit `slotKey` fills exactly the item whose `key` equals it — and no other (the binding the
+ *     Gap answer flow, the MCP and the proposals write);
+ *  2. only an object WITHOUT a slotKey (legacy data) is matched by TITLE (the item's label core).
+ * Living in the same node, or mentioning the item's key in the text, never counts.
  */
-export function fillsItem(req: { label: string }, o: ContextObject): boolean {
+export function fillsItem(req: { key?: string; label: string }, o: ContextObject): boolean {
   if (o.content.trim().length === 0) return false;
+  if (o.slotKey) return !!req.key && o.slotKey === req.key;
   const title = normalizeFa(o.title);
   const core = labelCore(req.label);
   if (core.length === 0) return false;
   return title.includes(core) || normalizeFa(req.label) === title;
 }
 
-/** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed. */
-export function findForRequired(req: { label: string }, objects: ContextObject[]): ContextObject | undefined {
+/** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed; an explicit slot wins over a title match. */
+export function findForRequired(req: { key?: string; label: string }, objects: ContextObject[]): ContextObject | undefined {
   const rank = (o: ContextObject) => (o.status === 'Confirmed' ? 0 : o.status === 'Proposed' ? 1 : 2);
   return activeOf(objects)
     .filter((o) => fillsItem(req, o))
-    .sort((a, b) => rank(a) - rank(b))[0];
+    .sort((a, b) => Number(!!b.slotKey) - Number(!!a.slotKey) || rank(a) - rank(b))[0];
 }
 
 /** Objects whose ambiguity is worth judging for this spec: the ones that fill required items. */
@@ -215,9 +217,9 @@ const STOP = new Set(['و', 'در', 'به', 'از', 'برای', 'با', 'را', 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const toLatin = (t: string) => t.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d))).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
 const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[Number(d)]);
-const titleTokens = (t: string) => new Set(normalizeFa(t).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((w) => w.length >= 2 && !STOP.has(w)));
+export const titleTokens = (t: string) => new Set(normalizeFa(t).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((w) => w.length >= 2 && !STOP.has(w)));
 
-function jaccard(a: Set<string>, b: Set<string>): number {
+export function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 || b.size === 0) return 0;
   let inter = 0;
   for (const x of a) if (b.has(x)) inter++;

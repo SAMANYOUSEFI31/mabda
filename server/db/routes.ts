@@ -8,6 +8,8 @@ import type { LegacyPayload } from './legacy.ts';
 import type { AiService } from '../ai/service.ts';
 import { toAiError } from '../ai/errors.ts';
 import { userOf as aiUserOf } from '../ai/routes.ts';
+import type { ContextSource } from '../ai/routes.ts';
+import { clampProposal } from '../ai/service.ts';
 import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
@@ -22,6 +24,7 @@ import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
+import { pairsToJudge } from '../../src/core/contradictionCandidates.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 
@@ -32,7 +35,7 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
   try { await fn(req, res); } catch (e) { next(e); }
 };
 
-export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
+export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
   const { repo, ai } = deps;
   const payer = deps.payer ?? (() => 'user' as const);
   const clock = deps.clock ?? (() => new Date());
@@ -158,6 +161,120 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
     res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s), limited });
+  }));
+
+  // ── «چه چیزی عوض شد»: version rows of the window; core/changeFeed turns them into events ──
+  router.get('/workspaces/:wid/changes', wrap((req, res) => {
+    const s = scopeOf(req);
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
+    const since = new Date(clock().getTime() - days * 86_400_000).toISOString();
+    res.json({ days, versions: repo.listVersionsSince(s, since) });
+  }));
+
+  // ── memory of another AI (ChatGPT / Claude / any text) → PROPOSED objects, each with a verified quote ──
+  router.post('/workspaces/:wid/memory/import', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const text = String(body(req).text ?? '').trim();
+    if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
+    if (text.length > 120_000) throw new RepoError('invalid', 'متن بیش از حد بلند است؛ آن را در چند بخش وارد کن.');
+    const label = ['ChatGPT', 'Claude', 'Gemini'].includes(String(body(req).sourceLabel)) ? String(body(req).sourceLabel) : 'AI دیگر';
+    if (payer() === 'us' && entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
+      throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره یا با کلید خودت ادامه بده.', retryable: false });
+    }
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
+    const r = await ai.extract(aiUserOf(req), { kind: 'memory', text, nodeId: 'business', nodes }, ctl.signal);
+    const at = new Date().toISOString();
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: `حافظهٔ ${label}`, at, ...(o.quote ? { quote: o.quote } : {}) } }));
+    if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
+  }));
+
+  // ── focused thread on one node: cheap tier, context = node + parents, output = Proposed objects for THAT node only ──
+  router.post('/workspaces/:wid/threads/:nodeId/turn', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    if (!deps.source) throw new RepoError('invalid', 'منبع Context برای گفتگوی متمرکز تنظیم نشده است.');
+    const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
+    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    const message = String(body(req).message ?? '').trim();
+    if (!message) throw new RepoError('invalid', 'پیام خالی است.');
+    const history = (Array.isArray(body(req).history) ? body(req).history : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+    const ctx = deps.source.forChat(s.workspaceId, { scopeNodeId: node.id, message, threadOnly: true });
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const r = await ai.threadTurn(aiUserOf(req), { message, nodeId: node.id, nodeLabel: node.label, contextList: ctx.contextList ?? [], nodeLabels: ctx.nodeLabels, excerpts: ctx.excerpts, history }, ctl.signal);
+    const at = new Date().toISOString();
+    const blocks = r.blocks.map((b) => clampProposal(b, [node.id], node.id));
+    const room = repo.objectSlots(s);
+    const created = blocks.filter((b) => b.proposal).slice(0, room).map((b) => repo.createObject(s, {
+      type: b.proposal!.type, status: 'Proposed', provenance: 'AI Suggested', title: b.proposal!.title, content: b.proposal!.content, nodeId: node.id,
+      source: { kind: 'chat', label: `گفتگوی متمرکز · ${node.label}`, at, ...(b.proposal!.reason ? { reason: b.proposal!.reason } : {}) },
+    }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ blocks, markdown: r.markdown, created, ledger: repo.listLedger(s) });
+  }));
+
+  /** end of the thread: a short summary is saved as a note on the node (notes are never injected into the model) */
+  router.post('/workspaces/:wid/threads/:nodeId/finish', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
+    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    const transcript = (Array.isArray(body(req).transcript) ? body(req).transcript : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+    if (!transcript.length) throw new RepoError('invalid', 'گفتگویی برای خلاصه کردن نیست.');
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const r = await ai.threadSummary(aiUserOf(req), { nodeLabel: node.label, transcript }, ctl.signal);
+    const note = repo.createNote(s, node.id, `خلاصهٔ گفتگوی متمرکز:\n${r.summary}`);
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `خلاصهٔ گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ note, ledger: repo.listLedger(s) });
+  }));
+
+  // ── semantic contradictions (plan feature; shares the daily judgement cap) ──────────────
+  router.post('/workspaces/:wid/contradictions/judge', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
+    const objects = repo.listObjects(s);
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s));
+    const capped = payer() === 'us';
+    const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
+    const limited = todo.length > left;
+    if (limited) todo.length = left;
+    if (todo.length) {
+      const ctl = new AbortController();
+      res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+      const r = await ai.judgeContradictions(aiUserOf(req), todo.map((p) => ({ key: p.key, a: p.a, b: p.b })), ctl.signal);
+      for (const p of todo) { const j = r.results[p.key]; if (j) repo.savePairJudgment(s, p.a, p.b, j); }
+      if (capped) repo.addDailyUsage(s, today(), 'judge', todo.length);
+      if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص تناقض معنایی', mode: 'contradiction', creditCost: 0, usage: r.usage, id: newId('led') }));
+    }
+    res.json({ pairJudgments: repo.listPairJudgments(s), ledger: repo.listLedger(s), judged: todo.length, limited });
+  }));
+
+  /** the user's decision on a pair: keep one (the other becomes Superseded) or keep both and move one to another node */
+  router.post('/workspaces/:wid/contradictions/resolve', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const aId = String(b.aId ?? ''), bId = String(b.bId ?? '');
+    const a = repo.getObject(s, aId), o = repo.getObject(s, bId);
+    if (!a || !o) throw new RepoError('not_found', 'یکی از دو مورد پیدا نشد.');
+    let impact = { count: 0, assets: [] as Array<{ id: string; title: string; reasons: string[] }> };
+    if (b.action === 'keep') {
+      const keepId = String(b.keepId ?? '');
+      if (keepId !== aId && keepId !== bId) throw new RepoError('invalid', 'مورد نگه‌داشتنی مشخص نیست.');
+      impact = repo.supersedeBy(s, keepId === aId ? bId : aId, keepId).impact;
+      repo.savePairJudgment(s, a, o, { conflict: true, reason: 'حل‌شده توسط کاربر', resolution: `kept:${keepId}` });
+    } else if (b.action === 'separate') {
+      const moveId = String(b.moveId ?? '');
+      if (moveId !== aId && moveId !== bId) throw new RepoError('invalid', 'مورد جابه‌جاشونده مشخص نیست.');
+      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') });
+      impact = moved.impact;
+      repo.savePairJudgment(s, a, o, { conflict: false, reason: 'هر دو درست‌اند؛ گره‌ها جدا شد', resolution: 'separated' });
+    } else throw new RepoError('invalid', 'اقدام نامعتبر است.');
+    res.json({ objects: repo.listObjects(s), relationships: repo.listRelationships(s), pairJudgments: repo.listPairJudgments(s), stale: stale(s), impact });
   }));
 
   const coachQuota = (s: Scope) => {

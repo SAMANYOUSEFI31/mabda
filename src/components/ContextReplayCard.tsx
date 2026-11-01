@@ -184,7 +184,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <div className="flex flex-wrap items-baseline gap-inline-sm">
-            <span className="label-md text-text-default">Context Replay</span>
+            <span className="label-md text-text-default">ردپای دانش</span>
             <span className="body-sm text-text-subtle">
               این خروجی بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش کسب‌وکار شما ساخته شد.
             </span>
