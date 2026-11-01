@@ -161,6 +161,36 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s), limited });
   }));
 
+  // ── «چه چیزی عوض شد»: version rows of the window; core/changeFeed turns them into events ──
+  router.get('/workspaces/:wid/changes', wrap((req, res) => {
+    const s = scopeOf(req);
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
+    const since = new Date(clock().getTime() - days * 86_400_000).toISOString();
+    res.json({ days, versions: repo.listVersionsSince(s, since) });
+  }));
+
+  // ── memory of another AI (ChatGPT / Claude / any text) → PROPOSED objects, each with a verified quote ──
+  router.post('/workspaces/:wid/memory/import', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const text = String(body(req).text ?? '').trim();
+    if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
+    if (text.length > 120_000) throw new RepoError('invalid', 'متن بیش از حد بلند است؛ آن را در چند بخش وارد کن.');
+    const label = ['ChatGPT', 'Claude', 'Gemini'].includes(String(body(req).sourceLabel)) ? String(body(req).sourceLabel) : 'AI دیگر';
+    if (payer() === 'us' && entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
+      throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره یا با کلید خودت ادامه بده.', retryable: false });
+    }
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
+    const r = await ai.extract(aiUserOf(req), { kind: 'memory', text, nodeId: 'business', nodes }, ctl.signal);
+    const at = new Date().toISOString();
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: `حافظهٔ ${label}`, at, ...(o.quote ? { quote: o.quote } : {}) } }));
+    if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
+  }));
+
   // ── semantic contradictions (plan feature; shares the daily judgement cap) ──────────────
   router.post('/workspaces/:wid/contradictions/judge', wrap(async (req, res) => {
     const s = scopeOf(req);

@@ -20,16 +20,18 @@ interface Props {
   onOpenImport: () => void;
   onOpenPack: () => void;
   onOpenConnect: () => void;
+  onOpenMemory: () => void;
 }
 
 /** Everything an AI suggested (MCP client, chat, coach, a file, a note, a pasted answer) waits here. Nothing is a fact until the user confirms it. */
-export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect }) => {
+export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory }) => {
   const pending = objects.filter((o) => o.status === 'Proposed').sort((a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const actions = (
     <div className="flex flex-wrap items-center gap-inline-sm">
       <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای AI</Button>
       <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
+      <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن حافظهٔ AI</Button>
       <Button variant="secondary" size="sm" iconStart="Link2" onClick={onOpenConnect}>اتصال به Claude و AIهای دیگر</Button>
     </div>
   );

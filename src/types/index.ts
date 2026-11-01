@@ -14,6 +14,8 @@ export interface ObjectSource {
   label?: string;
   /** why the AI suggested it (shown in the inbox) */
   reason?: string;
+  /** the exact passage of the source text this was taken from (verified to occur in it) */
+  quote?: string;
   at: string;
 }
 

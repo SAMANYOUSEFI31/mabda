@@ -22,6 +22,7 @@ interface AppNavigationProps {
   onOpenLedger: () => void;
   onOpenAiSettings: () => void;
   onOpenConnect: () => void;
+  onOpenMemory: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
   specs: WorkstreamSpec[];
@@ -58,6 +59,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'tools', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     { section: 'tools', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
     { section: 'tools', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
+    { section: 'tools', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
     { section: 'tools', label: 'راه‌اندازی ۱۰ دقیقه‌ای', icon: 'Zap', onSelect: p.onOpenOnboarding },
     { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];

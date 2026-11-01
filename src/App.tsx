@@ -38,6 +38,8 @@ import { ContextPackDialog } from './components/ContextPackDialog';
 import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
+import { ChangesPanel } from './components/ChangesPanel';
+import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
@@ -142,6 +144,8 @@ export default function App() {
   const [packTarget, setPackTarget] = useState<PackTarget | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
@@ -525,6 +529,7 @@ export default function App() {
         onOpenLedger={() => setActiveTab('ledger')}
         onOpenAiSettings={() => setIsAiSettingsOpen(true)}
         onOpenConnect={() => setIsConnectOpen(true)}
+        onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         specs={specs}
@@ -590,7 +595,11 @@ export default function App() {
               onOpenStudio={() => setActiveTab('workstreams')}
               onOpenAssets={() => setActiveTab('assets')}
               onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onOpenContradictions={() => document.getElementById('contradictions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
+
+            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} workspaceId={wid} objects={workspaceContexts} deliverables={deliverables} onOpenAssets={() => setActiveTab('assets')} />}
 
             <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
 
@@ -603,6 +612,7 @@ export default function App() {
               onOpenImport={() => setIsImportOpen(true)}
               onOpenPack={() => setPackTarget({ title: currentWorkspace.name })}
               onOpenConnect={() => setIsConnectOpen(true)}
+              onOpenMemory={() => setIsMemoryOpen(true)}
             />
 
             {contextViewMode === 'read' ? (
@@ -829,6 +839,7 @@ export default function App() {
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
       <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
 
       <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />

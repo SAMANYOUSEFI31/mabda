@@ -78,6 +78,7 @@ export const EXTRACT_SCHEMA = {
           title: { type: 'string' },
           content: { type: 'string' },
           nodeId: { type: 'string' },
+          quote: { type: 'string' },
         },
         required: ['type', 'title', 'content'],
       },

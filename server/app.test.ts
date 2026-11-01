@@ -397,3 +397,43 @@ test('contradiction resolution «both are right»: one object moves to another n
     assert.equal(res.pairJudgments.find((j: any) => j.resolution === 'separated').conflict, false);
   } finally { ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay = cap; t.close(); }
 });
+
+test('memory import: PROPOSED + Imported objects, each quote is kept only if it really occurs in the pasted text; an AI error is a structured error and creates nothing', async () => {
+  const MEMORY = 'کاربر یک آژانس طراحی دارد. مخاطب اصلی او فریلنسرهای طراح هستند.\nبودجهٔ بازاریابی ماهانه ۱۰ میلیون تومان است.';
+  let fail = false;
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('"objects"')
+    ? (fail ? Object.assign(new Error('boom'), { status: 500 }) : { objects: [
+      { type: 'Decision', title: 'مخاطب اصلی', content: 'فریلنسرهای طراح', nodeId: 'business', quote: 'مخاطب اصلی او فریلنسرهای طراح هستند.' },
+      { type: 'Fact', title: 'بودجه', content: 'ده میلیون تومان در ماه', nodeId: 'ghost', quote: 'بودجهٔ تبلیغات سالانه ۵۰۰ میلیون است' },
+    ] })
+    : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/memory/import', { text: MEMORY, sourceLabel: 'ChatGPT' });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.created.map((o: any) => [o.status, o.provenance, o.source.kind, o.source.label]), [['Proposed', 'Imported', 'paste', 'حافظهٔ ChatGPT'], ['Proposed', 'Imported', 'paste', 'حافظهٔ ChatGPT']]);
+    assert.equal(r.json.created[0].source.quote, 'مخاطب اصلی او فریلنسرهای طراح هستند.');
+    assert.equal(r.json.created[1].source.quote, undefined, 'a fabricated quote is dropped');
+    assert.equal(r.json.created[1].nodeId, 'business', 'unknown node falls back');
+    assert.ok(r.json.ledger.some((l: any) => l.mode === 'memory_import'));
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/memory/import', { text: ' ' })).status, 400);
+    fail = true;
+    const before = (await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length;
+    const bad = await t.call('POST', '/workspaces/ws_studio/memory/import', { text: MEMORY, sourceLabel: 'Claude' });
+    assert.ok(bad.status >= 500 || bad.status === 429);
+    assert.ok(bad.json.error.message && bad.json.error.retryable !== undefined, 'a structured AiError the UI shows with «دوباره»');
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length, before, 'nothing is created on failure and no canned text appears');
+  } finally { t.close(); }
+});
+
+test('changes endpoint returns the version rows of the window (with the earlier versions of edited objects)', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'نسخهٔ دوم مخاطب' });
+    const r = (await t.call('GET', '/workspaces/ws_studio/changes?days=7')).json;
+    const mine = r.versions.filter((v: any) => v.objectId === 'ctx_audience').map((v: any) => v.version);
+    assert.deepEqual(mine, [1, 2], 'v1 comes along so the edit can show «before»');
+    assert.ok(!r.versions.some((v: any) => v.objectId === 'ctx_domain'), 'untouched objects are not listed');
+  } finally { t.close(); }
+});

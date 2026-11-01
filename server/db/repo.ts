@@ -462,6 +462,14 @@ export class Repo {
     });
   }
 
+  /** version rows of every object that changed since `sinceIso` (plus its earlier versions, so edits can show «before») */
+  listVersionsSince(s: Scope, sinceIso: string): Array<{ objectId: string; version: number; type: string; title: string; content: string; createdAt: string }> {
+    return (this.db.prepare(`SELECT object_id, version, type, title, content, created_at FROM context_object_versions
+      WHERE workspace_id = ? AND user_id = ? AND object_id IN (SELECT object_id FROM context_object_versions WHERE workspace_id = ? AND user_id = ? AND created_at >= ?)
+      ORDER BY object_id, version`).all(s.workspaceId, s.userId, s.workspaceId, s.userId, sinceIso) as Array<Record<string, unknown>>)
+      .map((r) => ({ objectId: r.object_id as string, version: r.version as number, type: r.type as string, title: r.title as string, content: r.content as string, createdAt: r.created_at as string }));
+  }
+
   // ── semantic contradictions: one judgement per exact (object, version) pair + the user's resolution ──
   listPairJudgments(s: Scope): PairJudgment[] {
     return (this.db.prepare('SELECT * FROM contradiction_judgments WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>)

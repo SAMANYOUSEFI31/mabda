@@ -8,7 +8,7 @@ import { ModelDecisionLayer } from './decision.ts';
 import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
 import { runPipeline } from './pipeline.ts';
-import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
+import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, MEMORY_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
 import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA, PARSE_SCHEMA } from './schemas.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { applyBand, route, sanitizePlan } from './router.ts';
@@ -65,7 +65,7 @@ export function clampProposal(b: ContentBlock, allowed?: string[], scope?: strin
 }
 
 export interface ExtractRequest {
-  kind: 'note' | 'file';
+  kind: 'note' | 'file' | 'memory';
   text: string;
   /** where Proposed objects land by default */
   nodeId: string;
@@ -92,7 +92,15 @@ export interface CoachResult {
   usage: UsageSummary;
 }
 
-export interface ExtractedObject { type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }
+export interface ExtractedObject { type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string; /** verbatim passage of the source (only kept when it really occurs in it) */ quote?: string }
+
+const squash = (t: string) => t.replace(/\s+/g, ' ').trim();
+/** a quote is accepted only if it occurs in the source text — a model may not invent its evidence */
+export const verbatimQuote = (source: string, quote: unknown): string | undefined => {
+  if (typeof quote !== 'string') return undefined;
+  const q = squash(quote);
+  return q.length >= 4 && squash(source).includes(q) ? q.slice(0, 240) : undefined;
+};
 
 export interface ExtractResult {
   summary?: string;
@@ -276,7 +284,8 @@ export class AiService {
    * Always cheap — decisions v3.1 §6 — so no routing/decision call is made.
    */
   async extract(userId: string, req: ExtractRequest, parent?: AbortSignal): Promise<ExtractResult> {
-    const dl = this.deadline(req.kind === 'file' ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat, parent);
+    const long = req.kind !== 'note';
+    const dl = this.deadline(long ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat, parent);
     try {
       const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
@@ -285,14 +294,14 @@ export class AiService {
       const text = truncated ? req.text.slice(0, maxChars) : req.text;
       const nodes = req.nodes.map((n) => `${n.id}=${n.label}`).join('، ');
       const user = [
-        EXTRACT_INSTRUCTION,
+        req.kind === 'memory' ? MEMORY_INSTRUCTION : EXTRACT_INSTRUCTION,
         `## گره‌های مجاز (شناسه=نام)\n${nodes}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
         req.wantSummary ? 'علاوه بر objectها، کلید summary را با خلاصهٔ ۳ تا ۵ جمله‌ای فارسی پر کن.' : 'کلید summary لازم نیست.',
         truncated ? 'توجه: متن بلند است و فقط بخش ابتدایی آن داده شده است.' : '',
         `## متن\n${text}`,
       ].filter(Boolean).join('\n\n');
       const r = await runner.structured(
-        { stage: 'extract', tier: 'cheap', effort: 'low', maxTokens: 3000, timeoutMs: req.kind === 'file' ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat },
+        { stage: 'extract', tier: 'cheap', effort: 'low', maxTokens: 3000, timeoutMs: long ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat },
         { system: SYSTEM_PROMPT, user }, EXTRACT_SCHEMA,
       );
       const v = (r.value ?? {}) as { summary?: unknown; objects?: unknown };
@@ -302,7 +311,7 @@ export class AiService {
       const objects: ExtractedObject[] = [];
       for (const o of v.objects.slice(0, 12) as Array<Record<string, unknown>>) {
         if (!o || typeof o.title !== 'string' || typeof o.content !== 'string' || !o.title.trim() || !o.content.trim() || !types.includes(o.type as string)) continue;
-        objects.push({ type: o.type as ExtractedObject['type'], title: o.title.trim(), content: o.content.trim(), nodeId: typeof o.nodeId === 'string' && allowed.has(o.nodeId) ? o.nodeId : req.nodeId });
+        objects.push({ type: o.type as ExtractedObject['type'], title: o.title.trim(), content: o.content.trim(), nodeId: typeof o.nodeId === 'string' && allowed.has(o.nodeId) ? o.nodeId : req.nodeId, quote: verbatimQuote(text, o.quote) });
       }
       const summary = req.wantSummary && typeof v.summary === 'string' && v.summary.trim() ? v.summary.trim() : undefined;
       return { summary, objects, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
