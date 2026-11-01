@@ -4,10 +4,10 @@
  */
 
 import type {
-  ChatSession, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry,
+  ChatSession, ObjectSource, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry,
   Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
 } from '../types';
-import type { CostReportRowInfo, UsageInfo, CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
+import type { ImportParseResult, PackInfo, McpTokenInfo, CostReportRowInfo, UsageInfo, CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
 import type { StaleAsset } from '../core/impactEngine';
 import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
@@ -98,7 +98,7 @@ export const dataApi = {
   deleteNode: (id: string, nodeId: string, transferTo?: string) =>
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; files: StoredFile[] }>('DELETE', `${ws(id)}/nodes/${nodeId}${transferTo ? `?transferTo=${encodeURIComponent(transferTo)}` : ''}`),
 
-  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string }) =>
+  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource }) =>
     call<{ object: ContextObject }>('POST', `${ws(id)}/objects`, input),
   updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance'>>) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
@@ -122,6 +122,13 @@ export const dataApi = {
   coachQuota: (id: string) => call<CoachQuota>('GET', `${ws(id)}/coach/quota`),
   coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),
+
+  listMcpTokens: (id: string) => call<{ tokens: McpTokenInfo[]; allowed: boolean }>('GET', `${ws(id)}/mcp/tokens`),
+  createMcpToken: (id: string, label: string) => call<{ id: string; token: string; last4: string }>('POST', `${ws(id)}/mcp/tokens`, { label }),
+  revokeMcpToken: (id: string, tokenId: string) => call<{ tokens: McpTokenInfo[] }>('DELETE', `${ws(id)}/mcp/tokens/${tokenId}`),
+  createPack: (id: string, input: { specId?: string; deliverableId?: string; nodeId?: string }) => call<PackInfo>('POST', `${ws(id)}/packs`, input),
+  listPacks: (id: string) => call<{ packs: Array<{ id: string; title: string; tokens: number; createdAt: string }> }>('GET', `${ws(id)}/packs`).then((r) => r.packs),
+  parseImport: (id: string, input: { text: string; packId?: string }) => call<ImportParseResult>('POST', `${ws(id)}/imports/parse`, input),
 
   usage: (id: string) => call<UsageInfo>('GET', `${ws(id)}/usage`),
   costReport: (month?: string) => call<{ month: string; rows: CostReportRowInfo[] }>('GET', `/admin/cost-report${month ? `?month=${month}` : ''}`),

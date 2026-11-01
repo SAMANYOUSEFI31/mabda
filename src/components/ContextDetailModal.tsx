@@ -107,6 +107,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       content: content.trim(),
       nodeId,
       supersededById: object?.supersededById,
+      source: object?.source,
     };
 
     onSave(updated);

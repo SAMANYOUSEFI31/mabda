@@ -13,10 +13,11 @@
     "clean": "rm -rf dist server.js",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/*.test.ts"
+    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/mcp/*.test.ts server/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "better-sqlite3": "^13.0.3",
@@ -32,7 +33,8 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",
     "remark-gfm": "^4.0.1",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

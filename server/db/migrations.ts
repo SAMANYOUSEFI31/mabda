@@ -148,6 +148,28 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 5,
+    name: 'MCP: per-workspace tokens, Context packs (lineage of pasted answers), proposal source on objects',
+    up(db) {
+      db.exec(`
+        ALTER TABLE context_objects ADD COLUMN source TEXT;
+
+        CREATE TABLE mcp_tokens (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          label TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, last4 TEXT NOT NULL,
+          created_at TEXT NOT NULL, last_used_at TEXT, revoked_at TEXT
+        );
+        CREATE INDEX idx_mcp_tokens_ws ON mcp_tokens(workspace_id);
+
+        CREATE TABLE context_packs (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          title TEXT NOT NULL, spec_id TEXT, deliverable_id TEXT, refs TEXT NOT NULL, tokens INTEGER NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_packs_ws ON context_packs(workspace_id, created_at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

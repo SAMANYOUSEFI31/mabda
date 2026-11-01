@@ -53,6 +53,9 @@ interface WorkstreamStudioProps {
   onOpenAiSettings: () => void;
   onOpenContextModal: (obj: ContextObject) => void;
   onOpenLedger: () => void;
+  /** «کپی برای هوش مصنوعی»: a Context pack for this spec (and output) */
+  onOpenPack: (target: { specId?: string; deliverableId?: string; title: string }) => void;
+  onOpenImport: () => void;
   /** an asset the user asked to rebuild from the library: the studio runs it once on mount/arrival */
   pendingRebuild?: GeneratedDeliverable | null;
   onPendingRebuildHandled?: () => void;
@@ -74,6 +77,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onSaveDeliverable,
   onOpenContextModal,
   onOpenLedger,
+  onOpenPack,
+  onOpenImport,
   onOpenAiSettings,
   pendingRebuild,
   onPendingRebuildHandled,
@@ -310,6 +315,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               تعریف جریان کار سفارشی
             </Button>
             {isCustomSpec && <Button variant="secondary" iconStart="Pencil" onClick={() => onOpenSpecEditor(currentSpec)}>ویرایش</Button>}
+            <Button variant="secondary" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, title: currentSpec.title })}>کپی spec برای AI</Button>
           </div>
         </div>
 
@@ -379,6 +385,11 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 </span>
                 <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>
                 <p className="body-sm text-text-default">{currentDeliverableSpec.description}</p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-inline-sm">
+                <Button variant="secondary" size="sm" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title })}>کپی برای هوش مصنوعی</Button>
+                <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
               </div>
 
               {lock.locked && <Alert intent="warning" title="این خروجی هنوز قفل است">{lockReason(lock)}</Alert>}

@@ -7,6 +7,16 @@ export type ContextType = 'Fact' | 'Decision' | 'Constraint' | 'Asset';
 export type ContextStatus = 'Confirmed' | 'Proposed' | 'Needs Review' | 'Superseded' | 'Archived';
 export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported';
 
+/** Where a suggestion came from — shown in the proposals inbox (which AI, when). */
+export interface ObjectSource {
+  kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user';
+  /** MCP token label («Claude»), file name, … */
+  label?: string;
+  /** why the AI suggested it (shown in the inbox) */
+  reason?: string;
+  at: string;
+}
+
 export interface ContextObject {
   id: string;
   workspaceId: string;
@@ -19,6 +29,8 @@ export interface ContextObject {
   /** starts at 1; +1 on every edit of title/content/type (see server/db/repo.ts); a superseding object continues the number */
   version: number;
   supersededById?: string;
+  /** set on objects that were SUGGESTED (Proposed): where from and when */
+  source?: ObjectSource;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +192,9 @@ export interface GeneratedDeliverable {
   usedFileChunks?: UsedFileChunk[];
   /** staleness signature for which the one-time half-price rebuild was already used */
   halfPriceUsedFor?: string;
+  /** made outside Mabda (MCP client or pasted answer): which AI, and the Context pack it was built from */
+  source?: ObjectSource;
+  sourcePackId?: string;
   /** per-criterion / per-guardrail validator results shown under the output */
   checks?: import('./ai').CheckResult[];
   critiqueFeedback?: {
@@ -267,7 +282,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

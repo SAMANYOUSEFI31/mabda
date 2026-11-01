@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
-  ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
+  ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
   Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
@@ -18,19 +18,20 @@ export class RepoError extends Error {
   constructor(public code: RepoErrorCode, message: string) { super(message); }
 }
 
+export const hashToken = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
 export const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 const now = () => new Date().toISOString();
 
 export interface ImpactResult { count: number; assets: Array<{ id: string; title: string; reasons: string[] }> }
 
 export interface ObjectInput {
-  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string;
+  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource;
 }
 
 const rowToObject = (r: Record<string, unknown>): ContextObject => ({
   id: r.id as string, workspaceId: r.workspace_id as string, type: r.type as ContextType, status: r.status as ContextStatus,
   provenance: r.provenance as ContextProvenance, title: r.title as string, content: r.content as string, nodeId: r.node_id as string,
-  version: r.version as number, ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
+  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
@@ -189,8 +190,8 @@ export class Repo {
   }
 
   private insertObject(s: Scope, o: ContextObject) {
-    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version);
+    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null);
     this.snapshot(s, o, o.createdAt);
   }
 
@@ -215,7 +216,7 @@ export class Repo {
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
-    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, createdAt: t, updatedAt: t };
+    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), createdAt: t, updatedAt: t };
     this.db.transaction(() => this.insertObject(s, o))();
     return o;
   }
@@ -456,6 +457,52 @@ export class Repo {
       const entries = (this.db.prepare('SELECT data FROM ledger WHERE workspace_id = ? AND user_id = ? AND created_at LIKE ?').all(r.id, r.user_id, `${month}%`) as Array<{ data: string }>).map((x) => JSON.parse(x.data) as LedgerEntry);
       return { userId: r.user_id, workspaceId: r.id, name: ws.name, planId: ws.planId, entries };
     });
+  }
+
+  // ── MCP tokens (one personal token per connection, per workspace) ─────────
+  createMcpToken(s: Scope, label: string): { id: string; token: string; last4: string } {
+    this.assertWorkspace(s);
+    const token = `mbd_${crypto.randomBytes(32).toString('base64url')}`;
+    const id = newId('mcp');
+    this.db.prepare('INSERT INTO mcp_tokens (id, user_id, workspace_id, label, token_hash, last4, created_at) VALUES (?,?,?,?,?,?,?)')
+      .run(id, s.userId, s.workspaceId, label.trim() || 'AI', hashToken(token), token.slice(-4), now());
+    return { id, token, last4: token.slice(-4) };
+  }
+
+  listMcpTokens(s: Scope): Array<{ id: string; label: string; last4: string; createdAt: string; lastUsedAt?: string; revokedAt?: string }> {
+    return (this.db.prepare('SELECT * FROM mcp_tokens WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>)
+      .map((r) => ({ id: r.id as string, label: r.label as string, last4: r.last4 as string, createdAt: r.created_at as string, ...(r.last_used_at ? { lastUsedAt: r.last_used_at as string } : {}), ...(r.revoked_at ? { revokedAt: r.revoked_at as string } : {}) }));
+  }
+
+  revokeMcpToken(s: Scope, id: string) {
+    this.db.prepare('UPDATE mcp_tokens SET revoked_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ? AND revoked_at IS NULL').run(now(), id, s.workspaceId, s.userId);
+  }
+
+  /** token → who it speaks for. Revoked tokens never resolve. */
+  resolveMcpToken(token: string): { scope: Scope; tokenId: string; label: string } | null {
+    if (!token.startsWith('mbd_')) return null;
+    const r = this.db.prepare('SELECT id, user_id, workspace_id, label FROM mcp_tokens WHERE token_hash = ? AND revoked_at IS NULL').get(hashToken(token)) as { id: string; user_id: string; workspace_id: string; label: string } | undefined;
+    if (!r) return null;
+    this.db.prepare('UPDATE mcp_tokens SET last_used_at = ? WHERE id = ?').run(now(), r.id);
+    return { scope: { userId: r.user_id, workspaceId: r.workspace_id }, tokenId: r.id, label: r.label };
+  }
+
+  // ── Context packs (what was copied for an outside AI — the lineage of its pasted answer) ──
+  savePack(s: Scope, p: { title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number }, id: string = newId('pack')): { id: string; createdAt: string } {
+    const createdAt = now();
+    this.db.prepare('INSERT INTO context_packs (id, user_id, workspace_id, title, spec_id, deliverable_id, refs, tokens, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(id, s.userId, s.workspaceId, p.title, p.specId ?? null, p.deliverableId ?? null, JSON.stringify(p.refs), p.tokens, createdAt);
+    return { id, createdAt };
+  }
+
+  getPack(s: Scope, id: string): { id: string; title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number; createdAt: string } | undefined {
+    const r = this.db.prepare('SELECT * FROM context_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
+    return r ? { id: r.id as string, title: r.title as string, ...(r.spec_id ? { specId: r.spec_id as string } : {}), ...(r.deliverable_id ? { deliverableId: r.deliverable_id as string } : {}), refs: JSON.parse(r.refs as string), tokens: r.tokens as number, createdAt: r.created_at as string } : undefined;
+  }
+
+  listPacks(s: Scope, limit = 10) {
+    return (this.db.prepare('SELECT id, title, tokens, created_at FROM context_packs WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT ?').all(s.workspaceId, s.userId, limit) as Array<Record<string, unknown>>)
+      .map((r) => ({ id: r.id as string, title: r.title as string, tokens: r.tokens as number, createdAt: r.created_at as string }));
   }
 
   // ── whole-workspace state + one-time legacy import ───────────────────────

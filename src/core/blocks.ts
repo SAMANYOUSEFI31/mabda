@@ -33,6 +33,7 @@ export function contextDraftFromBlock(block: ContentBlock, workspaceId: string, 
     content: p?.content ?? block.markdown,
     nodeId: p?.nodeId ?? 'business',
     version: 1,
+    source: { kind: 'chat', at: now },
     createdAt: now,
     updatedAt: now,
   };

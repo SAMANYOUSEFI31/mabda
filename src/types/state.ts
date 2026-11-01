@@ -85,3 +85,28 @@ export interface CostReportRowInfo {
   byokCostUsd: number;
   lines: Array<{ category: 'judgments' | 'fileProcessing' | 'coach' | 'generation'; costUsd: number; calls: number }>;
 }
+
+export interface McpTokenInfo { id: string; label: string; last4: string; createdAt: string; lastUsedAt?: string; revokedAt?: string }
+
+export interface PackInfo {
+  id: string;
+  title: string;
+  createdAt: string;
+  markdown: string;
+  tokens: number;
+  chars: number;
+  counts: { confirmed: number; proposed: number; gaps: number; guardrails: number };
+}
+
+export interface ImportParseResult {
+  blocks: import('../core/answerParser').ParsedBlock[];
+  method: 'headings' | 'ai' | 'raw';
+  warning?: string;
+  packId: string | null;
+  packTitle: string | null;
+  packSpecId: string | null;
+  packDeliverableId: string | null;
+  /** the Context versions the pack contained — the lineage of anything saved from this answer */
+  usedContext: import('./index').UsedContextRef[];
+  ledger: import('./index').LedgerEntry[];
+}

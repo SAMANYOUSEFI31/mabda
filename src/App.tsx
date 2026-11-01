@@ -26,6 +26,11 @@ import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
 import type { NodeDialogState } from './components/NodeDialogs';
 import { FilesPanel } from './components/FilesPanel';
+import { ProposalInbox } from './components/ProposalInbox';
+import { ContextPackDialog } from './components/ContextPackDialog';
+import type { PackTarget } from './components/ContextPackDialog';
+import { ImportAnswerDialog } from './components/ImportAnswerDialog';
+import { ConnectAiModal } from './components/ConnectAiModal';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
@@ -127,6 +132,9 @@ export default function App() {
   const [nodeDialog, setNodeDialog] = useState<NodeDialogState>(null);
   const [extractingNoteId, setExtractingNoteId] = useState<string | null>(null);
   const [chatScope, setChatScope] = useState<string | undefined>(undefined);
+  const [packTarget, setPackTarget] = useState<PackTarget | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
   const nodes = data?.nodes ?? [];
@@ -152,7 +160,7 @@ export default function App() {
       showImpact(r.impact);
       return r.object;
     }
-    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId }));
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     return r.object;
@@ -417,10 +425,22 @@ export default function App() {
   const handleSaveProposals = async (ps: Array<{ type: ContextObject['type']; title: string; content: string; nodeId: string }>) => {
     const out: ContextObject[] = [];
     for (const p of ps) {
-      const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId }));
+      const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId, source: { kind: 'coach', at: new Date().toISOString() } }));
       if (r) out.push(r.object);
     }
     if (out.length) patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
+  };
+  /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
+  const handleAcceptProposal = async (o: ContextObject) => {
+    const impact = await setStatus(o.id, 'Confirmed');
+    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است.` }); }
+  };
+  const handleRejectProposal = async (o: ContextObject) => { await setStatus(o.id, 'Archived'); };
+  /** a block of a pasted answer → a PROPOSED object (never Confirmed) */
+  const handleProposeFromImport = async (p: { type: ContextObject['type']; title: string; content: string; nodeId: string; source: NonNullable<ContextObject['source']> }) => {
+    const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId, source: p.source }));
+    if (r) patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    return !!r;
   };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
@@ -518,6 +538,17 @@ export default function App() {
               />
             </div>
 
+            <ProposalInbox
+              objects={workspaceContexts}
+              nodes={nodes}
+              onAccept={handleAcceptProposal}
+              onEdit={(o) => openContext(o)}
+              onReject={handleRejectProposal}
+              onOpenImport={() => setIsImportOpen(true)}
+              onOpenPack={() => setPackTarget({ title: currentWorkspace.name })}
+              onOpenConnect={() => setIsConnectOpen(true)}
+            />
+
             {contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
@@ -576,6 +607,8 @@ export default function App() {
             onPendingRebuildHandled={() => setPendingRebuild(null)}
             onOpenContextModal={(obj) => openContext(obj)}
             onOpenLedger={() => setActiveTab('ledger')}
+            onOpenPack={setPackTarget}
+            onOpenImport={() => setIsImportOpen(true)}
             onOpenAiSettings={() => setIsAiSettingsOpen(true)}
           />
         )}
@@ -709,6 +742,7 @@ export default function App() {
           setIsAccountModalOpen(false);
           setIsAiSettingsOpen(true);
         }}
+        onOpenConnect={() => setIsConnectOpen(true)}
       />
 
       {/* Custom Spec Modal (F8) */}
@@ -727,6 +761,10 @@ export default function App() {
           return ok;
         }}
       />
+
+      <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
+      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
 
       <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />
 
