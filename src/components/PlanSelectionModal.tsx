@@ -99,7 +99,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
             );
           })}
         </div>
-        <p className="caption text-text-subtle">
+        <p className="body-sm text-text-subtle">
           قیمت‌ها به دلار و مبنای اقتصادی‌اند؛ مبلغ محلی هنگام پرداخت با نرخ روز درگاه محاسبه می‌شود. عددهای ظرفیت در این نسخه تخمینی‌اند و بعد از دورهٔ Alpha با مصرف واقعی تنظیم می‌شوند.
         </p>
       </div>

@@ -112,7 +112,7 @@ export const ConnectAiModal: React.FC<Props> = ({ open, workspaceId, planId, onC
                 <li>در گفتگو، ابزارهای مبدأ را فعال کن و بگو: «با منبع حقیقت مبدأ شروع کن».</li>
                 <li>هر چیزی که Claude پیشنهاد بدهد در «صندوق پیشنهادها» می‌آید و تا تأیید تو واقعیت نیست.</li>
               </ol>
-              <p className="caption text-text-subtle">کلاینت‌های دیگر MCP: نوع «Streamable HTTP»، همین نشانی، و هدر <span dir="ltr" className="code">Authorization: Bearer mbd_…</span>. گام‌های رابط Claude ممکن است با نسخه‌ها فرق کند. ورود با OAuth برای بعد آماده می‌شود و فعلاً توکن شخصی کافی است.</p>
+              <p className="body-sm text-text-subtle">کلاینت‌های دیگر MCP: نوع «Streamable HTTP»، همین نشانی، و هدر <span dir="ltr" className="code">Authorization: Bearer mbd_…</span>. گام‌های رابط Claude ممکن است با نسخه‌ها فرق کند. ورود با OAuth برای بعد آماده می‌شود و فعلاً توکن شخصی کافی است.</p>
             </Card>
           </>
         )}

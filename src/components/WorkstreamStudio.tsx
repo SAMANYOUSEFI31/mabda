@@ -447,11 +447,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               </div>
 
               {/* Pre-execution credit indicator (P2): derived from the router's plan, the same plan is executed */}
-              {!ai.available && (
-                <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>
-                  برای ساخت دارایی، کلید API لازم است.
-                </Alert>
-              )}
               {previewState === 'error' && previewError && <AiErrorNotice error={previewError} onOpenSettings={onOpenAiSettings} />}
               <div className="flex flex-col justify-between gap-inline-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
                 <div className="body-sm flex flex-col gap-stack-xs">

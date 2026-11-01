@@ -19,6 +19,7 @@ import { calculateReadinessAndGaps, detectContradictions } from './core/contextE
 import { impactMessage } from './core/impactEngine';
 import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
+import type { PageAction } from './components/TopStatusBar';
 import { ContradictionBanner } from './components/ContradictionBanner';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextTableView } from './components/ContextTableView';
@@ -456,6 +457,13 @@ export default function App() {
   };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
+  /** the one action in the top bar that fits the current page */
+  const pageAction: PageAction | undefined =
+    activeTab === 'context' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
+    : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
+    : undefined;
+
   const openContext = (obj: ContextObject | null, nodeId = 'business') => {
     setSelectedContextObject(obj);
     setModalDefaultNodeId(nodeId);
@@ -491,6 +499,9 @@ export default function App() {
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
+        onOpenLedger={() => setActiveTab('ledger')}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+        onOpenConnect={() => setIsConnectOpen(true)}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         specs={specs}
@@ -509,15 +520,12 @@ export default function App() {
         <TopStatusBar
           currentWorkspace={currentWorkspace}
           activeTab={activeTab}
-          contradictions={contradictions}
-          onOpenContextModal={() => openContext(null)}
-          onOpenCustomSpecModal={() => openSpecEditor()}
-          onOpenPlanModal={() => setIsPlanModalOpen(true)}
+          action={pageAction}
         />
 
         {/* Main Canvas */}
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
-          <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />
+          {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />}
 
           {/* Contradiction Detection Banner */}
           <ContradictionBanner
