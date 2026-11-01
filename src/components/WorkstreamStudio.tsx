@@ -302,7 +302,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
             <div className="min-w-overlay-xs sm:flex-1">
               <Select
-                label="جریان کار فعال (Workstream Spec)"
+                label="جریان کار فعال"
                 value={selectedSpecId}
                 onChange={(e) => {
                   const id = e.target.value;
@@ -317,12 +317,12 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               تعریف جریان کار سفارشی
             </Button>
             {isCustomSpec && <Button variant="secondary" iconStart="Pencil" onClick={() => onOpenSpecEditor(currentSpec)}>ویرایش</Button>}
-            <Button variant="secondary" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, title: currentSpec.title })}>کپی spec برای AI</Button>
+            <Button variant="secondary" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, title: currentSpec.title })}>کپی جریان کار برای AI</Button>
           </div>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-sm">
-          <span className="body-sm text-text-subtle">وضعیت Gap Engine:</span>
+          <span className="body-sm text-text-subtle">وضعیت رادار شکاف:</span>
           <span className="label-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪ آماده</span>
           <Button size="sm" variant="ghost" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>بررسی شکاف‌ها</Button>
         </div>
@@ -355,7 +355,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           <div className="grid grid-cols-1 gap-inline-xl lg:grid-cols-3">
             {/* Deliverables list */}
             <div className="flex flex-col gap-stack-sm lg:col-span-1">
-              <h3 className="title text-text-default">خروجی‌ها به ترتیب ارزش (Spec Sequence)</h3>
+              <h3 className="title text-text-default">خروجی‌ها به ترتیب ساخت</h3>
               <List label="خروجی‌های این جریان کار">
                 {orderedDeliverables.map((del, idx) => {
                   const dl = lockOf(del, currentSpec.deliverables, builtIds);
@@ -397,7 +397,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               {lock.locked && <Alert intent="warning" title="این خروجی هنوز قفل است">{lockReason(lock)}</Alert>}
 
               <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
-                <span className="label-md text-text-default">معیار پذیرش خروجی (Acceptance Checklist)</span>
+                <span className="label-md text-text-default">معیار پذیرش خروجی</span>
                 <ul className="body-sm list-inside list-disc text-text-subtle">
                   {currentDeliverableSpec.acceptanceCriteria.map((c, idx) => (
                     <li key={idx}>{c}</li>
@@ -409,7 +409,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
                   </>
                 )}
-                <span className="body-sm text-text-subtle">Constraintهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
+                <span className="body-sm text-text-subtle">محدودیت‌های تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
               </div>
 
               <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">

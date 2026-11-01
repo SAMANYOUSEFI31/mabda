@@ -84,14 +84,14 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
       {quota && (
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <Progress value={Math.min(used, total)} max={total} label="سهمیهٔ پردازش فایل این ماه" showValue={false} intent={used >= total ? 'warning' : 'neutral'} />
-          <span className="caption text-text-subtle">
+          <span className="body-sm text-text-subtle">
             {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. {managed ? 'بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار (با کلید شخصی بدون کسر اعتبار).' : 'سهمیه هر ماه تازه می‌شود.'}
           </span>
         </div>
       )}
 
       {files.length === 0 ? (
-        <EmptyState icon="Upload" title="هنوز فایلی بارگذاری نشده" description="سند، پیشنهاد یا برند‌بوک خودت را بارگذاری کن تا مبدأ از آن دانش پیشنهادی بسازد." />
+        <EmptyState icon="Upload" title="هنوز فایلی بارگذاری نشده" description="سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد." action={<Button variant="secondary" iconStart="Upload" onClick={() => input.current?.click()}>بارگذاری فایل</Button>} />
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="فایل‌های بارگذاری‌شده">
           {files.map((f) => (

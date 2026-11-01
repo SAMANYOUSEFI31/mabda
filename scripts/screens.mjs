@@ -47,7 +47,7 @@ const audit = () => {
       if (!seen.has(key)) {
         seen.add(key);
         if (fs < 12) out.tiny.push(`${fs}px "${own.slice(0, 40)}"`);
-        else if (own.length > 70 && fs < 14) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
+        else if (own.length > 45 && fs < 14) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
       }
     }
     if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {

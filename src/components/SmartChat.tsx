@@ -24,7 +24,7 @@ import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
 import { flatten, subtreeIds, ancestorIds } from '../core/nodeTree';
 import {
-  Badge, Button, Card, Dialog, Icon, IconButton, Markdown, SegmentedControl, Select, Spinner, Switch, Tag, TextField,
+  Badge, Button, Card, Dialog, Icon, IconButton, Markdown, Select, Spinner, Switch, TextField,
   formatJalaliShort, formatNumber, formatTime, useToast,
 } from '../ui';
 import type { IconName } from '../ui';
@@ -78,7 +78,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         id: 'msg_welcome',
         role: 'assistant',
         content: `سلام! من موتور هوشمند «مبدأ» هستم.
-من مستقیماً به درخت منبع حقیقت (Truth Tree) شما متصلم. هر نکته، تصمیم یا محدودیتی که در جریان گفت‌وگو مطرح کنید، به عنوان «شیء دانش (Context Object)» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
+من مستقیماً به درخت منبع حقیقت شما متصلم. هر نکته، تصمیم یا محدودیتی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
 
 درباره چه بخشی از کسب‌وکار صحبت کنیم؟`,
         timestamp: new Date().toISOString(),
@@ -210,32 +210,6 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       )
     );
     setEditingSessionId(null);
-  };
-
-  // Toggle grounded node
-  const handleToggleNode = (nodeId: string) => {
-    const currentNodes = activeSession.selectedNodeIds || [];
-    let updatedNodes: string[] = [];
-
-    if (currentNodes.includes(nodeId)) {
-      updatedNodes = currentNodes.filter((n) => n !== nodeId);
-    } else {
-      updatedNodes = [...currentNodes, nodeId];
-    }
-
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSession.id ? { ...s, selectedNodeIds: updatedNodes, updatedAt: new Date().toISOString() } : s
-      )
-    );
-  };
-
-  const handleSelectAllNodes = () => {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === activeSession.id ? { ...s, selectedNodeIds: [], updatedAt: new Date().toISOString() } : s
-      )
-    );
   };
 
   // Change chat mode
@@ -440,22 +414,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
-          <SegmentedControl
-            label="حالت گفتگو"
-            value={activeSession.chatMode}
-            onChange={(id) => handleChangeMode(id as ChatMode)}
-            items={[
-              { id: 'discovery', label: 'کشف و استخراج تصمیمات', icon: 'Lightbulb' },
-              { id: 'audit', label: 'ممیزی تناقضات', icon: 'Shield' },
-              { id: 'advisor', label: 'مشاورهٔ آفر و بیزنس', icon: 'TrendingUp' },
-            ]}
-          />
-          <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} شیء دانش</Badge>
-        </div>
-
-        <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
-          <div className="sm:w-overlay-xs">
+        <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-sm sm:flex-row sm:items-end">
+          <div className="sm:flex-1">
             <Select
               label="محدودهٔ گفتگو"
               value={activeSession.scopeNodeId ?? ''}
@@ -463,27 +423,25 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               options={[{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]}
             />
           </div>
-          {scope ? (
-            <p className="caption text-text-subtle">
-              گفتگو فقط به «{nodeLabel(scope)}»، زیرشاخه‌ها و والدهایش (برای ارث‌بری) وصل است؛ پیشنهاد به‌روزرسانی هم فقط برای همین شاخه و زیرشاخه‌هایش ساخته می‌شود.
-            </p>
-          ) : (
-            <div className="flex items-center gap-inline-sm overflow-x-auto" role="group" aria-label="کانتکست هدف گفتگو">
-              <span className="caption shrink-0 text-text-subtle">کانتکست هدف:</span>
-              <Tag selected={selectedNodes.length === 0} onToggle={handleSelectAllNodes}>
-                همهٔ درخت ({formatNumber(live.length)})
-              </Tag>
-              {nodes.map((node) => {
-                const count = live.filter((c) => c.nodeId === node.id).length;
-                return (
-                  <Tag key={node.id} selected={selectedNodes.includes(node.id)} onToggle={() => handleToggleNode(node.id)}>
-                    {node.label} ({formatNumber(count)})
-                  </Tag>
-                );
-              })}
-            </div>
-          )}
+          <div className="sm:flex-1">
+            <Select
+              label="هدف گفتگو"
+              value={activeSession.chatMode}
+              onChange={(e) => handleChangeMode(e.target.value as ChatMode)}
+              options={[
+                { value: 'discovery', label: 'کشف و استخراج تصمیم‌ها' },
+                { value: 'audit', label: 'ممیزی تناقض‌ها' },
+                { value: 'advisor', label: 'مشاورهٔ آفر و کسب‌وکار' },
+              ]}
+            />
+          </div>
+          <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} قلم دانش</Badge>
         </div>
+        {scope && (
+          <p className="body-sm text-text-subtle">
+            گفتگو فقط به «{nodeLabel(scope)}»، زیرشاخه‌ها و والدهایش وصل است؛ پیشنهاد به‌روزرسانی هم فقط برای همین شاخه و زیرشاخه‌هایش ساخته می‌شود.
+          </p>
+        )}
       </div>
 
       {/* 2. Body: sessions drawer + messages */}
@@ -632,7 +590,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                     <div className="caption flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
                       <span className="tabular-nums">{formatTime(m.timestamp)}</span>
                       {m.role === 'user' ? (
-                        <span>{m.executionMode === 'deep' ? (ai.managedEnabled ? `حالت عمیق (${formatNumber(chatCredits(true))} اعتبار)` : 'حالت عمیق') : (ai.managedEnabled ? 'حالت Auto (۰ اعتبار)' : 'حالت Auto')}</span>
+                        <span>{m.executionMode === 'deep' ? (ai.managedEnabled ? `حالت عمیق (${formatNumber(chatCredits(true))} اعتبار)` : 'حالت عمیق') : (ai.managedEnabled ? 'حالت خودکار (۰ اعتبار)' : 'حالت خودکار')}</span>
                       ) : null}
                     </div>
                     {m.role === 'assistant' && !m.streaming && m.plan && <PlanLine plan={m.plan} usage={m.usage} credits={m.creditCost} />}
@@ -656,7 +614,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       <div className="flex shrink-0 flex-col gap-stack-sm border-t border-border-default bg-surface-sunken p-inset-md pb-safe-inset">
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <Switch checked={isDeepMode && !fairUse.isSoftExceeded} disabled={fairUse.isSoftExceeded} onChange={(e) => setIsDeepMode(e.target.checked)} label={ai.managedEnabled ? 'حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)' : 'حالت عمیق (تحلیل چندوجهی)'} />
-          <span className="caption text-text-subtle">{fairUse.isSoftExceeded ? 'امروز زیاد گفتگو کردی؛ تا فردا پاسخ‌ها سریع‌تر و سبک‌تر است و حالت عمیق متوقف است.' : ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت Auto')}</span>
+          <span className="caption text-text-subtle">{fairUse.isSoftExceeded ? 'امروز زیاد گفتگو کردی؛ تا فردا پاسخ‌ها سریع‌تر و سبک‌تر است و حالت عمیق متوقف است.' : ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت خودکار رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت خودکار')}</span>
         </div>
 
         <form onSubmit={handleSend} className="flex items-start gap-inline-sm">

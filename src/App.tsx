@@ -684,6 +684,7 @@ export default function App() {
             deliverables={deliverables}
             allContextObjects={workspaceContexts}
             stale={stale}
+            onGoToWorkstreams={() => setActiveTab('workstreams')}
             onOpenContextModal={(obj) => openContext(obj)}
             onPromoteToContext={handlePromoteToContext}
             onRebuild={(del) => {

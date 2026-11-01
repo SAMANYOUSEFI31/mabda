@@ -81,7 +81,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
           {managed && <Stat label="اعتبار باقی‌مانده" value={formatNumber(currentWorkspace.creditsRemaining)} delta={`پلن ${plan.title.split(' ')[0]}`} />}
           {managed && <Stat label="مجموع اعتبار مصرف‌شده" value={formatNumber(totalCreditsUsed)} delta="در تمام خروجی‌ها" />}
           <Stat
-            label="گفتگوی Auto امروز"
+            label="گفتگوی خودکار امروز"
             value={formatNumber(chatCountToday(currentWorkspace.todayChatCount, currentWorkspace.chatCountDay, tehranDay()))}
             delta="بدون قفل؛ بعد از سقف روزانه سبک‌تر می‌شود"
           />
@@ -95,7 +95,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
         onChange={(id) => setActiveSubTab(id as typeof activeSubTab)}
         items={[
           { id: 'usage', label: 'مصرف و سهمیه‌ها' },
-          { id: 'ledger', label: `تراکنش‌های Ledger (${formatNumber(ledgerEntries.length)})` },
+          { id: 'ledger', label: `تراکنش‌های دفتر کل (${formatNumber(ledgerEntries.length)})` },
           ...(managed ? [{ id: 'plans', label: 'پلن‌ها و اعتبار' }, { id: 'economics', label: 'خطوط قرمز اقتصادی' }] : []),
           ...(ai.admin ? [{ id: 'manager', label: 'نمای مدیر' }] : []),
         ]}
@@ -107,7 +107,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
 
       {activeSubTab === 'ledger' && (
         <Table
-          caption="تراکنش‌های Ledger"
+          caption="تراکنش‌های دفتر کل"
           rows={ledgerEntries as unknown as Array<Record<string, unknown> & LedgerEntry>}
           empty="هنوز تراکنشی ثبت نشده است."
           columns={[
@@ -118,7 +118,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
               label: 'الگوی اجرا',
               render: (e) => e.mode in MODE_META
                 ? <ModeBadge value={e.mode as keyof typeof MODE_META} />
-                : <Badge intent="neutral" icon={false}>{e.mode === 'chat_deep' ? 'گفتگوی عمیق' : 'گفتگوی Auto'}</Badge>,
+                : <Badge intent="neutral" icon={false}>{e.mode === 'chat_deep' ? 'گفتگوی عمیق' : 'گفتگوی خودکار'}</Badge>,
             },
             {
               key: 'plan',
@@ -145,7 +145,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
               key: 'creditCost',
               label: 'اعتبار کسرشده',
               numeric: true,
-              render: (e: LedgerEntry) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (Auto)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
+              render: (e: LedgerEntry) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (خودکار)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
             }] : []),
             { key: 'estimatedAiCostUsd', label: 'هزینهٔ AI', numeric: true, render: (e) => formatUsd(e.estimatedAiCostUsd, 4) },
             { key: 'status', label: 'وضعیت', render: (e) => <LedgerStatusBadge value={e.status} /> },
@@ -201,7 +201,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
 
       {managed && activeSubTab === 'economics' && (
         <Card padding="xl" className="flex flex-col gap-stack-lg">
-          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در Ledger (بخش اقتصاد واحد PRD)</h3>
+          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در دفتر کل (بخش اقتصاد واحد PRD)</h3>
           <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
             {redLines.map((r) => (
               <div key={r.title} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

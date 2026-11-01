@@ -17,6 +17,7 @@ interface AssetLibraryProps {
   onPromoteToContext: (del: GeneratedDeliverable) => void;
   onRebuild: (del: GeneratedDeliverable) => void;
   stale: StaleAsset[];
+  onGoToWorkstreams: () => void;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -27,6 +28,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onPromoteToContext,
   onRebuild,
   stale,
+  onGoToWorkstreams,
 }) => {
   const [filter, setFilter] = useState<string>('all');
   const toast = useToast();
@@ -75,8 +77,9 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
       {filtered.length === 0 ? (
         <EmptyState
           icon="Package"
-          title="هیچ دارایی‌ای با این فیلتر پیدا نشد"
-          description="از بخش جریان‌های کار، نخستین دارایی را با اتکا به Gap Engine تولید کن."
+          title={deliverables.length === 0 ? 'هنوز دارایی‌ای نساخته‌ای' : 'دارایی‌ای با این فیلتر نیست'}
+          description="در جریان‌های کار، اولین دارایی را از دانش تأییدشده‌ات بساز."
+          action={<Button variant="secondary" iconStart="Sparkles" onClick={onGoToWorkstreams}>ساخت دارایی</Button>}
         />
       ) : (
         <div className="flex flex-col gap-stack-lg">

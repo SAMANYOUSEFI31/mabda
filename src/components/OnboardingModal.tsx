@@ -32,7 +32,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = (props) =>
 const STEP_TITLES = [
   'گام اول: ورود ۵ حقیقت اساسی کسب‌وکار',
   'گام دوم: تأیید دانشی که مبدأ فهمید',
-  'گام سوم: لحظهٔ Aha — اولین دارایی با Context Replay',
+  'گام سوم: اولین دارایی با ردپای دانش',
 ];
 
 const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWorkspace, onCreateObjects, onCompleteOnboarding, onOpenAiSettings, nodes, onSaveProposals, onLedger }) => {
@@ -42,8 +42,8 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
   const [domain, setDomain] = useState('مشاوره استراتژی برند و دیزاین سیستم');
   const [audience, setAudience] = useState('سولو فاندرها، فریلنسرها و مشاوران مستقل');
   const [problem, setProblem] = useState('پراکندگی اطلاعات و تصمیمات؛ هر بار توضیح دوباره به چت‌بات‌ها و دریافت خروجی‌های متناقض');
-  const [valProp, setValProp] = useState('تبدیل دانش پراکنده به یک منبع حقیقت یکپارچه و ساخت دارایی‌های منسجم با Context Replay');
-  const [differentiation, setDifferentiation] = useState('دانش ساختاریافته نوع‌دار با موتور تحلیل شکاف (Gap Engine) و بازسازی نصف‌قیمت');
+  const [valProp, setValProp] = useState('تبدیل دانش پراکنده به یک منبع حقیقت یکپارچه و ساخت دارایی‌های منسجم با ردپای دانش');
+  const [differentiation, setDifferentiation] = useState('دانش ساختاریافته نوع‌دار با رادار شکاف و بازسازی نصف‌قیمت');
 
   /** saved once: a retry after an AI error must not create the five objects again */
   const savedObjects = useRef<ContextObject[] | null>(null);
@@ -106,7 +106,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
       savedObjects.current ??= await onCreateObjects(drafts);
       const response = await generateDeliverableApi({
         deliverableId: 'del_positioning_statement',
-        deliverableTitle: 'جملهٔ موقعیت‌یابی اختصاصی (First Asset)',
+        deliverableTitle: 'جملهٔ موقعیت‌یابی اختصاصی ',
         deliverableType: 'Asset',
         acceptanceCriteria: [
           'عدم وجود ادعاهای عمومی و کلیشه‌ای',
@@ -123,7 +123,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         workspaceId: currentWorkspace.id,
         workstreamId: 'main_positioning',
         deliverableId: 'del_positioning_statement',
-        title: 'جملهٔ موقعیت‌یابی اختصاصی (First Asset)',
+        title: 'جملهٔ موقعیت‌یابی اختصاصی ',
         content: response.markdown,
         blocks: response.blocks,
         plan: response.plan,

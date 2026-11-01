@@ -53,7 +53,7 @@ export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, o
       </div>
 
       {usage.payer === 'user' && (
-        <Alert intent="info" title="قضاوت‌ها با کلید خودت انجام می‌شوند">سرور کلید پلتفرم ندارد؛ قضاوت‌های لایهٔ تصمیم و Coach روی کلید شخصی تو اجرا می‌شوند و سقف روزانه اعمال نمی‌شود.</Alert>
+        <Alert intent="info" title="قضاوت‌ها با کلید خودت انجام می‌شوند">سرور کلید پلتفرم ندارد؛ قضاوت‌های لایهٔ تصمیم و مربی دانش روی کلید شخصی تو اجرا می‌شوند و سقف روزانه اعمال نمی‌شود.</Alert>
       )}
 
       {(ai.byok || usage.byokCostUsd > 0) && (

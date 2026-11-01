@@ -54,7 +54,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
               { ok: e.mcp, text: 'دانشت را از طریق MCP به هر دستیار AI بده' },
               { ok: e.contextPack, text: 'بستهٔ Context بگیر و هرجا خواستی ببر' },
               { ok: e.customSpecs, text: 'جریان کار سفارشی با وابستگی و گاردریل بساز' },
-              { ok: true, text: `هر روز تا ${formatNumber(e.decisionJudgmentsPerDay)} قضاوت هوشمند و ${formatNumber(e.coachPerDay)} جلسهٔ Context Coach، با هزینهٔ ما` },
+              { ok: true, text: `هر روز تا ${formatNumber(e.decisionJudgmentsPerDay)} قضاوت هوشمند و ${formatNumber(e.coachPerDay)} جلسهٔ مربی دانش، با هزینهٔ ما` },
             ];
             return (
               <Card key={pid} padding="lg" selected={isCurrent || undefined} className="flex h-full flex-col justify-between gap-stack-lg">

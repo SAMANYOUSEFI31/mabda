@@ -11,7 +11,7 @@ export type CostCategory = 'judgments' | 'fileProcessing' | 'coach' | 'generatio
 export const CATEGORY_LABEL: Record<CostCategory, string> = {
   judgments: 'قضاوت‌های لایهٔ تصمیم',
   fileProcessing: 'پردازش فایل',
-  coach: 'Context Coach',
+  coach: 'مربی دانش',
   generation: 'خروجی و گفتگو (AI مدیریت‌شده)',
 };
 
