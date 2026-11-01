@@ -8,6 +8,7 @@ import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblin
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES } from '../../src/core/specs.ts';
+import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
 export interface Scope { userId: string; workspaceId: string }
@@ -63,10 +64,11 @@ export class Repo {
   }
 
   /** Create or update the workspace row; a new workspace also gets the 5 system nodes. */
-  saveWorkspace(userId: string, ws: Workspace): Workspace {
+  saveWorkspace(userId: string, ws: Workspace, opts: { skipLimit?: boolean } = {}): Workspace {
     return this.db.transaction(() => {
       const exists = this.db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(ws.id);
       if (!exists) {
+        if (!opts.skipLimit && this.listWorkspaces(userId).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
         this.seedSystemNodes({ userId, workspaceId: ws.id });
       } else {
@@ -85,6 +87,19 @@ export class Repo {
   assertWorkspace(s: Scope) {
     if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
   }
+
+  private planOf(s: Scope) { return this.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter'; }
+
+  /** active Context objects (Archived and Superseded do not count against the plan) */
+  countActiveObjects(s: Scope): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM context_objects WHERE workspace_id = ? AND user_id = ? AND status NOT IN ('Archived','Superseded')").get(s.workspaceId, s.userId) as { n: number }).n;
+  }
+
+  /** how many more objects the plan allows right now (bulk creators — files, notes — stop here instead of failing) */
+  objectSlots(s: Scope): number { return objectsRemaining(this.planOf(s), this.countActiveObjects(s)); }
+
+  /** the change-impact engine is a plan entitlement */
+  impactEnabled(s: Scope): boolean { return can(this.planOf(s), 'changeImpact'); }
 
   // ── tree nodes ───────────────────────────────────────────────────────────
   listNodes(s: Scope): TreeNode[] {
@@ -181,6 +196,7 @@ export class Repo {
 
   /** impact of a mutation = assets that are stale after it but were not before */
   private withImpact<T>(s: Scope, run: () => T): { value: T; impact: ImpactResult } {
+    if (!this.impactEnabled(s)) return { value: run(), impact: { count: 0, assets: [] } };
     const dels = this.listDeliverables(s);
     const before = computeStaleAssets(dels, this.listObjects(s));
     const value = run();
@@ -197,6 +213,7 @@ export class Repo {
     this.requireNode(s, input.nodeId);
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
+    if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, createdAt: t, updatedAt: t };
     this.db.transaction(() => this.insertObject(s, o))();
@@ -426,9 +443,19 @@ export class Repo {
     return (this.db.prepare('SELECT count FROM daily_usage WHERE workspace_id = ? AND day = ? AND kind = ? AND user_id = ?').get(s.workspaceId, day, kind, s.userId) as { count: number } | undefined)?.count ?? 0;
   }
 
-  addDailyUsage(s: Scope, day: string, kind: string): number {
-    this.db.prepare('INSERT INTO daily_usage (user_id, workspace_id, day, kind, count) VALUES (?,?,?,?,1) ON CONFLICT(workspace_id, day, kind) DO UPDATE SET count = count + 1').run(s.userId, s.workspaceId, day, kind);
+  addDailyUsage(s: Scope, day: string, kind: string, n = 1): number {
+    this.db.prepare('INSERT INTO daily_usage (user_id, workspace_id, day, kind, count) VALUES (?,?,?,?,?) ON CONFLICT(workspace_id, day, kind) DO UPDATE SET count = count + excluded.count').run(s.userId, s.workspaceId, day, kind, n);
     return this.dailyUsage(s, day, kind);
+  }
+
+  /** manager ledger input: every workspace (any user) with the ledger rows of one month */
+  ledgerByWorkspaceForMonth(month: string): Array<{ userId: string; workspaceId: string; name: string; planId: Workspace['planId']; entries: LedgerEntry[] }> {
+    const rows = this.db.prepare('SELECT user_id, id, data FROM workspaces ORDER BY user_id, created_at').all() as Array<{ user_id: string; id: string; data: string }>;
+    return rows.map((r) => {
+      const ws = JSON.parse(r.data) as Workspace;
+      const entries = (this.db.prepare('SELECT data FROM ledger WHERE workspace_id = ? AND user_id = ? AND created_at LIKE ?').all(r.id, r.user_id, `${month}%`) as Array<{ data: string }>).map((x) => JSON.parse(x.data) as LedgerEntry);
+      return { userId: r.user_id, workspaceId: r.id, name: ws.name, planId: ws.planId, entries };
+    });
   }
 
   // ── whole-workspace state + one-time legacy import ───────────────────────
@@ -440,7 +467,7 @@ export class Repo {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
       nodes: this.listNodes(s), objects, relationships: this.listRelationships(s), notes: this.listNotes(s),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
-      stale: computeStaleAssets(deliverables, objects),
+      stale: this.impactEnabled(s) ? computeStaleAssets(deliverables, objects) : [],
       judgments: this.listJudgments(s),
     };
   }

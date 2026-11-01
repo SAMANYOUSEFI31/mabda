@@ -87,7 +87,8 @@ export class FileService {
     const creditCost = res.usage.byok ? 0 : charge.credits;
     const created: ContextObject[] = this.repo.db.transaction(() => {
       this.repo.saveChunks(s, fileId, chunkText(fileId, text));
-      const objs = res.objects.map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId }));
+      // the plan's object cap: keep what fits (never fail the whole file over it)
+      const objs = res.objects.slice(0, this.repo.objectSlots(s)).map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId }));
       const summary = (res.summary ?? 'خلاصه‌ای تولید نشد.') + (res.truncated ? '\n\n(خلاصه و پیشنهادها فقط از بخش ابتدایی فایل ساخته شد؛ کل فایل برای بازیابی قطعه‌بندی شده است.)' : '');
       this.repo.setFileStatus(s, fileId, 'ready', { summary });
       this.repo.addFileUsage(s, period, file.tokens);

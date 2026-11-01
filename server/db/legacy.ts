@@ -27,7 +27,7 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
   const counts: ImportCounts = { workspaces: 0, objects: 0, deliverables: 0, ledger: 0, sessions: 0, specs: 0 };
   repo.db.transaction(() => {
     const workspaces = arr<Workspace>(payload.workspaces);
-    for (const ws of workspaces) { repo.saveWorkspace(userId, ws); counts.workspaces++; }
+    for (const ws of workspaces) { repo.saveWorkspace(userId, ws, { skipLimit: true }); counts.workspaces++; }
     const known = new Set(workspaces.map((w) => w.id));
     const objects = arr<ContextObject>(payload.contextObjects).filter((o) => known.has(o.workspaceId));
     for (const o of objects) { repo.importObject({ userId, workspaceId: o.workspaceId }, { ...o, version: o.version ?? 1 }); counts.objects++; }

@@ -15,6 +15,8 @@ import { ancestorIds } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
+import { entitlementsOf } from '../../src/core/entitlements.ts';
+import { costReport } from '../../src/core/costReport.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 
@@ -25,8 +27,10 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
   try { await fn(req, res); } catch (e) { next(e); }
 };
 
-export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService }): { router: Router; files: FileService } {
+export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
   const { repo, ai } = deps;
+  const payer = deps.payer ?? (() => 'user' as const);
+  const clock = deps.clock ?? (() => new Date());
   const files = deps.files ?? new FileService(repo, (aiUser, req) => ai.extract(aiUser, req));
   const router = express.Router();
   const scopeOf = (req: Request): Scope => {
@@ -67,7 +71,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   }));
 
   // ── context objects ──────────────────────────────────────────────────
-  const stale = (s: Scope) => computeStaleAssets(repo.listDeliverables(s), repo.listObjects(s));
+  const stale = (s: Scope) => (repo.impactEnabled(s) ? computeStaleAssets(repo.listDeliverables(s), repo.listObjects(s)) : []);
   router.post('/workspaces/:wid/objects', wrap((req, res) => {
     const s = scopeOf(req);
     res.json({ object: repo.createObject(s, body(req) as never) });
@@ -99,7 +103,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.extract(aiUser, { kind: 'note', text: note.content, nodeId: note.nodeId, nodes: repo.listNodes(s).map((n) => ({ id: n.id, label: n.label })) }, ctl.signal);
-    const created = r.objects.map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'AI Suggested', title: o.title, content: o.content, nodeId: o.nodeId }));
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'AI Suggested', title: o.title, content: o.content, nodeId: o.nodeId }));
     const ledger = repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'استخراج از یادداشت', mode: 'note_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
     res.json({ created, ledger, usage: r.usage });
   }));
@@ -127,25 +131,32 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   }));
 
   // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
-  const today = () => new Date().toISOString().slice(0, 10);
+  const today = () => clock().toISOString().slice(0, 10);
   router.post('/workspaces/:wid/gap/judge', wrap(async (req, res) => {
     const s = scopeOf(req);
     const ids = Array.isArray(body(req).objectIds) ? (body(req).objectIds as unknown[]).map(String) : [];
     const have = repo.listJudgments(s);
     const todo = ids.map((id) => repo.getObject(s, id)).filter((o): o is NonNullable<typeof o> => !!o && have[o.id]?.version !== o.version);
+    // judgements WE pay for are capped per plan per day; with the user's own key there is no cap
+    const planOf = repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId;
+    const capped = payer() === 'us';
+    const left = capped ? Math.max(0, entitlementsOf(planOf).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
+    const limited = todo.length > left;
+    if (limited) todo.length = left;
     if (todo.length) {
       const ctl = new AbortController();
       res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
       const r = await ai.judgeAmbiguity(aiUserOf(req), todo.map((o) => ({ id: o.id, title: o.title, content: o.content })), ctl.signal);
       for (const o of todo) { const j = r.judgments[o.id]; if (j) repo.saveJudgment(s, o.id, o.version, j); }
+      if (capped) repo.addDailyUsage(s, today(), 'judge', todo.length);
       // the decision-layer call is free for the user (PRD P3) but its real tokens/cost are in the ledger
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
-    res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s) });
+    res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s), limited });
   }));
 
   const coachQuota = (s: Scope) => {
-    const limit = PLANS[repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId].coachDailyLimit;
+    const limit = entitlementsOf(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId).coachPerDay;
     const used = repo.dailyUsage(s, today(), 'coach');
     return { used, limit, remaining: Math.max(0, limit - used) };
   };
@@ -155,7 +166,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     const text = String(b.text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای Coach نوشته نشده است.');
-    if (coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ Context Coach برای پلن این فضای کاری پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
+    if (payer() === 'us' && coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ Context Coach برای پلن این فضای کاری پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
     const nodes = repo.listNodes(s);
     const nodeId = nodes.some((n) => n.id === b.nodeId) ? String(b.nodeId) : 'business';
     const node = nodes.find((n) => n.id === nodeId);
@@ -172,6 +183,26 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'Context Coach', mode: 'coach', creditCost: 0, usage: r.usage, id: newId('led') }));
     const { usage: _u, ...result } = r;
     res.json({ result, quota: coachQuota(s), ledger: repo.listLedger(s) });
+  }));
+
+  // ── usage meters + manager ledger ────────────────────────────────────
+  router.get('/workspaces/:wid/usage', wrap((req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const month = clock().toISOString().slice(0, 7);
+    const byokCostUsd = repo.listLedger(s).filter((l) => l.byok && l.timestamp.startsWith(month)).reduce((sum, l) => sum + l.estimatedAiCostUsd, 0);
+    res.json({
+      planId: ws.planId, month, payer: payer(), byokCostUsd,
+      objects: repo.countActiveObjects(s), fileTokens: repo.fileUsage(s, month),
+      judgmentsToday: repo.dailyUsage(s, today(), 'judge'), coachToday: repo.dailyUsage(s, today(), 'coach'),
+    });
+  }));
+
+  router.get('/admin/cost-report', wrap((req, res) => {
+    if (!deps.admin) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
+    const month = typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month) ? req.query.month : clock().toISOString().slice(0, 7);
+    const rows = repo.ledgerByWorkspaceForMonth(month).map((w) => ({ userId: w.userId, workspaceId: w.workspaceId, name: w.name, ...costReport(w.planId, w.entries) }));
+    res.json({ month, rows });
   }));
 
   // ── files ──────────────────────────────────────────────────────────

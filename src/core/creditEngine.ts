@@ -4,43 +4,41 @@
  */
 
 import { AiPlan, ExecutionMode, PlanId, WorkspacePlan } from '../types';
+import { entitlementsOf } from './entitlements';
 
 export const PLANS: Record<PlanId, WorkspacePlan> = {
   starter: {
     id: 'starter',
     title: 'Starter (شروع جدی)',
-    priceMonthlyUsd: 9,
-    priceMonthlyToman: 650000,
+    priceMonthlyUsd: entitlementsOf('starter').priceMonthlyUsd,
     creditsMonthly: 300,
-    workspaceLimit: 1,
+    workspaceLimit: entitlementsOf('starter').workspaces,
     dailyChatLimit: 30,
     allowedModes: ['fast', 'auto'],
-    customSpecs: false,
-    coachDailyLimit: 5,
+    customSpecs: entitlementsOf('starter').customSpecs,
+    coachDailyLimit: entitlementsOf('starter').coachPerDay,
   },
   pro: {
     id: 'pro',
     title: 'Pro (اپراتور حرفه‌ای)',
-    priceMonthlyUsd: 24,
-    priceMonthlyToman: 1750000,
+    priceMonthlyUsd: entitlementsOf('pro').priceMonthlyUsd,
     creditsMonthly: 900,
-    workspaceLimit: 3,
+    workspaceLimit: entitlementsOf('pro').workspaces,
     dailyChatLimit: 70,
     allowedModes: ['fast', 'auto', 'critique'],
-    customSpecs: true,
-    coachDailyLimit: 15,
+    customSpecs: entitlementsOf('pro').customSpecs,
+    coachDailyLimit: entitlementsOf('pro').coachPerDay,
   },
   max: {
     id: 'max',
     title: 'Max (مشاور و آژانس)',
-    priceMonthlyUsd: 49,
-    priceMonthlyToman: 3500000,
+    priceMonthlyUsd: entitlementsOf('max').priceMonthlyUsd,
     creditsMonthly: 2000,
-    workspaceLimit: 10,
+    workspaceLimit: entitlementsOf('max').workspaces,
     dailyChatLimit: 140,
     allowedModes: ['fast', 'auto', 'critique', 'sensitive'],
-    customSpecs: true,
-    coachDailyLimit: 40,
+    customSpecs: entitlementsOf('max').customSpecs,
+    coachDailyLimit: entitlementsOf('max').coachPerDay,
   },
 };
 
@@ -170,7 +168,7 @@ export function chatCredits(deep: boolean): number {
 }
 
 /** Monthly free file-processing quota per plan, in tokens of extracted text. */
-export const FILE_QUOTA_TOKENS: Record<PlanId, number> = { starter: 150_000, pro: 500_000, max: 1_500_000 };
+export const FILE_QUOTA_TOKENS: Record<PlanId, number> = { starter: entitlementsOf('starter').fileTokensPerMonth, pro: entitlementsOf('pro').fileTokensPerMonth, max: entitlementsOf('max').fileTokensPerMonth };
 /** Over the quota: 2 credits per started 20k tokens (decisions v3.1 §6). */
 export const FILE_OVERAGE_TOKENS_PER_UNIT = 20_000;
 export const FILE_OVERAGE_CREDITS_PER_UNIT = 2;

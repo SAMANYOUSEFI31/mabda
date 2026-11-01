@@ -277,7 +277,7 @@ export class AiService {
   async extract(userId: string, req: ExtractRequest, parent?: AbortSignal): Promise<ExtractResult> {
     const dl = this.deadline(req.kind === 'file' ? this.cfg.timeoutsMs.deliverable : this.cfg.timeoutsMs.chat, parent);
     try {
-      const session = await this.deps.sessions.resolve(userId);
+      const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const maxChars = Math.floor(EXTRACT_WINDOW_TOKENS * 2.2);
       const truncated = req.text.length > maxChars;
@@ -316,7 +316,7 @@ export class AiService {
     if (!items.length) return { judgments: {} };
     const dl = this.deadline(this.cfg.timeoutsMs.validator, parent);
     try {
-      const session = await this.deps.sessions.resolve(userId);
+      const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const questions: DecisionQuestion[] = items.map((it, i) => ({
         id: `o${i}`, question: `آیا این Context برای ساختن خروجی به‌اندازهٔ کافی روشن و مشخص است یا مبهم؟ «${it.title}»: ${it.content}`, options: ['clear', 'ambiguous'], reason: true,
@@ -335,7 +335,7 @@ export class AiService {
   async coach(userId: string, req: CoachRequest, parent?: AbortSignal): Promise<CoachResult> {
     const dl = this.deadline(this.cfg.timeoutsMs.chat, parent);
     try {
-      const session = await this.deps.sessions.resolve(userId);
+      const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const user = [
         req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر گرهٔ «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح گره: ${req.nodeDescription}` : ''}`,
