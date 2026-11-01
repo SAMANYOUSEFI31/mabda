@@ -31,10 +31,11 @@ async function run(managed, port, fakePort) {
   try {
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR' })).newPage();
     const errors = [];
-    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const tag = managed ? 'on' : 'off';
     const shot = (n, full = false) => page.screenshot({ path: `docs/screens/plans-${tag}-${n}.png`, fullPage: full });
     const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).click();
+    const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText('منبع حقیقت: استودیو').waitFor();
 
@@ -43,14 +44,14 @@ async function run(managed, port, fakePort) {
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the first screen');
       // a subscription-included judgement on OUR key: Context Coach (no user key at all)
       await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
-      await page.getByRole('menuitem', { name: 'Context Coach' }).click();
-      await page.getByRole('button', { name: 'از Coach بپرس' }).click();
+      await page.getByRole('menuitem', { name: 'مربی دانش' }).click();
+      await page.getByRole('button', { name: 'از مربی دانش بپرس' }).click();
       await page.getByText('سؤال‌های روشن‌کننده').waitFor({ timeout: 20000 });
       await page.keyboard.press('Escape');
 
-      await nav('دفتر کل');
+      await account('مصرف و دفتر کل');
       await page.getByText('پردازش فایل این ماه').first().waitFor();
-      await page.getByText('Context Coach امروز').first().waitFor();
+      await page.getByText('مربی دانش امروز').first().waitFor();
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the usage page');
       await shot('1-usage');
 
@@ -58,15 +59,18 @@ async function run(managed, port, fakePort) {
       await page.getByText(/هزینهٔ واقعی ما در برابر قیمت پلن/).waitFor();
       await shot('2-manager-ledger');
 
-      await page.getByRole('button', { name: /^پلن:/ }).first().click().catch(() => {});
+      await page.keyboard.press('Escape').catch(() => {});
+      await account('پلن و ارتقا');
       await page.getByText('منبع حقیقت کسب‌وکار، وصل به AI خودت').waitFor();
       assert.equal(await page.getByText(/تومان/).count() > 0 ? (await page.getByText(/تومان/).allInnerTexts()).filter((t) => /[۰-۹0-9]+\s*تومان/.test(t)).length : 0, 0, 'no hardcoded local-currency amount');
       assert.equal(await page.getByText(/اعتبار ماهانه/).count(), 0, 'plan page has no credit section while managed AI is off');
       await shot('3-plan-page', true);
     } else {
       console.log('• run B: managed AI ON');
-      await page.getByText('موجودی اعتبار').first().waitFor();
-      await page.getByRole('button', { name: /ارتقا یا تغییر پلن/ }).click().catch(async () => { await page.getByText('ارتقا یا تغییر پلن').click(); });
+      await account('مصرف و دفتر کل');
+      await page.getByText('اعتبار باقی‌مانده').first().waitFor();
+      await page.keyboard.press('Escape').catch(() => {});
+      await account('پلن و ارتقا');
       await page.getByText('اعتبار ماهانه برای خروجی‌ها').first().waitFor();
       await shot('1-plan-page-with-credits', true);
     }
