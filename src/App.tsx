@@ -39,6 +39,7 @@ import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
+import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
@@ -147,6 +148,7 @@ export default function App() {
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
+  const [threadNodeId, setThreadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
   const nodes = data?.nodes ?? [];
@@ -633,6 +635,7 @@ export default function App() {
                 onNodeAction={setNodeDialog}
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
                 onReadNode={setReadNodeId}
+                onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
@@ -840,6 +843,14 @@ export default function App() {
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <NodeThreadPanel
+        open={!!threadNodeId}
+        workspaceId={wid}
+        node={nodes.find((n) => n.id === threadNodeId) ?? null}
+        onClose={() => setThreadNodeId(null)}
+        onProposed={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
+        onSummary={(note, ledger) => patch((d) => ({ ...d, notes: [note, ...d.notes], ledger }))}
+      />
       <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
 
       <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />

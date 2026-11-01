@@ -16,7 +16,8 @@ export const managedAiEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABD
  * Context (with versions), node tree and relevant file chunks itself — the browser cannot influence what is injected.
  */
 export interface ContextSource {
-  forChat(workspaceId: string, o: { scopeNodeId?: string; message: string }): Partial<ChatRequest>;
+  /** `threadOnly`: focused thread — context is the node and its PARENTS only (no descendants) and proposals may target only the node */
+  forChat(workspaceId: string, o: { scopeNodeId?: string; message: string; threadOnly?: boolean }): Partial<ChatRequest>;
   forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[]; dependencyAssetIds?: string[] }): Partial<GenerateRequest>;
 }
 

@@ -8,8 +8,8 @@ import { ModelDecisionLayer } from './decision.ts';
 import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
 import { runPipeline } from './pipeline.ts';
-import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, MEMORY_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
-import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA, PARSE_SCHEMA } from './schemas.ts';
+import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, MEMORY_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT, THREAD_INSTRUCTION, THREAD_SUMMARY_INSTRUCTION } from './prompts.ts';
+import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA, PARSE_SCHEMA, SUMMARY_SCHEMA } from './schemas.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { applyBand, route, sanitizePlan } from './router.ts';
 import { StageRunner, sumUsage } from './runner.ts';
@@ -30,6 +30,8 @@ export interface ChatRequest {
   allowedNodeIds?: string[];
   scopeNodeId?: string;
   excerpts?: FileExcerpt[];
+  /** focused thread: what this conversation is for (added to the task) */
+  threadGoal?: string;
 }
 
 export interface GenerateRequest {
@@ -191,7 +193,7 @@ export class AiService {
 
       const history = (req.history ?? []).slice(-6).map((m) => `${m.role === 'user' ? 'کاربر' : 'مبدأ'}: ${m.content}`).join('\n');
       const task = [
-        CHAT_MODE_HINT[req.chatMode ?? 'discovery'],
+        req.threadGoal ? `${THREAD_INSTRUCTION}\n## هدف این گفتگو\n${req.threadGoal}` : CHAT_MODE_HINT[req.chatMode ?? 'discovery'],
         history ? `## تاریخچهٔ اخیر گفتگو\n${history}` : '',
         req.allowedNodeIds?.length ? `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین گره‌ها مجاز است.` : '',
         `## پیام کاربر\n${req.message}`,
@@ -335,6 +337,40 @@ export class AiService {
       const judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }> = {};
       res.answers.forEach((a, i) => { judgments[items[i].id] = { ambiguous: a.choice === 'ambiguous', reason: a.reason ?? '', probability: a.probability }; });
       return { judgments, usage: res.usage ? usageSummary([res.usage], session.source === 'byok') : undefined };
+    } finally { dl.done(); }
+  }
+
+  /**
+   * Focused thread on one node: the CHEAP tier, single pass, no routing call. Context = that node + its parents (the caller
+   * builds it); proposals are clamped to the node itself (`allowedNodeIds = [nodeId]`). Throws AiError on failure — the
+   * caller shows «دوباره»; there is never a canned reply.
+   */
+  async threadTurn(userId: string, req: { message: string; nodeId: string; nodeLabel: string; contextList: ContextObjectLite[]; nodeLabels?: Record<string, string>; excerpts?: FileExcerpt[]; history?: Array<{ role: string; content: string }> }, parent?: AbortSignal): Promise<GenerationResult> {
+    const plan = sanitizePlan({ pattern: 'single', tier: 'cheap', effort: 'low', userMode: 'fast', jobKind: 'chat', reason: 'گفتگوی متمرکز همیشه با مدل سبک و فقط روی دانش همین بخش اجرا می‌شود.', confidence: 1, upgraded: false, decisions: [] }, this.cfg)!;
+    const events: AiStreamEvent[] = [];
+    await this.chat(userId, {
+      message: req.message, contextList: req.contextList, focusNodeIds: [req.nodeId], chatMode: 'discovery', mode: 'auto', history: req.history, plan,
+      nodeLabels: req.nodeLabels, allowedNodeIds: [req.nodeId], scopeNodeId: req.nodeId, excerpts: req.excerpts,
+      threadGoal: `ساختن پیش‌نویس بخش «${req.nodeLabel}» (شناسهٔ گره: ${req.nodeId}).`,
+    }, (e) => events.push(e), parent);
+    const err = events.find((e): e is Extract<AiStreamEvent, { type: 'error' }> => e.type === 'error');
+    if (err) throw new AiError(err.error.kind, { message: err.error.message, retryable: err.error.retryable, stage: err.error.stage });
+    const done = events.find((e): e is Extract<AiStreamEvent, { type: 'done' }> => e.type === 'done');
+    if (!done) throw new AiError('bad_output', { stage: 'chat', detail: 'no result' });
+    return done.result;
+  }
+
+  /** the short summary stored on the node when a thread ends (cheap tier, from the transcript only) */
+  async threadSummary(userId: string, req: { nodeLabel: string; transcript: Array<{ role: string; content: string }> }, parent?: AbortSignal): Promise<{ summary: string; usage: UsageSummary }> {
+    const dl = this.deadline(this.cfg.timeoutsMs.chat, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId);
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const text = req.transcript.map((m) => `${m.role === 'user' ? 'کاربر' : 'مبدأ'}: ${m.content}`).join('\n').slice(0, 24_000);
+      const r = await runner.structured({ stage: 'chat', tier: 'cheap', effort: 'low', maxTokens: 800, timeoutMs: this.cfg.timeoutsMs.chat }, { system: SYSTEM_PROMPT, user: `${THREAD_SUMMARY_INSTRUCTION}\n\n## بخش: ${req.nodeLabel}\n## گفتگو\n${text}` }, SUMMARY_SCHEMA);
+      const summary = (r.value as { summary?: unknown })?.summary;
+      if (typeof summary !== 'string' || !summary.trim()) throw new AiError('bad_output', { stage: 'chat', detail: 'empty summary' });
+      return { summary: summary.trim(), usage: usageSummary([r.usage], session.source === 'byok') };
     } finally { dl.done(); }
   }
 

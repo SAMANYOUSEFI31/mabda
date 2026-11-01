@@ -23,13 +23,13 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
     }));
 
   return {
-    forChat(workspaceId, { scopeNodeId, message }) {
+    forChat(workspaceId, { scopeNodeId, message, threadOnly }) {
       const s = scopeOf(workspaceId);
       const nodes = repo.listNodes(s);
       const nodeLabels = Object.fromEntries(nodes.map((n) => [n.id, n.label]));
       const excerpts = files.excerpts(s, message);
       if (scopeNodeId && nodes.some((n) => n.id === scopeNodeId)) {
-        const sub = subtreeIds(nodes, scopeNodeId);
+        const sub = threadOnly ? [scopeNodeId] : subtreeIds(nodes, scopeNodeId);
         const visible = new Set([...sub, ...ancestorIds(nodes, scopeNodeId)]);
         return { contextList: lite(s, visible), nodeLabels, scopeNodeId, allowedNodeIds: sub, focusNodeIds: [scopeNodeId], excerpts };
       }

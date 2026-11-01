@@ -65,6 +65,8 @@ export function decisionSchema(ids: string[], optionsById: Record<string, string
   };
 }
 
+export const SUMMARY_SCHEMA = { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] } as const;
+
 export const EXTRACT_SCHEMA = {
   type: 'object',
   properties: {

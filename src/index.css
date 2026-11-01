@@ -65,3 +65,13 @@
 .bsh-tabs-wrap { min-inline-size: 0; max-inline-size: 100%; }
 /* toggle tags are interactive controls: full touch target */
 .bsh-tag--toggle { min-block-size: var(--touch-target-min); }
+
+/* Dialog as a side panel (used by the focused per-node thread). Logical properties only. */
+@media (min-width: 640px) {
+  .bsh-dialog-layer.is-side { align-items: stretch; justify-content: flex-end; padding: 0; }
+  .bsh-dialog-layer.is-side .bsh-dialog {
+    max-block-size: none; block-size: 100%; max-inline-size: var(--overlay-width-lg);
+    border-radius: 0; border-block-end: 0; display: flex; flex-direction: column;
+  }
+  .bsh-dialog-layer.is-side .bsh-dialog__body { flex: 1 1 auto; min-block-size: 0; overflow: auto; }
+}

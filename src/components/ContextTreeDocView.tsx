@@ -21,6 +21,7 @@ interface ContextTreeDocViewProps {
   onNodeAction: (state: NonNullable<NodeDialogState>) => void;
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
+  onOpenThread: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -56,6 +57,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             </Button>
             <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
             <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
+            <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
             <Menu
               label={`عملیات گرهٔ ${node.label}`}
               align="end"

@@ -437,3 +437,52 @@ test('changes endpoint returns the version rows of the window (with the earlier 
     assert.ok(!r.versions.some((v: any) => v.objectId === 'ctx_domain'), 'untouched objects are not listed');
   } finally { t.close(); }
 });
+
+test('focused thread: cheap model, context = this node + its parents only, proposals clamped to THIS node (Proposed), summary saved as a note; errors create nothing', async () => {
+  let fail = false;
+  const t = await boot((c) => {
+    if (c.kind === 'stream' || c.kind === 'generate') {
+      if (fail) return Object.assign(new Error('boom'), { status: 500 });
+      return { blocks: [
+        block('b1', 'پیش‌نویس بخش پیشنهاد'),
+        block('b2', 'قیمت پایه', { kind: 'fact', proposal: { type: 'Fact', title: 'قیمت پایه', content: 'پنج میلیون تومان', nodeId: 'business', reason: 'گفته شد' } }),
+      ] };
+    }
+    if (JSON.stringify(c.schema ?? '').includes('"summary"')) return { summary: 'قیمت پایه تعیین شد.' };
+    return isDecision(c) ? decide : { blocks: [block('b1', 'x')] };
+  });
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const st = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    const offerParents = new Set<string>(['offer']);
+    for (let n = st.nodes.find((x: any) => x.id === 'offer'); n?.parentId; n = st.nodes.find((x: any) => x.id === n.parentId)) offerParents.add(n.parentId);
+    const outside = st.objects.filter((o: any) => !offerParents.has(o.nodeId) && o.status !== 'Superseded' && o.status !== 'Archived');
+    assert.ok(outside.length > 0, 'the seed has context outside the node and its parents');
+
+    const r = await t.call('POST', '/workspaces/ws_studio/threads/offer/turn', { message: 'قیمت را بنویس', history: [] });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.created.length, 1);
+    assert.deepEqual([r.json.created[0].status, r.json.created[0].nodeId, r.json.created[0].source.kind], ['Proposed', 'offer', 'chat'], 'out-of-scope proposal is clamped to the thread node');
+    assert.ok(r.json.ledger.some((l: any) => l.mode === 'thread'));
+
+    const call = t.p.calls.find((c) => c.kind === 'stream' || c.kind === 'generate')!;
+    assert.match(call.spec.modelId, /flash-lite/, 'always the cheap tier');
+    const prompt = `${call.prompt.prefix ?? ''}\n${call.prompt.user}`;
+    for (const o of outside) assert.ok(!prompt.includes(o.content), `context outside the node/parents must not reach the model: ${o.title}`);
+    assert.doesNotMatch(prompt, /\d\s*%|درصد اطمینان/);
+
+    const fin = await t.call('POST', '/workspaces/ws_studio/threads/offer/finish', { transcript: [{ role: 'user', content: 'قیمت را بنویس' }, { role: 'assistant', content: 'پیش‌نویس بخش پیشنهاد' }] });
+    assert.equal(fin.status, 200);
+    assert.equal(fin.json.note.nodeId, 'offer');
+    assert.match(fin.json.note.content, /قیمت پایه تعیین شد/);
+
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/threads/offer/turn', { message: ' ' })).status, 400);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/threads/ghost/turn', { message: 'سلام' })).status, 404);
+    fail = true;
+    const before = (await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length;
+    const bad = await t.call('POST', '/workspaces/ws_studio/threads/offer/turn', { message: 'دوباره', history: [] });
+    assert.ok(bad.status >= 500 || bad.status === 429);
+    assert.ok(bad.json.error.message && bad.json.error.retryable !== undefined);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length, before, 'no canned reply, nothing created');
+  } finally { t.close(); }
+});

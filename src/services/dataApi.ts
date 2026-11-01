@@ -124,6 +124,10 @@ export const dataApi = {
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; pairJudgments: WorkspaceState['pairJudgments']; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/contradictions/resolve`, input),
   changes: (id: string, days = 7) => call<{ days: number; versions: import('../core/changeFeed').VersionRow[] }>('GET', `${ws(id)}/changes?days=${days}`),
   importMemory: (id: string, input: { text: string; sourceLabel: string }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
+  threadTurn: (id: string, nodeId: string, input: { message: string; history: Array<{ role: string; content: string }> }) =>
+    call<{ blocks: import('../types/ai').ContentBlock[]; markdown: string; created: ContextObject[]; ledger: LedgerEntry[] }>('POST', `${ws(id)}/threads/${encodeURIComponent(nodeId)}/turn`, input),
+  threadFinish: (id: string, nodeId: string, transcript: Array<{ role: string; content: string }>) =>
+    call<{ note: Note; ledger: LedgerEntry[] }>('POST', `${ws(id)}/threads/${encodeURIComponent(nodeId)}/finish`, { transcript }),
   coachQuota: (id: string) => call<CoachQuota>('GET', `${ws(id)}/coach/quota`),
   coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),

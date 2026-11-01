@@ -26,7 +26,7 @@ export function createApp(db: Database.Database, aiOptions: { sessions?: Session
 
   app.use('/mcp', createMcpRouter({ repo }));
   app.use('/api/ai', ai.router);
-  app.use('/api', createDataRouter({ repo, ai: ai.service, files, payer: () => ai.sessions.platformPayer(), admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);
+  app.use('/api', createDataRouter({ repo, ai: ai.service, files, source, payer: () => ai.sessions.platformPayer(), admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);
 
   /** Health check (does not call any model). */
   app.get('/api/health', (_req: Request, res: Response) => {

@@ -8,6 +8,8 @@ import type { LegacyPayload } from './legacy.ts';
 import type { AiService } from '../ai/service.ts';
 import { toAiError } from '../ai/errors.ts';
 import { userOf as aiUserOf } from '../ai/routes.ts';
+import type { ContextSource } from '../ai/routes.ts';
+import { clampProposal } from '../ai/service.ts';
 import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
@@ -33,7 +35,7 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
   try { await fn(req, res); } catch (e) { next(e); }
 };
 
-export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
+export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
   const { repo, ai } = deps;
   const payer = deps.payer ?? (() => 'user' as const);
   const clock = deps.clock ?? (() => new Date());
@@ -189,6 +191,45 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
+  }));
+
+  // ── focused thread on one node: cheap tier, context = node + parents, output = Proposed objects for THAT node only ──
+  router.post('/workspaces/:wid/threads/:nodeId/turn', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    if (!deps.source) throw new RepoError('invalid', 'منبع Context برای گفتگوی متمرکز تنظیم نشده است.');
+    const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
+    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    const message = String(body(req).message ?? '').trim();
+    if (!message) throw new RepoError('invalid', 'پیام خالی است.');
+    const history = (Array.isArray(body(req).history) ? body(req).history : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+    const ctx = deps.source.forChat(s.workspaceId, { scopeNodeId: node.id, message, threadOnly: true });
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const r = await ai.threadTurn(aiUserOf(req), { message, nodeId: node.id, nodeLabel: node.label, contextList: ctx.contextList ?? [], nodeLabels: ctx.nodeLabels, excerpts: ctx.excerpts, history }, ctl.signal);
+    const at = new Date().toISOString();
+    const blocks = r.blocks.map((b) => clampProposal(b, [node.id], node.id));
+    const room = repo.objectSlots(s);
+    const created = blocks.filter((b) => b.proposal).slice(0, room).map((b) => repo.createObject(s, {
+      type: b.proposal!.type, status: 'Proposed', provenance: 'AI Suggested', title: b.proposal!.title, content: b.proposal!.content, nodeId: node.id,
+      source: { kind: 'chat', label: `گفتگوی متمرکز · ${node.label}`, at, ...(b.proposal!.reason ? { reason: b.proposal!.reason } : {}) },
+    }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ blocks, markdown: r.markdown, created, ledger: repo.listLedger(s) });
+  }));
+
+  /** end of the thread: a short summary is saved as a note on the node (notes are never injected into the model) */
+  router.post('/workspaces/:wid/threads/:nodeId/finish', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
+    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    const transcript = (Array.isArray(body(req).transcript) ? body(req).transcript : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+    if (!transcript.length) throw new RepoError('invalid', 'گفتگویی برای خلاصه کردن نیست.');
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const r = await ai.threadSummary(aiUserOf(req), { nodeLabel: node.label, transcript }, ctl.signal);
+    const note = repo.createNote(s, node.id, `خلاصهٔ گفتگوی متمرکز:\n${r.summary}`);
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `خلاصهٔ گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ note, ledger: repo.listLedger(s) });
   }));
 
   // ── semantic contradictions (plan feature; shares the daily judgement cap) ──────────────
