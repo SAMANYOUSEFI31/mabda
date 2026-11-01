@@ -15,13 +15,17 @@ import {
   Workspace,
 } from './types';
 import type { WorkspaceState, ImpactInfo } from './types/state';
-import { detectContradictions } from './core/contextEngine';
+import { calculateReadinessAndGaps, detectContradictions } from './core/contextEngine';
 import { impactMessage } from './core/impactEngine';
 import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
 import { ContradictionBanner } from './components/ContradictionBanner';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextTableView } from './components/ContextTableView';
+import { DocReader } from './components/DocReader';
+import { AttentionPanel } from './components/AttentionPanel';
+import { NodeReaderDialog } from './components/NodeReaderDialog';
+import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
 import type { NodeDialogState } from './components/NodeDialogs';
@@ -39,7 +43,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
 import { SpecEditorModal } from './components/SpecEditorModal';
-import { PLANS } from './core/creditEngine';
+import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { WORKSTREAM_SPECS } from './core/specs';
 import { WorkstreamSpec } from './types';
 import { Alert, Button, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
@@ -117,7 +121,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'table'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -135,6 +139,7 @@ export default function App() {
   const [packTarget, setPackTarget] = useState<PackTarget | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [readNodeId, setReadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
   const nodes = data?.nodes ?? [];
@@ -144,6 +149,10 @@ export default function App() {
   const stale = data?.stale ?? [];
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
   const contradictions: Contradiction[] = detectContradictions(workspaceContexts);
+  const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
+  const attentionGaps = attentionSpec
+    ? calculateReadinessAndGaps(attentionSpec, workspaceContexts, data?.relationships ?? []).gaps.filter((g) => g.importance === 'required')
+    : [];
 
   const showImpact = (impact: ImpactInfo) => {
     if (impact.count > 0) toast.show({ intent: 'warning', message: impactMessage(impact.count), duration: 7000 });
@@ -320,7 +329,10 @@ export default function App() {
     if (await persistDeliverable(asset)) toast.show({ intent: 'success', message: 'در کتابخانهٔ دارایی‌ها ذخیره شد (Markdown).' });
   };
 
-  const handleIncrementChatCount = () => { void updateWorkspace((w) => ({ ...w, todayChatCount: w.todayChatCount + 1 })); };
+  const handleIncrementChatCount = () => {
+    const day = tehranDay();
+    void updateWorkspace((w) => ({ ...w, todayChatCount: chatCountToday(w.todayChatCount, w.chatCountDay, day) + 1, chatCountDay: day }));
+  };
 
   const handleChangePlan = (planId: PlanId) => {
     void updateWorkspace((w) => ({ ...w, planId, creditsRemaining: w.creditsRemaining + PLANS[planId].creditsMonthly }));
@@ -489,7 +501,6 @@ export default function App() {
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
         deliverablesCount={deliverables.length}
-        todayChatCount={currentWorkspace.todayChatCount}
       />
 
       {/* Main Content Area */}
@@ -530,13 +541,29 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'table')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table')}
                 items={[
-                  { id: 'doc', label: 'نمای سند', icon: 'FileText' },
-                  { id: 'table', label: 'نمای جدول', icon: 'Table2' },
+                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                  { id: 'read', label: 'سند', icon: 'BookOpen' },
+                  { id: 'table', label: 'جدول', icon: 'Table2' },
                 ]}
               />
             </div>
+
+            <AttentionPanel
+              specTitle={attentionSpec?.title ?? ''}
+              gaps={attentionGaps}
+              contradictionCount={contradictions.length}
+              staleCount={stale.length}
+              proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
+              onAnswerGap={(gap, answer) => { void handleSaveContextObject({
+                workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
+                title: gap.label, content: answer, nodeId: gap.nodeId,
+              }); }}
+              onOpenStudio={() => setActiveTab('workstreams')}
+              onOpenAssets={() => setActiveTab('assets')}
+              onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
 
             <ProposalInbox
               objects={workspaceContexts}
@@ -549,7 +576,13 @@ export default function App() {
               onOpenConnect={() => setIsConnectOpen(true)}
             />
 
-            {contextViewMode === 'doc' ? (
+            {contextViewMode === 'read' ? (
+              <DocReader
+                markdown={contextToMarkdown({ nodes, objects: workspaceContexts, title: currentWorkspace.name })}
+                fileName={currentWorkspace.name}
+                empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
+              />
+            ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
                 nodes={nodes}
@@ -560,6 +593,7 @@ export default function App() {
                 onAddNewToNode={(nodeId) => openContext(null, nodeId)}
                 onNodeAction={setNodeDialog}
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
+                onReadNode={setReadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
@@ -762,6 +796,7 @@ export default function App() {
         }}
       />
 
+      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
@@ -774,7 +809,7 @@ export default function App() {
         onClose={() => setIsNewWorkspaceModalOpen(false)}
         size="sm"
         title="ایجاد فضای کاری جدید"
-        description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد (اصل P6)."
+        description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد."
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>

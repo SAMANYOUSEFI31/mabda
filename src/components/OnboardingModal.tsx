@@ -204,7 +204,7 @@ const OnboardingWizard: React.FC<OnboardingModalProps> = ({ onClose, currentWork
         {step === 2 && (
           <div className="flex flex-col gap-stack-md">
             <p className="body-sm text-text-subtle">
-              این ۵ شیء دانشی است که مبدأ استخراج کرد. تا زمانی که تأیید نکنی، هیچ موردی وارد خروجی‌ها نمی‌شود (اصل P2).
+              این ۵ شیء دانشی است که مبدأ استخراج کرد. تا زمانی که تأیید نکنی، هیچ موردی وارد خروجی‌ها نمی‌شود.
             </p>
             <div className="flex flex-col gap-stack-sm">
               {review.map(([label, value]) => (

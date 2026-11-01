@@ -31,7 +31,7 @@ import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
 import { contextDraftFromBlock } from '../core/blocks';
 import { KnowledgeGapChart } from './KnowledgeGapChart';
-import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Tabs, formatNumber, useToast } from '../ui';
+import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Switch, Tabs, formatNumber, useToast } from '../ui';
 
 interface WorkstreamStudioProps {
   currentWorkspace: Workspace;
@@ -99,6 +99,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     specs[0]?.deliverables[0]?.id || 'del_positioning_statement'
   );
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('auto');
+  const [manualModeOpen, setManualModeOpen] = useState(false);
+  const importantMode: ExecutionMode | null = PLANS[currentWorkspace.planId].allowedModes.includes('sensitive') ? 'sensitive' : PLANS[currentWorkspace.planId].allowedModes.includes('critique') ? 'critique' : null;
   const [isGenerating, setIsGenerating] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>('');
   const [genError, setGenError] = useState<AiErrorInfo | null>(null);
@@ -407,48 +409,41 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
                   </>
                 )}
-                <span className="caption text-text-subtle">Constraintهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
+                <span className="body-sm text-text-subtle">Constraintهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
               </div>
 
-              <div className="flex flex-col gap-stack-sm" role="group" aria-label="سطح اجرا و عمق کار">
-                <div className="flex flex-col justify-between gap-inline-xs sm:flex-row sm:items-center">
-                  <span className="label-md text-text-default">انتخاب سطح اجرا و عمق کار</span>
-                  <span className="caption text-text-subtle">اصل P1: کاربر «چه» را تعیین می‌کند، مبدأ «چطور» را.</span>
+              <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
+                <div className="flex flex-col justify-between gap-inline-sm sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-stack-xs">
+                    <span className="label-md text-text-default">مبدأ خودش انتخاب می‌کند</span>
+                    <span className="body-sm text-text-subtle">مدل، عمق کار و بررسی را براساس نوع خروجی تعیین می‌کند و پیش از ساخت اینجا نشانت می‌دهد.</span>
+                  </div>
+                  <div className="flex flex-col gap-stack-xs">
+                  <Switch
+                    checked={executionMode === 'sensitive' || executionMode === 'critique'}
+                    disabled={!importantMode}
+                    onChange={(e) => setExecutionMode(e.target.checked && importantMode ? importantMode : 'auto')}
+                    label="این خروجی مهم است (بررسی دقیق‌تر)"
+                  />
+                  {!importantMode && <span className="body-sm text-text-subtle">بررسی دقیق‌تر در پلن فعلی فعال نیست.</span>}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
-                  <OptionCard
-                    title="سریع"
-                    description="تک‌مرحله‌ای"
-                    meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined}
-                    selected={executionMode === 'fast'}
-                    onClick={() => setExecutionMode('fast')}
-                  />
-                  <OptionCard
-                    title="متعادل (Auto)"
-                    badge={<Badge intent="success" icon={false}>۱۰٪ تخفیف</Badge>}
-                    description="پیش‌فرض بهینه"
-                    meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined}
-                    selected={executionMode === 'auto'}
-                    onClick={() => setExecutionMode('auto')}
-                  />
-                  <OptionCard
-                    title="عمیق (Critique)"
-                    description="پیش‌نویس + نقد + اصلاح"
-                    meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined}
-                    selected={executionMode === 'critique'}
-                    disabled={!plan.allowedModes.includes('critique')}
-                    onClick={() => setExecutionMode('critique')}
-                  />
-                  <OptionCard
-                    title="حالت حساس"
-                    badge={<Badge intent="neutral" icon={false}>Max</Badge>}
-                    description="نقد + Gap + تناقض"
-                    meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined}
-                    selected={executionMode === 'sensitive'}
-                    disabled={!plan.allowedModes.includes('sensitive')}
-                    onClick={() => setExecutionMode('sensitive')}
-                  />
+                <div className="flex flex-wrap items-center gap-inline-sm">
+                  <Button variant="ghost" size="sm" iconEnd={manualModeOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={manualModeOpen} onClick={() => setManualModeOpen((v) => !v)}>
+                    تغییر دستی
+                  </Button>
+                  {executionMode !== 'auto' && executionMode !== 'sensitive' && (
+                    <Button variant="ghost" size="sm" iconStart="Undo2" onClick={() => setExecutionMode('auto')}>برگرد به خودکار</Button>
+                  )}
                 </div>
+                {manualModeOpen && (
+                  <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
+                    <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined} selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
+                    <OptionCard title="خودکار" description="پیشنهاد مبدأ" meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined} selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
+                    <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined} selected={executionMode === 'critique'} disabled={!plan.allowedModes.includes('critique')} onClick={() => setExecutionMode('critique')} />
+                    <OptionCard title="حساس" description="بررسی دقیق + شکاف + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!plan.allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
+                  </div>
+                )}
               </div>
 
               {/* Pre-execution credit indicator (P2): derived from the router's plan, the same plan is executed */}

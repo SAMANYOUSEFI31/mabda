@@ -9,7 +9,7 @@ import { Link } from './Button.tsx';
  * Raw HTML in the source is NOT rendered (react-markdown default), so model output cannot inject markup.
  * `dir="auto"` per block keeps Latin-only snippets (codes, URLs) readable inside Persian text.
  */
-const components: Components = {
+const compact: Components = {
   h1: ({ children }) => <h3 dir="auto" className="heading-sm text-text-default">{children}</h3>,
   h2: ({ children }) => <h3 dir="auto" className="heading-xs text-text-default">{children}</h3>,
   h3: ({ children }) => <h4 dir="auto" className="title text-text-default">{children}</h4>,
@@ -34,10 +34,25 @@ const components: Components = {
   td: ({ children }) => <td className="body-sm">{children}</td>,
 };
 
-export function Markdown({ children, className }: { children: string; className?: string }) {
+/** Reading-document typography: real heading hierarchy, roomy rhythm, headings separated like a printed document. */
+const document: Components = {
+  ...compact,
+  h1: ({ children }) => <h2 dir="auto" className="heading-lg border-b border-border-default pb-inset-md text-text-default">{children}</h2>,
+  h2: ({ children }) => <h3 dir="auto" className="heading-md mt-stack-xl border-b border-border-subtle pb-inset-sm text-text-default">{children}</h3>,
+  h3: ({ children }) => <h4 dir="auto" className="heading-sm mt-stack-lg text-text-default">{children}</h4>,
+  h4: ({ children }) => <h5 dir="auto" className="heading-xs mt-stack-md text-text-default">{children}</h5>,
+  h5: ({ children }) => <h5 dir="auto" className="title mt-stack-sm text-text-default">{children}</h5>,
+  h6: ({ children }) => <h6 dir="auto" className="label-md text-text-subtle">{children}</h6>,
+  p: ({ children }) => <p dir="auto" className="body-md text-text-default">{children}</p>,
+  // a line written _like this_ is document metadata (type · status · version): quiet, not body text
+  em: ({ children }) => <span className="label-sm text-text-subtle">{children}</span>,
+  blockquote: ({ children }) => <blockquote dir="auto" className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
+};
+
+export function Markdown({ children, className, variant = 'compact' }: { children: string; className?: string; variant?: 'compact' | 'document' }) {
   return (
-    <div className={cx('flex flex-col gap-stack-sm', className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{children}</ReactMarkdown>
+    <div className={cx('flex flex-col', variant === 'document' ? 'gap-stack-md' : 'gap-stack-sm', className)}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={variant === 'document' ? document : compact}>{children}</ReactMarkdown>
     </div>
   );
 }

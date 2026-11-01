@@ -23,11 +23,10 @@ interface AppNavigationProps {
   selectedSpecId: string;
   onSelectSpecId: (specId: string) => void;
   onOpenCustomSpecModal: () => void;
-  contextViewMode: 'doc' | 'table';
-  onChangeContextViewMode: (mode: 'doc' | 'table') => void;
+  contextViewMode: 'doc' | 'read' | 'table';
+  onChangeContextViewMode: (mode: 'doc' | 'read' | 'table') => void;
   contextCount: number;
   deliverablesCount: number;
-  todayChatCount: number;
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = ({
@@ -48,7 +47,6 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
   onChangeContextViewMode,
   contextCount,
   deliverablesCount,
-  todayChatCount,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
@@ -104,8 +102,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
           <NavItem icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(contextCount)} selected={activeTab === 'context'} onClick={() => go('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
-              <NavItem nested label="نمای سندی و درختی" selected={contextViewMode === 'doc'} onClick={() => { onChangeContextViewMode('doc'); close(); }} />
-              <NavItem nested label="نمای پایگاه‌داده و جدول" selected={contextViewMode === 'table'} onClick={() => { onChangeContextViewMode('table'); close(); }} />
+              <NavItem nested label="ساختار" selected={contextViewMode === 'doc'} onClick={() => { onChangeContextViewMode('doc'); close(); }} />
+              <NavItem nested label="سند خوانا" selected={contextViewMode === 'read'} onClick={() => { onChangeContextViewMode('read'); close(); }} />
+              <NavItem nested label="جدول" selected={contextViewMode === 'table'} onClick={() => { onChangeContextViewMode('table'); close(); }} />
             </div>
           )}
 
@@ -126,7 +125,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
             ))}
           </div>
 
-          <NavItem icon="MessageSquare" label="گفتگو و استخراج دانش" trailing={`${formatNumber(todayChatCount)} / ${formatNumber(plan.dailyChatLimit)}`} selected={activeTab === 'chat'} onClick={() => go('chat')} />
+          <NavItem icon="MessageSquare" label="گفتگو و استخراج دانش" selected={activeTab === 'chat'} onClick={() => go('chat')} />
           <NavItem icon="Package" label="کتابخانهٔ دارایی‌ها" trailing={formatNumber(deliverablesCount)} selected={activeTab === 'assets'} onClick={() => go('assets')} />
           <NavItem icon="Wallet" label="دفتر کل و شفافیت مالی" selected={activeTab === 'ledger'} onClick={() => go('ledger')} />
         </nav>

@@ -81,7 +81,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               aria-expanded={showCritique}
               onClick={() => setShowCritique(!showCritique)}
             >
-              نقد و چک‌لیست ({formatNumber(deliverable.critiqueFeedback.score)}٪)
+              نقد و چک‌لیست
             </Button>
           )}
         </div>
@@ -152,9 +152,11 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-info-subtle bg-bg-info-subtle p-inset-lg">
           <div className="flex flex-wrap items-center justify-between gap-inline-sm">
             <span className="label-md text-text-info">ارزیابی منتقد هوشمند و چک‌لیست پذیرش</span>
-            <span className="label-md tabular-nums text-text-default">
-              امتیاز کیفیت: {formatNumber(deliverable.critiqueFeedback.score)} از ۱۰۰
-            </span>
+            {deliverable.checks && deliverable.checks.length > 0 && (
+              <span className="label-md tabular-nums text-text-default">
+                {formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-inline-md md:grid-cols-2">
@@ -204,6 +206,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               key={`${ref.id}-${ref.version}`}
               variant="secondary"
               size="sm"
+              className="h-auto min-h-touch-comfortable max-w-full flex-wrap whitespace-normal py-inset-xs text-start"
               title="مشاهده و اصلاح این Context"
               onClick={() => onOpenContextObject(ctx)}
             >

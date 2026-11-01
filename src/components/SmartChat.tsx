@@ -16,7 +16,7 @@ import {
   ContextSuggestion,
   Workspace,
 } from '../types';
-import { checkChatFairUse, chatCredits, effectiveCredits, PLANS } from '../core/creditEngine';
+import { checkChatFairUse, chatCountToday, chatCredits, effectiveCredits, tehranDay } from '../core/creditEngine';
 import { contextDraftFromBlock } from '../core/blocks';
 import { asAiError, streamChat } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
@@ -146,8 +146,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages, isLoading]);
 
-  const fairUse = checkChatFairUse(currentWorkspace.planId, currentWorkspace.todayChatCount);
-  const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
+  const fairUse = checkChatFairUse(currentWorkspace.planId, chatCountToday(currentWorkspace.todayChatCount, currentWorkspace.chatCountDay, tehranDay()));
 
   // Create new session
   const handleCreateNewSession = () => {
@@ -281,7 +280,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           scopeNodeId,
           focusNodeIds,
           chatMode,
-          deep,
+          deep: deep && !fairUse.isSoftExceeded,
+          fast: fairUse.isSoftExceeded,
           history: history.slice(-6).map((m) => ({ role: m.role, content: m.content })),
         },
         {
@@ -322,10 +322,6 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     const messageContent = (customText || input).trim();
     if (!messageContent || isLoading) return;
 
-    if (fairUse.isHardExceeded) {
-      toast.show({ intent: 'warning', message: 'سقف سخت گفتگوی روزانه پر شده است. فردا برگرد یا پلنت را ارتقا بده.' });
-      return;
-    }
     if (ai.managedEnabled && isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true) && !ai.byok) {
       toast.show({ intent: 'warning', message: 'اعتبار برای گفتگوی عمیق کافی نیست.' });
       return;
@@ -336,7 +332,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       role: 'user',
       content: messageContent,
       timestamp: new Date().toISOString(),
-      executionMode: isDeepMode ? 'deep' : 'auto',
+      executionMode: isDeepMode && !fairUse.isSoftExceeded ? 'deep' : 'auto',
       creditCost: 0,
     };
 
@@ -441,12 +437,6 @@ export const SmartChat: React.FC<SmartChatProps> = ({
 
           <div className="flex shrink-0 items-center gap-inline-sm">
             <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی جدید</Button>
-            <span className="caption hidden items-center gap-inline-sm rounded-control-sm border border-border-default bg-surface-raised px-inset-md py-inset-xs lg:flex">
-              <span className="text-text-subtle">مصرف روزانه:</span>
-              <span className="label-sm tabular-nums text-text-default">
-                {formatNumber(currentWorkspace.todayChatCount)} / {formatNumber(plan.dailyChatLimit)}
-              </span>
-            </span>
           </div>
         </div>
 
@@ -665,8 +655,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       {/* 3. Input */}
       <div className="flex shrink-0 flex-col gap-stack-sm border-t border-border-default bg-surface-sunken p-inset-md pb-safe-inset">
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-          <Switch checked={isDeepMode} onChange={(e) => setIsDeepMode(e.target.checked)} label={ai.managedEnabled ? 'حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)' : 'حالت عمیق (تحلیل چندوجهی)'} />
-          <span className="caption text-text-subtle">{ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت Auto')}</span>
+          <Switch checked={isDeepMode && !fairUse.isSoftExceeded} disabled={fairUse.isSoftExceeded} onChange={(e) => setIsDeepMode(e.target.checked)} label={ai.managedEnabled ? 'حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)' : 'حالت عمیق (تحلیل چندوجهی)'} />
+          <span className="caption text-text-subtle">{fairUse.isSoftExceeded ? 'امروز زیاد گفتگو کردی؛ تا فردا پاسخ‌ها سریع‌تر و سبک‌تر است و حالت عمیق متوقف است.' : ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت Auto')}</span>
         </div>
 
         <form onSubmit={handleSend} className="flex items-start gap-inline-sm">
