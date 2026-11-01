@@ -140,7 +140,7 @@ test('validator: a guardrail violation fails the output; an unsure pass is repor
   const unsure = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'x')] } : verdict({ prob: CHECK_PASS_PROBABILITY - 0.1 })(c)));
   const out2 = await run(unsure, plan({ tier: 'frontier' }));
   assert.equal(out2.validationFailed, true);
-  assert.match(out2.checks![0].reason, /^اطمینان کم/);
+  assert.match(out2.checks![0].reason, /^مطمئن نیستم/);
 });
 
 test('validator: with no criteria and no guardrails there is nothing to check (no model call)', async () => {

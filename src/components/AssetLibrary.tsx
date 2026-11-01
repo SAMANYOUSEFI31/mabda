@@ -53,7 +53,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         <div>
           <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            اصل P4: محصول برای دارایی منسجم بهینه می‌شود، نه تعداد پیام. هر خروجی می‌تواند خودش Context کارهای بعدی شود.
+            هر خروجی می‌تواند خودش Context کارهای بعدی شود.
           </p>
         </div>
         <Button variant="secondary" iconStart="Download" onClick={handleExportJson}>خروجی گرفتن JSON</Button>
@@ -89,9 +89,9 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
               />
-              <div className="flex items-center justify-end">
+              <div className="flex flex-wrap items-center justify-end">
                 <Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => onPromoteToContext(del)}>
-                  تبدیل این خروجی به Context جدید (برای کارهای آینده)
+                  تبدیل به Context برای کارهای بعدی
                 </Button>
               </div>
             </div>

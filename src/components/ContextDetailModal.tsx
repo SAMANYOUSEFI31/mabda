@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ContextDraft, ContextObject, ContextProvenance, ContextStatus, ContextType, TreeNode } from '../types';
 import { flatten } from '../core/nodeTree';
 import { dataApi } from '../services/dataApi';
-import { Badge, Button, Card, Dialog, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
+import { Badge, Button, Card, Dialog, Markdown, SegmentedControl, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -63,6 +63,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const [title, setTitle] = useState(object?.title || '');
   const [content, setContent] = useState(object?.content || '');
+  const [contentView, setContentView] = useState<'edit' | 'preview'>('edit');
   const [type, setType] = useState<ContextType>(object?.type || 'Decision');
   const [status, setStatus] = useState<ContextStatus>(object?.status || 'Confirmed');
   const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeId);
@@ -126,7 +127,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       onClose={onClose}
       size="lg"
       title={title_}
-      description="اصل P6: ساختار، خودِ دارایی است. هیچ تصمیمی بدون منشأ و دسته‌بندی رها نمی‌شود."
+      description="هر مورد منشأ و نوع دارد؛ هیچ تصمیمی بدون پشتوانه رها نمی‌شود."
       footer={
         <>
           {isEditing && !isSupersedingMode && (
@@ -174,14 +175,28 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
         </div>
 
-        <Textarea
-          label="محتوای دقیق دانش"
-          required
-          rows={5}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="توضیح کامل واقعیت، تصمیم یا خط قرمز به زبان صریح…"
-        />
+        <div className="flex flex-col gap-stack-xs">
+          <SegmentedControl
+            label="نمای محتوا"
+            value={contentView}
+            onChange={(id) => setContentView(id as 'edit' | 'preview')}
+            items={[{ id: 'edit', label: 'ویرایش', icon: 'Pencil' }, { id: 'preview', label: 'پیش‌نمایش', icon: 'Eye' }]}
+          />
+          {contentView === 'edit' ? (
+            <Textarea
+              label="محتوای دقیق دانش"
+              required
+              rows={5}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="توضیح کامل واقعیت، تصمیم یا خط قرمز به زبان صریح… (Markdown پشتیبانی می‌شود)"
+            />
+          ) : (
+            <div className="min-h-touch-comfortable rounded-control border border-border-default bg-surface-sunken p-inset-lg">
+              {content.trim() ? <Markdown>{content}</Markdown> : <p className="body-sm text-text-subtle">هنوز چیزی ننوشته‌ای.</p>}
+            </div>
+          )}
+        </div>
 
         {isEditing && object && (
           <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">

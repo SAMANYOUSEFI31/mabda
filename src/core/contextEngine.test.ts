@@ -10,8 +10,10 @@ import {
   resolveActiveContextsForNode,
   calculateReadinessAndGaps,
   detectContradictions,
+  findForRequired,
+  extractQuantities,
 } from './contextEngine';
-import { calculateCreditCost, checkChatFairUse } from './creditEngine';
+import { calculateCreditCost, checkChatFairUse, chatCountToday } from './creditEngine';
 import { WORKSTREAM_SPECS } from './specs';
 import { ContextObject } from '../types';
 
@@ -54,19 +56,16 @@ test('calculateCreditCost applies 10% auto discount and 50% rebuild discount cor
   assert.equal(rebuildCost, 12);
 });
 
-test('checkChatFairUse flags soft and hard thresholds accurately', () => {
-  const proStatus = checkChatFairUse('pro', 40);
-  assert.equal(proStatus.allowed, true);
-  assert.equal(proStatus.isSoftExceeded, false);
-  assert.equal(proStatus.remaining, 30);
-
-  const softExceeded = checkChatFairUse('pro', 75);
-  assert.equal(softExceeded.isSoftExceeded, true);
-  assert.equal(softExceeded.isHardExceeded, false);
-
-  const hardExceeded = checkChatFairUse('pro', 150);
-  assert.equal(hardExceeded.allowed, false);
-  assert.equal(hardExceeded.isHardExceeded, true);
+test('chat fair-use is soft only: it degrades, it never blocks; the count resets each day', () => {
+  const under = checkChatFairUse('pro', 40);
+  assert.equal(under.isSoftExceeded, false);
+  assert.equal(under.remaining, 30);
+  assert.equal(checkChatFairUse('pro', 75).isSoftExceeded, true);
+  assert.equal(checkChatFairUse('pro', 5000).isSoftExceeded, true);
+  assert.equal('allowed' in checkChatFairUse('pro', 5000), false);
+  assert.equal(chatCountToday(60, '2026-11-01', '2026-11-01'), 60);
+  assert.equal(chatCountToday(60, '2026-10-31', '2026-11-01'), 0);
+  assert.equal(chatCountToday(14, undefined, '2026-11-01'), 0);
 });
 
 test('calculateReadinessAndGaps detects missing required items and calculates score', () => {
@@ -143,4 +142,46 @@ test('detectContradictions identifies opposing decisions and price violations', 
   const contradictions = detectContradictions(conflictingObjects);
   assert.equal(contradictions.length, 1);
   assert.match(contradictions[0].reason, /تناقض با مرز قیمت‌گذاری/);
+});
+
+const obj = (over: Partial<ContextObject>): ContextObject => ({
+  id: 'o', workspaceId: 'ws_1', type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 't', content: 'c',
+  nodeId: 'business', version: 1, createdAt: '2026-10-31', updatedAt: '2026-10-31', ...over,
+});
+
+test('an unrelated fact in the same node does NOT fill required items', () => {
+  const spec = WORKSTREAM_SPECS[0];
+  const result = calculateReadinessAndGaps(spec, [obj({ id: 'x', title: 'ساعت کاری دفتر', content: 'شنبه تا چهارشنبه ۹ تا ۱۷' })]);
+  assert.equal(result.score, 0);
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.gaps.filter((g) => g.status === 'missing' && g.importance === 'required').length, spec.requiredContext.length);
+});
+
+test('title matching is Persian-aware (ZWNJ, hamza, parenthetical in label) and Confirmed beats Proposed', () => {
+  const req = { label: 'حوزهٔ کسب‌وکار و تخصص' };
+  const proposed = obj({ id: 'p', status: 'Proposed', title: 'حوزه کسب و کار و تخصص', content: 'x' });
+  assert.equal(findForRequired(req, [proposed]), undefined); // different words (کسب و کار vs کسب‌وکار) -> not guessed
+  const confirmed = obj({ id: 'c', title: 'حوزه کسب‌وکار و تخصص', content: 'مشاوره' });
+  assert.equal(findForRequired(req, [proposed, confirmed])?.id, 'c');
+  assert.equal(findForRequired({ label: 'مخاطب اصلی (ICP)' }, [obj({ title: 'مخاطب اصلی', content: 'فریلنسرها' })])?.id, 'o');
+});
+
+test('gaps never carry canned suggested answers', () => {
+  const r = calculateReadinessAndGaps(WORKSTREAM_SPECS[0], []);
+  assert.ok(r.gaps.every((g) => g.suggestedAnswers.length === 0));
+});
+
+test('extractQuantities reads Persian digits, multipliers and units', () => {
+  const q = extractQuantities('قیمت ۴ میلیون تومان و ۱۰٪ تخفیف برای ۳۰ روز');
+  assert.deepEqual(q.map((x) => [x.cls, x.value]), [['money', 4_000_000], ['percent', 10], ['day', 30]]);
+});
+
+test('detectContradictions finds a real price conflict on the same topic, but not on different topics', () => {
+  const a = obj({ id: 'a', title: 'قیمت بسته پایه', content: 'قیمت بسته پایه ۴ میلیون تومان است.' });
+  const b = obj({ id: 'b', title: 'قیمت بسته پایه', content: 'قیمت بسته پایه ۲ میلیون تومان است.' });
+  assert.equal(detectContradictions([a, b]).length, 1);
+  const c = obj({ id: 'c', title: 'مدت دوره', content: 'دوره ۳۰ روز است و قیمت ۲ میلیون تومان.' });
+  assert.equal(detectContradictions([a, c]).length, 0);
+  const same = obj({ id: 'd', title: 'قیمت بسته پایه', content: '۴ میلیون تومان' });
+  assert.equal(detectContradictions([a, same]).length, 0);
 });

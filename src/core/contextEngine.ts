@@ -57,11 +57,41 @@ export type AmbiguityMap = Record<string, AmbiguityJudgment>;
 
 const activeOf = (objects: ContextObject[]) => objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
 
-/** The object that fills a required item, if any (same matching rule the readiness uses). */
-export function findForRequired(req: WorkstreamSpec['requiredContext'][number], objects: ContextObject[]): ContextObject | undefined {
-  return activeOf(objects).find(
-    (o) => (o.title.toLowerCase().includes(req.label.toLowerCase()) || o.content.toLowerCase().includes(req.key.toLowerCase()) || o.nodeId === req.nodeId) && o.content.trim().length > 0
-  );
+/** Persian-aware normalisation for title matching: ی/ک variants, ZWNJ, diacritics, case, spacing. */
+export function normalizeFa(text: string): string {
+  return text
+    .replace(/[\u064B-\u065F\u0670\u0654]/g, '') // harakat + hamza-above (حوزهٔ -> حوزه)
+    .replace(/\u200c/g, ' ') // ZWNJ
+    .replace(/ي/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/** «مخاطب اصلی (ICP)» -> «مخاطب اصلی» : the part of a label a human would actually type as a title. */
+const labelCore = (label: string) => normalizeFa(label.replace(/\([^)]*\)/g, ''));
+
+/**
+ * Does this object fill that required/suggested item?
+ * The binding is the object's TITLE (the Gap flow, the MCP and the AI proposals all title the object with the
+ * item's label). Living in the same node, or mentioning the item's English key in the text, is NOT enough —
+ * that made one unrelated fact "fill" every item of its node.
+ */
+export function fillsItem(req: { label: string }, o: ContextObject): boolean {
+  if (o.content.trim().length === 0) return false;
+  const title = normalizeFa(o.title);
+  const core = labelCore(req.label);
+  if (core.length === 0) return false;
+  return title.includes(core) || normalizeFa(req.label) === title;
+}
+
+/** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed. */
+export function findForRequired(req: { label: string }, objects: ContextObject[]): ContextObject | undefined {
+  const rank = (o: ContextObject) => (o.status === 'Confirmed' ? 0 : o.status === 'Proposed' ? 1 : 2);
+  return activeOf(objects)
+    .filter((o) => fillsItem(req, o))
+    .sort((a, b) => rank(a) - rank(b))[0];
 }
 
 /** Objects whose ambiguity is worth judging for this spec: the ones that fill required items. */
@@ -103,7 +133,7 @@ export function calculateReadinessAndGaps(
         nodeId: req.nodeId,
         status: 'missing',
         question: `هنوز «${req.label}» ثبت نشده است. ${req.description} را مشخص می‌کنی؟`,
-        suggestedAnswers: generateSuggestedAnswers(req.key),
+        suggestedAnswers: [],
         dependsOn: req.dependsOn,
       });
     } else if (found.status === 'Needs Review' || judged?.ambiguous) {
@@ -114,7 +144,7 @@ export function calculateReadinessAndGaps(
         nodeId: req.nodeId,
         status: 'ambiguous',
         question: `مورد «${found.title}» مبهم است${judged?.reason ? `: ${judged.reason}` : ' و نیاز به بازبینی دارد.'} می‌خواهی دقیق‌ترش کنی؟`,
-        suggestedAnswers: [found.content, 'تکمیل با جزئیات بیشتر', 'تأیید همین متن'],
+        suggestedAnswers: [],
         dependsOn: req.dependsOn,
       });
       if (found.status === 'Confirmed') {
@@ -130,11 +160,7 @@ export function calculateReadinessAndGaps(
 
   // 2. Check Suggested Contexts
   for (const sug of spec.suggestedContext) {
-    const found = activeObjects.find(
-      (o) =>
-        o.nodeId === sug.nodeId ||
-        o.title.toLowerCase().includes(sug.label.toLowerCase())
-    );
+    const found = findForRequired(sug, activeObjects);
     if (!found) {
       gaps.push({
         key: sug.key,
@@ -143,7 +169,7 @@ export function calculateReadinessAndGaps(
         nodeId: sug.nodeId,
         status: 'missing',
         question: `برای بهبود کیفیت، پیشنهاد می‌شود «${sug.label}» را هم مشخص کنی: ${sug.description}`,
-        suggestedAnswers: generateSuggestedAnswers(sug.key),
+        suggestedAnswers: [],
       });
     }
   }
@@ -185,66 +211,95 @@ export function calculateReadinessAndGaps(
   };
 }
 
-function generateSuggestedAnswers(key: string): string[] {
-  switch (key) {
-    case 'domain_field':
-      return ['مشاوره استراتژی برند و محتوا', 'طراحی محصول دیجیتال و UI/UX', 'توسعه نرم‌افزار B2B و اتوماسیون'];
-    case 'target_audience':
-      return ['فریلنسرها و مشاوران سولو', 'استارتاپ‌های بذری و فاز اولیه', 'کسب‌وکارهای آنلاین اینستاگرامی'];
-    case 'core_problem':
-      return ['پراکندگی تصمیمات و بازتوضیح مکرر به ابزارهای AI', 'عدم انسجام بین خروجی‌های بازاریابی و فروش', 'تولید محتوای کلیشه‌ای بدون زاویه دید تخصصی'];
-    case 'value_proposition':
-      return ['تبدیل دانش پراکنده به دارایی ساختاریافته با منشأ شفاف', 'کاهش اصطکاک تصمیم با هدایت خودکار AI به جای پرامپت‌نویسی دستی'];
-    case 'differentiation':
-      return ['دانش سلسله‌مراتبی با منبع، Gap و Replay به جای حافظه گنگ', 'تخصص کامل در بازار و زبان فارسی با موتور کیفیت'];
-    case 'pricing_boundary':
-      return ['تخفیف حجمی و رایگان نداریم؛ قیمت بر اساس ارزش است نه ساعت کار', 'حداقل بودجه هر پروژه ثابت است'];
-    default:
-      return ['تعریف سفارشی با ورودی کاربر'];
+const STOP = new Set(['و', 'در', 'به', 'از', 'برای', 'با', 'را', 'یا', 'که', 'این', 'آن', 'هر', 'یک']);
+const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+const toLatin = (t: string) => t.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d))).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[Number(d)]);
+const titleTokens = (t: string) => new Set(normalizeFa(t).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((w) => w.length >= 2 && !STOP.has(w)));
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+interface Quantity { cls: string; value: number; text: string }
+const MULT: Record<string, number> = { 'هزار': 1e3, 'میلیون': 1e6, 'میلیارد': 1e9 };
+const UNIT_CLASS: Record<string, { cls: string; scale: number }> = {
+  'تومان': { cls: 'money', scale: 1 }, 'ریال': { cls: 'money', scale: 0.1 }, 'دلار': { cls: 'usd', scale: 1 },
+  'درصد': { cls: 'percent', scale: 1 }, '%': { cls: 'percent', scale: 1 }, '٪': { cls: 'percent', scale: 1 },
+  'روز': { cls: 'day', scale: 1 }, 'هفته': { cls: 'week', scale: 1 }, 'ماه': { cls: 'month', scale: 1 },
+  'نفر': { cls: 'person', scale: 1 }, 'ساعت': { cls: 'hour', scale: 1 }, 'جلسه': { cls: 'session', scale: 1 },
+};
+
+/** Numbers that carry a unit (or a million/thousand multiplier = money): «۴ میلیون تومان», «۱۰٪», «۳۰ روز». */
+export function extractQuantities(text: string): Quantity[] {
+  const t = toLatin(normalizeFa(text)).replace(/(\d),(?=\d{3}\b)/g, '$1');
+  const re = /(\d+(?:\.\d+)?)\s*(میلیارد|میلیون|هزار)?\s*(تومان|ریال|دلار|درصد|%|٪|روز|هفته|ماه|نفر|ساعت|جلسه)?/g;
+  const out: Quantity[] = [];
+  for (const m of t.matchAll(re)) {
+    const mult = m[2];
+    const unit = m[3];
+    if (!mult && !unit) continue;
+    const u = unit ? UNIT_CLASS[unit] : { cls: 'money', scale: 1 };
+    const value = Number(m[1]) * (mult ? MULT[mult] : 1) * u.scale;
+    out.push({ cls: u.cls, value, text: m[0].trim() });
   }
+  return out;
 }
 
 /**
- * Detects contradictions between decisions or conflicting constraints
+ * Deterministic, high-precision contradiction detection (no model):
+ *  1. same topic (near-identical titles) but different numbers in the same unit class (price, %, days…);
+ *  2. a «no discount» constraint against an object that defines a discount.
+ * Semantic contradictions (different words, same claim) are the decision layer's job — it receives only
+ * candidate pairs and answers one closed question; this function never invents a conflict from keywords alone.
  */
 export function detectContradictions(objects: ContextObject[]): Contradiction[] {
   const active = objects.filter((o) => o.status === 'Confirmed' || o.status === 'Proposed');
   const contradictions: Contradiction[] = [];
+  const tokens = new Map(active.map((o) => [o.id, titleTokens(o.title)]));
+  const quantities = new Map(active.map((o) => [o.id, extractQuantities(`${o.title} ${o.content}`)]));
 
   for (let i = 0; i < active.length; i++) {
     for (let j = i + 1; j < active.length; j++) {
       const a = active[i];
       const b = active[j];
 
-      // Check for opposing decisions in target audience
-      const isTargetA = a.title.includes('مخاطب') || a.content.includes('مخاطب');
-      const isTargetB = b.title.includes('مخاطب') || b.content.includes('مخاطب');
-      if (isTargetA && isTargetB) {
-        if (
-          (a.content.includes('فریلنسر') && b.content.includes('سازمان‌های بزرگ اینترپرایز')) ||
-          (a.content.includes('B2C') && b.content.includes('B2B انحصاری'))
-        ) {
+      // 1) same topic, different numbers
+      if (jaccard(tokens.get(a.id)!, tokens.get(b.id)!) >= 0.6) {
+        const qa = quantities.get(a.id)!;
+        const qb = quantities.get(b.id)!;
+        const classes = new Set(qa.map((q) => q.cls).filter((c) => qb.some((q) => q.cls === c)));
+        for (const cls of classes) {
+          const va = qa.filter((q) => q.cls === cls);
+          const vb = qb.filter((q) => q.cls === cls);
+          if (va.some((x) => vb.some((y) => y.value === x.value))) continue;
           contradictions.push({
             id: `contra_${a.id}_${b.id}`,
             itemA: a,
             itemB: b,
-            reason: 'تناقض در تعیین مخاطب هدف: یکی به مشتریان خرد/فریلنسر و دیگری به سازمان‌های اینترپرایز اشاره دارد.',
-            suggestedResolution: 'یکی از این دو تصمیم را به عنوان مخاطب اصلی برگزینید یا یکی را در شاخه فرعی قرار دهید.',
+            reason: `دو مورد دربارهٔ یک موضوع عدد متفاوت دارند: «${va[0].text.replace(/\d+(\.\d+)?/g, (n) => toFa(Number(n)))}» در برابر «${vb[0].text.replace(/\d+(\.\d+)?/g, (n) => toFa(Number(n)))}».`,
+            suggestedResolution: 'کدام عدد درست است؟ یکی را تأیید کن و دیگری را «جایگزین‌شده» کن.',
           });
+          break;
         }
       }
 
-      // Check for discount contradiction
-      const hasNoDiscount = a.content.includes('تخفیف نداریم') || a.content.includes('بدون تخفیف');
-      const hasDiscountOffer = b.content.includes('تخفیف ۵۰٪') || b.content.includes('آفر رایگان') || b.content.includes('تخفیف ویژه');
-      if (hasNoDiscount && hasDiscountOffer) {
-        contradictions.push({
-          id: `contra_${a.id}_${b.id}`,
-          itemA: a,
-          itemB: b,
-          reason: 'تناقض با مرز قیمت‌گذاری: در قیدها ذکر شده «تخفیف نداریم»، اما در آفرها تخفیف تعریف شده است.',
-          suggestedResolution: 'قید عدم تخفیف را اصلاح کنید یا آفر تخفیف‌دار را از حالت تأییدشده خارج نمایید.',
-        });
+      // 2) «no discount» constraint vs a discount definition
+      for (const [x, y] of [[a, b], [b, a]] as const) {
+        const noDiscount = /تخفیف نداریم|بدون تخفیف|تخفیف نمی(‌|\s)?دهیم/.test(normalizeFa(x.content));
+        const discount = /تخفیف\s*[\d۰-۹]+\s*(٪|%|درصد)|آفر رایگان|تخفیف ویژه/.test(toLatin(normalizeFa(y.content)));
+        if (noDiscount && discount && !contradictions.some((c) => c.id === `contra_${x.id}_${y.id}`)) {
+          contradictions.push({
+            id: `contra_${x.id}_${y.id}`,
+            itemA: x,
+            itemB: y,
+            reason: 'تناقض با مرز قیمت‌گذاری: در قیدها ذکر شده «تخفیف نداریم»، اما در مورد دیگری تخفیف تعریف شده است.',
+            suggestedResolution: 'قید عدم تخفیف را اصلاح کن یا مورد تخفیف‌دار را از حالت تأییدشده خارج کن.',
+          });
+        }
       }
     }
   }

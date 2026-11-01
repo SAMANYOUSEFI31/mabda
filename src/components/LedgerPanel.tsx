@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { LedgerEntry, PlanId, Workspace } from '../types';
-import { PLANS } from '../core/creditEngine';
+import { PLANS, chatCountToday, tehranDay } from '../core/creditEngine';
 import { Badge, Button, Card, LedgerStatusBadge, MODE_META, ModeBadge, Stat, Table, Tabs, formatNumber, formatTime, formatUsd } from '../ui';
 import { useAiStatus } from '../services/aiStatus';
 import { UsagePanel } from './UsagePanel';
@@ -53,7 +53,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
     },
     {
       title: 'سقف فضای کاری در پلن Max',
-      text: 'با استناد به اصل P5 (بدون وعدهٔ نامحدود)، سقف فضای کاری Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.',
+      text: 'برای اینکه هیچ وعدهٔ «نامحدود»ی نداده باشیم، سقف فضای کاری Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.',
     },
   ];
 
@@ -64,7 +64,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
           <div>
             <h2 className="heading-sm text-text-default">{managed ? 'دفتر کل، اقتصاد و اعتبارها' : 'مصرف و دفتر کل'}</h2>
             <p className="body-sm mt-stack-xs text-text-subtle">
-              {managed ? 'اصل P5 (اقتصاد صادقانه): شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.' : 'سهمیه‌ها، سقف‌های روزانه و هزینهٔ واقعی هر فراخوانی AI؛ هیچ مصرفی پنهان نیست.'}
+              {managed ? 'شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.' : 'سهمیه‌ها، سقف‌های روزانه و هزینهٔ واقعی هر فراخوانی AI؛ هیچ مصرفی پنهان نیست.'}
             </p>
           </div>
           {managed ? (
@@ -82,8 +82,8 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
           {managed && <Stat label="مجموع اعتبار مصرف‌شده" value={formatNumber(totalCreditsUsed)} delta="در تمام خروجی‌ها" />}
           <Stat
             label="گفتگوی Auto امروز"
-            value={`${formatNumber(currentWorkspace.todayChatCount)} / ${formatNumber(plan.dailyChatLimit)}`}
-            delta="سقف منصفانهٔ روزانه"
+            value={formatNumber(chatCountToday(currentWorkspace.todayChatCount, currentWorkspace.chatCountDay, tehranDay()))}
+            delta="بدون قفل؛ بعد از سقف روزانه سبک‌تر می‌شود"
           />
           <Stat label="هزینهٔ AI (مصرف ثبت‌شده، قیمت لیست)" value={formatUsd(totalAiCostUsd, 4)} delta={ai.byok ? 'روی کلید شخصی تو' : 'ثبت‌شده در دفتر کل'} />
         </div>

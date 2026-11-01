@@ -45,14 +45,14 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
         <div className="flex flex-col gap-stack-xs">
           <div className="flex flex-wrap items-center gap-inline-sm">
-            <h3 className="heading-xs text-text-default">موتور تحلیل شکاف‌ها (Gap Engine)</h3>
+            <h3 className="heading-xs text-text-default">چه چیزی کم است؟</h3>
             <ReadinessBadge value={readiness.status} />
           </div>
           <p className="body-sm text-text-subtle">{readiness.summary}</p>
         </div>
 
         <div className="flex min-w-overlay-xs shrink-0 flex-col gap-stack-xs rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-md">
-          <span className="caption text-text-subtle">میزان آمادگی (Readiness)</span>
+          <span className="caption text-text-subtle">آمادگی برای ساخت خروجی</span>
           <span className="text-numeric-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪</span>
           <Progress value={readiness.score} label="آمادگی خروجی" showValue={false} intent={readiness.score >= 85 ? 'success' : 'warning'} />
         </div>
@@ -61,8 +61,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       {/* Free gap cost notice (P3) */}
       <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
         <p className="body-sm text-text-subtle">
-          <span className="label-md text-text-info">اصل P3: </span>
-          تحلیل Gap و ساختاردهی به دانش برای کاربر کاملاً رایگان است؛ هزینه فقط برای خروجی‌های تأییدشده است.
+          شناسایی شکاف‌ها و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
         </p>
         {managedEnabled && <Badge intent="success">۰ اعتبار</Badge>}
       </div>
@@ -110,18 +109,17 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
 
                   {isExpanded && (
                     <div className="flex flex-col gap-stack-md border-t border-border-default bg-surface-raised p-inset-lg">
-                      <p className="label-md text-text-default">گزینه‌های پیشنهادی برای ثبت سریع در منبع حقیقت:</p>
-                      <div className="flex flex-wrap gap-inline-sm">
-                        {gap.suggestedAnswers.map((ans, aIdx) => (
-                          <Button key={aIdx} variant="secondary" onClick={() => onAnswerGap(gap, ans)}>
-                            «{ans}»
-                          </Button>
-                        ))}
-                      </div>
+                      {gap.suggestedAnswers.length > 0 && (
+                        <div className="flex flex-wrap gap-inline-sm">
+                          {gap.suggestedAnswers.map((ans, aIdx) => (
+                            <Button key={aIdx} variant="secondary" onClick={() => onAnswerGap(gap, ans)}>«{ans}»</Button>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="flex flex-col items-stretch gap-inline-sm sm:flex-row sm:items-end">
                         <TextField
-                          label="یا پاسخ دقیق خودت را بنویس"
+                          label="پاسخ خودت"
                           placeholder="پاسخ…"
                           value={customAnswers[gap.key] || ''}
                           onChange={(e) => setCustomAnswers({ ...customAnswers, [gap.key]: e.target.value })}
@@ -136,7 +134,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
 
                       <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md sm:flex-row sm:items-center sm:justify-between">
                         <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این شکاف</Button>
-                        <span className="caption text-text-subtle">
+                        <span className="body-sm text-text-subtle">
                           پاسخ مستقیم به‌عنوان یک شیء تأییدشده در شاخهٔ «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
                         </span>
                       </div>
@@ -152,7 +150,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       {readiness.gaps.length > 0 && (
         <div className="flex flex-col gap-inline-md border-t border-border-default pt-inset-md sm:flex-row sm:items-center sm:justify-between">
           <span className="body-sm text-text-warning">
-            نکتهٔ مبدأ: Gap راهنماست نه درِ بسته؛ اگر بخواهی می‌توانی با همین اطلاعات ادامه بدهی.
+            شکاف‌ها راهنما هستند، نه مانع؛ اگر بخواهی می‌توانی با همین اطلاعات ادامه بدهی.
           </span>
           <Button variant="secondary" iconEnd="ArrowLeft" onClick={onProceedAnyway}>
             ادامه با هشدار کیفیت کمتر

@@ -20,6 +20,7 @@ interface ContextTreeDocViewProps {
   onAddNewToNode: (nodeId: string) => void;
   onNodeAction: (state: NonNullable<NodeDialogState>) => void;
   onChatWithNode: (nodeId: string) => void;
+  onReadNode: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -53,6 +54,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>
               یادداشت‌ها ({formatNumber(nodeNotes.length)})
             </Button>
+            <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
             <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
             <Menu
               label={`عملیات گرهٔ ${node.label}`}
@@ -125,9 +127,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     <Card padding="xl" className="flex flex-col gap-stack-xl">
       <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="heading-sm text-text-default">سند منبع حقیقت</h2>
+          <h2 className="heading-sm text-text-default">ساختار منبع حقیقت</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            داده همان UI است (اصل P6)؛ هر تیتر یک شیء نوع‌دار از دانش است. زیر هر گره می‌توانی گرهٔ تازه بسازی، جابه‌جا کنی یا یادداشت بنویسی.
+            هر بخش یک گره است و هر کارت یک قلم دانش. برای خواندن به‌صورت یک سند زیبا، «خواندن سند» را بزن.
           </p>
         </div>
         <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>

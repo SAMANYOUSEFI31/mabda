@@ -90,10 +90,12 @@ for (const size of SIZES) {
 
   await goTab(TABS[0]); await shoot('context-doc');
   // table view
-  await page.locator('[role=radio]:has-text("نمای جدول")').first().click(); await shoot('context-table');
-  await page.locator('[role=radio]:has-text("نمای سند")').first().click();
+  await page.locator('[role=radio][aria-label], [role=radio]').filter({ hasText: /^جدول$/ }).first().click(); await shoot('context-table');
+  await page.locator('[role=radio]').filter({ hasText: /^سند$/ }).first().click(); await shoot('context-read');
+  await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
+  await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
-  await page.getByRole('button', { name: /افزودن به این شاخه/ }).first().click(); await shoot('dialog-context'); await closeDialog();
+  await page.getByRole('button', { name: /افزودن دانش/ }).first().click(); await shoot('dialog-context'); await closeDialog();
 
   await goTab(TABS[1]); await shoot('workstreams-create');
   await page.getByRole("tab", { name: /شکاف/ }).click(); await shoot('workstreams-gap');
@@ -104,17 +106,20 @@ for (const size of SIZES) {
 
   await goTab(TABS[3]); await shoot('assets');
   await goTab(TABS[4]); await shoot('ledger');
-  await page.getByRole('tab', { name: /مقایسه و ارتقای پلن/ }).click(); await shoot('ledger-plans');
-  await page.getByRole('tab', { name: /خطوط قرمز/ }).click(); await shoot('ledger-economics');
+  // plan / economics tabs exist only when MABDA_MANAGED_AI is on
+  const maybe = async (loc, fn) => { if (await loc.count()) await fn(loc.first()); };
+  await maybe(page.getByRole('tab', { name: /پلن‌ها و اعتبار/ }), async (l) => { await l.click(); await shoot('ledger-plans'); });
+  await maybe(page.getByRole('tab', { name: /خطوط قرمز/ }), async (l) => { await l.click(); await shoot('ledger-economics'); });
+  await maybe(page.getByRole('tab', { name: /مصرف و سهمیه/ }), async (l) => { await l.click(); await shoot('ledger-usage'); });
 
   // dialogs
   if (size.width >= 768) {
-    await page.getByRole('button', { name: /راه‌اندازی ۱۰ دقیقه‌ای/ }).click(); await shoot('dialog-onboarding'); await closeDialog();
-    await page.getByRole('button', { name: /09123456789/ }).click(); await shoot('dialog-account'); await closeDialog();
-    await page.getByRole('button', { name: /پلن:/ }).click(); await shoot('dialog-plans'); await closeDialog();
+    await maybe(page.getByRole('button', { name: /راه‌اندازی ۱۰ دقیقه‌ای/ }), async (l) => { await l.click(); await shoot('dialog-onboarding'); await closeDialog(); });
+    await maybe(page.getByRole('button', { name: /09123456789/ }), async (l) => { await l.click(); await shoot('dialog-account'); await closeDialog(); });
+    await maybe(page.getByRole('button', { name: /پلن:/ }), async (l) => { await l.click(); await shoot('dialog-plans'); await closeDialog(); });
   } else {
-    await page.getByRole('button', { name: 'باز کردن منو' }).click(); await shoot('drawer-menu'); await closeDialog();
-    await page.getByRole('button', { name: /اعتبار$/ }).first().click(); await shoot('dialog-plans'); await closeDialog();
+    await maybe(page.getByRole('button', { name: 'باز کردن منو' }), async (l) => { await l.click(); await shoot('drawer-menu'); await closeDialog(); });
+    await maybe(page.getByRole('button', { name: /اعتبار$/ }), async (l) => { await l.click(); await shoot('dialog-plans'); await closeDialog(); });
   }
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();

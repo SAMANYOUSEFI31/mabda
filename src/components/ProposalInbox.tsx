@@ -26,8 +26,20 @@ interface Props {
 export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect }) => {
   const pending = objects.filter((o) => o.status === 'Proposed').sort((a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+  if (pending.length === 0) {
+    return (
+      <Card padding="lg" id="proposal-inbox" className="flex flex-col justify-between gap-inline-md md:flex-row md:items-center" aria-label="صندوق پیشنهادها">
+        <p className="body-sm text-text-subtle">پیشنهاد منتظر تأییدی نیست. دانش را از AIهای دیگر هم می‌توانی بیاوری یا ببری:</p>
+        <div className="flex flex-wrap items-center gap-inline-sm">
+          <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای AI</Button>
+          <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
+          <Button variant="secondary" size="sm" iconStart="Link2" onClick={onOpenConnect}>اتصال به Claude و AIهای دیگر</Button>
+        </div>
+      </Card>
+    );
+  }
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
+    <Card padding="xl" id="proposal-inbox" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
       <div className="flex flex-col justify-between gap-inline-md border-b border-border-default pb-inset-lg md:flex-row md:items-center">
         <div className="flex flex-col gap-stack-xs">
           <div className="flex items-center gap-inline-sm">
@@ -43,9 +55,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdi
         </div>
       </div>
 
-      {pending.length === 0 ? (
-        <EmptyState icon="Inbox" title="پیشنهاد منتظری نیست" description="وقتی AI تو چیزی پیشنهاد بدهد (از طریق MCP یا پاسخ چسبانده‌شده)، اینجا می‌بینی که از کدام AI و کی آمده." />
-      ) : (
+      {(
         <ul className="flex flex-col gap-stack-md">
           {pending.map((o) => (
             <li key={o.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

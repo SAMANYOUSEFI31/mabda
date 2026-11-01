@@ -161,6 +161,8 @@ export async function streamChat(
     focusNodeIds?: string[];
     chatMode?: 'discovery' | 'audit' | 'advisor';
     deep: boolean;
+    /** past the daily fair-use limit: run on the cheapest model instead of blocking */
+    fast?: boolean;
     history?: Array<{ role: string; content: string }>;
   },
   handlers: ChatHandlers = {},
@@ -172,7 +174,7 @@ export async function streamChat(
       method: 'POST', headers: headers(), signal: g.signal,
       body: JSON.stringify({
         message: params.message, workspaceId: params.workspaceId, scopeNodeId: params.scopeNodeId, focusNodeIds: params.focusNodeIds ?? [],
-        chatMode: params.chatMode, mode: params.deep ? 'deep' : 'auto', history: params.history ?? [],
+        chatMode: params.chatMode, mode: params.fast ? 'fast' : params.deep ? 'deep' : 'auto', history: params.history ?? [],
       }),
     });
     if (!res.ok) throw await errorFromResponse(res);
