@@ -22,7 +22,7 @@ async function up(url) { for (let i = 0; i < 80; i++) { try { const r = await fe
 
 const dir = mkdtempSync(join(tmpdir(), 'mabda-spec-'));
 start(['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: '4012' });
-start(['tsx', 'server.ts'], { PORT: '3102', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: 'http://127.0.0.1:4012', MABDA_SECRET: 'scenario-secret' });
+start(['tsx', 'server.ts'], { PORT: '3102', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: 'http://127.0.0.1:4012', MABDA_SECRET: 'scenario-secret', GEMINI_API_KEY: KEY });
 const BASE = 'http://127.0.0.1:3102';
 
 const TITLES = ['پژوهش مخاطب', 'جملهٔ موقعیت‌یابی', 'پیام‌های کلیدی', 'ستون‌های محتوا', 'تقویم هفتگی'];
@@ -98,6 +98,8 @@ try {
   console.log('  list:', items.join(' | ').replace(/\n/g, ' ').slice(0, 300));
   assert.ok(await list.getByText(/ابتدا بساز: «پژوهش مخاطب»/).count() >= 1, 'locked item names its missing dependency');
   await shot('3-studio-locked');
+
+  assert.equal(await page.getByText(/موجودی اعتبار|اعتبار باقی‌مانده|هزینهٔ این اجرا|[۰-۹]+ اعتبار/).count(), 0, 'managed AI is off: no credit number anywhere');
 
   step('run all five in dependency order');
   const built = [];

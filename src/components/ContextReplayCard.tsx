@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable } from '../types';
 import { Alert, Badge, Button, Card, Divider, Markdown, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
 import { PlanLine } from './AiNotices';
+import { useAiStatus } from '../services/aiStatus';
 import { halfPriceRebuildAvailable } from '../core/impactEngine';
 import type { StaleAsset } from '../core/impactEngine';
 import { BlockView } from './BlockView';
@@ -39,7 +40,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const usedObjects = (deliverable.usedContext || [])
     .map((ref) => ({ ref, obj: allContextObjects.find((c) => c.id === ref.id) }))
     .filter((x): x is { ref: typeof x.ref; obj: ContextObject } => !!x.obj);
-  const halfPrice = halfPriceRebuildAvailable(deliverable, stale);
+  const ai = useAiStatus();
+  const halfPrice = ai.managedEnabled && halfPriceRebuildAvailable(deliverable, stale);
   // chat-made assets have no workstream spec, so there is nothing to rebuild automatically
   const canRebuild = deliverable.workstreamId !== 'chat';
 
@@ -63,7 +65,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             )}
           </div>
           <span className="caption text-text-subtle">
-            {formatJalaliDate(deliverable.createdAt)} · مصرف اعتبار: {formatNumber(deliverable.creditCost)}
+            {formatJalaliDate(deliverable.createdAt)}{ai.managedEnabled ? ` · مصرف اعتبار: ${formatNumber(deliverable.creditCost)}` : ''}
           </span>
         </div>
 
@@ -228,7 +230,9 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         {canRebuild && (
         <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-center">
           <span className="body-sm text-text-subtle">
-            {halfPrice
+            {!ai.managedEnabled
+              ? (stale ? 'دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ می‌توانی با آخرین نسخه بازسازی کنی.' : 'دانشی تغییر نکرده؛ بازسازی خروجی تازه‌ای با همان دانش می‌سازد.')
+              : halfPrice
               ? `دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ بازسازی یک‌بار برای این تغییر با نصف قیمت (حدود ${formatNumber(Math.ceil(deliverable.creditCost * 0.5))} اعتبار) انجام می‌شود.`
               : stale
               ? 'تخفیف نصف‌قیمت برای این تغییر قبلاً استفاده شده است.'

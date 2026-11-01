@@ -18,7 +18,10 @@ export const periodOf = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMon
 /** Token budget for file excerpts injected into one request. */
 export const EXCERPT_BUDGET_TOKENS = 3000;
 
-export interface UploadResult { file: StoredFile; charge: FileCharge; period: string }
+/** what happens past the monthly quota: 'ok' (within), 'credits' (managed AI: credits), 'own-key' (your key pays, no credits), 'blocked' (we would pay and nothing covers it) */
+export type OveragePolicy = 'ok' | 'credits' | 'own-key' | 'blocked';
+export interface FilePolicy { managed: () => boolean; payer: () => 'us' | 'user' }
+export interface UploadResult { file: StoredFile; charge: FileCharge; period: string; policy: OveragePolicy }
 export interface ProcessResult {
   file: StoredFile;
   created: ContextObject[];
@@ -31,7 +34,13 @@ export interface ProcessResult {
 
 /** Upload → (user sees quota/credits) → one-time processing → chunks + summary + Proposed objects. */
 export class FileService {
-  constructor(private readonly repo: Repo, private readonly extract: Extractor, private readonly clock: () => Date = () => new Date()) {}
+  constructor(private readonly repo: Repo, private readonly extract: Extractor, private readonly clock: () => Date = () => new Date(), private readonly policy: FilePolicy = { managed: () => true, payer: () => 'user' }) {}
+
+  overagePolicy(charge: FileCharge): OveragePolicy {
+    if (charge.withinQuota) return 'ok';
+    if (this.policy.managed()) return 'credits';
+    return this.policy.payer() === 'user' ? 'own-key' : 'blocked';
+  }
 
   private plan(s: Scope): PlanId {
     return this.repo.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter';
@@ -49,7 +58,8 @@ export class FileService {
     const tokens = estimateTokens(text);
     const file = this.repo.createFile(s, { name: f.name, mime: f.mime, sizeBytes: f.buffer.length, nodeId: f.nodeId, rawText: text, tokens });
     const period = periodOf(this.clock());
-    return { file, charge: fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, period), tokens), period };
+    const charge = fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, period), tokens);
+    return { file, charge, period, policy: this.overagePolicy(charge) };
   }
 
   /** What processing would cost right now (quota can change between upload and confirm). */
@@ -70,6 +80,7 @@ export class FileService {
     const period = periodOf(this.clock());
     const charge = fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, period), file.tokens);
     const ws = this.repo.getWorkspace(s.userId, s.workspaceId)!;
+    if (this.overagePolicy(charge) === 'blocked') throw new RepoError('forbidden', 'سهمیهٔ ماهانهٔ پردازش فایل این پلن پر شده است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.');
 
     this.repo.setFileStatus(s, fileId, 'processing');
     let res: ExtractResult;
@@ -84,7 +95,8 @@ export class FileService {
       throw e;
     }
 
-    const creditCost = res.usage.byok ? 0 : charge.credits;
+    // credits exist only with managed AI; with the flag off an own-key overage costs the user tokens, never credits
+    const creditCost = res.usage.byok || !this.policy.managed() ? 0 : charge.credits;
     const created: ContextObject[] = this.repo.db.transaction(() => {
       this.repo.saveChunks(s, fileId, chunkText(fileId, text));
       // the plan's object cap: keep what fits (never fail the whole file over it)

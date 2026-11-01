@@ -119,3 +119,27 @@ test('retrieval: only relevant chunks of READY files, inside the budget', async 
   assert.deepEqual(tight, [], 'budget smaller than any chunk → nothing partial is injected');
   void pending;
 });
+
+test('past the quota: managed AI → credits; flag off → own key pays tokens (never credits) or, if WE would pay, it is blocked', async () => {
+  const run = async (managed: boolean, payer: 'us' | 'user') => {
+    const repo = mk('starter', 100);
+    const svc = new FileService(repo, ok(), () => NOW, { managed: () => managed, payer: () => payer });
+    repo.addFileUsage(S, periodOf(NOW), 150_000);
+    const up = await svc.upload(S, { name: 'over.txt', mime: 'text/plain', buffer: txt(33000, 'سلام') });
+    return { repo, svc, up };
+  };
+  const credits = await run(true, 'us');
+  assert.equal(credits.up.policy, 'credits');
+  assert.ok((await credits.svc.process(S, credits.up.file.id, 'user-12345678')).creditCost > 0);
+
+  const own = await run(false, 'user');
+  assert.equal(own.up.policy, 'own-key');
+  const r = await own.svc.process(S, own.up.file.id, 'user-12345678');
+  assert.equal(r.creditCost, 0);
+  assert.equal(own.repo.getWorkspace(U, 'w1')!.creditsRemaining, 100);
+
+  const blocked = await run(false, 'us');
+  assert.equal(blocked.up.policy, 'blocked');
+  await assert.rejects(blocked.svc.process(S, blocked.up.file.id, 'user-12345678'), /سهمیهٔ ماهانهٔ پردازش فایل/);
+  assert.equal(blocked.repo.getFile(S, blocked.up.file.id)!.status, 'uploaded', 'nothing was spent and the file can be processed next month');
+});

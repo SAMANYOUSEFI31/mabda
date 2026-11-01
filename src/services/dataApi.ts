@@ -7,7 +7,7 @@ import type {
   ChatSession, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry,
   Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
 } from '../types';
-import type { CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
+import type { CostReportRowInfo, UsageInfo, CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
 import type { StaleAsset } from '../core/impactEngine';
 import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
@@ -123,12 +123,15 @@ export const dataApi = {
   coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),
 
+  usage: (id: string) => call<UsageInfo>('GET', `${ws(id)}/usage`),
+  costReport: (month?: string) => call<{ month: string; rows: CostReportRowInfo[] }>('GET', `/admin/cost-report${month ? `?month=${month}` : ''}`),
+
   fileQuota: (id: string) => call<FileQuotaInfo>('GET', `${ws(id)}/files/quota`),
   uploadFile: (id: string, file: File, nodeId?: string) => {
     const form = new FormData();
     form.set('file', file);
     if (nodeId) form.set('nodeId', nodeId);
-    return call<{ file: StoredFile; charge: FileChargeInfo; period: string }>('POST', `${ws(id)}/files`, form);
+    return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'credits' | 'own-key' | 'blocked' }>('POST', `${ws(id)}/files`, form);
   },
   processFile: (id: string, fileId: string) => call<ProcessedFile>('POST', `${ws(id)}/files/${fileId}/process`, {}),
   deleteFile: (id: string, fileId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/files/${fileId}`),

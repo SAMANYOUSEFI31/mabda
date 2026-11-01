@@ -78,6 +78,7 @@ const PATTERN_FA = { single: 'تک‌مرحله‌ای', cascade: 'آبشاری'
 /** «چرا این حالت؟» — tier, effort, pattern, reason and the real usage, under every AI output. */
 export const PlanLine: React.FC<{ plan?: AiPlan; usage?: UsageSummary; credits?: number; className?: string }> = ({ plan, usage, credits, className }) => {
   const [open, setOpen] = React.useState(false);
+  const { managedEnabled } = useAiStatus();
   if (!plan) return null;
   const finalTier = usage?.stages.filter((s) => s.stage !== 'decision' && s.stage !== 'validate').at(-1)?.tier ?? plan.tier;
   return (
@@ -86,7 +87,7 @@ export const PlanLine: React.FC<{ plan?: AiPlan; usage?: UsageSummary; credits?:
         <Icon name="Sparkles" size="xs" />
         <span>
           با حالت «{TIER_FA[finalTier]}» ساخته شد · effort {EFFORT_FA[plan.effort]} · الگوی {PATTERN_FA[plan.pattern]}
-          {typeof credits === 'number' && <> · {usage?.byok ? 'کلید شخصی (بدون کسر اعتبار)' : `${formatNumber(credits)} اعتبار`}</>}
+          {managedEnabled && typeof credits === 'number' && <> · {usage?.byok ? 'کلید شخصی (بدون کسر اعتبار)' : `${formatNumber(credits)} اعتبار`}</>}
         </span>
         <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen(!open)}>چرا؟</Button>
       </div>

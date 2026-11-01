@@ -16,10 +16,12 @@ export function createApp(db: Database.Database, aiOptions: { sessions?: Session
   const repo = new Repo(db);
 
   let aiRef: AiService | undefined;
-  const files = new FileService(repo, (aiUser, req) => aiRef!.extract(aiUser, req), aiOptions.clock);
+  let sessionsRef = (): SessionResolver => { throw new Error('sessions not ready'); };
+  const files = new FileService(repo, (aiUser, req) => aiRef!.extract(aiUser, req), aiOptions.clock, { managed: () => sessionsRef().managedEnabled, payer: () => sessionsRef().platformPayer() });
   const source = createContextSource(repo, files, LOCAL_USER);
   const ai = createAiRouter({ source, sessions: aiOptions.sessions, service: aiOptions.service });
   aiRef = ai.service;
+  sessionsRef = () => ai.sessions;
 
   app.use('/api/ai', ai.router);
   app.use('/api', createDataRouter({ repo, ai: ai.service, files, payer: () => ai.sessions.platformPayer(), admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);

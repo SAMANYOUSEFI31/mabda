@@ -80,7 +80,7 @@ test('heavy-use simulation: every cap used every day stays under the 20% line on
   const a = {
     days: 30,
     judgmentCall: { inputTokens: 2_500, outputTokens: 400, judgmentsPerCall: 5 },
-    coachCall: { inputTokens: 3_000, outputTokens: 900 },
+    coachCall: { inputTokens: 3_000, outputTokens: 2_000 },
     fileExtract: { avgFileTokens: 20_000, windowTokens: 30_000, outputTokens: 1_200 },
   };
   const cheap = { inputPerM: 0.1, outputPerM: 0.4 };

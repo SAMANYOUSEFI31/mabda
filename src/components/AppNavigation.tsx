@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { PlanId, Workspace, WorkstreamSpec } from '../types';
 import { PLANS } from '../core/creditEngine';
+import { useAiStatus } from '../services/aiStatus';
 import { BottomNav, BrandMark, Button, Card, Dialog, Icon, IconButton, NavItem, Progress, Select, formatNumber } from '../ui';
 
 interface AppNavigationProps {
@@ -52,6 +53,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
+  const { managedEnabled } = useAiStatus();
   const creditPercentage = Math.min(
     100,
     Math.round((currentWorkspace.creditsRemaining / plan.creditsMonthly) * 100)
@@ -132,11 +134,15 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
 
       <div className="flex flex-col gap-stack-md border-t border-border-default pt-inset-lg">
         <Card padding="md" onClick={() => { onOpenPlanModal(); close(); }} className="flex flex-col gap-stack-sm">
+          {managedEnabled && (
+            <>
           <div className="flex items-center justify-between gap-inline-sm body-sm">
             <span className="text-text-subtle">موجودی اعتبار</span>
             <span className="label-md tabular-nums text-text-default">{formatNumber(currentWorkspace.creditsRemaining)} / {formatNumber(plan.creditsMonthly)}</span>
           </div>
           <Progress value={creditPercentage} label="اعتبار باقی‌مانده" showValue={false} intent={creditPercentage > 15 ? 'success' : 'warning'} />
+            </>
+          )}
           <div className="flex items-center justify-between caption text-text-subtle">
             <span>پلن {plan.title.split(' ')[0]}</span>
             <span className="inline-flex items-center gap-inline-xs">ارتقا یا تغییر پلن <Icon name="ChevronLeft" size="sm" className="bsh-flip" /></span>
@@ -180,7 +186,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-inline-sm">
-          <Button size="sm" variant="secondary" onClick={onOpenPlanModal}>{formatNumber(currentWorkspace.creditsRemaining)} اعتبار</Button>
+          <Button size="sm" variant="secondary" onClick={onOpenPlanModal}>{managedEnabled ? `${formatNumber(currentWorkspace.creditsRemaining)} اعتبار` : `پلن ${plan.title.split(' ')[0]}`}</Button>
           <IconButton icon="User" label="پروفایل" variant="secondary" onClick={onOpenAccountModal} />
         </div>
       </header>

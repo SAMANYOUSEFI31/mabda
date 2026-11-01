@@ -290,7 +290,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         },
         ctl.signal,
       );
-      const credits = effectiveCredits(chatCredits(deep), result.usage.byok);
+      const credits = ai.managedEnabled ? effectiveCredits(chatCredits(deep), result.usage.byok) : 0;
       patchMessage(sessionId, placeholder.id, {
         streaming: false,
         content: result.markdown,
@@ -326,7 +326,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       toast.show({ intent: 'warning', message: 'سقف سخت گفتگوی روزانه پر شده است. فردا برگرد یا پلنت را ارتقا بده.' });
       return;
     }
-    if (isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true) && !ai.byok) {
+    if (ai.managedEnabled && isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true) && !ai.byok) {
       toast.show({ intent: 'warning', message: 'اعتبار برای گفتگوی عمیق کافی نیست.' });
       return;
     }
@@ -642,7 +642,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                     <div className="caption flex items-center justify-between gap-inline-md border-t border-border-default pt-inset-sm text-text-subtle">
                       <span className="tabular-nums">{formatTime(m.timestamp)}</span>
                       {m.role === 'user' ? (
-                        <span>{m.executionMode === 'deep' ? `حالت عمیق (${formatNumber(chatCredits(true))} اعتبار)` : 'حالت Auto (۰ اعتبار)'}</span>
+                        <span>{m.executionMode === 'deep' ? (ai.managedEnabled ? `حالت عمیق (${formatNumber(chatCredits(true))} اعتبار)` : 'حالت عمیق') : (ai.managedEnabled ? 'حالت Auto (۰ اعتبار)' : 'حالت Auto')}</span>
                       ) : null}
                     </div>
                     {m.role === 'assistant' && !m.streaming && m.plan && <PlanLine plan={m.plan} usage={m.usage} credits={m.creditCost} />}
@@ -665,8 +665,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
       {/* 3. Input */}
       <div className="flex shrink-0 flex-col gap-stack-sm border-t border-border-default bg-surface-sunken p-inset-md pb-safe-inset">
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-          <Switch checked={isDeepMode} onChange={(e) => setIsDeepMode(e.target.checked)} label="حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)" />
-          <span className="caption text-text-subtle">{isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور'}</span>
+          <Switch checked={isDeepMode} onChange={(e) => setIsDeepMode(e.target.checked)} label={ai.managedEnabled ? 'حالت عمیق (تحلیل چندوجهی · ۵ اعتبار)' : 'حالت عمیق (تحلیل چندوجهی)'} />
+          <span className="caption text-text-subtle">{ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت Auto رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت Auto')}</span>
         </div>
 
         <form onSubmit={handleSend} className="flex items-start gap-inline-sm">

@@ -66,7 +66,7 @@ export const AiSettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }>
           {status?.byokConfigured && <p className="body-sm text-text-subtle">کلید ذخیره‌شده: <span dir="ltr" className="code">…{status.byokLast4}</span></p>}
           {status && !status.available && status.unavailable && <p className="body-sm text-text-subtle">{status.unavailable.message}</p>}
           <p className="caption text-text-subtle">
-            با کلید شخصی، اعتبار کم نمی‌شود ولی توکن و هزینه در دفتر کل ثبت می‌شود. هوش مصنوعی مدیریت‌شده {status?.managedEnabled ? 'روشن' : 'خاموش'} است (feature flag).
+            با کلید شخصی، هزینهٔ توکن مستقیم با خودت است و در دفتر کل ثبت می‌شود. هوش مصنوعی مدیریت‌شده {status?.managedEnabled ? 'روشن' : 'خاموش'} است (feature flag).
           </p>
         </Card>
 
