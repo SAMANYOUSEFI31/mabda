@@ -8,8 +8,9 @@ import { ModelDecisionLayer } from './decision.ts';
 import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
 import { runPipeline } from './pipeline.ts';
-import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
-import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA } from './schemas.ts';
+import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT } from './prompts.ts';
+import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA, PARSE_SCHEMA } from './schemas.ts';
+import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { applyBand, route, sanitizePlan } from './router.ts';
 import { StageRunner, sumUsage } from './runner.ts';
 import type { SessionResolver } from './session.ts';
@@ -365,6 +366,35 @@ export class AiService {
         proposals,
         usage: usageSummary([r.usage], session.source === 'byok'),
       };
+    } finally { dl.done(); }
+  }
+
+  /**
+   * Fallback for a pasted answer that has no recognisable headings: the cheap decision layer cuts it into labelled
+   * blocks. The text is never rewritten (the prompt asks for verbatim sections).
+   */
+  async parseExternal(userId: string, text: string, parent?: AbortSignal): Promise<{ blocks: ParsedBlock[]; usage: UsageSummary; truncated: boolean }> {
+    const dl = this.deadline(this.cfg.timeoutsMs.chat, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId, 'platform');
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const maxChars = Math.floor(EXTRACT_WINDOW_TOKENS * 2.2);
+      const truncated = text.length > maxChars;
+      const r = await runner.structured(
+        { stage: 'extract', tier: 'cheap', effort: 'low', maxTokens: 6000, timeoutMs: this.cfg.timeoutsMs.chat },
+        { system: SYSTEM_PROMPT, user: `${PARSE_INSTRUCTION}\n\n## پاسخ بیرونی\n${truncated ? text.slice(0, maxChars) : text}` }, PARSE_SCHEMA,
+      );
+      const items = (r.value as { items?: unknown })?.items;
+      if (!Array.isArray(items)) throw new AiError('bad_output', { stage: 'extract', detail: 'missing items' });
+      const kinds = ['decision', 'fact', 'constraint', 'asset', 'question', 'paragraph'];
+      const blocks: ParsedBlock[] = [];
+      for (const it of items as Array<Record<string, unknown>>) {
+        const md = typeof it?.markdown === 'string' ? it.markdown.trim() : '';
+        if (!md || !kinds.includes(it.kind as string)) continue;
+        blocks.push({ id: `a${blocks.length + 1}`, kind: it.kind as ParsedBlock['kind'], title: typeof it.title === 'string' && it.title.trim() ? it.title.trim().slice(0, 100) : md.slice(0, 60), markdown: md, method: 'ai' });
+      }
+      if (!blocks.length) throw new AiError('bad_output', { stage: 'extract', detail: 'no usable blocks' });
+      return { blocks, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
     } finally { dl.done(); }
   }
 }

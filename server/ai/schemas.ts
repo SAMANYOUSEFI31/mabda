@@ -102,3 +102,22 @@ export const COACH_SCHEMA = {
   },
   required: ['questions', 'ambiguities', 'proposals'],
 } as const;
+
+export const PARSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['decision', 'fact', 'constraint', 'asset', 'question', 'paragraph'] },
+          title: { type: 'string' },
+          markdown: { type: 'string' },
+        },
+        required: ['kind', 'title', 'markdown'],
+      },
+    },
+  },
+  required: ['items'],
+} as const;

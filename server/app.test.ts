@@ -293,3 +293,54 @@ test('manager ledger: real cost per workspace vs plan price; off unless MABDA_AD
     assert.equal(row.warn, false);
   } finally { t.close(); }
 });
+
+import { PACK_MARKER_RE } from '../src/core/contextPack.ts';
+
+test('Context pack: built on the server, size reported, lineage stored; Starter spec/limits do not matter for reading', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const p = await t.call('POST', '/workspaces/ws_studio/packs', { specId: 'main_positioning', deliverableId: 'del_positioning_statement' });
+    assert.equal(p.status, 200);
+    assert.match(p.json.markdown, PACK_MARKER_RE);
+    assert.equal(p.json.markdown.match(PACK_MARKER_RE)![1], p.json.id);
+    assert.ok(p.json.tokens > 100 && p.json.chars === p.json.markdown.length);
+    assert.match(p.json.markdown, /## Asset: عنوان خروجی/);
+    assert.ok(p.json.counts.confirmed >= 5);
+    const list = (await t.call('GET', '/workspaces/ws_studio/packs')).json.packs;
+    assert.equal(list[0].id, p.json.id);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/packs', { specId: 'nope' })).status, 404);
+  } finally { t.close(); }
+});
+
+test('paste import: headings are parsed for free (no model call); the pack marker gives the lineage; no headings → decision layer; no AI → one honest raw block', async () => {
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('"items"') ? { items: [{ kind: 'fact', title: 'بودجه', markdown: 'بودجه پنجاه میلیون است.' }, { kind: 'asset', title: 'متن', markdown: 'متن کامل خروجی' }, { kind: 'nope', title: 'x', markdown: 'y' }] } : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const pack = (await t.call('POST', '/workspaces/ws_studio/packs', { specId: 'main_positioning' })).json;
+    const calls = t.p.calls.length;
+    const answer = `${pack.markdown.split('\n')[0]}\n## Decision: تمرکز\nروی فریلنسرها.\n## Asset: جمله\nمتن کامل`;
+    const r = (await t.call('POST', '/workspaces/ws_studio/imports/parse', { text: answer })).json;
+    assert.equal(r.method, 'headings');
+    assert.deepEqual(r.blocks.map((b: any) => b.kind), ['decision', 'asset'], 'the marker line is bookkeeping, not a block');
+    assert.equal(r.packId, pack.id, 'the marker the pack put in the text finds its pack');
+    assert.ok(r.usedContext.length >= 5);
+    assert.equal(t.p.calls.length, calls, 'headings → no model call');
+
+    const ai = (await t.call('POST', '/workspaces/ws_studio/imports/parse', { text: 'متن آزاد بدون هیچ سرتیتر. بودجه پنجاه میلیون است. این هم متن کامل.', packId: pack.id })).json;
+    assert.equal(ai.method, 'ai');
+    assert.deepEqual(ai.blocks.map((b: any) => b.kind), ['fact', 'asset'], 'unknown kinds are dropped');
+    assert.equal(ai.packId, pack.id);
+    assert.ok(ai.ledger.some((l: any) => l.mode === 'import_parse'));
+  } finally { t.close(); }
+  const raw = await boot(() => decide); // the mock answers with routing JSON: not a parse result → honest fallback
+  try {
+    await raw.call('POST', '/bootstrap', {});
+    const r = (await raw.call('POST', '/workspaces/ws_studio/imports/parse', { text: 'فقط یک متن ساده' })).json;
+    assert.equal(r.method, 'raw');
+    assert.equal(r.blocks.length, 1);
+    assert.equal(r.blocks[0].markdown, 'فقط یک متن ساده', 'the text is kept as is — nothing invented');
+    assert.match(r.warning, /سرتیتر/);
+    assert.equal((await raw.call('POST', '/workspaces/ws_studio/imports/parse', { text: '   ' })).status, 400);
+  } finally { raw.close(); }
+});

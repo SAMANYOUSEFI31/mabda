@@ -17,6 +17,11 @@ import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
 import { entitlementsOf } from '../../src/core/entitlements.ts';
 import { costReport } from '../../src/core/costReport.ts';
+import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
+import { parseByHeadings } from '../../src/core/answerParser.ts';
+import type { ParsedBlock } from '../../src/core/answerParser.ts';
+import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { can } from '../../src/core/entitlements.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 
@@ -103,7 +108,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.extract(aiUser, { kind: 'note', text: note.content, nodeId: note.nodeId, nodes: repo.listNodes(s).map((n) => ({ id: n.id, label: n.label })) }, ctl.signal);
-    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'AI Suggested', title: o.title, content: o.content, nodeId: o.nodeId }));
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'AI Suggested', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'note', at: new Date().toISOString() } }));
     const ledger = repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'استخراج از یادداشت', mode: 'note_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
     res.json({ created, ledger, usage: r.usage });
   }));
@@ -183,6 +188,67 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'Context Coach', mode: 'coach', creditCost: 0, usage: r.usage, id: newId('led') }));
     const { usage: _u, ...result } = r;
     res.json({ result, quota: coachQuota(s), ledger: repo.listLedger(s) });
+  }));
+
+  // ── MCP tokens (settings) ────────────────────────────────────────────
+  router.get('/workspaces/:wid/mcp/tokens', wrap((req, res) => {
+    const s = scopeOf(req);
+    res.json({ tokens: repo.listMcpTokens(s), allowed: can(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId, 'mcp') });
+  }));
+  router.post('/workspaces/:wid/mcp/tokens', wrap((req, res) => {
+    const s = scopeOf(req);
+    if (!can(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId, 'mcp')) throw new RepoError('forbidden', 'اتصال MCP از پلن Pro به بالا فعال است.');
+    // the plaintext token is returned ONCE; only its hash is stored
+    res.json(repo.createMcpToken(s, String(body(req).label ?? 'Claude')));
+  }));
+  router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
+
+  // ── Context pack (copy for any AI) + pasted-answer import ────────────
+  const specList = (s: Scope) => [...repo.listSpecs(s), ...WORKSTREAM_SPECS];
+  router.post('/workspaces/:wid/packs', wrap((req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
+    const b = body(req);
+    const spec = typeof b.specId === 'string' ? specList(s).find((x) => x.id === b.specId) : undefined;
+    if (b.specId && !spec) throw new RepoError('not_found', 'spec پیدا نشد.');
+    const deliverable = spec && typeof b.deliverableId === 'string' ? spec.deliverables.find((d) => d.id === b.deliverableId) : undefined;
+    const id = newId('pack');
+    const pack = buildContextPack({ packId: id, workspaceName: ws.name, nodes: repo.listNodes(s), objects: repo.listObjects(s), spec, deliverable, judgments: repo.listJudgments(s), targetNodeId: typeof b.nodeId === 'string' ? b.nodeId : undefined });
+    const title = deliverable ? `${spec!.title} ‹ ${deliverable.title}` : spec ? spec.title : `کل ${ws.name}`;
+    const saved = repo.savePack(s, { title, specId: spec?.id, deliverableId: deliverable?.id, refs: pack.refs, tokens: pack.tokens }, id);
+    res.json({ id: saved.id, title, createdAt: saved.createdAt, markdown: pack.markdown, tokens: pack.tokens, chars: pack.chars, counts: pack.counts });
+  }));
+  router.get('/workspaces/:wid/packs', wrap((req, res) => { res.json({ packs: repo.listPacks(scopeOf(req)) }); }));
+
+  /** pasted answer → blocks: headings first (free, instant), the cheap decision layer only when there are none */
+  router.post('/workspaces/:wid/imports/parse', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const text = String(body(req).text ?? '').trim();
+    if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
+    if (text.length > 200_000) throw new RepoError('invalid', 'متن بیش از حد بلند است.');
+    const packId = typeof body(req).packId === 'string' && body(req).packId ? String(body(req).packId) : text.match(PACK_MARKER_RE)?.[1];
+    const pack = packId ? repo.getPack(s, packId) : undefined;
+    let blocks: ParsedBlock[] | null = parseByHeadings(text);
+    let method: 'headings' | 'ai' | 'raw' = 'headings';
+    let warning: string | undefined;
+    if (!blocks) {
+      try {
+        const ctl = new AbortController();
+        res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+        const r = await ai.parseExternal(aiUserOf(req), text, ctl.signal);
+        blocks = r.blocks;
+        method = 'ai';
+        repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تقسیم پاسخ بیرونی به بلوک', mode: 'import_parse', creditCost: 0, usage: r.usage, id: newId('led') }));
+        if (r.truncated) warning = 'متن بلند بود؛ فقط بخش ابتدایی تقسیم شد.';
+      } catch (e) {
+        // no headings and no AI: keep the text as ONE block — never invent a structure
+        blocks = [{ id: 'r1', kind: 'paragraph', title: 'پاسخ چسبانده‌شده', markdown: text, method: 'raw' }];
+        method = 'raw';
+        warning = `سرتیتر قابل‌تشخیص نبود و تقسیم هوشمند هم انجام نشد (${toAiError(e).message}). متن به‌صورت یک بلوک آمد؛ هر بخش را خودت جدا کن.`;
+      }
+    }
+    res.json({ blocks, method, warning, packId: pack?.id ?? null, packTitle: pack?.title ?? null, packSpecId: pack?.specId ?? null, packDeliverableId: pack?.deliverableId ?? null, usedContext: pack?.refs ?? [], ledger: repo.listLedger(s) });
   }));
 
   // ── usage meters + manager ledger ────────────────────────────────────

@@ -7,6 +7,7 @@ import type { SessionResolver } from './ai/session.ts';
 import { createDataRouter, LOCAL_USER } from './db/routes.ts';
 import { createContextSource } from './db/aiContext.ts';
 import { Repo } from './db/repo.ts';
+import { createMcpRouter } from './mcp/router.ts';
 import { FileService } from './files/service.ts';
 
 /** Wires storage + AI. `aiOptions` lets tests inject a mock-backed AiService / session resolver. */
@@ -23,6 +24,7 @@ export function createApp(db: Database.Database, aiOptions: { sessions?: Session
   aiRef = ai.service;
   sessionsRef = () => ai.sessions;
 
+  app.use('/mcp', createMcpRouter({ repo }));
   app.use('/api/ai', ai.router);
   app.use('/api', createDataRouter({ repo, ai: ai.service, files, payer: () => ai.sessions.platformPayer(), admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);
 

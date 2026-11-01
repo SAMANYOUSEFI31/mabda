@@ -14,6 +14,7 @@ interface AccountModalProps {
   onExportAllData: () => void;
   onDeleteAccount: () => void;
   onOpenAiSettings: () => void;
+  onOpenConnect: () => void;
 }
 
 export const AccountModal: React.FC<AccountModalProps> = ({
@@ -23,6 +24,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   onExportAllData,
   onDeleteAccount,
   onOpenAiSettings,
+  onOpenConnect,
 }) => {
   const [phone] = useState('09123456789');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -59,6 +61,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
             <span className="label-md text-text-default">هوش مصنوعی</span>
             <Button variant="secondary" iconStart="Settings" fullWidth onClick={onOpenAiSettings}>کلید API من (BYOK) و وضعیت مدل‌ها</Button>
+            <Button variant="secondary" iconStart="Link2" fullWidth onClick={() => { onClose(); onOpenConnect(); }}>اتصال به Claude و AIهای دیگر (MCP)</Button>
           </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
