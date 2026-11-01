@@ -53,6 +53,10 @@ export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>
       return { kind: 'archived', objectId: obj.id, currentId: head.id, title: head.title, usedVersion: used.version, currentVersion: head.version, message: `«${head.title}» بایگانی شد.` };
     }
     if (head.id !== obj.id) {
+      // «keep this one» resolutions supersede an object with an existing one, whose version need not be higher
+      if (head.version <= used.version) {
+        return { kind: 'superseded', objectId: obj.id, currentId: head.id, title: head.title, usedVersion: used.version, currentVersion: head.version, message: `«${obj.title}» با «${head.title}» جایگزین شد.` };
+      }
       return {
         kind: 'superseded', objectId: obj.id, currentId: head.id, title: head.title, usedVersion: used.version, currentVersion: head.version,
         message: `«${head.title}» از نسخهٔ ${fa(used.version)} به ${fa(head.version)} تغییر کرد.`,

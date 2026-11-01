@@ -330,6 +330,28 @@ export class AiService {
   }
 
   /**
+   * Semantic contradictions, step 2: for every candidate PAIR (chosen by code, see contradictionCandidates.ts) ask the
+   * decision layer ONE closed question — «do these two claims not fit together?» — quoting both texts. The answer is
+   * binary with a short reason; no probability is stored or shown.
+   */
+  async judgeContradictions(userId: string, pairs: Array<{ key: string; a: { title: string; content: string }; b: { title: string; content: string } }>, parent?: AbortSignal): Promise<{ results: Record<string, { conflict: boolean; reason: string }>; usage?: UsageSummary }> {
+    if (!pairs.length) return { results: {} };
+    const dl = this.deadline(this.cfg.timeoutsMs.validator, parent);
+    try {
+      const session = await this.deps.sessions.resolve(userId, 'platform');
+      const runner = new StageRunner(session, dl.signal, this.cfg);
+      const questions: DecisionQuestion[] = pairs.map((p, i) => ({
+        id: `p${i}`, options: ['conflict', 'compatible'], reason: true,
+        question: `آیا این دو ادعا با هم نمی‌خوانند؟ فقط اگر نمی‌توانند هم‌زمان دربارهٔ یک چیز درست باشند conflict بده؛ اگر مربوط به بخش‌ها یا زمان‌های متفاوت‌اند compatible.\nادعای الف — «${p.a.title}»: ${p.a.content}\nادعای ب — «${p.b.title}»: ${p.b.content}`,
+      }));
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شدهٔ کسب‌وکار', stage: 'decision' }, questions);
+      const results: Record<string, { conflict: boolean; reason: string }> = {};
+      res.answers.forEach((a, i) => { results[pairs[i].key] = { conflict: a.choice === 'conflict', reason: a.reason ?? '' }; });
+      return { results, usage: res.usage ? usageSummary([res.usage], session.source === 'byok') : undefined };
+    } finally { dl.done(); }
+  }
+
+  /**
    * Context Coach (balanced tier): asks clarifying questions, points at ambiguity and drafts PROPOSED objects.
    * It never writes anything itself — the caller saves proposals only when the user agrees.
    */

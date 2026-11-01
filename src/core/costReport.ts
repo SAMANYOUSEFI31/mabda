@@ -17,7 +17,9 @@ export const CATEGORY_LABEL: Record<CostCategory, string> = {
 
 export function categoryOf(mode: LedgerEntry['mode']): CostCategory {
   switch (mode) {
-    case 'gap_judge': case 'note_extract': case 'import_parse': return 'judgments';
+    case 'gap_judge': case 'note_extract': case 'import_parse': case 'contradiction': return 'judgments';
+    case 'memory_import': return 'fileProcessing';
+    case 'thread': return 'coach';
     case 'file_processing': return 'fileProcessing';
     case 'coach': return 'coach';
     default: return 'generation';

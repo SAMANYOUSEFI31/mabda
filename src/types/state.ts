@@ -19,6 +19,8 @@ export interface WorkspaceState {
   stale: StaleAsset[];
   /** decision-layer «مبهم» verdicts per object (valid for the version they carry) */
   judgments: Record<string, { version: number; ambiguous: boolean; reason: string }>;
+  /** semantic contradiction judgements per exact (object, version) pair, with the user's resolution */
+  pairJudgments: import('../core/contradictionCandidates').PairJudgment[];
 }
 
 export interface ImpactInfo {

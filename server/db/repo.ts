@@ -6,6 +6,8 @@ import type {
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
+import { pairKey } from '../../src/core/contradictionCandidates.ts';
+import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES } from '../../src/core/specs.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
@@ -460,6 +462,35 @@ export class Repo {
     });
   }
 
+  // ── semantic contradictions: one judgement per exact (object, version) pair + the user's resolution ──
+  listPairJudgments(s: Scope): PairJudgment[] {
+    return (this.db.prepare('SELECT * FROM contradiction_judgments WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>)
+      .map((r) => ({ key: r.pair_key as string, aVersion: r.a_version as number, bVersion: r.b_version as number, conflict: !!r.conflict, reason: r.reason as string, resolution: (r.resolution as string | null) ?? null }));
+  }
+
+  /** `a` and `b` are stored in key order (smaller id first) so versions line up with core's isFresh */
+  savePairJudgment(s: Scope, a: ContextObject, b: ContextObject, j: { conflict: boolean; reason: string; resolution?: string }) {
+    const [lo, hi] = a.id < b.id ? [a, b] : [b, a];
+    this.db.prepare('INSERT OR REPLACE INTO contradiction_judgments (user_id, workspace_id, pair_key, a_id, a_version, b_id, b_version, conflict, reason, resolution, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .run(s.userId, s.workspaceId, pairKey(a.id, b.id), lo.id, lo.version, hi.id, hi.version, j.conflict ? 1 : 0, j.reason, j.resolution ?? null, now());
+  }
+
+  /** «keep» — the other object becomes Superseded by the kept one (never deleted); the history stays. */
+  supersedeBy(s: Scope, loserId: string, winnerId: string): { loser: ContextObject; impact: ImpactResult } {
+    const loser = this.getObject(s, loserId);
+    const winner = this.getObject(s, winnerId);
+    if (!loser || !winner) throw new RepoError('not_found', 'Context پیدا نشد.');
+    if (loserId === winnerId) throw new RepoError('invalid', 'دو مورد یکی نیستند.');
+    const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
+      const t = now();
+      this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(winnerId, t, loserId, s.workspaceId);
+      this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
+      if (winner.status !== 'Confirmed') this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
+      return this.getObject(s, loserId)!;
+    })());
+    return { loser: value, impact };
+  }
+
   // ── MCP tokens (one personal token per connection, per workspace) ─────────
   createMcpToken(s: Scope, label: string): { id: string; token: string; last4: string } {
     this.assertWorkspace(s);
@@ -517,6 +548,7 @@ export class Repo {
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
       stale: this.impactEnabled(s) ? computeStaleAssets(deliverables, objects) : [],
       judgments: this.listJudgments(s),
+      pairJudgments: this.listPairJudgments(s),
     };
   }
 

@@ -180,6 +180,20 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 7,
+    name: 'semantic contradictions: judgement per object-version pair + the user\'s resolution',
+    up(db) {
+      db.exec(`
+        CREATE TABLE contradiction_judgments (
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          pair_key TEXT NOT NULL, a_id TEXT NOT NULL, a_version INTEGER NOT NULL, b_id TEXT NOT NULL, b_version INTEGER NOT NULL,
+          conflict INTEGER NOT NULL, reason TEXT NOT NULL, resolution TEXT, created_at TEXT NOT NULL,
+          PRIMARY KEY (workspace_id, pair_key)
+        );
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

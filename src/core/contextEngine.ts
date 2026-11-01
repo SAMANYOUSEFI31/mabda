@@ -217,9 +217,9 @@ const STOP = new Set(['و', 'در', 'به', 'از', 'برای', 'با', 'را', 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const toLatin = (t: string) => t.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d))).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
 const toFa = (n: number) => String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[Number(d)]);
-const titleTokens = (t: string) => new Set(normalizeFa(t).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((w) => w.length >= 2 && !STOP.has(w)));
+export const titleTokens = (t: string) => new Set(normalizeFa(t).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((w) => w.length >= 2 && !STOP.has(w)));
 
-function jaccard(a: Set<string>, b: Set<string>): number {
+export function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 || b.size === 0) return 0;
   let inter = 0;
   for (const x of a) if (b.has(x)) inter++;

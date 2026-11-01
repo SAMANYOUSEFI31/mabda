@@ -170,7 +170,11 @@ export interface ReadinessResult {
   summary: string;
 }
 
+/** how a contradiction was found: deterministic rule, or the decision layer's answer for a candidate pair */
+export type ContradictionSource = 'rule' | 'semantic';
+
 export interface Contradiction {
+  source?: ContradictionSource;
   id: string;
   itemA: ContextObject;
   itemB: ContextObject;
@@ -284,7 +288,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

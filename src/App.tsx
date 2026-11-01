@@ -15,12 +15,14 @@ import {
   Workspace,
 } from './types';
 import type { WorkspaceState, ImpactInfo } from './types/state';
-import { calculateReadinessAndGaps, detectContradictions } from './core/contextEngine';
+import { calculateReadinessAndGaps } from './core/contextEngine';
 import { impactMessage } from './core/impactEngine';
 import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
 import type { PageAction } from './components/TopStatusBar';
-import { ContradictionBanner } from './components/ContradictionBanner';
+import { ContradictionPanel } from './components/ContradictionPanel';
+import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
+import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
@@ -149,7 +151,7 @@ export default function App() {
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
-  const contradictions: Contradiction[] = detectContradictions(workspaceContexts);
+  const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
   const attentionGaps = attentionSpec
     ? calculateReadinessAndGaps(attentionSpec, workspaceContexts, data?.relationships ?? []).gaps.filter((g) => g.importance === 'required')
@@ -205,11 +207,32 @@ export default function App() {
     if (impact) showImpact(impact);
   };
 
-  const handleResolveContradiction = async (_contraId: string, keepId: string, archiveId: string) => {
-    await setStatus(keepId, 'Confirmed');
-    const impact = await setStatus(archiveId, 'Archived');
-    if (impact) showImpact(impact);
+  /** conflict: keep one (the other becomes Superseded) */
+  const handleKeepContradiction = async (c: Contradiction, keepId: string) => {
+    const r = await attempt(() => dataApi.resolveContradiction(wid, { aId: c.itemA.id, bId: c.itemB.id, action: 'keep', keepId }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, pairJudgments: r.pairJudgments, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: 'تناقض حل شد؛ مورد دیگر «جایگزین‌شده» است و در تاریخچه می‌ماند.' });
   };
+  /** both claims hold: move one claim to another node */
+  const handleSeparateContradiction = async (c: Contradiction, moveId: string, nodeId: string) => {
+    const r = await attempt(() => dataApi.resolveContradiction(wid, { aId: c.itemA.id, bId: c.itemB.id, action: 'separate', moveId, nodeId }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, pairJudgments: r.pairJudgments, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
+  };
+
+  // semantic contradictions: code picks the candidate pairs, the decision layer answers one closed question each (Pro and above)
+  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
+  const judgedSigs = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!pairSig || !ai.judgmentsAvailable || judgedSigs.current.has(pairSig)) return;
+    judgedSigs.current.add(pairSig);
+    dataApi.judgeContradictions(wid).then((r) => patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }))).catch(() => { /* optional: the rule-based checks still run */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairSig, ai.judgmentsAvailable, wid]);
 
   // ── tree nodes ──────────────────────────────────────────────────────────────────────────────────
   const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
@@ -527,11 +550,7 @@ export default function App() {
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />}
 
-          {/* Contradiction Detection Banner */}
-          <ContradictionBanner
-            contradictions={contradictions}
-            onResolve={handleResolveContradiction}
-          />
+
 
         {/* TAB 1: Context & Source of Truth */}
         {activeTab === 'context' && (
@@ -572,6 +591,8 @@ export default function App() {
               onOpenAssets={() => setActiveTab('assets')}
               onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
+
+            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
 
             <ProposalInbox
               objects={workspaceContexts}

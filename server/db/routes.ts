@@ -22,6 +22,7 @@ import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
+import { pairsToJudge } from '../../src/core/contradictionCandidates.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 
@@ -158,6 +159,51 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
     res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s), limited });
+  }));
+
+  // ── semantic contradictions (plan feature; shares the daily judgement cap) ──────────────
+  router.post('/workspaces/:wid/contradictions/judge', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
+    const objects = repo.listObjects(s);
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s));
+    const capped = payer() === 'us';
+    const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
+    const limited = todo.length > left;
+    if (limited) todo.length = left;
+    if (todo.length) {
+      const ctl = new AbortController();
+      res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+      const r = await ai.judgeContradictions(aiUserOf(req), todo.map((p) => ({ key: p.key, a: p.a, b: p.b })), ctl.signal);
+      for (const p of todo) { const j = r.results[p.key]; if (j) repo.savePairJudgment(s, p.a, p.b, j); }
+      if (capped) repo.addDailyUsage(s, today(), 'judge', todo.length);
+      if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص تناقض معنایی', mode: 'contradiction', creditCost: 0, usage: r.usage, id: newId('led') }));
+    }
+    res.json({ pairJudgments: repo.listPairJudgments(s), ledger: repo.listLedger(s), judged: todo.length, limited });
+  }));
+
+  /** the user's decision on a pair: keep one (the other becomes Superseded) or keep both and move one to another node */
+  router.post('/workspaces/:wid/contradictions/resolve', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const aId = String(b.aId ?? ''), bId = String(b.bId ?? '');
+    const a = repo.getObject(s, aId), o = repo.getObject(s, bId);
+    if (!a || !o) throw new RepoError('not_found', 'یکی از دو مورد پیدا نشد.');
+    let impact = { count: 0, assets: [] as Array<{ id: string; title: string; reasons: string[] }> };
+    if (b.action === 'keep') {
+      const keepId = String(b.keepId ?? '');
+      if (keepId !== aId && keepId !== bId) throw new RepoError('invalid', 'مورد نگه‌داشتنی مشخص نیست.');
+      impact = repo.supersedeBy(s, keepId === aId ? bId : aId, keepId).impact;
+      repo.savePairJudgment(s, a, o, { conflict: true, reason: 'حل‌شده توسط کاربر', resolution: `kept:${keepId}` });
+    } else if (b.action === 'separate') {
+      const moveId = String(b.moveId ?? '');
+      if (moveId !== aId && moveId !== bId) throw new RepoError('invalid', 'مورد جابه‌جاشونده مشخص نیست.');
+      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') });
+      impact = moved.impact;
+      repo.savePairJudgment(s, a, o, { conflict: false, reason: 'هر دو درست‌اند؛ گره‌ها جدا شد', resolution: 'separated' });
+    } else throw new RepoError('invalid', 'اقدام نامعتبر است.');
+    res.json({ objects: repo.listObjects(s), relationships: repo.listRelationships(s), pairJudgments: repo.listPairJudgments(s), stale: stale(s), impact });
   }));
 
   const coachQuota = (s: Scope) => {

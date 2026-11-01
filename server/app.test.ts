@@ -344,3 +344,56 @@ test('paste import: headings are parsed for free (no model call); the pack marke
     assert.equal((await raw.call('POST', '/workspaces/ws_studio/imports/parse', { text: '   ' })).status, 400);
   } finally { raw.close(); }
 });
+
+test('semantic contradictions: code picks candidate pairs, the decision layer judges each once (cached per version), the plan and the daily cap apply, resolution keeps history', async () => {
+  const t = await boot((c) => (isCheckCall(c) ? answerChecks(c, ['p0', 'p1', 'p2']) : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const mk = (title: string, content: string, slotKey: string) => t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', provenance: 'User Input', title, content, nodeId: 'business', slotKey });
+    const x = (await mk('مخاطب اول', 'فریلنسرهای طراح', 'audience_x')).json.object;
+    const y = (await mk('مخاطب دوم', 'سازمان‌های بزرگ', 'audience_x')).json.object;
+    const calls = t.p.calls.length;
+    const r1 = (await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json;
+    assert.equal(r1.judged, 2, 'the same-slot pair + one sample-data pair with similar titles (a candidate only; the model decides)');
+    assert.equal(t.p.calls.length, calls + 1, 'one decision call for all pairs');
+    const pj = r1.pairJudgments.find((j: any) => j.key === [x.id, y.id].sort().join('|'));
+    assert.equal(pj.conflict, true);
+    assert.match(pj.reason, /^دلیل رد p\d$/);
+    assert.ok(!JSON.stringify(r1).includes('probability'), 'no confidence in the payload');
+    assert.ok(r1.ledger.some((l: any) => l.mode === 'contradiction' && l.creditCost === 0));
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 0, 'cached for these versions');
+    await t.call('PATCH', `/workspaces/ws_studio/objects/${y.id}`, { content: 'سازمان‌های بزرگ و دولتی' });
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 1, 'an edited object is judged again');
+
+    // plan gate
+    assert.equal((await t.call('POST', '/workspaces/ws_course/contradictions/judge', {})).status, 403);
+
+    // resolve: keep x → y becomes Superseded by x (history kept, relationship added), the pair is resolved
+    const res = (await t.call('POST', '/workspaces/ws_studio/contradictions/resolve', { aId: x.id, bId: y.id, action: 'keep', keepId: x.id })).json;
+    const yy = res.objects.find((o: any) => o.id === y.id);
+    assert.deepEqual([yy.status, yy.supersededById], ['Superseded', x.id]);
+    assert.ok(res.relationships.some((rel: any) => rel.type === 'supersedes' && rel.sourceId === x.id && rel.targetId === y.id));
+    assert.equal(res.pairJudgments.find((j: any) => j.key === [x.id, y.id].sort().join('|')).resolution, `kept:${x.id}`);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 0);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/resolve', { aId: x.id, bId: y.id, action: 'keep', keepId: 'ghost' })).status, 400);
+  } finally { t.close(); }
+});
+
+test('contradiction resolution «both are right»: one object moves to another node and the pair is resolved; the daily judgement cap limits the run', async () => {
+  const cap = ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay;
+  ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay = 1;
+  const t = await boot((c) => (isCheckCall(c) ? answerChecks(c, []) : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const mk = (title: string, content: string, slotKey: string) => t.call('POST', '/workspaces/ws_studio/objects', { type: 'Fact', provenance: 'User Input', title, content, nodeId: 'business', slotKey });
+    const a = (await mk('الف', 'ادعای یک', 's1')).json.object;
+    const b = (await mk('ب', 'ادعای دو', 's1')).json.object;
+    await mk('پ', 'ادعای سه', 's2'); await mk('ت', 'ادعای چهار', 's2');
+    const run = (await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json;
+    assert.deepEqual([run.judged, run.limited], [1, true], 'cap of 1 judgement per day → only one of the two pairs');
+    const res = (await t.call('POST', '/workspaces/ws_studio/contradictions/resolve', { aId: a.id, bId: b.id, action: 'separate', moveId: b.id, nodeId: 'offer' })).json;
+    assert.equal(res.objects.find((o: any) => o.id === b.id).nodeId, 'offer');
+    assert.equal(res.objects.find((o: any) => o.id === b.id).status, 'Confirmed', 'nothing is superseded or deleted');
+    assert.equal(res.pairJudgments.find((j: any) => j.resolution === 'separated').conflict, false);
+  } finally { ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay = cap; t.close(); }
+});
