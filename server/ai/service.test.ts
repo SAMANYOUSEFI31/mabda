@@ -242,6 +242,7 @@ test('generate: spec guardrails + Confirmed Constraints are both checked; each c
   assert.deepEqual(r.checks?.map((k) => [k.kind, k.text, k.passed]), [
     ['criterion', 'معیار الف', true], ['criterion', 'معیار ب', true],
     ['guardrail', 'از واژهٔ «ارزان» استفاده نکن', false], ['guardrail', 'بدون تخفیف: تخفیف نداریم', true],
+    ['consistency', 'سازگاری با دانش تأییدشدهٔ کسب‌وکار', true],
   ]);
   assert.equal(r.checks![2].reason, 'دلیل رد g0');
   assert.equal(r.validationFailed, true);

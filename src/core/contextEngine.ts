@@ -74,24 +74,26 @@ const labelCore = (label: string) => normalizeFa(label.replace(/\([^)]*\)/g, '')
 
 /**
  * Does this object fill that required/suggested item?
- * The binding is the object's TITLE (the Gap flow, the MCP and the AI proposals all title the object with the
- * item's label). Living in the same node, or mentioning the item's English key in the text, is NOT enough —
- * that made one unrelated fact "fill" every item of its node.
+ *  1. an object with an explicit `slotKey` fills exactly the item whose `key` equals it — and no other (the binding the
+ *     Gap answer flow, the MCP and the proposals write);
+ *  2. only an object WITHOUT a slotKey (legacy data) is matched by TITLE (the item's label core).
+ * Living in the same node, or mentioning the item's key in the text, never counts.
  */
-export function fillsItem(req: { label: string }, o: ContextObject): boolean {
+export function fillsItem(req: { key?: string; label: string }, o: ContextObject): boolean {
   if (o.content.trim().length === 0) return false;
+  if (o.slotKey) return !!req.key && o.slotKey === req.key;
   const title = normalizeFa(o.title);
   const core = labelCore(req.label);
   if (core.length === 0) return false;
   return title.includes(core) || normalizeFa(req.label) === title;
 }
 
-/** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed. */
-export function findForRequired(req: { label: string }, objects: ContextObject[]): ContextObject | undefined {
+/** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed; an explicit slot wins over a title match. */
+export function findForRequired(req: { key?: string; label: string }, objects: ContextObject[]): ContextObject | undefined {
   const rank = (o: ContextObject) => (o.status === 'Confirmed' ? 0 : o.status === 'Proposed' ? 1 : 2);
   return activeOf(objects)
     .filter((o) => fillsItem(req, o))
-    .sort((a, b) => rank(a) - rank(b))[0];
+    .sort((a, b) => Number(!!b.slotKey) - Number(!!a.slotKey) || rank(a) - rank(b))[0];
 }
 
 /** Objects whose ambiguity is worth judging for this spec: the ones that fill required items. */

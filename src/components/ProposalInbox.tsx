@@ -37,7 +37,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdi
   // nothing waiting: one sentence and the ways to bring AI suggestions in — no big empty card
   if (pending.length === 0) {
     return (
-      <Card padding="md" className="flex flex-col justify-between gap-inline-md md:flex-row md:items-center" aria-label="صندوق پیشنهادها">
+      <Card padding="md" id="proposal-inbox" className="flex flex-col justify-between gap-inline-md md:flex-row md:items-center" aria-label="صندوق پیشنهادها">
         <p className="body-md text-text-subtle">صندوق پیشنهادها خالی است. هر چیزی که AI پیشنهاد بدهد اینجا منتظر تأیید تو می‌ماند.</p>
         {actions}
       </Card>
@@ -45,7 +45,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdi
   }
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
+    <Card padding="xl" id="proposal-inbox" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
       <div className="flex flex-col justify-between gap-inline-md border-b border-border-default pb-inset-lg md:flex-row md:items-center">
         <div className="flex flex-col gap-stack-xs">
           <div className="flex items-center gap-inline-sm">

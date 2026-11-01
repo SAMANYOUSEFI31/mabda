@@ -170,6 +170,16 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    name: 'explicit slot binding: context_objects.slot_key (which Gap item an object fills)',
+    up(db) {
+      db.exec(`
+        ALTER TABLE context_objects ADD COLUMN slot_key TEXT;
+        CREATE INDEX idx_objects_slot ON context_objects(workspace_id, slot_key);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

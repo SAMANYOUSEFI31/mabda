@@ -20,7 +20,7 @@ Mabda is the user's business source of truth. Work from it with these rules:
 ۱. شروع: get_workspace_overview را صدا بزن تا درخت دانش، specها و وضعیت را ببینی.
 ۲. پیش از ساخت هر خروجی: get_gaps (یا get_readiness) را برای spec/خروجی بگیر. شکاف‌های الزامی را اول از کاربر بپرس؛ اگر کاربر ادامه داد، صریح بگو کدام بخش‌ها فرض‌اند.
 ۳. Context را از Mabda بخوان (get_context). فقط موارد Confirmed «واقعیت»اند؛ موارد Proposed/Needs Review تأییدنشده‌اند و نباید به‌عنوان واقعیت استفاده شوند. چیزی از خودت به‌عنوان واقعیت کسب‌وکار اختراع نکن.
-۴. هر تصمیم، واقعیت یا محدودیت تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
+۴. هر تصمیم، واقعیت یا محدودیت تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده؛ اگر پیشنهاد یکی از شکاف‌های get_gaps را پر می‌کند، slotKey را برابر key همان شکاف بگذار. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
 ۵. وقتی خروجی ساختی، با save_asset ذخیره‌اش کن و در usedContext دقیقاً شناسه و نسخهٔ Contextهایی را بده که خواندی (اصالت و تشخیص «قدیمی‌شدن» به همین بسته است).
 ۶. وقتی کاربر Context را تغییر داد، check_impact را بزن و بگو کدام دارایی‌ها قدیمی شده‌اند.
 گاردریل‌ها (Constraintهای Confirmed و گاردریل‌های spec) را رعایت کن.`;
@@ -36,7 +36,7 @@ const pathOf = (nodes: TreeNode[], id: string) => ancestorIds(nodes, id).reverse
 
 const view = (nodes: TreeNode[], o: ContextObject) => ({
   id: o.id, version: o.version, type: o.type, status: o.status, nodeId: o.nodeId, nodePath: pathOf(nodes, o.nodeId), title: o.title, content: o.content,
-  ...(o.source ? { source: o.source } : {}),
+  ...(o.source ? { source: o.source } : {}), ...(o.slotKey ? { slotKey: o.slotKey } : {}),
 });
 const mdLine = (v: ReturnType<typeof view>) => `- **[${v.type}] ${v.title}** (\`${v.id}@v${v.version}\`, ${v.nodePath}): ${v.content.replace(/\n+/g, ' ')}`;
 
@@ -158,6 +158,7 @@ export function buildMcpServer(c: McpContext): McpServer {
         content: z.string().min(1).max(2000),
         nodeId: z.string().optional().describe('target node id; default business'),
         reason: z.string().max(400).optional().describe('why you suggest it (shown to the user)'),
+        slotKey: z.string().max(80).optional().describe('the Gap item this fills: pass the `key` of an item returned by get_gaps; without it the suggestion is just free knowledge'),
       })).min(1).max(20),
     },
   }, async (a) => {
@@ -169,9 +170,11 @@ export function buildMcpServer(c: McpContext): McpServer {
         const dup = existing.find((o) => o.title === u.title.trim() && o.content === u.content);
         if (dup) { results.push({ ok: true, id: dup.id, title: u.title, status: 'Proposed', note: 'همین پیشنهاد از قبل در صندوق است.' }); continue; }
         const nodeId = u.nodeId && nodes.some((n) => n.id === u.nodeId) ? u.nodeId : 'business';
+        const knownSlots = new Set(specsOf(c).flatMap((s) => [...s.requiredContext, ...s.suggestedContext, ...s.optionalContext].map((x) => x.key)));
+        const slotKey = u.slotKey && knownSlots.has(u.slotKey) ? u.slotKey : undefined;
         // status is fixed here on purpose: nothing a client sends can make it Confirmed
-        const o = repo.createObject(scope, { type: u.type, status: 'Proposed', provenance: 'AI Suggested', title: u.title, content: u.content, nodeId, source: { kind: 'mcp', label: c.label, ...(u.reason ? { reason: u.reason } : {}), at: new Date().toISOString() } });
-        results.push({ ok: true, id: o.id, title: o.title, status: 'Proposed', ...(nodeId !== u.nodeId && u.nodeId ? { note: `گرهٔ «${u.nodeId}» نبود؛ در «business» ثبت شد.` } : {}) });
+        const o = repo.createObject(scope, { type: u.type, status: 'Proposed', provenance: 'AI Suggested', title: u.title, content: u.content, nodeId, slotKey, source: { kind: 'mcp', label: c.label, ...(u.reason ? { reason: u.reason } : {}), at: new Date().toISOString() } });
+        results.push({ ok: true, id: o.id, title: o.title, status: 'Proposed', ...(nodeId !== u.nodeId && u.nodeId ? { note: `گرهٔ «${u.nodeId}» نبود؛ در «business» ثبت شد.` } : u.slotKey && !slotKey ? { note: `slotKey «${u.slotKey}» هیچ شکافی نیست؛ بدون اتصال ثبت شد.` } : {}) });
       } catch (e) {
         results.push({ ok: false, title: u.title, error: e instanceof RepoError ? e.message : 'ثبت نشد.' });
       }

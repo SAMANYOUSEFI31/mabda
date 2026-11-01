@@ -31,6 +31,8 @@ export interface ContextObject {
   supersededById?: string;
   /** set on objects that were SUGGESTED (Proposed): where from and when */
   source?: ObjectSource;
+  /** the Gap item (spec requiredContext/suggestedContext `key`) this object fills; objects without it are matched by title (legacy data only) */
+  slotKey?: string;
   createdAt: string;
   updatedAt: string;
 }

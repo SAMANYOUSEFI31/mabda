@@ -178,3 +178,22 @@ test('plan limits: workspaces and active objects are enforced (archived/supersed
   assert.doesNotThrow(() => repo.createObject(st, input));
   void s;
 });
+
+test('slotKey: stored, patchable, inherited by the superseding object; migration 6 is forward-only and keeps old rows', () => {
+  const { repo, s } = fresh();
+  const o = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'مخاطب', content: 'الف', nodeId: 'business', slotKey: ' target_audience ' });
+  assert.equal(o.slotKey, 'target_audience');
+  assert.equal(repo.getObject(s, o.id)!.slotKey, 'target_audience');
+  const n = repo.supersedeObject(s, o.id, { type: 'Decision', provenance: 'User Input', title: 'مخاطب جدید', content: 'ب', nodeId: 'business' });
+  assert.equal(n.object.slotKey, 'target_audience', 'the replacement keeps filling the slot');
+  assert.equal(repo.updateObject(s, n.object.id, { slotKey: 'core_problem' }).object.slotKey, 'core_problem');
+  assert.equal(repo.updateObject(s, n.object.id, { slotKey: null as never }).object.slotKey, undefined, 'null clears the slot');
+  assert.equal(repo.updateObject(s, n.object.id, { slotKey: 'x' }).object.version, n.object.version, 'a slot change is not a content edit');
+  // old database (v5) with data → migrate → rows survive, slot empty
+  const db = new Database(':memory:');
+  migrate(db, 5);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,1)').run('c1', U, 'w1', 'Fact', 'Confirmed', 'User Input', 'عنوان', 'متن', 'business', 't', 't');
+  assert.deepEqual(migrate(db), [6]);
+  assert.equal(new Repo(db).getObject({ userId: U, workspaceId: 'w1' }, 'c1')!.slotKey, undefined);
+});

@@ -45,7 +45,7 @@ export const answerChecks = (c: { schema?: unknown }, bad: string[] = [], probab
   const ids = (c.schema as { properties: { answers: { items: { properties: { id: { enum: string[] } } } } } }).properties.answers.items.properties.id.enum;
   return { answers: ids.map((id) => {
     const isBad = bad.includes(id);
-    const choice = id.startsWith('g') ? (isBad ? 'violated' : 'ok') : id.startsWith('o') ? (isBad ? 'ambiguous' : 'clear') : isBad ? 'fail' : 'pass';
+    const choice = id.startsWith('k') ? (isBad ? 'conflict' : 'consistent') : id.startsWith('g') ? (isBad ? 'violated' : 'ok') : id.startsWith('o') ? (isBad ? 'ambiguous' : 'clear') : isBad ? 'fail' : 'pass';
     return { id, choice, probability, reason: isBad ? `دلیل رد ${id}` : `دلیل قبول ${id}` };
   }) };
 };

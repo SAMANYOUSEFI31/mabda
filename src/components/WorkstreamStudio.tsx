@@ -540,6 +540,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 title: gap.label,
                 content: answer,
                 nodeId: gap.nodeId,
+                slotKey: gap.key,
               };
               onAddContextObject(newObj);
             }}

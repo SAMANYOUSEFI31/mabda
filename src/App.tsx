@@ -164,13 +164,13 @@ export default function App() {
   const handleSaveContextObject = async (draft: ContextDraft): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
       showImpact(r.impact);
       return r.object;
     }
-    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source }));
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     return r.object;
@@ -566,7 +566,7 @@ export default function App() {
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
               onAnswerGap={(gap, answer) => { void handleSaveContextObject({
                 workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
-                title: gap.label, content: answer, nodeId: gap.nodeId,
+                title: gap.label, content: answer, nodeId: gap.nodeId, slotKey: gap.key,
               }); }}
               onOpenStudio={() => setActiveTab('workstreams')}
               onOpenAssets={() => setActiveTab('assets')}

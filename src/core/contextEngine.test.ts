@@ -11,6 +11,7 @@ import {
   calculateReadinessAndGaps,
   detectContradictions,
   findForRequired,
+  fillsItem,
   extractQuantities,
 } from './contextEngine';
 import { calculateCreditCost, checkChatFairUse, chatCountToday } from './creditEngine';
@@ -184,4 +185,29 @@ test('detectContradictions finds a real price conflict on the same topic, but no
   assert.equal(detectContradictions([a, c]).length, 0);
   const same = obj({ id: 'd', title: 'قیمت بسته پایه', content: '۴ میلیون تومان' });
   assert.equal(detectContradictions([a, same]).length, 0);
+});
+
+test('slot binding: an explicit slotKey fills exactly its item; title matching is for legacy objects only', () => {
+  const req = { key: 'target_audience', label: 'مخاطب اصلی (ICP)' };
+  const legacy = obj({ id: 'l', title: 'مخاطب اصلی', content: 'فریلنسرها' });
+  assert.equal(fillsItem(req, legacy), true, 'no slotKey → title match (old data)');
+  // an object with a slotKey is bound to THAT slot: a matching title no longer matters, a different title does not matter either
+  const bound = obj({ id: 'b', title: 'هر عنوان دیگری', content: 'مدیران محصول', slotKey: 'target_audience' });
+  assert.equal(fillsItem(req, bound), true);
+  const other = obj({ id: 'o', title: 'مخاطب اصلی', content: 'x', slotKey: 'core_problem' });
+  assert.equal(fillsItem(req, other), false, 'same title but bound to another slot → does not fill this one');
+  assert.equal(fillsItem({ label: 'مخاطب اصلی' }, bound), false, 'an item without a key cannot be filled by a slot-bound object');
+  // explicit slot beats a legacy title match, even when the legacy one is Confirmed and the bound one only Proposed
+  assert.equal(findForRequired(req, [{ ...legacy, status: 'Confirmed' }, { ...bound, status: 'Proposed' }])?.id, 'b');
+  assert.equal(findForRequired(req, [{ ...other, status: 'Confirmed' }]), undefined);
+});
+
+test('readiness: the answer of a Gap (title = label, slotKey = key) closes the gap; a renamed object keeps filling its slot', () => {
+  const spec = WORKSTREAM_SPECS[0];
+  const item = spec.requiredContext.find((r) => r.key === 'target_audience')!;
+  const gapOf = (objs: ContextObject[]) => calculateReadinessAndGaps(spec, objs).gaps.find((g) => g.key === item.key);
+  assert.equal(gapOf([])?.status, 'missing');
+  const answered = obj({ id: 'a', title: 'یک عنوان کاملاً دلخواه', content: 'سولوفاندرهای ایرانی', slotKey: item.key });
+  assert.equal(gapOf([answered]), undefined);
+  assert.equal(gapOf([{ ...answered, slotKey: undefined }])?.status, 'missing', 'without the slot (and without the title) it is a gap again');
 });
