@@ -20,7 +20,7 @@ export interface ChatRequest {
   contextList: ContextObjectLite[];
   focusNodeIds?: string[];
   chatMode?: 'discovery' | 'audit' | 'advisor';
-  mode: 'auto' | 'deep';
+  mode: 'auto' | 'deep' | 'fast';
   history?: Array<{ role: string; content: string }>;
   plan?: unknown;
   decisionUsage?: unknown;
@@ -172,7 +172,7 @@ export class AiService {
       if (plan) { if (pre) stages.push(pre); }
       else {
         const r = await route(
-          { userMode: req.mode === 'deep' ? 'deep' : 'auto', jobKind: 'chat', text: req.message, contextTokens: estimateTokens(req.contextList.map((c) => c.content).join(' ')) },
+          { userMode: req.mode, jobKind: 'chat', text: req.message, contextTokens: estimateTokens(req.contextList.map((c) => c.content).join(' ')) },
           { decisions: this.decisions(runner), cfg: this.cfg },
         );
         plan = r.plan;

@@ -96,7 +96,7 @@ export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'accept
     const reason = a.reason || (said ? 'رعایت شده است.' : 'رعایت نشده است.');
     return {
       kind: isGuard ? 'guardrail' : 'criterion', text, passed: said && sure, probability: a.probability,
-      reason: said && !sure ? `اطمینان کم (${Math.round(a.probability * 100)}٪): ${reason}` : reason,
+      reason: said && !sure ? `مطمئن نیستم: ${reason}` : reason,
     };
   });
   const failed = checks.filter((c) => !c.passed);

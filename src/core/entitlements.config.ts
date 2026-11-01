@@ -47,7 +47,7 @@ export const ENTITLEMENTS_CONFIG: {
   plans: {
     starter: {
       priceMonthlyUsd: 9, workspaces: 1, maxObjects: 400, fileTokensPerMonth: 150_000,
-      engines: { changeImpact: true, semanticContradiction: false }, mcp: false, contextPack: true, byok: true,
+      engines: { changeImpact: true, semanticContradiction: false }, mcp: true, contextPack: true, byok: true,
       decisionJudgmentsPerDay: 40, coachPerDay: 5, customSpecs: false,
     },
     pro: {

@@ -48,7 +48,7 @@ test('server instructions tell the AI the rules; all tools are listed', async ()
   } finally { t.close(); }
 });
 
-test('auth: token per workspace; wrong, revoked and header-less requests are refused; ?token= works; Starter has no MCP', async () => {
+test('auth: token per workspace; wrong, revoked and header-less requests are refused; ?token= works; every plan can create a token', async () => {
   const t = await boot();
   try {
     const none = await fetch(`${t.base}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: '{}' });
@@ -73,10 +73,9 @@ test('auth: token per workspace; wrong, revoked and header-less requests are ref
     const list = (await t.api('GET', '/workspaces/ws_studio/mcp/tokens')).json.tokens;
     await t.api('DELETE', `/workspaces/ws_studio/mcp/tokens/${list[0].id}`);
     await assert.rejects(t.connect(tok.token));
-    // Starter: cannot even create one
+    // MCP is open on every plan (it is how the user's own AI reaches the Context)
     const starter = await t.api('POST', '/workspaces/ws_course/mcp/tokens', { label: 'x' });
-    assert.equal(starter.status, 403);
-    assert.match(starter.json.error.message, /Pro/);
+    assert.equal(starter.status, 200);
   } finally { t.close(); }
 });
 

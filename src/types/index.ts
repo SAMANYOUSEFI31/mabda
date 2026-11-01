@@ -304,6 +304,8 @@ export interface Workspace {
   planId: PlanId;
   creditsRemaining: number;
   todayChatCount: number;
+  /** YYYY-MM-DD (Tehran) the count belongs to; a different day means the count is 0 */
+  chatCountDay?: string;
   createdAt: string;
 }
 export * from './ai';

@@ -104,30 +104,28 @@ export function estimateRemainingOutputs(credits: number, avgCostPerDeliverable 
   return Math.floor(credits / avgCostPerDeliverable);
 }
 
+/** YYYY-MM-DD in Tehran time (the day the fair-use counter belongs to). */
+export function tehranDay(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+}
+
+/** Today's chat count: a count recorded on another day is yesterday's, i.e. zero. `today` = YYYY-MM-DD (Tehran). */
+export function chatCountToday(todayChatCount: number, chatCountDay: string | undefined, today: string): number {
+  return chatCountDay === today ? todayChatCount : 0;
+}
+
 /**
- * Fair-use chat limit checker:
- * Returns remaining count and whether the daily fair-use limit is exceeded.
+ * Fair-use chat (P5, honest economics): past the daily limit chat is NEVER blocked — it quietly runs on the
+ * cheapest model and "deep" is paused until tomorrow. The count is not shown to the user unless this is true.
  */
 export function checkChatFairUse(planId: PlanId, todayChatCount: number): {
-  allowed: boolean;
   isSoftExceeded: boolean;
-  isHardExceeded: boolean;
   limit: number;
   remaining: number;
 } {
   const plan = PLANS[planId] || PLANS.starter;
   const limit = plan.dailyChatLimit;
-  const remaining = Math.max(0, limit - todayChatCount);
-  const isSoftExceeded = todayChatCount >= limit;
-  const isHardExceeded = todayChatCount >= limit * 2;
-
-  return {
-    allowed: !isHardExceeded,
-    isSoftExceeded,
-    isHardExceeded,
-    limit,
-    remaining,
-  };
+  return { isSoftExceeded: todayChatCount >= limit, limit, remaining: Math.max(0, limit - todayChatCount) };
 }
 
 /**

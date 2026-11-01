@@ -34,8 +34,8 @@ test('creditEngine reads the same numbers (one place to change them)', () => {
 test('feature checks and the «from plan X» helper', () => {
   assert.equal(can('starter', 'semanticContradiction'), false);
   assert.equal(can('pro', 'semanticContradiction'), true);
-  assert.equal(can('starter', 'mcp'), false);
-  assert.equal(cheapestPlanWith('mcp'), 'pro');
+  assert.equal(can('starter', 'mcp'), true);
+  assert.equal(cheapestPlanWith('mcp'), 'starter');
   assert.equal(cheapestPlanWith('customSpecs'), 'pro');
   assert.equal(cheapestPlanWith('byok'), 'starter');
 });

@@ -83,7 +83,7 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     const b = req.body;
     let chat: ChatRequest = {
       message: b.message, contextList: asArray(b.contextList), focusNodeIds: asArray(b.focusNodeIds),
-      chatMode: b.chatMode, mode: b.mode === 'deep' ? 'deep' : 'auto', history: asArray(b.history), plan: b.plan, decisionUsage: b.decisionUsage,
+      chatMode: b.chatMode, mode: b.mode === 'deep' ? 'deep' : b.mode === 'fast' ? 'fast' : 'auto', history: asArray(b.history), plan: b.plan, decisionUsage: b.decisionUsage,
     };
     try {
       if (opts.source && typeof b.workspaceId === 'string') {

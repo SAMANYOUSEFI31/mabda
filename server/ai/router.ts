@@ -79,7 +79,6 @@ const TIER_FA: Record<Tier, string> = { cheap: 'سبک', balanced: 'متعادل
 const EFFORT_FA: Record<Effort, string> = { minimal: 'حداقل', low: 'کم', medium: 'متوسط', high: 'زیاد', max: 'بیشینه' };
 const PATTERN_FA: Record<Pattern, string> = { single: 'تک‌مرحله‌ای', cascade: 'آبشاری (تولید + اعتبارسنجی)', critique: 'نقد و اصلاح' };
 const MODE_FA: Record<UserMode, string> = { auto: 'Auto', fast: 'سریع', deep: 'عمیق', sensitive: 'حساس' };
-const pct = (p: number) => `${Math.round(p * 100)}٪`;
 
 /** thinking tokens an effort may consume — reserved on top of the visible output so reasoning never starves the answer */
 export function maxTokensFor(band: OutputBand, tier: Tier, effort: Effort, cfg: ModelsConfig = modelsConfig): number {
@@ -153,8 +152,8 @@ export async function route(input: RouteInput, deps: RouteDeps): Promise<{ plan:
   if (importance === 'high' && input.jobKind !== 'chat' && pattern === 'single') pattern = 'cascade';
 
   const why = [
-    `Auto: کار «${taskKind}» با سختی ${difficulty}، اهمیت ${importance} تشخیص داده شد (اطمینان ${pct(confidence)}).`,
-    upgraded ? `به‌دلیل ${importance === 'high' ? 'اهمیت زیاد' : `اطمینان کمتر از ${pct(CONFIDENCE_THRESHOLD)}`} یک سطح بالاتر رفت.` : '',
+    `Auto: کار «${taskKind}» با سختی ${difficulty}، اهمیت ${importance} تشخیص داده شد.`,
+    upgraded ? `به‌دلیل ${importance === 'high' ? 'اهمیت زیاد' : 'مطمئن نبودم که تشخیص درست است'} یک سطح بالاتر رفت.` : '',
     `مدل ${TIER_FA[tier]}، effort ${EFFORT_FA[base.effort]}، الگوی ${PATTERN_FA[pattern]}.`,
   ].filter(Boolean).join(' ');
 
