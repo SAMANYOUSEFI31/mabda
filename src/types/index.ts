@@ -252,7 +252,6 @@ export interface WorkspacePlan {
   id: PlanId;
   title: string;
   priceMonthlyUsd: number;
-  priceMonthlyToman: number;
   creditsMonthly: number;
   workspaceLimit: number;
   dailyChatLimit: number;

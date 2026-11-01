@@ -79,6 +79,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onPendingRebuildHandled,
 }) => {
   const ai = useAiStatus();
+  // credits exist only in the managed-AI layer (feature flag); with it off nothing about credits is shown or charged
+  const managed = ai.managedEnabled;
   const [internalSelectedSpecId, setInternalSelectedSpecId] = useState<string>(
     specs[0]?.id || 'main_positioning'
   );
@@ -118,13 +120,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   // Gap ambiguity: ask the decision layer once per object version (cached on the server)
   const judgeRequested = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!ai.available || activeTab === 'create') return;
+    if (!ai.judgmentsAvailable || activeTab === 'create') return;
     const todo = objectsToJudge(currentSpec, allContextObjects).filter((o) => judgments[o.id]?.version !== o.version && !judgeRequested.current.has(`${o.id}@${o.version}`));
     if (!todo.length) return;
     todo.forEach((o) => judgeRequested.current.add(`${o.id}@${o.version}`));
     void onJudge(todo.map((o) => o.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ai.available, activeTab, currentSpec.id, allContextObjects, judgments]);
+  }, [ai.judgmentsAvailable, activeTab, currentSpec.id, allContextObjects, judgments]);
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
   // The router's plan for the selected deliverable + mode. Credits are derived from it BEFORE the run,
@@ -182,7 +184,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     const runMode: ExecutionMode = isRebuild && rebuildTarget ? rebuildTarget.executionMode : executionMode;
     const staleOfTarget = rebuildTarget ? stale.find((s) => s.deliverableId === rebuildTarget.id) : undefined;
     // half price only for an asset made stale by a Context change, once per change
-    const halfPrice = !!(isRebuild && rebuildTarget && halfPriceRebuildAvailable(rebuildTarget, staleOfTarget));
+    const halfPrice = managed && !!(isRebuild && rebuildTarget && halfPriceRebuildAvailable(rebuildTarget, staleOfTarget));
 
     lastRun.current = { rebuild: isRebuild, target: rebuildTarget };
     setGenError(null);
@@ -199,7 +201,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       }
       const base = runPreview ? previewCredits({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, plan: runPreview.plan }) : calculateCreditCost({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, executionMode: runMode });
       const cost = halfPrice ? rebuildCredits(base) : base;
-      if (!ai.byok && currentWorkspace.creditsRemaining < cost) {
+      if (managed && !ai.byok && currentWorkspace.creditsRemaining < cost) {
         toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
         onOpenLedger();
         return;
@@ -237,7 +239,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         usage: result.usage,
         validationFailed: result.validationFailed,
         executionMode: runMode,
-        creditCost: effectiveCredits(cost, result.usage.byok),
+        creditCost: managed ? effectiveCredits(cost, result.usage.byok) : 0,
         usedContext: result.usedContext,
         usedFileChunks: result.usedFileChunks,
         checks: result.checks,
@@ -406,7 +408,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   <OptionCard
                     title="سریع"
                     description="تک‌مرحله‌ای"
-                    meta={`${formatNumber(modeCost('fast'))} اعتبار`}
+                    meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined}
                     selected={executionMode === 'fast'}
                     onClick={() => setExecutionMode('fast')}
                   />
@@ -414,14 +416,14 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     title="متعادل (Auto)"
                     badge={<Badge intent="success" icon={false}>۱۰٪ تخفیف</Badge>}
                     description="پیش‌فرض بهینه"
-                    meta={`${formatNumber(modeCost('auto'))} اعتبار`}
+                    meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined}
                     selected={executionMode === 'auto'}
                     onClick={() => setExecutionMode('auto')}
                   />
                   <OptionCard
                     title="عمیق (Critique)"
                     description="پیش‌نویس + نقد + اصلاح"
-                    meta={`${formatNumber(modeCost('critique'))} اعتبار`}
+                    meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined}
                     selected={executionMode === 'critique'}
                     disabled={!plan.allowedModes.includes('critique')}
                     onClick={() => setExecutionMode('critique')}
@@ -430,7 +432,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     title="حالت حساس"
                     badge={<Badge intent="neutral" icon={false}>Max</Badge>}
                     description="نقد + Gap + تناقض"
-                    meta={`${formatNumber(modeCost('sensitive'))} اعتبار`}
+                    meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined}
                     selected={executionMode === 'sensitive'}
                     disabled={!plan.allowedModes.includes('sensitive')}
                     onClick={() => setExecutionMode('sensitive')}
@@ -448,12 +450,12 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               <div className="flex flex-col justify-between gap-inline-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
                 <div className="body-sm flex flex-col gap-stack-xs">
                   <div>
-                    <span className="text-text-subtle">هزینهٔ این اجرا: </span>
+                    <span className="text-text-subtle">{managed ? 'هزینهٔ این اجرا: ' : 'حالت اجرا: '}</span>
                     {previewState === 'loading' ? (
                       <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
                     ) : (
                       <span className="label-md tabular-nums text-text-default">
-                        {ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}
+                        {!managed ? (preview ? 'آمادهٔ اجرا' : '—') : ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}
                       </span>
                     )}
                   </div>
@@ -461,14 +463,14 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <>
                       <span className="caption text-text-subtle">
                         {preview.plan.reason}
-                        {planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
+                        {managed && planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
                       </span>
-                      {ai.byok && <span className="caption text-text-subtle">با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.</span>}
+                      {ai.byok && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
                     </>
                   )}
-                  <span className="caption text-text-subtle">
+                  {managed && <span className="caption text-text-subtle">
                     موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر
-                  </span>
+                  </span>}
                 </div>
                 {isGenerating ? (
                   <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>

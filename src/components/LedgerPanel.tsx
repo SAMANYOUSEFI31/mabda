@@ -7,12 +7,16 @@ import React, { useState } from 'react';
 import { LedgerEntry, PlanId, Workspace } from '../types';
 import { PLANS } from '../core/creditEngine';
 import { Badge, Button, Card, LedgerStatusBadge, MODE_META, ModeBadge, Stat, Table, Tabs, formatNumber, formatTime, formatUsd } from '../ui';
+import { useAiStatus } from '../services/aiStatus';
+import { UsagePanel } from './UsagePanel';
+import { ManagerLedger } from './ManagerLedger';
 
 interface LedgerPanelProps {
   currentWorkspace: Workspace;
   ledgerEntries: LedgerEntry[];
   onChangePlan: (planId: PlanId) => void;
   onAddCredits: (amount: number) => void;
+  onOpenPlans: () => void;
 }
 
 export const LedgerPanel: React.FC<LedgerPanelProps> = ({
@@ -20,8 +24,12 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
   ledgerEntries,
   onChangePlan,
   onAddCredits,
+  onOpenPlans,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'ledger' | 'plans' | 'economics'>('ledger');
+  const ai = useAiStatus();
+  // credits exist only in the managed-AI layer: with the flag off no credit number is shown anywhere
+  const managed = ai.managedEnabled;
+  const [activeSubTab, setActiveSubTab] = useState<'usage' | 'ledger' | 'plans' | 'economics' | 'manager'>('usage');
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
   const totalCreditsUsed = ledgerEntries.reduce((sum, e) => sum + e.creditCost, 0);
@@ -54,26 +62,30 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
       <Card padding="xl" className="flex flex-col gap-stack-lg">
         <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
           <div>
-            <h2 className="heading-sm text-text-default">دفتر کل، اقتصاد و اعتبارها</h2>
+            <h2 className="heading-sm text-text-default">{managed ? 'دفتر کل، اقتصاد و اعتبارها' : 'مصرف و دفتر کل'}</h2>
             <p className="body-sm mt-stack-xs text-text-subtle">
-              اصل P5 (اقتصاد صادقانه): شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.
+              {managed ? 'اصل P5 (اقتصاد صادقانه): شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.' : 'سهمیه‌ها، سقف‌های روزانه و هزینهٔ واقعی هر فراخوانی AI؛ هیچ مصرفی پنهان نیست.'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-inline-md">
-            <Button variant="secondary" iconStart="Plus" onClick={() => onAddCredits(100)}>بستهٔ ۱۰۰ اعتبار (۴ دلار)</Button>
-            <Button variant="primary" iconStart="Plus" onClick={() => onAddCredits(300)}>بستهٔ ۳۰۰ اعتبار (۱۰٫۵ دلار)</Button>
-          </div>
+          {managed ? (
+            <div className="flex flex-wrap items-center gap-inline-md">
+              <Button variant="secondary" iconStart="Plus" onClick={() => onAddCredits(100)}>بستهٔ ۱۰۰ اعتبار (۴ دلار)</Button>
+              <Button variant="secondary" iconStart="Plus" onClick={() => onAddCredits(300)}>بستهٔ ۳۰۰ اعتبار (۱۰٫۵ دلار)</Button>
+            </div>
+          ) : (
+            <Button variant="secondary" iconEnd="ArrowLeft" onClick={onOpenPlans}>مقایسهٔ پلن‌ها</Button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-inline-lg sm:grid-cols-4">
-          <Stat label="اعتبار باقی‌مانده" value={formatNumber(currentWorkspace.creditsRemaining)} delta={`پلن ${plan.title.split(' ')[0]}`} />
-          <Stat label="مجموع اعتبار مصرف‌شده" value={formatNumber(totalCreditsUsed)} delta="در تمام خروجی‌ها" />
+          {managed && <Stat label="اعتبار باقی‌مانده" value={formatNumber(currentWorkspace.creditsRemaining)} delta={`پلن ${plan.title.split(' ')[0]}`} />}
+          {managed && <Stat label="مجموع اعتبار مصرف‌شده" value={formatNumber(totalCreditsUsed)} delta="در تمام خروجی‌ها" />}
           <Stat
             label="گفتگوی Auto امروز"
             value={`${formatNumber(currentWorkspace.todayChatCount)} / ${formatNumber(plan.dailyChatLimit)}`}
             delta="سقف منصفانهٔ روزانه"
           />
-          <Stat label="هزینهٔ زیرساخت AI (مصرف ثبت‌شده)" value={formatUsd(totalAiCostUsd, 4)} delta="حاشیهٔ سود پایدار (P5)" />
+          <Stat label="هزینهٔ AI (مصرف ثبت‌شده، قیمت لیست)" value={formatUsd(totalAiCostUsd, 4)} delta={ai.byok ? 'روی کلید شخصی تو' : 'ثبت‌شده در دفتر کل'} />
         </div>
       </Card>
 
@@ -82,11 +94,16 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
         value={activeSubTab}
         onChange={(id) => setActiveSubTab(id as typeof activeSubTab)}
         items={[
+          { id: 'usage', label: 'مصرف و سهمیه‌ها' },
           { id: 'ledger', label: `تراکنش‌های Ledger (${formatNumber(ledgerEntries.length)})` },
-          { id: 'plans', label: 'مقایسه و ارتقای پلن‌ها' },
-          { id: 'economics', label: 'خطوط قرمز اقتصادی' },
+          ...(managed ? [{ id: 'plans', label: 'پلن‌ها و اعتبار' }, { id: 'economics', label: 'خطوط قرمز اقتصادی' }] : []),
+          ...(ai.admin ? [{ id: 'manager', label: 'نمای مدیر' }] : []),
         ]}
       />
+
+      {activeSubTab === 'usage' && <UsagePanel workspaceId={currentWorkspace.id} planId={currentWorkspace.planId} refreshKey={ledgerEntries.length} onOpenPlans={onOpenPlans} />}
+
+      {activeSubTab === 'manager' && ai.admin && <ManagerLedger />}
 
       {activeSubTab === 'ledger' && (
         <Table
@@ -124,19 +141,19 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
                 </span>
               ),
             },
-            {
+            ...(managed ? [{
               key: 'creditCost',
               label: 'اعتبار کسرشده',
               numeric: true,
-              render: (e) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (Auto)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
-            },
+              render: (e: LedgerEntry) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (Auto)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
+            }] : []),
             { key: 'estimatedAiCostUsd', label: 'هزینهٔ AI', numeric: true, render: (e) => formatUsd(e.estimatedAiCostUsd, 4) },
             { key: 'status', label: 'وضعیت', render: (e) => <LedgerStatusBadge value={e.status} /> },
           ]}
         />
       )}
 
-      {activeSubTab === 'plans' && (
+      {managed && activeSubTab === 'plans' && (
         <div className="grid grid-cols-1 gap-inline-xl md:grid-cols-3">
           {(Object.keys(PLANS) as PlanId[]).map((pid) => {
             const p = PLANS[pid];
@@ -153,7 +170,6 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
                       <span className="text-numeric-md text-text-default">{formatUsd(p.priceMonthlyUsd, 0)}</span>
                       <span className="body-sm text-text-subtle">در ماه</span>
                     </div>
-                    <span className="body-sm text-text-subtle">معادل حدود {formatNumber(p.priceMonthlyToman)} تومان</span>
                   </div>
                   <dl className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md body-sm">
                     <div className="flex items-center justify-between gap-inline-sm">
@@ -183,7 +199,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
         </div>
       )}
 
-      {activeSubTab === 'economics' && (
+      {managed && activeSubTab === 'economics' && (
         <Card padding="xl" className="flex flex-col gap-stack-lg">
           <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در Ledger (بخش اقتصاد واحد PRD)</h3>
           <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">

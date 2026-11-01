@@ -7,6 +7,7 @@ import React, { useRef, useState } from 'react';
 import type { StoredFile, TreeNode } from '../types';
 import type { FileChargeInfo, FileQuotaInfo } from '../types/state';
 import { flatten } from '../core/nodeTree';
+import { useAiStatus } from '../services/aiStatus';
 import { Alert, Badge, Button, Card, Dialog, EmptyState, IconButton, Progress, Select, formatNumber } from '../ui';
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
   quota: FileQuotaInfo | null;
   credits: number;
   byok: boolean;
-  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo } | undefined>;
+  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'credits' | 'own-key' | 'blocked' } | undefined>;
   onProcess: (fileId: string) => Promise<void>;
   onDelete: (fileId: string) => Promise<void>;
 }
@@ -31,6 +32,9 @@ const kb = (n: number) => (n >= 1024 * 1024 ? `${formatNumber(Math.round((n / 10
 
 /** Upload txt / md / pdf / docx (≤ 25MB). Processed once on the cheap tier: summary, Proposed objects, ~800-token chunks. */
 export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok, onUpload, onProcess, onDelete }) => {
+  const ai = useAiStatus();
+  const managed = ai.managedEnabled;
+  const [blocked, setBlocked] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const [nodeId, setNodeId] = useState('business');
   const [busy, setBusy] = useState<string | null>(null);
@@ -47,8 +51,10 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
     await run('upload', async () => {
       const r = await onUpload(f, nodeId);
       if (!r) return;
-      if (r.charge.withinQuota || byok) await run(r.file.id, () => onProcess(r.file.id));
-      else setConfirm(r);
+      setBlocked(null);
+      if (r.policy === 'blocked') setBlocked(`«${r.file.name}» از سهمیهٔ ماهانهٔ پردازش فایل بیشتر است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.`);
+      else if (r.policy === 'credits' && !byok) setConfirm(r);
+      else await run(r.file.id, () => onProcess(r.file.id));
     });
   };
 
@@ -73,11 +79,13 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
         </div>
       </div>
 
+      {blocked && <Alert intent="warning" title="سهمیهٔ فایل پر است">{blocked}</Alert>}
+
       {quota && (
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <Progress value={Math.min(used, total)} max={total} label="سهمیهٔ پردازش فایل این ماه" showValue={false} intent={used >= total ? 'warning' : 'neutral'} />
           <span className="caption text-text-subtle">
-            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار (با کلید شخصی بدون کسر اعتبار).
+            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. {managed ? 'بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار (با کلید شخصی بدون کسر اعتبار).' : 'سهمیه هر ماه تازه می‌شود.'}
           </span>
         </div>
       )}

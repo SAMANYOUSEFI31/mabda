@@ -13,6 +13,14 @@ interface Ctx {
   available: boolean;
   /** requests with the user's own key: credits are not deducted */
   byok: boolean;
+  /** managed AI + credits feature flag (MABDA_MANAGED_AI). Every credit number in the UI is shown only when this is on. */
+  managedEnabled: boolean;
+  /** a platform key pays for Gap / Coach / file judgements included in the subscription */
+  platformJudgments: boolean;
+  /** Gap / Coach / file extraction can run (own key or platform key) */
+  judgmentsAvailable: boolean;
+  /** manager ledger enabled on this server */
+  admin: boolean;
 }
 
 const AiStatusContext = createContext<Ctx | null>(null);
@@ -37,7 +45,7 @@ export function AiStatusProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const value = useMemo<Ctx>(() => ({ status, error, loading, refresh, available: Boolean(status?.available), byok: status?.source === 'byok' }), [status, error, loading, refresh]);
+  const value = useMemo<Ctx>(() => ({ status, error, loading, refresh, available: Boolean(status?.available), byok: status?.source === 'byok', managedEnabled: Boolean(status?.managedEnabled), platformJudgments: Boolean(status?.platformJudgments), judgmentsAvailable: Boolean(status?.available || status?.platformJudgments), admin: Boolean(status?.admin) }), [status, error, loading, refresh]);
   return <AiStatusContext.Provider value={value}>{children}</AiStatusContext.Provider>;
 }
 

@@ -158,3 +158,23 @@ test('file usage counters are per workspace and month', () => {
   assert.equal(repo.addFileUsage(s, '2026-10', 500), 1500);
   assert.equal(repo.fileUsage(s, '2026-11'), 0);
 });
+
+test('plan limits: workspaces and active objects are enforced (archived/superseded do not count); import is exempt', () => {
+  const { repo, s } = fresh();
+  // pro = 3 workspaces
+  repo.saveWorkspace(U, ws('w2'));
+  repo.saveWorkspace(U, ws('w3'));
+  assert.throws(() => repo.saveWorkspace(U, ws('w4')), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف فضای کاری/.test(e.message));
+  repo.saveWorkspace(U, { ...ws('w3'), name: 'renamed' }); // updating is fine
+  const st = { userId: U, workspaceId: 'w2' };
+  repo.saveWorkspace(U, ws('w2', 'starter')); // 400 objects
+  assert.equal(repo.objectSlots(st), 400);
+  const input = { type: 'Fact' as const, provenance: 'User Input' as const, title: 't', content: 'c', nodeId: 'business' };
+  for (let i = 0; i < 400; i++) repo.db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,1)').run(`o${i}`, U, 'w2', 'Fact', 'Confirmed', 'User Input', 't', 'c', 'business', 't', 't');
+  assert.equal(repo.objectSlots(st), 0);
+  assert.throws(() => repo.createObject(st, input), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف قلم دانش/.test(e.message));
+  repo.updateObject(st, 'o0', { status: 'Archived' });
+  assert.equal(repo.objectSlots(st), 1, 'archiving frees a slot');
+  assert.doesNotThrow(() => repo.createObject(st, input));
+  void s;
+});

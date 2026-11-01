@@ -59,3 +59,29 @@ export interface CoachResultInfo {
 }
 
 export interface CoachQuota { used: number; limit: number; remaining: number }
+
+export interface UsageInfo {
+  planId: import('./index').PlanId;
+  month: string;
+  /** who pays for subscription-included judgements: the platform ('us') or the user's own key */
+  payer: 'us' | 'user';
+  /** the user's own token spend this month on their key, USD at list price (approximate) */
+  byokCostUsd: number;
+  objects: number;
+  fileTokens: number;
+  judgmentsToday: number;
+  coachToday: number;
+}
+
+export interface CostReportRowInfo {
+  userId: string;
+  workspaceId: string;
+  name: string;
+  planId: import('./index').PlanId;
+  priceUsd: number;
+  ourCostUsd: number;
+  ratio: number;
+  warn: boolean;
+  byokCostUsd: number;
+  lines: Array<{ category: 'judgments' | 'fileProcessing' | 'coach' | 'generation'; costUsd: number; calls: number }>;
+}

@@ -74,6 +74,8 @@ export interface SessionDeps {
   vault: ByokVault;
   managedEnabled: boolean;
   managedKey?: string;
+  /** the manager ledger endpoint is on */
+  admin?: boolean;
   cfg?: ModelsConfig;
   factory?: ProviderFactory;
 }
@@ -95,7 +97,14 @@ export class SessionResolver {
   /** drop cached verification (after a BYOK key is saved/removed) */
   invalidate(userId: string) { this.cache.delete(`byok:${userId}`); }
 
-  async resolve(userId: string): Promise<AiSession> {
+  /**
+   * Who pays for subscription-included JUDGEMENTS (Gap ambiguity, Coach, file extraction): the platform key when the
+   * server has one, otherwise the user's own key. Output generation never uses this path.
+   */
+  platformPayer(): 'us' | 'user' { return this.managedKeyValid ? 'us' : 'user'; }
+
+  async resolve(userId: string, purpose: 'user' | 'platform' = 'user'): Promise<AiSession> {
+    if (purpose === 'platform' && this.managedKeyValid) return this.build('platform', 'managed', this.deps.managedKey!);
     const byok = this.deps.vault.get(userId);
     if (byok) return this.build(`byok:${userId}`, 'byok', byok);
     if (!this.deps.managedEnabled) throw new AiError(this.deps.vault.last4(userId) ? 'invalid_key' : 'no_key');
@@ -125,6 +134,8 @@ export class SessionResolver {
       source: null,
       managedEnabled: this.deps.managedEnabled,
       byokConfigured: Boolean(this.deps.vault.last4(userId)),
+      platformJudgments: this.managedKeyValid,
+      admin: Boolean(this.deps.admin),
       byokLast4: this.deps.vault.last4(userId) ?? undefined,
       tiers: TIERS.map((tier) => ({ tier, modelId: this.cfg.tiers[tier].candidates[0], verified: false })),
       warnings: [],

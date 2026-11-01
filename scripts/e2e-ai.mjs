@@ -2,7 +2,7 @@
 /**
  * End-to-end UI check of the AI flows against a LOCAL Gemini stand-in (scripted output, not a model):
  *   FAKE_GEMINI_PORT=4010 npx tsx server/ai/testing/fakeGemini.ts &
- *   MABDA_GEMINI_BASE_URL=http://127.0.0.1:4010 PORT=3100 npx tsx server.ts &
+ *   MABDA_MANAGED_AI=1 MABDA_GEMINI_BASE_URL=http://127.0.0.1:4010 PORT=3100 npx tsx server.ts &
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/e2e-ai.mjs
  * Verifies: no-key banner, BYOK save, streamed chat blocks + plan line, add-to-context draft, credit preview from the plan,
  * deliverable generation with real stages, ledger with real usage, and the error + retry path (set KILL_FAKE_PID=<pid of the stand-in> to also test it).

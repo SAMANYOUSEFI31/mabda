@@ -83,12 +83,12 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
       <p className="body-sm text-text-subtle">Coach سؤال روشن‌کننده می‌پرسد و ابهام را نشان می‌دهد. چیزی خودش ثبت نمی‌کند؛ فقط موارد «پیشنهادی» می‌سازد که خودت تأیید می‌کنی.</p>
 
       <Textarea label="چه چیزی را می‌خواهی روشن کنی؟" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
-      {!ai.available && (
+      {!ai.judgmentsAvailable && (
         <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>برای Coach کلید API لازم است.</Alert>
       )}
       {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={ask}>دوباره</Button>}>{error}</Alert>}
       <div>
-        <Button variant="secondary" iconStart="Sparkles" loading={busy} disabled={!ai.available || !text.trim() || !!out} onClick={ask}>
+        <Button variant="secondary" iconStart="Sparkles" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
           {result ? 'پرسش دوباره با پاسخ‌هایم' : 'از Coach بپرس'}
         </Button>
       </div>

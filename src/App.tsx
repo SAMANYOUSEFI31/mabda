@@ -227,7 +227,7 @@ export default function App() {
   const handleUploadFile = async (file: File, nodeId: string) => {
     const r = await attempt(() => dataApi.uploadFile(wid, file, nodeId));
     if (r) patch((d) => ({ ...d, files: [r.file, ...d.files] }));
-    return r ? { file: r.file, charge: r.charge } : undefined;
+    return r ? { file: r.file, charge: r.charge, policy: r.policy } : undefined;
   };
   const handleProcessFile = async (fileId: string) => {
     patch((d) => ({ ...d, files: d.files.map((f) => (f.id === fileId ? { ...f, status: 'processing' as const } : f)) }));
@@ -238,7 +238,7 @@ export default function App() {
     setQuota(r.quota);
     const ledger = await dataApi.state(wid).then((s) => s.ledger).catch(() => null);
     if (ledger) patch((d) => ({ ...d, ledger }));
-    toast.show({ intent: 'success', message: `فایل پردازش شد: ${formatNumber(r.created.length)} مورد پیشنهادی و ${formatNumber(r.file.chunkCount)} قطعه.${r.creditCost ? ` ${formatNumber(r.creditCost)} اعتبار کسر شد.` : ''}` });
+    toast.show({ intent: 'success', message: `فایل پردازش شد: ${formatNumber(r.created.length)} مورد پیشنهادی و ${formatNumber(r.file.chunkCount)} قطعه.${ai.managedEnabled && r.creditCost ? ` ${formatNumber(r.creditCost)} اعتبار کسر شد.` : ''}` });
   };
   const handleDeleteFile = async (fileId: string) => {
     const r = await attempt(() => dataApi.deleteFile(wid, fileId));
@@ -258,8 +258,10 @@ export default function App() {
   };
 
   // usage is the real provider usage returned by the server; creditCost is already 0 for BYOK
-  const handleSaveDeliverable = async (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
+  const handleSaveDeliverable = async (del: GeneratedDeliverable, creditCostIn: number, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
+    let creditCost = creditCostIn;
     if (!(await persistDeliverable(del))) return;
+    creditCost = ai.managedEnabled ? creditCost : 0;
     if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
@@ -274,7 +276,9 @@ export default function App() {
   };
 
   /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
-  const handleRecordChatUsage = async (result: GenerationResult, creditCost: number, deep: boolean) => {
+  const handleRecordChatUsage = async (result: GenerationResult, creditCostIn: number, deep: boolean) => {
+    let creditCost = creditCostIn;
+    creditCost = ai.managedEnabled ? creditCost : 0;
     if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
@@ -622,6 +626,7 @@ export default function App() {
             ledgerEntries={ledgerEntries}
             onChangePlan={handleChangePlan}
             onAddCredits={handleAddCredits}
+            onOpenPlans={() => setIsPlanModalOpen(true)}
           />
         )}
       </main>

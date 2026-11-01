@@ -32,7 +32,7 @@ async function scenario(width, tag) {
   const fakePort = 4010 + (width === 390 ? 1 : 0);
   const port = 3100 + (width === 390 ? 1 : 0);
   start('npx', ['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(fakePort) });
-  start('npx', ['tsx', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, MABDA_SECRET: 'scenario-secret', NODE_ENV: 'development' });
+  start('npx', ['tsx', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, MABDA_SECRET: 'scenario-secret', NODE_ENV: 'development', MABDA_MANAGED_AI: '1' });
   await up(`http://127.0.0.1:${port}/api/health`);
   const BASE = `http://127.0.0.1:${port}`;
 
@@ -64,6 +64,8 @@ async function scenario(width, tag) {
   await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
   await page.getByLabel('نام گره').fill('کمپین پاییز');
   await page.getByRole('button', { name: 'ساخت گره' }).click();
+  await page.getByRole('dialog').getByText('Context Coach').first().waitFor(); // the Coach opens for the new node
+  await page.keyboard.press('Escape');
   await page.getByRole('heading', { name: 'کمپین پاییز' }).waitFor();
   await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
   await page.getByRole('menuitem', { name: 'تغییر نام' }).click();

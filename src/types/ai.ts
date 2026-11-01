@@ -134,6 +134,10 @@ export interface AiStatus {
   source: 'byok' | 'managed' | null;
   managedEnabled: boolean;
   byokConfigured: boolean;
+  /** a platform key pays for cheap judgements (Gap, Coach, file extraction) included in the subscription */
+  platformJudgments: boolean;
+  /** the manager ledger is enabled on this server (MABDA_ADMIN) */
+  admin: boolean;
   byokLast4?: string;
   /** why AI is unavailable (when `available` is false) */
   unavailable?: { kind: AiErrorKind; message: string };

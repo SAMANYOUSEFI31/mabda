@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../types';
 import { DEFAULT_TREE_NODES } from '../core/specs';
 import type { TreeNode } from '../types';
+import { useAiStatus } from '../services/aiStatus';
 import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber } from '../ui';
 
 interface GapEnginePanelProps {
@@ -26,6 +27,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
   onProceedAnyway,
   nodes,
 }) => {
+  const { managedEnabled } = useAiStatus();
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [expandedGapKey, setExpandedGapKey] = useState<string | null>(
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
@@ -62,7 +64,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
           <span className="label-md text-text-info">اصل P3: </span>
           تحلیل Gap و ساختاردهی به دانش برای کاربر کاملاً رایگان است؛ هزینه فقط برای خروجی‌های تأییدشده است.
         </p>
-        <Badge intent="success">۰ اعتبار</Badge>
+        {managedEnabled && <Badge intent="success">۰ اعتبار</Badge>}
       </div>
 
       {/* Gaps */}

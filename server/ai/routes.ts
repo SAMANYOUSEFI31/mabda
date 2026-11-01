@@ -20,6 +20,9 @@ export interface ContextSource {
   forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[]; dependencyAssetIds?: string[] }): Partial<GenerateRequest>;
 }
 
+/** Manager ledger (real cost per user vs plan price). Off unless the operator sets MABDA_ADMIN. */
+export const adminEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABDA_ADMIN ?? '');
+
 const USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 export function userOf(req: Request): string {
@@ -50,7 +53,7 @@ const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionResolver; service?: AiService; source?: ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
   const vault = opts.vault ?? new ByokVault();
-  const sessions = opts.sessions ?? new SessionResolver({ vault, managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY });
+  const sessions = opts.sessions ?? new SessionResolver({ vault, managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY, admin: adminEnabled() });
   const service = opts.service ?? new AiService({ sessions });
   const router = express.Router();
 

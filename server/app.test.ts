@@ -17,13 +17,13 @@ const cfg = loadModelsConfig();
 const KEY = 'AIzaSy' + 'x'.repeat(30);
 const AI_USER = 'user-12345678';
 
-async function boot(script: (c: { kind: string; schema?: unknown; prompt: { user: string; prefix?: string } }) => unknown) {
+async function boot(script: (c: { kind: string; schema?: unknown; prompt: { user: string; prefix?: string } }) => unknown, opts: { admin?: boolean } = {}) {
   const db = new Database(':memory:'); migrate(db);
   const p = new MockProvider((c) => script(c as never));
   p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
   const sessions = new SessionResolver({ vault: new ByokVault(mkdtempSync(join(tmpdir(), 'mabda-')), 't'), managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
   const service = new AiService({ sessions, cfg });
-  const { app } = createApp(db, { sessions, service });
+  const { app } = createApp(db, { sessions, service, admin: opts.admin });
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
   const call = async (method: string, path: string, body?: unknown) => {
@@ -211,5 +211,85 @@ test('Context Coach: separate daily cap per plan, counted only after a successfu
     assert.equal(st.objects.length, 0);
     assert.ok(st.ledger.some((l: any) => l.mode === 'coach'));
     assert.equal((await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'onboarding', nodeId: 'business', text: 'متن' })).status, 200, 'the other workspace has its own cap');
+  } finally { t.close(); }
+});
+
+import { ENTITLEMENTS_CONFIG } from '../src/core/entitlements.config.ts';
+
+test('judgements we pay for are capped per plan per day; the usage endpoint shows every meter', async () => {
+  const t = await boot((c) => (isCheckCall(c) ? answerChecks(c) : decide));
+  const cfgPlan = ENTITLEMENTS_CONFIG.plans.pro;
+  const before = cfgPlan.decisionJudgmentsPerDay;
+  cfgPlan.decisionJudgmentsPerDay = 2;
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_domain', 'ctx_audience', 'ctx_problem'] });
+    assert.equal(r.json.limited, true);
+    assert.equal(Object.keys(r.json.judgments).length, 2, 'only the 2 judgements the plan allows today were made');
+    const u = (await t.call('GET', '/workspaces/ws_studio/usage')).json;
+    assert.equal(u.judgmentsToday, 2);
+    assert.equal(u.payer, 'us');
+    assert.deepEqual([u.planId, u.objects > 0, u.coachToday, u.fileTokens, typeof u.byokCostUsd], ['pro', true, 0, 0, 'number']);
+    const again = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_problem'] });
+    assert.equal(again.json.limited, true);
+    assert.equal(Object.keys(again.json.judgments).length, 2, 'nothing more today');
+  } finally { cfgPlan.decisionJudgmentsPerDay = before; t.close(); }
+});
+
+test('plan limits over the API: object cap (403 with a Persian message) and workspace cap', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const created: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = await t.call('PUT', `/workspaces/ws_x${i}`, { id: `ws_x${i}`, name: `x${i}`, slug: `x${i}`, description: '', planId: 'starter', creditsRemaining: 1, todayChatCount: 0, createdAt: new Date().toISOString() });
+      created.push(String(r.status));
+    }
+    assert.deepEqual(created, ['403', '403', '403'], 'the user already has 2 workspaces; a Starter workspace allows 1');
+    const cap = ENTITLEMENTS_CONFIG.plans.starter.maxObjects;
+    ENTITLEMENTS_CONFIG.plans.starter.maxObjects = 1;
+    try {
+      const ok = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'business' });
+      assert.equal(ok.status, 200);
+      const over = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'پ', content: 'ت', nodeId: 'business' });
+      assert.equal(over.status, 403);
+      assert.match(over.json.error.message, /سقف قلم دانش/);
+    } finally { ENTITLEMENTS_CONFIG.plans.starter.maxObjects = cap; }
+  } finally { t.close(); }
+});
+
+test('the change-impact engine is an entitlement: without it nothing is flagged stale', async () => {
+  const t = await boot(() => decide);
+  const plan = ENTITLEMENTS_CONFIG.plans.pro;
+  try {
+    await t.call('POST', '/bootstrap', {});
+    plan.engines.changeImpact = false;
+    const edit = await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'مخاطب تازه' });
+    assert.equal(edit.json.impact.count, 0);
+    assert.deepEqual(edit.json.stale, []);
+    assert.deepEqual((await t.call('GET', '/workspaces/ws_studio/state')).json.stale, []);
+    plan.engines.changeImpact = true;
+    assert.ok((await t.call('GET', '/workspaces/ws_studio/state')).json.stale.length >= 1, 'switched back on, the history was kept');
+  } finally { plan.engines.changeImpact = true; t.close(); }
+});
+
+test('manager ledger: real cost per workspace vs plan price; off unless MABDA_ADMIN', async () => {
+  const off = await boot(() => decide);
+  try {
+    await off.call('POST', '/bootstrap', {});
+    assert.equal((await off.call('GET', '/admin/cost-report')).status, 404);
+  } finally { off.close(); }
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('ambiguities') ? { questions: [], ambiguities: [], proposals: [] } : decide), { admin: true });
+  try {
+    await t.call('POST', '/bootstrap', {});
+    await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'node', nodeId: 'business', text: 'متن' });
+    await t.call('POST', '/workspaces/ws_studio/ledger', { id: 'led_byok', timestamp: new Date().toISOString(), workspaceId: 'ws_studio', action: 'x', mode: 'auto', creditCost: 0, inputTokens: 1, outputTokens: 1, estimatedAiCostUsd: 5, status: 'completed', byok: true });
+    const r = (await t.call('GET', '/admin/cost-report')).json;
+    const row = r.rows.find((x: any) => x.workspaceId === 'ws_studio');
+    assert.equal(row.priceUsd, 24);
+    assert.ok(row.ourCostUsd > 0 && row.ourCostUsd < 1, 'only the coach call is ours');
+    assert.equal(row.byokCostUsd >= 5, true, 'the BYOK spend is reported separately, not charged to us');
+    assert.deepEqual(row.lines.map((l: any) => l.category).includes('coach'), true);
+    assert.equal(row.warn, false);
   } finally { t.close(); }
 });
