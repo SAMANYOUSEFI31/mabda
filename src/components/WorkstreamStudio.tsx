@@ -469,7 +469,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                       {ai.byok && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
                     </>
                   )}
-                  {managed && <span className="caption text-text-subtle">
+                  {managed && <span className="body-sm text-text-subtle">
                     موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر
                   </span>}
                 </div>
