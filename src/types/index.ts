@@ -57,6 +57,10 @@ export interface ContextObject {
   reviewBy?: string;
   /** optional record of how a Decision was made (kept closed by default in the editor) */
   record?: DecisionRecord;
+  /** one free axis across the tree: names the user picks («مخاطب سازمانی», «فصل پاییز»). Not a hierarchy */
+  facets?: string[];
+  /** an example that came with a starter or a template: shown grey as «نمونه», and NEVER seen by any AI or engine (repo.listObjects hides it) until the user writes her own over it */
+  sample?: boolean;
   createdAt: string;
   updatedAt: string;
 }

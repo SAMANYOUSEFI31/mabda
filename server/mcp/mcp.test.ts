@@ -297,3 +297,62 @@ test('get_context: an assumption is never a fact (even Confirmed) — it comes u
     await c.close();
   } finally { t.close(); }
 });
+
+// ── examples (starter / template samples) must never reach an AI or an engine — one central filter (repo.listObjects) ──
+test('SAMPLES: a sample object is invisible to every path — repo lists, caps, state.objects, the Context pack, MCP (context / gaps / readiness / overview), Gap + Readiness, contradictions, impact', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const SECRET = 'نمونهٔ-ممنوع-برای-AI';
+    const before = t.repo.countActiveObjects(s);
+    const sample = t.repo.createSample(s, { type: 'Constraint', title: `قید ${SECRET}`, content: `هرگز ${SECRET}`, nodeId: 'business' })!;
+    const sample2 = t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: `سازمان‌ها ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' })!;
+    t.repo.createSample(s, { type: 'Decision', title: `مخاطب فرعی ${SECRET}`, content: `دیگر ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' }); // a second one in the same slot: a contradiction candidate if it were seen
+    assert.equal(t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: 'x', nodeId: 'business' }), undefined, 'applying twice does not duplicate');
+    const everything = (v: unknown) => JSON.stringify(v);
+
+    // repo: lists, getters, caps
+    assert.ok(!t.repo.listObjects(s).some((o) => o.id === sample.id) && !t.repo.getObject(s, sample.id), 'listObjects / getObject hide samples');
+    assert.equal(t.repo.countActiveObjects(s), before, 'samples do not count against the plan');
+    assert.ok(t.repo.getObjectAny(s, sample.id)?.sample, 'only the example editor can reach one');
+    // the UI's state: engines get `objects` (no samples), the grey display gets `samples`
+    const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
+    assert.ok(!st.objects.some((o: any) => o.sample || o.title.includes(SECRET)));
+    assert.equal(st.samples.length, 3);
+
+    // the Context pack (ad-hoc route) and a pack for a target node
+    for (const body of [{}, { nodeId: 'business' }]) assert.ok(!everything((await t.api('POST', '/workspaces/ws_studio/packs', body)).json).includes(SECRET), 'pack');
+
+    // Gap + Readiness: a sample in a slot never fills it (the readiness engine is fed repo.listObjects / state.objects)
+
+    // MCP
+    const c = await t.connect((await t.token()).token);
+    for (const [name, args] of [['get_context', {}], ['get_context', { nodeId: 'business' }], ['get_workspace_overview', {}], ['get_changes', {}], ['list_assets', {}]] as const) {
+      const r = await t.call(c, name, args as Record<string, unknown>);
+      assert.ok(!everything(r).includes(SECRET), `MCP ${name} shows no sample`);
+    }
+    const ov = await t.call(c, 'get_workspace_overview', {});
+    const gaps = await t.call(c, 'get_gaps', { specId: ov.data.specs[0].id });
+    assert.ok(!everything(gaps).includes(SECRET), 'MCP get_gaps: a sample is neither a gap answer nor a guardrail');
+    assert.ok(!(gaps.data.guardrails as string[]).some((g) => g.includes(SECRET)));
+    const ready = await t.call(c, 'get_readiness', { specId: ov.data.specs[0].id });
+    assert.ok(!everything(ready).includes(SECRET));
+    assert.ok(!everything(await t.call(c, 'check_impact', {})).includes(SECRET), 'MCP check_impact');
+    assert.equal((await t.call(c, 'propose_context_updates', { updates: [{ type: 'Fact', title: 'سلام', content: 'x', nodeId: 'business' }] })).isError, false);
+    await c.close();
+
+    // contradictions: two samples in one slot are NOT a candidate (the model would never be asked)
+    const { pairsToJudge } = await import('../../src/core/contradictionCandidates.ts');
+    assert.deepEqual(pairsToJudge(t.repo.listObjects(s), [], undefined, t.repo.listRelationships(s), t.repo.listNodes(s)).filter((p) => p.a.title.includes(SECRET) || p.b.title.includes(SECRET)), []);
+    // Gap + Readiness engines are fed repo.listObjects: a sample in a slot never fills it
+    const { calculateReadinessAndGaps } = await import('../../src/core/contextEngine.ts');
+    const sp = { id: 'x', title: 'x', target: 't', description: '', requiredContext: [{ key: 'zzz_slot', label: 'جای آزمایشی', description: '', nodeId: 'business', question: '؟', suggestedAnswers: [] }], suggestedContext: [], optionalContext: [], deliverables: [] } as never;
+    t.repo.createSample(s, { type: 'Decision', title: `جای آزمایشی ${SECRET}`, content: SECRET, nodeId: 'business', slotKey: 'zzz_slot' });
+    const r = calculateReadinessAndGaps(sp, t.repo.listObjects(s), []);
+    assert.equal(r.gaps.find((g) => g.key === 'zzz_slot')?.status, 'missing', 'the sample did not fill the slot');
+    // impact: samples are not part of the stale computation
+    assert.ok(!everything(t.repo.computeStale(s)).includes(SECRET));
+    // the update route of a sample id from the outside world still works for the editor, but «edit» makes it hers
+    assert.equal(sample2.sample, true);
+  } finally { t.close(); }
+});

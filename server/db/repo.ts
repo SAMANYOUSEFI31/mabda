@@ -34,7 +34,7 @@ export interface ImpactResult { count: number; assets: Array<{ id: string; title
 const CONTEXT_TYPES: ContextType[] = ['Fact', 'Decision', 'Constraint'];
 
 export interface ObjectInput {
-  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: DecisionRecord;
+  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: DecisionRecord; facets?: string[];
 }
 
 /** reach / validUntil from client input: only valid values survive (anything else = the default) */
@@ -56,6 +56,12 @@ export function cleanRecord(r: unknown): DecisionRecord | undefined {
   const out: DecisionRecord = { ...(str(x.question) ? { question: str(x.question)! } : {}), ...(options.length ? { options } : {}), ...(str(x.expectation) ? { expectation: str(x.expectation)! } : {}), ...(typeof x.reviewOn === 'string' && DATE.test(x.reviewOn) ? { reviewOn: x.reviewOn } : {}) };
   return Object.keys(out).length ? out : undefined;
 }
+/** facets: trimmed, de-duplicated, short names; at most 8 per object (one free axis, no hierarchy) */
+export function cleanFacets(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = [...new Set(v.map((x) => (typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, 40) : '')).filter(Boolean))].slice(0, 8);
+  return out.length ? out : undefined;
+}
 const thinkingFields = (i: { type?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown }): Pick<ContextObject, 'assumption' | 'reviewBy' | 'record'> => ({
   ...(i.assumption === true && i.type === 'Fact' ? { assumption: true } : {}),
   ...(typeof i.reviewBy === 'string' && DATE.test(i.reviewBy) && i.assumption === true && i.type === 'Fact' ? { reviewBy: i.reviewBy } : {}),
@@ -65,7 +71,7 @@ const thinkingFields = (i: { type?: unknown; assumption?: unknown; reviewBy?: un
 const rowToObject = (r: Record<string, unknown>): ContextObject => ({
   id: r.id as string, workspaceId: r.workspace_id as string, type: r.type as ContextType, status: r.status as ContextStatus,
   provenance: r.provenance as ContextProvenance, title: r.title as string, content: r.content as string, nodeId: r.node_id as string,
-  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.assumption ? { assumption: true } : {}), ...(r.review_by ? { reviewBy: r.review_by as string } : {}), ...(r.decision_record ? { record: JSON.parse(r.decision_record as string) as DecisionRecord } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
+  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.facets ? { facets: JSON.parse(r.facets as string) as string[] } : {}), ...(r.sample ? { sample: true } : {}), ...(r.assumption ? { assumption: true } : {}), ...(r.review_by ? { reviewBy: r.review_by as string } : {}), ...(r.decision_record ? { record: JSON.parse(r.decision_record as string) as DecisionRecord } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
@@ -136,7 +142,7 @@ export class Repo {
     this.db.transaction(() => {
       const tables = (this.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>).map((t) => t.name);
       for (const t of tables) {
-        if (t === 'workspaces' || t === 'mcp_tokens' || t === 'schema_migrations') continue;
+        if (t === 'workspaces' || t === 'mcp_tokens' || t === 'schema_migrations' || t === 'templates') continue; // (a template belongs to the user, not to the workspace it was saved from)
         const cols = (this.db.prepare(`PRAGMA table_info(${JSON.stringify(t)})`).all() as Array<{ name: string }>).map((c) => c.name);
         if (cols.includes('workspace_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ?`).run(s.workspaceId);
       }
@@ -153,7 +159,7 @@ export class Repo {
 
   /** active Context objects (Archived and Superseded do not count against the plan) */
   countActiveObjects(s: Scope): number {
-    return (this.db.prepare("SELECT COUNT(*) AS n FROM context_objects WHERE workspace_id = ? AND user_id = ? AND status NOT IN ('Archived','Superseded')").get(s.workspaceId, s.userId) as { n: number }).n;
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM context_objects WHERE workspace_id = ? AND user_id = ? AND (sample IS NULL OR sample = 0) AND status NOT IN ('Archived','Superseded')").get(s.workspaceId, s.userId) as { n: number }).n;
   }
 
   /** how many more objects the plan allows right now (bulk creators — files, notes — stop here instead of failing) */
@@ -230,13 +236,57 @@ export class Repo {
   }
 
   // ── context objects ─────────────────────────────────────────────────────
+  /**
+   * THE one door to the user's knowledge for every AI path and every engine (injection, packs, MCP, Gap, Readiness,
+   * contradictions, the validator, impact …): SAMPLES ARE NOT HERE. A sample (starter / template example) is only visible
+   * through `listSampleObjects`, which only the UI's state reads.
+   */
   listObjects(s: Scope): ContextObject[] {
-    return (this.db.prepare('SELECT * FROM context_objects WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToObject);
+    return (this.db.prepare('SELECT * FROM context_objects WHERE workspace_id = ? AND user_id = ? AND (sample IS NULL OR sample = 0) ORDER BY created_at DESC, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToObject);
   }
 
+  /** the examples that came with a starter / template — for display only (grey, «نمونه») */
+  listSampleObjects(s: Scope): ContextObject[] {
+    return (this.db.prepare('SELECT * FROM context_objects WHERE workspace_id = ? AND user_id = ? AND sample = 1 ORDER BY created_at DESC, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToObject);
+  }
+
+  /** hides samples (same door as `listObjects`) */
   getObject(s: Scope, id: string): ContextObject | undefined {
+    const o = this.getObjectAny(s, id);
+    return o && !o.sample ? o : undefined;
+  }
+
+  /** includes samples: only for the editor of an example (replacing it makes it the user's own) and for deleting examples */
+  getObjectAny(s: Scope, id: string): ContextObject | undefined {
     const r = this.db.prepare('SELECT * FROM context_objects WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
     return r ? rowToObject(r) : undefined;
+  }
+
+  /**
+   * An example from a starter or a template: grey in the UI, invisible to every AI path and engine, no cap, no Change.
+   * Applying the same starter twice does not duplicate it (same node + title).
+   */
+  createSample(s: Scope, input: { type: ContextType; title: string; content: string; nodeId: string; facets?: string[]; slotKey?: string }): ContextObject | undefined {
+    this.assertWorkspace(s);
+    this.requireNode(s, input.nodeId);
+    const dup = this.db.prepare('SELECT 1 FROM context_objects WHERE workspace_id = ? AND user_id = ? AND node_id = ? AND title = ? AND sample = 1').get(s.workspaceId, s.userId, input.nodeId, input.title.trim());
+    if (dup) return undefined;
+    const t = now();
+    const o: ContextObject = { id: newId('smp'), workspaceId: s.workspaceId, type: input.type, status: 'Confirmed', provenance: 'User Input', title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, sample: true, ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
+    this.insertObject(s, o);
+    return o;
+  }
+
+  /** remove the examples (all, or only those in some nodes) — they were never knowledge, so nothing is archived */
+  deleteSamples(s: Scope, nodeIds?: string[]): number {
+    const ids = (this.db.prepare('SELECT id, node_id FROM context_objects WHERE workspace_id = ? AND user_id = ? AND sample = 1').all(s.workspaceId, s.userId) as Array<{ id: string; node_id: string }>).filter((r) => !nodeIds || nodeIds.includes(r.node_id)).map((r) => r.id);
+    this.db.transaction(() => {
+      for (const id of ids) {
+        this.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ?').run(id, s.workspaceId);
+        this.db.prepare('DELETE FROM context_objects WHERE id = ? AND workspace_id = ? AND sample = 1').run(id, s.workspaceId);
+      }
+    })();
+    return ids.length;
   }
 
   listVersions(s: Scope, objectId: string): Array<{ version: number; type: string; title: string; content: string; createdAt: string }> {
@@ -254,8 +304,8 @@ export class Repo {
   }
 
   private insertObject(s: Scope, o: ContextObject) {
-    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key, reach, valid_until, assumption, review_by, decision_record)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null, o.reach ?? null, o.validUntil ?? null, o.assumption ? 1 : null, o.reviewBy ?? null, o.record ? JSON.stringify(o.record) : null);
+    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key, reach, valid_until, assumption, review_by, decision_record, facets, sample)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null, o.reach ?? null, o.validUntil ?? null, o.assumption ? 1 : null, o.reviewBy ?? null, o.record ? JSON.stringify(o.record) : null, o.facets ? JSON.stringify(o.facets) : null, o.sample ? 1 : null);
     this.snapshot(s, o, o.createdAt);
   }
 
@@ -286,7 +336,7 @@ export class Repo {
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
-    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), createdAt: t, updatedAt: t };
+    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
     this.db.transaction(() => {
       this.insertObject(s, o);
       this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: 1, kind: o.provenance === 'Imported' ? 'imported' : 'created', meta, after: { type: o.type, title: o.title, nodeId: o.nodeId, status: o.status }, source: o.source });
@@ -340,8 +390,8 @@ export class Repo {
   }
 
   /** Edit in place. title / content / type changes bump `version`; status or node moves do not. */
-  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
-    const cur = this.getObject(s, id);
+  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown; facets?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
+    const cur = this.getObjectAny(s, id); // an example can be edited: writing over it makes it the user's own
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
     if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد.');
@@ -357,15 +407,24 @@ export class Repo {
       delete next.assumption; delete next.reviewBy; delete next.record;
       const th = thinkingFields({ type: next.type, assumption: 'assumption' in patch ? patch.assumption : cur.assumption, reviewBy: 'reviewBy' in patch ? patch.reviewBy : cur.reviewBy, record: 'record' in patch ? patch.record : cur.record });
       Object.assign(next, th);
+      // facets: only when the patch mentions them (null / [] clears)
+      delete next.facets;
+      const fc = cleanFacets('facets' in patch ? patch.facets : cur.facets);
+      if (fc) next.facets = fc;
+      // an example the user edits (text, type, status) is hers from now on; it enters every engine and AI path only then
+      delete next.sample;
+      const stillSample = !!cur.sample && next.title === cur.title && next.content === cur.content && next.type === cur.type && next.status === cur.status;
+      if (stillSample) next.sample = true;
+      else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
       const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
-      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=? WHERE id=? AND workspace_id=?')
-        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, id, s.workspaceId);
+      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=?, facets=?, sample=? WHERE id=? AND workspace_id=?')
+        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, next.facets ? JSON.stringify(next.facets) : null, next.sample ? 1 : null, id, s.workspaceId);
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
       // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
       if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after });
-      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil', 'assumption', 'reviewBy', 'record']);
+      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil', 'assumption', 'reviewBy', 'record', 'facets']);
       if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after });
       return next;
     })());
@@ -839,7 +898,7 @@ export class Repo {
     const deliverables = this.listDeliverables(s);
     return {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
-      nodes: this.listNodes(s), objects, relationships: this.listRelationships(s), notes: this.listNotes(s),
+      nodes: this.listNodes(s), objects, samples: this.listSampleObjects(s), relationships: this.listRelationships(s), notes: this.listNotes(s),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
       stale: this.impactEnabled(s) ? this.computeStale(s, deliverables) : [],
       judgments: this.listJudgments(s),

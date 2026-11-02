@@ -9,6 +9,8 @@ export interface WorkspaceState {
   workspace: Workspace;
   nodes: TreeNode[];
   objects: ContextObject[];
+  /** examples from a starter or a template (grey, «نمونه»): display only — the engines and every AI path never get them */
+  samples: ContextObject[];
   relationships: ContextRelationship[];
   notes: Note[];
   deliverables: GeneratedDeliverable[];
