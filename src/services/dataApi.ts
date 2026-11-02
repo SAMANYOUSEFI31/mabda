@@ -126,6 +126,7 @@ export const dataApi = {
   changeLog: (id: string, f: { objectId?: string } = {}) => call<{ changes: import('../types').ContextChange[] }>('GET', `${ws(id)}/changes/log${f.objectId ? `?objectId=${encodeURIComponent(f.objectId)}` : ''}`),
   replaceWith: (id: string, proposalId: string, input: { replacesId: string; reason?: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/objects/${proposalId}/replace`, input),
+  weeklyReviewDone: (id: string) => call<{ weeklyReviewAt: string }>('POST', `${ws(id)}/weekly-review/done`, {}),
   canvasMove: (id: string, input: { objectId: string; lane: string; nodeId?: string; beforeId?: string; afterId?: string; reason?: string; confirmBackward?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/move`, input),
   canvasReset: (id: string) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/reset`, {}),
   canvasConnect: (id: string, input: { fromId: string; toId: string; type: 'depends_on' | 'supersedes'; reason?: string; confirmed?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/connect`, input),

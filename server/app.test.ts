@@ -614,3 +614,15 @@ test('free-thinking zone: notes with coordinates stay Notes (never Context); Â«Ø
     assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/free/notes', { content: '  ' })).status, 400);
   } finally { t.close(); }
 });
+
+test('weekly review: the last finish time is stored per workspace and travels with the state', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.weeklyReviewAt, null);
+    const r = await t.call('POST', '/workspaces/ws_studio/weekly-review/done', {});
+    assert.ok(Date.now() - new Date(r.json.weeklyReviewAt).getTime() < 5000);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.weeklyReviewAt, r.json.weeklyReviewAt);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio2/state')).status, 404, 'other workspaces have their own');
+  } finally { t.close(); }
+});

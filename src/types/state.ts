@@ -25,6 +25,8 @@ export interface WorkspaceState {
   changes: import('./index').ContextChange[];
   /** declared positions on the boards (decision board: lane + rank; free zone: x/y, display only) */
   canvas: { decisions: CanvasItem[]; free: CanvasItem[] };
+  /** when the weekly review was last finished (null = never) */
+  weeklyReviewAt: string | null;
 }
 
 export interface CanvasItem { itemRef: string; lane?: string; rank?: number; x?: number; y?: number }

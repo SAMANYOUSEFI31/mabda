@@ -687,7 +687,20 @@ export class Repo {
       pairJudgments: this.listPairJudgments(s),
       changes: this.listChanges(s),
       canvas: { decisions: this.listCanvasItems(s, 'decisions'), free: this.listCanvasItems(s, 'free') },
+      weeklyReviewAt: this.weeklyReviewAt(s),
     };
+  }
+
+  /** when the weekly review («این هفته») was last finished (null = never) */
+  weeklyReviewAt(s: Scope): string | null {
+    const r = this.db.prepare('SELECT value FROM kv WHERE user_id = ? AND key = ?').get(s.userId, `weekly_review:${s.workspaceId}`) as { value: string } | undefined;
+    return r ? (JSON.parse(r.value) as { at: string }).at : null;
+  }
+
+  markWeeklyReview(s: Scope): string {
+    const at = now();
+    this.db.prepare('INSERT OR REPLACE INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(s.userId, `weekly_review:${s.workspaceId}`, JSON.stringify({ at }));
+    return at;
   }
 
   isImported(userId: string): boolean {

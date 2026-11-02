@@ -42,6 +42,8 @@ import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
+import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
+import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue } from './core/weeklyReview';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
@@ -167,6 +169,9 @@ export default function App() {
   const staleIdSet = useMemo(() => new Set((data?.stale ?? []).map((s) => s.deliverableId)), [data?.stale]);
   const waiting = useMemo(() => waitingDecisions(planDecisions(data?.objects ?? [], data?.relationships ?? [])), [data?.objects, data?.relationships]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
+  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [] }), [data?.objects, data?.relationships, data?.changes, data?.deliverables]);
+  const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -253,11 +258,11 @@ export default function App() {
     if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
   };
   /** «بدون تغییر بپذیر» — writes a review_accepted Change; the derived «needs review» state disappears */
-  const handleAcceptReview = async (objectId: string) => {
+  const handleAcceptReview = async (objectId: string, quiet = false) => {
     const r = await attempt(() => dataApi.acceptReview(wid, objectId));
     if (!r) return;
     patch((d) => ({ ...d, changes: r.changes, stale: r.stale }));
-    toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
+    if (!quiet) toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
   };
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
@@ -540,7 +545,7 @@ export default function App() {
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
   const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
     const impact = await setStatus(o.id, 'Confirmed', reason);
-    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است.` }); }
+    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
   };
   const handleRejectProposal = async (o: ContextObject, reason?: string) => { await setStatus(o.id, 'Archived', reason); };
   /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
@@ -668,6 +673,8 @@ export default function App() {
               waiting={waiting}
               flips={flips}
               titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
+              weeklyDue={weeklyDue}
+              onOpenWeekly={() => setWeeklyOpen(true)}
               onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
               onAcceptReview={handleAcceptReview}
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
@@ -962,6 +969,18 @@ export default function App() {
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <WeeklyReviewDialog
+        open={weeklyOpen}
+        onClose={() => setWeeklyOpen(false)}
+        data={weekly}
+        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...WORKSTREAM_SPECS.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
+        objects={workspaceContexts}
+        deliverables={deliverables}
+        onAcceptReview={async (id) => { await handleAcceptReview(id, true); }}
+        onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
+        onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
+        onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
+      />
       <NodeThreadPanel
         open={!!threadNodeId}
         workspaceId={wid}

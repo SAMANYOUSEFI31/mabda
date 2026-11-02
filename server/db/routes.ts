@@ -111,6 +111,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const since = typeof req.query.since === 'string' && !Number.isNaN(Date.parse(req.query.since)) ? new Date(req.query.since).toISOString() : undefined;
     res.json({ changes: repo.listChanges(scopeOf(req), { objectId: typeof req.query.objectId === 'string' ? req.query.objectId : undefined, since }) });
   }));
+  router.post('/workspaces/:wid/weekly-review/done', wrap((req, res) => { res.json({ weeklyReviewAt: repo.markWeeklyReview(scopeOf(req)) }); }));
+
   // ── boards («بوم»): the decision board's columns ARE statuses, its rows ARE nodes, its order IS a stored rank ──
   const LANES: Lane[] = ['thinking', 'confirmed', 'review'];
   const canvasBundle = (s: Scope) => ({
