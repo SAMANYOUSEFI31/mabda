@@ -21,6 +21,8 @@ export interface WorkspaceState {
   judgments: Record<string, { version: number; ambiguous: boolean; reason: string }>;
   /** semantic contradiction judgements per exact (object, version) pair, with the user's resolution */
   pairJudgments: import('../core/contradictionCandidates').PairJudgment[];
+  /** append-only change log (who changed what, why) */
+  changes: import('./index').ContextChange[];
 }
 
 export interface ImpactInfo {

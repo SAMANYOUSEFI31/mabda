@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChatSession,
   ContextDraft,
@@ -39,6 +39,7 @@ import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
+import { needsReview } from './core/decisionGraph';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
@@ -156,6 +157,16 @@ export default function App() {
   const deliverables = data?.deliverables ?? [];
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
+  // derived, never stored: dependents whose dependency changed after they were last written or reviewed
+  const reviewNeeds = useMemo(() => needsReview(data?.objects ?? [], data?.relationships ?? [], data?.changes ?? []), [data?.objects, data?.relationships, data?.changes]);
+  // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
+  useEffect(() => {
+    if (!data) return;
+    let live = true;
+    dataApi.changeLog(data.workspace.id).then((r) => { if (live) patch((d) => ({ ...d, changes: r.changes })); }).catch(() => { /* review hints are optional */ });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.workspace.id, data?.objects, data?.relationships]);
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
   const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
@@ -194,8 +205,20 @@ export default function App() {
     return out;
   };
 
-  const handleSupersedeContext = async (oldId: string, input: ContextDraft) => {
-    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId }));
+  const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
+    const r = await attempt(() => dataApi.setDependencies(wid, objectId, dependsOn));
+    if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
+  };
+  /** «بدون تغییر بپذیر» — writes a review_accepted Change; the derived «needs review» state disappears */
+  const handleAcceptReview = async (objectId: string) => {
+    const r = await attempt(() => dataApi.acceptReview(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, changes: r.changes, stale: r.stale }));
+    toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
+  };
+
+  const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}) }));
     if (!r) return;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
     showImpact(r.impact);
@@ -405,17 +428,16 @@ export default function App() {
     setIsNewWorkspaceModalOpen(false);
   };
 
-  const handlePromoteToContext = async (del: GeneratedDeliverable) => {
-    const created = await handleSaveContextObject({
-      workspaceId: wid,
-      type: 'Asset',
-      status: 'Confirmed',
-      provenance: 'Asset Derived',
-      title: `دارایی: ${del.title}`,
-      content: del.content.slice(0, 300) + '...',
-      nodeId: 'brand',
-    });
-    if (created) toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
+  const [extractingAssetId, setExtractingAssetId] = useState<string | null>(null);
+  /** an output is not Context: its text is read by the extraction path and yields PROPOSED objects with a quote; the user confirms */
+  const handleExtractFromAsset = async (del: GeneratedDeliverable) => {
+    setExtractingAssetId(del.id);
+    try {
+      const r = await attempt(() => dataApi.extractDeliverable(wid, del.id));
+      if (!r) return;
+      patch((d) => ({ ...d, objects: [...r.created.slice().reverse(), ...d.objects], ledger: r.ledger }));
+      toast.show({ intent: r.created.length ? 'success' : 'info', message: r.created.length ? `${formatNumber(r.created.length)} مورد پیشنهادی از این خروجی ساخته شد؛ در صندوق پیشنهادها منتظر تأیید توست.` : 'در متن این خروجی واقعیت، تصمیم یا قید مشخصی پیدا نشد.' });
+    } finally { setExtractingAssetId(null); }
   };
 
   const handleExportAllData = () => {
@@ -589,6 +611,9 @@ export default function App() {
               gaps={attentionGaps}
               contradictionCount={contradictions.length}
               staleCount={stale.length}
+              reviews={[...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, dependencyTitles: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) }))}
+              onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
+              onAcceptReview={handleAcceptReview}
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
               onAnswerGap={(gap, answer) => { void handleSaveContextObject({
                 workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
@@ -720,7 +745,8 @@ export default function App() {
             stale={stale}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
             onOpenContextModal={(obj) => openContext(obj)}
-            onPromoteToContext={handlePromoteToContext}
+            onExtractKnowledge={handleExtractFromAsset}
+            extractingId={extractingAssetId}
             onRebuild={(del) => {
               setSelectedSpecId(del.workstreamId);
               setPendingRebuild(del);
@@ -753,6 +779,12 @@ export default function App() {
         nodes={nodes}
         workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
+        allObjects={workspaceContexts}
+        relationships={data?.relationships ?? []}
+        onSetDependencies={handleSetDependencies}
+        reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
+        titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
+        onAcceptReview={handleAcceptReview}
       />
 
       <NodeDialogs

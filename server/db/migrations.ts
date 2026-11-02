@@ -194,6 +194,83 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    name: 'Asset is no longer a context type: old Asset objects become Fact (provenance, version and history kept)',
+    up(db) {
+      // type change without a version bump: lineage (usedContext id+version) of existing assets stays valid
+      db.exec(`
+        UPDATE context_objects SET type = 'Fact' WHERE type = 'Asset';
+        UPDATE context_object_versions SET type = 'Fact' WHERE type = 'Asset';
+      `);
+    },
+  },
+  {
+    version: 9,
+    name: 'context_changes: append-only change log (rebuilt from versions); replacement reasons leave the object text',
+    up(db) {
+      db.exec(`
+        CREATE TABLE context_changes (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, object_id TEXT NOT NULL,
+          from_version INTEGER NOT NULL, to_version INTEGER NOT NULL,
+          kind TEXT NOT NULL, actor TEXT NOT NULL, actor_label TEXT, reason TEXT, before TEXT, after TEXT, at TEXT NOT NULL
+        );
+        CREATE INDEX idx_changes_ws ON context_changes(workspace_id, at);
+        CREATE INDEX idx_changes_obj ON context_changes(workspace_id, object_id, at);
+      `);
+      // This migration is self-contained on purpose (a later edit of src/core must not change what an old database becomes).
+      const TAIL = /\n*\[دلیل جایگزینی: ([\s\S]*)\]\s*$/;
+      const reasons = new Map<string, string>(); // object id → reason glued to its text
+      const objs = db.prepare("SELECT id, content FROM context_objects WHERE content LIKE '%[دلیل جایگزینی:%'").all() as Array<{ id: string; content: string }>;
+      for (const o of objs) {
+        const m = TAIL.exec(o.content);
+        if (!m) continue;
+        reasons.set(o.id, m[1].trim());
+        db.prepare('UPDATE context_objects SET content = ? WHERE id = ?').run(o.content.slice(0, m.index), o.id);
+      }
+      const vers = db.prepare("SELECT object_id, version, content FROM context_object_versions WHERE content LIKE '%[دلیل جایگزینی:%'").all() as Array<{ object_id: string; version: number; content: string }>;
+      for (const v of vers) {
+        const m = TAIL.exec(v.content);
+        if (!m) continue;
+        if (!reasons.has(v.object_id)) reasons.set(v.object_id, m[1].trim());
+        db.prepare('UPDATE context_object_versions SET content = ? WHERE object_id = ? AND version = ?').run(v.content.slice(0, m.index), v.object_id, v.version);
+      }
+
+      const ins = db.prepare('INSERT OR IGNORE INTO context_changes (id,user_id,workspace_id,object_id,from_version,to_version,kind,actor,actor_label,reason,before,after,at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      const LABEL = 'بازسازی از نسخه‌ها';
+      const rows = db.prepare('SELECT object_id, version, user_id, workspace_id, type, title, content, created_at FROM context_object_versions ORDER BY object_id, version').all() as Array<Record<string, any>>;
+      const prev = new Map<string, Record<string, any>>();
+      const supersedeReasonFor = new Set<string>();
+      for (const r of rows) {
+        const p = prev.get(r.object_id);
+        if (!p) {
+          ins.run(`chg_bf_${r.object_id}_${r.version}`, r.user_id, r.workspace_id, r.object_id, 0, r.version, 'created', 'system', LABEL, null, null, JSON.stringify({ type: r.type, title: r.title }), r.created_at);
+        } else {
+          const before: Record<string, unknown> = {}; const after: Record<string, unknown> = {};
+          for (const f of ['type', 'title', 'content']) if (p[f] !== r[f]) { before[f] = p[f]; after[f] = r[f]; }
+          ins.run(`chg_bf_${r.object_id}_${r.version}`, r.user_id, r.workspace_id, r.object_id, p.version, r.version, 'edited', 'system', LABEL, null, JSON.stringify(before), JSON.stringify(after), r.created_at);
+        }
+        prev.set(r.object_id, r);
+      }
+      // every «supersedes» edge → a `superseded` change on the replaced object; the reason that used to be glued to the new text goes here
+      const rels = db.prepare("SELECT source_id, target_id, user_id, workspace_id, created_at FROM context_relationships WHERE type = 'supersedes'").all() as Array<Record<string, any>>;
+      for (const r of rels) {
+        const old = db.prepare('SELECT version FROM context_objects WHERE id = ?').get(r.target_id) as { version: number } | undefined;
+        const neu = db.prepare('SELECT version FROM context_objects WHERE id = ?').get(r.source_id) as { version: number } | undefined;
+        if (!old || !neu) continue;
+        const reason = reasons.get(r.source_id) ?? null;
+        if (reason) supersedeReasonFor.add(r.source_id);
+        ins.run(`chg_bf_sup_${r.target_id}`, r.user_id, r.workspace_id, r.target_id, old.version, neu.version, 'superseded', 'system', LABEL, reason, null, JSON.stringify({ status: 'Superseded', supersededById: r.source_id }), r.created_at);
+      }
+      // a reason whose object superseded nothing stays with that object's own «created» record
+      for (const [id, reason] of reasons) {
+        if (supersedeReasonFor.has(id)) continue;
+        db.prepare("UPDATE context_changes SET reason = ? WHERE kind = 'created' AND object_id = ?").run(reason, id);
+      }
+      const archived = db.prepare("SELECT id, user_id, workspace_id, version, updated_at FROM context_objects WHERE status = 'Archived'").all() as Array<Record<string, any>>;
+      for (const a of archived) ins.run(`chg_bf_arch_${a.id}`, a.user_id, a.workspace_id, a.id, a.version, a.version, 'archived', 'system', LABEL, null, null, JSON.stringify({ status: 'Archived' }), a.updated_at);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -7,7 +7,7 @@
 import type { ContextObject, ContextStatus, ContextType, TreeNode } from '../types';
 import { byOrder, childrenOf, subtreeIds } from './nodeTree';
 
-const TYPE_FA: Record<ContextType, string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'قید', Asset: 'دارایی' };
+const TYPE_FA: Record<ContextType, string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'قید' };
 const STATUS_FA: Record<ContextStatus, string> = {
   Confirmed: 'تأییدشده', Proposed: 'پیشنهادی (تأییدنشده)', 'Needs Review': 'نیازمند بازبینی', Superseded: 'جایگزین‌شده', Archived: 'بایگانی',
 };

@@ -58,8 +58,16 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## اتصال AI بیرونی: MCP و بستهٔ Context
 
-- **MCP** (`server/mcp/`): Streamable HTTP روی `/mcp`، stateless؛ هر درخواست یک `McpServer` به‌اندازهٔ scope توکن می‌سازد (توکن شخصی هر Workspace، فقط hash در `mcp_tokens`). هشت ابزار در `tools.ts`؛ `propose_context_updates` وضعیت را در کد روی `Proposed` ثابت می‌کند (آنچه کلاینت بفرستد نادیده است) و `source` (کدام AI، چه وقت، چرا) را ثبت می‌کند.
+- **MCP** (`server/mcp/`): Streamable HTTP روی `/mcp`، stateless؛ هر درخواست یک `McpServer` به‌اندازهٔ scope توکن می‌سازد (توکن شخصی هر Workspace، فقط hash در `mcp_tokens`). نه ابزار (هشت ابزار اصلی + `get_changes` فقط‌خواندنی) در `tools.ts`؛ `propose_context_updates` وضعیت را در کد روی `Proposed` ثابت می‌کند (آنچه کلاینت بفرستد نادیده است) و `source` (کدام AI، چه وقت، چرا) را ثبت می‌کند.
 - **صندوق پیشنهادها** = همهٔ Objectهای `Proposed` با `source`؛ تأیید = تغییر وضعیت به Confirmed (تنها راه تبدیل پیشنهاد AI به واقعیت)، رد = Archived.
 - **بستهٔ Context** (`src/core/contextPack.ts`): Markdown فشرده؛ سرور می‌سازد و `context_packs` را با refs (id+version) ذخیره می‌کند تا پاسخ چسبانده‌شده اصالت داشته باشد. نشانگر `<!-- mabda-pack:ID -->` بالای بسته است.
 - **وارد کردن پاسخ** (`src/core/answerParser.ts`): اول سرتیترهای سطح دو (رایگان)، بعد `AiService.parseExternal` (cheap)، بعد یک بلوک خام؛ هرگز ساختار ساختگی.
 - سناریوها: `scripts/scenario-mcp.ts`، `scripts/scenario-paste.mjs`.
+
+
+## Change، گراف تصمیم و Asset (spine)
+
+- **`context_changes`** (migration v9): هر مسیر تغییر Object در `server/db/repo.ts` در همان تراکنش یک Change می‌نویسد؛ actor از `source` استنباط می‌شود (MCP/گفتگو/مربی/ورود)، وگرنه کاربر. `reason` فقط در Change است و به هیچ prompt یا بستهٔ Context نمی‌رود؛ `get_changes` (MCP) فقط `hasReason` برمی‌گرداند. رکوردهای قدیمی از `context_object_versions` بازسازی و «[دلیل جایگزینی: …]» از متن‌ها جدا شد (migration مستقل از `src/core`).
+- **`ContextType`** فقط Fact/Decision/Constraint است (migration v8: Asset قدیمی → Fact). «پیشنهاد دانش از این خروجی» از `AiService.extract` Proposed با `provenance: Asset Derived` و نقل تأییدشده می‌سازد.
+- **`src/core/decisionGraph.ts`**: لایه‌ها/دستهٔ همزمان (SCC)/وابسته‌های تراگذری/`needsReview` (مشتق از Changeها؛ مبنا = آخرین نوشتن یا بازبینی خود مورد). `impactEngine` با دلیل `dependency_changed` فقط تغییرهایی را می‌شمرد که **بعد از ساخت دارایی** رخ داده‌اند (بازسازی آن را تسویه می‌کند).
+- مسیر/اعتبارسنج/اعتبار AI در این تغییر دست نخورده است.

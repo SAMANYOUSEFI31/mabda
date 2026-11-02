@@ -58,7 +58,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     assert.equal(done.type, 'done');
     const used = done.result.usedContext as Array<{ id: string; version: number }>;
     assert.ok(used.some((u) => u.id === 'ctx_audience' && u.version === 1));
-    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', creditCost: 2, usedContext: used, rebuildCount: 0, createdAt: new Date().toISOString() };
+    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', creditCost: 2, usedContext: used, rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() };
     const saved = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', asset);
     assert.equal(saved.json.stale.length, 0);
 
@@ -74,7 +74,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     const ev2 = await t.ndjson('/ai/generate', { workspaceId: 'ws_studio', deliverableId: 'x', deliverableTitle: 'پروفایل مشتری', deliverableType: 'Asset', acceptanceCriteria: ['معیار'], userMode: 'auto', targetNodeId: 'content' });
     const used2 = ev2.at(-1).result.usedContext as Array<{ id: string; version: number }>;
     assert.equal(used2.find((u) => u.id === 'ctx_audience')!.version, 2);
-    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, halfPriceUsedFor: 'sig' });
+    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, halfPriceUsedFor: 'sig', createdAt: new Date().toISOString() });
     assert.ok(!rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_new'));
     assert.ok(rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_inst_1'), 'the other asset is still stale');
   } finally { t.close(); }
@@ -484,5 +484,47 @@ test('focused thread: cheap model, context = this node + its parents only, propo
     assert.ok(bad.status >= 500 || bad.status === 429);
     assert.ok(bad.json.error.message && bad.json.error.retryable !== undefined);
     assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length, before, 'no canned reply, nothing created');
+  } finally { t.close(); }
+});
+
+test('an output is not Context: «پیشنهاد دانش از این خروجی» makes Proposed objects with a verified quote (Asset Derived); Asset objects are refused', async () => {
+  const text = 'قیمت پایه ماهانه پنج میلیون تومان است. مخاطب ما طراحان فریلنسر هستند.';
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('"objects"')
+    ? { objects: [
+      { type: 'Fact', title: 'قیمت پایه', content: 'پنج میلیون تومان در ماه', nodeId: 'offer', quote: 'قیمت پایه ماهانه پنج میلیون تومان است.' },
+      { type: 'Decision', title: 'مخاطب', content: 'طراحان فریلنسر', nodeId: 'business', quote: 'عبارت ساختگی که در متن نیست' },
+    ] } : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const before = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    assert.equal((await t.call('PUT', '/workspaces/ws_studio/deliverables/del_x', { ...before.deliverables[0], id: 'del_x', title: 'خروجی آزمایشی', content: text, usedContext: [] })).status, 200);
+    const r = await t.call('POST', '/workspaces/ws_studio/deliverables/del_x/extract', {});
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.created.map((o: any) => [o.type, o.status, o.provenance, o.source.kind, o.source.label]), [['Fact', 'Proposed', 'Asset Derived', 'asset', 'خروجی آزمایشی'], ['Decision', 'Proposed', 'Asset Derived', 'asset', 'خروجی آزمایشی']]);
+    assert.equal(r.json.created[0].source.quote, 'قیمت پایه ماهانه پنج میلیون تومان است.');
+    assert.equal(r.json.created[1].source.quote, undefined, 'a quote that is not in the text is dropped');
+    assert.ok(r.json.ledger.some((l: any) => l.mode === 'asset_extract'));
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Asset', status: 'Confirmed', provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' })).status, 400);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/deliverables/ghost/extract', {})).status, 404);
+  } finally { t.close(); }
+});
+
+test('replacement reason goes to the Change log, not into the object text; review-accept writes a Change; state carries the log', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/supersede', { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'مخاطب اصلی', content: 'متن تازه', nodeId: 'business', reason: 'بازخورد مشتری‌ها' });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.object.content, 'متن تازه');
+    const st = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    const sup = st.changes.find((c: any) => c.objectId === 'ctx_audience' && c.kind === 'superseded');
+    assert.equal(sup.reason, 'بازخورد مشتری‌ها');
+    assert.equal(sup.actor, 'user');
+    assert.ok(!st.objects.some((o: any) => o.content.includes('دلیل جایگزینی')));
+    const acc = await t.call('POST', `/workspaces/ws_studio/objects/${r.json.object.id}/review-accept`, {});
+    assert.equal(acc.json.change.kind, 'review_accepted');
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/objects/ghost/review-accept', {})).status, 404);
+    const log = (await t.call('GET', `/workspaces/ws_studio/changes/log?objectId=${r.json.object.id}`)).json.changes;
+    assert.deepEqual(log.map((c: any) => c.kind), ['created', 'review_accepted']);
   } finally { t.close(); }
 });

@@ -2,6 +2,7 @@ import express from 'express';
 import type { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { Repo, RepoError, newId } from './repo.ts';
+import type { ChangeMeta } from './repo.ts';
 import type { Scope } from './repo.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import type { LegacyPayload } from './legacy.ts';
@@ -14,7 +15,6 @@ import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
 import { ancestorIds } from '../../src/core/nodeTree.ts';
-import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
 import { entitlementsOf } from '../../src/core/entitlements.ts';
@@ -47,6 +47,13 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     return { userId: LOCAL_USER, workspaceId };
   };
   const body = (req: Request) => (req.body ?? {}) as Record<string, any>;
+  const ACTORS = ['user', 'chat', 'coach', 'import', 'system'];
+  /** who did it and why, from the optional `change` field of a request (without an explicit actor the repo infers it from the object's source; no source = the user) */
+  const metaOf = (b: Record<string, any>, extra: Partial<ChangeMeta> = {}): ChangeMeta => {
+    const c = (b.change && typeof b.change === 'object' ? b.change : {}) as Record<string, unknown>;
+    const reason = typeof b.reason === 'string' ? b.reason : typeof c.reason === 'string' ? c.reason : undefined;
+    return { ...(ACTORS.includes(String(c.actor)) ? { actor: c.actor as ChangeMeta['actor'] } : {}), ...(typeof c.label === 'string' ? { label: c.label.slice(0, 80) } : {}), ...(reason ? { reason: reason.slice(0, 1000) } : {}), ...extra };
+  };
 
   // ── bootstrap / import ──────────────────────────────────────────────
   router.post('/bootstrap', wrap((req, res) => {
@@ -79,20 +86,39 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   }));
 
   // ── context objects ──────────────────────────────────────────────────
-  const stale = (s: Scope) => (repo.impactEnabled(s) ? computeStaleAssets(repo.listDeliverables(s), repo.listObjects(s)) : []);
+  const stale = (s: Scope) => (repo.impactEnabled(s) ? repo.computeStale(s) : []);
   router.post('/workspaces/:wid/objects', wrap((req, res) => {
     const s = scopeOf(req);
-    res.json({ object: repo.createObject(s, body(req) as never) });
+    const { change: _c, reason: _r, ...input } = body(req);
+    res.json({ object: repo.createObject(s, input as never, metaOf(body(req))) });
   }));
   router.patch('/workspaces/:wid/objects/:id', wrap((req, res) => {
     const s = scopeOf(req);
-    const r = repo.updateObject(s, req.params.id, body(req));
+    const { change: _c, reason: _r, ...patch } = body(req);
+    const r = repo.updateObject(s, req.params.id, patch, metaOf(body(req)));
     res.json({ ...r, stale: stale(s) });
   }));
   router.post('/workspaces/:wid/objects/:id/supersede', wrap((req, res) => {
     const s = scopeOf(req);
-    const r = repo.supersedeObject(s, req.params.id, body(req) as never);
+    const { change: _c, reason: _r, ...input } = body(req);
+    const r = repo.supersedeObject(s, req.params.id, input as never, metaOf(body(req)));
     res.json({ ...r, relationships: repo.listRelationships(s), stale: stale(s) });
+  }));
+  router.get('/workspaces/:wid/changes/log', wrap((req, res) => {
+    const since = typeof req.query.since === 'string' && !Number.isNaN(Date.parse(req.query.since)) ? new Date(req.query.since).toISOString() : undefined;
+    res.json({ changes: repo.listChanges(scopeOf(req), { objectId: typeof req.query.objectId === 'string' ? req.query.objectId : undefined, since }) });
+  }));
+  router.put('/workspaces/:wid/objects/:id/dependencies', wrap((req, res) => {
+    const s = scopeOf(req);
+    const list = Array.isArray(body(req).dependsOn) ? (body(req).dependsOn as unknown[]).filter((x): x is string => typeof x === 'string') : null;
+    if (!list) throw new RepoError('invalid', 'فهرست وابستگی‌ها لازم است.');
+    const r = repo.setDependencies(s, req.params.id, list, metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s), stale: stale(s) });
+  }));
+  router.post('/workspaces/:wid/objects/:id/review-accept', wrap((req, res) => {
+    const s = scopeOf(req);
+    const change = repo.acceptReview(s, req.params.id, metaOf(body(req)));
+    res.json({ change, changes: repo.listChanges(s), stale: stale(s) });
   }));
   router.get('/workspaces/:wid/objects/:id/versions', wrap((req, res) => { res.json({ versions: repo.listVersions(scopeOf(req), req.params.id) }); }));
 
@@ -193,6 +219,25 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
   }));
 
+  /**
+   * «پیشنهاد دانش از این خروجی»: an output is NOT a Context type. The existing extraction path reads its text and makes
+   * Proposed Facts/Decisions/Constraints, each with a verified quote from the output; the user confirms them one by one.
+   */
+  router.post('/workspaces/:wid/deliverables/:id/extract', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const del = repo.getDeliverable(s, req.params.id);
+    if (!del) throw new RepoError('not_found', 'دارایی پیدا نشد.');
+    if (!del.content.trim()) throw new RepoError('invalid', 'متن این دارایی خالی است.');
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
+    const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: 'business', nodes }, ctl.signal);
+    const at = new Date().toISOString();
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Asset Derived', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'asset', label: del.title, at, ...(o.quote ? { quote: o.quote } : {}) } }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, ledger: repo.listLedger(s) });
+  }));
+
   // ── focused thread on one node: cheap tier, context = node + parents, output = Proposed objects for THAT node only ──
   router.post('/workspaces/:wid/threads/:nodeId/turn', wrap(async (req, res) => {
     const s = scopeOf(req);
@@ -265,12 +310,12 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (b.action === 'keep') {
       const keepId = String(b.keepId ?? '');
       if (keepId !== aId && keepId !== bId) throw new RepoError('invalid', 'مورد نگه‌داشتنی مشخص نیست.');
-      impact = repo.supersedeBy(s, keepId === aId ? bId : aId, keepId).impact;
+      impact = repo.supersedeBy(s, keepId === aId ? bId : aId, keepId, metaOf(b, { reason: 'تناقض: یکی نگه داشته شد' })).impact;
       repo.savePairJudgment(s, a, o, { conflict: true, reason: 'حل‌شده توسط کاربر', resolution: `kept:${keepId}` });
     } else if (b.action === 'separate') {
       const moveId = String(b.moveId ?? '');
       if (moveId !== aId && moveId !== bId) throw new RepoError('invalid', 'مورد جابه‌جاشونده مشخص نیست.');
-      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') });
+      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') }, metaOf(b, { kind: 'contradiction_resolved', reason: 'تناقض: هر دو درست‌اند؛ گره‌ها جدا شد' }));
       impact = moved.impact;
       repo.savePairJudgment(s, a, o, { conflict: false, reason: 'هر دو درست‌اند؛ گره‌ها جدا شد', resolution: 'separated' });
     } else throw new RepoError('invalid', 'اقدام نامعتبر است.');

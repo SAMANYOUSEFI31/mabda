@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
-import { computeStaleAssets, staleReasonsOf } from '../../src/core/impactEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
@@ -23,6 +22,7 @@ Mabda is the user's business source of truth. Work from it with these rules:
 ۴. هر تصمیم، واقعیت یا محدودیت تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده؛ اگر پیشنهاد یکی از شکاف‌های get_gaps را پر می‌کند، slotKey را برابر key همان شکاف بگذار. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
 ۵. وقتی خروجی ساختی، با save_asset ذخیره‌اش کن و در usedContext دقیقاً شناسه و نسخهٔ Contextهایی را بده که خواندی (اصالت و تشخیص «قدیمی‌شدن» به همین بسته است).
 ۶. وقتی کاربر Context را تغییر داد، check_impact را بزن و بگو کدام دارایی‌ها قدیمی شده‌اند.
+۷. get_changes (فقط‌خواندنی): ببین از فلان زمان چه کسی چه چیزی را عوض کرده؛ دلیل‌های ثبت‌شده برای کاربر است و در خروجی نمی‌آید.
 گاردریل‌ها (Constraintهای Confirmed و گاردریل‌های spec) را رعایت کن.`;
 
 type Json = Record<string, unknown>;
@@ -62,7 +62,7 @@ export function buildMcpServer(c: McpContext): McpServer {
       id: s.id, title: s.title, target: s.target, guardrails: s.guardrails ?? [],
       deliverables: s.deliverables.map((d) => ({ id: d.id, title: d.title, dependsOn: d.dependsOn ?? [], built: built.has(d.id), locked: lockOf(d, s.deliverables, built).locked })),
     }));
-    const stale = can(plan(), 'changeImpact') ? computeStaleAssets(dels, objects).length : 0;
+    const stale = can(plan(), 'changeImpact') ? repo.computeStale(scope, dels).length : 0;
     const data = {
       workspace: { id: ws.id, name: ws.name, plan: ws.planId }, tree, specs,
       counts: { confirmed: active.filter((o) => o.status === 'Confirmed').length, unconfirmed: active.filter((o) => o.status !== 'Confirmed').length, assets: dels.length, staleAssets: stale, pendingProposals: active.filter((o) => o.status === 'Proposed').length },
@@ -84,7 +84,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     inputSchema: {
       nodeId: z.string().optional().describe('node id from get_workspace_overview'),
       includeSubtree: z.boolean().optional().describe('default true'),
-      types: z.array(z.enum(['Fact', 'Decision', 'Constraint', 'Asset'])).optional(),
+      types: z.array(z.enum(['Fact', 'Decision', 'Constraint'])).optional(),
       statuses: z.array(z.enum(['Confirmed', 'Proposed', 'Needs Review'])).optional().describe('default: all three'),
       query: z.string().optional().describe('keyword search (BM25) in title and content'),
       limit: z.number().int().min(1).max(200).optional(),
@@ -216,7 +216,7 @@ export function buildMcpServer(c: McpContext): McpServer {
   });
 
   const assetView = (d: GeneratedDeliverable, objects: ContextObject[]) => {
-    const reasons = can(plan(), 'changeImpact') ? staleReasonsOf(d, objects) : [];
+    const reasons = can(plan(), 'changeImpact') ? (repo.computeStale(scope, [d])[0]?.reasons ?? []) : [];
     return { id: d.id, title: d.title, workstreamId: d.workstreamId, deliverableId: d.deliverableId, createdAt: d.createdAt, source: d.source ?? null, stale: reasons.length > 0, staleReasons: reasons.map((r) => r.message) };
   };
 
@@ -248,6 +248,25 @@ export function buildMcpServer(c: McpContext): McpServer {
     return reply(`# ${d.title}\n${v.stale ? `⚠ قدیمی: ${v.staleReasons.join('؛ ')}\n` : ''}\n${d.content}`, { ...v, content: d.content, usedContext: lineage });
   });
 
+  // ── change log (read-only; reasons are for the user and are not returned) ──
+  server.registerTool('get_changes', {
+    title: 'تغییرها',
+    description: 'Read-only. What happened to Context objects: created / edited / status changes / replaced… with who did it (user, an AI, import) and when. Filter by objectId and/or since (ISO date). The user\'s written reasons are NOT included.',
+    inputSchema: { objectId: z.string().optional(), since: z.string().optional(), limit: z.number().int().min(1).max(200).optional() },
+  }, async (a) => {
+    const since = a.since && !Number.isNaN(Date.parse(a.since)) ? new Date(a.since).toISOString() : undefined;
+    if (a.since && !since) return fail('since باید تاریخ ISO معتبر باشد.');
+    const nodes = repo.listNodes(scope);
+    const byId = new Map(repo.listObjects(scope).map((o) => [o.id, o]));
+    const all = repo.listChanges(scope, { objectId: a.objectId, since });
+    const items = all.slice(-(a.limit ?? 50)).map((ch) => {
+      const o = byId.get(ch.objectId);
+      return { id: ch.id, at: ch.at, kind: ch.kind, actor: ch.actor, ...(ch.actorLabel ? { actorLabel: ch.actorLabel } : {}), objectId: ch.objectId, title: o?.title ?? null, nodePath: o ? pathOf(nodes, o.nodeId) : null, fromVersion: ch.fromVersion, toVersion: ch.toVersion, hasReason: !!ch.reason, ...(ch.before ? { before: ch.before } : {}), ...(ch.after ? { after: ch.after } : {}) };
+    });
+    const md = items.length ? `## ${items.length} تغییر\n${items.map((i) => `- ${i.at.slice(0, 16).replace('T', ' ')} · ${i.kind} · ${i.actor}${i.actorLabel ? ` (${i.actorLabel})` : ''} · ${i.title ?? i.objectId} (v${i.fromVersion}→v${i.toVersion})`).join('\n')}` : 'تغییری ثبت نشده است.';
+    return reply(md, { count: items.length, changes: items });
+  });
+
   // ── impact ────────────────────────────────────────────────────────────
   server.registerTool('check_impact', {
     title: 'اثر تغییر',
@@ -257,7 +276,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     if (!can(plan(), 'changeImpact')) return fail('موتور اثر تغییر در این پلن فعال نیست.');
     const dels = repo.listDeliverables(scope).filter((d) => !a.assetId || d.id === a.assetId);
     if (a.assetId && !dels.length) return fail(`دارایی «${a.assetId}» پیدا نشد.`);
-    const stale = computeStaleAssets(dels, repo.listObjects(scope));
+    const stale = repo.computeStale(scope, dels);
     const items = stale.map((s) => ({ assetId: s.deliverableId, title: dels.find((d) => d.id === s.deliverableId)?.title ?? s.deliverableId, reasons: s.reasons.map((r) => ({ message: r.message, objectId: r.objectId, kind: r.kind, usedVersion: r.usedVersion, currentVersion: r.currentVersion ?? null })) }));
     const md = items.length ? `## ${items.length} دارایی قدیمی شده\n${items.map((i) => `- **${i.title}** (\`${i.assetId}\`): ${i.reasons.map((r) => r.message).join('؛ ')}`).join('\n')}\n\nبازسازی در Mabda یا با خواندن Context تازه و save_asset دوباره.` : 'هیچ دارایی‌ای قدیمی نشده است.';
     return reply(md, { checked: dels.length, staleCount: items.length, stale: items });

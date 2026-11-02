@@ -102,7 +102,7 @@ export const dataApi = {
     call<{ object: ContextObject }>('POST', `${ws(id)}/objects`, input),
   updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>>) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
-  supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string }) =>
+  supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; reason?: string }) =>
     call<{ object: ContextObject; previous: ContextObject; impact: ImpactInfo; relationships: ContextRelationship[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/supersede`, input),
 
   objectVersions: (id: string, objectId: string) => call<{ versions: Array<{ version: number; type: string; title: string; content: string; createdAt: string }> }>('GET', `${ws(id)}/objects/${objectId}/versions`).then((r) => r.versions),
@@ -110,6 +110,7 @@ export const dataApi = {
   createNote: (id: string, nodeId: string, content: string) => call<{ note: Note }>('POST', `${ws(id)}/notes`, { nodeId, content }),
   updateNote: (id: string, noteId: string, content: string) => call<{ note: Note }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
   deleteNote: (id: string, noteId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/notes/${noteId}`),
+  extractDeliverable: (id: string, deliverableId: string) => call<{ created: ContextObject[]; found: number; skipped: number; ledger: LedgerEntry[] }>('POST', `${ws(id)}/deliverables/${deliverableId}/extract`, {}),
   extractNote: (id: string, noteId: string) => call<{ created: ContextObject[]; ledger: LedgerEntry; usage: UsageSummary }>('POST', `${ws(id)}/notes/${noteId}/extract`, {}),
 
   saveDeliverable: (id: string, d: GeneratedDeliverable) => call<{ deliverable: GeneratedDeliverable; stale: StaleAsset[] }>('PUT', `${ws(id)}/deliverables/${d.id}`, d),
@@ -122,6 +123,9 @@ export const dataApi = {
   judgeContradictions: (id: string) => call<{ pairJudgments: WorkspaceState['pairJudgments']; ledger: LedgerEntry[]; judged: number; limited: boolean }>('POST', `${ws(id)}/contradictions/judge`, {}),
   resolveContradiction: (id: string, input: { aId: string; bId: string; action: 'keep'; keepId: string } | { aId: string; bId: string; action: 'separate'; moveId: string; nodeId: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; pairJudgments: WorkspaceState['pairJudgments']; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/contradictions/resolve`, input),
+  changeLog: (id: string, f: { objectId?: string } = {}) => call<{ changes: import('../types').ContextChange[] }>('GET', `${ws(id)}/changes/log${f.objectId ? `?objectId=${encodeURIComponent(f.objectId)}` : ''}`),
+  setDependencies: (id: string, objectId: string, dependsOn: string[]) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('PUT', `${ws(id)}/objects/${objectId}/dependencies`, { dependsOn }),
+  acceptReview: (id: string, objectId: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/review-accept`, {}),
   changes: (id: string, days = 7) => call<{ days: number; versions: import('../core/changeFeed').VersionRow[] }>('GET', `${ws(id)}/changes?days=${days}`),
   importMemory: (id: string, input: { text: string; sourceLabel: string }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
   threadTurn: (id: string, nodeId: string, input: { message: string; history: Array<{ role: string; content: string }> }) =>

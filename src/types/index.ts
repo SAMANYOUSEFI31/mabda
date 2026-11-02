@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ContextType = 'Fact' | 'Decision' | 'Constraint' | 'Asset';
+export type ContextType = 'Fact' | 'Decision' | 'Constraint';
 export type ContextStatus = 'Confirmed' | 'Proposed' | 'Needs Review' | 'Superseded' | 'Archived';
 export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported';
 
 /** Where a suggestion came from — shown in the proposals inbox (which AI, when). */
 export interface ObjectSource {
-  kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user';
+  kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user' | 'asset';
   /** MCP token label («Claude»), file name, … */
   label?: string;
   /** why the AI suggested it (shown in the inbox) */
@@ -50,6 +50,29 @@ export interface ContextRelationship {
   targetId: string;
   type: RelationshipType;
   createdAt: string;
+}
+
+export type ContextChangeKind =
+  | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted';
+export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
+
+/** One append-only record of what happened to a Context object. `reason` is for people only: it is never injected into a model prompt. */
+export interface ContextChange {
+  id: string;
+  workspaceId: string;
+  objectId: string;
+  fromVersion: number;
+  toVersion: number;
+  kind: ContextChangeKind;
+  actor: ContextChangeActor;
+  /** e.g. the MCP token's name («Claude»), the file name */
+  actorLabel?: string;
+  reason?: string;
+  /** only the fields that changed */
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  at: string;
 }
 
 export interface TreeNode {
@@ -290,7 +313,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread' | 'asset_extract';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;
