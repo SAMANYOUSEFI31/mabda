@@ -84,14 +84,15 @@ try {
 
     step(`[${width}] map, board, history`);
     await nav('منبع حقیقت', 'منبع');
-    await radio('نقشه'); await page.waitForTimeout(400);
-    await page.getByRole('application', { name: /نقشه/ }).waitFor();
+    await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
+    const layoutTab = async (n) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${n}$`) }).first().evaluate((x) => x.click()); await page.waitForTimeout(450); };
+    await layoutTab('رابطه‌ها');
+    await page.getByRole('application', { name: /بوم/ }).waitFor();
     await shot('3-map');
-    await radio('بوم'); await page.waitForTimeout(400);
-    await page.getByRole('application', { name: /بوم تصمیم‌ها/ }).waitFor();
-    await page.getByText('ناحیهٔ فکر آزاد').first().waitFor();
-    assert.ok((await page.getByText(/شاید یک اشتراک هدیه/).count()) >= 1);
+    await layoutTab('تابلو');
     await shot('4-board');
+    await layoutTab('آزاد');
+    assert.ok((await page.getByText(/شاید یک اشتراک هدیه/).count()) >= 1);
     await radio('ساختار');
     await page.getByRole('heading', { name: 'اشتراک ماهانه' }).first().waitFor();
     await page.getByText('بستهٔ اشتراک', { exact: true }).first().waitFor().catch(() => {});

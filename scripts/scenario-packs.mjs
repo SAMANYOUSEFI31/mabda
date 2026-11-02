@@ -77,9 +77,12 @@ try {
 
     step(`[${width}] map: grouped by dependency by default; «بُعد» makes swimlanes; colouring by facet shows the name`);
     await nav('منبع حقیقت', 'منبع');
-    await page.locator('[role=radio]').filter({ hasText: /^نقشه$/ }).first().click();
-    await page.getByRole('application', { name: /نقشه/ }).waitFor();
-    await page.locator('[role=radio]').filter({ hasText: /^بُعد$/ }).first().click();
+    await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+    await page.locator('[role=radio]').filter({ hasText: /^تابلو$/ }).first().evaluate((n) => n.click());
+    await page.getByRole('application', { name: /بوم/ }).waitFor();
+    await page.getByRole('button', { name: /^گزینه‌ها/ }).click();
+    await page.locator('[role=group][aria-label] select').nth(1).selectOption('facet', { force: true });
+    await page.keyboard.press('Escape');
     await page.getByText('مشتری ماهانه').first().waitFor();
     await shot('3-map-facet');
     assert.deepEqual(errors, [], 'no page errors');
