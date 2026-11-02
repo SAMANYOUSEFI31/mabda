@@ -47,3 +47,12 @@ test('8000 objects: contradictions and candidate pairs stay fast (they were N²:
   assert.ok(candidatePairs(real, 100000).some((p) => p.key === 'o09001|o09002'));
   assert.ok(unresolvedContradictions(real, []).some((c) => c.itemA.id === 'o09001' && c.itemB.id === 'o09002'));
 });
+
+test('8000 objects spread over a 4-level tree: parent/child pairing (inherits_conflict) stays bounded and fast', () => {
+  const nodes = [{ id: 'r', label: 'r', description: '' }, ...Array.from({ length: 10 }, (_, i) => ({ id: `a${i}`, label: 'a', description: '', parentId: 'r' })), ...Array.from({ length: 40 }, (_, i) => ({ id: `b${i}`, label: 'b', description: '', parentId: `a${i % 10}` })), ...Array.from({ length: 80 }, (_, i) => ({ id: `c${i}`, label: 'c', description: '', parentId: `b${i % 40}` }))];
+  const objs = Array.from({ length: 8000 }, (_, i) => ({ ...obj(i, `مورد ${i} در حوزهٔ ${i % 40}`, `متن مورد ${i}`), nodeId: i % 3 === 0 ? 'r' : i % 3 === 1 ? `b${i % 40}` : `c${i % 80}` }));
+  const t = Date.now();
+  const r = candidatePairs(objs, 10, [], nodes);
+  assert.ok(Date.now() - t < 4000, `candidatePairs with a tree took ${Date.now() - t}ms`);
+  assert.ok(r.length <= 10);
+});

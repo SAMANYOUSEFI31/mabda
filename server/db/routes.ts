@@ -397,7 +397,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const objects = repo.listObjects(s);
     // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
     const only = Array.isArray(body(req).objectIds) ? new Set((body(req).objectIds as unknown[]).map(String)) : null;
-    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s), repo.listNodes(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
     const capped = payer() === 'us';
     const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
     const limited = todo.length > left;

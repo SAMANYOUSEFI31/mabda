@@ -344,7 +344,7 @@ export default function App() {
   const changedSig = (() => {
     if (!data || !canJudge) return '';
     if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) return '';
-    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
+    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships, data.nodes).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
   })();
   useEffect(() => {
     if (!data) { baselineRef.current = null; return; }

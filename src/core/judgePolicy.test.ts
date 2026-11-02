@@ -35,3 +35,12 @@ test('the demo workspace as loaded or freshly reset has no pair due, however man
   const d = buildDemo(new Date('2026-06-10T08:00:00Z'));
   assert.equal(pairsAfterChange(d.objects, [], baselineOf(d.objects), d.relationships).length, 0);
 });
+
+test('an edit of a PARENT-node object makes its inherited pairs due after the change (never at load)', () => {
+  const tree = [{ id: 'business', label: 'b', description: '' }, { id: 'brand', label: 'b2', description: '', parentId: 'business' }];
+  const parent = o('p', { nodeId: 'business', title: 'قیمت اشتراک', content: 'ماهانه با قیمت ثابت', type: 'Constraint' });
+  const child = o('c', { nodeId: 'brand', title: 'قیمت اشتراک', content: 'ماهانه با قیمت شناور' });
+  const base = baselineOf([parent, child]);
+  assert.equal(pairsAfterChange([parent, child], [], base, [], tree).length, 0);
+  assert.deepEqual(pairsAfterChange([{ ...parent, version: 2 }, child], [], base, [], tree).map((x) => x.key), ['c|p']);
+});
