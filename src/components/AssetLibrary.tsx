@@ -70,7 +70,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         onChange={setFilter}
         items={[
           { id: 'all', label: `تمام دارایی‌ها (${formatNumber(deliverables.length)})` },
-          ...(stale.length > 0 ? [{ id: 'stale', label: `قدیمی (${formatNumber(stale.length)})` }] : []),
+          ...(stale.length > 0 ? [{ id: 'stale', label: `نیاز به بازبینی (${formatNumber(stale.length)})` }] : []),
           { id: 'main_positioning', label: 'پایهٔ موقعیت‌یابی' },
           { id: 'instagram_foundation', label: 'اینستاگرام' },
           { id: 'freelance_profile', label: 'پروفایل فریلنسری' },

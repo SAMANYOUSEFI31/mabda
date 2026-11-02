@@ -272,9 +272,9 @@ export class Repo {
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
       // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
-      if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after, source: cur.source });
+      if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after });
       const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance']);
-      if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after, source: cur.source });
+      if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after });
       return next;
     })());
     return { object: value, impact };
@@ -354,7 +354,7 @@ export class Repo {
       this.db.prepare("DELETE FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND type = 'depends_on' AND source_id = ?").run(s.workspaceId, s.userId, objectId);
       const t = now();
       for (const id of want) this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, objectId, id, 'depends_on', t);
-      this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta, before: { dependsOn: have }, after: { dependsOn: want }, source: o.source });
+      this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta, before: { dependsOn: have }, after: { dependsOn: want } });
     })();
     const all = this.listChanges(s, { objectId });
     return { relationships: this.listRelationships(s), change: all[all.length - 1] };
@@ -565,14 +565,6 @@ export class Repo {
     });
   }
 
-  /** version rows of every object that changed since `sinceIso` (plus its earlier versions, so edits can show «before») */
-  listVersionsSince(s: Scope, sinceIso: string): Array<{ objectId: string; version: number; type: string; title: string; content: string; createdAt: string }> {
-    return (this.db.prepare(`SELECT object_id, version, type, title, content, created_at FROM context_object_versions
-      WHERE workspace_id = ? AND user_id = ? AND object_id IN (SELECT object_id FROM context_object_versions WHERE workspace_id = ? AND user_id = ? AND created_at >= ?)
-      ORDER BY object_id, version`).all(s.workspaceId, s.userId, s.workspaceId, s.userId, sinceIso) as Array<Record<string, unknown>>)
-      .map((r) => ({ objectId: r.object_id as string, version: r.version as number, type: r.type as string, title: r.title as string, content: r.content as string, createdAt: r.created_at as string }));
-  }
-
   // ── semantic contradictions: one judgement per exact (object, version) pair + the user's resolution ──
   listPairJudgments(s: Scope): PairJudgment[] {
     return (this.db.prepare('SELECT * FROM contradiction_judgments WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>)
@@ -597,10 +589,10 @@ export class Repo {
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(winnerId, t, loserId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
       this.carryDependencies(s, loserId, winnerId);
-      this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
+      this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: meta?.kind ?? 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
       if (winner.status !== 'Confirmed') {
         this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
-        this.recordChange(s, { objectId: winnerId, fromVersion: winner.version, toVersion: winner.version, kind: statusChangeKind(winner.status, 'Confirmed'), meta, before: { status: winner.status }, after: { status: 'Confirmed' }, source: winner.source });
+        this.recordChange(s, { objectId: winnerId, fromVersion: winner.version, toVersion: winner.version, kind: statusChangeKind(winner.status, 'Confirmed'), meta, before: { status: winner.status }, after: { status: 'Confirmed' } });
       }
       return this.getObject(s, loserId)!;
     })());

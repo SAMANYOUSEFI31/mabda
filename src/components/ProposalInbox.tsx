@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { proposalContext } from '../core/proposalContext';
+import { BeforeAfter } from './BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../types';
-import { Badge, Button, Card, TypeBadge, formatJalaliDate, formatNumber } from '../ui';
+import { Badge, Button, Card, TextField, TypeBadge, formatJalaliDate, formatNumber } from '../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
   mcp: 'AI بیرونی (MCP)', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
@@ -14,9 +16,11 @@ const KIND_FA: Record<ObjectSource['kind'], string> = {
 interface Props {
   objects: ContextObject[];
   nodes: TreeNode[];
-  onAccept: (obj: ContextObject) => void;
+  /** the optional reason goes to the Change log (never into the text) */
+  onAccept: (obj: ContextObject, reason?: string) => void;
+  onReplace: (obj: ContextObject, replacesId: string, reason?: string) => void;
   onEdit: (obj: ContextObject) => void;
-  onReject: (obj: ContextObject) => void;
+  onReject: (obj: ContextObject, reason?: string) => void;
   onOpenImport: () => void;
   onOpenPack: () => void;
   onOpenConnect: () => void;
@@ -24,9 +28,11 @@ interface Props {
 }
 
 /** Everything an AI suggested (MCP client, chat, coach, a file, a note, a pasted answer) waits here. Nothing is a fact until the user confirms it. */
-export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory }) => {
+export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory }) => {
   const pending = objects.filter((o) => o.status === 'Proposed').sort((a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+  const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
+  const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
   const actions = (
     <div className="flex flex-wrap items-center gap-inline-sm">
       <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای AI</Button>
@@ -69,18 +75,57 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onEdi
               </div>
               <span className="body-sm text-text-subtle">{label(o.nodeId)}</span>
             </div>
-            <p className="body-md text-text-default">{o.content}</p>
+            {(() => {
+              const ctx = proposalContext(o, objects);
+              return (
+                <>
+                  <div className="flex flex-col gap-stack-xs">
+                    <span className="label-sm text-text-subtle">تغییر پیشنهادی</span>
+                    {ctx.replaces ? (
+                      <>
+                        <p className="body-sm text-text-default">جای «{ctx.replaces.title}» را می‌گیرد{ctx.replaces.title !== o.title ? ` با عنوان «${o.title}»` : ''}:</p>
+                        <BeforeAfter before={ctx.replaces.content} after={o.content} />
+                      </>
+                    ) : (
+                      <p className="body-md text-text-default">{o.content}</p>
+                    )}
+                  </div>
+                  {!ctx.replaces && ctx.related.length > 0 && (
+                    <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+                      <span className="label-sm text-text-subtle">همین حوالی از قبل ثبت شده؛ ناسازگاری دارند؟</span>
+                      <ul className="flex flex-col gap-stack-xs">
+                        {ctx.related.map((r) => (
+                          <li key={r.id} className="body-sm text-text-default"><span className="label-sm">{r.title}:</span> {r.content.length > 140 ? `${r.content.slice(0, 140)}…` : r.content}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {o.source?.reason && <p className="body-sm text-text-subtle">دلیل پیشنهاد: {o.source.reason}</p>}
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
               <span className="body-sm text-text-subtle">
                 منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `پیشنهاد AI · ${formatJalaliDate(o.createdAt)}`}
               </span>
-              <div className="flex items-center gap-inline-xs">
-                <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o)}>تأیید</Button>
+              <div className="flex flex-wrap items-center gap-inline-xs">
+                {(() => {
+                  const replaces = proposalContext(o, objects).replaces;
+                  return replaces ? (
+                    <>
+                      <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onReplace(o, replaces.id, reasonOf(o.id))}>جایگزین کن</Button>
+                      <Button size="sm" variant="ghost" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید کنار قبلی</Button>
+                    </>
+                  ) : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید</Button>;
+                })()}
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
-                <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o)}>رد</Button>
+                <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o, reasonOf(o.id))}>رد</Button>
+                <Button size="sm" variant="ghost" aria-expanded={reasons[o.id] !== undefined} onClick={() => setReasons((r) => ({ ...r, [o.id]: r[o.id] === undefined ? '' : undefined }))}>دلیل (اختیاری)</Button>
               </div>
             </div>
+            {reasons[o.id] !== undefined && (
+              <TextField label={`دلیل برای «${o.title}»`} hint="در تاریخچهٔ تغییرها ثبت می‌شود، نه در متن." value={reasons[o.id] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.id]: e.target.value }))} />
+            )}
           </li>
         ))}
       </ul>

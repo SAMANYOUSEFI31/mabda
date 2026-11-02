@@ -47,7 +47,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
     { icon: 'Info', label: 'سؤال باز', count: gaps.length, onClick: onOpenStudio, hint: 'برای ساخت خروجی لازم است' },
     { icon: 'TriangleAlert', label: 'تناقض', count: contradictionCount, onClick: onOpenContradictions, hint: 'دو مورد با هم نمی‌خوانند (پایین همین صفحه)' },
     { icon: 'Network', label: 'نیاز به بازبینی', count: reviews.length, onClick: () => document.getElementById('needs-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), hint: 'تصمیمی که به آن وابسته‌ای عوض شده' },
-    { icon: 'RefreshCw', label: 'خروجی قدیمی', count: staleCount, onClick: onOpenAssets, hint: 'دانش عوض شده و خروجی هنوز قدیمی است' },
+    { icon: 'RefreshCw', label: 'خروجی نیاز به بازبینی', count: staleCount, onClick: onOpenAssets, hint: 'دانش عوض شده و خروجی هنوز با نسخهٔ قبل ساخته شده است' },
     { icon: 'Inbox', label: 'پیشنهاد AI', count: proposedCount, onClick: onOpenProposals, hint: 'منتظر تأیید تو' },
   ];
 
@@ -59,7 +59,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
           <Badge intent={total ? 'warning' : 'success'} icon={false}>{total ? `${formatNumber(total)} مورد` : 'همه‌چیز هماهنگ است'}</Badge>
         </div>
         <p className="body-sm text-text-subtle">
-          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم وارد منبع حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی قدیمی‌ای وجود ندارد.'}
+          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم وارد منبع حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}
         </p>
       </div>
 

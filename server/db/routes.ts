@@ -108,6 +108,16 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const since = typeof req.query.since === 'string' && !Number.isNaN(Date.parse(req.query.since)) ? new Date(req.query.since).toISOString() : undefined;
     res.json({ changes: repo.listChanges(scopeOf(req), { objectId: typeof req.query.objectId === 'string' ? req.query.objectId : undefined, since }) });
   }));
+  /** accept a proposal AND replace an existing object with it (the old one becomes Superseded, never deleted) */
+  router.post('/workspaces/:wid/objects/:id/replace', wrap((req, res) => {
+    const s = scopeOf(req);
+    const winner = repo.getObject(s, req.params.id);
+    if (!winner) throw new RepoError('not_found', 'Context پیدا نشد.');
+    if (winner.status !== 'Proposed') throw new RepoError('invalid', 'فقط یک پیشنهاد می‌تواند جای مورد دیگر بنشیند.');
+    const loserId = String(body(req).replacesId ?? '');
+    const r = repo.supersedeBy(s, loserId, winner.id, metaOf(body(req), { kind: 'superseded' }));
+    res.json({ objects: repo.listObjects(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), stale: stale(s), impact: r.impact });
+  }));
   router.put('/workspaces/:wid/objects/:id/dependencies', wrap((req, res) => {
     const s = scopeOf(req);
     const list = Array.isArray(body(req).dependsOn) ? (body(req).dependsOn as unknown[]).filter((x): x is string => typeof x === 'string') : null;
@@ -187,14 +197,6 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
     res.json({ judgments: repo.listJudgments(s), ledger: repo.listLedger(s), limited });
-  }));
-
-  // ── «چه چیزی عوض شد»: version rows of the window; core/changeFeed turns them into events ──
-  router.get('/workspaces/:wid/changes', wrap((req, res) => {
-    const s = scopeOf(req);
-    const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
-    const since = new Date(clock().getTime() - days * 86_400_000).toISOString();
-    res.json({ days, versions: repo.listVersionsSince(s, since) });
   }));
 
   // ── memory of another AI (ChatGPT / Claude / any text) → PROPOSED objects, each with a verified quote ──

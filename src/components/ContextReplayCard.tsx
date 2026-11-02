@@ -59,7 +59,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           <div className="flex flex-wrap items-center gap-inline-sm">
             <h3 className="title text-text-default">{deliverable.title}</h3>
             <ModeBadge value={deliverable.executionMode} />
-            {stale && <Badge intent="warning" icon="TriangleAlert">قدیمی</Badge>}
+            {stale && <Badge intent="warning" icon="TriangleAlert">نیاز به بازبینی</Badge>}
             {deliverable.rebuildCount > 0 && (
               <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>
             )}
@@ -90,7 +90,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       {stale && (
         <Alert
           intent="warning"
-          title="این دارایی قدیمی شده است"
+          title="این دارایی نیاز به بازبینی دارد"
           action={
             canRebuild ? (
               <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>

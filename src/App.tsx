@@ -224,8 +224,8 @@ export default function App() {
     showImpact(r.impact);
   };
 
-  const setStatus = async (id: string, status: ContextObject['status']) => {
-    const r = await attempt(() => dataApi.updateObject(wid, id, { status }));
+  const setStatus = async (id: string, status: ContextObject['status'], reason?: string) => {
+    const r = await attempt(() => dataApi.updateObject(wid, id, { status, ...(reason ? { reason } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
     return r.impact;
@@ -495,11 +495,19 @@ export default function App() {
     if (out.length) patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
   };
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
-  const handleAcceptProposal = async (o: ContextObject) => {
-    const impact = await setStatus(o.id, 'Confirmed');
+  const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
+    const impact = await setStatus(o.id, 'Confirmed', reason);
     if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است.` }); }
   };
-  const handleRejectProposal = async (o: ContextObject) => { await setStatus(o.id, 'Archived'); };
+  const handleRejectProposal = async (o: ContextObject, reason?: string) => { await setStatus(o.id, 'Archived', reason); };
+  /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
+  const handleReplaceWithProposal = async (o: ContextObject, replacesId: string, reason?: string) => {
+    const r = await attempt(() => dataApi.replaceWith(wid, o.id, { replacesId, ...(reason ? { reason } : {}) }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: `«${o.title}» جای مورد قبلی نشست؛ قبلی در تاریخچه می‌ماند.` });
+  };
   /** a block of a pasted answer → a PROPOSED object (never Confirmed) */
   const handleProposeFromImport = async (p: { type: ContextObject['type']; title: string; content: string; nodeId: string; source: NonNullable<ContextObject['source']> }) => {
     const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId, source: p.source }));
@@ -626,7 +634,7 @@ export default function App() {
               onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
 
-            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} workspaceId={wid} objects={workspaceContexts} deliverables={deliverables} onOpenAssets={() => setActiveTab('assets')} />}
+            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
             <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
 
@@ -634,6 +642,7 @@ export default function App() {
               objects={workspaceContexts}
               nodes={nodes}
               onAccept={handleAcceptProposal}
+              onReplace={handleReplaceWithProposal}
               onEdit={(o) => openContext(o)}
               onReject={handleRejectProposal}
               onOpenImport={() => setIsImportOpen(true)}
