@@ -508,3 +508,23 @@ test('an output is not Context: «پیشنهاد دانش از این خروجی
     assert.equal((await t.call('POST', '/workspaces/ws_studio/deliverables/ghost/extract', {})).status, 404);
   } finally { t.close(); }
 });
+
+test('replacement reason goes to the Change log, not into the object text; review-accept writes a Change; state carries the log', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/supersede', { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'مخاطب اصلی', content: 'متن تازه', nodeId: 'business', reason: 'بازخورد مشتری‌ها' });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.object.content, 'متن تازه');
+    const st = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    const sup = st.changes.find((c: any) => c.objectId === 'ctx_audience' && c.kind === 'superseded');
+    assert.equal(sup.reason, 'بازخورد مشتری‌ها');
+    assert.equal(sup.actor, 'user');
+    assert.ok(!st.objects.some((o: any) => o.content.includes('دلیل جایگزینی')));
+    const acc = await t.call('POST', `/workspaces/ws_studio/objects/${r.json.object.id}/review-accept`, {});
+    assert.equal(acc.json.change.kind, 'review_accepted');
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/objects/ghost/review-accept', {})).status, 404);
+    const log = (await t.call('GET', `/workspaces/ws_studio/changes/log?objectId=${r.json.object.id}`)).json.changes;
+    assert.deepEqual(log.map((c: any) => c.kind), ['created', 'review_accepted']);
+  } finally { t.close(); }
+});

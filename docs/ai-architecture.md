@@ -58,7 +58,7 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## اتصال AI بیرونی: MCP و بستهٔ Context
 
-- **MCP** (`server/mcp/`): Streamable HTTP روی `/mcp`، stateless؛ هر درخواست یک `McpServer` به‌اندازهٔ scope توکن می‌سازد (توکن شخصی هر Workspace، فقط hash در `mcp_tokens`). هشت ابزار در `tools.ts`؛ `propose_context_updates` وضعیت را در کد روی `Proposed` ثابت می‌کند (آنچه کلاینت بفرستد نادیده است) و `source` (کدام AI، چه وقت، چرا) را ثبت می‌کند.
+- **MCP** (`server/mcp/`): Streamable HTTP روی `/mcp`، stateless؛ هر درخواست یک `McpServer` به‌اندازهٔ scope توکن می‌سازد (توکن شخصی هر Workspace، فقط hash در `mcp_tokens`). نه ابزار (هشت ابزار اصلی + `get_changes` فقط‌خواندنی) در `tools.ts`؛ `propose_context_updates` وضعیت را در کد روی `Proposed` ثابت می‌کند (آنچه کلاینت بفرستد نادیده است) و `source` (کدام AI، چه وقت، چرا) را ثبت می‌کند.
 - **صندوق پیشنهادها** = همهٔ Objectهای `Proposed` با `source`؛ تأیید = تغییر وضعیت به Confirmed (تنها راه تبدیل پیشنهاد AI به واقعیت)، رد = Archived.
 - **بستهٔ Context** (`src/core/contextPack.ts`): Markdown فشرده؛ سرور می‌سازد و `context_packs` را با refs (id+version) ذخیره می‌کند تا پاسخ چسبانده‌شده اصالت داشته باشد. نشانگر `<!-- mabda-pack:ID -->` بالای بسته است.
 - **وارد کردن پاسخ** (`src/core/answerParser.ts`): اول سرتیترهای سطح دو (رایگان)، بعد `AiService.parseExternal` (cheap)، بعد یک بلوک خام؛ هرگز ساختار ساختگی.

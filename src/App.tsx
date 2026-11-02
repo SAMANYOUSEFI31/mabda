@@ -194,8 +194,8 @@ export default function App() {
     return out;
   };
 
-  const handleSupersedeContext = async (oldId: string, input: ContextDraft) => {
-    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId }));
+  const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}) }));
     if (!r) return;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
     showImpact(r.impact);

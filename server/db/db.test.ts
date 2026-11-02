@@ -213,3 +213,70 @@ test('migration 8: old Asset objects become Fact (provenance, version, history k
   assert.throws(() => repo.createObject(s, { type: 'Asset' as never, provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' }), RepoError);
   assert.throws(() => repo.updateObject(s, 'a1', { type: 'Asset' as never }), RepoError);
 });
+
+test('every mutation path writes a Change in its transaction: created / edited / status / moved / superseded / resolved / review; actor follows the source', () => {
+  const { repo, s } = fresh();
+  const kinds = (id: string) => repo.listChanges(s, { objectId: id }).map((c) => c.kind);
+  const a = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'پنج', nodeId: 'business' });
+  assert.deepEqual(kinds(a.id), ['created']);
+  const p = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'AI Suggested', title: 'پیشنهاد', content: 'x', nodeId: 'business', source: { kind: 'mcp', label: 'Claude', at: 't' } });
+  const first = repo.listChanges(s, { objectId: p.id })[0];
+  assert.deepEqual([first.actor, first.actorLabel, first.kind], ['mcp', 'Claude', 'created']);
+  const imp = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'Imported', title: 'حافظه', content: 'x', nodeId: 'business', source: { kind: 'paste', label: 'حافظهٔ ChatGPT', at: 't' } });
+  assert.deepEqual(kinds(imp.id), ['imported']);
+
+  repo.updateObject(s, a.id, { content: 'شش' });
+  const edit = repo.listChanges(s, { objectId: a.id }).at(-1)!;
+  assert.deepEqual([edit.kind, edit.fromVersion, edit.toVersion, edit.before, edit.after], ['edited', 1, 2, { content: 'پنج' }, { content: 'شش' }], 'only the changed field, with versions');
+  repo.updateObject(s, a.id, { title: 'قیمت' });
+  assert.equal(repo.listChanges(s, { objectId: a.id }).length, 2, 'a no-op patch writes nothing');
+
+  repo.updateObject(s, p.id, { status: 'Confirmed' });
+  repo.updateObject(s, imp.id, { status: 'Archived' });
+  assert.equal(repo.listChanges(s, { objectId: p.id }).at(-1)!.kind, 'proposal_accepted');
+  assert.equal(repo.listChanges(s, { objectId: imp.id }).at(-1)!.kind, 'proposal_rejected');
+  repo.updateObject(s, a.id, { status: 'Needs Review', nodeId: 'offer' });
+  assert.deepEqual(kinds(a.id).slice(-2), ['status_changed', 'edited'], 'status and move are two separate records');
+
+  const sup = repo.supersedeObject(s, a.id, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'هفت', nodeId: 'business' }, { reason: 'بودجه عوض شد' });
+  assert.equal(kinds(a.id).at(-1), 'superseded');
+  assert.equal(repo.listChanges(s, { objectId: a.id }).at(-1)!.reason, 'بودجه عوض شد');
+  assert.equal(sup.object.content, 'هفت', 'the reason never enters the object text');
+  assert.equal(repo.listChanges(s, { objectId: sup.object.id })[0].reason, undefined);
+
+  const b = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت دیگر', content: 'هشت', nodeId: 'business' });
+  repo.supersedeBy(s, b.id, sup.object.id);
+  assert.equal(kinds(b.id).at(-1), 'contradiction_resolved');
+
+  const r = repo.acceptReview(s, sup.object.id);
+  assert.deepEqual([r.kind, r.actor, r.fromVersion, r.toVersion], ['review_accepted', 'user', sup.object.version, sup.object.version]);
+  assert.throws(() => repo.acceptReview(s, 'nope'), RepoError);
+  assert.ok(repo.listChanges(s, { since: '2999-01-01T00:00:00Z' }).length === 0, 'since filter');
+});
+
+test('migration 9: change log rebuilt from versions; the reason glued to the text moves to the Change (and the text is clean everywhere)', () => {
+  const db = new Database(':memory:');
+  migrate(db, 8);
+  const ins = (id: string, version: number, content: string, status = 'Confirmed') => db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id, U, 'w1', 'Decision', status, 'User Input', 'قیمت', content, 'business', '2026-01-02T00:00:00Z', '2026-01-02T00:00:00Z', version);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  const snap = (id: string, v: number, content: string, at: string) => db.prepare('INSERT OR REPLACE INTO context_object_versions (object_id,version,user_id,workspace_id,type,title,content,created_at) VALUES (?,?,?,?,?,?,?,?)').run(id, v, U, 'w1', 'Decision', 'قیمت', content, at);
+  ins('old', 2, 'پنج', 'Superseded'); snap('old', 1, 'چهار', '2026-01-01T00:00:00Z'); snap('old', 2, 'پنج', '2026-01-02T00:00:00Z');
+  ins('new', 3, 'شش\n\n[دلیل جایگزینی: بودجه [سالانه]\nکم شد]'); snap('new', 3, 'شش\n\n[دلیل جایگزینی: بودجه [سالانه]\nکم شد]', '2026-01-03T00:00:00Z');
+  db.prepare("INSERT INTO context_relationships (id,user_id,workspace_id,source_id,target_id,type,created_at) VALUES ('r1',?,?,?,?,'supersedes','2026-01-03T00:00:00Z')").run(U, 'w1', 'new', 'old');
+  ins('plain', 1, 'متن [دلیل جایگزینی: در وسط] ادامه'); snap('plain', 1, 'متن [دلیل جایگزینی: در وسط] ادامه', '2026-01-04T00:00:00Z');
+  ins('arch', 1, 'x', 'Archived'); snap('arch', 1, 'x', '2026-01-01T00:00:00Z');
+
+  assert.deepEqual(migrate(db, 9), [9]);
+  const repo = new Repo(db); const s = { userId: U, workspaceId: 'w1' };
+  assert.equal(repo.getObject(s, 'new')!.content, 'شش', 'object text is clean');
+  assert.equal(repo.listVersions(s, 'new')[0].content, 'شش', 'and so is its history');
+  assert.equal(repo.getObject(s, 'plain')!.content, 'متن [دلیل جایگزینی: در وسط] ادامه', 'a bracket in the middle is not a reason');
+  const old = repo.listChanges(s, { objectId: 'old' });
+  assert.deepEqual(old.map((c) => c.kind), ['created', 'edited', 'superseded']);
+  assert.deepEqual([old[1].fromVersion, old[1].toVersion, old[1].before, old[1].after], [1, 2, { content: 'چهار' }, { content: 'پنج' }]);
+  assert.equal(old[2].reason, 'بودجه [سالانه]\nکم شد');
+  assert.deepEqual([old[2].fromVersion, old[2].toVersion], [2, 3]);
+  assert.deepEqual(repo.listChanges(s, { objectId: 'new' }).map((c) => [c.kind, c.reason]), [['created', undefined]], 'the reason sits on the replaced object, not twice');
+  assert.deepEqual(repo.listChanges(s, { objectId: 'arch' }).map((c) => c.kind), ['created', 'archived']);
+  assert.ok(repo.listChanges(s).every((c) => c.actor === 'system'));
+});

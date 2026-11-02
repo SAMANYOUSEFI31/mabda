@@ -23,6 +23,7 @@ Mabda is the user's business source of truth. Work from it with these rules:
 ۴. هر تصمیم، واقعیت یا محدودیت تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده؛ اگر پیشنهاد یکی از شکاف‌های get_gaps را پر می‌کند، slotKey را برابر key همان شکاف بگذار. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
 ۵. وقتی خروجی ساختی، با save_asset ذخیره‌اش کن و در usedContext دقیقاً شناسه و نسخهٔ Contextهایی را بده که خواندی (اصالت و تشخیص «قدیمی‌شدن» به همین بسته است).
 ۶. وقتی کاربر Context را تغییر داد، check_impact را بزن و بگو کدام دارایی‌ها قدیمی شده‌اند.
+۷. get_changes (فقط‌خواندنی): ببین از فلان زمان چه کسی چه چیزی را عوض کرده؛ دلیل‌های ثبت‌شده برای کاربر است و در خروجی نمی‌آید.
 گاردریل‌ها (Constraintهای Confirmed و گاردریل‌های spec) را رعایت کن.`;
 
 type Json = Record<string, unknown>;
@@ -246,6 +247,25 @@ export function buildMcpServer(c: McpContext): McpServer {
     const lineage = (d.usedContext ?? []).map((u) => ({ id: u.id, version: u.version, title: byId.get(u.id)?.title ?? null, currentVersion: byId.get(u.id)?.version ?? null, changed: (byId.get(u.id)?.version ?? 0) !== u.version }));
     const v = assetView(d, objects);
     return reply(`# ${d.title}\n${v.stale ? `⚠ قدیمی: ${v.staleReasons.join('؛ ')}\n` : ''}\n${d.content}`, { ...v, content: d.content, usedContext: lineage });
+  });
+
+  // ── change log (read-only; reasons are for the user and are not returned) ──
+  server.registerTool('get_changes', {
+    title: 'تغییرها',
+    description: 'Read-only. What happened to Context objects: created / edited / status changes / replaced… with who did it (user, an AI, import) and when. Filter by objectId and/or since (ISO date). The user\'s written reasons are NOT included.',
+    inputSchema: { objectId: z.string().optional(), since: z.string().optional(), limit: z.number().int().min(1).max(200).optional() },
+  }, async (a) => {
+    const since = a.since && !Number.isNaN(Date.parse(a.since)) ? new Date(a.since).toISOString() : undefined;
+    if (a.since && !since) return fail('since باید تاریخ ISO معتبر باشد.');
+    const nodes = repo.listNodes(scope);
+    const byId = new Map(repo.listObjects(scope).map((o) => [o.id, o]));
+    const all = repo.listChanges(scope, { objectId: a.objectId, since });
+    const items = all.slice(-(a.limit ?? 50)).map((ch) => {
+      const o = byId.get(ch.objectId);
+      return { id: ch.id, at: ch.at, kind: ch.kind, actor: ch.actor, ...(ch.actorLabel ? { actorLabel: ch.actorLabel } : {}), objectId: ch.objectId, title: o?.title ?? null, nodePath: o ? pathOf(nodes, o.nodeId) : null, fromVersion: ch.fromVersion, toVersion: ch.toVersion, hasReason: !!ch.reason, ...(ch.before ? { before: ch.before } : {}), ...(ch.after ? { after: ch.after } : {}) };
+    });
+    const md = items.length ? `## ${items.length} تغییر\n${items.map((i) => `- ${i.at.slice(0, 16).replace('T', ' ')} · ${i.kind} · ${i.actor}${i.actorLabel ? ` (${i.actorLabel})` : ''} · ${i.title ?? i.objectId} (v${i.fromVersion}→v${i.toVersion})`).join('\n')}` : 'تغییری ثبت نشده است.';
+    return reply(md, { count: items.length, changes: items });
   });
 
   // ── impact ────────────────────────────────────────────────────────────

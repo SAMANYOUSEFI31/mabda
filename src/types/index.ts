@@ -52,6 +52,29 @@ export interface ContextRelationship {
   createdAt: string;
 }
 
+export type ContextChangeKind =
+  | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted';
+export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
+
+/** One append-only record of what happened to a Context object. `reason` is for people only: it is never injected into a model prompt. */
+export interface ContextChange {
+  id: string;
+  workspaceId: string;
+  objectId: string;
+  fromVersion: number;
+  toVersion: number;
+  kind: ContextChangeKind;
+  actor: ContextChangeActor;
+  /** e.g. the MCP token's name («Claude»), the file name */
+  actorLabel?: string;
+  reason?: string;
+  /** only the fields that changed */
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  at: string;
+}
+
 export interface TreeNode {
   id: string;
   label: string;

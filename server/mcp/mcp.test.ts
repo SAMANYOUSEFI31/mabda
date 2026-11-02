@@ -38,7 +38,7 @@ test('server instructions tell the AI the rules; all tools are listed', async ()
     const tok = await t.token();
     const c = await t.connect(tok.token);
     const tools = (await c.listTools()).tools.map((x) => x.name).sort();
-    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_context', 'get_gaps', 'get_readiness', 'get_workspace_overview', 'list_assets', 'propose_context_updates', 'save_asset']);
+    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_readiness', 'get_workspace_overview', 'list_assets', 'propose_context_updates', 'save_asset']);
     const ins = c.getInstructions() ?? '';
     assert.match(ins, /get_gaps/);
     assert.match(ins, /propose_context_updates/);
@@ -213,6 +213,26 @@ test('propose_context_updates with slotKey fills the Gap once confirmed (Propose
     assert.equal(after.data.gaps.some((g: any) => g.key === gap.key), false, '… and once the user confirms it the gap is closed');
     const ctx = await t.call(c, 'get_context', { statuses: ['Confirmed'] });
     assert.equal(ctx.data.facts.find((f: any) => f.id === mine.id).slotKey, gap.key);
+    await c.close();
+  } finally { t.close(); }
+});
+
+test('get_changes: read-only, filterable, shows who did it but never the written reason', async () => {
+  const t = await boot();
+  try {
+    const tok = await t.token();
+    const c = await t.connect(tok.token);
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const before = await t.call(c, 'get_changes', {});
+    const o = t.repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'پنج', nodeId: 'business' });
+    t.repo.supersedeObject(s, o.id, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'شش', nodeId: 'business' }, { reason: 'راز: بودجه کم شد' });
+    const r = await t.call(c, 'get_changes', { objectId: o.id });
+    assert.deepEqual(r.data.changes.map((x: any) => x.kind), ['created', 'superseded']);
+    assert.equal(r.data.changes[1].hasReason, true);
+    assert.ok(!JSON.stringify(r.data).includes('بودجه کم شد') && !r.text.includes('بودجه کم شد'), 'the reason is not returned');
+    assert.ok((await t.call(c, 'get_changes', { since: '2999-01-01' })).data.count === 0);
+    assert.equal((await t.call(c, 'get_changes', { since: 'not a date' })).isError, true);
+    assert.ok(before.data.count >= 0);
     await c.close();
   } finally { t.close(); }
 });

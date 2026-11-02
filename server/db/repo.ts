@@ -2,10 +2,11 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
+import { actorOfSource, diffFields, statusChangeKind } from '../../src/core/changeLog.ts';
 import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
@@ -23,6 +24,9 @@ export class RepoError extends Error {
 export const hashToken = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
 export const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 const now = () => new Date().toISOString();
+
+/** who did it and why — optional on every mutating call; the actor is otherwise inferred from the object's `source` (none = the user) */
+export interface ChangeMeta { actor?: ContextChangeActor; label?: string; reason?: string; kind?: ContextChangeKind }
 
 export interface ImpactResult { count: number; assets: Array<{ id: string; title: string; reasons: string[] }> }
 
@@ -157,6 +161,7 @@ export class Repo {
       const ok = canDelete(nodes, id, objects, notes, transferTo);
       if (!ok.ok) throw new RepoError(ok.reason.includes('سیستمی') ? 'forbidden' : 'invalid', ok.reason);
       if (transferTo) {
+        for (const o of objects.filter((x) => x.nodeId === id)) this.recordChange(s, { objectId: o.id, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta: { actor: 'user', reason: 'حذف گره؛ محتوا منتقل شد' }, before: { nodeId: id }, after: { nodeId: transferTo } });
         this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
@@ -213,7 +218,7 @@ export class Repo {
     return { count: list.length, assets: list.map((a) => ({ id: a.deliverableId, title: dels.find((d) => d.id === a.deliverableId)?.title ?? a.deliverableId, reasons: a.reasons.map((r) => r.message) })) };
   }
 
-  createObject(s: Scope, input: ObjectInput & { id?: string }): ContextObject {
+  createObject(s: Scope, input: ObjectInput & { id?: string }, meta?: ChangeMeta): ContextObject {
     this.assertWorkspace(s);
     this.requireNode(s, input.nodeId);
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
@@ -222,7 +227,10 @@ export class Repo {
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), createdAt: t, updatedAt: t };
-    this.db.transaction(() => this.insertObject(s, o))();
+    this.db.transaction(() => {
+      this.insertObject(s, o);
+      this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: 1, kind: o.provenance === 'Imported' ? 'imported' : 'created', meta, after: { type: o.type, title: o.title, nodeId: o.nodeId, status: o.status }, source: o.source });
+    })();
     return o;
   }
 
@@ -234,6 +242,7 @@ export class Repo {
     this.db.transaction(() => {
       if (this.db.prepare('SELECT 1 FROM context_objects WHERE id = ?').get(o.id)) return;
       this.insertObject(s, { ...o, type, nodeId: node, version: o.version ?? 1 });
+      this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: o.version ?? 1, kind: 'created', meta: { actor: 'system', label: 'ورود داده‌های قدیمی' }, at: o.createdAt, after: { type, title: o.title, nodeId: node, status: o.status } });
     })();
   }
 
@@ -243,7 +252,7 @@ export class Repo {
   }
 
   /** Edit in place. title / content / type changes bump `version`; status or node moves do not. */
-  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>>): { object: ContextObject; impact: ImpactResult } {
+  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>>, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
     const cur = this.getObject(s, id);
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
@@ -256,13 +265,18 @@ export class Repo {
       this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=? WHERE id=? AND workspace_id=?')
         .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, id, s.workspaceId);
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
+      // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
+      const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
+      if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after, source: cur.source });
+      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance']);
+      if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after, source: cur.source });
       return next;
     })());
     return { object: value, impact };
   }
 
   /** A new object that replaces `oldId`: version = old + 1, relationship `supersedes`, old becomes Superseded (never deleted). */
-  supersedeObject(s: Scope, oldId: string, input: ObjectInput): { object: ContextObject; previous: ContextObject; impact: ImpactResult } {
+  supersedeObject(s: Scope, oldId: string, input: ObjectInput, meta?: ChangeMeta): { object: ContextObject; previous: ContextObject; impact: ImpactResult } {
     const old = this.getObject(s, oldId);
     if (!old) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (old.status === 'Superseded') throw new RepoError('invalid', 'این مورد قبلاً جایگزین شده است.');
@@ -274,9 +288,41 @@ export class Repo {
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(created.id, t, oldId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')
         .run(newId('rel'), s.userId, s.workspaceId, created.id, oldId, 'supersedes', t);
+      this.recordChange(s, { objectId: oldId, fromVersion: old.version, toVersion: created.version, kind: 'superseded', meta, before: { status: old.status }, after: { status: 'Superseded', supersededById: created.id }, source: created.source });
+      this.recordChange(s, { objectId: created.id, fromVersion: old.version, toVersion: created.version, kind: 'created', meta: { ...meta, reason: undefined }, after: { type: created.type, title: created.title, nodeId: created.nodeId, status: created.status, supersedes: oldId }, source: created.source });
       return created;
     })());
     return { object: value, previous: this.getObject(s, oldId)!, impact };
+  }
+
+  // ── Change log (append-only; `reason` is for people and is never injected into a model) ──
+  private recordChange(s: Scope, c: { objectId: string; fromVersion: number; toVersion: number; kind: ContextChangeKind; meta?: ChangeMeta; before?: Record<string, unknown>; after?: Record<string, unknown>; source?: ObjectSource; at?: string }) {
+    const inferred = actorOfSource(c.source);
+    const actor = c.meta?.actor ?? inferred.actor;
+    const label = c.meta?.label ?? (c.meta?.actor ? undefined : inferred.label);
+    this.db.prepare('INSERT INTO context_changes (id,user_id,workspace_id,object_id,from_version,to_version,kind,actor,actor_label,reason,before,after,at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(newId('chg'), s.userId, s.workspaceId, c.objectId, c.fromVersion, c.toVersion, c.kind, actor, label ?? null, c.meta?.reason?.trim() || null, c.before ? JSON.stringify(c.before) : null, c.after ? JSON.stringify(c.after) : null, c.at ?? now());
+  }
+
+  listChanges(s: Scope, f: { objectId?: string; since?: string; limit?: number } = {}): ContextChange[] {
+    const where = ['workspace_id = ?', 'user_id = ?']; const args: unknown[] = [s.workspaceId, s.userId];
+    if (f.objectId) { where.push('object_id = ?'); args.push(f.objectId); }
+    if (f.since) { where.push('at >= ?'); args.push(f.since); }
+    const rows = this.db.prepare(`SELECT * FROM context_changes WHERE ${where.join(' AND ')} ORDER BY at, rowid LIMIT ?`).all(...args, f.limit ?? 5000) as Array<Record<string, unknown>>;
+    return rows.map((r) => ({
+      id: r.id as string, workspaceId: r.workspace_id as string, objectId: r.object_id as string, fromVersion: r.from_version as number, toVersion: r.to_version as number,
+      kind: r.kind as ContextChangeKind, actor: r.actor as ContextChangeActor, ...(r.actor_label ? { actorLabel: r.actor_label as string } : {}), ...(r.reason ? { reason: r.reason as string } : {}),
+      ...(r.before ? { before: JSON.parse(r.before as string) } : {}), ...(r.after ? { after: JSON.parse(r.after as string) } : {}), at: r.at as string,
+    }));
+  }
+
+  /** «بدون تغییر بپذیر»: the user looked at an object whose dependency changed and keeps it as it is. */
+  acceptReview(s: Scope, objectId: string, meta?: ChangeMeta): ContextChange {
+    const o = this.getObject(s, objectId);
+    if (!o) throw new RepoError('not_found', 'Context پیدا نشد.');
+    this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'review_accepted', meta: { actor: 'user', ...meta } });
+    const all = this.listChanges(s, { objectId });
+    return all[all.length - 1];
   }
 
   listRelationships(s: Scope): ContextRelationship[] {
@@ -490,7 +536,7 @@ export class Repo {
   }
 
   /** «keep» — the other object becomes Superseded by the kept one (never deleted); the history stays. */
-  supersedeBy(s: Scope, loserId: string, winnerId: string): { loser: ContextObject; impact: ImpactResult } {
+  supersedeBy(s: Scope, loserId: string, winnerId: string, meta?: ChangeMeta): { loser: ContextObject; impact: ImpactResult } {
     const loser = this.getObject(s, loserId);
     const winner = this.getObject(s, winnerId);
     if (!loser || !winner) throw new RepoError('not_found', 'Context پیدا نشد.');
@@ -499,7 +545,11 @@ export class Repo {
       const t = now();
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(winnerId, t, loserId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
-      if (winner.status !== 'Confirmed') this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
+      this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
+      if (winner.status !== 'Confirmed') {
+        this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
+        this.recordChange(s, { objectId: winnerId, fromVersion: winner.version, toVersion: winner.version, kind: statusChangeKind(winner.status, 'Confirmed'), meta, before: { status: winner.status }, after: { status: 'Confirmed' }, source: winner.source });
+      }
       return this.getObject(s, loserId)!;
     })());
     return { loser: value, impact };
@@ -563,6 +613,7 @@ export class Repo {
       stale: this.impactEnabled(s) ? computeStaleAssets(deliverables, objects) : [],
       judgments: this.listJudgments(s),
       pairJudgments: this.listPairJudgments(s),
+      changes: this.listChanges(s),
     };
   }
 

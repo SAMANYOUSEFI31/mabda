@@ -6,6 +6,8 @@
 import React, { useEffect, useState } from 'react';
 import { ContextDraft, ContextObject, ContextProvenance, ContextStatus, ContextType, TreeNode } from '../types';
 import { flatten } from '../core/nodeTree';
+import { ACTOR_FA, CHANGE_KIND_FA } from '../core/changeLog';
+import type { ContextChange } from '../types';
 import { dataApi } from '../services/dataApi';
 import { Badge, Button, Card, Dialog, Markdown, SegmentedControl, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
@@ -14,7 +16,8 @@ interface ContextDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (saved: ContextDraft) => void;
-  onSupersede: (oldId: string, newObj: ContextDraft) => void;
+  /** the reason is stored in the Change log, never in the object's text */
+  onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => void;
   onArchive: (id: string) => void;
   nodes: TreeNode[];
   workspaceId: string;
@@ -71,11 +74,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   );
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const [supersedeReason, setSupersedeReason] = useState('');
-  const [versions, setVersions] = useState<Array<{ version: number; title: string; content: string; createdAt: string }>>([]);
+  const [changes, setChanges] = useState<ContextChange[]>([]);
   useEffect(() => {
     if (!isEditing || !object) return;
     let live = true;
-    dataApi.objectVersions(object.workspaceId, object.id).then((v) => { if (live) setVersions(v); }).catch(() => { /* history is optional */ });
+    dataApi.changeLog(object.workspaceId, { objectId: object.id }).then((r) => { if (live) setChanges(r.changes); }).catch(() => { /* history is optional */ });
     return () => { live = false; };
   }, [isEditing, object]);
 
@@ -90,9 +93,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         status: 'Confirmed',
         provenance: 'User Input',
         title,
-        content: `${content}\n\n[دلیل جایگزینی: ${supersedeReason || 'به‌روزرسانی تصمیم'}]`,
+        content: content.trim(),
         nodeId,
-      });
+      }, supersedeReason.trim() || 'به‌روزرسانی تصمیم');
       onClose();
       return;
     }
@@ -204,10 +207,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               <Badge intent="neutral" icon={false}>نسخهٔ {formatNumber(object.version)}</Badge>
               <span className="caption text-text-subtle">با هر ویرایش عنوان، متن یا نوع، شمارهٔ نسخه بالا می‌رود و دارایی‌هایی که از نسخهٔ قبلی ساخته شده‌اند «قدیمی» می‌شوند.</span>
             </div>
-            {versions.length > 1 && (
-              <ul className="caption flex flex-col gap-stack-xs text-text-subtle" aria-label="تاریخچهٔ نسخه‌ها">
-                {versions.map((v) => (
-                  <li key={v.version}>نسخهٔ {formatNumber(v.version)} · {formatJalaliDate(v.createdAt)} · {v.content.slice(0, 70)}{v.content.length > 70 ? '…' : ''}</li>
+            {changes.length > 0 && (
+              <ul className="body-sm flex flex-col gap-stack-xs text-text-subtle" aria-label="تاریخچهٔ تغییرها">
+                {changes.slice().reverse().slice(0, 8).map((c) => (
+                  <li key={c.id}>
+                    {formatJalaliDate(c.at)} · {CHANGE_KIND_FA[c.kind]} · {ACTOR_FA[c.actor]}{c.actorLabel ? ` (${c.actorLabel})` : ''}
+                    {c.reason ? <span className="text-text-default"> — دلیل: {c.reason}</span> : null}
+                  </li>
                 ))}
               </ul>
             )}
