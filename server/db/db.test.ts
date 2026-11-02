@@ -343,3 +343,46 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   assert.equal(repo.listLedger(s).length, 0);
   assert.equal(repo.listNodes(s).filter((n) => n.isSystem).length, 5);
 });
+
+test('reach / validUntil: migration 11 leaves old rows untouched (type default), values are validated, an edit is a Change and bumps the version', () => {
+  const db = new Database(':memory:');
+  migrate(db, 10);
+  new Repo(db).saveWorkspace(U, ws('w1'));
+  db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('c_old',?,?,'Constraint','Confirmed','User Input','قید قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
+  assert.deepEqual(migrate(db), [11]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  const old = repo.getObject(s, 'c_old')!;
+  assert.equal(old.reach, undefined, 'old data has no stored reach → the type default (global for a Constraint)');
+  assert.equal(old.validUntil, undefined);
+  const c = repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'قید بخش', content: 'y', nodeId: 'brand', reach: 'position', validUntil: '2026-12-01' });
+  assert.deepEqual([c.reach, c.validUntil], ['position', '2026-12-01']);
+  assert.equal(repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'ت', content: 'z', nodeId: 'brand', reach: 'nonsense' as never, validUntil: 'tomorrow' }).reach, undefined, 'invalid values are dropped');
+  const e = repo.updateObject(s, c.id, { reach: 'global' }, { reason: 'برای همه' }).object;
+  assert.deepEqual([e.reach, e.version], ['global', 2]);
+  const ch = repo.listChanges(s).filter((x) => x.objectId === c.id).at(-1)!;
+  assert.deepEqual([ch.kind, ch.after?.reach, ch.before?.reach], ['edited', 'global', 'position']);
+  assert.equal(repo.updateObject(s, c.id, { validUntil: null as never }).object.validUntil, undefined, 'null clears the end date');
+  assert.equal(repo.updateObject(s, c.id, { title: 'عنوان تازه' }).object.reach, 'global', 'an unrelated edit keeps the scope');
+});
+
+test('overrides: only child-node → ancestor-node, needs a reason (kept in the Change), live objects only; removing it is a Change too; nothing else reads it but the effective-context engine', () => {
+  const { repo, s } = fresh();
+  const parent = repo.createNode(s, { parentId: 'business', label: 'والد' });
+  const child = repo.createNode(s, { parentId: parent.id, label: 'فرزند' });
+  const sib = repo.createNode(s, { parentId: parent.id, label: 'هم‌سطح' });
+  const mk = (nodeId: string, title: string) => repo.createObject(s, { type: 'Decision', provenance: 'User Input', title, content: title, nodeId });
+  const rule = mk(parent.id, 'قاعدهٔ والد'), exc = mk(child.id, 'استثنا'), other = mk(sib.id, 'دیگر');
+  assert.throws(() => repo.setOverride(s, exc.id, rule.id, {}), (e) => e instanceof RepoError && /دلیل/.test(e.message), 'a reason is required');
+  assert.throws(() => repo.setOverride(s, rule.id, exc.id, { reason: 'x' }), RepoError, 'the wrong way round');
+  assert.throws(() => repo.setOverride(s, other.id, exc.id, { reason: 'x' }), RepoError, 'siblings');
+  assert.throws(() => repo.setOverride(s, exc.id, exc.id, { reason: 'x' }), RepoError, 'itself');
+  const r = repo.setOverride(s, exc.id, rule.id, { reason: 'این شاخه جدا کار می‌کند' });
+  assert.ok(r.relationships.some((x) => x.type === 'overrides' && x.sourceId === exc.id && x.targetId === rule.id));
+  assert.equal(r.change?.reason, 'این شاخه جدا کار می‌کند');
+  assert.deepEqual(r.change?.after, { overrides: [rule.id] });
+  assert.equal(repo.setOverride(s, exc.id, rule.id, { reason: 'دوباره' }).relationships.filter((x) => x.type === 'overrides').length, 1, 'idempotent');
+  repo.removeOverride(s, exc.id, rule.id, { reason: 'برگشت' });
+  assert.ok(!repo.listRelationships(s).some((x) => x.type === 'overrides'));
+  assert.deepEqual(repo.listChanges(s, { objectId: exc.id }).filter((c) => c.after && 'overrides' in c.after).map((c) => c.after!.overrides), [[rule.id], []]);
+});

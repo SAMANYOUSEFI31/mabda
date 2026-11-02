@@ -11,6 +11,9 @@ export interface ContextObjectLite {
   /** version at the time of injection — stored in the asset as lineage */
   version?: number;
   createdAt?: string;
+  /** only for clients that send their own list: lets the service drop a position-only / expired Constraint from the guardrails */
+  reach?: string;
+  validUntil?: string;
 }
 
 export interface FileExcerpt {

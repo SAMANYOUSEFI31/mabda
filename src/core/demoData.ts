@@ -57,6 +57,10 @@ interface Spec {
   /** status transitions after creation, oldest first */
   log?: Array<{ d: number; h?: number; kind: ContextChangeKind; to: ContextObject['status']; by?: Who; reason?: string }>;
   supersededBy?: { id: string; d: number; h?: number; by?: Who; reason?: string };
+  /** how far it applies (docs/spine.md: effective context); absent = the type default */
+  reach?: 'global' | 'position';
+  /** days ago the object stopped applying (an end date in the past = expired) */
+  expiredDaysAgo?: number;
 }
 
 export function buildDemo(now: Date): DemoData {
@@ -108,7 +112,7 @@ export function buildDemo(now: Date): DemoData {
     }
     objects.push({
       id: s.id, workspaceId: W, type: s.type, status, provenance: s.provenance, title: s.title, content, nodeId: s.node, version,
-      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}),
+      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.expiredDaysAgo !== undefined ? { validUntil: at(s.expiredDaysAgo, 12).slice(0, 10) } : {}),
       ...(s.source ? { source: { kind: s.source.kind, ...(s.source.label ? { label: s.source.label } : {}), ...(s.source.reason ? { reason: s.source.reason } : {}), ...(s.source.quote ? { quote: s.source.quote } : {}), at: at(s.source.daysAgo ?? s.created[0], s.created[1] ?? 10) } } : {}),
       createdAt: created, updatedAt: updated,
     });
@@ -128,7 +132,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_problem', type: 'Fact', node: 'business', title: 'معضل اصلی مخاطب', first: 'پیدا کردن قهوهٔ خوب سخت است.', status: 'Confirmed', provenance: 'User Input', slot: 'core_problem', created: [40, 12],
     edits: [{ d: 2, content: 'پیدا کردن قهوهٔ واقعاً تازه سخت است: بیشتر دانه‌ها هفته‌ها پیش برشته شده‌اند و تاریخ برشته روی بسته نیست.', reason: 'بعد از جواب‌های نظرسنجی.' }] });
   add({ id: 'dm_valueprop', type: 'Decision', node: 'product', title: 'پیشنهاد ارزش', first: 'قهوهٔ تازه‌برشته با تاریخ برشتهٔ روی بسته و یک منشأ تازه در هر ماه.', status: 'Confirmed', provenance: 'User Input', slot: 'value_proposition', created: [38] });
-  add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30] });
+  add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30], reach: 'global' });
   add({ id: 'dm_discount', type: 'Decision', node: 'offer', title: 'کمپین ماه اول', first: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 15],
     source: { kind: 'mcp', label: 'Claude', reason: 'در گفتگو گفتی می‌خواهی ماه اول جذاب باشد.' } });
 
@@ -146,6 +150,8 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_day1', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر دوشنبه.', status: 'Confirmed', provenance: 'User Input', created: [35], supersededBy: { id: 'dm_day2', d: 26, reason: 'پست دوشنبه‌ها شلوغ بود.' } });
   add({ id: 'dm_day2', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر سه‌شنبه.', status: 'Confirmed', provenance: 'User Input', created: [26, 13], supersededBy: { id: 'dm_day3', d: 15, reason: 'برشته‌کاری سه‌شنبه تمام نمی‌شود.' } });
   add({ id: 'dm_day3', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر پنجشنبه.', status: 'Confirmed', provenance: 'User Input', created: [15, 13], supersededBy: { id: 'dm_day4', d: 1, reason: 'پنجشنبه‌ها اداره‌های پست زود می‌بندند.' } });
+  // parent says one thing, the child node says another (found by the level-by-level contradiction check, `inherits_conflict`)
+  add({ id: 'dm_ship_time', type: 'Decision', node: 'dn_sub', title: 'زمان ارسال اشتراک', first: 'هر بسته در اول هر ماه ارسال می‌شود.', status: 'Confirmed', provenance: 'User Input', created: [34, 10] });
   add({ id: 'dm_day4', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر شنبه صبح.', status: 'Confirmed', provenance: 'User Input', created: [1, 13] });
 
   // ── advertising: a chain (audience ← channel ← budget) and a blocked pair ───────────────────
@@ -159,13 +165,13 @@ export function buildDemo(now: Date): DemoData {
   // ── workshop ───────────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_ws_price', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه', first: '۸۵۰ هزار تومان برای هر شرکت‌کننده.', status: 'Confirmed', provenance: 'User Input', slot: 'workshop_price', created: [22] });
   add({ id: 'dm_ws_cap', type: 'Fact', node: 'dn_ws', title: 'ظرفیت کارگاه', first: 'هر دوره حداکثر ۱۲ نفر ظرفیت دارد.', status: 'Confirmed', provenance: 'User Input', slot: 'workshop_capacity', created: [22, 11] });
-  add({ id: 'dm_ws_refund', type: 'Constraint', node: 'dn_ws', title: 'بازگشت وجه کارگاه', first: 'تا ۴۸ ساعت قبل از کارگاه بازگشت وجه کامل داریم؛ بعد از آن بازگشت وجه نداریم.', status: 'Confirmed', provenance: 'User Input', created: [22, 12] });
+  add({ id: 'dm_ws_refund', type: 'Constraint', node: 'dn_ws', title: 'بازگشت وجه کارگاه', first: 'تا ۴۸ ساعت قبل از کارگاه بازگشت وجه کامل داریم؛ بعد از آن بازگشت وجه نداریم.', status: 'Confirmed', provenance: 'User Input', created: [22, 12], reach: 'position' });
   add({ id: 'dm_ws_plan', type: 'Decision', node: 'dn_ws_prog', title: 'برنامهٔ جلسه‌ها', first: 'سه جلسهٔ دو ساعته: آشنایی با دانه، برشته‌کاری، قهوه‌چشی.', status: 'Proposed', provenance: 'AI Suggested', created: [5, 11],
     source: { kind: 'coach', reason: 'از جواب‌هایت دربارهٔ کارگاه ساختم؛ بررسی‌اش کن.' } });
 
   // ── support, content ───────────────────────────────────────────────────────────────────────
   add({ id: 'dm_sup_hours', type: 'Fact', node: 'dn_support', title: 'ساعت پاسخگویی', first: 'پیام مشتری‌ها از ۹ تا ۱۸ همهٔ روزهای هفته پاسخ داده می‌شود.', status: 'Confirmed', provenance: 'User Input', created: [28] });
-  add({ id: 'dm_sup_sla', type: 'Constraint', node: 'dn_support', title: 'زمان پاسخ', first: 'پاسخ به پیام مشتری حداکثر ظرف ۲ ساعت کاری.', status: 'Confirmed', provenance: 'User Input', created: [28, 11] });
+  add({ id: 'dm_sup_sla', type: 'Constraint', node: 'dn_support', title: 'زمان پاسخ', first: 'پاسخ به پیام مشتری حداکثر ظرف ۲ ساعت کاری.', status: 'Confirmed', provenance: 'User Input', created: [28, 11], reach: 'position' });
   add({ id: 'dm_sup_old', type: 'Fact', node: 'dn_support', title: 'تعداد اعضای کانال تلگرام', first: 'کانال تلگرام ۵۰۰ عضو دارد.', status: 'Archived', provenance: 'Imported', created: [6, 10],
     source: { kind: 'file', label: 'گزارش فروش پاییز.txt', reason: 'از گزارش فروش پاییز خوانده شد.', quote: 'کانال تلگرام ۵۰۰ عضو دارد' },
     log: [{ d: 3, h: 15, kind: 'proposal_rejected', to: 'Archived', reason: 'این عدد قدیمی بود.' }] });
@@ -173,6 +179,10 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_channels', type: 'Fact', node: 'dn_social', title: 'کانال‌های فعال', first: 'اینستاگرام و کانال تلگرام.', status: 'Confirmed', provenance: 'User Input', slot: 'active_channels', created: [36, 11] });
   add({ id: 'dm_calendar', type: 'Decision', node: 'dn_social', title: 'تقویم محتوا', first: 'هفته‌ای ۳ پست و ۲ استوری.', status: 'Needs Review', provenance: 'User Input', slot: 'content_calendar', created: [24],
     log: [{ d: 24, h: 11, kind: 'proposal_accepted', to: 'Confirmed' }, { d: 4, kind: 'status_changed', to: 'Needs Review', reason: 'ظرفیت تیم عوض شد؛ دوباره بررسی شود.' }] });
+
+  // ── effective context: an exception for a sub-tree, and a rule that ended ────────────────────────
+  add({ id: 'dm_ws_group', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه گروهی', first: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد و با قیمت اشتراک ماهانه یکی نیست.', status: 'Confirmed', provenance: 'User Input', created: [9, 15] });
+  add({ id: 'dm_old_promo', type: 'Constraint', node: 'dn_social', title: 'جشنوارهٔ پاییز', first: 'تا پایان جشنوارهٔ پاییز بستهٔ هدیه ارسال نکنیم.', status: 'Confirmed', provenance: 'User Input', created: [40, 12], reach: 'position', expiredDaysAgo: 12 });
 
   // ── more suggestions from different ways in ─────────────────────────────────────────────────
   add({ id: 'dm_p_file', type: 'Fact', node: 'dn_sub', title: 'تمدید اشتراک', first: 'بیشتر مشتری‌هایی که ۳ ماه مانده‌اند، اشتراک را تمدید کرده‌اند.', status: 'Proposed', provenance: 'Imported', created: [1, 11],
@@ -190,6 +200,9 @@ export function buildDemo(now: Date): DemoData {
   dep('dm_valueprop', 'dm_problem', 38);
   dep('dm_ws_plan', 'dm_ws_cap', 5); // ready: what it rests on is confirmed
   dep('dm_discount', 'dm_price', 2);
+  // exception (overrides): the group workshop sets «no discount» aside for the workshop branch only — with a reason, in the Change log
+  rel('overrides', 'dm_ws_group', 'dm_nodiscount', at(9, 15));
+  chg({ objectId: 'dm_ws_group', fromVersion: 1, toVersion: 1, kind: 'edited', actor: 'user', reason: 'قیمت کارگاه گروهی جدا از اشتراک تعیین می‌شود؛ قید «تخفیف نداریم» برای اشتراک می‌ماند.', before: { overrides: [] }, after: { overrides: ['dm_nodiscount'] }, at: at(9, 15, 5) });
 
   // ── notes: raw thoughts (never fed to a model) ────────────────────────────────────────────────
   const notes: Note[] = [

@@ -31,6 +31,7 @@ import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
+import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
@@ -135,7 +136,7 @@ export default function App() {
 
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
-  const [activeTab, setActiveTab] = useState<string>('context');
+  const [activeTab, setActiveTab] = useState<string>('home');
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
   // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
   const viewModeSeen = useRef(contextViewMode);
@@ -165,6 +166,7 @@ export default function App() {
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
+  const [effectNodeId, setEffectNodeId] = useState<string | null>(null);
   const [threadNodeId, setThreadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
@@ -342,7 +344,7 @@ export default function App() {
   const changedSig = (() => {
     if (!data || !canJudge) return '';
     if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) return '';
-    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
+    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships, data.nodes).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
   })();
   useEffect(() => {
     if (!data) { baselineRef.current = null; return; }
@@ -510,6 +512,7 @@ export default function App() {
       setWs(r.workspaces);
       setCurrentWorkspaceId(r.workspaceId);
       setData(null);
+      setActiveTab('home');
       await reload(r.workspaceId);
       setDemoConfirm(false);
       toast.show({ intent: 'success', message: 'فضای نمونه آماده است؛ داده‌هایش ساختگی‌اند و در پلن و مصرف حساب شمرده نمی‌شوند.' });
@@ -638,7 +641,7 @@ export default function App() {
 
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
-    activeTab === 'context' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
     : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
     : undefined;
@@ -711,33 +714,27 @@ export default function App() {
 
 
 
-        {/* TAB 1: Context & Source of Truth */}
-        {activeTab === 'context' && (
+        {/* HOME: where to start — what needs you, this week, waiting decisions, the inbox, recent changes */}
+        {activeTab === 'home' && (
           <div className="space-y-stack-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
-              <div>
-                <h1 className="text-heading-md font-bold text-text-default">
-                  منبع حقیقت: {currentWorkspace.name}
-                </h1>
-                <p className="text-body-sm text-text-subtle mt-stack-xs">
-                  «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
-                </p>
-              </div>
-
-              <SegmentedControl
-                label="نمای منبع حقیقت"
-                value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
-                items={[
-                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                  { id: 'read', label: 'سند', icon: 'BookOpen' },
-                  { id: 'table', label: 'جدول', icon: 'Table2' },
-                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
-                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
-                ]}
-              />
+            <div>
+              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
+              <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
             </div>
-
+            {workspaceContexts.length === 0 && (
+              <EmptyState
+                icon="House"
+                title="از اینجا شروع کن"
+                description="مبدأ با دانشی که خودت می‌دهی کار می‌کند. هر کدام از این‌ها یک شروع است؛ بعد از اولین دانش، همین صفحه می‌گوید چه چیزی کم است."
+                action={(
+                  <div className="flex flex-wrap justify-center gap-inline-md">
+                    <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                    <Button variant="secondary" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظهٔ AI دیگر</Button>
+                    <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
+                  </div>
+                )}
+              />
+            )}
             <AttentionPanel
               specTitle={attentionSpec?.title ?? ''}
               gaps={attentionGaps}
@@ -780,6 +777,36 @@ export default function App() {
               onOpenMemory={() => setIsMemoryOpen(true)}
             />
 
+          </div>
+        )}
+
+        {/* TAB 1: Context & Source of Truth */}
+        {activeTab === 'context' && (
+          <div className="space-y-stack-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
+              <div>
+                <h1 className="text-heading-md font-bold text-text-default">
+                  منبع حقیقت: {currentWorkspace.name}
+                </h1>
+                <p className="text-body-sm text-text-subtle mt-stack-xs">
+                  «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
+                </p>
+              </div>
+
+              <SegmentedControl
+                label="نمای منبع حقیقت"
+                value={contextViewMode}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
+                items={[
+                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                  { id: 'read', label: 'سند', icon: 'BookOpen' },
+                  { id: 'table', label: 'جدول', icon: 'Table2' },
+                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
+                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
+                ]}
+              />
+            </div>
+
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
               <DocReader
@@ -799,6 +826,7 @@ export default function App() {
                 onNodeAction={setNodeDialog}
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
                 onReadNode={setReadNodeId}
+                onShowEffect={setEffectNodeId}
                 onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -963,6 +991,8 @@ export default function App() {
         reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
         titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
         onAcceptReview={handleAcceptReview}
+        deliverables={deliverables}
+        onOpenRelated={(o) => openContext(o)}
       />
 
       <NodeDialogs
@@ -1050,6 +1080,24 @@ export default function App() {
         }}
       />
 
+      <NodeEffectDialog
+        nodeId={effectNodeId}
+        nodes={nodes}
+        objects={workspaceContexts}
+        relationships={data?.relationships ?? []}
+        onClose={() => setEffectNodeId(null)}
+        onOverride={async (byId, targetId, reason) => {
+          const r = await dataApi.setOverride(wid, byId, targetId, reason);
+          patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+          toast.show({ intent: 'success', message: 'کنار گذاشته شد؛ برای این گره و زیرشاخه‌هایش دیگر اثر ندارد.' });
+        }}
+        onRemoveOverride={async (byId, targetId) => {
+          const r = await attempt(() => dataApi.removeOverride(wid, byId, targetId));
+          if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+        }}
+        onAddToNode={(nodeId) => { setEffectNodeId(null); openContext(null, nodeId); }}
+        onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
+      />
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />

@@ -37,12 +37,13 @@ async function run(managed, port, fakePort) {
     const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).click();
     const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.getByText('منبع حقیقت: استودیو').waitFor();
+    await page.getByText('خانه: استودیو').waitFor();
 
     if (!managed) {
       console.log('• run A: managed AI OFF');
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the first screen');
       // a subscription-included judgement on OUR key: Context Coach (no user key at all)
+      await nav('منبع حقیقت');
       await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
       await page.getByRole('menuitem', { name: 'مربی دانش' }).click();
       await page.getByRole('button', { name: 'از مربی دانش بپرس' }).click();

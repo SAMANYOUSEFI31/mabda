@@ -89,7 +89,10 @@ test('get_context: only Confirmed is fact; Proposed / Needs Review come separate
     assert.match(all.text, /## واقعیت‌ها \(Confirmed\)[\s\S]*## تأییدنشده[\s\S]*واقعیت نیست/);
     assert.ok(all.data.facts[0].version >= 1 && all.data.facts[0].nodePath);
     const branch = await t.call(c, 'get_context', { nodeId: 'offer' });
-    assert.ok(branch.data.facts.every((f: any) => f.nodeId === 'offer'));
+    // at a node: what is in force there — its own, inherited and global ones — each with an origin
+    assert.ok(branch.data.facts.length >= 1 && branch.data.facts.every((f: any) => ['own', 'inherited', 'global', 'subtree'].includes(f.origin)));
+    assert.ok(branch.data.facts.filter((f: any) => f.origin === 'own').every((f: any) => f.nodeId === 'offer'));
+    assert.ok(branch.data.facts.filter((f: any) => f.origin === 'global').every((f: any) => f.type === 'Constraint' && f.nodeId !== 'offer'));
     const found = await t.call(c, 'get_context', { query: 'قیمت‌گذاری تخفیف', statuses: ['Confirmed'] });
     assert.ok(found.data.facts.length >= 1 && found.data.unconfirmed.length === 0);
     assert.ok(found.data.facts[0].content.includes('قیمت'));
@@ -253,6 +256,23 @@ test('the showcase workspace is a normal workspace for MCP: gaps (one missing, o
     assert.ok(new Set(ch.data.changes.map((x: any) => x.actor)).size >= 4);
     assert.ok(!JSON.stringify(ch.data).includes('بعد از نظرسنجی از مشتری‌ها'), 'reasons are not returned');
     assert.ok(ch.data.changes.some((x: any) => x.hasReason));
+    await c.close();
+  } finally { t.close(); }
+});
+
+test('get_context with a nodeId returns the list IN FORCE there with an origin; a position-only rule of another branch, an overridden rule and an expired one are not facts (they come apart under notInForce)', async () => {
+  const t = await boot();
+  try {
+    await t.api('POST', '/demo/reset', {});
+    const tok = await t.token('ws_demo', 'Claude');
+    const c = await t.connect(tok.token);
+    const st = (await t.api('GET', '/workspaces/ws_demo/state')).json;
+    const sub = st.nodes.find((n: any) => n.parentId && n.parentId !== 'business' && !n.isSystem) ?? st.nodes[0];
+    const r = await t.call(c, 'get_context', { nodeId: sub.id });
+    assert.ok(r.data.facts.every((f: any) => typeof f.origin === 'string' && f.reach));
+    assert.ok(r.data.facts.every((f: any) => f.origin !== 'overridden' && f.origin !== 'expired'));
+    const all = await t.call(c, 'get_context', {});
+    assert.ok(all.data.facts.every((f: any) => !f.validUntil || f.validUntil >= new Date().toISOString().slice(0, 10)), 'an expired object is never a fact');
     await c.close();
   } finally { t.close(); }
 });

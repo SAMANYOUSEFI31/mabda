@@ -10,6 +10,7 @@ import { buildChangeDigest } from './changeDigest';
 import { buildMapModel } from './mapModel';
 import { buildCanvasModel } from './canvasModel';
 import { DEFAULT_TREE_NODES } from './specs';
+import { effectiveFor, effectiveObjects, guardrailsFor } from './effectiveContext';
 
 const NOW = new Date('2026-03-10T08:00:00Z'); // 11:30 in Tehran
 const d = buildDemo(NOW);
@@ -123,4 +124,39 @@ test('the map and the board lay the showcase out without surprises', () => {
   assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.groups.length > 0);
   const board = buildCanvasModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, reviewIds: new Set(needsReview(d.objects, d.relationships, d.changes).keys()), ranks: new Map(d.canvas.decisions.map((i) => [i.itemRef.slice(4), i.rank!])) });
   for (const lane of ['thinking', 'confirmed', 'review'] as const) assert.ok(board.cards.some((c) => c.lane === lane), lane);
+});
+
+// ── effective context in the showcase ──────────────────────────────────────────────────────────
+const NODES = [...DEFAULT_TREE_NODES, ...d.nodes];
+const eff = (node: string) => Object.fromEntries(effectiveFor(node, d.objects, NODES, d.relationships, NOW).map((i) => [i.object.id, i.origin]));
+
+test('effective context: a global rule, a section-only rule, an exception and an expired rule each show where they apply', () => {
+  // global: «no discount» holds in the subscription, the support node, everywhere
+  for (const n of ['dn_sub', 'dn_support', 'dn_social', 'business']) assert.equal(eff(n).dm_nodiscount, 'global', n);
+  // section-only: the workshop refund rule reaches the workshop branch and nowhere else
+  assert.equal(eff('dn_ws').dm_ws_refund, 'own');
+  assert.equal(eff('dn_ws_prog').dm_ws_refund, 'inherited');
+  for (const n of ['offer', 'dn_sub', 'dn_ship', 'dn_support', 'business', 'dn_social']) assert.equal(eff(n).dm_ws_refund, undefined, `not in ${n}`);
+  assert.equal(eff('dn_sub').dm_sup_sla, undefined, 'the support SLA stays in its own section');
+  assert.equal(eff('dn_support').dm_sup_sla, 'own');
+  // exception: the group-workshop decision sets «no discount» aside for the workshop branch only (with a reason in the Change log)
+  assert.equal(eff('dn_ws').dm_nodiscount, 'overridden');
+  assert.equal(eff('dn_ws_prog').dm_nodiscount, 'overridden');
+  assert.equal(eff('dn_sub').dm_nodiscount, 'global');
+  const rel = d.relationships.find((r) => r.type === 'overrides')!;
+  assert.deepEqual([rel.sourceId, rel.targetId], ['dm_ws_group', 'dm_nodiscount']);
+  assert.ok(d.changes.some((c) => c.objectId === 'dm_ws_group' && c.after && 'overrides' in c.after && c.reason));
+  // expired: listed where it would have applied, in force nowhere
+  assert.equal(eff('dn_social').dm_old_promo, 'expired');
+  assert.ok(!effectiveObjects('dn_social', d.objects, NODES, d.relationships, NOW).some((o) => o.id === 'dm_old_promo'));
+  // guardrails at the workshop branch: its own refund rule + the SLA is not there; «no discount» is set aside
+  assert.deepEqual(guardrailsFor('dn_ws_prog', d.objects, NODES, d.relationships, NOW).map((o) => o.id).sort(), ['dm_ws_refund']);
+  assert.ok(guardrailsFor('dn_sub', d.objects, NODES, d.relationships, NOW).some((o) => o.id === 'dm_nodiscount'));
+});
+
+test('a parent/child contradiction is found by the level-by-level check; the objects are real and nothing is judged', () => {
+  const pair = candidatePairs(d.objects, 50, d.relationships, NODES).find((p) => p.key === 'dm_day4|dm_ship_time');
+  assert.ok(pair, 'first of the month (parent) vs every Saturday (child)');
+  assert.ok(pair.reasons.includes('inherits_conflict'));
+  assert.equal(unresolvedContradictions(d.objects, []).filter((c) => c.source === 'semantic').length, 0);
 });

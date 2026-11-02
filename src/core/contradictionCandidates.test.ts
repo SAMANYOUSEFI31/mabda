@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { candidatePairs, isFresh, MAX_CANDIDATES, pairKey, pairsToJudge, unresolvedContradictions } from './contradictionCandidates';
-import type { ContextObject } from '../types';
+import type { ContextObject, TreeNode } from '../types';
 
 const o = (id: string, p: Partial<ContextObject> = {}): ContextObject => ({
   id, workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: `عنوان ${id}`, content: `متن ${id}`, nodeId: 'business', version: 1, createdAt: '', updatedAt: '', ...p,
@@ -87,4 +87,34 @@ test('same_node_same_type: same node and type with overlapping TEXT; a different
   assert.equal(candidatePairs([a, { ...b, type: 'Constraint' }]).length, 0);
   assert.equal(candidatePairs([a, { ...b, nodeId: 'other' }]).length, 0);
   assert.equal(candidatePairs([a, { ...b, content: 'بسته‌بندی کاغذی و قابل بازیافت' }]).length, 0, 'unrelated text in the same node and type');
+});
+
+const tn = (id: string, parentId?: string): TreeNode => ({ id, label: id, description: '', ...(parentId ? { parentId } : {}) });
+const tree = [tn('r'), tn('n2', 'r'), tn('n21', 'n2'), tn('n22', 'n2'), tn('n3', 'r')];
+
+test('inherits_conflict: an object in an ANCESTOR node and one below it with the same subject are a candidate — siblings, unrelated subjects and an explicit exception are not', () => {
+  const parent = o('p', { nodeId: 'n2', title: 'قیمت اشتراک', content: 'اشتراک ماهانه با قیمت ثابت فروخته می‌شود', type: 'Constraint' });
+  const child = o('c', { nodeId: 'n22', title: 'قیمت اشتراک ویژه', content: 'اشتراک ماهانه با قیمت شناور فروخته می‌شود', type: 'Decision' });
+  assert.equal(candidatePairs([parent, child]).some((x) => x.reasons.includes('inherits_conflict')), false, 'without the tree nothing is known about ancestry');
+  const hit = candidatePairs([parent, child], 10, [], tree);
+  assert.deepEqual(hit.map((x) => [x.key, x.reasons.includes('inherits_conflict')]), [['c|p', true]]);
+  // a sibling branch does not inherit from it
+  assert.equal(candidatePairs([parent, { ...child, nodeId: 'n3' }], 10, [], tree).some((x) => x.reasons.includes('inherits_conflict')), false);
+  // different subject: no overlap
+  assert.equal(candidatePairs([parent, { ...child, title: 'لحن برند', content: 'صمیمی' }], 10, [], tree).length, 0);
+  // the user already declared the exception (overrides)
+  const exc = { id: 'x', sourceId: 'c', targetId: 'p', type: 'overrides' as const, createdAt: '' };
+  assert.equal(candidatePairs([parent, child], 10, [exc], tree).some((x) => x.reasons.includes('inherits_conflict')), false);
+  // the same object in the same node is not «inherited»
+  assert.equal(candidatePairs([parent, { ...child, nodeId: 'n2' }], 10, [], tree).some((x) => x.reasons.includes('inherits_conflict')), false);
+});
+
+test('changing the PARENT makes its pairs with every sub-tree object due again (judgement is per version)', () => {
+  const parent = o('p', { nodeId: 'n2', title: 'قیمت اشتراک', content: 'ماهانه با قیمت ثابت', type: 'Constraint' });
+  const kids = ['k1', 'k2'].map((id, i) => o(id, { nodeId: i ? 'n22' : 'n21', title: 'قیمت اشتراک', content: `ماهانه با قیمت ${id}` }));
+  const known = [pairKey('p', 'k1'), pairKey('p', 'k2')].map((key) => ({ key, aVersion: 1, bVersion: 1, conflict: false, reason: '' }));
+  assert.equal(pairsToJudge([parent, ...kids], known, 10, [], tree).length, 0, 'judged for these versions');
+  const edited = pairsToJudge([{ ...parent, version: 2, content: 'ماهانه با قیمت شناور' }, ...kids], known, 10, [], tree);
+  assert.deepEqual(edited.map((x) => x.key).sort(), ['k1|p', 'k2|p'].sort());
+  assert.ok(edited.every((x) => x.reasons.includes('inherits_conflict')));
 });

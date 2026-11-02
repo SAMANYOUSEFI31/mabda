@@ -221,6 +221,17 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const r = repo.setDependencies(s, req.params.id, list, metaOf(body(req)));
     res.json({ relationships: r.relationships, changes: repo.listChanges(s), stale: stale(s) });
   }));
+  /** «برای این بخش کنار بگذار»: this object (in a sub-node) switches an ancestor-node object off for its sub-tree. A reason is required. */
+  router.post('/workspaces/:wid/objects/:id/overrides', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.setOverride(s, req.params.id, String(body(req).targetId ?? ''), metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s) });
+  }));
+  router.post('/workspaces/:wid/objects/:id/overrides/remove', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.removeOverride(s, req.params.id, String(body(req).targetId ?? ''), metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s) });
+  }));
   router.post('/workspaces/:wid/objects/:id/review-accept', wrap((req, res) => {
     const s = scopeOf(req);
     const change = repo.acceptReview(s, req.params.id, metaOf(body(req)));
@@ -386,7 +397,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const objects = repo.listObjects(s);
     // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
     const only = Array.isArray(body(req).objectIds) ? new Set((body(req).objectIds as unknown[]).map(String)) : null;
-    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s), repo.listNodes(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
     const capped = payer() === 'us';
     const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
     const limited = todo.length > left;
@@ -479,7 +490,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (b.specId && !spec) throw new RepoError('not_found', 'spec پیدا نشد.');
     const deliverable = spec && typeof b.deliverableId === 'string' ? spec.deliverables.find((d) => d.id === b.deliverableId) : undefined;
     const id = newId('pack');
-    const pack = buildContextPack({ packId: id, workspaceName: ws.name, nodes: repo.listNodes(s), objects: repo.listObjects(s), spec, deliverable, judgments: repo.listJudgments(s), targetNodeId: typeof b.nodeId === 'string' ? b.nodeId : undefined });
+    const pack = buildContextPack({ packId: id, workspaceName: ws.name, nodes: repo.listNodes(s), objects: repo.listObjects(s), spec, deliverable, judgments: repo.listJudgments(s), targetNodeId: typeof b.nodeId === 'string' ? b.nodeId : undefined, relationships: repo.listRelationships(s), now: clock() });
     const title = deliverable ? `${spec!.title} ‹ ${deliverable.title}` : spec ? spec.title : `کل ${ws.name}`;
     const saved = repo.savePack(s, { title, specId: spec?.id, deliverableId: deliverable?.id, refs: pack.refs, tokens: pack.tokens }, id);
     res.json({ id: saved.id, title, createdAt: saved.createdAt, markdown: pack.markdown, tokens: pack.tokens, chars: pack.chars, counts: pack.counts });

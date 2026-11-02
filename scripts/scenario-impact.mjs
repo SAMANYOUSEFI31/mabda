@@ -54,7 +54,8 @@ async function scenario(width, tag) {
   };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.getByText('منبع حقیقت: استودیو').waitFor();
+  await page.getByText('خانه: استودیو').waitFor();
+  await goTab('منبع حقیقت', 'منبع');
 
   step('BYOK key');
   await account('کلید هوش مصنوعی');
@@ -116,7 +117,7 @@ async function scenario(width, tag) {
   assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).count(), 0, 'nothing is stale yet');
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
-  await goTab('منبع حقیقت', 'منبع حقیقت');
+  await goTab('منبع حقیقت', 'منبع');
   await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
   await page.getByRole('dialog').getByLabel('محتوای دقیق دانش').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('button', { name: 'ذخیرهٔ تغییرات' }).click();

@@ -13,7 +13,8 @@ mkdirSync(OUT, { recursive: true });
 
 const SIZES = [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }];
 const TABS = [
-  { id: 'context', label: 'منبع حقیقت' },
+  { id: 'home', label: 'خانه' },
+  { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
   { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'جریان‌های کار' },
   { id: 'chat', label: 'گفتگو' },
   { id: 'assets', label: 'دارایی‌ها' },
@@ -87,11 +88,12 @@ for (const size of SIZES) {
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
 
-  await goTab(TABS[0]); await shoot('context-doc');
+  await goTab(TABS[0]); await shoot('home');
   // weekly review: three sections one after another, then the summary
   await page.getByRole('button', { name: /بازبینی هفتگی/ }).first().click(); await page.waitForTimeout(200); await shoot('weekly-1');
   for (const n of [2, 3, 4]) { await page.getByRole('dialog').getByRole('button', { name: /دیدم؛ بعدی|جمع‌بندی/ }).click(); await page.waitForTimeout(150); await shoot(`weekly-${n}`); }
   await closeDialog();
+  await goTab(TABS[1]); await shoot('context-doc');
   // table view
   await page.locator('[role=radio][aria-label], [role=radio]').filter({ hasText: /^جدول$/ }).first().click(); await shoot('context-table');
   await page.locator('[role=radio]').filter({ hasText: /^نقشه$/ }).first().click(); await page.waitForTimeout(300); await shoot('context-map');
@@ -103,14 +105,14 @@ for (const size of SIZES) {
   // add context dialog
   await page.getByRole('button', { name: /افزودن دانش/ }).first().click(); await shoot('dialog-context'); await closeDialog();
 
-  await goTab(TABS[1]); await shoot('workstreams-create');
+  await goTab(TABS[2]); await shoot('workstreams-create');
   await page.getByRole("tab", { name: /شکاف/ }).click(); await shoot('workstreams-gap');
   await page.getByRole("tab", { name: /^خروجی‌ها/ }).click(); await shoot('workstreams-history');
 
-  await goTab(TABS[2]); await shoot('chat');
+  await goTab(TABS[3]); await shoot('chat');
   await page.getByRole('button', { name: 'نشست‌های گفتگو' }).first().click(); await shoot('chat-sessions');
 
-  await goTab(TABS[3]); await shoot('assets');
+  await goTab(TABS[4]); await shoot('assets');
 
   // everything that is not daily work lives in the account menu (desktop) / account drawer (mobile)
   const mobile = size.width < 768;

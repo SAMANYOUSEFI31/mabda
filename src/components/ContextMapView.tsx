@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
 import { dependentsOf } from '../core/decisionGraph';
+import { influenceOf } from '../core/influence';
 import { buildMapModel, CARD_H, CARD_W, EDGE_LABEL, highlightOf, impactOf, latestChangedObject, visibleGroups, visibleVertices } from '../core/mapModel';
 import type { MapGroup } from '../core/mapModel';
 import { GROUP_HEAD } from '../core/mapModel';
@@ -69,6 +70,18 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const focusObjectId = lastChangeMode ? lastChanged : selectedVertex?.kind === 'object' ? selectedVertex.objectId : undefined;
   const impact = useMemo(() => (focusObjectId ? impactOf(input, focusObjectId) : null), [input, focusObjectId]);
   const lit = useMemo(() => (impact ? highlightOf(model, impact) : null), [model, impact]);
+  // upstream: what shapes the focused object (dependencies, constraints in force, inputs, exceptions) — a second, calmer highlight
+  const influence = useMemo(() => (focusObjectId ? influenceOf(focusObjectId, objects, nodes, relationships, deliverables, new Date()) : undefined), [focusObjectId, objects, nodes, relationships, deliverables]);
+  const upstream = useMemo(() => {
+    const ids = new Set<string>();
+    if (!influence) return ids;
+    const add = (id: string) => { const v = model.rep[`o:${id}`]; if (v) ids.add(v); };
+    influence.shapedBy.dependencies.forEach((o) => add(o.id));
+    influence.shapedBy.constraints.forEach((c) => add(c.object.id));
+    influence.shapedBy.inputs.forEach((c) => add(c.object.id));
+    influence.shapedBy.exceptions.forEach((e) => { add(e.by.id); add(e.target.id); });
+    return ids;
+  }, [influence, model]);
 
   const fitKey = `${model.vertices.length}:${Math.round(model.width)}:${Math.round(model.height)}`;
   const { box, view, size, fit, zoomAt, reveal: revealXY, handlers } = usePanZoom(model, fitKey);
@@ -122,6 +135,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
             {EDGE_LABEL[k]}
           </li>
         ))}
+        {upstream.size > 0 && <li className="body-sm text-text-subtle">کارت آبی = روی مورد انتخاب‌شده اثر دارد؛ قرمز = از آن اثر می‌گیرد.</li>}
         <li className="body-sm text-text-subtle">جعبه = گره‌ی درخت (دامنه)؛ ترتیب ندارد، فقط خط‌ها جریان‌اند.</li>
         <li className="body-sm text-text-subtle">{formatNumber(model.summary.objects)} مورد · {formatNumber(model.summary.assets)} خروجی{model.summary.collapsedNodes ? ` · ${formatNumber(model.summary.collapsedNodes)} گره جمع‌شده` : ''}</li>
       </ul>
@@ -146,7 +160,8 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
                 v={v}
                 selected={selected === v.id}
                 lit={!!lit?.vertexIds.has(v.id)}
-                dimmed={dim && !lit?.vertexIds.has(v.id) && selected !== v.id}
+                upstream={upstream.has(v.id) && !lit?.vertexIds.has(v.id)}
+                dimmed={dim && !lit?.vertexIds.has(v.id) && !upstream.has(v.id) && selected !== v.id}
                 onSelect={select}
                 onToggle={toggleNode}
                 onFocus={reveal}
@@ -157,11 +172,11 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
 
         <aside className="flex flex-col gap-stack-sm rounded-control border border-border-default bg-surface-raised p-inset-lg lg:w-overlay-xs lg:shrink-0" aria-label="خلاصهٔ مورد انتخاب‌شده" aria-live="polite">
           {lastChangeMode && lastChanged && !selectedVertex ? (
-            <Summary title={objectOf(lastChanged)?.title ?? lastChanged} subtitle="آخرین تغییرِ دانش" impact={impact} object={objectOf(lastChanged)} relationships={relationships} objects={objects} deliverables={deliverables} nodes={nodes} onOpenObject={onOpenObject} onOpenAssets={onOpenAssets} />
+            <Summary influence={influence} title={objectOf(lastChanged)?.title ?? lastChanged} subtitle="آخرین تغییرِ دانش" impact={impact} object={objectOf(lastChanged)} relationships={relationships} objects={objects} deliverables={deliverables} nodes={nodes} onOpenObject={onOpenObject} onOpenAssets={onOpenAssets} />
           ) : !selectedVertex ? (
             <p className="body-md text-text-subtle">روی یک کارت بزن تا خلاصه‌اش و مسیر اثرش را ببینی. با «اثر آخرین تغییر» مسیر آخرین تغییر روشن می‌شود.</p>
           ) : selectedVertex.kind === 'object' ? (
-            <Summary title={selectedVertex.label} impact={impact} object={objectOf(selectedVertex.objectId)} relationships={relationships} objects={objects} deliverables={deliverables} nodes={nodes} onOpenObject={onOpenObject} onOpenAssets={onOpenAssets} />
+            <Summary influence={influence} title={selectedVertex.label} impact={impact} object={objectOf(selectedVertex.objectId)} relationships={relationships} objects={objects} deliverables={deliverables} nodes={nodes} onOpenObject={onOpenObject} onOpenAssets={onOpenAssets} />
           ) : selectedVertex.kind === 'node' ? (
             <>
               <h3 className="heading-xs text-text-default">{selectedVertex.label}</h3>
@@ -232,8 +247,8 @@ const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapG
   );
 });
 
-const MapCard = React.memo(function MapCard({ v, selected, lit, dimmed, onSelect, onToggle, onFocus }: { v: MapVertex; selected: boolean; lit: boolean; dimmed: boolean; onSelect: (id: string) => void; onToggle: (nodeId: string) => void; onFocus: (v: MapVertex) => void }) {
-  const tone = lit ? 'border-border-danger bg-bg-danger-subtle' : selected ? 'border-border-selected bg-bg-selected' : v.kind === 'node' ? 'border-border-bold bg-surface-overlay' : 'border-border-default bg-surface-raised';
+const MapCard = React.memo(function MapCard({ v, selected, lit, upstream, dimmed, onSelect, onToggle, onFocus }: { v: MapVertex; selected: boolean; lit: boolean; upstream: boolean; dimmed: boolean; onSelect: (id: string) => void; onToggle: (nodeId: string) => void; onFocus: (v: MapVertex) => void }) {
+  const tone = lit ? 'border-border-danger bg-bg-danger-subtle' : upstream ? 'border-border-info bg-bg-info-subtle' : selected ? 'border-border-selected bg-bg-selected' : v.kind === 'node' ? 'border-border-bold bg-surface-overlay' : 'border-border-default bg-surface-raised';
   const label = v.kind === 'node' ? `گرهٔ ${v.label}، ${v.count ?? 0} مورد` : v.kind === 'object' ? `${v.label}${v.review ? '، نیاز به بازبینی' : ''}` : `${v.label}${v.review ? '، نیاز به بازبینی' : ''}`;
   return (
     <div
@@ -263,9 +278,10 @@ const MapCard = React.memo(function MapCard({ v, selected, lit, dimmed, onSelect
 });
 
 const Summary: React.FC<{
+  influence?: ReturnType<typeof influenceOf>;
   title: string; subtitle?: string; object?: ContextObject; impact: ReturnType<typeof impactOf> | null; relationships: ContextRelationship[]; objects: ContextObject[]; deliverables: GeneratedDeliverable[]; nodes: TreeNode[];
   onOpenObject: (o: ContextObject) => void; onOpenAssets: () => void;
-}> = ({ title, subtitle, object, impact, relationships, objects, deliverables, nodes, onOpenObject, onOpenAssets }) => {
+}> = ({ influence, title, subtitle, object, impact, relationships, objects, deliverables, nodes, onOpenObject, onOpenAssets }) => {
   if (!object) return <h3 className="heading-xs text-text-default">{title}</h3>;
   const deps = relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).length;
   const dependents = dependentsOf(object.id, relationships, objects).length;
@@ -278,6 +294,7 @@ const Summary: React.FC<{
       <p className="body-sm text-text-subtle">{nodes.find((n) => n.id === object.nodeId)?.label}</p>
       <p className="body-md text-text-default">{object.content.length > 220 ? `${object.content.slice(0, 220)}…` : object.content}</p>
       <ul className="body-sm flex flex-col gap-stack-xs text-text-default">
+        {influence && <li>{formatNumber(influence.shapedBy.constraints.length)} قید و {formatNumber(influence.shapedBy.exceptions.length)} استثنا روی آن اثر دارد؛ جزئیات در «اثرگذاران» همین مورد.</li>}
         <li>به {formatNumber(deps)} مورد وابسته است.</li>
         <li>{formatNumber(dependents)} مورد روی آن سوارند.</li>
         <li>{formatNumber(assets)} خروجی از مسیر اثر آن ساخته شده‌اند.</li>

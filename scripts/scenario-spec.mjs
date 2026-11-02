@@ -44,7 +44,7 @@ try {
   const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.getByText('منبع حقیقت: استودیو').waitFor();
+  await page.getByText('خانه: استودیو').waitFor();
   await account('کلید هوش مصنوعی');
   await page.getByLabel('کلید Gemini API').fill(KEY);
   await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
@@ -52,6 +52,7 @@ try {
   await page.keyboard.press('Escape');
 
   step('Context Coach right after creating a node');
+  await nav('منبع حقیقت');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
   await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
   await page.getByLabel('نام گره').fill('کمپین عرضه');
@@ -130,7 +131,7 @@ try {
 
   step('Pro and above only: the Starter workspace gets the upgrade notice');
   await account('آکادمی رشد فریلنسرها');
-  await page.getByText('منبع حقیقت: آکادمی').waitFor().catch(() => {});
+  await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
   await nav('جریان‌های کار');
   await page.getByRole('button', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();

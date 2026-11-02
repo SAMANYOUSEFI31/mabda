@@ -6,7 +6,7 @@
  * Without an AI key nothing runs at all. The daily cap is the plan's decisionJudgmentsPerDay (entitlements.config.ts).
  */
 
-import type { ContextObject, ContextRelationship } from '../types';
+import type { ContextObject, ContextRelationship, TreeNode } from '../types';
 import { pairsToJudge, type CandidatePair, type PairJudgment } from './contradictionCandidates';
 
 /** how long to wait after the last change before asking (ms) */
@@ -25,8 +25,8 @@ export function changedSince(objects: ContextObject[], baseline: VersionBaseline
 }
 
 /** (a) candidate pairs with no fresh judgement where at least one object changed since the baseline */
-export function pairsAfterChange(objects: ContextObject[], known: PairJudgment[], baseline: VersionBaseline, relationships: ContextRelationship[] = []): CandidatePair[] {
+export function pairsAfterChange(objects: ContextObject[], known: PairJudgment[], baseline: VersionBaseline, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
   const changed = changedSince(objects, baseline);
   if (changed.size === 0) return [];
-  return pairsToJudge(objects, known, undefined, relationships).filter((p) => changed.has(p.a.id) || changed.has(p.b.id));
+  return pairsToJudge(objects, known, undefined, relationships, nodes).filter((p) => changed.has(p.a.id) || changed.has(p.b.id));
 }

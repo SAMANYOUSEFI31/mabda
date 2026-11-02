@@ -6,14 +6,17 @@
  *   · same node      — same node and similar titles
  *   · linked         — the two live objects are tied by depends_on, whatever their titles look like
  *   · same node+type — same node, same type (e.g. two Decisions under «ارسال») and their TEXT overlaps enough
+ *   · inherits_conflict — one object sits in an ANCESTOR node of the other's node (what it says is inherited by the other) and
+ *                         their subject overlaps (same similarity thresholds); an explicit `overrides` exception silences it
  *   · number / qualifier differs — similar titles, but a quantity in the same unit class or a qualifier word differs
  */
 
-import type { Contradiction, ContextObject, ContextRelationship } from '../types';
+import type { Contradiction, ContextObject, ContextRelationship, TreeNode } from '../types';
+import { ancestorIds } from './nodeTree';
 import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, extractQuantities, jaccard, normalizeFa, titleTokens } from './contextEngine';
 
-export type CandidateReason = 'same_slot' | 'same_node' | 'linked' | 'same_node_same_type' | 'number_differs' | 'qualifier_differs';
+export type CandidateReason = 'same_slot' | 'same_node' | 'linked' | 'same_node_same_type' | 'inherits_conflict' | 'number_differs' | 'qualifier_differs';
 
 export interface CandidatePair {
   /** stable key: ids sorted, joined with `|` */
@@ -24,6 +27,8 @@ export interface CandidatePair {
 }
 
 export const MAX_CANDIDATES = 10;
+/** how many objects of one ancestor node are paired with a descendant's object (keeps parent/child pairing bounded) */
+const ANCESTOR_FANOUT = 12;
 const SAME_NODE_TITLE_SIMILARITY = 0.5;
 const TOPIC_SIMILARITY = 0.34;
 /** token overlap of the CONTENT (not the title) that makes two same-node, same-type objects worth asking about */
@@ -54,7 +59,24 @@ function linkedPairs(active: ContextObject[], relationships: ContextRelationship
   return out;
 }
 
-export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = []): CandidatePair[] {
+/** index pairs (ancestor object, descendant object): the ancestor node's strongest objects first (Constraint, Decision, Fact) */
+function inheritedPairs(active: ContextObject[], nodes: TreeNode[]): Array<[number, number]> {
+  if (!nodes.length) return [];
+  const byNode = new Map<string, number[]>();
+  active.forEach((o, i) => byNode.set(o.nodeId, [...(byNode.get(o.nodeId) ?? []), i]));
+  const weight = (o: ContextObject) => (o.type === 'Constraint' ? 0 : o.type === 'Decision' ? 1 : 2);
+  for (const list of byNode.values()) list.sort((x, y) => weight(active[x]) - weight(active[y]) || x - y);
+  const chains = new Map<string, string[]>();
+  const out: Array<[number, number]> = [];
+  active.forEach((o, j) => {
+    let chain = chains.get(o.nodeId);
+    if (!chain) { chain = ancestorIds(nodes, o.nodeId).slice(1); chains.set(o.nodeId, chain); }
+    for (const a of chain) for (const i of (byNode.get(a) ?? []).slice(0, ANCESTOR_FANOUT)) out.push([Math.min(i, j), Math.max(i, j)]);
+  });
+  return out;
+}
+
+export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
   const active = live(objects).filter((o) => o.content.trim().length > 0);
   const linked = linkedPairs(active, relationships);
   const linkedSet = new Set(linked.map(([i, j]) => `${i}|${j}`));
@@ -66,7 +88,11 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES,
 
   // pairs worth looking at share a title word or a slot (N² → bounded by blocking, see pairBlocking.ts)
   const index = new Map(active.map((o, i) => [o.id, i]));
-  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra: [...groupPairs(active.map((o) => o.slotKey)), ...groupPairs(active.map((o) => `${o.nodeId}|${o.type}`)), ...linked] });
+  const chainOf = (nodeId: string) => (nodes.length ? ancestorIds(nodes, nodeId).slice(1) : []);
+  const chains = new Map<string, string[]>();
+  const ancestors = (nodeId: string) => { let c = chains.get(nodeId); if (!c) { c = chainOf(nodeId); chains.set(nodeId, c); } return c; };
+  const excepted = new Set(relationships.filter((r) => r.type === 'overrides').map((r) => pairKey(r.sourceId, r.targetId)));
+  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra: [...groupPairs(active.map((o) => o.slotKey)), ...groupPairs(active.map((o) => `${o.nodeId}|${o.type}`)), ...linked, ...inheritedPairs(active, nodes)] });
   {
     for (const [i, j] of pairs) {
       const a = active[i];
@@ -79,6 +105,8 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES,
       if (a.nodeId === b.nodeId && sim >= SAME_NODE_TITLE_SIMILARITY) reasons.push('same_node');
       if (linkedSet.has(`${index.get(a.id)}|${index.get(b.id)}`)) reasons.push('linked');
       if (a.nodeId === b.nodeId && a.type === b.type && jaccard(contentTokens.get(a.id)!, contentTokens.get(b.id)!) >= SAME_TYPE_CONTENT_OVERLAP) reasons.push('same_node_same_type');
+      if (a.nodeId !== b.nodeId && !excepted.has(pairKey(a.id, b.id)) && (ancestors(b.nodeId).includes(a.nodeId) || ancestors(a.nodeId).includes(b.nodeId))
+        && (sim >= TOPIC_SIMILARITY || jaccard(contentTokens.get(a.id)!, contentTokens.get(b.id)!) >= SAME_TYPE_CONTENT_OVERLAP)) reasons.push('inherits_conflict');
       if (sim >= TOPIC_SIMILARITY) {
         const qa = quantities.get(a.id)!;
         const qb = quantities.get(b.id)!;
@@ -107,9 +135,9 @@ export const isFresh = (p: CandidatePair, j: PairJudgment | undefined) => {
 };
 
 /** candidates that still need a judgement (no fresh answer, not already resolved by the user) */
-export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = []): CandidatePair[] {
+export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
   const byKey = new Map(known.map((j) => [j.key, j]));
-  return candidatePairs(objects, limit, relationships).filter((p) => {
+  return candidatePairs(objects, limit, relationships, nodes).filter((p) => {
     const j = byKey.get(p.key);
     return !(j && (j.resolution || isFresh(p, j)));
   });
@@ -120,6 +148,7 @@ export const REASON_FA: Record<CandidateReason, string> = {
   same_node: 'در یک گره و با عنوان نزدیک',
   linked: 'یکی به دیگری وابسته است',
   same_node_same_type: 'هم‌نوع در یک گره و با متن نزدیک',
+  inherits_conflict: 'یکی در گرهٔ والدِ دیگری است و موضوعشان یکی است',
   number_differs: 'عددهای متفاوت',
   qualifier_differs: 'قیدهای متفاوت',
 };

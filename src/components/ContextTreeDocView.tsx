@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
 import { childrenOf } from '../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Menu, IconButton, PROVENANCE_LABEL, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, Menu, IconButton, PROVENANCE_LABEL, ReachBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
 
@@ -21,6 +21,7 @@ interface ContextTreeDocViewProps {
   onNodeAction: (state: NonNullable<NodeDialogState>) => void;
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
+  onShowEffect: (nodeId: string) => void;
   onOpenThread: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
@@ -56,6 +57,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               یادداشت‌ها ({formatNumber(nodeNotes.length)})
             </Button>
             <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
+            <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>آنچه اینجا اثر دارد</Button>
             <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
             <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
             <Menu
@@ -102,9 +104,10 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               {nodeObjects.map((obj) => (
                 <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
                   <div className="flex items-start justify-between gap-inline-sm">
-                    <h4 className="title text-text-default">{obj.title}</h4>
-                    <div className="flex shrink-0 flex-wrap justify-end gap-inline-xs">
+                    <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
+                    <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
                       <TypeBadge value={obj.type} />
+                      <ReachBadge object={obj} />
                       <StatusBadge value={obj.status} />
                     </div>
                   </div>
