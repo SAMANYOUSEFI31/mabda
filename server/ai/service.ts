@@ -252,7 +252,8 @@ export class AiService {
       // What the model sees = the contexts relevant to this deliverable + every Confirmed Constraint (guardrails always apply).
       // This exact set is what Context Replay and the impact engine record (id + version).
       const seen = new Set(req.contextObjects.map((c) => c.id));
-      const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && !seen.has(c.id))];
+      // (the server's own source already hands over the list that is IN FORCE at the target node; a client-supplied list is only trusted for global, unexpired Constraints)
+      const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && c.reach !== 'position' && !(c.validUntil && c.validUntil < new Date().toISOString().slice(0, 10)) && !seen.has(c.id))];
       // guardrails = the spec's own rules + every Confirmed Constraint of the workspace (applied automatically)
       const guardrails = [...new Set([...(req.specGuardrails ?? []).map((g) => g.trim()).filter(Boolean), ...all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}`)])];
       const task = [

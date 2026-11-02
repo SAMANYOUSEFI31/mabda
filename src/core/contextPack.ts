@@ -3,11 +3,12 @@
  * knowledge. Pure: the server builds it (so it can store the lineage), the UI only shows and copies it.
  */
 
-import type { ContextObject, DeliverableSpec, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
+import type { ContextObject, ContextRelationship, DeliverableSpec, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { AmbiguityMap } from './contextEngine';
 import { ancestorIds } from './nodeTree';
 import { estimateTokens } from './tokens';
+import { effectiveObjects, guardrailsFor } from './effectiveContext';
 
 export interface PackInput {
   packId: string;
@@ -19,6 +20,10 @@ export interface PackInput {
   judgments?: AmbiguityMap;
   /** node whose ancestor chain is the relevant context when there is no spec (default: the whole tree) */
   targetNodeId?: string;
+  /** `overrides` edges (what switches an inherited rule off for a sub-tree); none = no exceptions */
+  relationships?: ContextRelationship[];
+  /** what «expired» is measured against (default: now) */
+  now?: Date;
 }
 
 export interface ContextPack {
@@ -59,12 +64,18 @@ const line = (o: ContextObject) => `- **[${o.type}] ${o.title}** (\`${o.id}@v${o
 
 export function buildContextPack(input: PackInput): ContextPack {
   const { nodes, spec, deliverable } = input;
-  const live = input.objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
-  // relevant branches: the spec's Context nodes (+ ancestors for inheritance), or the target node, or everything
+  const rels = input.relationships ?? [];
+  const now = input.now ?? new Date();
+  // relevant = what is IN FORCE at the seed nodes (src/core/effectiveContext.ts): the spec's Context nodes, or the target node, or the whole tree
   const seeds = spec ? [...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => c.nodeId) : input.targetNodeId ? [input.targetNodeId] : nodes.map((n) => n.id);
-  const relevantNodes = new Set(seeds.flatMap((n) => ancestorIds(nodes, n)));
-  if (spec) ancestorIds(nodes, 'content').forEach((n) => relevantNodes.add(n));
-  const relevant = live.filter((o) => relevantNodes.has(o.nodeId) || (o.status === 'Confirmed' && o.type === 'Constraint'));
+  if (spec) seeds.push('content');
+  const inForceIds = new Set<string>();
+  for (const n of [...new Set(seeds)]) for (const o of effectiveObjects(n, input.objects, nodes, rels, now)) inForceIds.add(o.id);
+  const relevant = input.objects.filter((o) => inForceIds.has(o.id));
+  // guardrails: Constraints in force at the target (spec / node); for the whole-tree pack only the ones that hold from the top
+  const guardSeeds = spec || input.targetNodeId ? [...new Set(seeds)] : nodes.filter((n) => !n.parentId).map((n) => n.id);
+  const guardIds = new Set<string>();
+  for (const n of guardSeeds) for (const o of guardrailsFor(n, input.objects, nodes, rels, now)) guardIds.add(o.id);
 
   const confirmed = relevant.filter((o) => o.status === 'Confirmed');
   const proposed = relevant.filter((o) => o.status !== 'Confirmed');
@@ -75,7 +86,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     return [...byNode.entries()].map(([n, os]) => `### ${path(n)}\n${os.map(line).join('\n')}`).join('\n\n');
   };
 
-  const guardrails = [...(spec?.guardrails ?? []), ...confirmed.filter((o) => o.type === 'Constraint').map((o) => `${o.title}: ${o.content}`)].filter(Boolean);
+  const guardrails = [...(spec?.guardrails ?? []), ...confirmed.filter((o) => guardIds.has(o.id)).map((o) => `${o.title}: ${o.content}`)].filter(Boolean);
   const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
   const depTitles = (deliverable?.dependsOn ?? []).map((id) => spec?.deliverables.find((d) => d.id === id)?.title).filter(Boolean);
 

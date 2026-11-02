@@ -19,7 +19,7 @@ export function createApp(db: Database.Database, aiOptions: { sessions?: Session
   let aiRef: AiService | undefined;
   let sessionsRef = (): SessionResolver => { throw new Error('sessions not ready'); };
   const files = new FileService(repo, (aiUser, req) => aiRef!.extract(aiUser, req), aiOptions.clock, { managed: () => sessionsRef().managedEnabled, payer: () => sessionsRef().platformPayer() });
-  const source = createContextSource(repo, files, LOCAL_USER);
+  const source = createContextSource(repo, files, LOCAL_USER, aiOptions.clock ?? (() => new Date()));
   const ai = createAiRouter({ source, sessions: aiOptions.sessions, service: aiOptions.service });
   aiRef = ai.service;
   sessionsRef = () => ai.sessions;

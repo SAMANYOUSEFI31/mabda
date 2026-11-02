@@ -11,6 +11,7 @@ import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
@@ -453,6 +454,39 @@ export class Repo {
     })();
     const all = this.listChanges(s, { objectId });
     return { relationships: this.listRelationships(s), change: all[all.length - 1] };
+  }
+
+  // ── overrides (docs/spine.md): a child-node object switches an ancestor-node object off for its sub-tree; read by effectiveContext ──
+  overridesOf(s: Scope, objectId: string): string[] {
+    return this.listRelationships(s).filter((r) => r.type === 'overrides' && r.sourceId === objectId).map((r) => r.targetId);
+  }
+  /** `byId` (in a descendant node) overrides `targetId` (in an ancestor node). The reason is required and lives in the Change. */
+  setOverride(s: Scope, byId: string, targetId: string, meta?: ChangeMeta): { relationships: ContextRelationship[]; change?: ContextChange } {
+    const by = this.getObject(s, byId), target = this.getObject(s, targetId);
+    const problem = overrideProblem(by, target, this.listNodes(s));
+    if (problem) throw new RepoError('invalid', problem);
+    if (by!.status === 'Superseded' || by!.status === 'Archived' || target!.status === 'Superseded' || target!.status === 'Archived') throw new RepoError('invalid', 'مورد جایگزین‌شده یا بایگانی‌شده را نمی‌شود کنار گذاشت یا جایگزین کرد.');
+    if (!meta?.reason?.trim()) throw new RepoError('invalid', 'برای کنار گذاشتن یک قید یا تصمیم، دلیل لازم است.');
+    const have = this.overridesOf(s, byId).sort();
+    if (have.includes(targetId)) return { relationships: this.listRelationships(s) };
+    const want = [...have, targetId].sort();
+    this.db.transaction(() => {
+      this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, byId, targetId, 'overrides', now());
+      this.recordChange(s, { objectId: byId, fromVersion: by!.version, toVersion: by!.version, kind: 'edited', meta, before: { overrides: have }, after: { overrides: want } });
+    })();
+    const all = this.listChanges(s, { objectId: byId });
+    return { relationships: this.listRelationships(s), change: all[all.length - 1] };
+  }
+  removeOverride(s: Scope, byId: string, targetId: string, meta?: ChangeMeta): { relationships: ContextRelationship[] } {
+    const by = this.getObject(s, byId);
+    if (!by) throw new RepoError('not_found', 'Context پیدا نشد.');
+    const have = this.overridesOf(s, byId).sort();
+    if (!have.includes(targetId)) return { relationships: this.listRelationships(s) };
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND type = 'overrides' AND source_id = ? AND target_id = ?").run(s.workspaceId, s.userId, byId, targetId);
+      this.recordChange(s, { objectId: byId, fromVersion: by.version, toVersion: by.version, kind: 'edited', meta, before: { overrides: have }, after: { overrides: have.filter((x) => x !== targetId) } });
+    })();
+    return { relationships: this.listRelationships(s) };
   }
 
   /** when an object is replaced, whatever rested on it (and whatever it rested on) now points at the replacement too; old edges stay as history */

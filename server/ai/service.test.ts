@@ -299,3 +299,17 @@ test('contradictions: ONE closed question per candidate pair, both claims quoted
   assert.ok(!JSON.stringify(r).includes('0.93'), 'no model confidence is exposed');
   assert.deepEqual((await service.judgeContradictions('user-12345678', [])).results, {});
 });
+
+test('generate: from a client-supplied list only global, unexpired Constraints join the guardrails (a position-only or expired one is neither validated nor recorded as lineage)', async () => {
+  const p = new MockProvider((c) => (isCheckCall(c) ? answerChecks(c, ['g0', 'g1']) : isDecision(c) ? decide('medium', 'drafting') : { blocks: [block('b1', 'خروجی')] }));
+  const { service } = serviceWith(p);
+  const k = (id: string, extra: Record<string, unknown> = {}) => ({ id, type: 'Constraint', status: 'Confirmed', title: id, content: `${id} متن`, nodeId: 'offer', version: 1, ...extra });
+  const ev = await collect((emit) => service.generate('user-12345678', {
+    deliverableId: 'd', deliverableTitle: 'کتابچه', deliverableType: 'Deliverable', acceptanceCriteria: ['معیار'], userMode: 'auto',
+    contextObjects: [],
+    contextList: [k('global'), k('legacy'), k('only-here', { reach: 'position' }), k('old', { validUntil: '2020-01-01' })],
+  }, emit));
+  const r = (ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>).result;
+  assert.deepEqual(r.usedContext.map((u) => u.id).sort(), ['global', 'legacy']);
+  assert.deepEqual(r.checks?.filter((c) => c.kind === 'guardrail').map((c) => c.text).sort(), ['global: global متن', 'legacy: legacy متن']);
+});
