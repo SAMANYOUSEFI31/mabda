@@ -48,6 +48,9 @@ export interface DemoData {
   packs: SavedPack[];
   templates: Array<{ id: string; kind: 'node'; name: string; payload: NodeTemplate; at: string }>;
   samples: Array<{ id: string; type: ContextObject['type']; nodeId: string; title: string; content: string; at: string }>;
+  /** three metrics with twelve recorded numbers (calendar days), and four decisions that state an expectation of one of them */
+  metrics: Array<{ id: string; name: string; unit: string; direction: 'up' | 'down'; target?: number; at: string }>;
+  measurements: Array<{ id: string; metricId: string; value: number; day: string; note?: string }>;
 }
 
 interface Who { actor: ContextChangeActor; label?: string }
@@ -299,6 +302,30 @@ export function buildDemo(now: Date): DemoData {
     ],
   };
 
+  // ── metrics: recorded numbers (never facts) and four decisions that state what they expect of one ──
+  const dayOf = (n: number) => new Date(now.getTime() - n * DAY).toISOString().slice(0, 10);
+  const metrics: DemoData['metrics'] = [
+    { id: 'met_demo_orders', name: 'سفارش هفتگی', unit: 'سفارش', direction: 'up', target: 120, at: at(36, 9) },
+    { id: 'met_demo_retention', name: 'ماندگاری اشتراک', unit: 'درصد', direction: 'up', target: 70, at: at(31, 9) },
+    { id: 'met_demo_cac', name: 'هزینهٔ جذب مشتری', unit: 'هزار تومان', direction: 'down', target: 200, at: at(29, 9) },
+  ];
+  const nums: Array<[string, number, number, string?]> = [
+    ['met_demo_orders', 35, 88], ['met_demo_orders', 28, 92], ['met_demo_orders', 21, 95], ['met_demo_orders', 14, 104], ['met_demo_orders', 7, 112, 'هفتهٔ پایانی کمپین اینستاگرام'],
+    ['met_demo_retention', 30, 61], ['met_demo_retention', 14, 64], ['met_demo_retention', 3, 66],
+    ['met_demo_cac', 28, 250], ['met_demo_cac', 21, 252], ['met_demo_cac', 10, 258], ['met_demo_cac', 3, 262],
+  ];
+  const measurements: DemoData['measurements'] = nums.map(([metricId, d, value, note], i) => ({ id: `msr_demo_${String(i + 1).padStart(2, '0')}`, metricId, value, day: dayOf(d), ...(note ? { note } : {}) }));
+  const expect = (id: string, e: { metricId: string; direction: 'up' | 'down'; targetValue: number; byDaysFromNow: number }) => {
+    const o = objects.find((x) => x.id === id);
+    if (o) o.record = { ...(o.record ?? {}), metricExpectation: { metricId: e.metricId, direction: e.direction, targetValue: e.targetValue, by: dayOf(-e.byDaysFromNow) } };
+  };
+  expect('dm_channel', { metricId: 'met_demo_orders', direction: 'up', targetValue: 110, byDaysFromNow: -5 }); // reached, judged
+  expect('dm_budget', { metricId: 'met_demo_cac', direction: 'down', targetValue: 200, byDaysFromNow: -3 }); // fell short, judged
+  expect('dm_price2', { metricId: 'met_demo_retention', direction: 'up', targetValue: 70, byDaysFromNow: 0 }); // due today, not judged yet
+  expect('dm_pack', { metricId: 'met_demo_orders', direction: 'up', targetValue: 130, byDaysFromNow: 20 }); // still open
+  chg({ objectId: 'dm_channel', fromVersion: 1, toVersion: 1, kind: 'outcome_noted', actor: 'user', reason: 'سفارش‌ها به ۱۱۲ رسید؛ همان‌طور که انتظار داشتیم.', after: { verdict: 'met', metricId: 'met_demo_orders', measurementId: 'msr_demo_05', value: 112, valueAt: dayOf(7) }, at: at(4, 11) });
+  chg({ objectId: 'dm_budget', fromVersion: 1, toVersion: 1, kind: 'outcome_noted', actor: 'user', reason: 'هزینهٔ جذب پایین نیامد و کمی هم بالاتر رفت.', after: { verdict: 'missed', metricId: 'met_demo_cac', measurementId: 'msr_demo_12', value: 262, valueAt: dayOf(3) }, at: at(2, 11) });
+
   changes.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
   // ── facets: one free axis across the tree (an object may belong to «مشتری ماهانه» in one node and «کارگاه» in another) ──
   const FACETS: Record<string, string[]> = {
@@ -323,5 +350,5 @@ export function buildDemo(now: Date): DemoData {
     { id: 'smp_demo_2', type: 'Decision' as const, nodeId: 'dn_support', title: 'مثال: کانال پشتیبانی', content: 'مثال: پیام‌رسان اصلی و ایمیل برای فاکتور.', at: at(1, 9, 1) },
     { id: 'smp_demo_3', type: 'Fact' as const, nodeId: 'dn_ws', title: 'مثال: سطح شرکت‌کننده', content: 'مثال: بیشتر شرکت‌کننده‌ها قبلاً قهوه دم کرده‌اند ولی برشته نکرده‌اند.', at: at(1, 9, 2) },
   ];
-  return { nodes, objects, versions, relationships, changes, notes, file, specs, deliverables, canvas, packs, templates, samples };
+  return { nodes, objects, versions, relationships, changes, notes, file, specs, deliverables, canvas, packs, templates, samples, metrics, measurements };
 }

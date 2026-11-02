@@ -81,6 +81,7 @@ export function clearLegacyData(workspaceIds: string[]) {
   for (const id of workspaceIds) localStorage.removeItem(`mabda_chat_sessions_${id}`);
 }
 
+export type MetricsBundle = { metrics: import('../types').Metric[]; measurements: import('../types').Measurement[] };
 export const dataApi = {
   async bootstrap(): Promise<Workspace[]> {
     const legacy = readLegacyData();
@@ -139,7 +140,13 @@ export const dataApi = {
   removeOverride: (id: string, objectId: string, targetId: string, reason?: string) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/overrides/remove`, { targetId, reason }),
   convertThinkingItem: (id: string, noteId: string, item: { kind: string; hash: string; text: string }, opts: { as?: 'fact' | 'decision'; reviewBy?: string } = {}) => call<{ object: ContextObject; objects: ContextObject[] }>('POST', `${ws(id)}/notes/${noteId}/items/convert`, { ...item, ...opts }),
   splitNote: (id: string, noteId: string) => call<{ nodes: TreeNode[]; created: TreeNode[]; notes: Note[] }>('POST', `${ws(id)}/notes/${noteId}/split`, {}),
-  noteOutcome: (id: string, objectId: string, text: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/outcome`, { text }),
+  noteOutcome: (id: string, objectId: string, text: string, verdict?: import('../types').ExpectationVerdict) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/outcome`, { text, ...(verdict ? { verdict } : {}) }),
+  createMetric: (id: string, m: { name: string; unit: string; direction: import('../types').MetricDirection; target?: number }) => call<MetricsBundle>('POST', `${ws(id)}/metrics`, m),
+  archiveMetric: (id: string, metricId: string) => call<MetricsBundle>('POST', `${ws(id)}/metrics/${metricId}/archive`, {}),
+  addMeasurements: (id: string, entries: Array<{ metricId: string; value: number }>) => call<MetricsBundle>('POST', `${ws(id)}/measurements/batch`, { entries }),
+  addMeasurementsCsv: (id: string, text: string) => call<MetricsBundle & { added: number; errors: Array<{ line: number; text: string; reason: string }> }>('POST', `${ws(id)}/measurements/csv`, { text }),
+  confirmMeasurement: (id: string, measurementId: string) => call<MetricsBundle>('POST', `${ws(id)}/measurements/${measurementId}/confirm`, {}),
+  removeMeasurement: (id: string, measurementId: string) => call<MetricsBundle>('DELETE', `${ws(id)}/measurements/${measurementId}`),
   listSavedPacks: (id: string) => call<{ packs: Array<import('../types').SavedPack & { tokens: number; counts: Record<string, number> }> }>('GET', `${ws(id)}/saved-packs`),
   createSavedPack: (id: string, p: { name: string; instruction: string; selection: import('../types').PackSelection }) => call<{ pack: import('../types').SavedPack }>('POST', `${ws(id)}/saved-packs`, p),
   updateSavedPack: (id: string, packId: string, p: { name: string; instruction: string; selection: import('../types').PackSelection }) => call<{ pack: import('../types').SavedPack }>('PUT', `${ws(id)}/saved-packs/${packId}`, p),
