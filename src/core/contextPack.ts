@@ -25,6 +25,12 @@ export interface PackInput {
   relationships?: ContextRelationship[];
   /** what «expired» is measured against (default: now) */
   now?: Date;
+  /** a saved pack: the nodes it is for (several), a facet filter, the extra statuses, assumptions yes / no, and a short instruction */
+  targetNodeIds?: string[];
+  facets?: string[];
+  statuses?: Array<'Proposed' | 'Needs Review'>;
+  includeAssumptions?: boolean;
+  instruction?: string;
 }
 
 export interface ContextPack {
@@ -68,13 +74,18 @@ export function buildContextPack(input: PackInput): ContextPack {
   const rels = input.relationships ?? [];
   const now = input.now ?? new Date();
   // relevant = what is IN FORCE at the seed nodes (src/core/effectiveContext.ts): the spec's Context nodes, or the target node, or the whole tree
-  const seeds = spec ? [...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => c.nodeId) : input.targetNodeId ? [input.targetNodeId] : nodes.map((n) => n.id);
+  const seeds = spec ? [...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => c.nodeId) : input.targetNodeIds?.length ? input.targetNodeIds : input.targetNodeId ? [input.targetNodeId] : nodes.map((n) => n.id);
   if (spec) seeds.push('content');
   const inForceIds = new Set<string>();
   for (const n of [...new Set(seeds)]) for (const o of effectiveObjects(n, input.objects, nodes, rels, now)) inForceIds.add(o.id);
-  const relevant = input.objects.filter((o) => inForceIds.has(o.id));
+  const facetSet = new Set(input.facets ?? []);
+  const extra = new Set<string>(input.statuses ?? ['Proposed', 'Needs Review']);
+  const relevant = input.objects.filter((o) => inForceIds.has(o.id)
+    && (!facetSet.size || (o.facets ?? []).some((f) => facetSet.has(f)))
+    && (o.status === 'Confirmed' || extra.has(o.status))
+    && (input.includeAssumptions !== false || !o.assumption));
   // guardrails: Constraints in force at the target (spec / node); for the whole-tree pack only the ones that hold from the top
-  const guardSeeds = spec || input.targetNodeId ? [...new Set(seeds)] : nodes.filter((n) => !n.parentId).map((n) => n.id);
+  const guardSeeds = spec || input.targetNodeId || input.targetNodeIds?.length ? [...new Set(seeds)] : nodes.filter((n) => !n.parentId).map((n) => n.id);
   const guardIds = new Set<string>();
   for (const n of guardSeeds) for (const o of guardrailsFor(n, input.objects, nodes, rels, now)) guardIds.add(o.id);
 
@@ -90,7 +101,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     return [...byNode.entries()].map(([n, os]) => `### ${path(n)}\n${os.map(line).join('\n')}`).join('\n\n');
   };
 
-  const guardrails = [...(spec?.guardrails ?? []), ...confirmed.filter((o) => guardIds.has(o.id)).map((o) => `${o.title}: ${o.content}`)].filter(Boolean);
+  const guardrails = [...(spec?.guardrails ?? []), ...input.objects.filter((o) => guardIds.has(o.id)).map((o) => `${o.title}: ${o.content}`)].filter(Boolean);
   const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
   const depTitles = (deliverable?.dependsOn ?? []).map((id) => spec?.deliverables.find((d) => d.id === id)?.title).filter(Boolean);
 
@@ -100,6 +111,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     '> این بسته منبع حقیقت کسب‌وکار من است. فقط «واقعیت‌های تأییدشده» را واقعیت بدان. بخش «پیشنهادی» هنوز تأیید نشده و واقعیت نیست. چیزی را از خودت اختراع نکن؛ اگر اطلاعات کم است، سؤال بپرس.',
   ];
 
+  if (input.instruction?.trim()) parts.push(`## دستور\n${input.instruction.trim()}`);
   if (spec) {
     const task = [`## کار`, `- جریان کار: ${spec.title}`, `- هدف: ${spec.target}`];
     if (deliverable) {

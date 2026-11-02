@@ -353,6 +353,19 @@ export interface LedgerEntry {
   byok?: boolean;
 }
 
+/** a saved Context pack: WHAT to include, resolved through the effective context at the chosen nodes (so scope is respected) */
+export interface PackSelection {
+  /** nodes the pack is FOR (empty = the whole tree) */
+  nodeIds: string[];
+  /** only objects with one of these facets (empty = any) */
+  facets: string[];
+  /** besides Confirmed (always), which other statuses are listed — always under «تأییدنشده, واقعیت نیست» */
+  statuses: Array<'Proposed' | 'Needs Review'>;
+  /** assumptions go in their own labelled section, with the rule */
+  includeAssumptions: boolean;
+}
+export interface SavedPack { id: string; workspaceId: string; name: string; selection: PackSelection; /** a short instruction for the AI that opens the pack */ instruction: string; createdAt: string; updatedAt: string }
+
 export interface Workspace {
   id: string;
   name: string;

@@ -38,7 +38,7 @@ test('server instructions tell the AI the rules; all tools are listed', async ()
     const tok = await t.token();
     const c = await t.connect(tok.token);
     const tools = (await c.listTools()).tools.map((x) => x.name).sort();
-    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_readiness', 'get_workspace_overview', 'list_assets', 'propose_context_updates', 'save_asset']);
+    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_pack', 'get_readiness', 'get_workspace_overview', 'list_assets', 'list_packs', 'propose_context_updates', 'save_asset']);
     const ins = c.getInstructions() ?? '';
     assert.match(ins, /get_gaps/);
     assert.match(ins, /propose_context_updates/);
@@ -354,5 +354,69 @@ test('SAMPLES: a sample object is invisible to every path — repo lists, caps, 
     assert.ok(!everything(t.repo.computeStale(s)).includes(SECRET));
     // the update route of a sample id from the outside world still works for the editor, but «edit» makes it hers
     assert.equal(sample2.sample, true);
+  } finally { t.close(); }
+});
+
+test('saved packs: built once, resolved through the effective context (a section rule stays in its section), only Confirmed is fact, assumptions apart, NO samples — via the API, MCP tools, MCP prompts and resources', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const SECRET = 'نمونهٔ-ممنوع-در-بسته';
+    const mk = (b: Record<string, unknown>) => t.api('POST', '/workspaces/ws_studio/objects', { provenance: 'User Input', ...b }).then((r) => r.json.object);
+    const n1 = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش یک' })).json.node.id;
+    const n2 = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش دو' })).json.node.id;
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش یک', content: 'واقعیت-یک', nodeId: n1, facets: ['مخاطب سازمانی'] });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش دو', content: 'واقعیت-دو', nodeId: n2, facets: ['فصل پاییز'] });
+    await mk({ type: 'Constraint', status: 'Confirmed', title: 'قید فقط بخش دو', content: 'قید-دو', nodeId: n2, reach: 'position' });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'فرض من', content: 'فرض-یک', nodeId: n1, assumption: true });
+    await mk({ type: 'Fact', status: 'Proposed', title: 'پیشنهاد معلق', content: 'پیشنهاد-معلق', nodeId: n1 });
+    t.repo.createSample(s, { type: 'Fact', title: `نمونه ${SECRET}`, content: SECRET, nodeId: n1, facets: ['مخاطب سازمانی'] });
+
+    // create → list → render
+    const made = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'بستهٔ بخش یک', instruction: 'فقط از همین بسته کار کن.', selection: { nodeIds: [n1, 'ghost'], facets: [], statuses: [], includeAssumptions: true } })).json.pack;
+    assert.deepEqual(made.selection.nodeIds, [n1], 'unknown nodes are dropped');
+    assert.ok(made.tokens > 10 && made.counts.confirmed >= 1);
+    const md = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${made.id}/render`)).json.markdown as string;
+    assert.match(md, /^<!-- mabda-pack:/);
+    assert.match(md, /## دستور\nفقط از همین بسته کار کن\./);
+    assert.ok(md.includes('واقعیت-یک') && !md.includes('واقعیت-دو'), 'a pack for section 1 holds section 1');
+    assert.ok(!md.includes('قید-دو'), 'a rule of section 2 (position) does not reach section 1');
+    const facts = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## فرض‌های فعال'));
+    assert.ok(!facts.includes('فرض-یک') && !facts.includes('پیشنهاد-معلق'), 'only Confirmed is fact');
+    assert.match(md, /## فرض‌های فعال، تأییدنشده[\s\S]*فرض-یک/);
+    assert.ok(!md.includes('پیشنهاد-معلق'), 'default statuses: Confirmed only');
+    assert.ok(!md.includes(SECRET), 'a sample never gets into a pack');
+
+    // a facet filter, extra statuses, assumptions off, several nodes
+    const other = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'دو بخش و بُعد', selection: { nodeIds: [n1, n2], facets: ['فصل پاییز'], statuses: ['Proposed'], includeAssumptions: false } })).json.pack;
+    const md2 = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${other.id}/render`)).json.markdown as string;
+    assert.ok(md2.includes('واقعیت-دو') && !md2.includes('واقعیت-یک'), 'facet filter');
+    assert.ok(md2.includes('قید-دو'), 'the section rule applies at its own section (guardrails are not facet-filtered)');
+    assert.ok(!md2.includes('فرض-یک') && !md2.includes(SECRET));
+    // edit + delete
+    const edited = (await t.api('PUT', `/workspaces/ws_studio/saved-packs/${made.id}`, { name: 'نام تازه', instruction: '', selection: made.selection })).json.pack;
+    assert.equal(edited.name, 'نام تازه');
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: ' ' })).status, 400);
+
+    // MCP tools
+    const c = await t.connect((await t.token()).token);
+    const list = await t.call(c, 'list_packs');
+    assert.deepEqual(list.data.packs.map((p: any) => p.name).sort(), ['دو بخش و بُعد', 'نام تازه'].sort());
+    assert.ok(!JSON.stringify(list).includes(SECRET));
+    const got = await t.call(c, 'get_pack', { name: 'دو بخش و بُعد' });
+    assert.ok(got.data.markdown.includes('واقعیت-دو') && !got.data.markdown.includes(SECRET));
+    assert.equal((await t.call(c, 'get_pack', { packId: 'ghost' })).isError, true);
+    // MCP prompts and resources
+    const prompts = (await c.listPrompts()).prompts;
+    assert.ok(prompts.some((p) => p.title === 'نام تازه'));
+    const pr = await c.getPrompt({ name: `pack_${made.id}` });
+    assert.ok(JSON.stringify(pr).includes('واقعیت-یک') && !JSON.stringify(pr).includes(SECRET));
+    const res = (await c.listResources()).resources;
+    assert.ok(res.some((r) => r.uri === `mabda://pack/${made.id}`));
+    const rd = await c.readResource({ uri: `mabda://pack/${other.id}` });
+    assert.ok(JSON.stringify(rd).includes('واقعیت-دو') && !JSON.stringify(rd).includes(SECRET));
+    await c.close();
+    await t.api('DELETE', `/workspaces/ws_studio/saved-packs/${other.id}`);
+    assert.equal(t.repo.listSavedPacks(s).length, 1);
   } finally { t.close(); }
 });

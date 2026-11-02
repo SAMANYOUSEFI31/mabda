@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, PackSelection, SavedPack,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
@@ -889,6 +889,50 @@ export class Repo {
   listPacks(s: Scope, limit = 10) {
     return (this.db.prepare('SELECT id, title, tokens, created_at FROM context_packs WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT ?').all(s.workspaceId, s.userId, limit) as Array<Record<string, unknown>>)
       .map((r) => ({ id: r.id as string, title: r.title as string, tokens: r.tokens as number, createdAt: r.created_at as string }));
+  }
+
+  // ── saved packs: a named selection (docs/spine.md → «بستهٔ ذخیره‌شده»); resolved by server/db/packs.ts ──
+  private cleanSelection(s: Scope, sel: Partial<PackSelection> | undefined): PackSelection {
+    const nodes = new Set(this.listNodes(s).map((n) => n.id));
+    return {
+      nodeIds: [...new Set((Array.isArray(sel?.nodeIds) ? sel!.nodeIds : []).filter((n): n is string => typeof n === 'string' && nodes.has(n)))].slice(0, 40),
+      facets: cleanFacets(sel?.facets) ?? [],
+      statuses: (['Proposed', 'Needs Review'] as const).filter((st) => Array.isArray(sel?.statuses) && (sel!.statuses as string[]).includes(st)),
+      includeAssumptions: sel?.includeAssumptions !== false,
+    };
+  }
+  private rowToPack(r: Record<string, unknown>): SavedPack {
+    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, selection: JSON.parse(r.selection as string) as PackSelection, instruction: (r.instruction as string) ?? '', createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  }
+  listSavedPacks(s: Scope): SavedPack[] {
+    return (this.db.prepare('SELECT * FROM saved_packs WHERE workspace_id = ? AND user_id = ? ORDER BY updated_at DESC, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map((r) => this.rowToPack(r));
+  }
+  getSavedPack(s: Scope, id: string): SavedPack | undefined {
+    const r = this.db.prepare('SELECT * FROM saved_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
+    return r ? this.rowToPack(r) : undefined;
+  }
+  saveSavedPack(s: Scope, input: { id?: string; name: string; selection?: Partial<PackSelection>; instruction?: string }): SavedPack {
+    this.assertWorkspace(s);
+    const name = input.name?.trim().slice(0, 80);
+    if (!name) throw new RepoError('invalid', 'نام بسته لازم است.');
+    const selection = JSON.stringify(this.cleanSelection(s, input.selection));
+    const instruction = (input.instruction ?? '').trim().slice(0, 1000);
+    const t = now();
+    if (input.id) {
+      const r = this.db.prepare('UPDATE saved_packs SET name = ?, selection = ?, instruction = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(name, selection, instruction, t, input.id, s.workspaceId, s.userId);
+      if (!r.changes) throw new RepoError('not_found', 'بسته پیدا نشد.');
+      return this.getSavedPack(s, input.id)!;
+    }
+    const id = newId('pk');
+    this.db.prepare('INSERT INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, name, selection, instruction, t, t);
+    return this.getSavedPack(s, id)!;
+  }
+  /** the demo builder: raw insert with explicit timestamps */
+  importSavedPack(s: Scope, p: SavedPack) {
+    this.db.prepare('INSERT OR REPLACE INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)').run(p.id, s.userId, s.workspaceId, p.name, JSON.stringify(this.cleanSelection(s, p.selection)), p.instruction, p.createdAt, p.updatedAt);
+  }
+  deleteSavedPack(s: Scope, id: string) {
+    this.db.prepare('DELETE FROM saved_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
   }
 
   // ── whole-workspace state + one-time legacy import ───────────────────────

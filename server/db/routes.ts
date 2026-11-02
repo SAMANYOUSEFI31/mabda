@@ -23,6 +23,8 @@ import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
+import { renderSavedPack } from './packs.ts';
+import type { SavedPack } from '../../src/types/index.ts';
 import { convertedTo, findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
 import type { ThinkingKind } from '../../src/core/thinkingMarkers.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
@@ -516,6 +518,20 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json(repo.createMcpToken(s, String(body(req).label ?? 'Claude')));
   }));
   router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
+
+  // ── saved packs: build once, paste anywhere (UI copy / print, MCP list_packs / get_pack) ──
+  const packSummary = (s: Scope, p: SavedPack) => { const r = renderSavedPack(repo, s, p, clock()); return { ...p, tokens: r.tokens, counts: r.counts }; };
+  router.get('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); res.json({ packs: repo.listSavedPacks(s).map((p) => packSummary(s, p)) }); }));
+  router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
+  router.put('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { id: req.params.id, name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
+  router.delete('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { repo.deleteSavedPack(scopeOf(req), req.params.id); res.json({ ok: true }); }));
+  router.get('/workspaces/:wid/saved-packs/:id/render', wrap((req, res) => {
+    const s = scopeOf(req);
+    const p = repo.getSavedPack(s, req.params.id);
+    if (!p) throw new RepoError('not_found', 'بسته پیدا نشد.');
+    const r = renderSavedPack(repo, s, p, clock());
+    res.json({ pack: p, markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts });
+  }));
 
   // ── Context pack (copy for any AI) + pasted-answer import ────────────
   const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(LOCAL_USER, s.workspaceId))];
