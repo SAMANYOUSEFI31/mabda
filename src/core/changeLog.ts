@@ -47,9 +47,9 @@ export function isContentChange(c: Pick<ContextChange, 'kind' | 'after'>): boole
   return false;
 }
 
-/** changes that count as «this object was looked at / written by someone» for the review baseline */
+/** changes that count as «this object was looked at / written by someone» for the review baseline (linking its dependencies counts: the user just looked at it) */
 export function isBaselineChange(c: Pick<ContextChange, 'kind' | 'after'>): boolean {
-  return c.kind === 'created' || c.kind === 'imported' || c.kind === 'proposal_accepted' || c.kind === 'review_accepted' || (c.kind === 'edited' && isContentChange(c));
+  return c.kind === 'created' || c.kind === 'imported' || c.kind === 'proposal_accepted' || c.kind === 'review_accepted' || (c.kind === 'edited' && (isContentChange(c) || (!!c.after && 'dependsOn' in c.after)));
 }
 
 const REASON_TAIL = /\n*\[دلیل جایگزینی: ([\s\S]*)\]\s*$/;

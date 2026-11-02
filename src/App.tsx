@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChatSession,
   ContextDraft,
@@ -39,6 +39,7 @@ import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
+import { needsReview } from './core/decisionGraph';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
@@ -156,6 +157,16 @@ export default function App() {
   const deliverables = data?.deliverables ?? [];
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
+  // derived, never stored: dependents whose dependency changed after they were last written or reviewed
+  const reviewNeeds = useMemo(() => needsReview(data?.objects ?? [], data?.relationships ?? [], data?.changes ?? []), [data?.objects, data?.relationships, data?.changes]);
+  // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
+  useEffect(() => {
+    if (!data) return;
+    let live = true;
+    dataApi.changeLog(data.workspace.id).then((r) => { if (live) patch((d) => ({ ...d, changes: r.changes })); }).catch(() => { /* review hints are optional */ });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.workspace.id, data?.objects, data?.relationships]);
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
   const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
@@ -192,6 +203,18 @@ export default function App() {
     }
     patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
     return out;
+  };
+
+  const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
+    const r = await attempt(() => dataApi.setDependencies(wid, objectId, dependsOn));
+    if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
+  };
+  /** «بدون تغییر بپذیر» — writes a review_accepted Change; the derived «needs review» state disappears */
+  const handleAcceptReview = async (objectId: string) => {
+    const r = await attempt(() => dataApi.acceptReview(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, changes: r.changes, stale: r.stale }));
+    toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
   };
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
@@ -588,6 +611,9 @@ export default function App() {
               gaps={attentionGaps}
               contradictionCount={contradictions.length}
               staleCount={stale.length}
+              reviews={[...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, dependencyTitles: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) }))}
+              onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
+              onAcceptReview={handleAcceptReview}
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
               onAnswerGap={(gap, answer) => { void handleSaveContextObject({
                 workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
@@ -753,6 +779,12 @@ export default function App() {
         nodes={nodes}
         workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
+        allObjects={workspaceContexts}
+        relationships={data?.relationships ?? []}
+        onSetDependencies={handleSetDependencies}
+        reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
+        titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
+        onAcceptReview={handleAcceptReview}
       />
 
       <NodeDialogs

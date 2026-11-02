@@ -4,24 +4,34 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ContextDraft, ContextObject, ContextProvenance, ContextStatus, ContextType, TreeNode } from '../types';
+import { ContextDraft, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
+import { dependentsOf, planDecisions } from '../core/decisionGraph';
+import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../core/changeLog';
 import type { ContextChange } from '../types';
 import { dataApi } from '../services/dataApi';
-import { Badge, Button, Card, Dialog, Markdown, SegmentedControl, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
+import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, SegmentedControl, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (saved: ContextDraft) => void;
+  onSave: (saved: ContextDraft) => void | Promise<ContextObject | undefined>;
   /** the reason is stored in the Change log, never in the object's text */
   onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => void;
   onArchive: (id: string) => void;
   nodes: TreeNode[];
   workspaceId: string;
   defaultNodeId?: string;
+  /** every object + the `depends_on` relations: «وابسته به» (what this decision rests on) is chosen here */
+  allObjects?: ContextObject[];
+  relationships?: ContextRelationship[];
+  onSetDependencies?: (objectId: string, dependsOn: string[]) => Promise<void> | void;
+  /** derived «needs review»: a dependency changed and nobody reviewed this object since */
+  reviewNeed?: ReviewNeed;
+  titleOf?: (id: string) => string;
+  onAcceptReview?: (objectId: string) => void;
 }
 
 /**
@@ -60,6 +70,12 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   nodes,
   workspaceId,
   defaultNodeId = 'business',
+  allObjects = [],
+  relationships = [],
+  onSetDependencies,
+  reviewNeed,
+  titleOf,
+  onAcceptReview,
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
 
@@ -73,6 +89,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     object?.provenance || 'User Input'
   );
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
+  const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
+  const [deps, setDeps] = useState<string[]>(currentDeps);
+  const [depsOpen, setDepsOpen] = useState(false);
+  const candidates = allObjects.filter((o) => o.id !== object?.id && o.status !== 'Superseded' && o.status !== 'Archived' && o.status !== 'Proposed');
+  const sameDeps = deps.slice().sort().join('|') === currentDeps.slice().sort().join('|');
+  const plan = isEditing && object ? planDecisions(allObjects, relationships) : null;
+  const unit = plan?.layers.flat().find((u) => u.ids.includes(object!.id));
+  const dependents = isEditing && object ? dependentsOf(object.id, relationships, allObjects) : [];
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
   useEffect(() => {
@@ -114,7 +138,12 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       slotKey: object?.slotKey,
     };
 
-    onSave(updated);
+    // the dependency set is saved after the object itself (a new object only has an id once it exists)
+    void (async () => {
+      const saved = await onSave(updated);
+      const id = isEditing ? object!.id : saved?.id;
+      if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
+    })();
     onClose();
   };
 
@@ -200,6 +229,41 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             </div>
           )}
         </div>
+
+        {isEditing && object && reviewNeed && onAcceptReview && (
+          <Alert
+            intent="warning"
+            title="نیاز به بازبینی"
+            action={<Button size="sm" variant="secondary" onClick={() => { onAcceptReview(object.id); onClose(); }}>بدون تغییر بپذیر</Button>}
+          >
+            این مورد به {reviewNeed.changedDependencies.map((d) => `«${titleOf?.(d.id) ?? d.id}»`).join('، ')} وابسته است و آن تغییر کرده. اگر هنوز درست است، بدون تغییر بپذیر؛ وگرنه آن را ویرایش یا جایگزین کن.
+          </Alert>
+        )}
+
+        {onSetDependencies && candidates.length > 0 && (
+          <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
+            <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+              <span className="label-md text-text-default">وابسته به ({formatNumber(deps.length)})</span>
+              <Button type="button" size="sm" variant="ghost" aria-expanded={depsOpen} onClick={() => setDepsOpen((v) => !v)}>{depsOpen ? 'بستن فهرست' : 'انتخاب وابستگی‌ها'}</Button>
+            </div>
+            <p className="body-sm text-text-subtle">اگر این تصمیم روی تصمیم‌های دیگری سوار است، آن‌ها را انتخاب کن. با تغییر آن‌ها، این مورد و خروجی‌های ساخته‌شده از آن «نیاز به بازبینی» می‌شوند.</p>
+            {depsOpen && (
+              <div className="grid grid-cols-1 gap-stack-xs sm:grid-cols-2">
+                {candidates.map((o) => (
+                  <Checkbox key={o.id} label={o.title} checked={deps.includes(o.id)} onChange={(e) => setDeps((cur) => (e.target.checked ? [...cur, o.id] : cur.filter((x) => x !== o.id)))} />
+                ))}
+              </div>
+            )}
+            {!depsOpen && deps.length > 0 && <p className="body-sm text-text-default">{deps.map((id) => titleOf?.(id) ?? id).join('، ')}</p>}
+            {isEditing && (dependents.length > 0 || unit?.concurrent) && (
+              <p className="body-sm text-text-subtle">
+                {dependents.length > 0 ? `${formatNumber(dependents.length)} مورد (مستقیم یا غیرمستقیم) روی این مورد سوارند. ` : ''}
+                {unit?.concurrent ? `با ${unit.ids.filter((x) => x !== object!.id).map((x) => `«${titleOf?.(x) ?? x}»`).join('، ') || 'خودش'} باید هم‌زمان تصمیم گرفته شود.` : ''}
+                {unit && !unit.concurrent && unit.state === 'blocked' ? `هنوز منتظر تأیید ${unit.blockedBy.map((x) => `«${titleOf?.(x) ?? x}»`).join('، ')} است.` : ''}
+              </p>
+            )}
+          </div>
+        )}
 
         {isEditing && object && (
           <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">

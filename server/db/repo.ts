@@ -208,10 +208,15 @@ export class Repo {
   private withImpact<T>(s: Scope, run: () => T): { value: T; impact: ImpactResult } {
     if (!this.impactEnabled(s)) return { value: run(), impact: { count: 0, assets: [] } };
     const dels = this.listDeliverables(s);
-    const before = computeStaleAssets(dels, this.listObjects(s));
+    const before = this.computeStale(s, dels);
     const value = run();
-    const after = computeStaleAssets(dels, this.listObjects(s));
+    const after = this.computeStale(s, dels);
     return { value, impact: this.describeImpact(newlyStale(before, after), dels) };
+  }
+
+  /** stale assets with every reason: changed versions AND decisions they rest on (depends_on) that changed unreviewed */
+  computeStale(s: Scope, dels: GeneratedDeliverable[] = this.listDeliverables(s)): StaleAsset[] {
+    return computeStaleAssets(dels, this.listObjects(s), { relationships: this.listRelationships(s), changes: this.listChanges(s) });
   }
 
   private describeImpact(list: StaleAsset[], dels: GeneratedDeliverable[]): ImpactResult {
@@ -288,6 +293,7 @@ export class Repo {
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(created.id, t, oldId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')
         .run(newId('rel'), s.userId, s.workspaceId, created.id, oldId, 'supersedes', t);
+      this.carryDependencies(s, oldId, created.id);
       this.recordChange(s, { objectId: oldId, fromVersion: old.version, toVersion: created.version, kind: 'superseded', meta, before: { status: old.status }, after: { status: 'Superseded', supersededById: created.id }, source: created.source });
       this.recordChange(s, { objectId: created.id, fromVersion: old.version, toVersion: created.version, kind: 'created', meta: { ...meta, reason: undefined }, after: { type: created.type, title: created.title, nodeId: created.nodeId, status: created.status, supersedes: oldId }, source: created.source });
       return created;
@@ -323,6 +329,51 @@ export class Repo {
     this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'review_accepted', meta: { actor: 'user', ...meta } });
     const all = this.listChanges(s, { objectId });
     return all[all.length - 1];
+  }
+
+  // ── depends_on (docs/spine.md): read by decisionGraph and impactEngine ──────────
+  dependenciesOf(s: Scope, objectId: string): string[] {
+    return this.listRelationships(s).filter((r) => r.type === 'depends_on' && r.sourceId === objectId).map((r) => r.targetId);
+  }
+
+  /** Replaces the set of objects `objectId` depends on. Cycles are allowed (a «concurrent decision»); a self-dependency is not. */
+  setDependencies(s: Scope, objectId: string, dependsOn: string[], meta?: ChangeMeta): { relationships: ContextRelationship[]; change?: ContextChange } {
+    const o = this.getObject(s, objectId);
+    if (!o) throw new RepoError('not_found', 'Context پیدا نشد.');
+    const want = [...new Set(dependsOn)].sort();
+    if (want.length > 20) throw new RepoError('invalid', 'یک مورد حداکثر به ۲۰ مورد دیگر وابسته می‌شود.');
+    for (const id of want) {
+      if (id === objectId) throw new RepoError('invalid', 'یک مورد نمی‌تواند به خودش وابسته باشد.');
+      const t = this.getObject(s, id);
+      if (!t) throw new RepoError('not_found', 'یکی از مورد‌های وابستگی پیدا نشد.');
+      if (t.status === 'Superseded' || t.status === 'Archived') throw new RepoError('invalid', 'به مورد جایگزین‌شده یا بایگانی‌شده نمی‌شود وابسته شد.');
+    }
+    const have = this.dependenciesOf(s, objectId).sort();
+    if (have.join('|') === want.join('|')) return { relationships: this.listRelationships(s) };
+    this.db.transaction(() => {
+      this.db.prepare("DELETE FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND type = 'depends_on' AND source_id = ?").run(s.workspaceId, s.userId, objectId);
+      const t = now();
+      for (const id of want) this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, objectId, id, 'depends_on', t);
+      this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta, before: { dependsOn: have }, after: { dependsOn: want }, source: o.source });
+    })();
+    const all = this.listChanges(s, { objectId });
+    return { relationships: this.listRelationships(s), change: all[all.length - 1] };
+  }
+
+  /** when an object is replaced, whatever rested on it (and whatever it rested on) now points at the replacement too; old edges stay as history */
+  private carryDependencies(s: Scope, fromId: string, toId: string) {
+    const t = now();
+    const rels = this.listRelationships(s).filter((r) => r.type === 'depends_on');
+    const has = new Set(rels.map((r) => `${r.sourceId}>${r.targetId}`));
+    const add = (a: string, b: string) => {
+      if (a === b || has.has(`${a}>${b}`)) return;
+      has.add(`${a}>${b}`);
+      this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, a, b, 'depends_on', t);
+    };
+    for (const r of rels) {
+      if (r.targetId === fromId) add(r.sourceId, toId);
+      if (r.sourceId === fromId) add(toId, r.targetId);
+    }
   }
 
   listRelationships(s: Scope): ContextRelationship[] {
@@ -545,6 +596,7 @@ export class Repo {
       const t = now();
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(winnerId, t, loserId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
+      this.carryDependencies(s, loserId, winnerId);
       this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
       if (winner.status !== 'Confirmed') {
         this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
@@ -610,7 +662,7 @@ export class Repo {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
       nodes: this.listNodes(s), objects, relationships: this.listRelationships(s), notes: this.listNotes(s),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
-      stale: this.impactEnabled(s) ? computeStaleAssets(deliverables, objects) : [],
+      stale: this.impactEnabled(s) ? this.computeStale(s, deliverables) : [],
       judgments: this.listJudgments(s),
       pairJudgments: this.listPairJudgments(s),
       changes: this.listChanges(s),

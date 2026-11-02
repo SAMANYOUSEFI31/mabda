@@ -3,9 +3,11 @@
  * Pure: input = assets (with usedContext = exact id+version injected) + current objects.
  */
 
-import type { ContextObject, GeneratedDeliverable, UsedContextRef } from '../types';
+import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, UsedContextRef } from '../types';
+import { needsReview } from './decisionGraph';
+import type { ReviewNeed } from './decisionGraph';
 
-export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed';
+export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed' | 'dependency_changed';
 
 export interface StaleReason {
   kind: StaleReasonKind;
@@ -15,6 +17,9 @@ export interface StaleReason {
   title: string;
   usedVersion: number;
   currentVersion?: number;
+  /** dependency_changed: the object it rests on that changed (and when) */
+  dependencyId?: string;
+  changedAt?: string;
   /** Persian, ready for the UI */
   message: string;
 }
@@ -76,14 +81,31 @@ export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>
 }
 
 export const staleSignature = (reasons: StaleReason[]): string =>
-  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}`).sort().join('|');
+  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}${r.dependencyId ? `~${r.dependencyId}@${r.changedAt ?? ''}` : ''}`).sort().join('|');
 
-export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'>, objects: ContextObject[]): StaleReason[] {
+/** an object the asset used rests on another object that changed since — and nobody has reviewed it (derived, see decisionGraph.needsReview) */
+function dependencyReason(used: UsedContextRef, byId: Map<string, ContextObject>, review: Map<string, ReviewNeed>, builtAt?: string): StaleReason | null {
+  const need = review.get(used.id);
+  const obj = byId.get(used.id);
+  if (!need || !obj) return null;
+  // a rebuild reads the Context again: only changes AFTER the asset was built make it stale
+  const fresh = need.changedDependencies.filter((c) => !builtAt || c.at > builtAt);
+  if (!fresh.length) return null;
+  const last = fresh[fresh.length - 1];
+  const dep = byId.get(last.id);
+  const depTitle = dep ? (dep.supersededById ? byId.get(dep.supersededById)?.title ?? dep.title : dep.title) : last.id;
+  return {
+    kind: 'dependency_changed', objectId: obj.id, title: obj.title, usedVersion: used.version, currentVersion: obj.version, dependencyId: last.id, changedAt: last.at,
+    message: `«${obj.title}» به «${depTitle}» وابسته است و «${depTitle}» تغییر کرده؛ هنوز بازبینی نشده.`,
+  };
+}
+
+export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'> & { createdAt?: string }, objects: ContextObject[], review?: Map<string, ReviewNeed>): StaleReason[] {
   const byId = new Map(objects.map((o) => [o.id, o]));
   const out: StaleReason[] = [];
   const seen = new Set<string>();
   for (const used of d.usedContext ?? []) {
-    const r = reasonFor(used, byId);
+    const r = reasonFor(used, byId) ?? (review ? dependencyReason(used, byId, review, d.createdAt) : null);
     if (!r) continue;
     const key = `${r.objectId}:${r.kind}`;
     if (seen.has(key)) continue;
@@ -94,10 +116,16 @@ export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'>, obj
 }
 
 /** The list of stale assets with the reason. Assets without lineage (usedContext empty) are never stale. */
-export function computeStaleAssets(deliverables: Array<Pick<GeneratedDeliverable, 'id' | 'usedContext'>>, objects: ContextObject[]): StaleAsset[] {
+export function computeStaleAssets(
+  deliverables: Array<Pick<GeneratedDeliverable, 'id' | 'usedContext'> & { createdAt?: string }>,
+  objects: ContextObject[],
+  /** with the `depends_on` relations and the change log, an asset also goes stale when a decision it rests on changed (`dependency_changed`) */
+  graph?: { relationships: ContextRelationship[]; changes: ContextChange[] },
+): StaleAsset[] {
+  const review = graph ? needsReview(objects, graph.relationships, graph.changes) : undefined;
   const out: StaleAsset[] = [];
   for (const d of deliverables) {
-    const reasons = staleReasonsOf(d, objects);
+    const reasons = staleReasonsOf(d, objects, review);
     if (reasons.length) out.push({ deliverableId: d.id, reasons, signature: staleSignature(reasons) });
   }
   return out;

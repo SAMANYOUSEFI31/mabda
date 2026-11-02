@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
-import { computeStaleAssets, staleReasonsOf } from '../../src/core/impactEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
@@ -63,7 +62,7 @@ export function buildMcpServer(c: McpContext): McpServer {
       id: s.id, title: s.title, target: s.target, guardrails: s.guardrails ?? [],
       deliverables: s.deliverables.map((d) => ({ id: d.id, title: d.title, dependsOn: d.dependsOn ?? [], built: built.has(d.id), locked: lockOf(d, s.deliverables, built).locked })),
     }));
-    const stale = can(plan(), 'changeImpact') ? computeStaleAssets(dels, objects).length : 0;
+    const stale = can(plan(), 'changeImpact') ? repo.computeStale(scope, dels).length : 0;
     const data = {
       workspace: { id: ws.id, name: ws.name, plan: ws.planId }, tree, specs,
       counts: { confirmed: active.filter((o) => o.status === 'Confirmed').length, unconfirmed: active.filter((o) => o.status !== 'Confirmed').length, assets: dels.length, staleAssets: stale, pendingProposals: active.filter((o) => o.status === 'Proposed').length },
@@ -217,7 +216,7 @@ export function buildMcpServer(c: McpContext): McpServer {
   });
 
   const assetView = (d: GeneratedDeliverable, objects: ContextObject[]) => {
-    const reasons = can(plan(), 'changeImpact') ? staleReasonsOf(d, objects) : [];
+    const reasons = can(plan(), 'changeImpact') ? (repo.computeStale(scope, [d])[0]?.reasons ?? []) : [];
     return { id: d.id, title: d.title, workstreamId: d.workstreamId, deliverableId: d.deliverableId, createdAt: d.createdAt, source: d.source ?? null, stale: reasons.length > 0, staleReasons: reasons.map((r) => r.message) };
   };
 
@@ -277,7 +276,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     if (!can(plan(), 'changeImpact')) return fail('موتور اثر تغییر در این پلن فعال نیست.');
     const dels = repo.listDeliverables(scope).filter((d) => !a.assetId || d.id === a.assetId);
     if (a.assetId && !dels.length) return fail(`دارایی «${a.assetId}» پیدا نشد.`);
-    const stale = computeStaleAssets(dels, repo.listObjects(scope));
+    const stale = repo.computeStale(scope, dels);
     const items = stale.map((s) => ({ assetId: s.deliverableId, title: dels.find((d) => d.id === s.deliverableId)?.title ?? s.deliverableId, reasons: s.reasons.map((r) => ({ message: r.message, objectId: r.objectId, kind: r.kind, usedVersion: r.usedVersion, currentVersion: r.currentVersion ?? null })) }));
     const md = items.length ? `## ${items.length} دارایی قدیمی شده\n${items.map((i) => `- **${i.title}** (\`${i.assetId}\`): ${i.reasons.map((r) => r.message).join('؛ ')}`).join('\n')}\n\nبازسازی در Mabda یا با خواندن Context تازه و save_asset دوباره.` : 'هیچ دارایی‌ای قدیمی نشده است.';
     return reply(md, { checked: dels.length, staleCount: items.length, stale: items });

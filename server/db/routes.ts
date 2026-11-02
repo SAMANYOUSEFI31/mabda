@@ -15,7 +15,6 @@ import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
 import { ancestorIds } from '../../src/core/nodeTree.ts';
-import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
 import { entitlementsOf } from '../../src/core/entitlements.ts';
@@ -87,7 +86,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   }));
 
   // ── context objects ──────────────────────────────────────────────────
-  const stale = (s: Scope) => (repo.impactEnabled(s) ? computeStaleAssets(repo.listDeliverables(s), repo.listObjects(s)) : []);
+  const stale = (s: Scope) => (repo.impactEnabled(s) ? repo.computeStale(s) : []);
   router.post('/workspaces/:wid/objects', wrap((req, res) => {
     const s = scopeOf(req);
     const { change: _c, reason: _r, ...input } = body(req);
@@ -108,6 +107,13 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.get('/workspaces/:wid/changes/log', wrap((req, res) => {
     const since = typeof req.query.since === 'string' && !Number.isNaN(Date.parse(req.query.since)) ? new Date(req.query.since).toISOString() : undefined;
     res.json({ changes: repo.listChanges(scopeOf(req), { objectId: typeof req.query.objectId === 'string' ? req.query.objectId : undefined, since }) });
+  }));
+  router.put('/workspaces/:wid/objects/:id/dependencies', wrap((req, res) => {
+    const s = scopeOf(req);
+    const list = Array.isArray(body(req).dependsOn) ? (body(req).dependsOn as unknown[]).filter((x): x is string => typeof x === 'string') : null;
+    if (!list) throw new RepoError('invalid', 'فهرست وابستگی‌ها لازم است.');
+    const r = repo.setDependencies(s, req.params.id, list, metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s), stale: stale(s) });
   }));
   router.post('/workspaces/:wid/objects/:id/review-accept', wrap((req, res) => {
     const s = scopeOf(req);

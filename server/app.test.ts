@@ -58,7 +58,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     assert.equal(done.type, 'done');
     const used = done.result.usedContext as Array<{ id: string; version: number }>;
     assert.ok(used.some((u) => u.id === 'ctx_audience' && u.version === 1));
-    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', creditCost: 2, usedContext: used, rebuildCount: 0, createdAt: new Date().toISOString() };
+    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', creditCost: 2, usedContext: used, rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() };
     const saved = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', asset);
     assert.equal(saved.json.stale.length, 0);
 
@@ -74,7 +74,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     const ev2 = await t.ndjson('/ai/generate', { workspaceId: 'ws_studio', deliverableId: 'x', deliverableTitle: 'پروفایل مشتری', deliverableType: 'Asset', acceptanceCriteria: ['معیار'], userMode: 'auto', targetNodeId: 'content' });
     const used2 = ev2.at(-1).result.usedContext as Array<{ id: string; version: number }>;
     assert.equal(used2.find((u) => u.id === 'ctx_audience')!.version, 2);
-    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, halfPriceUsedFor: 'sig' });
+    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, halfPriceUsedFor: 'sig', createdAt: new Date().toISOString() });
     assert.ok(!rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_new'));
     assert.ok(rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_inst_1'), 'the other asset is still stale');
   } finally { t.close(); }

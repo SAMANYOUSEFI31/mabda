@@ -280,3 +280,31 @@ test('migration 9: change log rebuilt from versions; the reason glued to the tex
   assert.deepEqual(repo.listChanges(s, { objectId: 'arch' }).map((c) => c.kind), ['created', 'archived']);
   assert.ok(repo.listChanges(s).every((c) => c.actor === 'system'));
 });
+
+test('depends_on: set/validated through the repo, carried over on supersede, and an edited dependency makes the dependent\'s asset stale until reviewed', () => {
+  const { repo, s } = fresh();
+  const mk = (title: string) => repo.createObject(s, { type: 'Decision', provenance: 'User Input', title, content: title, nodeId: 'business' });
+  const budget = mk('بودجه'); const channel = mk('کانال');
+  assert.throws(() => repo.setDependencies(s, channel.id, [channel.id]), RepoError, 'no self-dependency');
+  assert.throws(() => repo.setDependencies(s, channel.id, ['ghost']), RepoError);
+  const r = repo.setDependencies(s, channel.id, [budget.id]);
+  assert.deepEqual(r.relationships.filter((x) => x.type === 'depends_on').map((x) => [x.sourceId, x.targetId]), [[channel.id, budget.id]]);
+  assert.equal(repo.setDependencies(s, channel.id, [budget.id]).change, undefined, 'same set = no record');
+  repo.setDependencies(s, budget.id, [channel.id]); // a cycle is allowed
+  repo.setDependencies(s, budget.id, []);
+
+  const del = { id: 'a1', workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: 'برنامه کانال', content: 'm', executionMode: 'auto', creditCost: 1, usedContext: [{ id: channel.id, version: 1 }], rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() } as unknown as GeneratedDeliverable;
+  repo.saveDeliverable(s, del);
+  assert.deepEqual(repo.computeStale(s).map((x) => x.deliverableId), [], 'fresh');
+  const edited = repo.updateObject(s, budget.id, { content: 'بودجهٔ تازه' });
+  assert.deepEqual(edited.impact.assets.map((a) => a.id), ['a1'], 'the toast counts the dependency-driven asset too');
+  const st = repo.computeStale(s);
+  assert.equal(st[0].reasons[0].kind, 'dependency_changed');
+  repo.acceptReview(s, channel.id);
+  assert.deepEqual(repo.computeStale(s), [], 'review accepted → fresh without any rebuild');
+
+  // superseding the dependency: the dependent follows the replacement, and is flagged
+  const sup = repo.supersedeObject(s, budget.id, { type: 'Decision', provenance: 'User Input', title: 'بودجه', content: 'سوم', nodeId: 'business' }, { reason: 'تغییر' });
+  assert.ok(repo.dependenciesOf(s, channel.id).includes(sup.object.id), 'the dependent now also rests on the replacement');
+  assert.equal(repo.computeStale(s)[0].reasons.some((x) => x.kind === 'dependency_changed'), true);
+});
