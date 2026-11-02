@@ -110,7 +110,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
         )}
         {item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
         <span className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} text-text-default ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>
-        {lod === 'near' && item.summary && item.kind !== 'node' && <span className="caption line-clamp-2 text-text-subtle">{item.summary}</span>}
+        {lod === 'near' && item.summary && item.kind !== 'node' && <span className="body-sm line-clamp-1 text-text-subtle">{item.summary}</span>}
       </div>
     </div>
   );

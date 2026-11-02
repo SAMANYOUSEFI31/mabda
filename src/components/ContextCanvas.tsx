@@ -387,7 +387,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <IconButton icon="CircleHelp" label="این چیدمان چیست؟" aria-expanded={aboutOpen} onClick={() => setAboutOpen((v) => !v)} />
       <Popover label="گزینه‌های نما" trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
       <span className="relative">
-      <TextField id="canvas-search" size="sm" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); } }} className="w-space-40" />
+      <TextField id="canvas-search" size="md" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); } }} className="w-space-40" />
       {results.length > 0 && (
         <ul role="listbox" aria-label="نتیجهٔ جستجو" className="absolute top-full z-dropdown mt-stack-xs flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised">
           {results.map((r) => <li key={r.id} role="presentation"><button type="button" role="option" aria-selected="false" className="body-sm w-full rounded-control-sm px-inset-sm py-inset-xs text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { goTo(r.id); setQuery(''); }}>{r.label}</button></li>)}
@@ -502,7 +502,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               </div>
             )}
             <div className="pointer-events-none absolute bottom-space-2 end-space-2 flex flex-col items-end gap-stack-xs">
-              {!isMobile && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
+              {!isMobile && fullscreen && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
             </div>
             <div className="pointer-events-none absolute start-space-2 top-space-2" data-no-pan=""><span className="label-sm rounded-pill border border-border-default bg-surface-raised px-inset-sm text-text-subtle">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span></div>
           </div>

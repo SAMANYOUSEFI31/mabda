@@ -54,6 +54,8 @@ const audit = () => {
     if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {
       const r = el.getBoundingClientRect();
       const hitPseudo = /bsh-btn--sm|bsh-iconbtn--sm|bsh-tab\b|bsh-tag__remove|bsh-page|bsh-check__input|bsh-radio__input|bsh-switch__input/.test(el.className);
+      // controls INSIDE the canvas stage scale with the zoom by design (docs/canvas-design.md); every one has a ≥ 44px equivalent in the inspector / menu
+      if (el.closest('[data-testid=canvas-stage]')) continue;
       if ((r.height < 43.5 || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
         out.touch.push(`${Math.round(r.width)}x${Math.round(r.height)} <${el.tagName.toLowerCase()}> "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}"`);
       }
