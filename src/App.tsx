@@ -135,6 +135,13 @@ export default function App() {
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
+  // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
+  const viewModeSeen = useRef(contextViewMode);
+  useEffect(() => {
+    if (viewModeSeen.current === contextViewMode) return;
+    viewModeSeen.current = contextViewMode;
+    if (contextViewMode === 'map' || contextViewMode === 'canvas') setTimeout(() => document.getElementById('context-view')?.scrollIntoView({ block: 'start' }), 30);
+  }, [contextViewMode]);
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -181,6 +188,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, data?.objects, data?.relationships]);
   const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
+  // the workstream shown by default belongs to THIS workspace (its own first one), not to the built-in freelance sample
+  const firstOwnSpec = data?.specs[0]?.id;
+  useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? 'main_positioning'); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.workspace.id, firstOwnSpec]);
   const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
   const attentionGaps = attentionSpec
@@ -724,6 +735,7 @@ export default function App() {
               onOpenMemory={() => setIsMemoryOpen(true)}
             />
 
+            <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
               <DocReader
                 markdown={contextToMarkdown({ nodes, objects: workspaceContexts, title: currentWorkspace.name })}

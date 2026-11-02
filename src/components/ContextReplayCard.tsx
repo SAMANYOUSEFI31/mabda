@@ -44,6 +44,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const halfPrice = ai.managedEnabled && halfPriceRebuildAvailable(deliverable, stale);
   // chat-made assets have no workstream spec, so there is nothing to rebuild automatically
   const canRebuild = deliverable.workstreamId !== 'chat';
+  /** a hand-written example in the showcase workspace: clearly NOT an AI output; «ساخت با AI» replaces it with a real one made with the user's own key */
+  const sample = deliverable.source?.label === 'نمونهٔ دستی';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(deliverable.content);
@@ -58,7 +60,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         <div className="flex flex-col gap-stack-xs">
           <div className="flex flex-wrap items-center gap-inline-sm">
             <h3 className="title text-text-default">{deliverable.title}</h3>
-            <ModeBadge value={deliverable.executionMode} />
+            {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : <ModeBadge value={deliverable.executionMode} />}
             {stale && <Badge intent="warning" icon="TriangleAlert">نیاز به بازبینی</Badge>}
             {deliverable.rebuildCount > 0 && (
               <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>
@@ -94,7 +96,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           action={
             canRebuild ? (
               <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
-                {halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
+                {sample ? 'ساخت با AI' : halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
               </Button>
             ) : undefined
           }
@@ -233,7 +235,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         {canRebuild && (
         <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-center">
           <span className="body-sm text-text-subtle">
-            {!ai.managedEnabled
+            {sample ? 'این متن را دستی نوشته‌ایم و خروجی هوش مصنوعی نیست. با «ساخت با AI» از همین دانش و با کلید خودت یک خروجی واقعی می‌سازی که جای این نمونه می‌نشیند.' : !ai.managedEnabled
               ? (stale ? 'دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ می‌توانی با آخرین نسخه بازسازی کنی.' : 'دانشی تغییر نکرده؛ بازسازی خروجی تازه‌ای با همان دانش می‌سازد.')
               : halfPrice
               ? `دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ بازسازی یک‌بار برای این تغییر با نصف قیمت (حدود ${formatNumber(Math.ceil(deliverable.creditCost * 0.5))} اعتبار) انجام می‌شود.`
@@ -242,7 +244,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               : 'دانشی تغییر نکرده؛ بازسازی با قیمت کامل انجام می‌شود.'}
           </span>
           <Button variant="secondary" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
-            {halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
+            {sample ? 'ساخت با AI' : halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
           </Button>
         </div>
         )}

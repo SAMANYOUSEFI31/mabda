@@ -540,7 +540,7 @@ export class Repo {
   }
 
   listSpecs(s: Scope): WorkstreamSpec[] {
-    return (this.db.prepare('SELECT data FROM specs WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<{ data: string }>).map((r) => JSON.parse(r.data));
+    return (this.db.prepare('SELECT data FROM specs WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC, id').all(s.workspaceId, s.userId) as Array<{ data: string }>).map((r) => JSON.parse(r.data));
   }
 
   saveSpec(s: Scope, spec: WorkstreamSpec): WorkstreamSpec {

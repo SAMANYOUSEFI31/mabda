@@ -14,7 +14,7 @@ export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
   const s = { userId, workspaceId: DEMO_WORKSPACE_ID };
   const ws: Workspace = {
     id: DEMO_WORKSPACE_ID, name: 'قهوهٔ تخصصی آنلاین', slug: 'demo-coffee', description: 'فضای نمونهٔ کامل برای بررسی محصول؛ داده‌ها ساختگی‌اند.',
-    planId: 'max', creditsRemaining: 0, todayChatCount: 0, isDemo: true, createdAt: now.toISOString(),
+    planId: 'max', creditsRemaining: 150, todayChatCount: 0, isDemo: true, createdAt: now.toISOString(),
   };
   const data = buildDemo(now);
   repo.db.transaction(() => {
