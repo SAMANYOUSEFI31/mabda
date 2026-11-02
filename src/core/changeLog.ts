@@ -5,9 +5,9 @@
 
 import type { ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ObjectSource } from '../types';
 
-export const TRACKED_FIELDS = ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'status', 'reach', 'validUntil'] as const;
+export const TRACKED_FIELDS = ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'status', 'reach', 'validUntil', 'assumption', 'reviewBy', 'record'] as const;
 export type TrackedField = (typeof TRACKED_FIELDS)[number];
-const CONTENT_FIELDS: TrackedField[] = ['type', 'title', 'content', 'reach', 'validUntil']; // where / how long an object applies changes what outputs see
+const CONTENT_FIELDS: TrackedField[] = ['type', 'title', 'content', 'reach', 'validUntil', 'assumption', 'record']; // where / how long an object applies changes what outputs see
 
 /** only the fields that differ, as {before, after}; undefined when nothing differs */
 export function diffFields(a: Partial<ContextObject>, b: Partial<ContextObject>, fields: readonly TrackedField[] = TRACKED_FIELDS): { before: Record<string, unknown>; after: Record<string, unknown> } | undefined {
@@ -16,7 +16,7 @@ export function diffFields(a: Partial<ContextObject>, b: Partial<ContextObject>,
   for (const f of fields) {
     const x = a[f] ?? null;
     const y = b[f] ?? null;
-    if (x !== y) { before[f] = x; after[f] = y; }
+    if (typeof x === 'object' || typeof y === 'object' ? JSON.stringify(x) !== JSON.stringify(y) : x !== y) { before[f] = x; after[f] = y; }
   }
   return Object.keys(after).length ? { before, after } : undefined;
 }
@@ -65,6 +65,6 @@ export function splitSupersedeReason(content: string): { content: string; reason
 
 export const CHANGE_KIND_FA: Record<ContextChangeKind, string> = {
   created: 'ثبت شد', edited: 'ویرایش شد', status_changed: 'وضعیت عوض شد', superseded: 'جایگزین شد', archived: 'بایگانی شد',
-  proposal_accepted: 'پیشنهاد تأیید شد', proposal_rejected: 'پیشنهاد رد شد', contradiction_resolved: 'تناقض حل شد', imported: 'وارد شد', review_accepted: 'بدون تغییر پذیرفته شد',
+  proposal_accepted: 'پیشنهاد تأیید شد', proposal_rejected: 'پیشنهاد رد شد', contradiction_resolved: 'تناقض حل شد', imported: 'وارد شد', review_accepted: 'بدون تغییر پذیرفته شد', outcome_noted: 'نتیجه ثبت شد', node_from_note: 'گره از یادداشت ساخته شد',
 };
 export const ACTOR_FA: Record<ContextChangeActor, string> = { user: 'خودت', mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', import: 'ورود', system: 'سامانه' };

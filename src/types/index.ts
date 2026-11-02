@@ -16,7 +16,19 @@ export interface ObjectSource {
   reason?: string;
   /** the exact passage of the source text this was taken from (verified to occur in it) */
   quote?: string;
+  /** kind 'note': the note and the line (a hash of its text) the object was made from — ties a thinking item to its «✓ converted» mark */
+  noteId?: string;
+  lineKey?: string;
   at: string;
+}
+
+/** question, what was weighed (and why each rejected option was rejected), what is expected, and when to look back */
+export interface DecisionRecord {
+  question?: string;
+  options?: Array<{ title: string; /** present = rejected; the reason it was */ rejectedReason?: string }>;
+  expectation?: string;
+  /** YYYY-MM-DD */
+  reviewOn?: string;
 }
 
 export interface ContextObject {
@@ -39,6 +51,12 @@ export interface ContextObject {
   reach?: 'global' | 'position';
   /** ISO date after which the object no longer applies (never injected, kept in history). Absent = no end */
   validUntil?: string;
+  /** a Fact that is a working assumption: never «confirmed knowledge», even if its status is Confirmed. It is reviewed by `reviewBy` */
+  assumption?: boolean;
+  /** YYYY-MM-DD: when the assumption should be looked at again (shows in «این هفته» and «خانه») */
+  reviewBy?: string;
+  /** optional record of how a Decision was made (kept closed by default in the editor) */
+  record?: DecisionRecord;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,7 +76,7 @@ export interface ContextRelationship {
 
 export type ContextChangeKind =
   | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
-  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted';
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note';
 export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
 
 /** One append-only record of what happened to a Context object. `reason` is for people only: it is never injected into a model prompt. */

@@ -23,6 +23,8 @@ import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
+import { convertedTo, findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
+import type { ThinkingKind } from '../../src/core/thinkingMarkers.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
 import { needsReview } from '../../src/core/decisionGraph.ts';
@@ -245,6 +247,42 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { repo.deleteNote(scopeOf(req), req.params.id); res.json({ ok: true }); }));
 
   /** «استخراج»: the note becomes Proposed objects (provenance AI Suggested) — the user confirms them later. */
+  /**
+   * A thinking item of a note (src/core/thinkingMarkers.ts) becomes knowledge — always PROPOSED, with the line as its quote.
+   *   assumption → Fact (assumption = true, optional reviewBy) · open_decision → Decision · idea → Fact or Decision, the user's choice
+   * A question stays a question. The note itself is never rewritten.
+   */
+  router.post('/workspaces/:wid/notes/:id/items/convert', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.getNote(s, req.params.id);
+    if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    const b = body(req);
+    const item = findItem(parseThinking(note.content), { kind: ['idea', 'assumption', 'open_decision', 'question'].includes(String(b.kind)) ? b.kind as ThinkingKind : undefined, hash: typeof b.hash === 'string' ? b.hash : undefined, text: typeof b.text === 'string' ? b.text : undefined });
+    if (!item) throw new RepoError('not_found', 'این خط دیگر در یادداشت نیست.');
+    if (item.kind === 'question') throw new RepoError('invalid', 'سؤال، سؤال می‌ماند؛ تبدیل نمی‌شود.');
+    const as = item.kind === 'assumption' ? 'assumption' : item.kind === 'open_decision' ? 'decision' : (b.as === 'decision' ? 'decision' : 'fact');
+    if (convertedTo({ ...item, noteId: note.id, nodeId: note.nodeId, key: '' }, repo.listObjects(s))) throw new RepoError('invalid', 'این مورد قبلاً تبدیل شده است.');
+    const title = item.text.length > 70 ? `${item.text.slice(0, 70)}…` : item.text;
+    const object = repo.createObject(s, {
+      type: as === 'decision' ? 'Decision' : 'Fact', status: 'Proposed', provenance: 'User Input', title, content: item.text, nodeId: note.nodeId,
+      ...(as === 'assumption' ? { assumption: true, ...(typeof b.reviewBy === 'string' ? { reviewBy: b.reviewBy } : {}) } : {}),
+      source: { kind: 'note', label: 'یادداشت', noteId: note.id, lineKey: item.hash, quote: item.text, at: new Date().toISOString() },
+    }, metaOf(b));
+    res.json({ object, objects: repo.listObjects(s) });
+  }));
+  /** «ببر بالاتر»-style split: every ## section of a note becomes a child node (the note stays) */
+  router.post('/workspaces/:wid/notes/:id/split', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.getNote(s, req.params.id);
+    if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    const nodes = repo.nodesFromNote(s, note.id, headingSections(note.content), metaOf(body(req)));
+    res.json({ nodes: repo.listNodes(s), created: nodes, notes: repo.listNotes(s) });
+  }));
+  router.post('/workspaces/:wid/objects/:id/outcome', wrap((req, res) => {
+    const s = scopeOf(req);
+    const change = repo.noteOutcome(s, req.params.id, String(body(req).text ?? ''), metaOf(body(req)));
+    res.json({ change, changes: repo.listChanges(s) });
+  }));
   router.post('/workspaces/:wid/notes/:id/extract', wrap(async (req, res) => {
     const s = scopeOf(req);
     const note = repo.getNote(s, req.params.id);

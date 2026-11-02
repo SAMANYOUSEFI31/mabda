@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
@@ -34,7 +34,7 @@ export interface ImpactResult { count: number; assets: Array<{ id: string; title
 const CONTEXT_TYPES: ContextType[] = ['Fact', 'Decision', 'Constraint'];
 
 export interface ObjectInput {
-  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string;
+  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: DecisionRecord;
 }
 
 /** reach / validUntil from client input: only valid values survive (anything else = the default) */
@@ -43,10 +43,29 @@ const scopeFields = (i: { reach?: unknown; validUntil?: unknown }): Pick<Context
   ...(typeof i.validUntil === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.validUntil) ? { validUntil: i.validUntil } : {}),
 });
 
+/** the assumption flag, its review date and a decision record from client input (only valid, non-empty values survive) */
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const str = (v: unknown, max = 600) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+export function cleanRecord(r: unknown): DecisionRecord | undefined {
+  if (!r || typeof r !== 'object') return undefined;
+  const x = r as Record<string, unknown>;
+  const options = (Array.isArray(x.options) ? x.options : []).slice(0, 12).map((o) => {
+    const t = str((o as { title?: unknown })?.title, 160);
+    return t ? { title: t, ...(str((o as { rejectedReason?: unknown })?.rejectedReason) ? { rejectedReason: str((o as { rejectedReason?: unknown }).rejectedReason)! } : {}) } : null;
+  }).filter((o): o is NonNullable<typeof o> => !!o);
+  const out: DecisionRecord = { ...(str(x.question) ? { question: str(x.question)! } : {}), ...(options.length ? { options } : {}), ...(str(x.expectation) ? { expectation: str(x.expectation)! } : {}), ...(typeof x.reviewOn === 'string' && DATE.test(x.reviewOn) ? { reviewOn: x.reviewOn } : {}) };
+  return Object.keys(out).length ? out : undefined;
+}
+const thinkingFields = (i: { type?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown }): Pick<ContextObject, 'assumption' | 'reviewBy' | 'record'> => ({
+  ...(i.assumption === true && i.type === 'Fact' ? { assumption: true } : {}),
+  ...(typeof i.reviewBy === 'string' && DATE.test(i.reviewBy) && i.assumption === true && i.type === 'Fact' ? { reviewBy: i.reviewBy } : {}),
+  ...(i.type === 'Decision' && cleanRecord(i.record) ? { record: cleanRecord(i.record) } : {}),
+});
+
 const rowToObject = (r: Record<string, unknown>): ContextObject => ({
   id: r.id as string, workspaceId: r.workspace_id as string, type: r.type as ContextType, status: r.status as ContextStatus,
   provenance: r.provenance as ContextProvenance, title: r.title as string, content: r.content as string, nodeId: r.node_id as string,
-  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
+  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.assumption ? { assumption: true } : {}), ...(r.review_by ? { reviewBy: r.review_by as string } : {}), ...(r.decision_record ? { record: JSON.parse(r.decision_record as string) as DecisionRecord } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
@@ -235,8 +254,8 @@ export class Repo {
   }
 
   private insertObject(s: Scope, o: ContextObject) {
-    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key, reach, valid_until)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null, o.reach ?? null, o.validUntil ?? null);
+    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key, reach, valid_until, assumption, review_by, decision_record)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null, o.reach ?? null, o.validUntil ?? null, o.assumption ? 1 : null, o.reviewBy ?? null, o.record ? JSON.stringify(o.record) : null);
     this.snapshot(s, o, o.createdAt);
   }
 
@@ -267,7 +286,7 @@ export class Repo {
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
-    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), createdAt: t, updatedAt: t };
+    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), createdAt: t, updatedAt: t };
     this.db.transaction(() => {
       this.insertObject(s, o);
       this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: 1, kind: o.provenance === 'Imported' ? 'imported' : 'created', meta, after: { type: o.type, title: o.title, nodeId: o.nodeId, status: o.status }, source: o.source });
@@ -321,28 +340,32 @@ export class Repo {
   }
 
   /** Edit in place. title / content / type changes bump `version`; status or node moves do not. */
-  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
+  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
     const cur = this.getObject(s, id);
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
     if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
-      const next: ContextObject = { ...cur, ...patch, title: (patch.title ?? cur.title).trim() || cur.title, updatedAt: now() };
+      const next: ContextObject = { ...cur, ...(patch as Partial<ContextObject>), title: (patch.title ?? cur.title).trim() || cur.title, updatedAt: now() };
       if (!next.slotKey?.trim()) delete next.slotKey; else next.slotKey = next.slotKey.trim();
       // scope: only when the patch mentions it (null / '' clears); invalid values are ignored
       delete next.reach; delete next.validUntil;
       const sc = scopeFields('reach' in patch ? patch : cur), sd = scopeFields('validUntil' in patch ? patch : cur);
       if (sc.reach) next.reach = sc.reach;
       if (sd.validUntil) next.validUntil = sd.validUntil;
-      const contentChanged = next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
+      // assumption (a Fact only), its review date, a Decision's record: only when the patch mentions them (null / false clears)
+      delete next.assumption; delete next.reviewBy; delete next.record;
+      const th = thinkingFields({ type: next.type, assumption: 'assumption' in patch ? patch.assumption : cur.assumption, reviewBy: 'reviewBy' in patch ? patch.reviewBy : cur.reviewBy, record: 'record' in patch ? patch.record : cur.record });
+      Object.assign(next, th);
+      const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
-      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=? WHERE id=? AND workspace_id=?')
-        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, id, s.workspaceId);
+      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=? WHERE id=? AND workspace_id=?')
+        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, id, s.workspaceId);
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
       // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
       if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after });
-      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil']);
+      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil', 'assumption', 'reviewBy', 'record']);
       if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after });
       return next;
     })());
@@ -357,7 +380,7 @@ export class Repo {
     this.requireNode(s, input.nodeId);
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const t = now();
-      const created: ContextObject = { id: newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: old.version + 1, ...((input.slotKey ?? old.slotKey) ? { slotKey: (input.slotKey ?? old.slotKey)! } : {}), ...scopeFields({ reach: input.reach ?? old.reach, validUntil: input.validUntil ?? old.validUntil }), createdAt: t, updatedAt: t };
+      const created: ContextObject = { id: newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: old.version + 1, ...((input.slotKey ?? old.slotKey) ? { slotKey: (input.slotKey ?? old.slotKey)! } : {}), ...scopeFields({ reach: input.reach ?? old.reach, validUntil: input.validUntil ?? old.validUntil }), ...thinkingFields({ type: input.type, assumption: input.assumption ?? old.assumption, reviewBy: input.reviewBy ?? old.reviewBy, record: input.record ?? old.record }), createdAt: t, updatedAt: t };
       this.insertObject(s, created);
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(created.id, t, oldId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')
@@ -379,8 +402,9 @@ export class Repo {
       .run(newId('chg'), s.userId, s.workspaceId, c.objectId, c.fromVersion, c.toVersion, c.kind, actor, label ?? null, c.meta?.reason?.trim() || null, c.before ? JSON.stringify(c.before) : null, c.after ? JSON.stringify(c.after) : null, c.at ?? now());
   }
 
-  listChanges(s: Scope, f: { objectId?: string; since?: string; limit?: number } = {}): ContextChange[] {
+  listChanges(s: Scope, f: { objectId?: string; since?: string; limit?: number; includeNodes?: boolean } = {}): ContextChange[] {
     const where = ['workspace_id = ?', 'user_id = ?']; const args: unknown[] = [s.workspaceId, s.userId];
+    if (!f.includeNodes) where.push("object_id NOT LIKE 'node:%'"); // records about a node (not an object) are read only on request
     if (f.objectId) { where.push('object_id = ?'); args.push(f.objectId); }
     if (f.since) { where.push('at >= ?'); args.push(f.since); }
     const rows = this.db.prepare(`SELECT * FROM context_changes WHERE ${where.join(' AND ')} ORDER BY at, rowid LIMIT ?`).all(...args, f.limit ?? 5000) as Array<Record<string, unknown>>;
@@ -454,6 +478,39 @@ export class Repo {
     })();
     const all = this.listChanges(s, { objectId });
     return { relationships: this.listRelationships(s), change: all[all.length - 1] };
+  }
+
+  /** «نتیجه چه شد؟»: the answer to a due decision is a Change (kind `outcome_noted`); the text is for people, never for a model */
+  noteOutcome(s: Scope, objectId: string, text: string, meta?: ChangeMeta): ContextChange {
+    const o = this.getObject(s, objectId);
+    if (!o) throw new RepoError('not_found', 'Context پیدا نشد.');
+    if (o.type !== 'Decision') throw new RepoError('invalid', 'نتیجه فقط برای تصمیم ثبت می‌شود.');
+    const t = text.trim();
+    if (!t) throw new RepoError('invalid', 'نتیجه را بنویس.');
+    this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'outcome_noted', meta: { ...meta, reason: t.slice(0, 1000) } });
+    const all = this.listChanges(s, { objectId });
+    return all[all.length - 1];
+  }
+
+  /**
+   * «تبدیل به گره»: every `##` section of a note becomes a child node of the note's node, holding that section as its
+   * own note. The original note is untouched. One Change per new node (object id `node:<id>`), so the record is there.
+   */
+  nodesFromNote(s: Scope, noteId: string, sections: Array<{ title: string; body: string }>, meta?: ChangeMeta): TreeNode[] {
+    const note = this.getNote(s, noteId);
+    if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    const clean = sections.map((x) => ({ title: x.title.trim().slice(0, 80), body: x.body.trim() })).filter((x) => x.title).slice(0, 12);
+    if (clean.length < 2) throw new RepoError('invalid', 'برای تبدیل به گره دست‌کم دو تیتر ## لازم است.');
+    return this.db.transaction(() => {
+      const created: TreeNode[] = [];
+      for (const sec of clean) {
+        const node = this.createNode(s, { parentId: note.nodeId, label: sec.title });
+        if (sec.body) this.createNote(s, node.id, sec.body);
+        this.recordChange(s, { objectId: `node:${node.id}`, fromVersion: 0, toVersion: 0, kind: 'node_from_note', meta: { ...meta, reason: meta?.reason ?? 'بخش بزرگ‌شدهٔ یادداشت به گره تبدیل شد؛ متن اصلی یادداشت می‌ماند.' }, after: { nodeId: node.id, parentId: note.nodeId, noteId, title: sec.title } });
+        created.push(node);
+      }
+      return created;
+    })();
   }
 
   // ── overrides (docs/spine.md): a child-node object switches an ancestor-node object off for its sub-tree; read by effectiveContext ──
