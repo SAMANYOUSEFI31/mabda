@@ -17,7 +17,7 @@ export const LANES: Lane[] = ['thinking', 'confirmed', 'review'];
 export const LANE_FA: Record<Lane, string> = { thinking: 'در فکر', confirmed: 'تأییدشده', review: 'نیاز به بازبینی' };
 
 export const CARD_W = 232;
-export const CARD_H = 76;
+export const CARD_H = 112;
 export const GAP = 12;
 export const ROW_PAD = 14;
 export const ROW_HEAD = 30;

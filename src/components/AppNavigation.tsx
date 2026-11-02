@@ -9,7 +9,7 @@ import { PLANS } from '../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, formatNumber } from '../ui';
 import type { IconName, MenuItem } from '../ui';
 
-type ContextView = 'doc' | 'read' | 'table' | 'map';
+type ContextView = 'doc' | 'read' | 'table' | 'map' | 'canvas';
 
 interface AppNavigationProps {
   currentWorkspace: Workspace;
@@ -40,6 +40,7 @@ const VIEWS: Array<{ id: ContextView; label: string }> = [
   { id: 'read', label: 'سند خوانا' },
   { id: 'table', label: 'جدول' },
   { id: 'map', label: 'نقشه' },
+  { id: 'canvas', label: 'بوم' },
 ];
 
 /**

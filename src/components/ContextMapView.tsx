@@ -8,6 +8,7 @@ import type { ContextChange, ContextObject, ContextRelationship, GeneratedDelive
 import { dependentsOf } from '../core/decisionGraph';
 import { buildMapModel, CARD_H, CARD_W, EDGE_LABEL, highlightOf, impactOf, latestChangedObject, visibleVertices } from '../core/mapModel';
 import type { MapEdge, MapEdgeKind, MapVertex } from '../core/mapModel';
+import { usePanZoom } from './usePanZoom';
 import { Badge, Button, Card, EmptyState, IconButton, STATUS_META, Switch, TypeBadge, formatNumber } from '../ui';
 
 interface Props {
@@ -23,10 +24,6 @@ interface Props {
   onOpenAssets: () => void;
 }
 
-interface View { x: number; y: number; k: number }
-const MIN_K = 0.1;
-const READABLE_K = 0.85;
-const MAX_K = 2.5;
 const EXPAND_ALL_LIMIT = 2000;
 const MAX_EDGES = 1500;
 
@@ -60,12 +57,6 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const [history, setHistory] = useState(false);
   const [lastChangeMode, setLastChangeMode] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
-  const [size, setSize] = useState({ w: 800, h: 520 });
-  const [measured, setMeasured] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ pts: Map<number, { x: number; y: number }>; last?: { x: number; y: number }; pinch?: number } | null>(null);
-
   const input = useMemo(() => ({ nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds }), [nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds]);
   const model = useMemo(() => buildMapModel(input, { expanded: expanded ?? undefined, showAssets, includeHistory: history }), [input, expanded, showAssets, history]);
   const byId = useMemo(() => new Map(model.vertices.map((v) => [v.id, v])), [model]);
@@ -78,99 +69,9 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const impact = useMemo(() => (focusObjectId ? impactOf(input, focusObjectId) : null), [input, focusObjectId]);
   const lit = useMemo(() => (impact ? highlightOf(model, impact) : null), [model, impact]);
 
-  // size + fit
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    setSize({ w: el.clientWidth, h: el.clientHeight });
-    setMeasured(true);
-    return () => ro.disconnect();
-  }, []);
-  const fit = useCallback(() => {
-    const k = Math.min(1, Math.max(MIN_K, Math.min((size.w - 32) / Math.max(model.width, 1), (size.h - 32) / Math.max(model.height, 1))));
-    setView({ k, x: Math.max(16, (size.w - model.width * k) / 2), y: Math.max(16, (size.h - model.height * k) / 2) });
-  }, [size.w, size.h, model.width, model.height]);
-  /** first view: readable (cards stay comfortably tappable) and anchored at the START of the flow (the right edge in RTL); «جا دادن در صفحه» shows everything */
-  const overview = useCallback(() => {
-    const k = Math.min(1, Math.max(READABLE_K, Math.min((size.w - 32) / Math.max(model.width, 1), (size.h - 32) / Math.max(model.height, 1))));
-    const w = model.width * k;
-    setView({ k, x: w <= size.w - 32 ? (size.w - w) / 2 : size.w - 16 - w, y: model.height * k <= size.h - 32 ? (size.h - model.height * k) / 2 : 16 });
-  }, [size.w, size.h, model.width, model.height]);
   const fitKey = `${model.vertices.length}:${Math.round(model.width)}:${Math.round(model.height)}`;
-  useEffect(() => { if (measured) overview(); /* refit when the shape of the map changes, not on every pan */ // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey, measured]);
-
-  const zoomAt = useCallback((factor: number, cx = size.w / 2, cy = size.h / 2) => {
-    setView((v) => { const k = Math.min(MAX_K, Math.max(MIN_K, v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
-  }, [size.w, size.h]);
-  useEffect(() => { // ctrl/⌘ + wheel zooms (a plain wheel keeps scrolling the page)
-    const el = box.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      const r = el.getBoundingClientRect();
-      zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt]);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return; // cards and controls keep their own clicks
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const d: NonNullable<typeof drag.current> = drag.current ?? { pts: new Map<number, { x: number; y: number }>() };
-    d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    d.last = { x: e.clientX, y: e.clientY };
-    d.pinch = d.pts.size === 2 ? pinchDistance(d.pts) : undefined;
-    drag.current = d;
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d || !d.pts.has(e.pointerId)) return;
-    d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (d.pts.size === 2) {
-      const dist = pinchDistance(d.pts);
-      if (d.pinch) { const r = box.current!.getBoundingClientRect(); const c = pinchCenter(d.pts); zoomAt(dist / d.pinch, c.x - r.left, c.y - r.top); }
-      d.pinch = dist;
-    } else if (d.last) {
-      const dx = e.clientX - d.last.x, dy = e.clientY - d.last.y;
-      d.last = { x: e.clientX, y: e.clientY };
-      setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
-    }
-  };
-  const onPointerUp = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    d.pts.delete(e.pointerId);
-    d.pinch = undefined;
-    d.last = d.pts.size === 1 ? [...d.pts.values()][0] : undefined;
-    if (!d.pts.size) drag.current = null;
-  };
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    const step = 80;
-    if (e.key === 'ArrowDown') setView((v) => ({ ...v, y: v.y - step }));
-    else if (e.key === 'ArrowUp') setView((v) => ({ ...v, y: v.y + step }));
-    else if (e.key === 'ArrowRight') setView((v) => ({ ...v, x: v.x + step })); // check:design-ignore (key name)
-    else if (e.key === 'ArrowLeft') setView((v) => ({ ...v, x: v.x - step })); // check:design-ignore (key name)
-    else if (e.key === '+' || e.key === '=') zoomAt(1.2);
-    else if (e.key === '-') zoomAt(1 / 1.2);
-    else if (e.key === '0') fit();
-    else return;
-    e.preventDefault();
-  };
-  /** keyboard focus on a card brings it into view */
-  const sizeRef = useRef(size);
-  sizeRef.current = size;
-  const reveal = useCallback((v: MapVertex) => setView((cur) => {
-    const size = sizeRef.current;
-    const sx = v.x * cur.k + cur.x, sy = v.y * cur.k + cur.y;
-    const inside = sx >= 0 && sy >= 0 && sx + v.w * cur.k <= size.w && sy + v.h * cur.k <= size.h;
-    return inside ? cur : { ...cur, x: size.w / 2 - (v.x + v.w / 2) * cur.k, y: size.h / 2 - (v.y + v.h / 2) * cur.k };
-  }), []);
+  const { box, view, size, fit, zoomAt, reveal: revealXY, handlers } = usePanZoom(model, fitKey);
+  const reveal = useCallback((v: MapVertex) => revealXY(v.x, v.y, v.w, v.h), [revealXY]);
   const select = useCallback((id: string) => { setSelected(id); setLastChangeMode(false); }, []);
 
   // the drawn set only changes when the viewport crosses a 160px grid line — panning in between re-renders nothing heavy
@@ -229,11 +130,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
           tabIndex={0}
           role="application"
           aria-label="نقشه. با کلیدهای جهت‌دار جابه‌جا شو، با مثبت و منفی بزرگ و کوچک کن؛ با Tab بین کارت‌ها برو و Enter را بزن."
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onKeyDown={onKeyDown}
+          {...handlers}
           className="relative min-w-space-0 flex-1 touch-none select-none overflow-hidden rounded-control border border-border-default bg-surface-sunken"
           style={{ blockSize: '62vh', minBlockSize: 360 }}
         >
@@ -281,7 +178,8 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   );
 };
 
-const EdgesLayer = React.memo(function EdgesLayer({ width, height, edges, byId, litEdges, dim, selected }: { width: number; height: number; edges: MapEdge[]; byId: Map<string, MapVertex>; litEdges?: Set<string>; dim: boolean; selected: string | null }) {
+export const EDGE_STYLE_PUBLIC = EDGE_STYLE;
+export const EdgesLayer = React.memo(function EdgesLayer({ width, height, edges, byId, litEdges, dim, selected }: { width: number; height: number; edges: MapEdge[]; byId: Map<string, MapVertex>; litEdges?: Set<string>; dim: boolean; selected: string | null }) {
   return (
             <svg className="pointer-events-none absolute top-space-0 start-space-0 overflow-visible" width={width} height={height} aria-hidden="true">
               <defs>
@@ -316,10 +214,10 @@ const MapCard = React.memo(function MapCard({ v, selected, lit, dimmed, onSelect
   const label = v.kind === 'node' ? `گرهٔ ${v.label}، ${v.count ?? 0} مورد` : v.kind === 'object' ? `${v.label}${v.review ? '، نیاز به بازبینی' : ''}` : `${v.label}${v.review ? '، نیاز به بازبینی' : ''}`;
   return (
     <div
-      dir="rtl"
-      className={`absolute top-space-0 start-space-0 flex items-stretch overflow-hidden rounded-control border ${tone} ${dimmed ? 'opacity-40' : ''}`}
+      className={`absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${dimmed ? 'opacity-40' : ''}`}
       style={{ transform: `translate(${v.x}px, ${v.y}px)`, inlineSize: CARD_W, blockSize: CARD_H }}
     >
+      <div dir="rtl" className="flex h-full items-stretch">
       <button type="button" aria-label={label} aria-pressed={selected} onClick={() => onSelect(v.id)} onFocus={() => onFocus(v)} className="flex min-w-space-0 flex-1 flex-col justify-center gap-stack-xs px-inset-sm text-start">
         <span className="flex items-center gap-inline-xs">
           {v.kind === 'object' && v.type && <TypeBadge value={v.type} iconOnly />}
@@ -336,6 +234,7 @@ const MapCard = React.memo(function MapCard({ v, selected, lit, dimmed, onSelect
           {v.expanded ? '−' : '+'}
         </button>
       )}
+      </div>
     </div>
   );
 });
@@ -367,6 +266,3 @@ const Summary: React.FC<{
     </>
   );
 };
-
-function pinchDistance(pts: Map<number, { x: number; y: number }>) { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); }
-function pinchCenter(pts: Map<number, { x: number; y: number }>) { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }

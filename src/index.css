@@ -75,3 +75,11 @@
   }
   .bsh-dialog-layer.is-side .bsh-dialog__body { flex: 1 1 auto; min-block-size: 0; overflow: auto; }
 }
+
+/* Board cards: a gentle lift while dragging; no movement for people who ask for less motion. */
+.canvas-card { transition: box-shadow var(--duration-fast, 120ms) ease, border-color var(--duration-fast, 120ms) ease, opacity var(--duration-fast, 120ms) ease; }
+.canvas-card.is-lifted { opacity: 0.35; }
+.canvas-card.is-ghost { box-shadow: var(--shadow-overlay); cursor: grabbing; }
+.canvas-card:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
+@media (prefers-reduced-motion: no-preference) { .canvas-card.is-ghost { rotate: -1.5deg; } }
+@media (prefers-reduced-motion: reduce) { .canvas-card { transition: none; } }

@@ -126,6 +126,13 @@ export const dataApi = {
   changeLog: (id: string, f: { objectId?: string } = {}) => call<{ changes: import('../types').ContextChange[] }>('GET', `${ws(id)}/changes/log${f.objectId ? `?objectId=${encodeURIComponent(f.objectId)}` : ''}`),
   replaceWith: (id: string, proposalId: string, input: { replacesId: string; reason?: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/objects/${proposalId}/replace`, input),
+  canvasMove: (id: string, input: { objectId: string; lane: string; nodeId?: string; beforeId?: string; afterId?: string; reason?: string; confirmBackward?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/move`, input),
+  canvasReset: (id: string) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/reset`, {}),
+  canvasConnect: (id: string, input: { fromId: string; toId: string; type: 'depends_on' | 'supersedes'; reason?: string; confirmed?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/connect`, input),
+  freeNoteCreate: (id: string, input: { content: string; x: number; y: number; nodeId?: string }) => call<CanvasBundle & { note: Note }>('POST', `${ws(id)}/canvas/free/notes`, input),
+  freeNoteMove: (id: string, noteId: string, x: number, y: number) => call<{ canvas: CanvasBundle['canvas'] }>('PUT', `${ws(id)}/canvas/free/items/${noteId}`, { x, y }),
+  freeReset: (id: string) => call<CanvasBundle>('POST', `${ws(id)}/canvas/free/reset`, {}),
+  freeNoteToKnowledge: (id: string, noteId: string, type: 'Fact' | 'Decision' | 'Constraint') => call<CanvasBundle & { object: ContextObject }>('POST', `${ws(id)}/canvas/free/notes/${noteId}/to-knowledge`, { type }),
   setDependencies: (id: string, objectId: string, dependsOn: string[]) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('PUT', `${ws(id)}/objects/${objectId}/dependencies`, { dependsOn }),
   acceptReview: (id: string, objectId: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/review-accept`, {}),
   importMemory: (id: string, input: { text: string; sourceLabel: string }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
@@ -159,3 +166,13 @@ export const dataApi = {
 };
 
 export type { WorkspaceState, ImpactInfo };
+
+/** what every board request returns: the pieces of workspace state that a board action can touch */
+export interface CanvasBundle {
+  objects: ContextObject[];
+  relationships: ContextRelationship[];
+  changes: import('../types').ContextChange[];
+  notes: Note[];
+  stale: StaleAsset[];
+  canvas: { decisions: import('../types/state').CanvasItem[]; free: import('../types/state').CanvasItem[] };
+}

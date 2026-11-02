@@ -92,6 +92,7 @@ for (const size of SIZES) {
   await page.locator('[role=radio][aria-label], [role=radio]').filter({ hasText: /^جدول$/ }).first().click(); await shoot('context-table');
   await page.locator('[role=radio]').filter({ hasText: /^نقشه$/ }).first().click(); await page.waitForTimeout(300); await shoot('context-map');
   await page.getByRole('button', { name: /^(مخاطب|گرهٔ)/ }).first().click().catch(() => {}); await page.waitForTimeout(150); await shoot('context-map-selected');
+  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().click(); await page.waitForTimeout(300); await shoot('context-canvas');
   await page.locator('[role=radio]').filter({ hasText: /^سند$/ }).first().click(); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();

@@ -24,6 +24,7 @@ import { ContradictionPanel } from './components/ContradictionPanel';
 import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
 import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
+import { ContextCanvasView } from './components/ContextCanvasView';
 import { ContextMapView } from './components/ContextMapView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
@@ -61,6 +62,8 @@ import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
 import { chatCredits } from './core/creditEngine';
 import { DataApiError, dataApi } from './services/dataApi';
+import type { CanvasBundle } from './services/dataApi';
+import type { MovePayload } from './components/ContextCanvasView';
 import { useAiStatus } from './services/aiStatus';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from './types';
 import type { FileQuotaInfo } from './types/state';
@@ -129,7 +132,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -208,6 +211,41 @@ export default function App() {
     }
     patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
     return out;
+  };
+
+  // ── boards: every action returns the pieces of state it touched ──
+  const applyBundle = (r: CanvasBundle) => patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, notes: r.notes, stale: r.stale, canvas: r.canvas }));
+  const handleCanvasMove = async (m: MovePayload) => {
+    const before = data?.objects.find((o) => o.id === m.objectId);
+    const r = await attempt(() => dataApi.canvasMove(wid, m));
+    if (!r) return;
+    applyBundle(r);
+    const after = r.objects.find((o) => o.id === m.objectId);
+    if (before?.status === 'Proposed' && after?.status === 'Confirmed') {
+      const used = deliverables.filter((d) => d.usedContext?.some((u) => u.id === m.objectId)).length;
+      toast.show({ intent: 'success', message: used ? `«${after.title}» تأیید شد؛ ${formatNumber(used)} خروجی تو از آن استفاده می‌کنند.` : `«${after.title}» تأیید شد و حالا واقعیت است.` });
+    }
+  };
+  const handleCanvasConnect = async (c: Parameters<typeof dataApi.canvasConnect>[1]) => {
+    const r = await attempt(() => dataApi.canvasConnect(wid, c));
+    if (r) { applyBundle(r); toast.show({ intent: 'success', message: c.type === 'depends_on' ? 'اتصال «وابسته به» ساخته شد.' : 'مورد قبلی جایگزین شد و در تاریخچه می‌ماند.' }); }
+  };
+  const handleFreeNoteCreate = async (n: { content: string; x: number; y: number; nodeId?: string }) => {
+    const r = await attempt(() => dataApi.freeNoteCreate(wid, n));
+    if (r) applyBundle(r);
+  };
+  const handleFreeNoteMove = (id: string, x: number, y: number) => {
+    patch((d) => ({ ...d, canvas: { ...d.canvas, free: d.canvas.free.map((i) => (i.itemRef === `note:${id}` ? { ...i, x, y } : i)) } }));
+    void attempt(() => dataApi.freeNoteMove(wid, id, x, y));
+  };
+  const handleNoteToKnowledge = async (id: string, type: 'Fact' | 'Decision' | 'Constraint') => {
+    const r = await attempt(() => dataApi.freeNoteToKnowledge(wid, id, type));
+    if (r) { applyBundle(r); toast.show({ intent: 'success', message: 'یک قلم پیشنهادی ساخته شد؛ در ستون «در فکر» منتظر تأیید توست.' }); }
+  };
+  const handleAutoLayout = async () => {
+    const a = await attempt(() => dataApi.canvasReset(wid));
+    const b = a && await attempt(() => dataApi.freeReset(wid));
+    if (b) applyBundle(b);
   };
 
   const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
@@ -610,12 +648,13 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'read', label: 'سند', icon: 'BookOpen' },
                   { id: 'table', label: 'جدول', icon: 'Table2' },
                   { id: 'map', label: 'نقشه', icon: 'Workflow' },
+                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
                 ]}
               />
             </div>
@@ -683,6 +722,24 @@ export default function App() {
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onExtractNote={handleExtractNote}
+              />
+            ) : contextViewMode === 'canvas' ? (
+              <ContextCanvasView
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data?.relationships ?? []}
+                notes={data?.notes ?? []}
+                canvas={data?.canvas ?? { decisions: [], free: [] }}
+                reviewIds={reviewIdSet}
+                onMove={handleCanvasMove}
+                onConnect={handleCanvasConnect}
+                onCreateNote={handleFreeNoteCreate}
+                onMoveNote={handleFreeNoteMove}
+                onUpdateNote={handleUpdateNote}
+                onDeleteNote={handleDeleteNote}
+                onNoteToKnowledge={handleNoteToKnowledge}
+                onAutoLayout={handleAutoLayout}
+                onOpenObject={(obj) => openContext(obj)}
               />
             ) : contextViewMode === 'map' ? (
               <ContextMapView
