@@ -88,6 +88,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );
+  const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
+  const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
   const [deps, setDeps] = useState<string[]>(currentDeps);
@@ -137,6 +139,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       supersededById: object?.supersededById,
       source: object?.source,
       slotKey: object?.slotKey,
+      ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
+      ...(validUntil ? { validUntil } : {}),
     };
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
@@ -221,6 +225,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <Select label="شاخه در درخت دانش" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))} />
           <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
         </div>
+        {type === 'Constraint' && (
+          <div className="flex flex-col gap-stack-xs">
+            <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
+            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، گاردریل است.' : 'فقط برای این گره و زیرگره‌هایش گاردریل است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+          </div>
+        )}
+        <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
 
         <div className="flex flex-col gap-stack-xs">
           <SegmentedControl

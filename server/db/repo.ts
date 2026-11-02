@@ -33,13 +33,19 @@ export interface ImpactResult { count: number; assets: Array<{ id: string; title
 const CONTEXT_TYPES: ContextType[] = ['Fact', 'Decision', 'Constraint'];
 
 export interface ObjectInput {
-  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string;
+  type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string;
 }
+
+/** reach / validUntil from client input: only valid values survive (anything else = the default) */
+const scopeFields = (i: { reach?: unknown; validUntil?: unknown }): Pick<ContextObject, 'reach' | 'validUntil'> => ({
+  ...(i.reach === 'global' || i.reach === 'position' ? { reach: i.reach } : {}),
+  ...(typeof i.validUntil === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.validUntil) ? { validUntil: i.validUntil } : {}),
+});
 
 const rowToObject = (r: Record<string, unknown>): ContextObject => ({
   id: r.id as string, workspaceId: r.workspace_id as string, type: r.type as ContextType, status: r.status as ContextStatus,
   provenance: r.provenance as ContextProvenance, title: r.title as string, content: r.content as string, nodeId: r.node_id as string,
-  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
+  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
@@ -228,8 +234,8 @@ export class Repo {
   }
 
   private insertObject(s: Scope, o: ContextObject) {
-    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null);
+    this.db.prepare(`INSERT INTO context_objects (id, user_id, workspace_id, type, status, provenance, title, content, node_id, superseded_by_id, created_at, updated_at, version, source, slot_key, reach, valid_until)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(o.id, s.userId, s.workspaceId, o.type, o.status, o.provenance, o.title, o.content, o.nodeId, o.supersededById ?? null, o.createdAt, o.updatedAt, o.version, o.source ? JSON.stringify(o.source) : null, o.slotKey ?? null, o.reach ?? null, o.validUntil ?? null);
     this.snapshot(s, o, o.createdAt);
   }
 
@@ -260,7 +266,7 @@ export class Repo {
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
-    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), createdAt: t, updatedAt: t };
+    const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), createdAt: t, updatedAt: t };
     this.db.transaction(() => {
       this.insertObject(s, o);
       this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: 1, kind: o.provenance === 'Imported' ? 'imported' : 'created', meta, after: { type: o.type, title: o.title, nodeId: o.nodeId, status: o.status }, source: o.source });
@@ -314,7 +320,7 @@ export class Repo {
   }
 
   /** Edit in place. title / content / type changes bump `version`; status or node moves do not. */
-  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>>, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
+  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
     const cur = this.getObject(s, id);
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
@@ -322,15 +328,20 @@ export class Repo {
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const next: ContextObject = { ...cur, ...patch, title: (patch.title ?? cur.title).trim() || cur.title, updatedAt: now() };
       if (!next.slotKey?.trim()) delete next.slotKey; else next.slotKey = next.slotKey.trim();
-      const contentChanged = next.title !== cur.title || next.content !== cur.content || next.type !== cur.type;
+      // scope: only when the patch mentions it (null / '' clears); invalid values are ignored
+      delete next.reach; delete next.validUntil;
+      const sc = scopeFields('reach' in patch ? patch : cur), sd = scopeFields('validUntil' in patch ? patch : cur);
+      if (sc.reach) next.reach = sc.reach;
+      if (sd.validUntil) next.validUntil = sd.validUntil;
+      const contentChanged = next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
-      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=? WHERE id=? AND workspace_id=?')
-        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, id, s.workspaceId);
+      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=? WHERE id=? AND workspace_id=?')
+        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, id, s.workspaceId);
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
       // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
       if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after });
-      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance']);
+      const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil']);
       if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after });
       return next;
     })());
@@ -345,7 +356,7 @@ export class Repo {
     this.requireNode(s, input.nodeId);
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const t = now();
-      const created: ContextObject = { id: newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: old.version + 1, ...((input.slotKey ?? old.slotKey) ? { slotKey: (input.slotKey ?? old.slotKey)! } : {}), createdAt: t, updatedAt: t };
+      const created: ContextObject = { id: newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: old.version + 1, ...((input.slotKey ?? old.slotKey) ? { slotKey: (input.slotKey ?? old.slotKey)! } : {}), ...scopeFields({ reach: input.reach ?? old.reach, validUntil: input.validUntil ?? old.validUntil }), createdAt: t, updatedAt: t };
       this.insertObject(s, created);
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(created.id, t, oldId, s.workspaceId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')

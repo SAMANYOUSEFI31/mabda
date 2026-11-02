@@ -5,9 +5,9 @@
 
 import type { ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ObjectSource } from '../types';
 
-export const TRACKED_FIELDS = ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'status'] as const;
+export const TRACKED_FIELDS = ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'status', 'reach', 'validUntil'] as const;
 export type TrackedField = (typeof TRACKED_FIELDS)[number];
-const CONTENT_FIELDS: TrackedField[] = ['type', 'title', 'content'];
+const CONTENT_FIELDS: TrackedField[] = ['type', 'title', 'content', 'reach', 'validUntil']; // where / how long an object applies changes what outputs see
 
 /** only the fields that differ, as {before, after}; undefined when nothing differs */
 export function diffFields(a: Partial<ContextObject>, b: Partial<ContextObject>, fields: readonly TrackedField[] = TRACKED_FIELDS): { before: Record<string, unknown>; after: Record<string, unknown> } | undefined {

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
 import { childrenOf } from '../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Menu, IconButton, PROVENANCE_LABEL, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, Menu, IconButton, PROVENANCE_LABEL, ReachBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
 
@@ -105,6 +105,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                     <h4 className="title text-text-default">{obj.title}</h4>
                     <div className="flex shrink-0 flex-wrap justify-end gap-inline-xs">
                       <TypeBadge value={obj.type} />
+                      <ReachBadge object={obj} />
                       <StatusBadge value={obj.status} />
                     </div>
                   </div>

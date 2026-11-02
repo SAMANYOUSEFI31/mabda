@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../types';
 import { flatten } from '../core/nodeTree';
 import {
-  Button, Card, CONTEXT_STATUS_OPTIONS, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, Select, StatusBadge, Table, TextField, TypeBadge,
+  Button, Card, CONTEXT_STATUS_OPTIONS, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, ReachBadge, Select, StatusBadge, Table, TextField, TypeBadge,
 } from '../ui';
 
 interface ContextTableViewProps {
@@ -99,7 +99,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
             <Card key={obj.id} padding="lg" onClick={() => onSelectObject(obj)} className="flex flex-col gap-stack-sm">
               <div className="flex items-start justify-between gap-inline-sm">
                 <span className="title text-text-default">{obj.title}</span>
-                <TypeBadge value={obj.type} />
+                <span className="flex items-center gap-inline-xs"><TypeBadge value={obj.type} /><ReachBadge object={obj} /></span>
               </div>
               <p className="body-sm line-clamp-2 text-text-subtle">{obj.content}</p>
               <div className="flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
@@ -120,7 +120,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
             onRowClick={(row) => onSelectObject(row)}
             columns={[
               { key: 'title', label: 'عنوان', render: (r) => <span className="label-md text-text-default">{r.title}</span> },
-              { key: 'type', label: 'نوع', render: (r) => <TypeBadge value={r.type} /> },
+              { key: 'type', label: 'نوع', render: (r) => <span className="flex items-center gap-inline-xs"><TypeBadge value={r.type} /><ReachBadge object={r} /></span> },
               { key: 'status', label: 'وضعیت', render: (r) => <StatusBadge value={r.status} /> },
               { key: 'nodeId', label: 'شاخه', render: (r) => getNodeLabel(r.nodeId) },
               { key: 'provenance', label: 'منبع', render: (r) => PROVENANCE_LABEL[r.provenance] },

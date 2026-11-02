@@ -1,4 +1,4 @@
-import type { ContextProvenance, ContextStatus, ContextType, ExecutionMode, GapItem, LedgerEntry, ReadinessResult } from '../types';
+import type { ContextObject, ContextProvenance, ContextStatus, ContextType, ExecutionMode, GapItem, LedgerEntry, ReadinessResult } from '../types';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
@@ -87,3 +87,12 @@ export const PROVENANCE_LABEL: Record<ContextProvenance, string> = {
 
 export const CONTEXT_TYPE_OPTIONS = (Object.keys(TYPE_META) as ContextType[]).map((value) => ({ value, label: TYPE_META[value].label }));
 export const CONTEXT_STATUS_OPTIONS = (Object.keys(STATUS_META) as ContextStatus[]).map((value) => ({ value, label: STATUS_META[value].label }));
+
+/** where an object applies: a Constraint says «همه‌جا» or «فقط این بخش»; any other object is shown only when it was widened or ended */
+const REACH_GLOBAL: Entry = { label: 'همه‌جا', icon: 'Layers', cls: 'bg-surface-sunken text-text-default border-border-default' };
+const REACH_POSITION: Entry = { label: 'فقط این بخش', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' };
+export function ReachBadge({ object, className }: { object: Pick<ContextObject, 'type' | 'reach'>; className?: string }) {
+  const reach = object.reach ?? (object.type === 'Constraint' ? 'global' : 'position');
+  if (object.type !== 'Constraint' && reach === 'position') return null;
+  return <MabdaBadge entry={reach === 'global' ? REACH_GLOBAL : REACH_POSITION} className={className} />;
+}

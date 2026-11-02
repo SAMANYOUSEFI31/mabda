@@ -285,6 +285,16 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 11,
+    name: 'context_objects.reach / valid_until: how far an object applies (global | position) and until when. NULL = the type default (Constraint: global) and no end — old data is untouched',
+    up(db) {
+      db.exec(`
+        ALTER TABLE context_objects ADD COLUMN reach TEXT;
+        ALTER TABLE context_objects ADD COLUMN valid_until TEXT;
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
