@@ -6,7 +6,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
 import { dependentsOf } from '../core/decisionGraph';
-import { buildMapModel, CARD_H, CARD_W, EDGE_LABEL, highlightOf, impactOf, latestChangedObject, visibleVertices } from '../core/mapModel';
+import { buildMapModel, CARD_H, CARD_W, EDGE_LABEL, highlightOf, impactOf, latestChangedObject, visibleGroups, visibleVertices } from '../core/mapModel';
+import type { MapGroup } from '../core/mapModel';
+import { GROUP_HEAD } from '../core/mapModel';
 import type { MapEdge, MapEdgeKind, MapVertex } from '../core/mapModel';
 import { usePanZoom } from './usePanZoom';
 import { Badge, Button, Card, EmptyState, IconButton, STATUS_META, Switch, TypeBadge, formatNumber } from '../ui';
@@ -29,7 +31,6 @@ const MAX_EDGES = 1500;
 
 /** line style per relation type — never colour alone: each type also has its own dash pattern and a label in the legend */
 const EDGE_STYLE: Record<MapEdgeKind, { cls: string; dash?: string; width: number }> = {
-  structural: { cls: 'stroke-border-default', dash: '2 5', width: 1.5 },
   dependency: { cls: 'stroke-border-bold', width: 2 },
   lineage: { cls: 'stroke-border-info', dash: '8 5', width: 2 },
   supersedes: { cls: 'stroke-border-warning', dash: '12 4 2 4', width: 2 },
@@ -60,7 +61,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const input = useMemo(() => ({ nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds }), [nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds]);
   const model = useMemo(() => buildMapModel(input, { expanded: expanded ?? undefined, showAssets, includeHistory: history }), [input, expanded, showAssets, history]);
   const byId = useMemo(() => new Map(model.vertices.map((v) => [v.id, v])), [model]);
-  const effectiveExpanded = useMemo(() => new Set(model.vertices.filter((v) => v.kind === 'node' && v.expanded).map((v) => v.nodeId!)), [model]);
+  const effectiveExpanded = useMemo(() => new Set(model.expandedNodes), [model]);
 
   // the object whose path of effect is lit: the selected one, or the newest change («اثر تغییر»)
   const lastChanged = useMemo(() => latestChangedObject(changes), [changes]);
@@ -79,6 +80,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const gx = Math.floor(-view.x / view.k / SNAP), gy = Math.floor(-view.y / view.k / SNAP);
   const gw = Math.ceil(size.w / view.k / SNAP) + 1, gh = Math.ceil(size.h / view.k / SNAP) + 1;
   const shown = useMemo(() => visibleVertices(model, { x: gx * SNAP, y: gy * SNAP, w: gw * SNAP, h: gh * SNAP }, SNAP), [model, gx, gy, gw, gh]);
+  const shownGroups = useMemo(() => visibleGroups(model, { x: gx * SNAP, y: gy * SNAP, w: gw * SNAP, h: gh * SNAP }, SNAP), [model, gx, gy, gw, gh]);
   const shownIds = useMemo(() => new Set(shown.map((v) => v.id)), [shown]);
   const edges = useMemo(() => {
     const out: MapEdge[] = [];
@@ -120,6 +122,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
             {EDGE_LABEL[k]}
           </li>
         ))}
+        <li className="body-sm text-text-subtle">جعبه = گره‌ی درخت (دامنه)؛ ترتیب ندارد، فقط خط‌ها جریان‌اند.</li>
         <li className="body-sm text-text-subtle">{formatNumber(model.summary.objects)} مورد · {formatNumber(model.summary.assets)} خروجی{model.summary.collapsedNodes ? ` · ${formatNumber(model.summary.collapsedNodes)} گره جمع‌شده` : ''}</li>
       </ul>
 
@@ -135,6 +138,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
           style={{ blockSize: '62vh', minBlockSize: 360 }}
         >
           <div className="absolute top-space-0 start-space-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: '0 0', willChange: 'transform', inlineSize: model.width, blockSize: model.height }}>
+            {shownGroups.map((g) => <GroupBox key={g.id} g={g} dimmed={dim} onToggle={toggleNode} />)}
             <EdgesLayer width={model.width} height={model.height} edges={edges} byId={byId} litEdges={lit?.edgeIds} dim={dim} selected={selected} />
             {shown.map((v) => (
               <MapCard
@@ -206,6 +210,25 @@ export const EdgesLayer = React.memo(function EdgesLayer({ width, height, edges,
                 );
               })}
             </svg>
+  );
+});
+
+/** a node of the tree as a grouping box: its objects and sub-boxes sit inside; the box carries no order and no edges */
+const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapGroup; dimmed: boolean; onToggle: (nodeId: string) => void }) {
+  return (
+    <div
+      className={`pointer-events-none absolute top-space-0 start-space-0 rounded-control border border-dashed ${g.depth === 0 ? 'border-border-bold' : 'border-border-default'} ${dimmed ? 'opacity-40' : ''}`}
+      style={{ transform: `translate(${g.x}px, ${g.y}px)`, inlineSize: g.w, blockSize: g.h }}
+    >
+      <div dir="rtl" className="pointer-events-auto flex items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: GROUP_HEAD }}>
+        <span className="flex min-w-space-0 items-center gap-inline-xs"><span className="label-md truncate text-text-default">{g.label}</span>{g.count > 0 && <Badge intent="neutral" icon={false}>{formatNumber(g.count)} مورد</Badge>}</span>
+        {g.count > 0 && (
+          <button type="button" aria-expanded={g.expanded} aria-label={`${g.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${g.label}`} onClick={() => onToggle(g.nodeId)} className="flex items-center justify-center rounded-control text-text-subtle hover:bg-interaction-hover" style={{ inlineSize: 44, blockSize: 28 }}>
+            {g.expanded ? '−' : '+'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 });
 

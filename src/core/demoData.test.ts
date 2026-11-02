@@ -120,7 +120,7 @@ test('notes, file, boards: free notes with coordinates, a ready text file with a
 
 test('the map and the board lay the showcase out without surprises', () => {
   const m = buildMapModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, deliverables: d.deliverables });
-  assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.edges.some((e) => e.kind === 'structural'));
+  assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.groups.length > 0);
   const board = buildCanvasModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, reviewIds: new Set(needsReview(d.objects, d.relationships, d.changes).keys()), ranks: new Map(d.canvas.decisions.map((i) => [i.itemRef.slice(4), i.rank!])) });
   for (const lane of ['thinking', 'confirmed', 'review'] as const) assert.ok(board.cards.some((c) => c.lane === lane), lane);
 });
