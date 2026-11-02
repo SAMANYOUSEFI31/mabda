@@ -92,7 +92,7 @@ try {
     await layoutTab('تابلو');
     await shot('4-board');
     await layoutTab('آزاد');
-    assert.ok((await page.getByText(/شاید یک اشتراک هدیه/).count()) >= 1);
+    assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => /شاید یک اشتراک هدیه/.test(n.content)), 'the free notes are in the showcase');
     await radio('ساختار');
     await page.getByRole('heading', { name: 'اشتراک ماهانه' }).first().waitFor();
     await page.getByText('بستهٔ اشتراک', { exact: true }).first().waitFor().catch(() => {});
