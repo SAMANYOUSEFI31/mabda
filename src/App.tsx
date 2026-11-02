@@ -21,8 +21,9 @@ import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
 import type { PageAction } from './components/TopStatusBar';
 import { ContradictionPanel } from './components/ContradictionPanel';
-import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
-import { can } from './core/entitlements';
+import { unresolvedContradictions } from './core/contradictionCandidates';
+import { JUDGE_SETTLE_MS, baselineOf, changedSince, pairsAfterChange, type VersionBaseline } from './core/judgePolicy';
+import { can, entitlementsOf } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextCanvasView } from './components/ContextCanvasView';
 import { ContextMapView } from './components/ContextMapView';
@@ -312,15 +313,46 @@ export default function App() {
     toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
   };
 
-  // semantic contradictions: code picks the candidate pairs, the decision layer answers one closed question each (Pro and above)
-  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments, undefined, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
-  const judgedSigs = useRef<Set<string>>(new Set());
+  // semantic contradictions (Pro and above, needs an AI key). The judge NEVER runs because a workspace was opened, built or
+  // reset: only (a) after an object of a candidate pair changed in this session and has no fresh judgement (settle first),
+  // or (b) from the «بررسی تناقض» button. Policy and the pure rules: src/core/judgePolicy.ts
+  const baselineRef = useRef<{ wid: string; versions: VersionBaseline } | null>(null);
+  const [judging, setJudging] = useState(false);
+  const [judgedToday, setJudgedToday] = useState<number | null>(null);
+  const canJudge = !!data && can(data.workspace.planId, 'semanticContradiction') && ai.judgmentsAvailable;
+  const refreshJudged = () => { dataApi.usage(wid).then((u) => setJudgedToday(u.judgmentsToday)).catch(() => { /* the meter is optional */ }); };
+  const runJudge = async (objectIds?: string[]) => {
+    setJudging(true);
+    try {
+      const r = await dataApi.judgeContradictions(wid, objectIds);
+      patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }));
+      refreshJudged();
+      return r;
+    } finally { setJudging(false); }
+  };
+  const handleCheckContradictions = async () => {
+    try {
+      const r = await runJudge();
+      toast.show({ intent: 'success', message: r.judged ? `${formatNumber(r.judged)} جفت بررسی شد.${r.limited ? ' به سقف امروز رسیدی؛ بقیه فردا.' : ''}` : 'جفت تازه‌ای برای بررسی نبود.' });
+    } catch (e) { toast.show({ intent: 'danger', message: e instanceof Error ? e.message : 'بررسی تناقض انجام نشد؛ دوباره.' }); }
+  };
+  const changedSig = (() => {
+    if (!data || !canJudge) return '';
+    if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) return '';
+    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
+  })();
   useEffect(() => {
-    if (!pairSig || !ai.judgmentsAvailable || judgedSigs.current.has(pairSig)) return;
-    judgedSigs.current.add(pairSig);
-    dataApi.judgeContradictions(wid).then((r) => patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }))).catch(() => { /* optional: the rule-based checks still run */ });
+    if (!data) { baselineRef.current = null; return; }
+    if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) baselineRef.current = { wid: data.workspace.id, versions: baselineOf(data.objects) };
+  }, [data]);
+  useEffect(() => {
+    if (!changedSig || !baselineRef.current) return;
+    const ids = [...changedSince(data!.objects, baselineRef.current.versions)];
+    const timer = setTimeout(() => { void runJudge(ids).catch(() => { /* optional: the rule-based checks still run */ }); }, JUDGE_SETTLE_MS);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pairSig, ai.judgmentsAvailable, wid]);
+  }, [changedSig]);
+  useEffect(() => { if (canJudge) refreshJudged(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [canJudge, wid]);
 
   // ── tree nodes ──────────────────────────────────────────────────────────────────────────────────
   const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
@@ -720,7 +752,7 @@ export default function App() {
 
             {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
-            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
+            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />
 
             <ProposalInbox
               objects={workspaceContexts}

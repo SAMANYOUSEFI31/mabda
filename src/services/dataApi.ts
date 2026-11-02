@@ -120,7 +120,7 @@ export const dataApi = {
   saveSpec: (id: string, s: WorkstreamSpec) => call<{ spec: WorkstreamSpec }>('PUT', `${ws(id)}/specs/${s.id}`, s),
 
   judgeAmbiguity: (id: string, objectIds: string[]) => call<{ judgments: WorkspaceState['judgments']; ledger: LedgerEntry[] }>('POST', `${ws(id)}/gap/judge`, { objectIds }),
-  judgeContradictions: (id: string) => call<{ pairJudgments: WorkspaceState['pairJudgments']; ledger: LedgerEntry[]; judged: number; limited: boolean }>('POST', `${ws(id)}/contradictions/judge`, {}),
+  judgeContradictions: (id: string, objectIds?: string[]) => call<{ pairJudgments: WorkspaceState['pairJudgments']; ledger: LedgerEntry[]; judged: number; limited: boolean }>('POST', `${ws(id)}/contradictions/judge`, objectIds ? { objectIds } : {}),
   resolveContradiction: (id: string, input: { aId: string; bId: string; action: 'keep'; keepId: string } | { aId: string; bId: string; action: 'separate'; moveId: string; nodeId: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; pairJudgments: WorkspaceState['pairJudgments']; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/contradictions/resolve`, input),
   changeLog: (id: string, f: { objectId?: string } = {}) => call<{ changes: import('../types').ContextChange[] }>('GET', `${ws(id)}/changes/log${f.objectId ? `?objectId=${encodeURIComponent(f.objectId)}` : ''}`),

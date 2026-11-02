@@ -362,6 +362,12 @@ test('semantic contradictions: code picks candidate pairs, the decision layer ju
     assert.ok(!JSON.stringify(r1).includes('probability'), 'no confidence in the payload');
     assert.ok(r1.ledger.some((l: any) => l.mode === 'contradiction' && l.creditCost === 0));
     assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 0, 'cached for these versions');
+    // scoped call (what the client sends after an edit): only pairs that involve the named objects
+    await t.call('PATCH', `/workspaces/ws_studio/objects/${x.id}`, { content: 'فریلنسرهای طراح و برنامه‌نویس' });
+    const callsBefore = t.p.calls.length;
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', { objectIds: ['nobody'] })).json.judged, 0, 'an unrelated scope judges nothing');
+    assert.equal(t.p.calls.length, callsBefore, 'and does not call the model');
+    assert.ok((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', { objectIds: [x.id] })).json.judged >= 1);
     await t.call('PATCH', `/workspaces/ws_studio/objects/${y.id}`, { content: 'سازمان‌های بزرگ و دولتی' });
     assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 1, 'an edited object is judged again');
 
@@ -645,6 +651,7 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
   const t = await boot(() => decide);
   try {
     await t.call('POST', '/bootstrap', {});
+    const aiCalls = t.p.calls.length;
     const first = await t.call('POST', '/demo/reset', {});
     assert.equal(first.status, 200);
     assert.equal(first.json.workspaceId, 'ws_demo');
@@ -657,6 +664,7 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     assert.equal((await t.call('POST', '/demo/reset', {})).status, 200);
     const s2 = (await t.call('GET', '/workspaces/ws_demo/state')).json;
     assert.deepEqual(s2, s1, 'reset twice → the same state');
+    assert.equal(t.p.calls.length, aiCalls, 'building, resetting and opening the showcase never calls the AI');
     assert.ok(s1.objects.length >= 30 && s1.changes.length > 40 && s1.notes.length === 6 && s1.deliverables.length === 3 && s1.files.length === 1 && s1.specs.length === 3);
     assert.equal(s1.files[0].status, 'ready');
     assert.equal(s1.ledger.length, 0, 'no usage is invented');
