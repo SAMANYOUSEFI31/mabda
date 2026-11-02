@@ -52,6 +52,9 @@ import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
 import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
+import { MetricsDialog } from './components/MetricsDialog';
+import { expectationRows, expectationsDue, metricsWithoutRecentNumber, verdictTally } from './core/metrics';
+import { MX } from './core/metricsText';
 import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue } from './core/weeklyReview';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
@@ -74,9 +77,11 @@ import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
 import { chatCredits } from './core/creditEngine';
 import { DataApiError, dataApi } from './services/dataApi';
+import type { MetricsBundle } from './services/dataApi';
 import type { CanvasBundle } from './services/dataApi';
 import type { MovePayload } from './components/ContextCanvasView';
 import { useAiStatus } from './services/aiStatus';
+import type { ExpectationVerdict, MetricDirection } from './types';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from './types';
 import type { FileQuotaInfo } from './types/state';
 
@@ -194,6 +199,7 @@ export default function App() {
   const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [] }), [data?.objects, data?.relationships, data?.changes, data?.deliverables]);
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -262,15 +268,42 @@ export default function App() {
   const dueAssumptions = useMemo(() => assumptionsDue(data?.objects ?? [], new Date()), [data?.objects]);
   const dueDecisions = useMemo(() => decisionsDue(data?.objects ?? [], data?.changes ?? [], new Date()), [data?.objects, data?.changes]);
   const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const metrics = data?.metrics ?? [];
+  const measurements = data?.measurements ?? [];
+  const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);
+  const tally = useMemo(() => verdictTally(expRows), [expRows]);
+  const quietMetrics = useMemo(() => metricsWithoutRecentNumber(metrics, measurements, new Date()), [data?.metrics, data?.measurements]);
+  const expectationsDueCount = useMemo(() => expectationsDue(expRows, new Date()).length, [expRows]);
   const dueProps = {
     assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
     onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
     onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
     onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
-    onOutcome: async (id: string, text: string) => {
-      const r = await attempt(() => dataApi.noteOutcome(wid, id, text));
+    onOutcome: async (id: string, text: string, verdict?: ExpectationVerdict) => {
+      const r = await attempt(() => dataApi.noteOutcome(wid, id, text, verdict));
       if (r) { patch((d) => ({ ...d, changes: r.changes })); toast.show({ intent: 'success', message: 'نتیجه ثبت شد.' }); }
     },
+    expectations: expRows,
+  };
+
+  // ── metrics («شاخص‌ها»): recorded results next to decisions; never a claim about cause ──
+  const applyMetrics = (r: MetricsBundle) => patch((d) => ({ ...d, metrics: r.metrics, measurements: r.measurements }));
+  const metricHandlers = {
+    onCreate: async (m: { name: string; unit: string; direction: MetricDirection; target?: number }) => { const r = await attempt(() => dataApi.createMetric(wid, m)); if (r) applyMetrics(r); },
+    onArchive: async (id: string) => { const r = await attempt(() => dataApi.archiveMetric(wid, id)); if (r) applyMetrics(r); },
+    onRecord: async (entries: Array<{ metricId: string; value: number }>) => {
+      const r = await attempt(() => dataApi.addMeasurements(wid, entries));
+      if (r) { applyMetrics(r); toast.show({ intent: 'success', message: `${formatNumber(entries.length)} عدد ثبت شد.` }); }
+    },
+    onCsv: async (text: string) => {
+      const r = await attempt(() => dataApi.addMeasurementsCsv(wid, text));
+      if (!r) return undefined;
+      applyMetrics(r);
+      toast.show({ intent: r.errors.length ? 'warning' : 'success', message: r.errors.length ? `${formatNumber(r.added)} عدد ثبت شد؛ ${formatNumber(r.errors.length)} خط خوانده نشد.` : `${formatNumber(r.added)} عدد ثبت شد.` });
+      return { added: r.added, errors: r.errors };
+    },
+    onConfirm: async (id: string) => { const r = await attempt(() => dataApi.confirmMeasurement(wid, id)); if (r) applyMetrics(r); },
+    onRemove: async (id: string) => { const r = await attempt(() => dataApi.removeMeasurement(wid, id)); if (r) applyMetrics(r); },
   };
 
   // ── examples (starters / templates) ──
@@ -794,7 +827,10 @@ export default function App() {
                 <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
                 <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
               </div>
-              <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
+              <div className="flex flex-wrap gap-inline-sm">
+                <Button variant="secondary" iconStart="TrendingUp" onClick={() => setMetricsOpen(true)}>{MX.navTitle}</Button>
+                <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
+              </div>
             </div>
             {workspaceContexts.length === 0 && (
               <EmptyState
@@ -835,6 +871,21 @@ export default function App() {
               onOpenContradictions={() => document.getElementById('contradictions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
+
+            {(metrics.some((m) => !m.archived) || expRows.length > 0) && (
+              <Card padding="xl" id="expectations" className="flex flex-col gap-stack-md" aria-label={MX.homeTitle}>
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <h2 className="heading-sm text-text-default">{MX.homeTitle}</h2>
+                  <Button size="sm" variant="secondary" iconStart="TrendingUp" onClick={() => setMetricsOpen(true)}>{MX.navTitle}</Button>
+                </div>
+                {expRows.length > 0 ? (
+                  <p className="body-md text-text-default" data-testid="expectation-tally">
+                    {formatNumber(tally.met)} به انتظار رسید · {formatNumber(tally.partial)} نیمه · {formatNumber(tally.missed)} نرسید · {formatNumber(tally.open)} باز{expectationsDueCount > 0 ? ` (${formatNumber(expectationsDueCount)} موعدش رسیده)` : ''}
+                  </p>
+                ) : <p className="body-sm text-text-subtle">{MX.expectationsBody}</p>}
+                {quietMetrics.length > 0 && <p className="body-sm text-text-subtle">{MX.quiet}: {quietMetrics.map((m) => m.name).join('، ')}.</p>}
+              </Card>
+            )}
 
             {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
               <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-lg" aria-label="سؤال‌ها و تصمیم‌های باز">
@@ -1087,6 +1138,7 @@ export default function App() {
         workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
         allObjects={workspaceContexts}
+        metrics={metrics}
         relationships={data?.relationships ?? []}
         onSetDependencies={handleSetDependencies}
         reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
@@ -1228,6 +1280,16 @@ export default function App() {
         <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، دارایی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
       </Dialog>
 
+      <MetricsDialog
+        open={metricsOpen}
+        onClose={() => setMetricsOpen(false)}
+        metrics={metrics}
+        measurements={measurements}
+        objects={workspaceContexts}
+        changes={data?.changes ?? []}
+        {...metricHandlers}
+        onOpenObject={(o) => { setMetricsOpen(false); openContext(o); }}
+      />
       <WeeklyReviewDialog
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
@@ -1239,6 +1301,7 @@ export default function App() {
         onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
         onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
         dueProps={dueProps}
+        metricsEntry={{ metrics, measurements, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
         onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
       />
       <NodeThreadPanel

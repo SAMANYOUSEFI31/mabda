@@ -5,7 +5,8 @@
 
 import { DueItems } from './DueItems';
 import React, { useMemo, useState } from 'react';
-import type { ContextObject, GeneratedDeliverable } from '../types';
+import type { ContextObject, GeneratedDeliverable, Measurement, Metric } from '../types';
+import { MetricQuickEntry } from './MetricQuickEntry';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../core/weeklyReview';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../core/changeLog';
 import { Badge, Button, Dialog, Progress, ReadinessBadge, formatJalaliDate, formatNumber } from '../ui';
@@ -24,15 +25,20 @@ interface Props {
   onDone: () => Promise<void>;
   /** what has come due (assumptions to look at again, decisions asking «نتیجه چه شد؟») */
   dueProps: React.ComponentProps<typeof DueItems>;
+  /** the numbers of this week: shown as a step only when there is an active metric; recording stays optional */
+  metricsEntry?: { metrics: Metric[]; measurements: Measurement[]; onSubmit: React.ComponentProps<typeof MetricQuickEntry>['onSubmit']; onCsv: React.ComponentProps<typeof MetricQuickEntry>['onCsv'] };
 }
 
-const STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمیم‌های منتظر'] as const;
+const BASE_STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمیم‌های منتظر'] as const;
 
 /** «این هفته» — five minutes, three sections one after another, every item with a one-click action. No timers, no pressure. */
 export const WeeklyReviewDialog: React.FC<Props> = (props) => (props.open ? <Review {...props} /> : null);
 
-const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps }) => {
-  const [step, setStep] = useState(0); // 3 = summary
+const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps, metricsEntry }) => {
+  const hasMetrics = !!metricsEntry && metricsEntry.metrics.some((m) => !m.archived);
+  const STEPS = hasMetrics ? [...BASE_STEPS, 'اعداد این هفته'] : [...BASE_STEPS];
+  const LAST = STEPS.length; // the summary
+  const [step, setStep] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [handled, setHandled] = useState<string[]>([]); // objects the user accepted / confirmed during this review
   const title = (id: string) => objects.find((o) => o.id === id)?.title ?? id;
@@ -51,13 +57,13 @@ const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverabl
       open
       onClose={onClose}
       size="xl"
-      title={step < 3 ? `این هفته — بخش ${formatNumber(step + 1)} از ${formatNumber(3)}: ${STEPS[step]}` : 'این هفته — جمع‌بندی'}
-      description="پنج دقیقه کافی است: سه بخش پشت‌سرهم و برای هر مورد یک اقدام. هر چیزی که بپذیری یا تأیید کنی در تاریخچهٔ تغییرها ثبت می‌شود."
+      title={step < LAST ? `این هفته — بخش ${formatNumber(step + 1)} از ${formatNumber(LAST)}: ${STEPS[step]}` : 'این هفته — جمع‌بندی'}
+      description="پنج دقیقه کافی است: چند بخش پشت‌سرهم و برای هر مورد یک اقدام. هر چیزی که بپذیری یا تأیید کنی در تاریخچهٔ تغییرها ثبت می‌شود."
       footer={
-        step < 3 ? (
+        step < LAST ? (
           <>
             <Button variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>قبلی</Button>
-            <Button variant="secondary" iconEnd="ArrowLeft" onClick={() => setStep(step + 1)}>{step === 2 ? 'جمع‌بندی' : 'دیدم؛ بعدی'}</Button>
+            <Button variant="secondary" iconEnd="ArrowLeft" onClick={() => setStep(step + 1)}>{step === LAST - 1 ? 'جمع‌بندی' : 'دیدم؛ بعدی'}</Button>
           </>
         ) : (
           <><Button variant="ghost" onClick={() => setStep(0)}>از اول</Button><Button variant="primary" loading={busy === 'done'} onClick={async () => { setBusy('done'); try { await onDone(); onClose(); } finally { setBusy(null); } }}>بازبینی تمام شد</Button></>
@@ -155,7 +161,11 @@ const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverabl
         )
       )}
 
-      {step === 3 && (
+      {hasMetrics && step === 3 && metricsEntry && (
+        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} onSubmit={metricsEntry.onSubmit} onCsv={metricsEntry.onCsv} />
+      )}
+
+      {step === LAST && (
         <div className="flex flex-col gap-stack-lg">
           <p className="body-md text-text-default">
             {handled.length ? `در این بازبینی ${formatNumber(handled.length)} مورد را پذیرفتی یا تأیید کردی.${outputs ? ` چون این موارد را تأیید کردی، ${formatNumber(outputs)} خروجی تو از آن‌ها استفاده می‌کنند.` : ''}` : 'این هفته چیزی را تغییر ندادی؛ هرچه دیدی همان‌طور که بود ماند.'}

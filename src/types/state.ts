@@ -1,5 +1,5 @@
 import type {
-  ChatSession, ContextObject, ContextRelationship, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
+  ChatSession, ContextObject, Measurement, Metric, ContextRelationship, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
 } from './index';
 import type { StaleAsset } from '../core/impactEngine';
 import type { UsageSummary } from './ai';
@@ -25,6 +25,9 @@ export interface WorkspaceState {
   pairJudgments: import('../core/contradictionCandidates').PairJudgment[];
   /** append-only change log (who changed what, why) */
   changes: import('./index').ContextChange[];
+  /** recorded results (not Context objects): the metrics and every measurement, Proposed ones included (those are shown only as «اعداد پیشنهادی») */
+  metrics: Metric[];
+  measurements: Measurement[];
   /** declared positions on the boards (decision board: lane + rank; free zone: x/y, display only) */
   canvas: { decisions: CanvasItem[]; free: CanvasItem[] };
   /** when the weekly review was last finished (null = never) */

@@ -35,6 +35,8 @@ export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
     for (const p of data.packs) repo.importSavedPack(s, p);
     for (const t of data.templates) repo.saveTemplate(s, t.kind, t.name, t.payload, t.at, t.id);
     for (const x of data.samples) repo.createSample(s, x);
+    for (const m of data.metrics) repo.createMetric(s, { id: m.id, name: m.name, unit: m.unit, direction: m.direction, target: m.target, at: m.at }, { actor: 'user' });
+    for (const x of data.measurements) repo.addMeasurement(s, { id: x.id, metricId: x.metricId, value: x.value, at: x.day, note: x.note, source: 'demo', createdAt: `${x.day}T09:00:00.000Z` }, { actor: 'user' });
   })();
   return repo.getWorkspace(userId, DEMO_WORKSPACE_ID)!;
 }

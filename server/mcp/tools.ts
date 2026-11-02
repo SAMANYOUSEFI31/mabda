@@ -6,6 +6,7 @@ import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
 import { renderSavedPack } from '../db/packs.ts';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '../../src/core/assumptions.ts';
 import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
+import { expectationRows, latestOf, proposedMeasurements, seriesOf } from '../../src/core/metrics.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
@@ -26,6 +27,7 @@ Mabda is the user's business source of truth. Work from it with these rules:
 ۵. وقتی خروجی ساختی، با save_asset ذخیره‌اش کن و در usedContext دقیقاً شناسه و نسخهٔ Contextهایی را بده که خواندی (اصالت و تشخیص «قدیمی‌شدن» به همین بسته است).
 ۶. وقتی کاربر Context را تغییر داد، check_impact را بزن و بگو کدام دارایی‌ها قدیمی شده‌اند.
 ۷. get_changes (فقط‌خواندنی): ببین از فلان زمان چه کسی چه چیزی را عوض کرده؛ دلیل‌های ثبت‌شده برای کاربر است و در خروجی نمی‌آید.
+۸. get_metrics (فقط‌خواندنی): اعداد ثبت‌شدهٔ کاربر و انتظارهای تصمیم‌ها. این‌ها دانش تأییدشده نیستند و از کنار هم بودن یک عدد و یک تصمیم نتیجهٔ علت‌ومعلولی نگیر. عدد تازه را فقط با propose_measurement پیشنهاد بده؛ تا کاربر تأیید نکند ثبت نمی‌شود.
 گاردریل‌ها (Constraintهای Confirmed و گاردریل‌های spec) را رعایت کن.`;
 
 type Json = Record<string, unknown>;
@@ -297,6 +299,47 @@ export function buildMcpServer(c: McpContext): McpServer {
     const lineage = (d.usedContext ?? []).map((u) => ({ id: u.id, version: u.version, title: byId.get(u.id)?.title ?? null, currentVersion: byId.get(u.id)?.version ?? null, changed: (byId.get(u.id)?.version ?? 0) !== u.version }));
     const v = assetView(d, objects);
     return reply(`# ${d.title}\n${v.stale ? `⚠ قدیمی: ${v.staleReasons.join('؛ ')}\n` : ''}\n${d.content}`, { ...v, content: d.content, usedContext: lineage });
+  });
+
+  // ── metrics: read-only numbers + a SUGGESTED number. Nothing here writes a confirmed measurement. ──
+  server.registerTool('get_metrics', {
+    title: 'شاخص‌ها',
+    description: 'Read-only. The metrics the user follows (name, unit, which direction is better, target), their latest CONFIRMED numbers, and — for decisions that carry an expectation — the expectation next to the numbers. These are recorded numbers, not knowledge, and sitting next to a decision they say nothing about cause: do not claim one. Numbers still waiting for the user\'s confirmation are only counted.',
+    inputSchema: { metricId: z.string().optional(), last: z.number().int().min(1).max(50).optional() },
+  }, async (a) => {
+    const metrics = repo.listMetrics(scope).filter((m) => !m.archived && (!a.metricId || m.id === a.metricId));
+    if (a.metricId && !metrics.length) return fail(`شاخص «${a.metricId}» پیدا نشد.`);
+    const all = repo.listMeasurements(scope);
+    const objects = repo.listObjects(scope);
+    const rows = expectationRows(objects, metrics, all, repo.listChanges(scope), new Date());
+    const items = metrics.map((m) => ({
+      id: m.id, name: m.name, unit: m.unit, direction: m.direction, ...(m.target !== undefined ? { target: m.target } : {}),
+      latest: latestOf(m.id, all) ? { value: latestOf(m.id, all)!.value, at: latestOf(m.id, all)!.at } : null,
+      numbers: seriesOf(m.id, all).slice(-(a.last ?? 12)).map((x) => ({ at: x.at, value: x.value, ...(x.note ? { note: x.note } : {}) })),
+      awaitingConfirmation: proposedMeasurements(all).filter((x) => x.metricId === m.id).length,
+    }));
+    const expectations = rows.filter((r) => r.metric && metrics.some((m) => m.id === r.metric!.id)).map((r) => ({
+      decisionId: r.decision.id, decision: r.decision.title, metricId: r.expectation.metricId, direction: r.expectation.direction, ...(r.expectation.targetValue !== undefined ? { targetValue: r.expectation.targetValue } : {}), by: r.expectation.by,
+      decidedOn: r.moment?.at ?? null, numberBefore: r.reading.before?.value ?? null, numberAfter: r.reading.after?.value ?? null, verdict: r.verdict ?? null,
+    }));
+    const md = items.length
+      ? `## ${items.length} شاخص\n${items.map((i) => `- **${i.name}** (\`${i.id}\`${i.unit ? `، ${i.unit}` : ''}، ${i.direction === 'up' ? 'بالاتر بهتر' : 'پایین‌تر بهتر'}${i.target !== undefined ? `، هدف ${i.target}` : ''}): ${i.numbers.length ? i.numbers.map((n) => `${n.at}: ${n.value}`).join('، ') : 'هنوز عددی نیست'}`).join('\n')}${expectations.length ? `\n\n### انتظارها\n${expectations.map((e) => `- «${e.decision}» → ${e.direction === 'up' ? 'بالا' : 'پایین'}${e.targetValue !== undefined ? ` تا ${e.targetValue}` : ''} تا ${e.by}؛ قبل: ${e.numberBefore ?? '—'}، بعد: ${e.numberAfter ?? '—'}${e.verdict ? `، داوری کاربر: ${e.verdict}` : ''}`).join('\n')}` : ''}`
+      : 'هنوز شاخصی تعریف نشده است.';
+    return reply(md, { count: items.length, metrics: items, expectations });
+  });
+
+  server.registerTool('propose_measurement', {
+    title: 'پیشنهاد عدد',
+    description: 'Suggest ONE number for a metric (value + date YYYY-MM-DD, optional note). It is stored as a proposal and is NOT drawn, counted or packed until the user confirms it in Mabda. Only suggest a number the user told you or a source you can name in the note — never estimate one.',
+    inputSchema: { metricId: z.string(), value: z.number().finite(), at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), note: z.string().max(300).optional() },
+  }, async (a) => {
+    try {
+      const m = repo.addMeasurement(scope, { metricId: a.metricId, value: a.value, at: a.at, note: a.note, source: 'mcp' }, { actor: 'mcp', label: c.label });
+      return reply(`عدد ${m.value} (${m.at}) برای شاخص پیشنهاد شد. تا کاربر در Mabda تأییدش نکند در نمودار و بسته نمی‌آید.`, { measurementId: m.id, status: m.status });
+    } catch (e) {
+      if (e instanceof RepoError) return fail(e.message);
+      throw e;
+    }
   });
 
   // ── change log (read-only; reasons are for the user and are not returned) ──

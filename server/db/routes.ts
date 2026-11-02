@@ -285,9 +285,38 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   }));
   router.post('/workspaces/:wid/objects/:id/outcome', wrap((req, res) => {
     const s = scopeOf(req);
-    const change = repo.noteOutcome(s, req.params.id, String(body(req).text ?? ''), metaOf(body(req)));
+    const b = body(req);
+    const change = repo.noteOutcome(s, req.params.id, typeof b.text === 'string' ? b.text : '', metaOf(b), b.verdict as never);
     res.json({ change, changes: repo.listChanges(s) });
   }));
+
+  // ── metrics («شاخص‌ها»): recorded results, never Context objects. Numbers from an MCP client arrive Proposed (see the tools). ──
+  const metricsState = (s: Scope) => ({ metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s) });
+  router.get('/workspaces/:wid/metrics', wrap((req, res) => { res.json(metricsState(scopeOf(req))); }));
+  router.post('/workspaces/:wid/metrics', wrap((req, res) => { const s = scopeOf(req); const b = body(req); const metric = repo.createMetric(s, b, metaOf(b)); res.json({ metric, ...metricsState(s) }); }));
+  router.put('/workspaces/:wid/metrics/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); const metric = repo.updateMetric(s, req.params.id, b, metaOf(b)); res.json({ metric, ...metricsState(s) }); }));
+  router.post('/workspaces/:wid/metrics/:id/archive', wrap((req, res) => { const s = scopeOf(req); const metric = repo.archiveMetric(s, req.params.id, metaOf(body(req))); res.json({ metric, ...metricsState(s) }); }));
+  router.post('/workspaces/:wid/measurements', wrap((req, res) => {
+    const s = scopeOf(req); const b = body(req);
+    // the browser is the user: never `mcp`, whatever the body says
+    const measurement = repo.addMeasurement(s, { metricId: String(b.metricId ?? ''), value: b.value, at: typeof b.at === 'string' ? b.at : undefined, note: b.note, source: 'manual', decisionId: typeof b.decisionId === 'string' ? b.decisionId : undefined }, metaOf(b));
+    res.json({ measurement, ...metricsState(s) });
+  }));
+  // the weekly quick entry: several fields at once; an empty field is simply not sent
+  router.post('/workspaces/:wid/measurements/batch', wrap((req, res) => {
+    const s = scopeOf(req); const b = body(req);
+    const at = typeof b.at === 'string' ? b.at : undefined;
+    const entries = (Array.isArray(b.entries) ? b.entries : []).slice(0, 100) as Array<{ metricId?: unknown; value?: unknown; note?: unknown }>;
+    const added = repo.transaction(() => entries.map((e) => repo.addMeasurement(s, { metricId: String(e.metricId ?? ''), value: e.value, at, note: e.note, source: 'manual' }, metaOf(b))));
+    res.json({ added, ...metricsState(s) });
+  }));
+  router.post('/workspaces/:wid/measurements/csv', wrap((req, res) => {
+    const s = scopeOf(req); const b = body(req);
+    const r = repo.addMeasurementsCsv(s, typeof b.text === 'string' ? b.text.slice(0, 200_000) : '', metaOf(b));
+    res.json({ added: r.added.length, errors: r.errors, ...metricsState(s) });
+  }));
+  router.post('/workspaces/:wid/measurements/:id/confirm', wrap((req, res) => { const s = scopeOf(req); const measurement = repo.confirmMeasurement(s, req.params.id, metaOf(body(req))); res.json({ measurement, ...metricsState(s) }); }));
+  router.delete('/workspaces/:wid/measurements/:id', wrap((req, res) => { const s = scopeOf(req); repo.removeMeasurement(s, req.params.id, metaOf(body(req))); res.json(metricsState(s)); }));
   router.post('/workspaces/:wid/notes/:id/extract', wrap(async (req, res) => {
     const s = scopeOf(req);
     const note = repo.getNote(s, req.params.id);
@@ -603,7 +632,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (b.specId && !spec) throw new RepoError('not_found', 'spec پیدا نشد.');
     const deliverable = spec && typeof b.deliverableId === 'string' ? spec.deliverables.find((d) => d.id === b.deliverableId) : undefined;
     const id = newId('pack');
-    const pack = buildContextPack({ packId: id, workspaceName: ws.name, nodes: repo.listNodes(s), objects: repo.listObjects(s), spec, deliverable, judgments: repo.listJudgments(s), targetNodeId: typeof b.nodeId === 'string' ? b.nodeId : undefined, relationships: repo.listRelationships(s), now: clock() });
+    const pack = buildContextPack({ packId: id, workspaceName: ws.name, nodes: repo.listNodes(s), objects: repo.listObjects(s), spec, deliverable, judgments: repo.listJudgments(s), targetNodeId: typeof b.nodeId === 'string' ? b.nodeId : undefined, relationships: repo.listRelationships(s), now: clock(), metrics: { metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s), changes: repo.listChanges(s) } });
     const title = deliverable ? `${spec!.title} ‹ ${deliverable.title}` : spec ? spec.title : `کل ${ws.name}`;
     const saved = repo.savePack(s, { title, specId: spec?.id, deliverableId: deliverable?.id, refs: pack.refs, tokens: pack.tokens }, id);
     res.json({ id: saved.id, title, createdAt: saved.createdAt, markdown: pack.markdown, tokens: pack.tokens, chars: pack.chars, counts: pack.counts });

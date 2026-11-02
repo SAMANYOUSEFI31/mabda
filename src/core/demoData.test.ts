@@ -1,3 +1,4 @@
+import { expectationRows, expectationsDue, suggestVerdict, verdictTally } from './metrics.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDemo, tehranAt } from './demoData';
@@ -185,9 +186,9 @@ test('assumptions and a decision record: one assumption is due, one is later; a 
   assert.equal(msg.status, 'Confirmed');
   assert.equal(isEstablished(msg), false, 'Confirmed, yet not knowledge');
   assert.deepEqual(rejectedOptions(d.objects).map((r) => [r.objectId, r.title]), [['dm_ws_group', 'تخفیف ۱۵ درصد روی قیمت کارگاه']]);
-  assert.deepEqual(decisionsDue(d.objects, d.changes, NOW).map((o) => o.id), ['dm_ws_group']);
+  assert.deepEqual(decisionsDue(d.objects, d.changes, NOW).map((o) => o.id).sort(), ['dm_price2', 'dm_ws_group'], 'the decision whose metric expectation date is today is due too');
   const wk = buildWeeklyReview({ objects: d.objects, relationships: d.relationships, changes: d.changes, deliverables: d.deliverables, now: NOW });
-  assert.deepEqual([wk.due.assumptions.length, wk.due.decisions.length], [1, 1], 'they show up in «این هفته» too');
+  assert.deepEqual([wk.due.assumptions.length, wk.due.decisions.length], [1, 2], 'they show up in «این هفته» too');
 });
 
 // ── packs, facets, samples, a template in the showcase ───────────────────────────────────────────
@@ -217,4 +218,25 @@ test('showcase facets, samples and template: three facets on a real axis; three 
   assert.ok(d.samples.every((x) => x.content.startsWith('مثال:')));
   assert.deepEqual(d.templates.map((t) => [t.kind, t.payload.root.label, t.payload.root.children.map((c) => c.label)]), [['node', 'کارگاه برشته‌کاری', ['برنامهٔ جلسه‌ها']]]);
   assert.ok(d.templates[0].payload.objects.every((o) => o.title !== 'برنامهٔ جلسه‌ها' || o.path.length === 1), 'paths are child indexes');
+});
+
+test('metrics in the showcase: three metrics, twelve numbers, four decisions with an expectation — one reached, one fell short, one due today, one still open', () => {
+  assert.equal(d.metrics.length, 3);
+  assert.ok(d.measurements.length >= 8 && d.measurements.length <= 12, `${d.measurements.length} numbers`);
+  assert.ok(d.measurements.every((m) => d.metrics.some((x) => x.id === m.metricId)));
+  const ms = d.metrics.map((m) => ({ ...m, workspaceId: 'ws_demo', createdAt: m.at, updatedAt: m.at }));
+  const all = d.measurements.map((m) => ({ id: m.id, workspaceId: 'ws_demo', metricId: m.metricId, value: m.value, at: m.day, source: 'demo' as const, status: 'Confirmed' as const, createdAt: `${m.day}T09:00:00Z`, ...(m.note ? { note: m.note } : {}) }));
+  const rows = expectationRows(d.objects, ms, all, d.changes, NOW);
+  assert.equal(rows.length, 4);
+  const by = new Map(rows.map((r) => [r.decision.id, r]));
+  assert.equal(by.get('dm_channel')!.verdict, 'met');
+  assert.equal(suggestVerdict(by.get('dm_channel')!.reading), 'met', 'what the numbers say agrees with what the user judged');
+  assert.equal(by.get('dm_budget')!.verdict, 'missed');
+  assert.equal(suggestVerdict(by.get('dm_budget')!.reading), 'missed');
+  assert.deepEqual(expectationsDue(rows, NOW).map((r) => r.decision.id), ['dm_price2'], 'one is due today and not judged');
+  assert.equal(suggestVerdict(by.get('dm_price2')!.reading), 'partial');
+  assert.equal(by.get('dm_pack')!.reading.state, 'open');
+  assert.deepEqual(verdictTally(rows), { met: 1, partial: 0, missed: 1, open: 2 });
+  // each decision has a moment on the time line, taken from the Change table
+  assert.ok(rows.every((r) => !!r.moment), 'every expectation decision has a decision day');
 });

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ContextDraft, ContextObject, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
+import { ContextDraft, ContextObject, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
@@ -12,6 +12,8 @@ import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { ChangeEntry } from './ChangeEntry';
 import type { ContextChange } from '../types';
+import { MX } from '../core/metricsText';
+import { parseNumber } from '../core/metrics';
 import { dataApi } from '../services/dataApi';
 import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
@@ -27,6 +29,8 @@ interface ContextDetailModalProps {
   workspaceId: string;
   defaultNodeId?: string;
   /** every object + the `depends_on` relations: «وابسته به» (what this decision rests on) is chosen here */
+  /** the metrics a decision can state an expectation about */
+  metrics?: Metric[];
   allObjects?: ContextObject[];
   relationships?: ContextRelationship[];
   onSetDependencies?: (objectId: string, dependsOn: string[]) => Promise<void> | void;
@@ -78,6 +82,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   workspaceId,
   defaultNodeId = 'business',
   allObjects = [],
+  metrics = [],
   relationships = [],
   onSetDependencies,
   reviewNeed,
@@ -109,6 +114,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [options, setOptions] = useState<Array<{ title: string; rejectedReason: string }>>((object?.record?.options ?? []).map((o) => ({ title: o.title, rejectedReason: o.rejectedReason ?? '' })));
   const [expectation, setExpectation] = useState(object?.record?.expectation ?? '');
   const [reviewOn, setReviewOn] = useState(object?.record?.reviewOn ?? '');
+  const me0 = object?.record?.metricExpectation;
+  const [expMetric, setExpMetric] = useState(me0?.metricId ?? '');
+  const [expDir, setExpDir] = useState<MetricDirection>(me0?.direction ?? 'up');
+  const [expTarget, setExpTarget] = useState(me0?.targetValue !== undefined ? String(me0.targetValue) : '');
+  const [expBy, setExpBy] = useState(me0?.by ?? '');
+  const expTargetNum = expTarget.trim() ? parseNumber(expTarget) : null;
+  const expectationOk = !expMetric || (!!expBy && (!expTarget.trim() || expTargetNum !== null));
   const [promote, setPromote] = useState<null | { to: 'parent' | 'global'; reason: string }>(null);
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
@@ -138,6 +150,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
+    if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
 
     if (isSupersedingMode && object) {
       onSupersede(object.id, {
@@ -169,8 +182,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       ...(validUntil ? { validUntil } : {}),
       ...(facetsFinal().length ? { facets: facetsFinal() } : {}),
       ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
-      ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn)
-        ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}) } }
+      ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn || (expMetric && expBy))
+        ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}), ...(expMetric && expBy ? { metricExpectation: { metricId: expMetric, direction: expDir, ...(expTargetNum !== null ? { targetValue: expTargetNum } : {}), by: expBy } } : {}) } }
         : {}),
     };
 
@@ -295,6 +308,19 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 </div>
                 <TextField label="چه انتظاری داریم؟" value={expectation} onChange={(e) => setExpectation(e.target.value)} />
                 <TextField label="تاریخ بازبینی" type="date" value={reviewOn} onChange={(e) => setReviewOn(e.target.value)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
+                {metrics.length > 0 && (
+                  <div className="flex flex-col gap-stack-sm" role="group" aria-label={MX.expectationField}>
+                    <span className="label-md text-text-default">{MX.expectationField}</span>
+                    <Select label={MX.expectationMetric} value={expMetric} onChange={(e) => { setExpMetric(e.target.value); const m = metrics.find((x) => x.id === e.target.value); if (m) { setExpDir(m.direction); if (!expTarget && m.target !== undefined) setExpTarget(String(m.target)); } }} options={[{ value: '', label: MX.expectationNone }, ...metrics.filter((m) => !m.archived || m.id === expMetric).map((m) => ({ value: m.id, label: m.name }))]} />
+                    {expMetric && (
+                      <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-3">
+                        <Select label="جهت" value={expDir} onChange={(e) => setExpDir(e.target.value as MetricDirection)} options={[{ value: 'up', label: 'بالا برود' }, { value: 'down', label: 'پایین بیاید' }]} />
+                        <TextField label={MX.expectationTarget} inputMode="decimal" value={expTarget} onChange={(e) => setExpTarget(e.target.value)} error={expTarget.trim() && expTargetNum === null ? 'عدد معتبر بنویس.' : undefined} />
+                        <TextField label={MX.expectationBy} type="date" value={expBy} onChange={(e) => setExpBy(e.target.value)} error={!expBy ? 'تاریخ لازم است.' : undefined} />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

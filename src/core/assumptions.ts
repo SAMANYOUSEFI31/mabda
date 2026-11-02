@@ -39,9 +39,10 @@ export function assumptionsDue(objects: ContextObject[], now: Date | string | nu
   return objects.filter((o) => isAssumption(o) && !!o.reviewBy && o.reviewBy <= t).sort((a, b) => a.reviewBy!.localeCompare(b.reviewBy!) || a.id.localeCompare(b.id));
 }
 
-/** decisions whose «look back» date has come and whose outcome nobody has written down yet */
+/** decisions whose «look back» date (or the date of their metric expectation) has come and whose outcome nobody has written down yet */
 export function decisionsDue(objects: ContextObject[], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at'>[], now: Date | string | number): ContextObject[] {
   const t = today(now);
   const noted = new Set(changes.filter((c) => c.kind === 'outcome_noted').map((c) => c.objectId));
-  return objects.filter((o) => o.type === 'Decision' && o.status === 'Confirmed' && !!o.record?.reviewOn && o.record.reviewOn <= t && !noted.has(o.id)).sort((a, b) => a.record!.reviewOn!.localeCompare(b.record!.reviewOn!) || a.id.localeCompare(b.id));
+  const dueOn = (o: ContextObject) => o.record?.reviewOn ?? o.record?.metricExpectation?.by;
+  return objects.filter((o) => o.type === 'Decision' && o.status === 'Confirmed' && !!dueOn(o) && dueOn(o)! <= t && !noted.has(o.id)).sort((a, b) => dueOn(a)!.localeCompare(dueOn(b)!) || a.id.localeCompare(b.id));
 }

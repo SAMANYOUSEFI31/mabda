@@ -14,5 +14,6 @@ export function renderSavedPack(repo: Repo, s: Scope, pack: SavedPack, now: Date
     packId: pack.id, workspaceName: ws?.name ?? '', nodes: repo.listNodes(s), objects: repo.listObjects(s), relationships: repo.listRelationships(s), now,
     targetNodeIds: pack.selection.nodeIds, facets: pack.selection.facets, statuses: pack.selection.statuses, includeAssumptions: pack.selection.includeAssumptions, instruction: pack.instruction,
     judgments: repo.listJudgments(s),
+    metrics: { metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s), changes: repo.listChanges(s) },
   });
 }

@@ -328,6 +328,26 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 14,
+    name: 'metrics + measurements (real results, not Context objects): a Metric (name, unit, direction, target), a Measurement (value, date, note, source, status Confirmed / Proposed, optional decision). A decision\'s metric expectation lives in its record JSON. Every change writes a Change with object_id metric:<id>',
+    up(db) {
+      db.exec(`
+        CREATE TABLE metrics (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          name TEXT NOT NULL, unit TEXT NOT NULL DEFAULT '', direction TEXT NOT NULL, target REAL, archived INTEGER,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_metrics_ws ON metrics(workspace_id, created_at);
+        CREATE TABLE measurements (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, metric_id TEXT NOT NULL,
+          value REAL NOT NULL, at TEXT NOT NULL, note TEXT, source TEXT NOT NULL, status TEXT NOT NULL, decision_id TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_measurements_metric ON measurements(workspace_id, metric_id, at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
