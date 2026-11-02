@@ -35,6 +35,10 @@ export interface ContextObject {
   source?: ObjectSource;
   /** the Gap item (spec requiredContext/suggestedContext `key`) this object fills; objects without it are matched by title (legacy data only) */
   slotKey?: string;
+  /** how far the object's effect reaches: 'position' = its node and sub-nodes; 'global' = everywhere. Absent = the type's default (Constraint: global, Fact/Decision: position) */
+  reach?: 'global' | 'position';
+  /** ISO date after which the object no longer applies (never injected, kept in history). Absent = no end */
+  validUntil?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,7 +46,7 @@ export interface ContextObject {
 /** what the UI hands over to be saved: the server assigns id, version and timestamps */
 export type ContextDraft = Omit<ContextObject, 'id' | 'version' | 'createdAt' | 'updatedAt'> & Partial<Pick<ContextObject, 'id' | 'version' | 'createdAt' | 'updatedAt'>>;
 
-export type RelationshipType = 'belongs_to' | 'depends_on' | 'supersedes' | 'derived_from';
+export type RelationshipType = 'belongs_to' | 'depends_on' | 'supersedes' | 'derived_from' | 'overrides';
 
 export interface ContextRelationship {
   id: string;
