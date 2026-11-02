@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  ContextObject,
+import { blockedPairs } from './pairBlocking';
+import {  ContextObject,
   ContextRelationship,
   Contradiction,
   GapItem,
@@ -264,8 +264,16 @@ export function detectContradictions(objects: ContextObject[]): Contradiction[] 
   const tokens = new Map(active.map((o) => [o.id, titleTokens(o.title)]));
   const quantities = new Map(active.map((o) => [o.id, extractQuantities(`${o.title} ${o.content}`)]));
 
-  for (let i = 0; i < active.length; i++) {
-    for (let j = i + 1; j < active.length; j++) {
+  // only pairs that share a title word can be «the same topic»; the «no discount» rule pairs its two small groups
+  const noDisc = (o: ContextObject) => /تخفیف نداریم|بدون تخفیف|تخفیف نمی(‌|\s)?دهیم/.test(normalizeFa(o.content));
+  const disc = (o: ContextObject) => /تخفیف\s*[\d۰-۹]+\s*(٪|%|درصد)|آفر رایگان|تخفیف ویژه/.test(toLatin(normalizeFa(o.content)));
+  const nd = active.map((o, i) => (noDisc(o) ? i : -1)).filter((i) => i >= 0);
+  const di = active.map((o, i) => (disc(o) ? i : -1)).filter((i) => i >= 0);
+  const extra: Array<[number, number]> = [];
+  for (const x of nd) for (const y of di) if (x !== y) extra.push([x, y]);
+  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra });
+  {
+    for (const [i, j] of pairs) {
       const a = active[i];
       const b = active[j];
 

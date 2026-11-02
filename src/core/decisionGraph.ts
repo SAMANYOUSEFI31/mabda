@@ -10,6 +10,7 @@
 
 import type { ContextChange, ContextObject, ContextRelationship } from '../types';
 import { isBaselineChange, isContentChange } from './changeLog';
+import { stronglyConnected } from './graphAlgo';
 
 export interface DepEdge { from: string; to: string }
 
@@ -48,32 +49,6 @@ export interface DecisionPlan {
   groups: string[][];
 }
 
-/** Tarjan's strongly connected components (deterministic order) */
-function components(ids: string[], deps: Map<string, string[]>): string[][] {
-  let counter = 0;
-  const index = new Map<string, number>();
-  const low = new Map<string, number>();
-  const onStack = new Set<string>();
-  const stack: string[] = [];
-  const out: string[][] = [];
-  const visit = (v: string) => {
-    index.set(v, counter); low.set(v, counter); counter++;
-    stack.push(v); onStack.add(v);
-    for (const w of deps.get(v) ?? []) {
-      if (!index.has(w)) { visit(w); low.set(v, Math.min(low.get(v)!, low.get(w)!)); }
-      else if (onStack.has(w)) low.set(v, Math.min(low.get(v)!, index.get(w)!));
-    }
-    if (low.get(v) === index.get(v)) {
-      const comp: string[] = [];
-      let w: string;
-      do { w = stack.pop()!; onStack.delete(w); comp.push(w); } while (w !== v);
-      out.push(comp.sort());
-    }
-  };
-  for (const id of ids) if (!index.has(id)) visit(id);
-  return out;
-}
-
 export function planDecisions(objects: ContextObject[], relationships: ContextRelationship[]): DecisionPlan {
   const edges = dependencyEdges(objects, relationships);
   const byId = new Map(objects.map((o) => [o.id, o]));
@@ -81,7 +56,7 @@ export function planDecisions(objects: ContextObject[], relationships: ContextRe
   const ids = new Set<string>();
   for (const e of edges) { ids.add(e.from); ids.add(e.to); deps.set(e.from, [...(deps.get(e.from) ?? []), e.to]); }
   const sorted = [...ids].sort();
-  const comps = components(sorted, deps);
+  const comps = stronglyConnected(sorted, deps);
   const compOf = new Map<string, number>();
   comps.forEach((c, i) => c.forEach((id) => compOf.set(id, i)));
   const selfLoop = new Set(edges.filter((e) => e.from === e.to).map((e) => e.from));

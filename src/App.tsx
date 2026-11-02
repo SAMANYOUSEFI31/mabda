@@ -24,6 +24,7 @@ import { ContradictionPanel } from './components/ContradictionPanel';
 import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
 import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
+import { ContextMapView } from './components/ContextMapView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
@@ -128,7 +129,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -159,6 +160,8 @@ export default function App() {
   const stale = data?.stale ?? [];
   // derived, never stored: dependents whose dependency changed after they were last written or reviewed
   const reviewNeeds = useMemo(() => needsReview(data?.objects ?? [], data?.relationships ?? [], data?.changes ?? []), [data?.objects, data?.relationships, data?.changes]);
+  const reviewIdSet = useMemo(() => new Set(reviewNeeds.keys()), [reviewNeeds]);
+  const staleIdSet = useMemo(() => new Set((data?.stale ?? []).map((s) => s.deliverableId)), [data?.stale]);
   const waiting = useMemo(() => waitingDecisions(planDecisions(data?.objects ?? [], data?.relationships ?? [])), [data?.objects, data?.relationships]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
@@ -607,11 +610,12 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'read', label: 'سند', icon: 'BookOpen' },
                   { id: 'table', label: 'جدول', icon: 'Table2' },
+                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
                 ]}
               />
             </div>
@@ -679,6 +683,18 @@ export default function App() {
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onExtractNote={handleExtractNote}
+              />
+            ) : contextViewMode === 'map' ? (
+              <ContextMapView
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data?.relationships ?? []}
+                deliverables={deliverables}
+                changes={data?.changes ?? []}
+                reviewObjectIds={reviewIdSet}
+                staleAssetIds={staleIdSet}
+                onOpenObject={(obj) => openContext(obj)}
+                onOpenAssets={() => setActiveTab('assets')}
               />
             ) : (
               <ContextTableView
