@@ -8,10 +8,10 @@ import { ContextDraft, ContextObject, ContextProvenance, ContextRelationship, Co
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
-import { ACTOR_FA, CHANGE_KIND_FA } from '../core/changeLog';
+import { ChangeEntry } from './ChangeEntry';
 import type { ContextChange } from '../types';
 import { dataApi } from '../services/dataApi';
-import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, SegmentedControl, Select, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
+import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -99,6 +99,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const dependents = isEditing && object ? dependentsOf(object.id, relationships, allObjects) : [];
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
+  const [tab, setTab] = useState<'edit' | 'history'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
     let live = true;
@@ -188,7 +189,21 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </>
       }
     >
-      <form id="context-detail-form" onSubmit={handleSubmit} className="flex flex-col gap-stack-md">
+      {isEditing && object && (
+        <div className="mb-stack-md">
+          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `تاریخچه (${formatNumber(changes.length)})` }]} />
+        </div>
+      )}
+      {tab === 'history' && isEditing && (
+        changes.length === 0 ? <p className="body-md text-text-subtle">هنوز تغییری ثبت نشده است.</p> : (
+          <ol className="flex flex-col gap-stack-sm" aria-label="تاریخچهٔ تغییرها (جدیدترین اول)">
+            {changes.slice().reverse().map((c) => (
+              <ChangeEntry key={c.id} change={c} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
+            ))}
+          </ol>
+        )
+      )}
+      <form id="context-detail-form" onSubmit={handleSubmit} className={`${tab === 'history' && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         <TextField
           label="عنوان شیء (کوتاه و گویا)"
           required
@@ -271,16 +286,6 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               <Badge intent="neutral" icon={false}>نسخهٔ {formatNumber(object.version)}</Badge>
               <span className="caption text-text-subtle">با هر ویرایش عنوان، متن یا نوع، شمارهٔ نسخه بالا می‌رود و دارایی‌هایی که از نسخهٔ قبلی ساخته شده‌اند «قدیمی» می‌شوند.</span>
             </div>
-            {changes.length > 0 && (
-              <ul className="body-sm flex flex-col gap-stack-xs text-text-subtle" aria-label="تاریخچهٔ تغییرها">
-                {changes.slice().reverse().slice(0, 8).map((c) => (
-                  <li key={c.id}>
-                    {formatJalaliDate(c.at)} · {CHANGE_KIND_FA[c.kind]} · {ACTOR_FA[c.actor]}{c.actorLabel ? ` (${c.actorLabel})` : ''}
-                    {c.reason ? <span className="text-text-default"> — دلیل: {c.reason}</span> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         )}
 
