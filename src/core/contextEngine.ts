@@ -90,7 +90,7 @@ export function fillsItem(req: { key?: string; label: string }, o: ContextObject
 
 /** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed; an explicit slot wins over a title match. */
 export function findForRequired(req: { key?: string; label: string }, objects: ContextObject[]): ContextObject | undefined {
-  const rank = (o: ContextObject) => (o.status === 'Confirmed' ? 0 : o.status === 'Proposed' ? 1 : 2);
+  const rank = (o: ContextObject) => (o.status === 'Confirmed' && !o.assumption ? 0 : o.status === 'Confirmed' || o.status === 'Proposed' ? 1 : 2); // an assumption never counts as established
   return activeOf(objects)
     .filter((o) => fillsItem(req, o))
     .sort((a, b) => Number(!!b.slotKey) - Number(!!a.slotKey) || rank(a) - rank(b))[0];
@@ -149,10 +149,10 @@ export function calculateReadinessAndGaps(
         suggestedAnswers: [],
         dependsOn: req.dependsOn,
       });
-      if (found.status === 'Confirmed') {
+      if (found.status === 'Confirmed' && !found.assumption) {
         confirmedRequiredCount += 0.5;
       }
-    } else if (found.status === 'Confirmed') {
+    } else if (found.status === 'Confirmed' && !found.assumption) {
       confirmedRequiredCount += 1;
     } else {
       // Proposed

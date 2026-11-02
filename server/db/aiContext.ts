@@ -7,6 +7,7 @@ import type { ContextObject } from '../../src/types/index.ts';
 import type { FileService } from '../files/service.ts';
 import type { Repo, Scope } from './repo.ts';
 
+const rejectedOf = (o: ContextObject) => (o.record?.options ?? []).filter((x) => x.rejectedReason).map((x) => ({ title: x.title, reason: x.rejectedReason! }));
 const live = (o: { status: string }) => o.status !== 'Archived' && o.status !== 'Superseded';
 
 /**
@@ -21,6 +22,8 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
   };
   const toLite = (o: ContextObject): ContextObjectLite => ({
     id: o.id, type: o.type, status: o.status, title: o.title, content: o.content, nodeId: o.nodeId, version: o.version, createdAt: o.createdAt,
+    ...(o.assumption ? { assumption: true } : {}),
+    ...(rejectedOf(o).length ? { rejected: rejectedOf(o) } : {}),
   });
   /**
    * Whole-workspace view (no node): everything live and not expired. A Constraint that only applies to its own section

@@ -59,3 +59,22 @@ test('an exception (overrides) removes an inherited rule for its sub-tree only; 
   const all = (t.source.forChat('w1', { message: 'سلام' }).contextList ?? []).map((c) => c.title);
   assert.ok(!all.includes('قاعدهٔ والد') && all.includes('استثنا'));
 });
+
+test('notes and their derived thinking items never reach a model; a converted one arrives only as a PROPOSED assumption/decision, in its own section — never as established knowledge', async () => {
+  const t = setup();
+  const note = t.repo.createNote(t.s, t.n22, '[فرض] مشتری‌ها پیام‌رسان را بیشتر می‌خوانند\n[سؤال] قیمت گروهی چقدر باشد؟\n[تصمیم باز] روز ارسال\n[ایده] جعبهٔ هدیه');
+  const everything = () => JSON.stringify([t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] }), t.source.forGenerate('w1', { targetNodeId: '*', title: 't', criteria: [] }), t.source.forChat('w1', { scopeNodeId: t.n22, message: 'x' }), t.source.forChat('w1', { message: 'x' })]);
+  for (const text of ['پیام‌رسان را بیشتر', 'قیمت گروهی', 'روز ارسال', 'جعبهٔ هدیه']) assert.ok(!everything().includes(text), `derived item «${text}» stays out of every context`);
+  assert.equal(t.repo.listObjects(t.s).length, 0, 'deriving items stores nothing');
+  // convert the assumption → Proposed Fact with the flag; the note is untouched
+  const o = t.repo.createObject(t.s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'پیام‌رسان', content: 'مشتری‌ها پیام‌رسان را بیشتر می‌خوانند', nodeId: t.n22, assumption: true, source: { kind: 'note', noteId: note.id, lineKey: 'x', at: '' } });
+  const ctx = t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] });
+  const lite = ctx.contextList!.find((c) => c.id === o.id)!;
+  assert.deepEqual([lite.status, lite.assumption], ['Proposed', true]);
+  // even CONFIRMED it stays an assumption for the model
+  t.repo.updateObject(t.s, o.id, { status: 'Confirmed' });
+  const { buildPrompt } = await import('../ai/context.ts');
+  const prompt = buildPrompt({ contexts: t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] }).contextList!, task: 'بنویس' });
+  assert.ok(!prompt.prefix.includes('پیام‌رسان را بیشتر'), 'not in the confirmed prefix');
+  assert.ok(prompt.user.includes('فرض‌های فعال، تأییدنشده') && prompt.user.includes('پیام‌رسان را بیشتر'));
+});
