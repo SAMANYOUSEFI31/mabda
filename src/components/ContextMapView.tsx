@@ -223,7 +223,7 @@ const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapG
       <div dir="rtl" className="pointer-events-auto flex items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: GROUP_HEAD }}>
         <span className="flex min-w-space-0 items-center gap-inline-xs"><span className="label-md truncate text-text-default">{g.label}</span>{g.count > 0 && <Badge intent="neutral" icon={false}>{formatNumber(g.count)} مورد</Badge>}</span>
         {g.count > 0 && (
-          <button type="button" aria-expanded={g.expanded} aria-label={`${g.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${g.label}`} onClick={() => onToggle(g.nodeId)} className="flex items-center justify-center rounded-control text-text-subtle hover:bg-interaction-hover" style={{ inlineSize: 44, blockSize: 28 }}>
+          <button type="button" aria-expanded={g.expanded} aria-label={`${g.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${g.label}`} onClick={() => onToggle(g.nodeId)} className="flex items-center justify-center rounded-control text-text-subtle hover:bg-interaction-hover" style={{ inlineSize: 64, blockSize: 56 }}>
             {g.expanded ? '−' : '+'}
           </button>
         )}

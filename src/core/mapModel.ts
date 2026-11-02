@@ -84,7 +84,7 @@ export const CARD_H = 64;
 export const GAP_X = 96;
 export const GAP_Y = 20;
 export const GROUP_PAD = 14;
-export const GROUP_HEAD = 34;
+export const GROUP_HEAD = 56;
 const GROUP_GAP = 18;
 
 const isActive = (o: ContextObject) => o.status !== 'Superseded' && o.status !== 'Archived';
