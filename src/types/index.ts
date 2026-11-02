@@ -337,6 +337,8 @@ export interface Workspace {
   todayChatCount: number;
   /** YYYY-MM-DD (Tehran) the count belongs to; a different day means the count is 0 */
   chatCountDay?: string;
+  /** the built-in showcase workspace: never counted against the plan (workspaces, objects, files) or the account's usage; set only by the server */
+  isDemo?: boolean;
   createdAt: string;
 }
 export * from './ai';

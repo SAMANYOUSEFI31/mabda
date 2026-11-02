@@ -73,11 +73,16 @@ export class Repo {
   }
 
   /** Create or update the workspace row; a new workspace also gets the 5 system nodes. */
-  saveWorkspace(userId: string, ws: Workspace, opts: { skipLimit?: boolean } = {}): Workspace {
+  saveWorkspace(userId: string, ws: Workspace, opts: { skipLimit?: boolean; demo?: boolean } = {}): Workspace {
     return this.db.transaction(() => {
       const exists = this.db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(ws.id);
+      // `isDemo` is decided by the server only: a client can neither claim nor drop it
+      const stored = exists ? this.getWorkspace(userId, ws.id) : undefined;
+      ws = { ...ws, ...((opts.demo || stored?.isDemo) ? { isDemo: true } : { isDemo: undefined }) };
+      if (!ws.isDemo) delete ws.isDemo;
       if (!exists) {
-        if (!opts.skipLimit && this.listWorkspaces(userId).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
+        // the showcase workspace is not counted: it never uses up a plan's workspace allowance
+        if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
         this.seedSystemNodes({ userId, workspaceId: ws.id });
       } else {
@@ -93,6 +98,25 @@ export class Repo {
     DEFAULT_TREE_NODES.forEach((n, i) => ins.run(n.id, s.userId, s.workspaceId, n.parentId ?? null, n.label, n.description, n.order ?? i));
   }
 
+  /**
+   * Deletes EVERYTHING that belongs to one workspace (every table that carries `workspace_id`, plus the weekly-review marker) and
+   * seeds the five system nodes again. The workspace row and its MCP tokens (a connection, not content) stay. Used by the
+   * showcase workspace's reset, which therefore always rebuilds from nothing.
+   */
+  resetWorkspaceData(s: Scope) {
+    this.assertWorkspace(s);
+    this.db.transaction(() => {
+      const tables = (this.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>).map((t) => t.name);
+      for (const t of tables) {
+        if (t === 'workspaces' || t === 'mcp_tokens' || t === 'schema_migrations') continue;
+        const cols = (this.db.prepare(`PRAGMA table_info(${JSON.stringify(t)})`).all() as Array<{ name: string }>).map((c) => c.name);
+        if (cols.includes('workspace_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ?`).run(s.workspaceId);
+      }
+      this.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(s.userId, `weekly_review:${s.workspaceId}`);
+      this.seedSystemNodes(s);
+    })();
+  }
+
   assertWorkspace(s: Scope) {
     if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
   }
@@ -105,7 +129,10 @@ export class Repo {
   }
 
   /** how many more objects the plan allows right now (bulk creators — files, notes — stop here instead of failing) */
-  objectSlots(s: Scope): number { return objectsRemaining(this.planOf(s), this.countActiveObjects(s)); }
+  objectSlots(s: Scope): number { return this.isDemo(s) ? 1_000_000 : objectsRemaining(this.planOf(s), this.countActiveObjects(s)); }
+
+  /** the showcase workspace (see Workspace.isDemo) */
+  isDemo(s: Scope): boolean { return !!this.getWorkspace(s.userId, s.workspaceId)?.isDemo; }
 
   /** the change-impact engine is a plan entitlement */
   impactEnabled(s: Scope): boolean { return can(this.planOf(s), 'changeImpact'); }
@@ -586,7 +613,7 @@ export class Repo {
   /** manager ledger input: every workspace (any user) with the ledger rows of one month */
   ledgerByWorkspaceForMonth(month: string): Array<{ userId: string; workspaceId: string; name: string; planId: Workspace['planId']; entries: LedgerEntry[] }> {
     const rows = this.db.prepare('SELECT user_id, id, data FROM workspaces ORDER BY user_id, created_at').all() as Array<{ user_id: string; id: string; data: string }>;
-    return rows.map((r) => {
+    return rows.filter((r) => !(JSON.parse(r.data) as Workspace).isDemo).map((r) => {
       const ws = JSON.parse(r.data) as Workspace;
       const entries = (this.db.prepare('SELECT data FROM ledger WHERE workspace_id = ? AND user_id = ? AND created_at LIKE ?').all(r.id, r.user_id, `${month}%`) as Array<{ data: string }>).map((x) => JSON.parse(x.data) as LedgerEntry);
       return { userId: r.user_id, workspaceId: r.id, name: ws.name, planId: ws.planId, entries };

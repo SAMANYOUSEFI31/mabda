@@ -445,12 +445,29 @@ export default function App() {
     toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
   };
 
+  // the showcase workspace: the same action builds it and resets it (all of ITS data is rebuilt; other workspaces are untouched)
+  const [demoConfirm, setDemoConfirm] = useState(false);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const handleResetDemo = async () => {
+    setDemoBusy(true);
+    try {
+      const r = await attempt(() => dataApi.resetDemo());
+      if (!r) return;
+      setWs(r.workspaces);
+      setCurrentWorkspaceId(r.workspaceId);
+      setData(null);
+      await reload(r.workspaceId);
+      setDemoConfirm(false);
+      toast.show({ intent: 'success', message: 'فضای نمونه آماده است؛ داده‌هایش ساختگی‌اند و در پلن و مصرف حساب شمرده نمی‌شوند.' });
+    } finally { setDemoBusy(false); }
+  };
+
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWsName.trim() || !currentWorkspace) return;
 
     const currentPlan = PLANS[currentWorkspace.planId] || PLANS.pro;
-    if (workspaces.length >= currentPlan.workspaceLimit) {
+    if (workspaces.filter((w) => !w.isDemo).length >= currentPlan.workspaceLimit) {
       toast.show({
         intent: 'warning',
         message: `سقف فضای کاری در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
@@ -604,6 +621,7 @@ export default function App() {
         onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
         onOpenLedger={() => setActiveTab('ledger')}
@@ -967,6 +985,16 @@ export default function App() {
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <Dialog
+        open={demoConfirm}
+        onClose={() => setDemoConfirm(false)}
+        size="sm"
+        title="بازنشانی فضای نمونه؟"
+        footer={<><Button variant="ghost" onClick={() => setDemoConfirm(false)}>انصراف</Button><Button variant="primary" loading={demoBusy} onClick={handleResetDemo}>بازنشانی</Button></>}
+      >
+        <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، دارایی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
+      </Dialog>
+
       <WeeklyReviewDialog
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
