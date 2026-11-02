@@ -96,7 +96,7 @@ test('calculateReadinessAndGaps detects missing required items and calculates sc
       type: 'Decision',
       status: 'Confirmed',
       provenance: 'User Input',
-      title: 'مخاطب اصلی (ICP)',
+      title: 'مخاطب اصلی',
       content: 'مخاطبان هدف ما فریلنسرها، مشاوران سولو و استارتاپ‌های نوپا هستند.',
       nodeId: 'business',
       version: 1,
@@ -164,7 +164,7 @@ test('title matching is Persian-aware (ZWNJ, hamza, parenthetical in label) and 
   assert.equal(findForRequired(req, [proposed]), undefined); // different words (کسب و کار vs کسب‌وکار) -> not guessed
   const confirmed = obj({ id: 'c', title: 'حوزه کسب‌وکار و تخصص', content: 'مشاوره' });
   assert.equal(findForRequired(req, [proposed, confirmed])?.id, 'c');
-  assert.equal(findForRequired({ label: 'مخاطب اصلی (ICP)' }, [obj({ title: 'مخاطب اصلی', content: 'فریلنسرها' })])?.id, 'o');
+  assert.equal(findForRequired({ label: 'مخاطب اصلی' }, [obj({ title: 'مخاطب اصلی', content: 'فریلنسرها' })])?.id, 'o');
 });
 
 test('gaps never carry canned suggested answers', () => {
@@ -188,7 +188,7 @@ test('detectContradictions finds a real price conflict on the same topic, but no
 });
 
 test('slot binding: an explicit slotKey fills exactly its item; title matching is for legacy objects only', () => {
-  const req = { key: 'target_audience', label: 'مخاطب اصلی (ICP)' };
+  const req = { key: 'target_audience', label: 'مخاطب اصلی' };
   const legacy = obj({ id: 'l', title: 'مخاطب اصلی', content: 'فریلنسرها' });
   assert.equal(fillsItem(req, legacy), true, 'no slotKey → title match (old data)');
   // an object with a slotKey is bound to THAT slot: a matching title no longer matters, a different title does not matter either

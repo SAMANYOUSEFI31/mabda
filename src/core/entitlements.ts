@@ -52,7 +52,7 @@ const meter = (key: Meter['key'], label: string, unit: string, used: number, lim
 export function meters(plan: PlanId, u: UsageNumbers): Meter[] {
   const e = entitlementsOf(plan);
   return [
-    meter('objects', 'قلم دانش (Object)', 'قلم', u.objects, e.maxObjects),
+    meter('objects', 'قلم دانش', 'قلم', u.objects, e.maxObjects),
     meter('fileTokens', 'پردازش فایل این ماه', 'توکن', u.fileTokens, e.fileTokensPerMonth),
     meter('judgments', 'قضاوت‌های امروز (لایهٔ تصمیم)', 'قضاوت', u.judgmentsToday, e.decisionJudgmentsPerDay),
     meter('coach', 'مربی دانش امروز', 'جلسه', u.coachToday, e.coachPerDay),

@@ -83,3 +83,8 @@
 .canvas-card:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
 @media (prefers-reduced-motion: no-preference) { .canvas-card.is-ghost { rotate: -1.5deg; } }
 @media (prefers-reduced-motion: reduce) { .canvas-card { transition: none; } }
+
+/* Persian digits for numbered lists, a grab cursor on board cards. */
+.list-persian { list-style-type: persian; }
+.canvas-card:not(.is-ghost) { cursor: grab; }
+.canvas-card:not(.is-ghost):active { cursor: grabbing; }

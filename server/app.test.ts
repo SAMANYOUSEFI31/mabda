@@ -68,7 +68,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     assert.ok(edit.json.impact.count >= 2, 'the seeded asset and the new one both used the audience');
     const ids = edit.json.stale.map((s: any) => s.deliverableId);
     assert.ok(ids.includes('del_new') && ids.includes('del_inst_1'));
-    assert.match(edit.json.stale.find((s: any) => s.deliverableId === 'del_new').reasons[0].message, /«مخاطب اصلی \(ICP\)» از نسخهٔ ۱ به ۲ تغییر کرد/);
+    assert.match(edit.json.stale.find((s: any) => s.deliverableId === 'del_new').reasons[0].message, /«مخاطب اصلی» از نسخهٔ ۱ به ۲ تغییر کرد/);
 
     // rebuild: a new generation records version 2 → asset is fresh again
     const ev2 = await t.ndjson('/ai/generate', { workspaceId: 'ws_studio', deliverableId: 'x', deliverableTitle: 'پروفایل مشتری', deliverableType: 'Asset', acceptanceCriteria: ['معیار'], userMode: 'auto', targetNodeId: 'content' });

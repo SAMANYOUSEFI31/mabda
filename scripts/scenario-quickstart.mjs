@@ -60,7 +60,7 @@ try {
 
     step(`[${width}] confirm → Context pack → copy`);
     await page.getByRole('button', { name: /^تأیید .* مورد و ساخت بسته/ }).click();
-    await page.getByText('بستهٔ Context تو آماده است').waitFor();
+    await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     await page.getByRole('button', { name: 'کپی بسته' }).click();
     await page.getByRole('button', { name: 'کپی شد' }).waitFor();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
@@ -86,7 +86,7 @@ try {
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill(`طراحی هویت ${width}`);
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('استارتاپ‌های کوچک');
     await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
-    await page.getByText('بستهٔ Context تو آماده است').waitFor();
+    await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     assert.ok((await api('/workspaces/ws_studio/state')).objects.some((o) => o.content === `طراحی هویت ${width}` && o.status === 'Confirmed'));
     assert.deepEqual(errors, [], 'no page errors');
     await ctx.close();

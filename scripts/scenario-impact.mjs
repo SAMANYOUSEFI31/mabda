@@ -117,7 +117,7 @@ async function scenario(width, tag) {
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع حقیقت');
-  await page.getByRole('heading', { name: 'مخاطب اصلی (ICP)' }).first().click();
+  await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
   await page.getByRole('dialog').getByLabel('محتوای دقیق دانش').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('button', { name: 'ذخیرهٔ تغییرات' }).click();
   const toastEl = page.getByText(/این تغییر روی .* دارایی اثر دارد/);

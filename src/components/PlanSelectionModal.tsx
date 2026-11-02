@@ -52,7 +52,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
               { ok: e.engines.semanticContradiction, text: 'تناقض معنایی بین تصمیم‌هایت را پیدا کن' },
               { ok: e.byok, text: 'کلید API خودت را وصل کن؛ هزینهٔ توکن مستقیم با خودت' },
               { ok: e.mcp, text: 'دانشت را از طریق MCP به هر دستیار AI بده' },
-              { ok: e.contextPack, text: 'بستهٔ Context بگیر و هرجا خواستی ببر' },
+              { ok: e.contextPack, text: 'بستهٔ دانش بگیر و هرجا خواستی ببر' },
               { ok: e.customSpecs, text: 'جریان کار سفارشی با وابستگی و گاردریل بساز' },
               { ok: true, text: `هر روز تا ${formatNumber(e.decisionJudgmentsPerDay)} قضاوت هوشمند و ${formatNumber(e.coachPerDay)} جلسهٔ مربی دانش، با هزینهٔ ما` },
             ];

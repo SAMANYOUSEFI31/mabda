@@ -40,7 +40,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       const ta = document.createElement('textarea'); ta.value = pack.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
     setCopied(true);
-    toast.show({ intent: 'success', message: 'بستهٔ Context کپی شد. آن را در گفتگوی هر AI بچسبان و از او بخواه طبق قالب پاسخ بدهد.' });
+    toast.show({ intent: 'success', message: 'بستهٔ دانش کپی شد. آن را در گفتگوی هر AI بچسبان و از او بخواه طبق قالب پاسخ بدهد.' });
   };
 
   return (
@@ -71,7 +71,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
             {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} گاردریل</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />
-          <p className="caption text-text-subtle">وقتی پاسخ AI را برگرداندی، سرتیترهای «## Decision / Fact / Asset» به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>
+          <p className="caption text-text-subtle">وقتی پاسخ AI را برگرداندی، بخش‌های پاسخ به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>
         </div>
       )}
     </Dialog>

@@ -390,7 +390,7 @@ export default function App() {
       plan: del.plan,
       id: `led_${Date.now()}`,
     }));
-    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ Context بازسازی شد.' });
+    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
 
   /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
@@ -400,7 +400,7 @@ export default function App() {
     if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
-      action: deep ? 'گفتگوی عمیق' : 'گفتگوی Auto',
+      action: deep ? 'گفتگوی عمیق' : 'گفتگوی خودکار',
       mode: deep ? 'chat_deep' : 'chat_auto',
       creditCost,
       usage: result.usage,
@@ -501,7 +501,7 @@ export default function App() {
       files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
       specs,
       exportedAt: new Date().toISOString(),
-      platform: 'Mabda (مبدأ) - Source of Truth',
+      platform: 'مبدأ — منبع حقیقت کسب‌وکار',
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));

@@ -165,7 +165,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const STAGE_FA: Record<StageName, string> = {
     decision: 'تعیین حالت اجرا', chat: 'نوشتن پاسخ', draft: 'نوشتن پیش‌نویس', critique: 'نقد پیش‌نویس',
     revise: 'اصلاح بر پایهٔ نقد', validate: 'اعتبارسنجی با معیارهای پذیرش', upgrade: 'ارتقا به مدل قوی‌تر و بازنویسی',
-    extract: 'استخراج دانش', coach: 'Context Coach',
+    extract: 'استخراج دانش', coach: 'مربی دانش',
   };
   const TIER_FA: Record<Tier, string> = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' };
 

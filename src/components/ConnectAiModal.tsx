@@ -119,7 +119,7 @@ export const ConnectAiModal: React.FC<Props> = ({ open, workspaceId, planId, onC
 
         <Card padding="lg" className="flex flex-col gap-stack-xs">
           <h3 className="title text-text-default">بدون MCP: کپی و چسباندن</h3>
-          <p className="body-sm text-text-subtle">در استودیوی جریان‌های کار روی هر خروجی یا spec «کپی برای هوش مصنوعی» را بزن، در هر AI بچسبان و پاسخش را با «وارد کردن پاسخ AI» برگردان.</p>
+          <p className="body-sm text-text-subtle">در استودیوی جریان‌های کار روی هر خروجی یا جریان کار «کپی برای هوش مصنوعی» را بزن، در هر AI بچسبان و پاسخش را با «وارد کردن پاسخ AI» برگردان.</p>
         </Card>
       </div>
     </Dialog>

@@ -58,7 +58,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         <div>
           <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز Context نیست.
+            از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.
           </p>
         </div>
         <Button variant="secondary" iconStart="Download" onClick={handleExportJson}>خروجی گرفتن JSON</Button>

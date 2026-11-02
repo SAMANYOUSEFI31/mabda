@@ -296,7 +296,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               value={supersedeReason}
               onChange={(e) => setSupersedeReason(e.target.value)}
               placeholder="مثلاً: تغییر رویکرد استراتژیک پس از بازخورد مشتریان"
-              hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ supersedes در تاریخچهٔ منبع حقیقت می‌ماند."
+              hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
             />
           </Card>
         )}

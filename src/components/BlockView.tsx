@@ -52,7 +52,7 @@ export const BlockView: React.FC<BlockViewProps> = ({ block, onAddToContext, onS
       )}
 
       <div className="flex flex-wrap items-center gap-inline-xs">
-        {onAddToContext && <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToContext(block)}>به Context اضافه کن</Button>}
+        {onAddToContext && <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToContext(block)}>به دانش اضافه کن</Button>}
         {onSaveAsAsset && <Button size="sm" variant="ghost" iconStart="Package" onClick={() => onSaveAsAsset(block)}>ذخیره به‌عنوان دارایی</Button>}
         <Button size="sm" variant="ghost" iconStart={copied ? 'Check' : 'Copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
       </div>

@@ -150,9 +150,9 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'choose' && (
           <div className="flex flex-col gap-stack-sm">
-            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی دربارهٔ کسب‌وکارت: پیشنهاد، برنامه، یادداشت جلسه." onClick={() => { setPath('text'); setStep('input'); }} />
-            <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه آن‌ها دربارهٔ تو یاد گرفته‌اند؛ مبدأ فقط آنچه به کسب‌وکار مربوط است را برمی‌دارد." onClick={() => { setPath('memory'); setStep('input'); }} />
-            <OptionCard title="به چند سؤال کوتاه جواب می‌دهم" description="حداکثر پنج سؤال؛ هر پاسخ مستقیم دانش تأییدشده می‌شود." onClick={() => { setPath('questions'); setStep('input'); }} />
+            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی دربارهٔ کسب‌وکارت" onClick={() => { setPath('text'); setStep('input'); }} />
+            <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه دربارهٔ تو یاد گرفته‌اند" onClick={() => { setPath('memory'); setStep('input'); }} />
+            <OptionCard title="به چند سؤال کوتاه جواب می‌دهم" description="حداکثر پنج سؤال کوتاه" onClick={() => { setPath('questions'); setStep('input'); }} />
           </div>
         )}
 
@@ -196,13 +196,13 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <div className="flex flex-col gap-stack-lg">
             {!pack && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت بسته" /><span className="body-md">در حال ساخت بسته…</span></div>}
             {pack && (
-              <section className="flex flex-col gap-stack-sm" aria-label="بستهٔ Context">
-                <h3 className="title text-text-default">بستهٔ Context تو آماده است</h3>
+              <section className="flex flex-col gap-stack-sm" aria-label="بستهٔ دانش">
+                <h3 className="title text-text-default">بستهٔ دانش تو آماده است</h3>
                 <div className="flex flex-wrap items-center gap-inline-sm">
                   <Badge intent="success" icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
                   <Badge intent="neutral" icon={false}>حدود {formatNumber(pack.tokens)} توکن</Badge>
                 </div>
-                <ol className="body-md flex list-decimal flex-col gap-stack-xs ps-inset-xl text-text-default">
+                <ol className="body-md flex list-persian list-decimal flex-col gap-stack-xs ps-inset-xl text-text-default">
                   <li>کپی کن.</li>
                   <li>اول یک گفتگوی تازه در ChatGPT، Claude یا هر AI دیگر بچسبان.</li>
                   <li>بعد سؤالت را بپرس؛ پاسخ را با قبل مقایسه کن.</li>

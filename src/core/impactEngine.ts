@@ -50,7 +50,7 @@ function headOf(start: ContextObject, byId: Map<string, ContextObject>): Context
 export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>): StaleReason | null {
   const obj = byId.get(used.id);
   if (!obj) {
-    return { kind: 'removed', objectId: used.id, title: used.id, usedVersion: used.version, message: 'یکی از Contextهای استفاده‌شده دیگر وجود ندارد.' };
+    return { kind: 'removed', objectId: used.id, title: used.id, usedVersion: used.version, message: 'یکی از دانش‌های استفاده‌شده دیگر وجود ندارد.' };
   }
   if (obj.status === 'Superseded') {
     const head = headOf(obj, byId);

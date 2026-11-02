@@ -356,7 +356,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   // Calculate gaps for prompt starters
   const gapsPrompts: Array<{ label: string; text: string; icon: IconName }> = [
     {
-      label: 'تعریف مشتری ایده‌آل (ICP)',
+      label: 'تعریف مشتری ایده‌آل',
       text: 'می‌خواهم مشتری ایده‌آل، نقطه درد اصلی و دلیل خرید او را در کسب‌وکارمان شفاف و نهایی کنیم.',
       icon: 'Target',
     },

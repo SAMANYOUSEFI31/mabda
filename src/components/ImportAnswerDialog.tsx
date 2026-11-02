@@ -71,14 +71,14 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
       onClose={onClose}
       size="xl"
       title="وارد کردن پاسخ AI بیرونی"
-      description="پاسخ را همان‌طور که AI داد بچسبان. بلوک‌ها را خودت به Context یا دارایی می‌بری؛ هیچ‌چیز خودکار ثبت نمی‌شود."
+      description="پاسخ را همان‌طور که AI داد بچسبان. بلوک‌ها را خودت به دانش یا دارایی می‌بری؛ هیچ‌چیز خودکار ثبت نمی‌شود."
       footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}
     >
       <div className="flex flex-col gap-stack-lg">
         <Textarea label="پاسخ AI" rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={'## Decision: …\n## Asset: …'} />
         <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
           <div className="sm:flex-1">
-            <Select label="از کدام بستهٔ Context؟ (اصالت)" value={packId} onChange={(e) => setPackId(e.target.value)} options={[{ value: '', label: 'بدون بسته (اصالت ثبت نمی‌شود)' }, ...packs.map((p) => ({ value: p.id, label: p.title }))]} />
+            <Select label="از کدام بستهٔ دانش؟ (اصالت)" value={packId} onChange={(e) => setPackId(e.target.value)} options={[{ value: '', label: 'بدون بسته (اصالت ثبت نمی‌شود)' }, ...packs.map((p) => ({ value: p.id, label: p.title }))]} />
           </div>
           <Button variant="primary" loading={busy} disabled={!text.trim()} iconStart="Wand2" onClick={parse}>تبدیل به بلوک</Button>
         </div>
@@ -89,7 +89,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge intent="neutral" icon={false}>{METHOD_FA[res.method]}</Badge>
               <Badge intent="neutral" icon={false}>{formatNumber(blocks.length)} بلوک</Badge>
-              {res.packId ? <Badge intent="success" icon="Link2">اصالت: {formatNumber(res.usedContext.length)} Context از «{res.packTitle}»</Badge> : <Badge intent="warning" icon={false}>بدون بستهٔ مبدأ</Badge>}
+              {res.packId ? <Badge intent="success" icon="Link2">اصالت: {formatNumber(res.usedContext.length)} قلم دانش از «{res.packTitle}»</Badge> : <Badge intent="warning" icon={false}>بدون بستهٔ مبدأ</Badge>}
             </div>
             {res.warning && <Alert intent="warning">{res.warning}</Alert>}
             {blocks.map((b) => (
@@ -101,7 +101,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
                   </div>
                   {b.done ? <Badge intent="success" icon="Check">{b.done}</Badge> : (
                     <div className="flex flex-wrap items-center gap-inline-xs">
-                      {isContextKind(b.kind) && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => toContext(b)}>به Context (پیشنهادی)</Button>}
+                      {isContextKind(b.kind) && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => toContext(b)}>به دانش (پیشنهادی)</Button>}
                       {b.kind !== 'question' && <Button size="sm" variant="secondary" iconStart="Package" onClick={() => toAsset(b)}>ذخیره به‌عنوان دارایی</Button>}
                       <Button size="sm" variant="ghost" iconStart="X" onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
                     </div>
