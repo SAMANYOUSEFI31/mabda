@@ -299,6 +299,8 @@ export function buildDemo(now: Date): DemoData {
     free: [
       { itemRef: 'note:dnote_1', x: 0, y: 0 }, { itemRef: 'note:dnote_2', x: 260, y: 20 }, { itemRef: 'note:dnote_3', x: 520, y: 0 },
       { itemRef: 'note:dnote_4', x: 40, y: 150 }, { itemRef: 'note:dnote_5', x: 300, y: 170 },
+      // cards (real objects) placed beside the notes: where they are drawn is all that is stored
+      { itemRef: 'obj:dm_audience', x: 40, y: 340 }, { itemRef: 'obj:dm_price2', x: 330, y: 340 }, { itemRef: 'obj:dm_channel', x: 620, y: 340 },
     ],
   };
 

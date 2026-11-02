@@ -167,7 +167,10 @@ export function roundedPath(pts: Pt[], radius = CORNER): string {
 /** the route of ONE line from `a` (the influencer) to `b` (the influenced) */
 export function routeEdge(a: Rect, b: Rect, o: RouteOptions = {}): Route {
   const clearance = o.clearance ?? 8;
-  const others = (o.obstacles ?? []).filter((r) => !same(r, a) && !same(r, b));
+  // only cards near the two ends matter (keeps a map of thousands of cards fast)
+  const reach = 480;
+  const bx0 = Math.min(a.x, b.x) - reach, bx1 = Math.max(a.x + a.w, b.x + b.w) + reach, by0 = Math.min(a.y, b.y) - reach, by1 = Math.max(a.y + a.h, b.y + b.h) + reach;
+  const others = (o.obstacles ?? []).filter((r) => !same(r, a) && !same(r, b) && r.x + r.w > bx0 && r.x < bx1 && r.y + r.h > by0 && r.y < by1);
   const [sideA, sideB] = facingSides(a, b);
   const lane = o.lane ?? 0;
   const start = attachPoint(a, sideA, o.slotA ?? lane * LANE_SPACING);

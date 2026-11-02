@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCanvasModel, dropTarget, laneOf, moveEffect, rankBetween, visibleCards, CARD_H } from './canvasModel';
+import { buildCanvasModel, dropTarget, laneOf, moveEffect, neighboursOf, rankBetween, visibleCards, CARD_H } from './canvasModel';
 import type { ContextObject, TreeNode } from '../types';
 
 const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `گره ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
@@ -8,11 +8,15 @@ const obj = (id: string, nodeId: string, status: ContextObject['status'], o: Par
 const nodes = [node('root'), node('a', 'root', 1), node('b', 'root', 2)];
 const none = new Set<string>();
 
-test('lane = status; a Confirmed object with a changed dependency sits in «needs review» (derived)', () => {
-  assert.equal(laneOf(obj('x', 'a', 'Proposed'), none), 'thinking');
-  assert.equal(laneOf(obj('x', 'a', 'Confirmed'), none), 'confirmed');
-  assert.equal(laneOf(obj('x', 'a', 'Confirmed'), new Set(['x'])), 'review');
-  assert.equal(laneOf(obj('x', 'a', 'Needs Review'), none), 'review');
+test('column = status; «needs review» is a badge on the card, never a column', () => {
+  assert.equal(laneOf(obj('x', 'a', 'Proposed')), 'thinking');
+  assert.equal(laneOf(obj('x', 'a', 'Needs Review')), 'thinking');
+  assert.equal(laneOf(obj('x', 'a', 'Confirmed')), 'confirmed');
+  const m = buildCanvasModel({ nodes, objects: [obj('x', 'a', 'Confirmed'), obj('y', 'a', 'Needs Review'), obj('z', 'a', 'Confirmed')], reviewIds: new Set(['x']), ranks: new Map() });
+  assert.deepEqual(m.lanes.map((l) => l.lane), ['thinking', 'confirmed'], 'two columns only');
+  assert.deepEqual(m.cards.filter((c) => c.review).map((c) => [c.objectId, c.lane]).sort(), [['x', 'confirmed'], ['y', 'thinking']], 'the derived and the manual review are flags');
+  const f = buildCanvasModel({ nodes, objects: [obj('x', 'a', 'Confirmed'), obj('z', 'a', 'Confirmed')], reviewIds: new Set(['x']), ranks: new Map(), onlyReview: true });
+  assert.deepEqual(f.cards.map((c) => c.objectId), ['x'], 'the review filter keeps only flagged cards');
 });
 
 test('rows = nodes in tree order, columns RTL (first lane rightmost), cards ordered by stored rank then age; superseded/archived are not on the board', () => {
@@ -22,8 +26,8 @@ test('rows = nodes in tree order, columns RTL (first lane rightmost), cards orde
   const cell = m.cells.get('confirmed|a')!;
   assert.deepEqual(cell.map((c) => c.objectId), ['c2', 'c1', 'c3'], 'ranked first (by rank), the unranked one after');
   assert.equal(m.cards.length, 4);
-  const thinking = m.lanes.find((l) => l.lane === 'thinking')!, review = m.lanes.find((l) => l.lane === 'review')!;
-  assert.ok(thinking.x > review.x, 'RTL');
+  const thinking = m.lanes.find((l) => l.lane === 'thinking')!, confirmed = m.lanes.find((l) => l.lane === 'confirmed')!;
+  assert.ok(thinking.x > confirmed.x, 'RTL: the first column is the rightmost');
   assert.ok(m.cards.every((c) => c.x >= 0 && c.x + c.w <= m.width && c.y + c.h <= m.height));
   assert.ok(cell[1].y - cell[0].y >= CARD_H);
 });
@@ -54,8 +58,7 @@ test('moveEffect: Proposed → confirmed accepts; backward from Confirmed needs 
   const p = obj('p', 'a', 'Proposed'), c = obj('c', 'a', 'Confirmed'), n = obj('n', 'a', 'Needs Review');
   assert.deepEqual(moveEffect(p, none, 'confirmed', 'a'), { kind: 'accept', status: 'Confirmed', needsConfirm: false, nodeChanged: false });
   assert.deepEqual(moveEffect(c, none, 'thinking', 'a'), { kind: 'status', status: 'Proposed', needsConfirm: true, nodeChanged: false });
-  assert.deepEqual(moveEffect(c, none, 'review', 'a'), { kind: 'status', status: 'Needs Review', needsConfirm: true, nodeChanged: false });
-  assert.equal(moveEffect(c, new Set(['c']), 'confirmed', 'a').kind, 'accept_review');
+  assert.equal(moveEffect(c, new Set(['c']), 'confirmed', 'a').kind, 'rank', 'a card with the review badge is still in the confirmed column: dropping it there only orders it');
   assert.deepEqual(moveEffect(c, new Set(['c']), 'thinking', 'a').needsConfirm, true, 'a derived-review card is still Confirmed');
   assert.deepEqual(moveEffect(n, none, 'confirmed', 'a'), { kind: 'status', status: 'Confirmed', needsConfirm: false, nodeChanged: false });
   assert.deepEqual(moveEffect(p, none, 'thinking', 'b'), { kind: 'node', needsConfirm: false, nodeChanged: true });
@@ -83,22 +86,35 @@ test('rows show the tree (domain), not precedence: sibling rows hold the same la
   assert.equal(swapped.cards.find((c) => c.objectId === 'p')!.x, p.x, 'reordering siblings moves rows only, never columns');
 });
 
-test('board groupBy: rows can be the tree (default), the first facet, or the dependency level — columns stay the status lanes; a row that is not a node never moves an object', () => {
+test('board columns and rows are changeable views: columns = status | dependency layer | facet | none, rows = domain | facet | none; only status columns mean something on a drop', () => {
   const rel = [{ id: 'r1', sourceId: 'c', targetId: 'p1', type: 'depends_on' as const, createdAt: '' }];
   const objects = [obj('p1', 'a', 'Confirmed', { facets: ['مخاطب سازمانی'] }), obj('c', 'b', 'Proposed', { facets: ['مخاطب سازمانی', 'فصل'] }), obj('z', 'b', 'Confirmed')];
   const dom = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map() });
-  assert.equal(dom.groupBy, 'domain');
-  const fac = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), groupBy: 'facet' });
+  assert.deepEqual([dom.columns, dom.rows_], ['status', 'domain']);
+  const fac = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), rows: 'facet' });
   assert.deepEqual(fac.rows.map((r) => r.label), ['مخاطب سازمانی', 'بدون بُعد']);
   assert.deepEqual(fac.cards.filter((c) => fac.rows[0] && c.y >= fac.rows[0].y && c.y < fac.rows[0].y + fac.rows[0].h).map((c) => c.objectId).sort(), ['c', 'p1']);
-  const dep = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), groupBy: 'dependency', relationships: rel });
-  assert.deepEqual(dep.rows.map((r) => r.nodeId), ['L0', 'L1']);
-  const rowOfCard = (m: typeof dep, id: string) => m.rows.find((r) => { const c = m.cards.find((x) => x.objectId === id)!; return c.y >= r.y && c.y < r.y + r.h; })!.nodeId;
-  assert.deepEqual([rowOfCard(dep, 'p1'), rowOfCard(dep, 'c'), rowOfCard(dep, 'z')], ['L0', 'L1', 'L0']);
-  // columns are the same in every grouping: status decides x, never the row
+  const layer = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), columns: 'layer', rows: 'none', relationships: rel });
+  assert.deepEqual(layer.lanes.map((l) => [l.lane, l.label]), [['L0', 'پایه'], ['L1', 'لایهٔ 1']]);
+  const colOf = (m: typeof layer, id: string) => m.cards.find((c) => c.objectId === id)!.col;
+  assert.deepEqual([colOf(layer, 'p1'), colOf(layer, 'c'), colOf(layer, 'z')], ['L0', 'L1', 'L0'], 'the depended-on thing is in the first layer');
+  assert.ok(layer.lanes[0].x > layer.lanes[1].x, 'RTL: the first layer is the rightmost');
+  const byFacet = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), columns: 'facet', rows: 'domain' });
+  assert.deepEqual(byFacet.lanes.map((l) => l.lane), ['مخاطب سازمانی', 'بدون بُعد']);
+  const flat = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), columns: 'none', rows: 'none' });
+  assert.deepEqual([flat.lanes.length, flat.rows.length, flat.cards.length], [1, 1, 3], 'no grouping at all: one cell');
+  // columns of the status view are the same in every row grouping: status decides x, never the row
   const x = (m: typeof dom, id: string) => m.cards.find((c) => c.objectId === id)!.x;
   for (const id of ['p1', 'c', 'z']) assert.equal(x(fac, id), x(dom, id));
   // the drop target of a non-domain row is that row's key (the view must not read it as a node)
-  const t = dropTarget(dep, dep.cards.find((c) => c.objectId === 'c')!.x + 5, dep.cards.find((c) => c.objectId === 'c')!.y + 5, 'c');
-  assert.equal(t?.nodeId, 'L1');
+  const t = dropTarget(fac, fac.cards.find((c) => c.objectId === 'c')!.x + 5, fac.cards.find((c) => c.objectId === 'c')!.y + 5, 'c');
+  assert.equal(t?.nodeId, 'مخاطب سازمانی');
+});
+
+test('neighboursOf: where a card sits in its own cell (what an undo restores)', () => {
+  const objects = [obj('c1', 'a', 'Confirmed'), obj('c2', 'a', 'Confirmed'), obj('c3', 'a', 'Confirmed')];
+  const m = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map([['c1', 1], ['c2', 2], ['c3', 3]]) });
+  assert.deepEqual(neighboursOf(m, 'c2'), { lane: 'confirmed', nodeId: 'a', beforeId: 'c1', afterId: 'c3' });
+  assert.deepEqual(neighboursOf(m, 'c1'), { lane: 'confirmed', nodeId: 'a', beforeId: undefined, afterId: 'c2' });
+  assert.equal(neighboursOf(m, 'nope'), undefined);
 });

@@ -588,9 +588,12 @@ test('decision board: dropping a card = declared meaning (accept / backward need
     assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c1.id, type: 'friend' })).status, 400);
     assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c1.id, type: 'supersedes' })).status, 403);
 
-    // c1 changes → c2 (depends on c1) lands in «needs review» (derived); dragging it to «confirmed» = accept unchanged
+    // c1 changes → c2 (depends on c1) gets the derived «review» BADGE (it is not a column any more): it stays in «confirmed»,
+    // dropping it there only orders it, and «accept unchanged» is its own explicit action
     await t.call('PATCH', `/workspaces/ws_studio/objects/${c1.id}`, { content: 'الف تازه' });
-    const acc = await move({ objectId: c2.id, lane: 'confirmed' });
+    const drop = await move({ objectId: c2.id, lane: 'confirmed' });
+    assert.ok(!drop.json.changes.some((c: any) => c.objectId === c2.id && c.kind === 'review_accepted'), 'a drop within the column does not accept a review');
+    const acc = await t.call('POST', `/workspaces/ws_studio/objects/${c2.id}/review-accept`, {});
     assert.ok(acc.json.changes.some((c: any) => c.objectId === c2.id && c.kind === 'review_accepted'));
 
     // dropping into another row moves the object to that node
@@ -618,6 +621,24 @@ test('free-thinking zone: notes with coordinates stay Notes (never Context); «�
     await t.call('DELETE', `/workspaces/ws_studio/notes/${id}`);
     assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.canvas.free.length, 0, 'the position is removed with the note');
     assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/free/notes', { content: '  ' })).status, 400);
+  } finally { t.close(); }
+});
+
+test('a card placed in the free space: only its drawn position is stored; the object is untouched; removing the card never removes the object', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const o = (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'یک واقعیت', content: 'متن', nodeId: 'business' })).json.object;
+    const placed = await t.call('PUT', `/workspaces/ws_studio/canvas/free/objects/${o.id}`, { x: 120, y: 40 });
+    assert.deepEqual(placed.json.canvas.free.find((i: any) => i.itemRef === `obj:${o.id}`), { itemRef: `obj:${o.id}`, x: 120, y: 40 });
+    await t.call('PUT', `/workspaces/ws_studio/canvas/free/objects/${o.id}`, { x: 300, y: 90 });
+    const st = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    assert.equal(st.canvas.free.find((i: any) => i.itemRef === `obj:${o.id}`).x, 300);
+    assert.deepEqual([st.objects.find((x: any) => x.id === o.id).version, st.changes.filter((c: any) => c.objectId === o.id).length], [1, 1], 'placing is not a change of the object');
+    assert.equal((await t.call('PUT', '/workspaces/ws_studio/canvas/free/objects/nope', { x: 1, y: 1 })).status, 404);
+    const removed = await t.call('DELETE', `/workspaces/ws_studio/canvas/free/objects/${o.id}`);
+    assert.equal(removed.json.canvas.free.length, 0);
+    assert.ok((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.some((x: any) => x.id === o.id), 'the object stays');
   } finally { t.close(); }
 });
 
