@@ -197,3 +197,19 @@ test('slotKey: stored, patchable, inherited by the superseding object; migration
   assert.deepEqual(migrate(db, 6), [6]);
   assert.equal(new Repo(db).getObject({ userId: U, workspaceId: 'w1' }, 'c1')!.slotKey, undefined);
 });
+
+test('migration 8: old Asset objects become Fact (provenance, version, history kept); Asset is rejected as a type from now on', () => {
+  const db = new Database(':memory:');
+  migrate(db, 7);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,3)').run('a1', U, 'w1', 'Asset', 'Confirmed', 'Asset Derived', 'دارایی: پروفایل', 'متن', 'brand', 't', 't');
+  db.prepare('INSERT INTO context_object_versions (object_id,version,user_id,workspace_id,type,title,content,created_at) VALUES (?,?,?,?,?,?,?,?)').run('a1', 3, U, 'w1', 'Asset', 'دارایی: پروفایل', 'متن', 't');
+  assert.deepEqual(migrate(db, 8), [8]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  const o = repo.getObject(s, 'a1')!;
+  assert.deepEqual([o.type, o.provenance, o.version, o.status], ['Fact', 'Asset Derived', 3, 'Confirmed']);
+  assert.equal(repo.listVersions(s, 'a1')[0].type, 'Fact');
+  assert.throws(() => repo.createObject(s, { type: 'Asset' as never, provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' }), RepoError);
+  assert.throws(() => repo.updateObject(s, 'a1', { type: 'Asset' as never }), RepoError);
+});

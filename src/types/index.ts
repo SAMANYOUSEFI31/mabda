@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type ContextType = 'Fact' | 'Decision' | 'Constraint' | 'Asset';
+export type ContextType = 'Fact' | 'Decision' | 'Constraint';
 export type ContextStatus = 'Confirmed' | 'Proposed' | 'Needs Review' | 'Superseded' | 'Archived';
 export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported';
 
 /** Where a suggestion came from — shown in the proposals inbox (which AI, when). */
 export interface ObjectSource {
-  kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user';
+  kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user' | 'asset';
   /** MCP token label («Claude»), file name, … */
   label?: string;
   /** why the AI suggested it (shown in the inbox) */
@@ -290,7 +290,7 @@ export interface LedgerEntry {
   timestamp: string;
   workspaceId: string;
   action: string;
-  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread';
+  mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread' | 'asset_extract';
   creditCost: number;
   inputTokens: number;
   outputTokens: number;

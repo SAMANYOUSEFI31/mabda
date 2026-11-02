@@ -486,3 +486,25 @@ test('focused thread: cheap model, context = this node + its parents only, propo
     assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length, before, 'no canned reply, nothing created');
   } finally { t.close(); }
 });
+
+test('an output is not Context: «پیشنهاد دانش از این خروجی» makes Proposed objects with a verified quote (Asset Derived); Asset objects are refused', async () => {
+  const text = 'قیمت پایه ماهانه پنج میلیون تومان است. مخاطب ما طراحان فریلنسر هستند.';
+  const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('"objects"')
+    ? { objects: [
+      { type: 'Fact', title: 'قیمت پایه', content: 'پنج میلیون تومان در ماه', nodeId: 'offer', quote: 'قیمت پایه ماهانه پنج میلیون تومان است.' },
+      { type: 'Decision', title: 'مخاطب', content: 'طراحان فریلنسر', nodeId: 'business', quote: 'عبارت ساختگی که در متن نیست' },
+    ] } : decide));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const before = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    assert.equal((await t.call('PUT', '/workspaces/ws_studio/deliverables/del_x', { ...before.deliverables[0], id: 'del_x', title: 'خروجی آزمایشی', content: text, usedContext: [] })).status, 200);
+    const r = await t.call('POST', '/workspaces/ws_studio/deliverables/del_x/extract', {});
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json.created.map((o: any) => [o.type, o.status, o.provenance, o.source.kind, o.source.label]), [['Fact', 'Proposed', 'Asset Derived', 'asset', 'خروجی آزمایشی'], ['Decision', 'Proposed', 'Asset Derived', 'asset', 'خروجی آزمایشی']]);
+    assert.equal(r.json.created[0].source.quote, 'قیمت پایه ماهانه پنج میلیون تومان است.');
+    assert.equal(r.json.created[1].source.quote, undefined, 'a quote that is not in the text is dropped');
+    assert.ok(r.json.ledger.some((l: any) => l.mode === 'asset_extract'));
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Asset', status: 'Confirmed', provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' })).status, 400);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/deliverables/ghost/extract', {})).status, 404);
+  } finally { t.close(); }
+});

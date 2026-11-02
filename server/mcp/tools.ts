@@ -84,7 +84,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     inputSchema: {
       nodeId: z.string().optional().describe('node id from get_workspace_overview'),
       includeSubtree: z.boolean().optional().describe('default true'),
-      types: z.array(z.enum(['Fact', 'Decision', 'Constraint', 'Asset'])).optional(),
+      types: z.array(z.enum(['Fact', 'Decision', 'Constraint'])).optional(),
       statuses: z.array(z.enum(['Confirmed', 'Proposed', 'Needs Review'])).optional().describe('default: all three'),
       query: z.string().optional().describe('keyword search (BM25) in title and content'),
       limit: z.number().int().min(1).max(200).optional(),

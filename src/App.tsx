@@ -405,17 +405,16 @@ export default function App() {
     setIsNewWorkspaceModalOpen(false);
   };
 
-  const handlePromoteToContext = async (del: GeneratedDeliverable) => {
-    const created = await handleSaveContextObject({
-      workspaceId: wid,
-      type: 'Asset',
-      status: 'Confirmed',
-      provenance: 'Asset Derived',
-      title: `دارایی: ${del.title}`,
-      content: del.content.slice(0, 300) + '...',
-      nodeId: 'brand',
-    });
-    if (created) toast.show({ intent: 'success', message: 'این خروجی به‌عنوان یک دارایی در منبع حقیقت ثبت شد و در کارهای بعدی به‌عنوان Context معتبر استفاده می‌شود.' });
+  const [extractingAssetId, setExtractingAssetId] = useState<string | null>(null);
+  /** an output is not Context: its text is read by the extraction path and yields PROPOSED objects with a quote; the user confirms */
+  const handleExtractFromAsset = async (del: GeneratedDeliverable) => {
+    setExtractingAssetId(del.id);
+    try {
+      const r = await attempt(() => dataApi.extractDeliverable(wid, del.id));
+      if (!r) return;
+      patch((d) => ({ ...d, objects: [...r.created.slice().reverse(), ...d.objects], ledger: r.ledger }));
+      toast.show({ intent: r.created.length ? 'success' : 'info', message: r.created.length ? `${formatNumber(r.created.length)} مورد پیشنهادی از این خروجی ساخته شد؛ در صندوق پیشنهادها منتظر تأیید توست.` : 'در متن این خروجی واقعیت، تصمیم یا قید مشخصی پیدا نشد.' });
+    } finally { setExtractingAssetId(null); }
   };
 
   const handleExportAllData = () => {
@@ -720,7 +719,8 @@ export default function App() {
             stale={stale}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
             onOpenContextModal={(obj) => openContext(obj)}
-            onPromoteToContext={handlePromoteToContext}
+            onExtractKnowledge={handleExtractFromAsset}
+            extractingId={extractingAssetId}
             onRebuild={(del) => {
               setSelectedSpecId(del.workstreamId);
               setPendingRebuild(del);

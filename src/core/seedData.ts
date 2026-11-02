@@ -94,7 +94,7 @@ export const INITIAL_CONTEXT_OBJECTS: ContextObject[] = [
     status: 'Confirmed',
     provenance: 'AI Suggested',
     title: 'تمایز کلیدی نسبت به حافظه چت‌بات‌ها',
-    content: 'دانش ساختاریافته نوع‌دار (Fact, Decision, Constraint, Asset)، موتور تحلیل شکاف (Gap Engine) و ردیابی شفاف خاستگاه با Context Replay و امکان بازسازی نصف‌قیمت.',
+    content: 'دانش ساختاریافته نوع‌دار (Fact, Decision, Constraint)، موتور تحلیل شکاف (Gap Engine) و ردیابی شفاف خاستگاه با Context Replay و امکان بازسازی نصف‌قیمت.',
     nodeId: 'brand',
     version: 1,
     createdAt: '2026-10-16T11:00:00Z',

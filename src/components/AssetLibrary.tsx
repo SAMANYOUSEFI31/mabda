@@ -14,7 +14,9 @@ interface AssetLibraryProps {
   deliverables: GeneratedDeliverable[];
   allContextObjects: ContextObject[];
   onOpenContextModal: (obj: ContextObject) => void;
-  onPromoteToContext: (del: GeneratedDeliverable) => void;
+  /** proposes knowledge (Proposed + quote) from the output's text; the output itself never becomes Context */
+  onExtractKnowledge: (del: GeneratedDeliverable) => void;
+  extractingId?: string | null;
   onRebuild: (del: GeneratedDeliverable) => void;
   stale: StaleAsset[];
   onGoToWorkstreams: () => void;
@@ -25,7 +27,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   deliverables,
   allContextObjects,
   onOpenContextModal,
-  onPromoteToContext,
+  onExtractKnowledge,
+  extractingId,
   onRebuild,
   stale,
   onGoToWorkstreams,
@@ -55,7 +58,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         <div>
           <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            هر خروجی می‌تواند خودش Context کارهای بعدی شود.
+            از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز Context نیست.
           </p>
         </div>
         <Button variant="secondary" iconStart="Download" onClick={handleExportJson}>خروجی گرفتن JSON</Button>
@@ -93,8 +96,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 onRebuild={onRebuild}
               />
               <div className="flex flex-wrap items-center justify-end">
-                <Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => onPromoteToContext(del)}>
-                  تبدیل به Context برای کارهای بعدی
+                <Button variant="secondary" size="sm" iconStart="Wand2" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
+                  پیشنهاد دانش از این خروجی
                 </Button>
               </div>
             </div>

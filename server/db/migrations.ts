@@ -194,6 +194,17 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 8,
+    name: 'Asset is no longer a context type: old Asset objects become Fact (provenance, version and history kept)',
+    up(db) {
+      // type change without a version bump: lineage (usedContext id+version) of existing assets stays valid
+      db.exec(`
+        UPDATE context_objects SET type = 'Fact' WHERE type = 'Asset';
+        UPDATE context_object_versions SET type = 'Fact' WHERE type = 'Asset';
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -193,6 +193,25 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
   }));
 
+  /**
+   * «پیشنهاد دانش از این خروجی»: an output is NOT a Context type. The existing extraction path reads its text and makes
+   * Proposed Facts/Decisions/Constraints, each with a verified quote from the output; the user confirms them one by one.
+   */
+  router.post('/workspaces/:wid/deliverables/:id/extract', wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const del = repo.getDeliverable(s, req.params.id);
+    if (!del) throw new RepoError('not_found', 'دارایی پیدا نشد.');
+    if (!del.content.trim()) throw new RepoError('invalid', 'متن این دارایی خالی است.');
+    const ctl = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
+    const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
+    const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: 'business', nodes }, ctl.signal);
+    const at = new Date().toISOString();
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Asset Derived', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'asset', label: del.title, at, ...(o.quote ? { quote: o.quote } : {}) } }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
+    res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, ledger: repo.listLedger(s) });
+  }));
+
   // ── focused thread on one node: cheap tier, context = node + parents, output = Proposed objects for THAT node only ──
   router.post('/workspaces/:wid/threads/:nodeId/turn', wrap(async (req, res) => {
     const s = scopeOf(req);

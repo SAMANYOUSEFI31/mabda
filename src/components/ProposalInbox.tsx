@@ -8,7 +8,7 @@ import type { ContextObject, ObjectSource, TreeNode } from '../types';
 import { Badge, Button, Card, TypeBadge, formatJalaliDate, formatNumber } from '../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
-  mcp: 'AI بیرونی (MCP)', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم',
+  mcp: 'AI بیرونی (MCP)', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
 };
 
 interface Props {

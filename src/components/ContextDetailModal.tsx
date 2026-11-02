@@ -32,7 +32,6 @@ const TYPE_OPTIONS = [
   { value: 'Fact', label: 'واقعیت اثبات‌شده' },
   { value: 'Decision', label: 'تصمیم آگاهانه' },
   { value: 'Constraint', label: 'مرز و خط قرمز' },
-  { value: 'Asset', label: 'خروجی تأییدشده' },
 ];
 const STATUS_OPTIONS = [
   { value: 'Confirmed', label: 'تأییدشده و فعال' },

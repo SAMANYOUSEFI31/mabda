@@ -22,10 +22,6 @@
   --mabda-type-constraint-border: var(--border-warning-subtle);
   --mabda-type-constraint-icon: var(--icon-warning);
   /* type: asset -> success */
-  --mabda-type-asset-bg: var(--bg-success-subtle);
-  --mabda-type-asset-fg: var(--text-success);
-  --mabda-type-asset-border: var(--border-success-subtle);
-  --mabda-type-asset-icon: var(--icon-success);
   /* status: confirmed -> success */
   --mabda-status-confirmed-bg: var(--bg-success-subtle);
   --mabda-status-confirmed-fg: var(--text-success);
@@ -126,10 +122,6 @@
   --color-mabda-type-constraint-fg: var(--mabda-type-constraint-fg);
   --color-mabda-type-constraint-border: var(--mabda-type-constraint-border);
   --color-mabda-type-constraint-icon: var(--mabda-type-constraint-icon);
-  --color-mabda-type-asset-bg: var(--mabda-type-asset-bg);
-  --color-mabda-type-asset-fg: var(--mabda-type-asset-fg);
-  --color-mabda-type-asset-border: var(--mabda-type-asset-border);
-  --color-mabda-type-asset-icon: var(--mabda-type-asset-icon);
   --color-mabda-status-confirmed-bg: var(--mabda-status-confirmed-bg);
   --color-mabda-status-confirmed-fg: var(--mabda-status-confirmed-fg);
   --color-mabda-status-confirmed-border: var(--mabda-status-confirmed-border);

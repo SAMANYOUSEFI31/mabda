@@ -26,6 +26,8 @@ const now = () => new Date().toISOString();
 
 export interface ImpactResult { count: number; assets: Array<{ id: string; title: string; reasons: string[] }> }
 
+const CONTEXT_TYPES: ContextType[] = ['Fact', 'Decision', 'Constraint'];
+
 export interface ObjectInput {
   type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string;
 }
@@ -215,6 +217,7 @@ export class Repo {
     this.assertWorkspace(s);
     this.requireNode(s, input.nodeId);
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
+    if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
@@ -226,9 +229,11 @@ export class Repo {
   /** Raw insert for the one-time localStorage import: keeps id, status, timestamps and version as they were. */
   importObject(s: Scope, o: ContextObject) {
     const node = this.listNodes(s).some((n) => n.id === o.nodeId) ? o.nodeId : 'business';
+    // old localStorage data may carry the retired «Asset» type
+    const type = CONTEXT_TYPES.includes(o.type) ? o.type : 'Fact';
     this.db.transaction(() => {
       if (this.db.prepare('SELECT 1 FROM context_objects WHERE id = ?').get(o.id)) return;
-      this.insertObject(s, { ...o, nodeId: node, version: o.version ?? 1 });
+      this.insertObject(s, { ...o, type, nodeId: node, version: o.version ?? 1 });
     })();
   }
 
@@ -242,6 +247,7 @@ export class Repo {
     const cur = this.getObject(s, id);
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
+    if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const next: ContextObject = { ...cur, ...patch, title: (patch.title ?? cur.title).trim() || cur.title, updatedAt: now() };
       if (!next.slotKey?.trim()) delete next.slotKey; else next.slotKey = next.slotKey.trim();
