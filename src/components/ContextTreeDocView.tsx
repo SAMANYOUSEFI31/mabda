@@ -101,11 +101,11 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
         </div>
 
-        {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 ? (
+        {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && !notesOpen ? (
           <EmptyState
             icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
-            action={<Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>ثبت اولین مورد</Button>}
+            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>ثبت اولین مورد</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
           />
         ) : (
           <>
