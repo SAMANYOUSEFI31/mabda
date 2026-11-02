@@ -1,12 +1,15 @@
 /**
  * Map model («نقشه»): turns nodes, objects, assets and relations into a layered diagram. Pure — the view only draws it.
  *
- *  • vertices: tree nodes, context objects, assets; a COLLAPSED node stands for all its objects (and edges between
- *    collapsed groups are merged with a count), so thousands of objects stay readable and fast
- *  • edges are typed: structural (belongs to a node / sub-node), dependency (depends_on), lineage (asset built from an
- *    object, derived_from) and supersedes (replaced by) — each with a Persian label
- *  • layout: longest-path layers (cycles share a layer), rows ordered by tree position then by neighbours; for RTL the
- *    first layer is the rightmost, so reading flows right → left. Coordinates are plain numbers (drawn with transform).
+ *  • vertices: context objects, assets, and a summary card for a COLLAPSED node (it stands for all its objects; edges
+ *    between collapsed groups are merged with a count), so thousands of objects stay readable and fast
+ *  • edges are typed and are ONLY flow: dependency (depends_on), lineage (asset built from an object, derived_from) and
+ *    supersedes (replaced by) — each with a Persian label. The tree is NOT an edge.
+ *  • the tree is DOMAIN, not order: a node with content is drawn as a GROUPING BOX that contains its objects and its
+ *    sub-nodes' boxes. Sibling nodes are stacked in the same layers and show no precedence.
+ *  • layout: longest-path layers computed from the flow edges alone (cycles share a layer; unrelated things share layer 0);
+ *    for RTL the first layer is the rightmost, so reading flows right → left. Rows come from the boxes (tree order only
+ *    decides which box is above which — it carries no meaning). Coordinates are plain numbers (drawn with transform).
  */
 
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
@@ -15,9 +18,9 @@ import { dependentsOf } from './decisionGraph';
 import { layersOf } from './graphAlgo';
 
 export type MapVertexKind = 'node' | 'object' | 'asset' | 'assets';
-export type MapEdgeKind = 'structural' | 'dependency' | 'lineage' | 'supersedes';
+export type MapEdgeKind = 'dependency' | 'lineage' | 'supersedes';
 
-export const EDGE_LABEL: Record<MapEdgeKind, string> = { structural: 'تعلق به', dependency: 'وابسته به', lineage: 'ساخته‌شده از', supersedes: 'جایگزین کرد' };
+export const EDGE_LABEL: Record<MapEdgeKind, string> = { dependency: 'وابسته به', lineage: 'ساخته‌شده از', supersedes: 'جایگزین کرد' };
 
 export interface MapVertex {
   id: string;
@@ -41,6 +44,8 @@ export interface MapVertex {
   w: number;
   h: number;
 }
+/** the box of a node that contains objects and/or sub-nodes (depth 0 = a root node). Not a vertex: it has no edges. */
+export interface MapGroup { id: string; nodeId: string; label: string; depth: number; /** objects directly in this node */ count: number; /** its objects are listed inside the box */ expanded: boolean; x: number; y: number; w: number; h: number }
 export interface MapEdge { id: string; from: string; to: string; kind: MapEdgeKind; label: string; count: number }
 
 export interface MapInput {
@@ -63,6 +68,9 @@ export interface MapOptions {
 }
 export interface MapModel {
   vertices: MapVertex[];
+  groups: MapGroup[];
+  /** nodes whose objects are listed one by one right now */
+  expandedNodes: string[];
   edges: MapEdge[];
   width: number;
   height: number;
@@ -75,6 +83,9 @@ export const CARD_W = 220;
 export const CARD_H = 64;
 export const GAP_X = 96;
 export const GAP_Y = 20;
+export const GROUP_PAD = 14;
+export const GROUP_HEAD = 56;
+const GROUP_GAP = 18;
 
 const isActive = (o: ContextObject) => o.status !== 'Superseded' && o.status !== 'Archived';
 
@@ -88,100 +99,134 @@ export function buildMapModel(input: MapInput, opts: MapOptions = {}): MapModel 
   const isExpanded = (nodeId: string) => (opts.expanded ? opts.expanded.has(nodeId) : small);
   const assetsIndividually = showAssets && input.deliverables.length <= (opts.assetClusterAbove ?? 150);
 
-  // tree order → stable grouping of rows
+  // the tree decides only which box sits above which (no meaning) and which objects share a box
   const children = new Map<string, TreeNode[]>();
   for (const n of input.nodes) if (n.parentId && nodeIds.has(n.parentId)) children.set(n.parentId, [...(children.get(n.parentId) ?? []), n]);
   for (const list of children.values()) list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id));
   const roots = input.nodes.filter((n) => !n.parentId || !nodeIds.has(n.parentId)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id));
-  const nodeIdx = new Map<string, number>();
-  const stack = [...roots].reverse();
-  while (stack.length) { const n = stack.pop()!; nodeIdx.set(n.id, nodeIdx.size); stack.push(...[...(children.get(n.id) ?? [])].reverse()); }
 
   const vertices = new Map<string, MapVertex>();
-  const add = (v: Omit<MapVertex, 'layer' | 'row' | 'x' | 'y' | 'w' | 'h'>) => vertices.set(v.id, { ...v, layer: 0, row: 0, x: 0, y: 0, w: CARD_W, h: CARD_H });
+  const owner = new Map<string, string | null>(); // vertex id → node id whose box holds it (null = outside every box)
+  const seq = new Map<string, number>(); // stable order inside a layer
+  const add = (v: Omit<MapVertex, 'layer' | 'row' | 'x' | 'y' | 'w' | 'h'>, node: string | null) => { seq.set(v.id, seq.size); owner.set(v.id, node); vertices.set(v.id, { ...v, layer: 0, row: 0, x: 0, y: 0, w: CARD_W, h: CARD_H }); };
   const rep: Record<string, string> = {};
-  const order = new Map<string, number>(); // grouping key for rows
 
+  // a node is drawn as a BOX when it has sub-nodes or lists its objects; a collapsed node keeps one summary card standing for its objects
+  const hasBox = (n: TreeNode) => (children.get(n.id)?.length ?? 0) > 0 || (isExpanded(n.id) && (countBy.get(n.id) ?? 0) > 0);
+  const hasCard = (n: TreeNode) => { const c = countBy.get(n.id) ?? 0; return (!isExpanded(n.id) && c > 0) || (c === 0 && !(children.get(n.id)?.length)); };
   for (const n of input.nodes) {
+    if (!hasCard(n)) continue;
     const id = `n:${n.id}`;
-    add({ id, kind: 'node', label: n.label, nodeId: n.id, count: countBy.get(n.id) ?? 0, expanded: isExpanded(n.id) });
-    rep[id] = id; order.set(id, nodeIdx.get(n.id) ?? 0);
+    add({ id, kind: 'node', label: n.label, nodeId: n.id, count: countBy.get(n.id) ?? 0, expanded: isExpanded(n.id) }, n.id);
+    rep[id] = id;
   }
   for (const o of objects) {
     const nodeV = `n:${o.nodeId}`;
-    if (!vertices.has(nodeV)) { rep[`o:${o.id}`] = ''; continue; }
-    if (isExpanded(o.nodeId)) {
+    if (isExpanded(o.nodeId) && nodeIds.has(o.nodeId)) {
       const id = `o:${o.id}`;
-      add({ id, kind: 'object', label: o.title, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, review: input.reviewObjectIds?.has(o.id) });
-      rep[id] = id; order.set(id, (nodeIdx.get(o.nodeId) ?? 0) + 0.5);
-    } else rep[`o:${o.id}`] = nodeV;
+      add({ id, kind: 'object', label: o.title, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, review: input.reviewObjectIds?.has(o.id) }, o.nodeId);
+      rep[id] = id;
+    } else rep[`o:${o.id}`] = vertices.has(nodeV) ? nodeV : '';
   }
-  const lastGroup = input.nodes.length + 1;
   if (showAssets) {
     if (assetsIndividually) {
       for (const d of input.deliverables) {
         const id = `a:${d.id}`;
-        add({ id, kind: 'asset', label: d.title, assetId: d.id, review: input.staleAssetIds?.has(d.id) });
-        rep[id] = id; order.set(id, lastGroup);
+        add({ id, kind: 'asset', label: d.title, assetId: d.id, review: input.staleAssetIds?.has(d.id) }, null);
+        rep[id] = id;
       }
     } else if (input.deliverables.length) {
-      add({ id: 'assets', kind: 'assets', label: 'دارایی‌ها', count: input.deliverables.length });
+      add({ id: 'assets', kind: 'assets', label: 'دارایی‌ها', count: input.deliverables.length }, null);
       for (const d of input.deliverables) rep[`a:${d.id}`] = 'assets';
-      order.set('assets', lastGroup);
     }
   }
 
-  // raw relations → representative vertices, merged with a count; `flow` = direction used for layering
+  // raw relations → representative vertices, merged with a count; `flow` = direction used for layering (from the depended-on thing to what rests on it)
   const edgeMap = new Map<string, MapEdge & { flowFrom: string; flowTo: string }>();
-  const link = (kind: MapEdgeKind, fromKey: string, toKey: string, flowIsReverse: boolean) => {
+  const link = (kind: MapEdgeKind, fromKey: string, toKey: string) => {
     const a = rep[fromKey], b = rep[toKey];
     if (!a || !b || a === b) return;
     const key = `${kind}|${a}|${b}`;
     const cur = edgeMap.get(key);
     if (cur) cur.count++;
-    else edgeMap.set(key, { id: key, from: a, to: b, kind, label: EDGE_LABEL[kind], count: 1, flowFrom: flowIsReverse ? b : a, flowTo: flowIsReverse ? a : b });
+    else edgeMap.set(key, { id: key, from: a, to: b, kind, label: EDGE_LABEL[kind], count: 1, flowFrom: b, flowTo: a });
   };
-  for (const n of input.nodes) if (n.parentId && nodeIds.has(n.parentId)) link('structural', `n:${n.id}`, `n:${n.parentId}`, true);
-  for (const o of objects) if (isExpanded(o.nodeId)) link('structural', `o:${o.id}`, `n:${o.nodeId}`, true);
   for (const r of input.relationships) {
-    if (r.type === 'depends_on') link('dependency', `o:${r.sourceId}`, `o:${r.targetId}`, true);
-    else if (r.type === 'supersedes') link('supersedes', `o:${r.sourceId}`, `o:${r.targetId}`, true);
+    if (r.type === 'depends_on') link('dependency', `o:${r.sourceId}`, `o:${r.targetId}`);
+    else if (r.type === 'supersedes') link('supersedes', `o:${r.sourceId}`, `o:${r.targetId}`);
   }
-  if (showAssets) for (const d of input.deliverables) for (const u of d.usedContext ?? []) link('lineage', `a:${d.id}`, `o:${u.id}`, true);
+  if (showAssets) for (const d of input.deliverables) for (const u of d.usedContext ?? []) link('lineage', `a:${d.id}`, `o:${u.id}`);
   const edges = [...edgeMap.values()];
 
-  // layers, rows
+  // layers from the flow edges ALONE: two unrelated things (e.g. sibling nodes) always share a layer
   const ids = [...vertices.keys()];
   const out = new Map<string, string[]>();
   for (const e of edges) out.set(e.flowFrom, [...(out.get(e.flowFrom) ?? []), e.flowTo]);
   const layer = layersOf(ids, out);
   const maxLayer = Math.max(0, ...layer.values());
-  const byLayer: string[][] = Array.from({ length: maxLayer + 1 }, () => []);
-  for (const id of ids) byLayer[layer.get(id)!].push(id);
-  const row = new Map<string, number>();
-  const sortKey = (id: string) => order.get(id) ?? 0;
-  byLayer.forEach((l) => { l.sort((a, b) => sortKey(a) - sortKey(b) || a.localeCompare(b)); l.forEach((id, i) => row.set(id, i)); });
-  const incoming = new Map<string, string[]>();
-  for (const e of edges) incoming.set(e.flowTo, [...(incoming.get(e.flowTo) ?? []), e.flowFrom]);
-  for (let pass = 0; pass < 2; pass++) {
-    for (let li = 1; li < byLayer.length; li++) {
-      const bary = (id: string) => { const ns = (incoming.get(id) ?? []).filter((n) => layer.get(n)! < li); return ns.length ? ns.reduce((s, n) => s + row.get(n)!, 0) / ns.length : row.get(id)!; };
-      const key = new Map(byLayer[li].map((id) => [id, bary(id)]));
-      byLayer[li].sort((a, b) => sortKey(a) - sortKey(b) || key.get(a)! - key.get(b)! || a.localeCompare(b));
-      byLayer[li].forEach((id, i) => row.set(id, i));
+  const xOf = (l: number) => (maxLayer - l) * (CARD_W + GAP_X); // RTL: the first layer is the rightmost
+
+  const ownedBy = new Map<string | null, string[]>();
+  for (const id of ids) ownedBy.set(owner.get(id) ?? null, [...(ownedBy.get(owner.get(id) ?? null) ?? []), id]);
+
+  // rows: boxes stack top to bottom (tree order, no meaning); inside a box its own cards share rows across layers, then its sub-boxes
+  const groups: MapGroup[] = [];
+  const place = (node: TreeNode | null, depth: number, yStart: number): { y: number; x0: number; x1: number } => {
+    const box = !!node && hasBox(node);
+    let cursor = yStart + (box ? GROUP_HEAD : 0);
+    let x0 = Infinity, x1 = -Infinity;
+    const own = (ownedBy.get(node ? node.id : null) ?? []).slice().sort((a, b) => seq.get(a)! - seq.get(b)!);
+    const perLayer = new Map<number, string[]>();
+    for (const id of own) perLayer.set(layer.get(id)!, [...(perLayer.get(layer.get(id)!) ?? []), id]);
+    const ownRows = Math.max(0, ...[...perLayer.values()].map((l) => l.length));
+    for (const [l, list] of perLayer) list.forEach((id, i) => {
+      const v = vertices.get(id)!;
+      v.layer = l; v.row = i; v.x = xOf(l); v.y = cursor + i * (CARD_H + GAP_Y);
+      x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x + v.w);
+    });
+    if (ownRows) cursor += ownRows * CARD_H + (ownRows - 1) * GAP_Y;
+    const sub = node ? children.get(node.id) ?? [] : []; // (the loose pass, node = null, has no sub-boxes)
+    let placedAny = ownRows > 0;
+    for (const c of sub) {
+      const r = place(c, depth + 1, cursor + (placedAny ? GROUP_GAP : 0));
+      if (r.y === cursor + (placedAny ? GROUP_GAP : 0)) continue; // empty: nothing was drawn
+      cursor = r.y; placedAny = true;
+      x0 = Math.min(x0, r.x0); x1 = Math.max(x1, r.x1);
     }
+    if (!box || !node) return { y: placedAny ? cursor : yStart, x0, x1 };
+    const w = Math.max(CARD_W, x1 - x0) + 2 * GROUP_PAD;
+    const cx = Number.isFinite(x0) ? x0 - GROUP_PAD : 0;
+    groups.push({ id: `g:${node.id}`, nodeId: node.id, label: node.label, depth, count: countBy.get(node.id) ?? 0, expanded: isExpanded(node.id), x: cx, y: yStart, w, h: cursor + GROUP_PAD - yStart });
+    return { y: cursor + GROUP_PAD, x0: cx, x1: cx + w };
+  };
+  let cursor = 0;
+  let any = false;
+  let gx0 = Infinity, gx1 = -Infinity;
+  for (const r of roots) {
+    const start = cursor + (any ? GROUP_GAP : 0);
+    const res = place(r, 0, start);
+    if (res.y === start) continue;
+    cursor = res.y; any = true;
+    gx0 = Math.min(gx0, res.x0); gx1 = Math.max(gx1, res.x1);
   }
-  const rows = Math.max(1, ...byLayer.map((l) => l.length));
-  for (const v of vertices.values()) {
-    v.layer = layer.get(v.id)!; v.row = row.get(v.id)!;
-    v.x = (maxLayer - v.layer) * (CARD_W + GAP_X); // RTL: the first layer is the rightmost
-    v.y = v.row * (CARD_H + GAP_Y);
-  }
+  const looseStart = cursor + (any ? GROUP_GAP : 0);
+  const loose = place(null, 0, looseStart); // assets: outside every box, after the tree
+  if (loose.y !== looseStart) { cursor = loose.y; any = true; gx0 = Math.min(gx0, loose.x0); gx1 = Math.max(gx1, loose.x1); }
+
+  // shift everything so the top-left of the drawing is (0, 0)
+  const minX = Math.min(gx0, ...[...vertices.values()].map((v) => v.x), ...groups.map((g) => g.x));
+  const shiftX = Number.isFinite(minX) ? -minX : 0;
+  for (const v of vertices.values()) v.x += shiftX;
+  for (const g of groups) g.x += shiftX;
+  const maxX = Math.max(0, ...[...vertices.values()].map((v) => v.x + v.w), ...groups.map((g) => g.x + g.w));
+  groups.sort((a, b) => a.depth - b.depth || a.y - b.y); // parents are drawn before their children
   return {
     vertices: [...vertices.values()],
+    groups,
+    expandedNodes: input.nodes.filter((n) => isExpanded(n.id)).map((n) => n.id),
     edges: edges.map(({ flowFrom: _f, flowTo: _t, ...e }) => e),
-    width: (maxLayer + 1) * CARD_W + maxLayer * GAP_X,
-    height: rows * CARD_H + (rows - 1) * GAP_Y,
+    width: maxX,
+    height: Math.max(0, cursor),
     rep,
     summary: { objects: objects.length, assets: input.deliverables.length, collapsedNodes: input.nodes.filter((n) => !isExpanded(n.id) && (countBy.get(n.id) ?? 0) > 0).length },
   };
@@ -201,7 +246,7 @@ export function highlightOf(model: MapModel, impact: Impact): { vertexIds: Set<s
   const vertexIds = new Set<string>();
   for (const id of impact.objectIds) { const v = model.rep[`o:${id}`]; if (v) vertexIds.add(v); }
   for (const id of impact.assetIds) { const v = model.rep[`a:${id}`]; if (v) vertexIds.add(v); }
-  const edgeIds = new Set(model.edges.filter((e) => e.kind !== 'structural' && vertexIds.has(e.from) && vertexIds.has(e.to)).map((e) => e.id));
+  const edgeIds = new Set(model.edges.filter((e) => vertexIds.has(e.from) && vertexIds.has(e.to)).map((e) => e.id));
   return { vertexIds, edgeIds };
 }
 
@@ -213,6 +258,12 @@ export function latestChangedObject(changes: ContextChange[]): string | undefine
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }
+/** the grouping boxes that intersect the viewport */
+export function visibleGroups(model: MapModel, view: Rect, margin = 200): MapGroup[] {
+  const x0 = view.x - margin, y0 = view.y - margin, x1 = view.x + view.w + margin, y1 = view.y + view.h + margin;
+  return model.groups.filter((g) => g.x + g.w >= x0 && g.x <= x1 && g.y + g.h >= y0 && g.y <= y1);
+}
+
 /** only what intersects the viewport (plus a margin) is drawn — keeps a very large map smooth */
 export function visibleVertices(model: MapModel, view: Rect, margin = 200): MapVertex[] {
   const x0 = view.x - margin, y0 = view.y - margin, x1 = view.x + view.w + margin, y1 = view.y + view.h + margin;

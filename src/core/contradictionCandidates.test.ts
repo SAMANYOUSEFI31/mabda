@@ -67,3 +67,24 @@ test('unresolvedContradictions: rule conflicts + semantic conflicts for the curr
   assert.equal(unresolvedContradictions([x, y], [{ ...j, conflict: false }]).length, 0, 'compatible');
   assert.equal(unresolvedContradictions([x, { ...y, status: 'Superseded' }], [j]).length, 0);
 });
+
+const dep = (a: string, b: string) => ({ id: `r_${a}_${b}`, sourceId: a, targetId: b, type: 'depends_on' as const, createdAt: '' });
+
+test('linked: two live objects tied by depends_on are a candidate whatever their titles say; dead or unlinked ones are not', () => {
+  const a = o('a', { title: 'قیمت اشتراک', content: 'الف', nodeId: 'offer' });
+  const b = o('b', { title: 'کانال تبلیغ', content: 'ب', nodeId: 'brand', type: 'Fact' });
+  assert.equal(candidatePairs([a, b]).length, 0);
+  const linked = candidatePairs([a, b], 10, [dep('a', 'b')]);
+  assert.deepEqual(linked.map((p) => [p.key, p.reasons]), [['a|b', ['linked']]]);
+  assert.equal(candidatePairs([a, { ...b, status: 'Superseded' }], 10, [dep('a', 'b')]).length, 0);
+  assert.equal(candidatePairs([a, b], 10, [{ ...dep('a', 'b'), type: 'supersedes' }]).length, 0, 'only depends_on counts');
+});
+
+test('same_node_same_type: same node and type with overlapping TEXT; a different type or node or low overlap is not', () => {
+  const a = o('a', { title: 'سیاست ارسال', content: 'ارسال برای همهٔ اشتراک‌ها رایگان است', nodeId: 'ship' });
+  const b = o('b', { title: 'هزینهٔ ارسال', content: 'ارسال با هزینهٔ ثابت برای همهٔ سفارش‌ها', nodeId: 'ship' });
+  assert.deepEqual(candidatePairs([a, b]).map((p) => p.reasons.includes('same_node_same_type')), [true]);
+  assert.equal(candidatePairs([a, { ...b, type: 'Constraint' }]).length, 0);
+  assert.equal(candidatePairs([a, { ...b, nodeId: 'other' }]).length, 0);
+  assert.equal(candidatePairs([a, { ...b, content: 'بسته‌بندی کاغذی و قابل بازیافت' }]).length, 0, 'unrelated text in the same node and type');
+});

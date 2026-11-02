@@ -138,9 +138,9 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_price2', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۵۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', created: [12] });
   add({ id: 'dm_pack', type: 'Decision', node: 'dn_sub', title: 'بستهٔ اشتراک', first: 'هر ماه چهار بستهٔ ۲۵۰ گرمی: دو تک‌خاستگاه و دو ترکیب خانگی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_package', created: [33, 11],
     log: [{ d: 33, h: 11, kind: 'proposal_accepted', to: 'Confirmed' }, { d: 8, kind: 'review_accepted', to: 'Confirmed', reason: 'قیمت عوض شد ولی بسته همان است.' }] });
-  add({ id: 'dm_ship_policy', type: 'Decision', node: 'dn_ship', title: 'سیاست ارسال اشتراک', first: 'ارسال برای همهٔ اشتراک‌ها رایگان است.', status: 'Proposed', provenance: 'AI Suggested', slot: 'shipping_policy', created: [2, 9],
+  add({ id: 'dm_ship_policy', type: 'Decision', node: 'dn_ship', title: 'سیاست ارسال', first: 'ارسال برای همهٔ اشتراک‌ها رایگان است.', status: 'Proposed', provenance: 'AI Suggested', slot: 'shipping_policy', created: [2, 9],
     source: { kind: 'mcp', label: 'Claude', reason: 'گفتی مشتری‌ها از هزینهٔ ارسال ناراضی‌اند.' } });
-  add({ id: 'dm_ship_cost', type: 'Decision', node: 'dn_ship', title: 'هزینهٔ ارسال اشتراک', first: 'ارسال با هزینهٔ ۶۰ هزار تومان برای همهٔ سفارش‌ها.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 16],
+  add({ id: 'dm_ship_cost', type: 'Decision', node: 'dn_ship', title: 'هزینهٔ ارسال', first: 'ارسال با هزینهٔ ۶۰ هزار تومان برای همهٔ سفارش‌ها.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 16],
     source: { kind: 'chat', reason: 'در گفتگوی گرهٔ ارسال گفتی هزینهٔ پست را مشتری بدهد.' } });
   // «روز ارسال» was replaced three times: Monday → Tuesday → Thursday → Saturday
   add({ id: 'dm_day1', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر دوشنبه.', status: 'Confirmed', provenance: 'User Input', created: [35], supersededBy: { id: 'dm_day2', d: 26, reason: 'پست دوشنبه‌ها شلوغ بود.' } });

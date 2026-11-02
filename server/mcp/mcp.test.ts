@@ -245,6 +245,9 @@ test('the showcase workspace is a normal workspace for MCP: gaps (one missing, o
     const c = await t.connect(tok.token);
     const g = await t.call(c, 'get_gaps', { specId: 'demo_spec_campaign' });
     assert.ok(JSON.stringify(g.data).includes('launch_date'));
+    const ov = await t.call(c, 'get_workspace_overview', {});
+    assert.deepEqual(JSON.stringify(ov.data).includes('main_positioning') || JSON.stringify(ov.data).includes('freelance_profile'), false, 'the showcase shows only its own workstreams, not the library');
+    assert.ok(JSON.stringify(ov.data).includes('demo_spec_campaign'));
     const ch = await t.call(c, 'get_changes', { limit: 200 });
     assert.ok(ch.data.count > 20);
     assert.ok(new Set(ch.data.changes.map((x: any) => x.actor)).size >= 4);

@@ -339,6 +339,8 @@ export interface Workspace {
   chatCountDay?: string;
   /** the built-in showcase workspace: never counted against the plan (workspaces, objects, files) or the account's usage; set only by the server */
   isDemo?: boolean;
+  /** which built-in workstreams of the library this workspace shows. Absent = all of them (workspaces that existed before the library keep their behaviour); new workspaces start with none */
+  enabledSpecIds?: string[];
   createdAt: string;
 }
 export * from './ai';

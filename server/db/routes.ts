@@ -23,7 +23,7 @@ import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
-import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
 import { needsReview } from '../../src/core/decisionGraph.ts';
 import { buildCanvasModel, moveEffect, rankBetween } from '../../src/core/canvasModel.ts';
@@ -384,7 +384,9 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
     if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
     const objects = repo.listObjects(s);
-    const todo = pairsToJudge(objects, repo.listPairJudgments(s));
+    // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
+    const only = Array.isArray(body(req).objectIds) ? new Set((body(req).objectIds as unknown[]).map(String)) : null;
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
     const capped = payer() === 'us';
     const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
     const limited = todo.length > left;
@@ -467,7 +469,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
 
   // ── Context pack (copy for any AI) + pasted-answer import ────────────
-  const specList = (s: Scope) => [...repo.listSpecs(s), ...WORKSTREAM_SPECS];
+  const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(LOCAL_USER, s.workspaceId))];
   router.post('/workspaces/:wid/packs', wrap((req, res) => {
     const s = scopeOf(req);
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;

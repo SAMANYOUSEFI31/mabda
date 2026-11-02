@@ -77,8 +77,10 @@ test('contradictions: a numeric price clash (rule) and a «no discount» constra
   const rule = detectContradictions(d.objects).map((c) => [c.itemA.id, c.itemB.id].sort().join('|'));
   assert.ok(rule.includes('dm_price|dm_price2'));
   assert.ok(rule.includes('dm_discount|dm_nodiscount'));
-  const cands = candidatePairs(d.objects, 50).filter((p) => p.reasons.includes('qualifier_differs')).map((p) => p.key);
-  assert.ok(cands.includes('dm_ship_cost|dm_ship_policy'), 'رایگان vs هزینه');
+  const ship = candidatePairs(d.objects, 50, d.relationships).find((p) => p.key === 'dm_ship_cost|dm_ship_policy');
+  assert.ok(ship, 'رایگان vs هزینه، با عنوان‌های طبیعی «سیاست ارسال» / «هزینهٔ ارسال»');
+  assert.ok(ship.reasons.includes('same_node_same_type'));
+  assert.equal(d.objects.find((o) => o.id === 'dm_ship_policy')!.title, 'سیاست ارسال');
   assert.equal(unresolvedContradictions(d.objects, []).filter((c) => c.source === 'semantic').length, 0, 'no semantic verdict is invented');
 });
 
@@ -118,7 +120,7 @@ test('notes, file, boards: free notes with coordinates, a ready text file with a
 
 test('the map and the board lay the showcase out without surprises', () => {
   const m = buildMapModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, deliverables: d.deliverables });
-  assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.edges.some((e) => e.kind === 'structural'));
+  assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.groups.length > 0);
   const board = buildCanvasModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, reviewIds: new Set(needsReview(d.objects, d.relationships, d.changes).keys()), ranks: new Map(d.canvas.decisions.map((i) => [i.itemRef.slice(4), i.rank!])) });
   for (const lane of ['thinking', 'confirmed', 'review'] as const) assert.ok(board.cards.some((c) => c.lane === lane), lane);
 });

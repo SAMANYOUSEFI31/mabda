@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TreeNode, WorkstreamSpec } from '../types';
+import { TreeNode, Workspace, WorkstreamSpec } from '../types';
 
 export const DEFAULT_TREE_NODES: TreeNode[] = [
   {
@@ -289,3 +289,10 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
     ],
   },
 ];
+
+/** the built-in workstreams the workspace has taken from the library (absent `enabledSpecIds` = all, as before the library existed) */
+export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds'> | undefined): WorkstreamSpec[] =>
+  !ws || ws.enabledSpecIds === undefined ? WORKSTREAM_SPECS : WORKSTREAM_SPECS.filter((s) => ws.enabledSpecIds!.includes(s.id));
+
+/** `enabledSpecIds` with the library as an explicit list (what «all» means for a workspace that never chose) */
+export const currentSpecIds = (ws: Pick<Workspace, 'enabledSpecIds'>): string[] => enabledBuiltInSpecs(ws).map((s) => s.id);

@@ -31,6 +31,7 @@ interface AppNavigationProps {
   selectedSpecId: string;
   onSelectSpecId: (specId: string) => void;
   onOpenCustomSpecModal: () => void;
+  onOpenSpecLibrary: () => void;
   contextViewMode: ContextView;
   onChangeContextViewMode: (mode: ContextView) => void;
   contextCount: number;
@@ -101,6 +102,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               {p.specs.map((s) => <NavItem nested key={s.id} label={s.title} selected={p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
+              <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
             </div>
           )}
 

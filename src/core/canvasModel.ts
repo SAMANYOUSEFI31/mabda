@@ -6,6 +6,7 @@
  *     Confirmed with a changed dependency — the derived state),
  *   • the ROW is its node,
  *   • the order inside a column is a stored «rank» (an explicit priority).
+ * The tree is DOMAIN: rows are nodes in tree order, and sibling rows carry no precedence (only a dependency edge does, on the map).
  * x / y of a card are only where it is drawn; no engine reads them. Free notes keep raw x/y (display only).
  */
 

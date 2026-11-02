@@ -114,7 +114,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const toast = useToast();
 
   const currentSpec =
-    specs.find((s) => s.id === selectedSpecId) || specs[0] || WORKSTREAM_SPECS[0];
+    specs.find((s) => s.id === selectedSpecId) || specs[0];
   // execution order = dependency graph (dependencies first); a cyclic spec cannot be saved, the fallback is only defensive
   const orderedDeliverables = (() => { try { return topologicalOrder(currentSpec.deliverables); } catch { return [...currentSpec.deliverables].sort((a, b) => a.order - b.order); } })();
   const currentDeliverableSpec =

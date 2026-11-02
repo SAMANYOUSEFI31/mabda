@@ -21,8 +21,9 @@ import { AppNavigation } from './components/AppNavigation';
 import { TopStatusBar } from './components/TopStatusBar';
 import type { PageAction } from './components/TopStatusBar';
 import { ContradictionPanel } from './components/ContradictionPanel';
-import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
-import { can } from './core/entitlements';
+import { unresolvedContradictions } from './core/contradictionCandidates';
+import { JUDGE_SETTLE_MS, baselineOf, changedSince, pairsAfterChange, type VersionBaseline } from './core/judgePolicy';
+import { can, entitlementsOf } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextCanvasView } from './components/ContextCanvasView';
 import { ContextMapView } from './components/ContextMapView';
@@ -51,11 +52,12 @@ import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
 import { LedgerPanel } from './components/LedgerPanel';
 import { QuickStartDialog } from './components/QuickStartDialog';
+import { SpecLibraryDialog } from './components/SpecLibraryDialog';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
 import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
-import { WORKSTREAM_SPECS } from './core/specs';
+import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
 import { Alert, Button, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { AiSettingsModal } from './components/AiSettingsModal';
@@ -146,6 +148,7 @@ export default function App() {
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
@@ -187,10 +190,11 @@ export default function App() {
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, data?.objects, data?.relationships]);
-  const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
+  const enabledLibrary = enabledBuiltInSpecs(data?.workspace);
+  const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...enabledLibrary];
   // the workstream shown by default belongs to THIS workspace (its own first one), not to the built-in freelance sample
   const firstOwnSpec = data?.specs[0]?.id;
-  useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? 'main_positioning'); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? enabledLibrary[0]?.id ?? ''); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, firstOwnSpec]);
   const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
@@ -312,15 +316,46 @@ export default function App() {
     toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
   };
 
-  // semantic contradictions: code picks the candidate pairs, the decision layer answers one closed question each (Pro and above)
-  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
-  const judgedSigs = useRef<Set<string>>(new Set());
+  // semantic contradictions (Pro and above, needs an AI key). The judge NEVER runs because a workspace was opened, built or
+  // reset: only (a) after an object of a candidate pair changed in this session and has no fresh judgement (settle first),
+  // or (b) from the «بررسی تناقض» button. Policy and the pure rules: src/core/judgePolicy.ts
+  const baselineRef = useRef<{ wid: string; versions: VersionBaseline } | null>(null);
+  const [judging, setJudging] = useState(false);
+  const [judgedToday, setJudgedToday] = useState<number | null>(null);
+  const canJudge = !!data && can(data.workspace.planId, 'semanticContradiction') && ai.judgmentsAvailable;
+  const refreshJudged = () => { dataApi.usage(wid).then((u) => setJudgedToday(u.judgmentsToday)).catch(() => { /* the meter is optional */ }); };
+  const runJudge = async (objectIds?: string[]) => {
+    setJudging(true);
+    try {
+      const r = await dataApi.judgeContradictions(wid, objectIds);
+      patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }));
+      refreshJudged();
+      return r;
+    } finally { setJudging(false); }
+  };
+  const handleCheckContradictions = async () => {
+    try {
+      const r = await runJudge();
+      toast.show({ intent: 'success', message: r.judged ? `${formatNumber(r.judged)} جفت بررسی شد.${r.limited ? ' به سقف امروز رسیدی؛ بقیه فردا.' : ''}` : 'جفت تازه‌ای برای بررسی نبود.' });
+    } catch (e) { toast.show({ intent: 'danger', message: e instanceof Error ? e.message : 'بررسی تناقض انجام نشد؛ دوباره.' }); }
+  };
+  const changedSig = (() => {
+    if (!data || !canJudge) return '';
+    if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) return '';
+    return pairsAfterChange(data.objects, data.pairJudgments, baselineRef.current.versions, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',');
+  })();
   useEffect(() => {
-    if (!pairSig || !ai.judgmentsAvailable || judgedSigs.current.has(pairSig)) return;
-    judgedSigs.current.add(pairSig);
-    dataApi.judgeContradictions(wid).then((r) => patch((d) => ({ ...d, pairJudgments: r.pairJudgments, ledger: r.ledger }))).catch(() => { /* optional: the rule-based checks still run */ });
+    if (!data) { baselineRef.current = null; return; }
+    if (!baselineRef.current || baselineRef.current.wid !== data.workspace.id) baselineRef.current = { wid: data.workspace.id, versions: baselineOf(data.objects) };
+  }, [data]);
+  useEffect(() => {
+    if (!changedSig || !baselineRef.current) return;
+    const ids = [...changedSince(data!.objects, baselineRef.current.versions)];
+    const timer = setTimeout(() => { void runJudge(ids).catch(() => { /* optional: the rule-based checks still run */ }); }, JUDGE_SETTLE_MS);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pairSig, ai.judgmentsAvailable, wid]);
+  }, [changedSig]);
+  useEffect(() => { if (canJudge) refreshJudged(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [canJudge, wid]);
 
   // ── tree nodes ──────────────────────────────────────────────────────────────────────────────────
   const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
@@ -451,6 +486,14 @@ export default function App() {
     toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
   };
 
+  /** the workspace's library workstreams: the explicit list, saved on the workspace */
+  const handleSetLibrarySpecs = async (ids: string[]) => { await updateWorkspace((w) => ({ ...w, enabledSpecIds: ids })); };
+  /** «شروع سریع» builds on the positioning workstream: bring it into the workspace (once) */
+  const ensureLibrarySpec = (id: string) => {
+    const w = workspacesRef.current.find((x) => x.id === wid);
+    if (w && !currentSpecIds(w).includes(id)) void handleSetLibrarySpecs([...currentSpecIds(w), id]);
+  };
+
   const handleAddCredits = (amount: number) => {
     void updateWorkspace((w) => ({ ...w, creditsRemaining: w.creditsRemaining + amount }));
     toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
@@ -494,6 +537,7 @@ export default function App() {
       planId: currentWorkspace.planId,
       creditsRemaining: 150,
       todayChatCount: 0,
+      enabledSpecIds: [], // a new workspace starts with no library workstreams: «شروع سریع» or «افزودن از کتابخانه» brings them in
       createdAt: new Date().toISOString(),
     };
     const saved = await attempt(() => dataApi.saveWorkspace(newWs));
@@ -645,6 +689,7 @@ export default function App() {
         selectedSpecId={selectedSpecId}
         onSelectSpecId={setSelectedSpecId}
         onOpenCustomSpecModal={() => openSpecEditor()}
+        onOpenSpecLibrary={() => setIsSpecLibraryOpen(true)}
         contextViewMode={contextViewMode}
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
@@ -720,7 +765,7 @@ export default function App() {
 
             {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
-            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
+            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />
 
             <ProposalInbox
               objects={workspaceContexts}
@@ -813,7 +858,15 @@ export default function App() {
         )}
 
         {/* TAB 2: Workstreams & Gap Engine */}
-        {activeTab === 'workstreams' && (
+        {activeTab === 'workstreams' && specs.length === 0 && (
+          <EmptyState
+            icon="Layers"
+            title="این فضا هنوز جریان کاری ندارد"
+            description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز."
+            action={<div className="flex flex-wrap justify-center gap-inline-md"><Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button><Button variant="secondary" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button></div>}
+          />
+        )}
+        {activeTab === 'workstreams' && specs.length > 0 && (
           <WorkstreamStudio
             currentWorkspace={currentWorkspace}
             allContextObjects={workspaceContexts}
@@ -868,6 +921,7 @@ export default function App() {
             allContextObjects={workspaceContexts}
             stale={stale}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
+            workstreams={specs}
             onOpenContextModal={(obj) => openContext(obj)}
             onExtractKnowledge={handleExtractFromAsset}
             extractingId={extractingAssetId}
@@ -933,14 +987,17 @@ export default function App() {
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
+      {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} />}
+
       <QuickStartDialog
         open={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         workspaceId={wid}
         onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
-        onCreateObjects={handleCreateObjects}
+        onCreateObjects={(items) => { ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }}
         onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
         onSampleDone={(firstDeliverable) => {
+          ensureLibrarySpec('main_positioning');
           void (async () => {
             if (!(await persistDeliverable(firstDeliverable))) return;
             if (firstDeliverable.usage) {
@@ -1011,7 +1068,7 @@ export default function App() {
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
         data={weekly}
-        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...WORKSTREAM_SPECS.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
+        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...enabledLibrary.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
         objects={workspaceContexts}
         deliverables={deliverables}
         onAcceptReview={async (id) => { await handleAcceptReview(id, true); }}

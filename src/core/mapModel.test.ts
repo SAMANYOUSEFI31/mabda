@@ -10,23 +10,45 @@ const asset = (id: string, used: string[]): GeneratedDeliverable => ({ id, title
 const base = { nodes: [node('root'), node('a', 'root', 1), node('b', 'root', 2)], objects: [obj('a1', 'a'), obj('a2', 'a'), obj('b1', 'b')], relationships: [rel('depends_on', 'b1', 'a1'), rel('depends_on', 'a2', 'a1')], deliverables: [asset('x', ['b1'])] };
 const v = (m: ReturnType<typeof buildMapModel>, id: string) => m.vertices.find((x) => x.id === id)!;
 
-test('a small workspace is expanded: typed edges (structural / dependency / lineage), labelled in Persian', () => {
+test('a small workspace is expanded: only FLOW edges (dependency / lineage), labelled in Persian; the tree is boxes, never an edge', () => {
   const m = buildMapModel(base);
-  assert.deepEqual(m.vertices.map((x) => x.kind).filter((k, i, a) => a.indexOf(k) === i).sort(), ['asset', 'node', 'object']);
+  assert.deepEqual(m.vertices.map((x) => x.kind).filter((k, i, a) => a.indexOf(k) === i).sort(), ['asset', 'object']);
+  assert.ok(m.edges.every((e) => e.kind !== ('structural' as string)), 'no structural edge exists any more');
   const kinds = (k: string) => m.edges.filter((e) => e.kind === k).length;
-  assert.deepEqual([kinds('structural'), kinds('dependency'), kinds('lineage')], [2 + 3, 2, 1]);
+  assert.deepEqual([kinds('dependency'), kinds('lineage')], [2, 1]);
   const dep = m.edges.find((e) => e.kind === 'dependency' && e.from === 'o:b1')!;
   assert.deepEqual([dep.to, dep.label], ['o:a1', 'وابسته به']);
   assert.equal(m.edges.find((e) => e.kind === 'lineage')!.label, 'ساخته‌شده از');
 });
 
-test('layers follow the flow (node → object → dependent → asset) and RTL puts the first layer rightmost', () => {
+test('layers come only from dependency / lineage / supersedes: two sibling nodes with no dependency share a layer; a dependency chain orders right → left (RTL)', () => {
+  const free = buildMapModel({ nodes: base.nodes, objects: [obj('p', 'a'), obj('q', 'b')], relationships: [], deliverables: [] });
+  assert.equal(v(free, 'o:p').layer, v(free, 'o:q').layer, 'siblings are not ordered');
+  assert.equal(v(free, 'o:p').x, v(free, 'o:q').x, 'same layer = same column; the tree gives no left/right');
+  assert.notEqual(v(free, 'o:p').y, v(free, 'o:q').y, 'they are stacked, not chained');
   const m = buildMapModel(base);
-  assert.ok(v(m, 'n:root').layer < v(m, 'n:a').layer && v(m, 'n:a').layer < v(m, 'o:a1').layer);
   assert.ok(v(m, 'o:a1').layer < v(m, 'o:b1').layer && v(m, 'o:b1').layer < v(m, 'a:x').layer);
-  assert.ok(v(m, 'n:root').x > v(m, 'a:x').x, 'RTL: earlier layers sit further right');
-  assert.equal(v(m, 'n:root').x - v(m, 'n:a').x, CARD_W + GAP_X);
-  assert.ok(m.vertices.every((x) => x.x >= 0 && x.x + x.w <= m.width && x.y + x.h <= m.height));
+  assert.ok(v(m, 'o:a1').x > v(m, 'o:b1').x && v(m, 'o:b1').x > v(m, 'a:x').x, 'RTL: the depended-on object sits furthest right, the output furthest left');
+  assert.equal(v(m, 'o:a1').x - v(m, 'o:b1').x, CARD_W + GAP_X);
+  assert.equal(v(m, 'o:a2').layer, v(m, 'o:b1').layer, 'two things that rest on a1 share a layer');
+  assert.ok(m.vertices.every((x) => x.x >= 0 && x.y >= 0 && x.x + x.w <= m.width && x.y + x.h <= m.height));
+  // the nesting of the tree changes nothing about layers
+  const deeper = buildMapModel({ ...base, nodes: [node('root'), node('a', 'root', 1), node('b', 'a', 2)] });
+  assert.deepEqual(['o:a1', 'o:a2', 'o:b1', 'a:x'].map((id) => v(deeper, id).layer), ['o:a1', 'o:a2', 'o:b1', 'a:x'].map((id) => v(m, id).layer));
+});
+
+test('the tree is drawn as grouping boxes: a box contains its objects and its sub-nodes\' boxes; sibling boxes do not overlap', () => {
+  const m = buildMapModel(base);
+  const g = (id: string) => m.groups.find((x) => x.nodeId === id)!;
+  assert.deepEqual(m.groups.map((x) => [x.nodeId, x.depth]).sort(), [['a', 1], ['b', 1], ['root', 0]]);
+  const inside = (outer: { x: number; y: number; w: number; h: number }, inner: { x: number; y: number; w: number; h: number }) => inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+  assert.ok(inside(g('root'), g('a')) && inside(g('root'), g('b')));
+  for (const id of ['a1', 'a2']) assert.ok(inside(g('a'), v(m, `o:${id}`)), `${id} is inside its node's box`);
+  assert.ok(inside(g('b'), v(m, 'o:b1')));
+  assert.ok(g('a').y + g('a').h <= g('b').y || g('b').y + g('b').h <= g('a').y, 'sibling boxes are stacked');
+  assert.ok(!inside(g('a'), v(m, 'o:b1')), 'an object is in its own node box only');
+  assert.ok(v(m, 'a:x').y >= g('root').y + g('root').h, 'assets sit outside every box');
+  assert.ok(m.groups.every((x) => x.x >= 0 && x.y >= 0 && x.x + x.w <= m.width && x.y + x.h <= m.height));
 });
 
 test('a cycle of dependencies does not break the layout (members share a layer)', () => {
@@ -66,7 +88,7 @@ test('impactOf: the object, its transitive dependents and the assets built from 
   const m = buildMapModel(base);
   const h = highlightOf(m, imp);
   assert.ok(h.vertexIds.has('o:b1') && h.vertexIds.has('a:x') && !h.vertexIds.has('n:root'));
-  assert.ok(h.edgeIds.size >= 3 && [...h.edgeIds].every((id) => !id.startsWith('structural')));
+  assert.ok(h.edgeIds.size >= 3 && [...h.edgeIds].every((id) => /^(dependency|lineage|supersedes)\|/.test(id)));
   const collapsed = highlightOf(buildMapModel(base, { expanded: new Set() }), imp);
   assert.deepEqual([...collapsed.vertexIds].sort(), ['a:x', 'n:a', 'n:b']);
 });

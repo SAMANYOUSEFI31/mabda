@@ -72,3 +72,13 @@ test('8000 objects: the board lays out fast and only the viewport is drawn', () 
   assert.equal(m.cards.length, 8000);
   assert.ok(visibleCards(m, { x: 0, y: 0, w: 1200, h: 800 }).length < 150);
 });
+
+test('rows show the tree (domain), not precedence: sibling rows hold the same lane columns, and an object\'s column never depends on its row', () => {
+  const objects = [obj('p', 'a', 'Confirmed'), obj('q', 'b', 'Confirmed')];
+  const m = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map() });
+  const [p, q] = ['p', 'q'].map((id) => m.cards.find((c) => c.objectId === id)!);
+  assert.equal(p.x, q.x, 'same status = same column whichever sibling row it is in');
+  assert.notEqual(p.y, q.y);
+  const swapped = buildCanvasModel({ nodes: [node('root'), node('a', 'root', 2), node('b', 'root', 1)], objects, reviewIds: none, ranks: new Map() });
+  assert.equal(swapped.cards.find((c) => c.objectId === 'p')!.x, p.x, 'reordering siblings moves rows only, never columns');
+});

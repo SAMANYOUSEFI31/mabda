@@ -10,7 +10,7 @@ import { actorOfSource, diffFields, statusChangeKind } from '../../src/core/chan
 import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
-import { DEFAULT_TREE_NODES } from '../../src/core/specs.ts';
+import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from '../../src/core/specs.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
@@ -80,6 +80,8 @@ export class Repo {
       const stored = exists ? this.getWorkspace(userId, ws.id) : undefined;
       ws = { ...ws, ...((opts.demo || stored?.isDemo) ? { isDemo: true } : { isDemo: undefined }) };
       if (!ws.isDemo) delete ws.isDemo;
+      // only ids of the library survive, once, in library order
+      if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = WORKSTREAM_SPECS.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
       if (!exists) {
         // the showcase workspace is not counted: it never uses up a plan's workspace allowance
         if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));

@@ -13,6 +13,8 @@ interface Props {
   nodes: TreeNode[];
   onKeep: (c: Contradiction, keepId: string) => Promise<void>;
   onSeparate: (c: Contradiction, moveId: string, nodeId: string) => Promise<void>;
+  /** semantic check (needs an AI key and a plan with it): the button and the quiet daily meter. Absent = not available. */
+  check?: { busy: boolean; onCheck: () => void; used: number | null; cap: number; unlimited: boolean };
 }
 
 /**
@@ -20,8 +22,19 @@ interface Props {
  *   «این را نگه دار»  → the other becomes «جایگزین‌شده» (history stays)
  *   «هر دو درست‌اند» → move one claim to another node so they stop competing
  */
-export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onKeep, onSeparate }) => {
-  if (contradictions.length === 0) return null;
+const CheckBar: React.FC<{ check: NonNullable<Props['check']> }> = ({ check }) => (
+  <div className="flex flex-wrap items-center justify-between gap-inline-md">
+    <span className="body-sm text-text-subtle">
+      {check.used === null ? '' : check.unlimited ? `${formatNumber(check.used)} قضاوت امروز · با کلید خودت سقفی نیست` : `${formatNumber(check.used)} قضاوت امروز از سقف ${formatNumber(check.cap)}`}
+    </span>
+    <Button variant="secondary" size="sm" iconStart="Search" loading={check.busy} onClick={check.onCheck}>بررسی تناقض</Button>
+  </div>
+);
+
+export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onKeep, onSeparate, check }) => {
+  if (contradictions.length === 0) {
+    return check ? <Card padding="lg" id="contradictions" aria-label="تناقض‌ها"><CheckBar check={check} /></Card> : null;
+  }
   return (
     <Card padding="xl" id="contradictions" className="flex flex-col gap-stack-lg" aria-label="تناقض‌ها">
       <div className="flex flex-col gap-stack-xs border-b border-border-default pb-inset-lg">
@@ -31,6 +44,7 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
         </div>
         <p className="body-sm text-text-subtle">دو مورد با هم نمی‌خوانند. یکی را نگه دار تا دیگری «جایگزین‌شده» شود، یا اگر هر دو درست‌اند آن‌ها را در گره‌های جدا بگذار. چیزی پاک نمی‌شود.</p>
       </div>
+      {check && <CheckBar check={check} />}
       {contradictions.map((c) => <Pair key={c.id} c={c} nodes={nodes} onKeep={onKeep} onSeparate={onSeparate} />)}
     </Card>
   );
