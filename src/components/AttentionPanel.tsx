@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import type { GapItem } from '../types';
+import type { FlipFlop, WaitingDecisions } from '../core/decisionGraph';
 import { Badge, Button, Card, Icon, TextField, formatNumber } from '../ui';
 import type { IconName } from '../ui';
 
@@ -16,6 +17,10 @@ interface Props {
   staleCount: number;
   /** derived «needs review»: dependents whose dependency changed */
   reviews: Array<{ id: string; title: string; dependencyTitles: string[] }>;
+  /** the order of decisions (decisionGraph) */
+  waiting: WaitingDecisions;
+  flips: FlipFlop[];
+  titleOf: (id: string) => string;
   onOpenObject: (id: string) => void;
   onAcceptReview: (id: string) => void;
   proposedCount: number;
@@ -31,10 +36,12 @@ interface Props {
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
-  const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length;
+  const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
+  const names = (ids: string[]) => ids.map((id) => `«${titleOf(id)}»`).join('، ');
+  const anyWaiting = waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + flips.length > 0;
 
   const submit = (gap: GapItem) => {
     const v = draft[gap.key]?.trim();
@@ -104,6 +111,59 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
             ))}
           </ul>
           {reviews.length > MAX_QUESTIONS && <p className="body-sm text-text-subtle">{formatNumber(reviews.length - MAX_QUESTIONS)} مورد دیگر هم هست؛ هرکدام را از ساختار درخت باز کن.</p>}
+        </div>
+      )}
+
+      {anyWaiting && (
+        <div id="waiting-decisions" className="flex flex-col gap-stack-md border-t border-border-default pt-inset-lg">
+          <h3 className="title text-text-default">تصمیم‌های منتظر</h3>
+          {waiting.ready.length > 0 && (
+            <div className="flex flex-col gap-stack-xs">
+              <span className="label-md text-text-default">آمادهٔ تصمیم</span>
+              <ul className="flex flex-col gap-stack-xs">
+                {waiting.ready.map((u) => (
+                  <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
+                    <span className="body-md text-text-default">{names(u.ids)} — هرچه به آن تکیه دارد تأیید شده است.</span>
+                    <Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کن</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {waiting.blocked.length > 0 && (
+            <div className="flex flex-col gap-stack-xs">
+              <span className="label-md text-text-default">بلاک‌شده</span>
+              <ul className="flex flex-col gap-stack-xs">
+                {waiting.blocked.map((u) => (
+                  <li key={u.ids[0]} className="body-md text-text-default">{names(u.ids)} منتظر تأیید {names(u.blockedBy)} است.</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {waiting.concurrent.length > 0 && (
+            <div className="flex flex-col gap-stack-xs">
+              <span className="label-md text-text-default">تصمیم همزمان</span>
+              <ul className="flex flex-col gap-stack-xs">
+                {waiting.concurrent.map((u) => (
+                  <li key={u.ids.join('+')} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+                    <span className="body-md text-text-default">{names(u.ids)}</span>
+                    <span className="body-sm text-text-subtle">هرکدام روی دیگری سوار است، پس نمی‌شود اول یکی را قطعی کرد. این‌ها را با هم بررسی کن و با هم تأیید کن.{u.blockedBy.length ? ` فعلاً منتظر ${names(u.blockedBy)} هم هستند.` : ''}</span>
+                    <span><Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کن</Button></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {flips.length > 0 && (
+            <ul className="flex flex-col gap-stack-xs" aria-label="تصمیم‌های پرتغییر">
+              {flips.map((f) => (
+                <li key={f.id} className="body-md flex items-start gap-inline-xs text-text-default">
+                  <Icon name="TriangleAlert" size="md" className="shrink-0 text-icon-warning" />
+                  <span>«{titleOf(f.id)}» چند بار عوض شده ({formatNumber(f.times)} بار جایگزین شده)؛ شاید اطلاعات کم است.</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

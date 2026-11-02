@@ -82,3 +82,23 @@ test('needsReview in a cycle terminates; Proposed / archived dependents are neve
   const r = needsReview(objects, rels, [chg('A', 'edited', '2026-02-01T00:00:00Z', { content: 'x' })]);
   assert.deepEqual([...r.keys()], ['B'], 'A rewrote itself; Q is only a proposal');
 });
+
+import { flipFlops, waitingDecisions } from './decisionGraph';
+
+test('waitingDecisions: ready / blocked (with the blocker) / concurrent; done units are not listed', () => {
+  const objects = [obj('A'), obj('B', { status: 'Proposed' }), obj('C', { status: 'Proposed' }), obj('X', { status: 'Proposed' }), obj('Y', { status: 'Proposed' })];
+  const w = waitingDecisions(planDecisions(objects, [dep('B', 'A'), dep('C', 'B'), dep('X', 'Y'), dep('Y', 'X')]));
+  assert.deepEqual(w.ready.map((u) => u.ids), [['B']]);
+  assert.deepEqual(w.blocked.map((u) => [u.ids, u.blockedBy]), [[['C'], ['B']]]);
+  assert.deepEqual(w.concurrent.map((u) => u.ids), [['X', 'Y']]);
+});
+
+test('flipFlops: a decision replaced 3+ times (chain from the Change log) is flagged; fewer is not; cycles terminate', () => {
+  const sup = (oldId: string, newId: string): ContextChange => chg(oldId, 'superseded', `2026-0${oldId.length}-01T00:00:00Z`, { supersededById: newId });
+  const objects = [obj('d1', { status: 'Superseded' }), obj('d2', { status: 'Superseded' }), obj('d3', { status: 'Superseded' }), obj('d4'), obj('e1', { status: 'Superseded' }), obj('e2')];
+  const changes = [sup('d1', 'd2'), sup('d2', 'd3'), sup('d3', 'd4'), sup('e1', 'e2')];
+  assert.deepEqual(flipFlops(objects, changes), [{ id: 'd4', times: 3 }]);
+  assert.deepEqual(flipFlops(objects, changes, 1).map((x) => x.id), ['d4', 'e2']);
+  const cyc = [sup('p', 'q'), sup('q', 'p')];
+  assert.doesNotThrow(() => flipFlops([obj('p'), obj('q')], cyc, 1));
+});
