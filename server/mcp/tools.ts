@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
+import { renderSavedPack } from '../db/packs.ts';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '../../src/core/assumptions.ts';
 import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
@@ -127,6 +128,34 @@ export function buildMcpServer(c: McpContext): McpServer {
     ].join('\n\n');
     return reply(md, { facts, unconfirmed, ...(assumptionList.length ? { assumptions: assumptionList, assumptionRule: ASSUMPTION_RULE } : {}), ...(rejectedList.length ? { rejectedOptions: rejectedList, rejectedRule: REJECTED_RULE } : {}), ...(out.length ? { notInForce: out } : {}), note: 'Only `facts` are facts. For save_asset pass usedContext: [{id, version}] of what you used.' });
   });
+
+  // ── saved packs: the user's named selections of Context, ready to paste (also offered as MCP prompts / resources) ──
+  const packNow = () => new Date();
+  server.registerTool('list_packs', {
+    title: 'بسته‌های ذخیره‌شده',
+    description: 'The user\'s saved Context packs (name, short instruction, what each includes, size in tokens). Call get_pack to read one. A pack holds only Confirmed knowledge, assumptions in their own section (never facts) and rejected options — never examples.',
+    inputSchema: {},
+  }, async () => {
+    const packs = repo.listSavedPacks(scope).map((p) => { const r = renderSavedPack(repo, scope, p, packNow()); return { id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, tokens: r.tokens, counts: r.counts }; });
+    const md = packs.length ? packs.map((p) => `- **${p.name}** (\`${p.id}\`) — ${p.tokens} توکن · ${p.counts.confirmed} واقعیت${p.counts.assumptions ? ` · ${p.counts.assumptions} فرض` : ''}${p.instruction ? ` — ${p.instruction}` : ''}`).join('\n') : 'بستهٔ ذخیره‌شده‌ای نیست.';
+    return reply(md, { packs });
+  });
+  server.registerTool('get_pack', {
+    title: 'خواندن یک بسته',
+    description: 'Read one saved pack as ready Markdown (its instruction first). Only Confirmed knowledge is fact; assumptions are listed apart with an explicit rule; rejected options are listed so you do not propose them again.',
+    inputSchema: { packId: z.string().optional().describe('id from list_packs'), name: z.string().optional().describe('or the exact name') },
+  }, async (a) => {
+    const all = repo.listSavedPacks(scope);
+    const p = all.find((x) => (a.packId && x.id === a.packId) || (a.name && x.name === a.name));
+    if (!p) return fail('بسته پیدا نشد؛ list_packs را بخوان.');
+    const r = renderSavedPack(repo, scope, p, packNow());
+    return reply(r.markdown, { id: p.id, name: p.name, tokens: r.tokens, counts: r.counts, usedContext: r.refs, markdown: r.markdown });
+  });
+  // as prompts and resources too, for clients that list them (the server is built per request, so this is always current)
+  for (const p of repo.listSavedPacks(scope)) {
+    server.registerPrompt(`pack_${p.id}`, { title: p.name, description: p.instruction || `بستهٔ Context: ${p.name}` }, async () => ({ messages: [{ role: 'user', content: { type: 'text', text: renderSavedPack(repo, scope, p, packNow()).markdown } }] }));
+    server.registerResource(`pack_${p.id}`, `mabda://pack/${p.id}`, { title: p.name, description: p.instruction || undefined, mimeType: 'text/markdown' }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: 'text/markdown', text: renderSavedPack(repo, scope, p, packNow()).markdown }] }));
+  }
 
   // ── gaps / readiness ──────────────────────────────────────────────────
   const gapArgs = { specId: z.string().describe('spec id from get_workspace_overview'), deliverableId: z.string().optional() };

@@ -4,6 +4,7 @@
  */
 
 import { TreeNode, Workspace, WorkstreamSpec } from '../types';
+import { LIBRARY_SPECS } from './specLibrary';
 
 export const DEFAULT_TREE_NODES: TreeNode[] = [
   {
@@ -290,9 +291,15 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
   },
 ];
 
-/** the built-in workstreams the workspace has taken from the library (absent `enabledSpecIds` = all, as before the library existed) */
-export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds'> | undefined): WorkstreamSpec[] =>
-  !ws || ws.enabledSpecIds === undefined ? WORKSTREAM_SPECS : WORKSTREAM_SPECS.filter((s) => ws.enabledSpecIds!.includes(s.id));
+/** the first three workstreams: what every workspace that existed before the library saw (absent `enabledSpecIds` = these, so nothing changes for them) */
+export const LEGACY_SPEC_IDS = ['main_positioning', 'instagram_foundation', 'freelance_profile'];
 
-/** `enabledSpecIds` with the library as an explicit list (what «all» means for a workspace that never chose) */
+/** the whole library: the three originals + the general-purpose frameworks (`specLibrary.ts`) */
+export const LIBRARY: WorkstreamSpec[] = [...WORKSTREAM_SPECS, ...LIBRARY_SPECS];
+
+/** the library workstreams the workspace has taken (absent `enabledSpecIds` = the three originals) */
+export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds'> | undefined): WorkstreamSpec[] =>
+  !ws || ws.enabledSpecIds === undefined ? WORKSTREAM_SPECS.filter((s) => LEGACY_SPEC_IDS.includes(s.id)) : LIBRARY.filter((s) => ws.enabledSpecIds!.includes(s.id));
+
+/** `enabledSpecIds` as an explicit list (what «absent» means for a workspace that never chose) */
 export const currentSpecIds = (ws: Pick<Workspace, 'enabledSpecIds'>): string[] => enabledBuiltInSpecs(ws).map((s) => s.id);

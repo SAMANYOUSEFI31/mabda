@@ -306,6 +306,28 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 13,
+    name: 'facets + sample flag on objects; saved_packs (a named selection resolved through the effective context); templates (a user\'s own node / workstream, reusable). NULL / empty = none — old data is untouched',
+    up(db) {
+      db.exec(`
+        ALTER TABLE context_objects ADD COLUMN facets TEXT;
+        ALTER TABLE context_objects ADD COLUMN sample INTEGER;
+        CREATE INDEX idx_objects_sample ON context_objects(workspace_id, sample);
+        CREATE TABLE saved_packs (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          name TEXT NOT NULL, selection TEXT NOT NULL, instruction TEXT,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_saved_packs_ws ON saved_packs(workspace_id, updated_at);
+        CREATE TABLE templates (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, /* the workspace it was saved from: a template belongs to the USER and can be applied anywhere */
+          kind TEXT NOT NULL, name TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_templates_user ON templates(user_id, created_at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

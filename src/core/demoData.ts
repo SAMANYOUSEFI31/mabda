@@ -9,8 +9,11 @@
  */
 
 import { lineHash } from './thinkingMarkers';
+import { nodeTemplateOf } from './templates';
+import type { NodeTemplate } from './templates';
+import { DEFAULT_TREE_NODES } from './specs';
 import type {
-  ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ContextRelationship, GeneratedDeliverable, Note, ObjectSource, TreeNode, WorkstreamSpec,
+  ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ContextRelationship, GeneratedDeliverable, Note, ObjectSource, SavedPack, TreeNode, WorkstreamSpec,
 } from '../types';
 
 const TEHRAN_OFFSET_MIN = 210; // UTC+3:30 (no daylight saving)
@@ -41,6 +44,10 @@ export interface DemoData {
   specs: WorkstreamSpec[];
   deliverables: GeneratedDeliverable[];
   canvas: { decisions: DemoCanvasItem[]; free: DemoCanvasItem[] };
+  /** three saved packs, a user template, and a few grey samples (never seen by an AI) */
+  packs: SavedPack[];
+  templates: Array<{ id: string; kind: 'node'; name: string; payload: NodeTemplate; at: string }>;
+  samples: Array<{ id: string; type: ContextObject['type']; nodeId: string; title: string; content: string; at: string }>;
 }
 
 interface Who { actor: ContextChangeActor; label?: string }
@@ -293,5 +300,28 @@ export function buildDemo(now: Date): DemoData {
   };
 
   changes.sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
-  return { nodes, objects, versions, relationships, changes, notes, file, specs, deliverables, canvas };
+  // ── facets: one free axis across the tree (an object may belong to «مشتری ماهانه» in one node and «کارگاه» in another) ──
+  const FACETS: Record<string, string[]> = {
+    'مشتری ماهانه': ['dm_price', 'dm_pack', 'dm_ship_policy', 'dm_ship_cost', 'dm_day4', 'dm_ship_time', 'dm_assume_renew', 'dm_discount', 'dm_nodiscount'],
+    'کارگاه': ['dm_ws_cap', 'dm_ws_plan', 'dm_ws_refund', 'dm_ws_group'],
+    'پاییز': ['dm_discount', 'dm_old_promo', 'dm_p_file', 'dm_ws_plan'],
+  };
+  for (const [facet, ids] of Object.entries(FACETS)) for (const id of ids) { const o = objects.find((x) => x.id === id); if (o) o.facets = [...(o.facets ?? []), facet]; }
+
+  // ── three saved packs: each is a different way to hand the same knowledge to an AI ──
+  const packs: SavedPack[] = [
+    { id: 'pk_demo_ads', workspaceId: W, name: 'متن تبلیغ اشتراک', instruction: 'فقط از همین بسته کار کن؛ اگر چیزی کم بود، بپرس و حدس نزن.', selection: { nodeIds: ['dn_sub', 'dn_ship'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(6, 10), updatedAt: at(6, 10) },
+    { id: 'pk_demo_support', workspaceId: W, name: 'پاسخ به مشتری', instruction: 'لحن صمیمی و محترم؛ هیچ تخفیفی وعده نده.', selection: { nodeIds: ['dn_support'], facets: [], statuses: [], includeAssumptions: false }, createdAt: at(5, 10), updatedAt: at(4, 15) },
+    { id: 'pk_demo_ws', workspaceId: W, name: 'کارگاه پاییز (با پیشنهادی‌ها)', instruction: 'پیشنهادی‌ها واقعیت نیستند؛ فقط برای ایده گرفتن‌اند.', selection: { nodeIds: ['dn_ws', 'dn_ws_prog'], facets: ['کارگاه'], statuses: ['Proposed'], includeAssumptions: false }, createdAt: at(3, 10), updatedAt: at(3, 10) },
+  ];
+  // ── a template of the user's own: the workshop branch ──
+  const tpl = nodeTemplateOf('dn_ws', [...DEFAULT_TREE_NODES, ...nodes], objects);
+  const templates = tpl ? [{ id: 'tpl_demo_workshop', kind: 'node' as const, name: 'قالب کارگاه', payload: tpl, at: at(2, 12) }] : [];
+  // ── grey samples (examples of the SHAPE of an answer): not knowledge, never seen by an AI or an engine ──
+  const samples = [
+    { id: 'smp_demo_1', type: 'Constraint' as const, nodeId: 'dn_support', title: 'مثال: ساعات پاسخ‌گویی', content: 'مثال: پاسخ به پیام‌ها فقط ساعات اداری، شنبه تا چهارشنبه.', at: at(1, 9) },
+    { id: 'smp_demo_2', type: 'Decision' as const, nodeId: 'dn_support', title: 'مثال: کانال پشتیبانی', content: 'مثال: پیام‌رسان اصلی و ایمیل برای فاکتور.', at: at(1, 9, 1) },
+    { id: 'smp_demo_3', type: 'Fact' as const, nodeId: 'dn_ws', title: 'مثال: سطح شرکت‌کننده', content: 'مثال: بیشتر شرکت‌کننده‌ها قبلاً قهوه دم کرده‌اند ولی برشته نکرده‌اند.', at: at(1, 9, 2) },
+  ];
+  return { nodes, objects, versions, relationships, changes, notes, file, specs, deliverables, canvas, packs, templates, samples };
 }

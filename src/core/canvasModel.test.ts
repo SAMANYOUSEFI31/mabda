@@ -82,3 +82,23 @@ test('rows show the tree (domain), not precedence: sibling rows hold the same la
   const swapped = buildCanvasModel({ nodes: [node('root'), node('a', 'root', 2), node('b', 'root', 1)], objects, reviewIds: none, ranks: new Map() });
   assert.equal(swapped.cards.find((c) => c.objectId === 'p')!.x, p.x, 'reordering siblings moves rows only, never columns');
 });
+
+test('board groupBy: rows can be the tree (default), the first facet, or the dependency level — columns stay the status lanes; a row that is not a node never moves an object', () => {
+  const rel = [{ id: 'r1', sourceId: 'c', targetId: 'p1', type: 'depends_on' as const, createdAt: '' }];
+  const objects = [obj('p1', 'a', 'Confirmed', { facets: ['مخاطب سازمانی'] }), obj('c', 'b', 'Proposed', { facets: ['مخاطب سازمانی', 'فصل'] }), obj('z', 'b', 'Confirmed')];
+  const dom = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map() });
+  assert.equal(dom.groupBy, 'domain');
+  const fac = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), groupBy: 'facet' });
+  assert.deepEqual(fac.rows.map((r) => r.label), ['مخاطب سازمانی', 'بدون بُعد']);
+  assert.deepEqual(fac.cards.filter((c) => fac.rows[0] && c.y >= fac.rows[0].y && c.y < fac.rows[0].y + fac.rows[0].h).map((c) => c.objectId).sort(), ['c', 'p1']);
+  const dep = buildCanvasModel({ nodes, objects, reviewIds: none, ranks: new Map(), groupBy: 'dependency', relationships: rel });
+  assert.deepEqual(dep.rows.map((r) => r.nodeId), ['L0', 'L1']);
+  const rowOfCard = (m: typeof dep, id: string) => m.rows.find((r) => { const c = m.cards.find((x) => x.objectId === id)!; return c.y >= r.y && c.y < r.y + r.h; })!.nodeId;
+  assert.deepEqual([rowOfCard(dep, 'p1'), rowOfCard(dep, 'c'), rowOfCard(dep, 'z')], ['L0', 'L1', 'L0']);
+  // columns are the same in every grouping: status decides x, never the row
+  const x = (m: typeof dom, id: string) => m.cards.find((c) => c.objectId === id)!.x;
+  for (const id of ['p1', 'c', 'z']) assert.equal(x(fac, id), x(dom, id));
+  // the drop target of a non-domain row is that row's key (the view must not read it as a node)
+  const t = dropTarget(dep, dep.cards.find((c) => c.objectId === 'c')!.x + 5, dep.cards.find((c) => c.objectId === 'c')!.y + 5, 'c');
+  assert.equal(t?.nodeId, 'L1');
+});

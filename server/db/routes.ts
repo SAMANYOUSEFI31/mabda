@@ -23,6 +23,11 @@ import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
+import { renderSavedPack } from './packs.ts';
+import { STARTERS } from '../../src/core/starters.ts';
+import { nodeTemplateOf, workstreamTemplateOf } from '../../src/core/templates.ts';
+import type { NodeTemplate, NodeTemplateNode } from '../../src/core/templates.ts';
+import type { SavedPack } from '../../src/types/index.ts';
 import { convertedTo, findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
 import type { ThinkingKind } from '../../src/core/thinkingMarkers.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
@@ -516,6 +521,76 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json(repo.createMcpToken(s, String(body(req).label ?? 'Claude')));
   }));
   router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
+
+  // ── examples (starters / templates): grey samples, invisible to every AI path and engine ──
+  router.post('/workspaces/:wid/starters/:id/apply', wrap((req, res) => {
+    const s = scopeOf(req);
+    const st = STARTERS.find((x) => x.id === req.params.id);
+    if (!st) throw new RepoError('not_found', 'اسکلت شروع پیدا نشد.');
+    const made = st.samples.map((x) => repo.createSample(s, x)).filter(Boolean);
+    res.json({ added: made.length, samples: repo.listSampleObjects(s) });
+  }));
+  /** remove the examples (all, or only those of some nodes) */
+  router.post('/workspaces/:wid/samples/delete', wrap((req, res) => {
+    const s = scopeOf(req);
+    const ids = Array.isArray(body(req).nodeIds) ? (body(req).nodeIds as unknown[]).map(String) : undefined;
+    res.json({ removed: repo.deleteSamples(s, ids), samples: repo.listSampleObjects(s) });
+  }));
+  router.get('/templates', wrap((_req, res) => { res.json({ templates: repo.listTemplates(LOCAL_USER) }); }));
+  router.delete('/templates/:id', wrap((req, res) => { repo.deleteTemplate(LOCAL_USER, req.params.id); res.json({ ok: true }); }));
+  /** save a node (with its sub-tree and knowledge) or a custom workstream as the user's own template */
+  router.post('/workspaces/:wid/templates', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    if (b.kind === 'node') {
+      const t = nodeTemplateOf(String(b.sourceId ?? ''), repo.listNodes(s), repo.listObjects(s));
+      if (!t) throw new RepoError('not_found', 'گره پیدا نشد.');
+      res.json({ id: repo.saveTemplate(s, 'node', String(b.name ?? t.root.label), t) });
+    } else if (b.kind === 'workstream') {
+      const spec = repo.listSpecs(s).find((x) => x.id === b.sourceId);
+      if (!spec) throw new RepoError('not_found', 'فقط جریان کار خودت را می‌شود قالب کرد.');
+      res.json({ id: repo.saveTemplate(s, 'workstream', String(b.name ?? spec.title), workstreamTemplateOf(spec)) });
+    } else throw new RepoError('invalid', 'نوع قالب نامعتبر است.');
+  }));
+  /** bring a template in: a node template → child nodes + grey examples under `parentId`; a workstream template → a custom workstream (Pro and above) */
+  router.post('/workspaces/:wid/templates/:id/apply', wrap((req, res) => {
+    const s = scopeOf(req);
+    const t = repo.listTemplates(LOCAL_USER).find((x) => x.id === req.params.id);
+    if (!t) throw new RepoError('not_found', 'قالب پیدا نشد.');
+    if (t.kind === 'workstream') {
+      const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+      if (!PLANS[ws.planId]?.customSpecs) throw new RepoError('forbidden', 'ساخت و ویرایش جریان کار سفارشی از پلن Pro به بالا فعال است.');
+      const spec = { ...(t.payload as Omit<WorkstreamSpec, 'id'>), id: newId('spec') } as WorkstreamSpec;
+      res.json({ spec: repo.saveSpec(s, spec) });
+      return;
+    }
+    const parentId = String(body(req).parentId ?? 'business');
+    const tpl = t.payload as NodeTemplate;
+    const made = new Map<string, string>(); // path key → node id
+    const create = (n: NodeTemplateNode, path: number[], parent: string) => {
+      const node = repo.createNode(s, { parentId: parent, label: n.label, description: n.description });
+      made.set(path.join('.'), node.id);
+      n.children.forEach((c, i) => create(c, [...path, i], node.id));
+    };
+    create(tpl.root, [], parentId);
+    let added = 0;
+    for (const o of tpl.objects) { const nid = made.get(o.path.join('.')); if (nid && repo.createSample(s, { type: o.type, title: o.title, content: o.content, nodeId: nid, facets: o.facets, slotKey: o.slotKey })) added++; }
+    res.json({ nodes: repo.listNodes(s), samples: repo.listSampleObjects(s), added, rootId: made.get('') });
+  }));
+
+  // ── saved packs: build once, paste anywhere (UI copy / print, MCP list_packs / get_pack) ──
+  const packSummary = (s: Scope, p: SavedPack) => { const r = renderSavedPack(repo, s, p, clock()); return { ...p, tokens: r.tokens, counts: r.counts }; };
+  router.get('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); res.json({ packs: repo.listSavedPacks(s).map((p) => packSummary(s, p)) }); }));
+  router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
+  router.put('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { id: req.params.id, name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
+  router.delete('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { repo.deleteSavedPack(scopeOf(req), req.params.id); res.json({ ok: true }); }));
+  router.get('/workspaces/:wid/saved-packs/:id/render', wrap((req, res) => {
+    const s = scopeOf(req);
+    const p = repo.getSavedPack(s, req.params.id);
+    if (!p) throw new RepoError('not_found', 'بسته پیدا نشد.');
+    const r = renderSavedPack(repo, s, p, clock());
+    res.json({ pack: p, markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts });
+  }));
 
   // ── Context pack (copy for any AI) + pasted-answer import ────────────
   const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(LOCAL_USER, s.workspaceId))];

@@ -392,7 +392,7 @@ test('assumption / reviewBy / decision record: migration 12 leaves old rows alon
   migrate(db, 11);
   new Repo(db).saveWorkspace(U, ws('w1'));
   db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('old',?,?,'Fact','Confirmed','User Input','قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
-  assert.deepEqual(migrate(db), [12]);
+  assert.deepEqual(migrate(db).filter((v) => v === 12), [12]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const old = repo.getObject(s, 'old')!;

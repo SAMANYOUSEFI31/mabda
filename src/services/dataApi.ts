@@ -98,9 +98,9 @@ export const dataApi = {
   deleteNode: (id: string, nodeId: string, transferTo?: string) =>
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; files: StoredFile[] }>('DELETE', `${ws(id)}/nodes/${nodeId}${transferTo ? `?transferTo=${encodeURIComponent(transferTo)}` : ''}`),
 
-  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: import('../types').DecisionRecord }) =>
+  createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: import('../types').DecisionRecord; facets?: string[] }) =>
     call<{ object: ContextObject }>('POST', `${ws(id)}/objects`, input),
-  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; reason?: string }) =>
+  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; facets?: string[] | null; reason?: string }) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
   supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; reason?: string }) =>
     call<{ object: ContextObject; previous: ContextObject; impact: ImpactInfo; relationships: ContextRelationship[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/supersede`, input),
@@ -140,6 +140,17 @@ export const dataApi = {
   convertThinkingItem: (id: string, noteId: string, item: { kind: string; hash: string; text: string }, opts: { as?: 'fact' | 'decision'; reviewBy?: string } = {}) => call<{ object: ContextObject; objects: ContextObject[] }>('POST', `${ws(id)}/notes/${noteId}/items/convert`, { ...item, ...opts }),
   splitNote: (id: string, noteId: string) => call<{ nodes: TreeNode[]; created: TreeNode[]; notes: Note[] }>('POST', `${ws(id)}/notes/${noteId}/split`, {}),
   noteOutcome: (id: string, objectId: string, text: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/outcome`, { text }),
+  listSavedPacks: (id: string) => call<{ packs: Array<import('../types').SavedPack & { tokens: number; counts: Record<string, number> }> }>('GET', `${ws(id)}/saved-packs`),
+  createSavedPack: (id: string, p: { name: string; instruction: string; selection: import('../types').PackSelection }) => call<{ pack: import('../types').SavedPack }>('POST', `${ws(id)}/saved-packs`, p),
+  updateSavedPack: (id: string, packId: string, p: { name: string; instruction: string; selection: import('../types').PackSelection }) => call<{ pack: import('../types').SavedPack }>('PUT', `${ws(id)}/saved-packs/${packId}`, p),
+  deleteSavedPack: (id: string, packId: string) => call<{ ok: boolean }>('DELETE', `${ws(id)}/saved-packs/${packId}`),
+  renderSavedPack: (id: string, packId: string) => call<{ markdown: string; tokens: number; counts: Record<string, number> }>('GET', `${ws(id)}/saved-packs/${packId}/render`),
+  applyStarter: (id: string, starterId: string) => call<{ added: number; samples: ContextObject[] }>('POST', `${ws(id)}/starters/${starterId}/apply`, {}),
+  deleteSamples: (id: string, nodeIds?: string[]) => call<{ removed: number; samples: ContextObject[] }>('POST', `${ws(id)}/samples/delete`, nodeIds ? { nodeIds } : {}),
+  listTemplates: () => call<{ templates: Array<{ id: string; kind: 'node' | 'workstream'; name: string; createdAt: string }> }>('GET', '/templates'),
+  saveTemplate: (id: string, t: { kind: 'node' | 'workstream'; sourceId: string; name: string }) => call<{ id: string }>('POST', `${ws(id)}/templates`, t),
+  applyTemplate: (id: string, templateId: string, parentId?: string) => call<{ nodes?: TreeNode[]; samples?: ContextObject[]; added?: number; spec?: WorkstreamSpec }>('POST', `${ws(id)}/templates/${templateId}/apply`, { parentId }),
+  deleteTemplate: (templateId: string) => call<{ ok: boolean }>('DELETE', `/templates/${templateId}`),
   setDependencies: (id: string, objectId: string, dependsOn: string[]) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('PUT', `${ws(id)}/objects/${objectId}/dependencies`, { dependsOn }),
   acceptReview: (id: string, objectId: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/review-accept`, {}),
   importMemory: (id: string, input: { text: string; sourceLabel: string; mode?: 'text' | 'memory' }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),

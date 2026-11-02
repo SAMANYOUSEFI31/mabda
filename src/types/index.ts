@@ -57,6 +57,10 @@ export interface ContextObject {
   reviewBy?: string;
   /** optional record of how a Decision was made (kept closed by default in the editor) */
   record?: DecisionRecord;
+  /** one free axis across the tree: names the user picks («مخاطب سازمانی», «فصل پاییز»). Not a hierarchy */
+  facets?: string[];
+  /** an example that came with a starter or a template: shown grey as «نمونه», and NEVER seen by any AI or engine (repo.listObjects hides it) until the user writes her own over it */
+  sample?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -172,6 +176,8 @@ export interface WorkstreamSpec {
     nodeId: string;
   }>;
   deliverables: Array<DeliverableSpec>;
+  /** the public framework this workstream follows (named, never quoted) */
+  reference?: string;
   /** rules every output of this workstream must obey; Confirmed Constraint objects are applied on top automatically */
   guardrails?: string[];
 }
@@ -348,6 +354,19 @@ export interface LedgerEntry {
   stages?: import('./ai').StageUsage[];
   byok?: boolean;
 }
+
+/** a saved Context pack: WHAT to include, resolved through the effective context at the chosen nodes (so scope is respected) */
+export interface PackSelection {
+  /** nodes the pack is FOR (empty = the whole tree) */
+  nodeIds: string[];
+  /** only objects with one of these facets (empty = any) */
+  facets: string[];
+  /** besides Confirmed (always), which other statuses are listed — always under «تأییدنشده, واقعیت نیست» */
+  statuses: Array<'Proposed' | 'Needs Review'>;
+  /** assumptions go in their own labelled section, with the rule */
+  includeAssumptions: boolean;
+}
+export interface SavedPack { id: string; workspaceId: string; name: string; selection: PackSelection; /** a short instruction for the AI that opens the pack */ instruction: string; createdAt: string; updatedAt: string }
 
 export interface Workspace {
   id: string;

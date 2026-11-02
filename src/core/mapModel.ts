@@ -37,6 +37,8 @@ export interface MapVertex {
   status?: ContextObject['status'];
   /** derived «needs review» (object) / stale (asset) */
   review?: boolean;
+  /** the object's first facet (colouring by facet) */
+  facet?: string;
   layer: number;
   row: number;
   x: number;
@@ -65,12 +67,40 @@ export interface MapOptions {
   includeHistory?: boolean;
   autoExpandBelow?: number;
   assetClusterAbove?: number;
+  /**
+   * what the drawing is GROUPED by (a changeable view, never stored):
+   *  · domain     — boxes are the tree's nodes (default of the model)
+   *  · dependency — no boxes: columns come from depends_on alone
+   *  · facet      — one swimlane per facet name (an object sits in its first facet; none = «بدون بُعد»)
+   *  · status     — one swimlane per status
+   * Columns are ALWAYS the dependency layers; lanes (boxes) only say what the rows are.
+   */
+  groupBy?: MapGroupBy;
+}
+export type MapGroupBy = 'domain' | 'dependency' | 'facet' | 'status';
+export const GROUP_BY_FA: Record<MapGroupBy, string> = { domain: 'دامنه', dependency: 'وابستگی', facet: 'بُعد', status: 'وضعیت' };
+export const NO_FACET = 'بدون بُعد';
+const STATUS_ORDER: ContextObject['status'][] = ['Confirmed', 'Needs Review', 'Proposed', 'Superseded', 'Archived'];
+const STATUS_FA: Record<string, string> = { Confirmed: 'تأییدشده', 'Needs Review': 'نیازمند بررسی', Proposed: 'پیشنهادی', Superseded: 'جایگزین‌شده', Archived: 'بایگانی‌شده' };
+
+/** swimlanes as synthetic root nodes + the objects re-homed into them (originals untouched) */
+function lanesFor(groupBy: Exclude<MapGroupBy, 'domain'>, nodes: TreeNode[], objects: ContextObject[]): { nodes: TreeNode[]; objects: ContextObject[] } {
+  const key = (o: ContextObject) => (groupBy === 'dependency' ? 'all' : groupBy === 'facet' ? o.facets?.[0] ?? NO_FACET : o.status);
+  const used = [...new Set(objects.map(key))];
+  const sorted = groupBy === 'status' ? STATUS_ORDER.filter((s) => used.includes(s)) : [...used].sort((a, b) => (a === NO_FACET ? 1 : b === NO_FACET ? -1 : a.localeCompare(b)));
+  const label = (k: string) => (groupBy === 'status' ? STATUS_FA[k] ?? k : groupBy === 'dependency' ? 'همه' : k);
+  void nodes;
+  return {
+    nodes: sorted.map((k, i) => ({ id: `lane:${k}`, label: label(k), description: '', order: i })),
+    objects: objects.map((o) => ({ ...o, nodeId: `lane:${key(o)}` })),
+  };
 }
 export interface MapModel {
   vertices: MapVertex[];
   groups: MapGroup[];
   /** nodes whose objects are listed one by one right now */
   expandedNodes: string[];
+  groupBy: MapGroupBy;
   edges: MapEdge[];
   width: number;
   height: number;
@@ -89,7 +119,17 @@ const GROUP_GAP = 18;
 
 const isActive = (o: ContextObject) => o.status !== 'Superseded' && o.status !== 'Archived';
 
-export function buildMapModel(input: MapInput, opts: MapOptions = {}): MapModel {
+export function buildMapModel(rawInput: MapInput, rawOpts: MapOptions = {}): MapModel {
+  // grouping other than «domain»: re-home the objects into synthetic swimlanes and list every object individually
+  const groupBy = rawOpts.groupBy ?? 'domain';
+  let input = rawInput;
+  let opts = rawOpts;
+  if (groupBy !== 'domain') {
+    const live = rawInput.objects.filter((o) => rawOpts.includeHistory || isActive(o));
+    const lanes = lanesFor(groupBy, rawInput.nodes, live);
+    input = { ...rawInput, nodes: lanes.nodes, objects: lanes.objects };
+    opts = { ...rawOpts, expanded: new Set(lanes.nodes.map((n) => n.id)) };
+  }
   const showAssets = opts.showAssets ?? true;
   const objects = input.objects.filter((o) => opts.includeHistory || isActive(o));
   const nodeIds = new Set(input.nodes.map((n) => n.id));
@@ -112,7 +152,7 @@ export function buildMapModel(input: MapInput, opts: MapOptions = {}): MapModel 
   const rep: Record<string, string> = {};
 
   // a node is drawn as a BOX when it has sub-nodes or lists its objects; a collapsed node keeps one summary card standing for its objects
-  const hasBox = (n: TreeNode) => (children.get(n.id)?.length ?? 0) > 0 || (isExpanded(n.id) && (countBy.get(n.id) ?? 0) > 0);
+  const hasBox = (n: TreeNode) => groupBy !== 'dependency' && ((children.get(n.id)?.length ?? 0) > 0 || (isExpanded(n.id) && (countBy.get(n.id) ?? 0) > 0));
   const hasCard = (n: TreeNode) => { const c = countBy.get(n.id) ?? 0; return (!isExpanded(n.id) && c > 0) || (c === 0 && !(children.get(n.id)?.length)); };
   for (const n of input.nodes) {
     if (!hasCard(n)) continue;
@@ -124,7 +164,7 @@ export function buildMapModel(input: MapInput, opts: MapOptions = {}): MapModel 
     const nodeV = `n:${o.nodeId}`;
     if (isExpanded(o.nodeId) && nodeIds.has(o.nodeId)) {
       const id = `o:${o.id}`;
-      add({ id, kind: 'object', label: o.title, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, review: input.reviewObjectIds?.has(o.id) }, o.nodeId);
+      add({ id, kind: 'object', label: o.title, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, review: input.reviewObjectIds?.has(o.id), ...(o.facets?.[0] ? { facet: o.facets[0] } : {}) }, o.nodeId);
       rep[id] = id;
     } else rep[`o:${o.id}`] = vertices.has(nodeV) ? nodeV : '';
   }
@@ -223,7 +263,8 @@ export function buildMapModel(input: MapInput, opts: MapOptions = {}): MapModel 
   return {
     vertices: [...vertices.values()],
     groups,
-    expandedNodes: input.nodes.filter((n) => isExpanded(n.id)).map((n) => n.id),
+    expandedNodes: groupBy === 'domain' ? input.nodes.filter((n) => isExpanded(n.id)).map((n) => n.id) : [],
+    groupBy,
     edges: edges.map(({ flowFrom: _f, flowTo: _t, ...e }) => e),
     width: maxX,
     height: Math.max(0, cursor),

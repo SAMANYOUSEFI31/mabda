@@ -38,7 +38,7 @@ test('server instructions tell the AI the rules; all tools are listed', async ()
     const tok = await t.token();
     const c = await t.connect(tok.token);
     const tools = (await c.listTools()).tools.map((x) => x.name).sort();
-    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_readiness', 'get_workspace_overview', 'list_assets', 'propose_context_updates', 'save_asset']);
+    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_pack', 'get_readiness', 'get_workspace_overview', 'list_assets', 'list_packs', 'propose_context_updates', 'save_asset']);
     const ins = c.getInstructions() ?? '';
     assert.match(ins, /get_gaps/);
     assert.match(ins, /propose_context_updates/);
@@ -248,6 +248,9 @@ test('the showcase workspace is a normal workspace for MCP: gaps (one missing, o
     const c = await t.connect(tok.token);
     const g = await t.call(c, 'get_gaps', { specId: 'demo_spec_campaign' });
     assert.ok(JSON.stringify(g.data).includes('launch_date'));
+    const lp = await t.call(c, 'list_packs');
+    assert.deepEqual(lp.data.packs.map((p: any) => p.name).sort(), ['پاسخ به مشتری', 'کارگاه پاییز (با پیشنهادی‌ها)', 'متن تبلیغ اشتراک'].sort());
+    assert.ok(!JSON.stringify(lp).includes('مثال:'), 'no grey example in any pack');
     const ov = await t.call(c, 'get_workspace_overview', {});
     assert.deepEqual(JSON.stringify(ov.data).includes('main_positioning') || JSON.stringify(ov.data).includes('freelance_profile'), false, 'the showcase shows only its own workstreams, not the library');
     assert.ok(JSON.stringify(ov.data).includes('demo_spec_campaign'));
@@ -295,5 +298,170 @@ test('get_context: an assumption is never a fact (even Confirmed) — it comes u
     assert.match(r.text, /## فرض‌های فعال، تأییدنشده[\s\S]*فرض من/);
     assert.match(r.text, /## گزینه‌های بررسی‌شده و ردشده[\s\S]*«سالانه»/);
     await c.close();
+  } finally { t.close(); }
+});
+
+// ── examples (starter / template samples) must never reach an AI or an engine — one central filter (repo.listObjects) ──
+test('SAMPLES: a sample object is invisible to every path — repo lists, caps, state.objects, the Context pack, MCP (context / gaps / readiness / overview), Gap + Readiness, contradictions, impact', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const SECRET = 'نمونهٔ-ممنوع-برای-AI';
+    const before = t.repo.countActiveObjects(s);
+    const sample = t.repo.createSample(s, { type: 'Constraint', title: `قید ${SECRET}`, content: `هرگز ${SECRET}`, nodeId: 'business' })!;
+    const sample2 = t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: `سازمان‌ها ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' })!;
+    t.repo.createSample(s, { type: 'Decision', title: `مخاطب فرعی ${SECRET}`, content: `دیگر ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' }); // a second one in the same slot: a contradiction candidate if it were seen
+    assert.equal(t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: 'x', nodeId: 'business' }), undefined, 'applying twice does not duplicate');
+    const everything = (v: unknown) => JSON.stringify(v);
+
+    // repo: lists, getters, caps
+    assert.ok(!t.repo.listObjects(s).some((o) => o.id === sample.id) && !t.repo.getObject(s, sample.id), 'listObjects / getObject hide samples');
+    assert.equal(t.repo.countActiveObjects(s), before, 'samples do not count against the plan');
+    assert.ok(t.repo.getObjectAny(s, sample.id)?.sample, 'only the example editor can reach one');
+    // the UI's state: engines get `objects` (no samples), the grey display gets `samples`
+    const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
+    assert.ok(!st.objects.some((o: any) => o.sample || o.title.includes(SECRET)));
+    assert.equal(st.samples.length, 3);
+
+    // the Context pack (ad-hoc route) and a pack for a target node
+    for (const body of [{}, { nodeId: 'business' }]) assert.ok(!everything((await t.api('POST', '/workspaces/ws_studio/packs', body)).json).includes(SECRET), 'pack');
+
+    // Gap + Readiness: a sample in a slot never fills it (the readiness engine is fed repo.listObjects / state.objects)
+
+    // MCP
+    const c = await t.connect((await t.token()).token);
+    for (const [name, args] of [['get_context', {}], ['get_context', { nodeId: 'business' }], ['get_workspace_overview', {}], ['get_changes', {}], ['list_assets', {}]] as const) {
+      const r = await t.call(c, name, args as Record<string, unknown>);
+      assert.ok(!everything(r).includes(SECRET), `MCP ${name} shows no sample`);
+    }
+    const ov = await t.call(c, 'get_workspace_overview', {});
+    const gaps = await t.call(c, 'get_gaps', { specId: ov.data.specs[0].id });
+    assert.ok(!everything(gaps).includes(SECRET), 'MCP get_gaps: a sample is neither a gap answer nor a guardrail');
+    assert.ok(!(gaps.data.guardrails as string[]).some((g) => g.includes(SECRET)));
+    const ready = await t.call(c, 'get_readiness', { specId: ov.data.specs[0].id });
+    assert.ok(!everything(ready).includes(SECRET));
+    assert.ok(!everything(await t.call(c, 'check_impact', {})).includes(SECRET), 'MCP check_impact');
+    assert.equal((await t.call(c, 'propose_context_updates', { updates: [{ type: 'Fact', title: 'سلام', content: 'x', nodeId: 'business' }] })).isError, false);
+    await c.close();
+
+    // contradictions: two samples in one slot are NOT a candidate (the model would never be asked)
+    const { pairsToJudge } = await import('../../src/core/contradictionCandidates.ts');
+    assert.deepEqual(pairsToJudge(t.repo.listObjects(s), [], undefined, t.repo.listRelationships(s), t.repo.listNodes(s)).filter((p) => p.a.title.includes(SECRET) || p.b.title.includes(SECRET)), []);
+    // Gap + Readiness engines are fed repo.listObjects: a sample in a slot never fills it
+    const { calculateReadinessAndGaps } = await import('../../src/core/contextEngine.ts');
+    const sp = { id: 'x', title: 'x', target: 't', description: '', requiredContext: [{ key: 'zzz_slot', label: 'جای آزمایشی', description: '', nodeId: 'business', question: '؟', suggestedAnswers: [] }], suggestedContext: [], optionalContext: [], deliverables: [] } as never;
+    t.repo.createSample(s, { type: 'Decision', title: `جای آزمایشی ${SECRET}`, content: SECRET, nodeId: 'business', slotKey: 'zzz_slot' });
+    const r = calculateReadinessAndGaps(sp, t.repo.listObjects(s), []);
+    assert.equal(r.gaps.find((g) => g.key === 'zzz_slot')?.status, 'missing', 'the sample did not fill the slot');
+    // impact: samples are not part of the stale computation
+    assert.ok(!everything(t.repo.computeStale(s)).includes(SECRET));
+    // the update route of a sample id from the outside world still works for the editor, but «edit» makes it hers
+    assert.equal(sample2.sample, true);
+  } finally { t.close(); }
+});
+
+test('saved packs: built once, resolved through the effective context (a section rule stays in its section), only Confirmed is fact, assumptions apart, NO samples — via the API, MCP tools, MCP prompts and resources', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const SECRET = 'نمونهٔ-ممنوع-در-بسته';
+    const mk = (b: Record<string, unknown>) => t.api('POST', '/workspaces/ws_studio/objects', { provenance: 'User Input', ...b }).then((r) => r.json.object);
+    const n1 = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش یک' })).json.node.id;
+    const n2 = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش دو' })).json.node.id;
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش یک', content: 'واقعیت-یک', nodeId: n1, facets: ['مخاطب سازمانی'] });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش دو', content: 'واقعیت-دو', nodeId: n2, facets: ['فصل پاییز'] });
+    await mk({ type: 'Constraint', status: 'Confirmed', title: 'قید فقط بخش دو', content: 'قید-دو', nodeId: n2, reach: 'position' });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'فرض من', content: 'فرض-یک', nodeId: n1, assumption: true });
+    await mk({ type: 'Fact', status: 'Proposed', title: 'پیشنهاد معلق', content: 'پیشنهاد-معلق', nodeId: n1 });
+    t.repo.createSample(s, { type: 'Fact', title: `نمونه ${SECRET}`, content: SECRET, nodeId: n1, facets: ['مخاطب سازمانی'] });
+
+    // create → list → render
+    const made = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'بستهٔ بخش یک', instruction: 'فقط از همین بسته کار کن.', selection: { nodeIds: [n1, 'ghost'], facets: [], statuses: [], includeAssumptions: true } })).json.pack;
+    assert.deepEqual(made.selection.nodeIds, [n1], 'unknown nodes are dropped');
+    assert.ok(made.tokens > 10 && made.counts.confirmed >= 1);
+    const md = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${made.id}/render`)).json.markdown as string;
+    assert.match(md, /^<!-- mabda-pack:/);
+    assert.match(md, /## دستور\nفقط از همین بسته کار کن\./);
+    assert.ok(md.includes('واقعیت-یک') && !md.includes('واقعیت-دو'), 'a pack for section 1 holds section 1');
+    assert.ok(!md.includes('قید-دو'), 'a rule of section 2 (position) does not reach section 1');
+    const facts = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## فرض‌های فعال'));
+    assert.ok(!facts.includes('فرض-یک') && !facts.includes('پیشنهاد-معلق'), 'only Confirmed is fact');
+    assert.match(md, /## فرض‌های فعال، تأییدنشده[\s\S]*فرض-یک/);
+    assert.ok(!md.includes('پیشنهاد-معلق'), 'default statuses: Confirmed only');
+    assert.ok(!md.includes(SECRET), 'a sample never gets into a pack');
+
+    // a facet filter, extra statuses, assumptions off, several nodes
+    const other = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'دو بخش و بُعد', selection: { nodeIds: [n1, n2], facets: ['فصل پاییز'], statuses: ['Proposed'], includeAssumptions: false } })).json.pack;
+    const md2 = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${other.id}/render`)).json.markdown as string;
+    assert.ok(md2.includes('واقعیت-دو') && !md2.includes('واقعیت-یک'), 'facet filter');
+    assert.ok(md2.includes('قید-دو'), 'the section rule applies at its own section (guardrails are not facet-filtered)');
+    assert.ok(!md2.includes('فرض-یک') && !md2.includes(SECRET));
+    // edit + delete
+    const edited = (await t.api('PUT', `/workspaces/ws_studio/saved-packs/${made.id}`, { name: 'نام تازه', instruction: '', selection: made.selection })).json.pack;
+    assert.equal(edited.name, 'نام تازه');
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: ' ' })).status, 400);
+
+    // MCP tools
+    const c = await t.connect((await t.token()).token);
+    const list = await t.call(c, 'list_packs');
+    assert.deepEqual(list.data.packs.map((p: any) => p.name).sort(), ['دو بخش و بُعد', 'نام تازه'].sort());
+    assert.ok(!JSON.stringify(list).includes(SECRET));
+    const got = await t.call(c, 'get_pack', { name: 'دو بخش و بُعد' });
+    assert.ok(got.data.markdown.includes('واقعیت-دو') && !got.data.markdown.includes(SECRET));
+    assert.equal((await t.call(c, 'get_pack', { packId: 'ghost' })).isError, true);
+    // MCP prompts and resources
+    const prompts = (await c.listPrompts()).prompts;
+    assert.ok(prompts.some((p) => p.title === 'نام تازه'));
+    const pr = await c.getPrompt({ name: `pack_${made.id}` });
+    assert.ok(JSON.stringify(pr).includes('واقعیت-یک') && !JSON.stringify(pr).includes(SECRET));
+    const res = (await c.listResources()).resources;
+    assert.ok(res.some((r) => r.uri === `mabda://pack/${made.id}`));
+    const rd = await c.readResource({ uri: `mabda://pack/${other.id}` });
+    assert.ok(JSON.stringify(rd).includes('واقعیت-دو') && !JSON.stringify(rd).includes(SECRET));
+    await c.close();
+    await t.api('DELETE', `/workspaces/ws_studio/saved-packs/${other.id}`);
+    assert.equal(t.repo.listSavedPacks(s).length, 1);
+  } finally { t.close(); }
+});
+
+test('starters and templates: applying a starter makes grey SAMPLES (twice = no duplicates, no cap used, no Change); removing them leaves nothing; a node template comes back as real nodes + samples; a workstream template needs Pro', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const before = { objects: t.repo.listObjects(s).length, active: t.repo.countActiveObjects(s), changes: t.repo.listChanges(s).length };
+    const r1 = (await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json;
+    assert.ok(r1.added >= 6 && r1.samples.length === r1.added);
+    assert.ok(r1.samples.every((o: any) => o.sample === true && o.content.startsWith('مثال:')));
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json.added, 0, 'twice does not duplicate');
+    assert.deepEqual([t.repo.listObjects(s).length, t.repo.countActiveObjects(s), t.repo.listChanges(s).length], [before.objects, before.active, before.changes], 'no cap, no knowledge, no Change');
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/ghost/apply', {})).status, 404);
+    const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
+    assert.ok(st.samples.length === r1.added && !st.objects.some((o: any) => o.sample));
+    // editing an example makes it hers (it enters knowledge only then)
+    const mine = (await t.api('PATCH', `/workspaces/ws_studio/objects/${r1.samples[0].id}`, { content: 'متن واقعی خودم' })).json.object;
+    assert.equal(mine.sample, undefined);
+    assert.equal(t.repo.listObjects(s).length, before.objects + 1);
+    const removed = (await t.api('POST', '/workspaces/ws_studio/samples/delete', {})).json;
+    assert.equal(removed.removed, r1.added - 1);
+    assert.equal(removed.samples.length, 0);
+
+    // a node template: save → list → apply (real nodes, samples)
+    const n = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'offer', label: 'کارگاه' })).json.node.id;
+    const k = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: n, label: 'جلسه‌ها' })).json.node.id;
+    await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'قیمت کارگاه', content: 'نود هزار', nodeId: n });
+    await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'فقط پیشنهاد', content: 'x', nodeId: k });
+    const tid = (await t.api('POST', '/workspaces/ws_studio/templates', { kind: 'node', sourceId: n, name: 'قالب کارگاه' })).json.id;
+    assert.ok((await t.api('GET', '/templates')).json.templates.some((x: any) => x.id === tid && x.name === 'قالب کارگاه'));
+    const ap = (await t.api('POST', `/workspaces/ws_studio/templates/${tid}/apply`, { parentId: 'brand' })).json;
+    assert.equal(ap.added, 1, 'only the Confirmed decision became an example');
+    const nn = ap.nodes.find((x: any) => x.id === ap.rootId);
+    assert.deepEqual([nn.label, nn.parentId], ['کارگاه', 'brand']);
+    assert.ok(ap.nodes.some((x: any) => x.parentId === ap.rootId && x.label === 'جلسه‌ها'));
+    assert.ok(ap.samples.every((o: any) => o.sample && o.nodeId === ap.rootId));
+    assert.ok(ap.samples.every((o: any) => !t.repo.listObjects(s).some((x) => x.id === o.id)), 'the example copies of a template are not in any list an AI path reads');
+    // a workstream template: only the user's own spec; applying needs Pro (this workspace has it)
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/templates', { kind: 'workstream', sourceId: 'main_positioning' })).status, 404, 'a library workstream is not «hers»');
+    await t.api('DELETE', `/templates/${tid}`);
+    assert.equal((await t.api('GET', '/templates')).json.templates.length, 0);
   } finally { t.close(); }
 });
