@@ -266,13 +266,13 @@ export class Repo {
    * An example from a starter or a template: grey in the UI, invisible to every AI path and engine, no cap, no Change.
    * Applying the same starter twice does not duplicate it (same node + title).
    */
-  createSample(s: Scope, input: { type: ContextType; title: string; content: string; nodeId: string; facets?: string[]; slotKey?: string }): ContextObject | undefined {
+  createSample(s: Scope, input: { id?: string; at?: string; type: ContextType; title: string; content: string; nodeId: string; facets?: string[]; slotKey?: string }): ContextObject | undefined {
     this.assertWorkspace(s);
     this.requireNode(s, input.nodeId);
     const dup = this.db.prepare('SELECT 1 FROM context_objects WHERE workspace_id = ? AND user_id = ? AND node_id = ? AND title = ? AND sample = 1').get(s.workspaceId, s.userId, input.nodeId, input.title.trim());
     if (dup) return undefined;
-    const t = now();
-    const o: ContextObject = { id: newId('smp'), workspaceId: s.workspaceId, type: input.type, status: 'Confirmed', provenance: 'User Input', title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, sample: true, ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
+    const t = input.at ?? now();
+    const o: ContextObject = { id: input.id ?? newId('smp'), workspaceId: s.workspaceId, type: input.type, status: 'Confirmed', provenance: 'User Input', title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, sample: true, ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
     this.insertObject(s, o);
     return o;
   }

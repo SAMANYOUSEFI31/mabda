@@ -248,6 +248,9 @@ test('the showcase workspace is a normal workspace for MCP: gaps (one missing, o
     const c = await t.connect(tok.token);
     const g = await t.call(c, 'get_gaps', { specId: 'demo_spec_campaign' });
     assert.ok(JSON.stringify(g.data).includes('launch_date'));
+    const lp = await t.call(c, 'list_packs');
+    assert.deepEqual(lp.data.packs.map((p: any) => p.name).sort(), ['پاسخ به مشتری', 'کارگاه پاییز (با پیشنهادی‌ها)', 'متن تبلیغ اشتراک'].sort());
+    assert.ok(!JSON.stringify(lp).includes('مثال:'), 'no grey example in any pack');
     const ov = await t.call(c, 'get_workspace_overview', {});
     assert.deepEqual(JSON.stringify(ov.data).includes('main_positioning') || JSON.stringify(ov.data).includes('freelance_profile'), false, 'the showcase shows only its own workstreams, not the library');
     assert.ok(JSON.stringify(ov.data).includes('demo_spec_campaign'));

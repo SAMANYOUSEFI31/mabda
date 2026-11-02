@@ -82,7 +82,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   const extra = new Set<string>(input.statuses ?? ['Proposed', 'Needs Review']);
   const relevant = input.objects.filter((o) => inForceIds.has(o.id)
     && (!facetSet.size || (o.facets ?? []).some((f) => facetSet.has(f)))
-    && (o.status === 'Confirmed' || extra.has(o.status))
+    && (o.status === 'Confirmed' || extra.has(o.status) || (!!o.assumption && input.includeAssumptions !== false)) // active assumptions come with their own switch, whatever their status
     && (input.includeAssumptions !== false || !o.assumption));
   // guardrails: Constraints in force at the target (spec / node); for the whole-tree pack only the ones that hold from the top
   const guardSeeds = spec || input.targetNodeId || input.targetNodeIds?.length ? [...new Set(seeds)] : nodes.filter((n) => !n.parentId).map((n) => n.id);

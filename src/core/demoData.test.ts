@@ -189,3 +189,32 @@ test('assumptions and a decision record: one assumption is due, one is later; a 
   const wk = buildWeeklyReview({ objects: d.objects, relationships: d.relationships, changes: d.changes, deliverables: d.deliverables, now: NOW });
   assert.deepEqual([wk.due.assumptions.length, wk.due.decisions.length], [1, 1], 'they show up in «این هفته» too');
 });
+
+// ── packs, facets, samples, a template in the showcase ───────────────────────────────────────────
+import { buildContextPack } from './contextPack';
+
+test('showcase packs: three different selections, resolved through the effective context; assumptions and rejected options apart; no sample anywhere', () => {
+  const packOf = (id: string) => { const p = d.packs.find((x) => x.id === id)!; return buildContextPack({ packId: p.id, workspaceName: 'x', nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, now: NOW, targetNodeIds: p.selection.nodeIds, facets: p.selection.facets, statuses: p.selection.statuses, includeAssumptions: p.selection.includeAssumptions, instruction: p.instruction }); };
+  assert.equal(d.packs.length, 3);
+  const ads = packOf('pk_demo_ads');
+  assert.ok(ads.markdown.includes('## دستور') && ads.markdown.includes('dm_pack@') && ads.markdown.includes('dm_assume_renew'), 'subscription pack: its decisions and its assumption (apart)');
+  assert.ok(!ads.markdown.includes('dm_ws_refund'), 'a workshop rule (position) never enters the subscription pack');
+  assert.ok(ads.markdown.includes('dm_nodiscount'), 'a global rule is in every pack');
+  const support = packOf('pk_demo_support');
+  assert.equal(support.counts.assumptions, 0, 'assumptions off');
+  assert.ok(support.markdown.includes('dm_sup_sla@') && !support.markdown.includes('dm_ws_refund'));
+  const ws = packOf('pk_demo_ws');
+  assert.ok(ws.markdown.includes('تخفیف ۱۵ درصد روی قیمت کارگاه') && ws.markdown.includes('گزینه‌های بررسی‌شده و ردشده'), 'the rejected option reaches the AI so it is not proposed again');
+  assert.ok(ws.markdown.includes('dm_ws_plan@') && ws.counts.proposed >= 1, 'proposed items are labelled unconfirmed');
+  for (const p of d.packs) assert.ok(!packOf(p.id).markdown.includes('مثال:'), 'no sample text in any pack');
+});
+
+test('showcase facets, samples and template: three facets on a real axis; three grey samples; the template holds the workshop branch', () => {
+  const facets = new Set(d.objects.flatMap((o) => o.facets ?? []));
+  assert.deepEqual([...facets].sort(), ['پاییز', 'کارگاه', 'مشتری ماهانه'].sort());
+  assert.ok(d.objects.every((o) => !o.sample), 'samples are not in the knowledge list');
+  assert.equal(d.samples.length, 3);
+  assert.ok(d.samples.every((x) => x.content.startsWith('مثال:')));
+  assert.deepEqual(d.templates.map((t) => [t.kind, t.payload.root.label, t.payload.root.children.map((c) => c.label)]), [['node', 'کارگاه برشته‌کاری', ['برنامهٔ جلسه‌ها']]]);
+  assert.ok(d.templates[0].payload.objects.every((o) => o.title !== 'برنامهٔ جلسه‌ها' || o.path.length === 1), 'paths are child indexes');
+});

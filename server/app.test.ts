@@ -667,6 +667,10 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     assert.equal(t.p.calls.length, aiCalls, 'building, resetting and opening the showcase never calls the AI');
     assert.ok(s1.objects.length >= 30 && s1.changes.length > 40 && s1.notes.length === 8 && s1.deliverables.length === 3 && s1.files.length === 1 && s1.specs.length === 3);
     assert.equal(s1.files[0].status, 'ready');
+    assert.equal(s1.samples.length, 3, 'three grey examples');
+    assert.ok(!s1.objects.some((o: any) => o.sample), 'examples are not in the knowledge list');
+    assert.equal((await t.call('GET', '/workspaces/ws_demo/saved-packs')).json.packs.length, 3);
+    assert.equal((await t.call('GET', '/templates')).json.templates.length, 1, 'the user template survives a reset (it belongs to the user)');
     assert.equal(s1.ledger.length, 0, 'no usage is invented');
     assert.deepEqual(s1.judgments, {}, 'no AI judgement is stored');
     assert.deepEqual(s1.pairJudgments, []);

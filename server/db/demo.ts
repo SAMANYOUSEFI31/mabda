@@ -32,6 +32,9 @@ export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
     for (const d of data.deliverables) repo.saveDeliverable(s, d);
     for (const i of data.canvas.decisions) repo.saveCanvasItem(s, 'decisions', i.itemRef, i);
     for (const i of data.canvas.free) repo.saveCanvasItem(s, 'free', i.itemRef, i);
+    for (const p of data.packs) repo.importSavedPack(s, p);
+    for (const t of data.templates) repo.saveTemplate(s, t.kind, t.name, t.payload, t.at, t.id);
+    for (const x of data.samples) repo.createSample(s, x);
   })();
   return repo.getWorkspace(userId, DEMO_WORKSPACE_ID)!;
 }
