@@ -10,6 +10,7 @@ import type { Digest } from './changeDigest';
 import { calculateReadinessAndGaps } from './contextEngine';
 import { needsReview, planDecisions, waitingDecisions } from './decisionGraph';
 import type { ReviewNeed, WaitingDecisions } from './decisionGraph';
+import { assumptionsDue, decisionsDue } from './assumptions';
 
 const DAY_MS = 86_400_000;
 
@@ -18,6 +19,8 @@ export interface WeeklyReviewData {
   /** objects whose dependency changed after they were last written or reviewed */
   reviews: Array<{ object: ContextObject; need: ReviewNeed; dependencyTitles: string[] }>;
   waiting: WaitingDecisions;
+  /** assumptions whose review date has come, and decisions that ask «نتیجه چه شد؟» */
+  due: { assumptions: ContextObject[]; decisions: ContextObject[] };
   /** how many items the three sections hold in total (what the review is about) */
   total: number;
 }
@@ -30,7 +33,9 @@ export function buildWeeklyReview(input: { objects: ContextObject[]; relationshi
     .map(([id, need]) => ({ object: byId.get(id)!, need, dependencyTitles: need.changedDependencies.map((d) => byId.get(d.id)?.title ?? d.id) }))
     .sort((a, b) => b.need.since.localeCompare(a.need.since) || a.object.id.localeCompare(b.object.id));
   const waiting = waitingDecisions(planDecisions(input.objects, input.relationships));
-  return { digest, reviews, waiting, total: digest.total + reviews.length + waiting.ready.length + waiting.blocked.length + waiting.concurrent.length };
+  const now = input.now ?? new Date();
+  const due = { assumptions: assumptionsDue(input.objects, now), decisions: decisionsDue(input.objects, input.changes, now) };
+  return { digest, reviews, waiting, due, total: digest.total + reviews.length + waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + due.assumptions.length + due.decisions.length };
 }
 
 /** a quiet «it is time» marker: a week since the last review (or never) AND something to look at */

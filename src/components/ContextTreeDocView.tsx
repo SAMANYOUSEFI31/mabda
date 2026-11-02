@@ -6,9 +6,11 @@
 import React, { useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
 import { childrenOf } from '../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Menu, IconButton, PROVENANCE_LABEL, ReachBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
+import { ThinkingList } from './ThinkingList';
+import type { NoteThinkingItem } from '../core/thinkingMarkers';
 
 interface ContextTreeDocViewProps {
   objects: ContextObject[];
@@ -22,6 +24,10 @@ interface ContextTreeDocViewProps {
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
   onShowEffect: (nodeId: string) => void;
+  /** thinking items derived from every note (src/core/thinkingMarkers.ts) */
+  thinking: NoteThinkingItem[];
+  onConvertItem: (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => Promise<void>;
+  onSplitNote: (noteId: string) => Promise<void>;
   onOpenThread: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
@@ -35,12 +41,35 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
+  const card = (obj: ContextObject) => (
+    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
+      <div className="flex items-start justify-between gap-inline-sm">
+        <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
+        <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
+          <TypeBadge value={obj.type} />
+          <AssumptionBadge object={obj} />
+          <ReachBadge object={obj} />
+          <StatusBadge value={obj.status} />
+        </div>
+      </div>
+      <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
+      <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
+        <span>منبع: {PROVENANCE_LABEL[obj.provenance]} · نسخهٔ {formatNumber(obj.version)}</span>
+        <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>
+      </div>
+    </Card>
+  );
+
   const renderNode = (node: TreeNode, path: string, depth: number): React.ReactNode => {
     const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
     const nodeNotes = props.notes.filter((n) => n.nodeId === node.id);
     const nodeFiles = props.files.filter((f) => f.nodeId === node.id);
     const kids = childrenOf(nodes, node.id);
     const notesOpen = openNotes.has(node.id);
+    const established = nodeObjects.filter((o) => o.status === 'Confirmed' && !o.assumption);
+    const notThinkingYet = nodeObjects.filter((o) => !(o.status === 'Confirmed' && !o.assumption));
+    const thinking = props.thinking.filter((i) => i.nodeId === node.id);
+    const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
     return (
       <section key={node.id} className={`flex flex-col gap-stack-md ${depth > 0 ? 'ps-inset-lg border-s border-border-subtle' : ''}`} aria-labelledby={`node-${node.id}`}>
@@ -53,11 +82,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
           <div className="flex flex-wrap items-center gap-inline-xs">
             <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
-            <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>
-              یادداشت‌ها ({formatNumber(nodeNotes.length)})
-            </Button>
             <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
-            <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>آنچه اینجا اثر دارد</Button>
             <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
             <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
             <Menu
@@ -76,50 +101,58 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
         </div>
 
-        {notesOpen && (
-          <NodeNotes
-            nodeId={node.id}
-            notes={nodeNotes}
-            extractingId={props.extractingNoteId}
-            onAdd={props.onAddNote}
-            onUpdate={props.onUpdateNote}
-            onDelete={props.onDeleteNote}
-            onExtract={props.onExtractNote}
-          />
-        )}
-
-        {nodeFiles.length > 0 && (
-          <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>
-        )}
-
-        {nodeObjects.length === 0 && kids.length === 0 ? (
+        {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 ? (
           <EmptyState
             icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
             action={<Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>ثبت اولین مورد</Button>}
           />
         ) : (
-          nodeObjects.length > 0 && (
-            <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
-              {nodeObjects.map((obj) => (
-                <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
-                  <div className="flex items-start justify-between gap-inline-sm">
-                    <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
-                    <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
-                      <TypeBadge value={obj.type} />
-                      <ReachBadge object={obj} />
-                      <StatusBadge value={obj.status} />
-                    </div>
-                  </div>
-                  <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
-                  <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
-                    <span>منبع: {PROVENANCE_LABEL[obj.provenance]} · نسخهٔ {formatNumber(obj.version)}</span>
-                    <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )
+          <>
+            {/* وضعیت فعلی: what is established here */}
+            {(established.length > 0 || nodeObjects.length > 0) && (
+              <section className="flex flex-col gap-stack-sm" aria-label="وضعیت فعلی">
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <h4 className="label-md text-text-default">وضعیت فعلی</h4>
+                  <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>آنچه اینجا اثر دارد</Button>
+                </div>
+                {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این گره تأیید نشده.</p> : <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{established.map(card)}</div>}
+              </section>
+            )}
+
+            {/* در حال فکر: proposals, assumptions, thinking items from notes, the notes themselves */}
+            {(thinking.length > 0 || notThinkingYet.length > 0 || nodeNotes.length > 0 || notesOpen) && (
+              <section className="flex flex-col gap-stack-sm" aria-label="در حال فکر">
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <h4 className="label-md text-text-default">در حال فکر</h4>
+                  <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>
+                </div>
+                {notThinkingYet.length > 0 && <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{notThinkingYet.map(card)}</div>}
+                <ThinkingList items={thinking} objects={objects} onConvert={(item, opts) => props.onConvertItem(item, opts)} />
+                {notesOpen && (
+                  <NodeNotes
+                    nodeId={node.id}
+                    notes={nodeNotes}
+                    extractingId={props.extractingNoteId}
+                    onAdd={props.onAddNote}
+                    onUpdate={props.onUpdateNote}
+                    onDelete={props.onDeleteNote}
+                    onExtract={props.onExtractNote}
+                    onSplit={props.onSplitNote}
+                  />
+                )}
+              </section>
+            )}
+
+            {/* منابع: files and where the proposals came from */}
+            {(nodeFiles.length > 0 || sources.length > 0) && (
+              <section className="flex flex-col gap-stack-xs" aria-label="منابع">
+                <h4 className="label-md text-text-default">منابع</h4>
+                {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>}
+                {sources.length > 0 && <p className="caption text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
+              </section>
+            )}
+          </>
         )}
 
         {kids.length > 0 && <div className="flex flex-col gap-stack-xl">{kids.map((k, i) => renderNode(k, `${path}${formatNumber(i + 1)}.`, depth + 1))}</div>}

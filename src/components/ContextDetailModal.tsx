@@ -37,6 +37,8 @@ interface ContextDetailModalProps {
   /** for «اثرگذاران و اثرپذیران»: the assets built from this object */
   deliverables?: GeneratedDeliverable[];
   onOpenRelated?: (o: ContextObject) => void;
+  /** one targeted edit with a reason (a Change) — «ببر بالاتر» */
+  onPatchObject?: (id: string, patch: { nodeId?: string; reach?: 'global' | 'position'; reason: string }) => Promise<unknown>;
 }
 
 /**
@@ -83,6 +85,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   onAcceptReview,
   deliverables = [],
   onOpenRelated,
+  onPatchObject,
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
 
@@ -97,6 +100,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   );
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
+  const [assumption, setAssumption] = useState(object?.assumption === true);
+  const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [question, setQuestion] = useState(object?.record?.question ?? '');
+  const [options, setOptions] = useState<Array<{ title: string; rejectedReason: string }>>((object?.record?.options ?? []).map((o) => ({ title: o.title, rejectedReason: o.rejectedReason ?? '' })));
+  const [expectation, setExpectation] = useState(object?.record?.expectation ?? '');
+  const [reviewOn, setReviewOn] = useState(object?.record?.reviewOn ?? '');
+  const [promote, setPromote] = useState<null | { to: 'parent' | 'global'; reason: string }>(null);
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
   const [deps, setDeps] = useState<string[]>(currentDeps);
@@ -107,6 +118,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const unit = plan?.layers.flat().find((u) => u.ids.includes(object!.id));
   const dependents = isEditing && object ? dependentsOf(object.id, relationships, allObjects) : [];
   const influence = useMemo(() => (isEditing && object ? influenceOf(object.id, allObjects, nodes, relationships, deliverables, new Date()) : undefined), [isEditing, object, allObjects, nodes, relationships, deliverables]);
+  const parentNodeId = object ? nodes.find((n) => n.id === object.nodeId)?.parentId : undefined;
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
   const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
@@ -149,6 +161,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       slotKey: object?.slotKey,
       ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
       ...(validUntil ? { validUntil } : {}),
+      ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
+      ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn)
+        ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}) } }
+        : {}),
     };
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
@@ -241,6 +257,48 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
         <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
+        {type === 'Fact' && (
+          <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
+            <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />
+            <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت به AI داده نمی‌شود (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» با دستور صریح می‌رود.</p>
+            {assumption && <TextField label="بازبینی تا (اختیاری)" type="date" value={reviewBy} onChange={(e) => setReviewBy(e.target.value)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
+          </div>
+        )}
+        {type === 'Decision' && (
+          <div className="flex flex-col gap-stack-sm">
+            <div><Button type="button" size="sm" variant="ghost" iconStart={recordOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={recordOpen} onClick={() => setRecordOpen((v) => !v)}>رکورد تصمیم (اختیاری)</Button></div>
+            {recordOpen && (
+              <div className="flex flex-col gap-stack-sm rounded-control border border-border-default p-inset-lg" role="group" aria-label="رکورد تصمیم">
+                <TextField label="سؤال" value={question} onChange={(e) => setQuestion(e.target.value)} />
+                <div className="flex flex-col gap-stack-xs">
+                  <span className="label-md text-text-default">گزینه‌های بررسی‌شده و دلیل ردشدن هرکدام</span>
+                  {options.map((o, i) => (
+                    <div key={i} className="grid grid-cols-1 gap-inline-sm sm:grid-cols-[1fr_1fr_auto]">
+                      <TextField label={`گزینهٔ ${formatNumber(i + 1)}`} value={o.title} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
+                      <TextField label="چرا رد شد؟ (خالی = رد نشده)" value={o.rejectedReason} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? { ...x, rejectedReason: e.target.value } : x)))} />
+                      <div className="self-end"><Button type="button" size="sm" variant="ghost" onClick={() => setOptions((l) => l.filter((_, j) => j !== i))}>حذف</Button></div>
+                    </div>
+                  ))}
+                  <div><Button type="button" size="sm" variant="secondary" iconStart="Plus" onClick={() => setOptions((l) => [...l, { title: '', rejectedReason: '' }])}>افزودن گزینه</Button></div>
+                </div>
+                <TextField label="چه انتظاری داریم؟" value={expectation} onChange={(e) => setExpectation(e.target.value)} />
+                <TextField label="تاریخ بازبینی" type="date" value={reviewOn} onChange={(e) => setReviewOn(e.target.value)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
+              </div>
+            )}
+          </div>
+        )}
+        {isEditing && object && onPatchObject && (
+          <div className="flex flex-col gap-stack-xs">
+            <div><Button type="button" size="sm" variant="ghost" iconStart="ArrowRight" onClick={() => setPromote((p) => (p ? null : { to: parentNodeId ? 'parent' : 'global', reason: '' }))}>ببر بالاتر</Button></div>
+            {promote && (
+              <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="ببر بالاتر">
+                <SegmentedControl label="کجا ببرم؟" value={promote.to} onChange={(v) => setPromote({ ...promote, to: v as 'parent' | 'global' })} items={[...(parentNodeId ? [{ id: 'parent', label: `گرهٔ والد: ${nodes.find((n) => n.id === parentNodeId)?.label ?? ''}` }] : []), { id: 'global', label: 'همه‌جا' }]} />
+                <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
+                <div><Button type="button" size="sm" variant="secondary" disabled={!promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'parent' && parentNodeId ? { nodeId: parentNodeId, reason: promote.reason.trim() } : { reach: 'global', reason: promote.reason.trim() }); onClose(); }}>{promote.to === 'parent' ? 'ببر به گرهٔ والد' : 'همه‌جا اثر بدهد'}</Button></div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-stack-xs">
           <SegmentedControl
