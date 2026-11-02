@@ -21,7 +21,7 @@ const TABS = [
 ];
 
 const audit = () => {
-  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], primaries: 0 };
+  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], edges: [], primaries: 0 };
   // contrast: composite ancestor backgrounds, compare with text color (WCAG relative luminance)
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
   const over = (top, bot) => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 });
@@ -59,6 +59,27 @@ const audit = () => {
       }
     }
   }
+  // canvas lines: contrast ≥ 3:1 against the canvas background, stroke ≥ 1.5px, arrow head ≥ 10px
+  const stage = document.querySelector('[data-testid=canvas-stage]');
+  if (stage) {
+    const sbg = bgOf(stage);
+    const kinds = new Set();
+    for (const line of document.querySelectorAll('[data-testid=canvas-edges] path[data-line]')) {
+      const cs = getComputedStyle(line);
+      const kind = line.closest('[data-kind]')?.getAttribute('data-kind') ?? '?';
+      if (kinds.has(kind)) continue;
+      kinds.add(kind);
+      const fg = parse(cs.stroke);
+      const dim = line.closest('g')?.classList.contains('opacity-35');
+      if (!fg) { out.edges.push(`${kind}: no stroke colour`); continue; }
+      const f = over(fg, sbg);
+      const ratio = (Math.max(lum(f), lum(sbg)) + 0.05) / (Math.min(lum(f), lum(sbg)) + 0.05);
+      if (ratio < 3 && !dim) out.edges.push(`${kind}: ${ratio.toFixed(2)}:1`);
+      if (parseFloat(cs.strokeWidth) < 1.5) out.edges.push(`${kind}: stroke ${cs.strokeWidth}`);
+      const marker = document.querySelector(`#canvas-arrow-${kind}`);
+      if (!marker || parseFloat(marker.getAttribute('markerWidth')) < 10) out.edges.push(`${kind}: arrow head too small`);
+    }
+  }
   return out;
 };
 
@@ -78,8 +99,8 @@ for (const size of SIZES) {
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/${name}-${size.name}.png`, fullPage: false });
     const r = await page.evaluate(audit);
-    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.primaries > 1;
-    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
+    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.primaries > 1;
+    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
   };
   const goTab = async (t) => {
     const mobile = size.width < 768;
@@ -96,9 +117,6 @@ for (const size of SIZES) {
   await goTab(TABS[1]); await shoot('context-doc');
   // table view
   await page.locator('[role=radio][aria-label], [role=radio]').filter({ hasText: /^جدول$/ }).first().click(); await shoot('context-table');
-  await page.locator('[role=radio]').filter({ hasText: /^نقشه$/ }).first().click(); await page.waitForTimeout(300); await shoot('context-map');
-  await page.getByRole('button', { name: /^(مخاطب|گرهٔ)/ }).first().click().catch(() => {}); await page.waitForTimeout(150); await shoot('context-map-selected');
-  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().click(); await page.waitForTimeout(300); await shoot('context-canvas');
   await page.locator('[role=radio]').filter({ hasText: /^سند$/ }).first().click(); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
@@ -138,6 +156,22 @@ for (const size of SIZES) {
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect'); await closeDialog();
+  // the canvas on the showcase workspace: its four states (relations, board, free, full screen)
+  await accountItem('ساخت یا بازنشانی فضای نمونه');
+  await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 2500 }).catch(() => {});
+  await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
+  await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
+  await goTab(TABS[1]);
+  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+  const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
+  await page.getByTestId('canvas-stage').waitFor();
+  await layoutTab('رابطه‌ها'); await shoot('canvas-relations');
+  await page.locator('[data-item-id^="o:"]').first().click({ force: true }).catch(() => {}); await page.waitForTimeout(250); await shoot('canvas-relations-selected');
+  await layoutTab('تابلو'); await shoot('canvas-board');
+  await layoutTab('آزاد'); await shoot('canvas-free');
+  await layoutTab('رابطه‌ها');
+  await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();
 }
