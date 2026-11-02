@@ -626,3 +626,17 @@ test('weekly review: the last finish time is stored per workspace and travels wi
     assert.equal((await t.call('GET', '/workspaces/ws_studio2/state')).status, 404, 'other workspaces have their own');
   } finally { t.close(); }
 });
+
+test('quick start: pasted TEXT goes through the same extraction (kind note), labelled as «متن چسبانده‌شده»; objects stay Proposed with their quote', async () => {
+  const TEXT = 'ما یک آژانس طراحی هستیم. مخاطب اصلی ما فریلنسرهای طراح‌اند.';
+  let kindSeen = '';
+  const t = await boot((c) => { if (JSON.stringify(c.schema ?? '').includes('"objects"')) { kindSeen = c.prompt.user.includes('«حافظه»') ? 'memory' : 'note'; return { objects: [{ type: 'Fact', title: 'حوزه', content: 'آژانس طراحی', nodeId: 'business', quote: 'ما یک آژانس طراحی هستیم.' }] }; } return decide; });
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/memory/import', { text: TEXT, sourceLabel: 'ChatGPT', mode: 'text' });
+    assert.equal(r.status, 200);
+    assert.deepEqual([r.json.created[0].status, r.json.created[0].source.label, r.json.created[0].source.quote], ['Proposed', 'متن چسبانده‌شده', 'ما یک آژانس طراحی هستیم.']);
+    assert.equal(kindSeen, 'note', 'the text path does not claim to be another AI’s memory');
+    assert.ok(r.json.ledger.some((l: any) => l.action === 'وارد کردن متن چسبانده‌شده'));
+  } finally { t.close(); }
+});

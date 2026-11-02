@@ -133,7 +133,7 @@ for (const size of SIZES) {
   await maybe(page.getByRole('tab', { name: /مصرف و سهمیه/ }), async (l) => { await l.click(); await shoot('ledger-usage'); });
 
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
-  await accountItem('راه‌اندازی ۱۰ دقیقه‌ای'); await shoot('dialog-onboarding'); await closeDialog();
+  await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect'); await closeDialog();
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }

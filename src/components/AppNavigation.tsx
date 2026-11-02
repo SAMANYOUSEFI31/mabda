@@ -62,7 +62,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'tools', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
     { section: 'tools', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
     { section: 'tools', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
-    { section: 'tools', label: 'راه‌اندازی ۱۰ دقیقه‌ای', icon: 'Zap', onSelect: p.onOpenOnboarding },
+    { section: 'tools', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
     { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];
   const withDividers = (): MenuItem[] => {

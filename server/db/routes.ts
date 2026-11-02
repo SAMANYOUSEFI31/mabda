@@ -295,18 +295,21 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const text = String(body(req).text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
     if (text.length > 120_000) throw new RepoError('invalid', 'متن بیش از حد بلند است؛ آن را در چند بخش وارد کن.');
+    // `mode: 'text'` = the user's own notes / text (not another AI's memory)
+    const plain = body(req).mode === 'text';
     const label = ['ChatGPT', 'Claude', 'Gemini'].includes(String(body(req).sourceLabel)) ? String(body(req).sourceLabel) : 'AI دیگر';
+    const sourceName = plain ? 'متن چسبانده‌شده' : `حافظهٔ ${label}`;
     if (payer() === 'us' && entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
       throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره یا با کلید خودت ادامه بده.', retryable: false });
     }
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
-    const r = await ai.extract(aiUserOf(req), { kind: 'memory', text, nodeId: 'business', nodes }, ctl.signal);
+    const r = await ai.extract(aiUserOf(req), { kind: plain ? 'note' : 'memory', text, nodeId: 'business', nodes }, ctl.signal);
     const at = new Date().toISOString();
-    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: `حافظهٔ ${label}`, at, ...(o.quote ? { quote: o.quote } : {}) } }));
+    const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: sourceName, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: plain ? 'وارد کردن متن چسبانده‌شده' : `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
   }));
 

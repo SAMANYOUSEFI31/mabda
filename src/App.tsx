@@ -50,7 +50,7 @@ import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
 import { LedgerPanel } from './components/LedgerPanel';
-import { OnboardingModal } from './components/OnboardingModal';
+import { QuickStartDialog } from './components/QuickStartDialog';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
 import { SpecEditorModal } from './components/SpecEditorModal';
@@ -903,20 +903,18 @@ export default function App() {
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
-      {/* 10-Minute Onboarding Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
+      <QuickStartDialog
+        open={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
-        currentWorkspace={currentWorkspace}
-        nodes={nodes}
-        onSaveProposals={handleSaveProposals}
-        onLedger={setLedger}
+        workspaceId={wid}
+        onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onCreateObjects={handleCreateObjects}
-        onCompleteOnboarding={(firstDeliverable) => {
+        onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
+        onSampleDone={(firstDeliverable) => {
           void (async () => {
             if (!(await persistDeliverable(firstDeliverable))) return;
             if (firstDeliverable.usage) {
-              await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'اولین دارایی (Onboarding)', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
+              await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'خروجی نمونهٔ شروع سریع', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
             }
           })();
         }}

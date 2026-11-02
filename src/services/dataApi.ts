@@ -136,7 +136,7 @@ export const dataApi = {
   freeNoteToKnowledge: (id: string, noteId: string, type: 'Fact' | 'Decision' | 'Constraint') => call<CanvasBundle & { object: ContextObject }>('POST', `${ws(id)}/canvas/free/notes/${noteId}/to-knowledge`, { type }),
   setDependencies: (id: string, objectId: string, dependsOn: string[]) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('PUT', `${ws(id)}/objects/${objectId}/dependencies`, { dependsOn }),
   acceptReview: (id: string, objectId: string) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/review-accept`, {}),
-  importMemory: (id: string, input: { text: string; sourceLabel: string }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
+  importMemory: (id: string, input: { text: string; sourceLabel: string; mode?: 'text' | 'memory' }) => call<{ created: ContextObject[]; found: number; skipped: number; truncated: boolean; ledger: LedgerEntry[] }>('POST', `${ws(id)}/memory/import`, input),
   threadTurn: (id: string, nodeId: string, input: { message: string; history: Array<{ role: string; content: string }> }) =>
     call<{ blocks: import('../types/ai').ContentBlock[]; markdown: string; created: ContextObject[]; ledger: LedgerEntry[] }>('POST', `${ws(id)}/threads/${encodeURIComponent(nodeId)}/turn`, input),
   threadFinish: (id: string, nodeId: string, transcript: Array<{ role: string; content: string }>) =>
