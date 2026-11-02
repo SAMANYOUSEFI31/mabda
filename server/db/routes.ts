@@ -221,6 +221,17 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const r = repo.setDependencies(s, req.params.id, list, metaOf(body(req)));
     res.json({ relationships: r.relationships, changes: repo.listChanges(s), stale: stale(s) });
   }));
+  /** «برای این بخش کنار بگذار»: this object (in a sub-node) switches an ancestor-node object off for its sub-tree. A reason is required. */
+  router.post('/workspaces/:wid/objects/:id/overrides', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.setOverride(s, req.params.id, String(body(req).targetId ?? ''), metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s) });
+  }));
+  router.post('/workspaces/:wid/objects/:id/overrides/remove', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.removeOverride(s, req.params.id, String(body(req).targetId ?? ''), metaOf(body(req)));
+    res.json({ relationships: r.relationships, changes: repo.listChanges(s) });
+  }));
   router.post('/workspaces/:wid/objects/:id/review-accept', wrap((req, res) => {
     const s = scopeOf(req);
     const change = repo.acceptReview(s, req.params.id, metaOf(body(req)));

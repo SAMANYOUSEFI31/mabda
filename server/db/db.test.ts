@@ -365,3 +365,24 @@ test('reach / validUntil: migration 11 leaves old rows untouched (type default),
   assert.equal(repo.updateObject(s, c.id, { validUntil: null as never }).object.validUntil, undefined, 'null clears the end date');
   assert.equal(repo.updateObject(s, c.id, { title: 'عنوان تازه' }).object.reach, 'global', 'an unrelated edit keeps the scope');
 });
+
+test('overrides: only child-node → ancestor-node, needs a reason (kept in the Change), live objects only; removing it is a Change too; nothing else reads it but the effective-context engine', () => {
+  const { repo, s } = fresh();
+  const parent = repo.createNode(s, { parentId: 'business', label: 'والد' });
+  const child = repo.createNode(s, { parentId: parent.id, label: 'فرزند' });
+  const sib = repo.createNode(s, { parentId: parent.id, label: 'هم‌سطح' });
+  const mk = (nodeId: string, title: string) => repo.createObject(s, { type: 'Decision', provenance: 'User Input', title, content: title, nodeId });
+  const rule = mk(parent.id, 'قاعدهٔ والد'), exc = mk(child.id, 'استثنا'), other = mk(sib.id, 'دیگر');
+  assert.throws(() => repo.setOverride(s, exc.id, rule.id, {}), (e) => e instanceof RepoError && /دلیل/.test(e.message), 'a reason is required');
+  assert.throws(() => repo.setOverride(s, rule.id, exc.id, { reason: 'x' }), RepoError, 'the wrong way round');
+  assert.throws(() => repo.setOverride(s, other.id, exc.id, { reason: 'x' }), RepoError, 'siblings');
+  assert.throws(() => repo.setOverride(s, exc.id, exc.id, { reason: 'x' }), RepoError, 'itself');
+  const r = repo.setOverride(s, exc.id, rule.id, { reason: 'این شاخه جدا کار می‌کند' });
+  assert.ok(r.relationships.some((x) => x.type === 'overrides' && x.sourceId === exc.id && x.targetId === rule.id));
+  assert.equal(r.change?.reason, 'این شاخه جدا کار می‌کند');
+  assert.deepEqual(r.change?.after, { overrides: [rule.id] });
+  assert.equal(repo.setOverride(s, exc.id, rule.id, { reason: 'دوباره' }).relationships.filter((x) => x.type === 'overrides').length, 1, 'idempotent');
+  repo.removeOverride(s, exc.id, rule.id, { reason: 'برگشت' });
+  assert.ok(!repo.listRelationships(s).some((x) => x.type === 'overrides'));
+  assert.deepEqual(repo.listChanges(s, { objectId: exc.id }).filter((c) => c.after && 'overrides' in c.after).map((c) => c.after!.overrides), [[rule.id], []]);
+});
