@@ -18,7 +18,7 @@ const pinchCenter = (pts: Map<number, { x: number; y: number }>) => { const [a, 
  * Pan / zoom of a stage (shared by the map and the boards): drag or one finger pans, two fingers pinch, ctrl+wheel zooms,
  * arrow keys pan and +/−/0 zoom/fit when the stage itself has focus. Coordinates stay plain numbers; the stage is moved with `transform`.
  */
-export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K) {
+export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0) {
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const [size, setSize] = useState({ w: 800, h: 520 });
   const [measured, setMeasured] = useState(false);
@@ -33,7 +33,7 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     setSize({ w: el.clientWidth, h: el.clientHeight });
     setMeasured(true);
     return () => ro.disconnect();
-  }, []);
+  }, [remountKey]);
 
   const fit = useCallback(() => {
     const k = Math.min(1, Math.max(MIN_K, Math.min((size.w - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
@@ -62,7 +62,7 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [zoomAt]);
+  }, [zoomAt, remountKey]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, [data-no-pan]')) return; // cards and controls keep their own gestures

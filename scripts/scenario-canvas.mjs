@@ -129,8 +129,9 @@ try {
     await shot('4-free');
     const box = await stage.boundingBox();
     const notesBefore = (await api('/workspaces/ws_demo/state')).notes.length;
-    await page.mouse.dblclick(box.x + box.width - 140, box.y + 300);
-    await page.getByRole('dialog').getByLabel('فکر خام').fill('یک فکر تازه از روی بوم');
+    if (mobile) { await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'یادداشت تازه' }).click(); } // touch path: no double-click
+    else await page.mouse.dblclick(box.x + box.width - 140, box.y + 300);
+    await page.getByRole('dialog').locator('textarea').fill('یک فکر تازه از روی بوم');
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).click();
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).notes.length, notesBefore + 1);

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { createPortal } from 'react-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, ContextRelationship, GeneratedDeliverable, Note, TreeNode } from '../types';
 import type { CanvasItem } from '../types/state';
@@ -108,7 +109,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
   const shapeKey = `${layout}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? 0.68 : layout === 'board' ? 1 : 0.85);
+  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? 0.68 : layout === 'board' ? 1 : 0.85, fullscreen);
   const lod = lodOf(view.k);
 
   // ── what is drawn: the viewport (snapped, so panning does not re-render the cards) ──
@@ -430,8 +431,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     </aside>
   );
 
-  const rootClass = fullscreen ? 'fixed inset-space-0 z-dialog flex flex-col gap-stack-sm bg-surface-page p-inset-md' : 'flex flex-col gap-stack-md rounded-container border border-border-default bg-surface-raised p-inset-lg';
-  return (
+  const rootClass = fullscreen ? 'fixed top-space-0 bottom-space-0 start-space-0 end-space-0 z-dialog flex flex-col gap-stack-sm bg-surface-page p-inset-md' : 'flex flex-col gap-stack-md rounded-container border border-border-default bg-surface-raised p-inset-lg';
+  const body = (
     <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} aria-label="بوم" data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
       {!sheet && toolbar}
       {aboutOpen && <Alert intent="info" title={`چیدمان «${LAYOUT_FA[layout]}»: ${aboutText.question}`} onClose={() => setAboutOpen(false)}>{aboutText.what}</Alert>}
@@ -468,7 +469,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                       <button type="button" aria-expanded={b.expanded} aria-label={`${b.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${b.label}`} onClick={() => toggleNode(b.nodeId!)} className="flex min-h-touch-comfortable min-w-touch-comfortable items-center justify-center rounded-control-sm text-icon-default">{b.expanded ? '−' : '+'}</button>
                     )}
                   </div>
-                  {drag?.target && b.kind === 'column' && drag.target.col === b.id.slice(4) && <div aria-hidden="true" className="absolute inset-space-0 rounded-control-sm border-2 border-dashed border-border-selected" />}
+                  {drag?.target && b.kind === 'column' && drag.target.col === b.id.slice(4) && <div aria-hidden="true" className="absolute top-space-0 bottom-space-0 start-space-0 end-space-0 rounded-control-sm border-2 border-dashed border-border-selected" />}
                 </div>
               ))}
               <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={selection.length > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
@@ -493,7 +494,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               {drag && (() => { const it = byId.get(drag.id); return it ? <div className="pointer-events-none absolute top-space-0 start-space-0 opacity-90" style={{ transform: `translate(${drag.x}px, ${drag.y}px)` }}><div className="canvas-card is-ghost rounded-control border border-border-selected bg-surface-raised p-inset-sm" style={{ inlineSize: it.w, blockSize: it.h }}><span dir="rtl" className="body-sm line-clamp-2 text-text-default">{it.label}</span></div></div> : null; })()}
             </div>
             {stageEmpty && (
-              <div className="pointer-events-none absolute inset-space-0 flex items-center justify-center p-inset-lg">
+              <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
                   <p className="body-md text-text-default">{layout === 'free' ? 'فضای فکر آزاد خالی است؛ روی فضای خالی دابل‌کلیک کن تا یادداشت بسازی.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
                   <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: 'business', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
@@ -591,4 +592,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       </Dialog>
     </div>
   );
+  // full screen is an in-app layer rendered at the end of <body>: no ancestor can clip it or change what «fixed» means
+  return fullscreen ? createPortal(body, document.body) : body;
 };
