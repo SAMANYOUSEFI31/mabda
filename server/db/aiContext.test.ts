@@ -75,6 +75,6 @@ test('notes and their derived thinking items never reach a model; a converted on
   t.repo.updateObject(t.s, o.id, { status: 'Confirmed' });
   const { buildPrompt } = await import('../ai/context.ts');
   const prompt = buildPrompt({ contexts: t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] }).contextList!, task: 'بنویس' });
-  assert.ok(!prompt.prefix.includes('پیام‌رسان را بیشتر'), 'not in the confirmed prefix');
+  assert.ok(!(prompt.prefix ?? '').includes('پیام‌رسان را بیشتر'), 'not in the confirmed prefix');
   assert.ok(prompt.user.includes('فرض‌های فعال، تأییدنشده') && prompt.user.includes('پیام‌رسان را بیشتر'));
 });

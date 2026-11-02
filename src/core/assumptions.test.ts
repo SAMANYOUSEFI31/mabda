@@ -20,7 +20,7 @@ test('the prompt never shows an assumption as confirmed knowledge: it is in its 
     { id: 'a', type: 'Fact', status: 'Confirmed', title: 'فرضِ من', content: 'پیام‌رسان بهتر است', nodeId: 'business', version: 1, assumption: true },
     { id: 'd', type: 'Decision', status: 'Confirmed', title: 'قیمت', content: 'ماهانه', nodeId: 'business', version: 1, rejected: [{ title: 'سالانه', reason: 'نقدینگی' }] },
   ] });
-  assert.ok(p.prefix.includes('قطعی') && !p.prefix.includes('فرضِ من'), 'the stable prefix holds only established knowledge');
+  assert.ok((p.prefix ?? '').includes('قطعی') && !(p.prefix ?? '').includes('فرضِ من'), 'the stable prefix holds only established knowledge');
   assert.match(p.user, /## فرض‌های فعال، تأییدنشده \(واقعیت نیست\)\n.*فرض‌اند، نه واقعیت.*\n.*فرضِ من/);
   assert.match(p.user, /## گزینه‌های بررسی‌شده و ردشده\n.*\n- «سالانه» \(در تصمیم «قیمت»\): نقدینگی/);
 });
