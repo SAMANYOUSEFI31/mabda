@@ -6,11 +6,11 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
 import type { CanvasItem } from '../types/state';
-import { buildCanvasModel, CARD_H, CARD_W, dropTarget, LANE_FA, LANES, moveEffect, visibleCards } from '../core/canvasModel';
-import type { CanvasCard, DropTarget, Lane } from '../core/canvasModel';
+import { BOARD_GROUP_FA, buildCanvasModel, CARD_H, CARD_W, dropTarget, LANE_FA, LANES, moveEffect, visibleCards } from '../core/canvasModel';
+import type { BoardGroupBy, CanvasCard, DropTarget, Lane } from '../core/canvasModel';
 import { fromJsonCanvas, toJsonCanvas } from '../core/jsonCanvas';
 import type { MapEdge, MapVertex } from '../core/mapModel';
-import { Alert, Badge, Button, Card, Dialog, EmptyState, Icon, IconButton, RadioGroup, Select, TextField, Textarea, TypeBadge, formatNumber, useToast } from '../ui';
+import { Alert, Badge, Button, Card, Dialog, EmptyState, Icon, IconButton, RadioGroup, SegmentedControl, Select, TextField, Textarea, TypeBadge, formatNumber, useToast } from '../ui';
 import { EdgesLayer } from './ContextMapView';
 import { usePanZoom } from './usePanZoom';
 
@@ -51,7 +51,8 @@ export const ContextCanvasView: React.FC<Props> = (p) => {
   const toast = useToast();
   const { nodes, objects, relationships, notes, canvas, reviewIds } = p;
   const ranks = useMemo(() => new Map(canvas.decisions.filter((i) => i.rank !== undefined).map((i) => [i.itemRef.slice(4), i.rank!])), [canvas.decisions]);
-  const model = useMemo(() => buildCanvasModel({ nodes, objects, reviewIds, ranks }), [nodes, objects, reviewIds, ranks]);
+  const [groupBy, setGroupBy] = useState<BoardGroupBy>('domain'); // what the ROWS are: a changeable view, never stored
+  const model = useMemo(() => buildCanvasModel({ nodes, objects, reviewIds, ranks, groupBy, relationships: p.relationships }), [nodes, objects, reviewIds, ranks, groupBy, p.relationships]);
   const byObject = useMemo(() => new Map(objects.map((o) => [o.id, o])), [objects]);
 
   // free-thinking zone: below the board
@@ -141,7 +142,7 @@ export const ContextCanvasView: React.FC<Props> = (p) => {
       if (!moved) { const o = byObject.get(card.objectId); if (o) p.onOpenObject(o); return; }
       const s = toStage(ev.clientX, ev.clientY);
       const t = dropTarget(model, s.x, s.y - HEAD, card.objectId);
-      if (t) void request({ objectId: card.objectId, lane: t.lane, nodeId: t.nodeId, beforeId: t.before?.objectId, afterId: t.after?.objectId });
+      if (t) void request({ objectId: card.objectId, lane: t.lane, nodeId: model.groupBy === 'domain' ? t.nodeId : undefined, beforeId: t.before?.objectId, afterId: t.after?.objectId });
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -237,7 +238,8 @@ export const ContextCanvasView: React.FC<Props> = (p) => {
   return (
     <Card padding="lg" className="flex flex-col gap-stack-md" aria-label="بوم تصمیم‌ها">
       <div className="flex flex-wrap items-center justify-between gap-inline-md">
-        <p className="body-sm text-text-subtle">ستون = وضعیت · ردیف = گره · ترتیب = اولویت. کارت را بکش یا از «⋯» منوی انتقال را باز کن. کشیدن «در فکر» به «تأییدشده» یعنی تأیید.</p>
+        <SegmentedControl label="ردیف‌ها بر اساس" value={groupBy} onChange={(id) => setGroupBy(id as BoardGroupBy)} items={(Object.keys(BOARD_GROUP_FA) as BoardGroupBy[]).map((k) => ({ id: k, label: BOARD_GROUP_FA[k] }))} />
+        <p className="body-sm text-text-subtle">ستون = وضعیت · ردیف = {groupBy === 'domain' ? 'گره' : groupBy === 'facet' ? 'بُعد (فقط نمایش)' : 'سطح وابستگی (فقط نمایش)'} · ترتیب = اولویت. کارت را بکش یا از «⋯» منوی انتقال را باز کن. کشیدن «در فکر» به «تأییدشده» یعنی تأیید.</p>
         <div className="flex flex-wrap items-center gap-inline-xs">
           <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: 'business' })}>یادداشت تازه</Button>
           <Button size="sm" variant="secondary" iconStart="Wand2" loading={busy} onClick={async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } }}>چیدمان خودکار</Button>

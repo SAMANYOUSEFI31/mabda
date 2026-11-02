@@ -7,12 +7,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
 import { dependentsOf } from '../core/decisionGraph';
 import { influenceOf } from '../core/influence';
+import { GROUP_BY_FA } from '../core/mapModel';
+import type { MapGroupBy } from '../core/mapModel';
 import { buildMapModel, CARD_H, CARD_W, EDGE_LABEL, highlightOf, impactOf, latestChangedObject, visibleGroups, visibleVertices } from '../core/mapModel';
 import type { MapGroup } from '../core/mapModel';
 import { GROUP_HEAD } from '../core/mapModel';
 import type { MapEdge, MapEdgeKind, MapVertex } from '../core/mapModel';
 import { usePanZoom } from './usePanZoom';
-import { Badge, Button, Card, EmptyState, IconButton, STATUS_META, Switch, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, IconButton, STATUS_META, SegmentedControl, Switch, TypeBadge, formatNumber } from '../ui';
 
 interface Props {
   nodes: TreeNode[];
@@ -28,6 +30,10 @@ interface Props {
 }
 
 const EXPAND_ALL_LIMIT = 2000;
+/** swimlanes list every object: beyond this the map stays grouped by domain (collapsed nodes keep it fast) */
+const GROUPING_LIMIT = 400;
+/** facet → a calm tint; the facet NAME is always printed on the card too, so colour is never the only cue */
+const FACET_TINT = ['border-border-info-subtle bg-bg-info-subtle', 'border-border-success-subtle bg-bg-success-subtle', 'border-border-warning-subtle bg-bg-warning-subtle', 'border-border-default bg-bg-neutral-subtle'];
 const MAX_EDGES = 1500;
 
 /** line style per relation type — never colour alone: each type also has its own dash pattern and a label in the legend */
@@ -58,9 +64,14 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
   const [showAssets, setShowAssets] = useState(true);
   const [history, setHistory] = useState(false);
   const [lastChangeMode, setLastChangeMode] = useState(false);
+  const [groupBy, setGroupBy] = useState<MapGroupBy>('dependency'); // the default layout comes from dependencies; a changeable VIEW, never stored
+  const [colorByFacet, setColorByFacet] = useState(false);
+  const tooBig = objects.length > GROUPING_LIMIT;
+  const effectiveGroupBy: MapGroupBy = tooBig ? 'domain' : groupBy;
+  const facetNames = useMemo(() => [...new Set(objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [objects]);
   const [selected, setSelected] = useState<string | null>(null);
   const input = useMemo(() => ({ nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds }), [nodes, objects, relationships, deliverables, reviewObjectIds, staleAssetIds]);
-  const model = useMemo(() => buildMapModel(input, { expanded: expanded ?? undefined, showAssets, includeHistory: history }), [input, expanded, showAssets, history]);
+  const model = useMemo(() => buildMapModel(input, { expanded: expanded ?? undefined, showAssets, includeHistory: history, groupBy: effectiveGroupBy }), [input, expanded, showAssets, history, effectiveGroupBy]);
   const byId = useMemo(() => new Map(model.vertices.map((v) => [v.id, v])), [model]);
   const effectiveExpanded = useMemo(() => new Set(model.expandedNodes), [model]);
 
@@ -115,6 +126,8 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
     <Card padding="lg" className="flex flex-col gap-stack-md" aria-label="نقشهٔ منبع حقیقت">
       <div className="flex flex-wrap items-center justify-between gap-inline-md">
         <div className="flex flex-wrap items-center gap-inline-md">
+          <SegmentedControl label="گروه‌بندی بر اساس" value={effectiveGroupBy} onChange={(id) => setGroupBy(id as MapGroupBy)} items={(Object.keys(GROUP_BY_FA) as MapGroupBy[]).map((k) => ({ id: k, label: GROUP_BY_FA[k], disabled: tooBig && k !== 'domain' }))} />
+          {facetNames.length > 0 && <Switch label="رنگ بر اساس بُعد" checked={colorByFacet} onChange={(e) => setColorByFacet(e.target.checked)} />}
           <Switch label="خروجی‌ها" checked={showAssets} onChange={(e) => setShowAssets(e.target.checked)} />
           <Switch label="جایگزین‌شده‌ها" checked={history} onChange={(e) => setHistory(e.target.checked)} />
           <Switch label="اثر آخرین تغییر" checked={lastChangeMode} disabled={!lastChanged} onChange={(e) => { setLastChangeMode(e.target.checked); if (e.target.checked) setSelected(null); }} />
@@ -152,7 +165,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
           style={{ blockSize: '62vh', minBlockSize: 360 }}
         >
           <div className="absolute top-space-0 start-space-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: '0 0', willChange: 'transform', inlineSize: model.width, blockSize: model.height }}>
-            {shownGroups.map((g) => <GroupBox key={g.id} g={g} dimmed={dim} onToggle={toggleNode} />)}
+            {shownGroups.map((g) => <GroupBox key={g.id} g={g} dimmed={dim} lane={model.groupBy !== 'domain'} onToggle={toggleNode} />)}
             <EdgesLayer width={model.width} height={model.height} edges={edges} byId={byId} litEdges={lit?.edgeIds} dim={dim} selected={selected} />
             {shown.map((v) => (
               <MapCard
@@ -161,6 +174,7 @@ export const ContextMapView: React.FC<Props> = ({ nodes, objects, relationships,
                 selected={selected === v.id}
                 lit={!!lit?.vertexIds.has(v.id)}
                 upstream={upstream.has(v.id) && !lit?.vertexIds.has(v.id)}
+                tint={colorByFacet && v.facet ? FACET_TINT[facetNames.indexOf(v.facet) % FACET_TINT.length] : undefined}
                 dimmed={dim && !lit?.vertexIds.has(v.id) && !upstream.has(v.id) && selected !== v.id}
                 onSelect={select}
                 onToggle={toggleNode}
@@ -229,7 +243,7 @@ export const EdgesLayer = React.memo(function EdgesLayer({ width, height, edges,
 });
 
 /** a node of the tree as a grouping box: its objects and sub-boxes sit inside; the box carries no order and no edges */
-const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapGroup; dimmed: boolean; onToggle: (nodeId: string) => void }) {
+const GroupBox = React.memo(function GroupBox({ g, dimmed, lane, onToggle }: { g: MapGroup; dimmed: boolean; lane: boolean; onToggle: (nodeId: string) => void }) {
   return (
     <div
       className={`pointer-events-none absolute top-space-0 start-space-0 rounded-control border border-dashed ${g.depth === 0 ? 'border-border-bold' : 'border-border-default'} ${dimmed ? 'opacity-40' : ''}`}
@@ -237,7 +251,7 @@ const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapG
     >
       <div dir="rtl" className="pointer-events-auto flex items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: GROUP_HEAD }}>
         <span className="flex min-w-space-0 items-center gap-inline-xs"><span className="label-md truncate text-text-default">{g.label}</span>{g.count > 0 && <Badge intent="neutral" icon={false}>{formatNumber(g.count)} مورد</Badge>}</span>
-        {g.count > 0 && (
+        {g.count > 0 && !lane && (
           <button type="button" aria-expanded={g.expanded} aria-label={`${g.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${g.label}`} onClick={() => onToggle(g.nodeId)} className="flex items-center justify-center rounded-control text-text-subtle hover:bg-interaction-hover" style={{ inlineSize: 64, blockSize: 56 }}>
             {g.expanded ? '−' : '+'}
           </button>
@@ -247,8 +261,8 @@ const GroupBox = React.memo(function GroupBox({ g, dimmed, onToggle }: { g: MapG
   );
 });
 
-const MapCard = React.memo(function MapCard({ v, selected, lit, upstream, dimmed, onSelect, onToggle, onFocus }: { v: MapVertex; selected: boolean; lit: boolean; upstream: boolean; dimmed: boolean; onSelect: (id: string) => void; onToggle: (nodeId: string) => void; onFocus: (v: MapVertex) => void }) {
-  const tone = lit ? 'border-border-danger bg-bg-danger-subtle' : upstream ? 'border-border-info bg-bg-info-subtle' : selected ? 'border-border-selected bg-bg-selected' : v.kind === 'node' ? 'border-border-bold bg-surface-overlay' : 'border-border-default bg-surface-raised';
+const MapCard = React.memo(function MapCard({ v, selected, lit, upstream, tint, dimmed, onSelect, onToggle, onFocus }: { v: MapVertex; selected: boolean; lit: boolean; upstream: boolean; tint?: string; dimmed: boolean; onSelect: (id: string) => void; onToggle: (nodeId: string) => void; onFocus: (v: MapVertex) => void }) {
+  const tone = lit ? 'border-border-danger bg-bg-danger-subtle' : upstream ? 'border-border-info bg-bg-info-subtle' : selected ? 'border-border-selected bg-bg-selected' : tint ? tint : v.kind === 'node' ? 'border-border-bold bg-surface-overlay' : 'border-border-default bg-surface-raised';
   const label = v.kind === 'node' ? `گرهٔ ${v.label}، ${v.count ?? 0} مورد` : v.kind === 'object' ? `${v.label}${v.review ? '، نیاز به بازبینی' : ''}` : `${v.label}${v.review ? '، نیاز به بازبینی' : ''}`;
   return (
     <div
@@ -263,6 +277,7 @@ const MapCard = React.memo(function MapCard({ v, selected, lit, upstream, dimmed
           {v.kind === 'assets' && <Badge intent="neutral" icon={false}>{formatNumber(v.count ?? 0)} خروجی</Badge>}
           {v.kind === 'node' && <Badge intent="neutral" icon={false}>{formatNumber(v.count ?? 0)} مورد</Badge>}
           {v.review && <Badge intent="warning" icon={false}>بازبینی</Badge>}
+          {tint && v.facet && <span className="caption text-text-subtle">{v.facet}</span>}
           {v.kind === 'object' && v.status && v.status !== 'Confirmed' && <span className="caption text-text-subtle">{STATUS_META[v.status].label}</span>}
         </span>
         <span className={`body-sm line-clamp-2 text-text-default ${v.kind === 'node' ? 'label-md' : ''}`}>{v.label}</span>

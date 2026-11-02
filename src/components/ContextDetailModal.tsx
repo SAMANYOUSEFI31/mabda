@@ -100,6 +100,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   );
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
+  const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
+  const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
   const [recordOpen, setRecordOpen] = useState(false);
@@ -128,6 +130,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     dataApi.changeLog(object.workspaceId, { objectId: object.id }).then((r) => { if (live) setChanges(r.changes); }).catch(() => { /* history is optional */ });
     return () => { live = false; };
   }, [isEditing, object]);
+
+  const addFacet = (raw: string) => { const f = raw.replace(/\s+/g, ' ').trim().slice(0, 40); if (f) setFacets((l) => (l.includes(f) || l.length >= 8 ? l : [...l, f])); setFacetDraft(''); };
+  const facetsFinal = () => { const f = facetDraft.replace(/\s+/g, ' ').trim().slice(0, 40); return f && !facets.includes(f) && facets.length < 8 ? [...facets, f] : facets; };
+  const knownFacets = useMemo(() => [...new Set(allObjects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [allObjects]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +167,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       slotKey: object?.slotKey,
       ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
       ...(validUntil ? { validUntil } : {}),
+      ...(facetsFinal().length ? { facets: facetsFinal() } : {}),
       ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
       ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn)
         ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}) } }
@@ -257,6 +264,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
         <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
+        <div className="flex flex-col gap-stack-xs" role="group" aria-label="بُعدها">
+          <TextField label="بُعد (اختیاری)" value={facetDraft} onChange={(e) => setFacetDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addFacet(facetDraft); } }} hint="یک برچسب آزاد که از میان درخت می‌گذرد: «مخاطب سازمانی»، «فصل پاییز». Enter بزن." />
+          {facets.length > 0 && <div className="flex flex-wrap gap-inline-xs">{facets.map((f) => <Button key={f} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`حذف بُعد ${f}`} onClick={() => setFacets((l) => l.filter((x) => x !== f))}>{f}</Button>)}</div>}
+          {knownFacets.filter((f) => !facets.includes(f)).length > 0 && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">پیشنهاد از بُعدهای موجود:</span>{knownFacets.filter((f) => !facets.includes(f)).slice(0, 8).map((f) => <Button key={f} type="button" size="sm" variant="ghost" onClick={() => addFacet(f)}>{f}</Button>)}</div>}
+        </div>
         {type === 'Fact' && (
           <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
             <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />

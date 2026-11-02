@@ -119,3 +119,29 @@ test('8000 objects: collapsed it is a handful of cards; one expanded node of 200
   const seen = visibleVertices(all, { x: 0, y: 0, w: 1200, h: 800 });
   assert.ok(Date.now() - t0 < 100 && seen.length < 200, `${seen.length} visible`);
 });
+
+test('groupBy: dependency = no boxes, columns from depends_on alone; facet = one swimlane per facet (first facet, «بدون بُعد» last); status = one lane per status; domain stays the default', () => {
+  const objs = [obj('a1', 'a', { facets: ['مخاطب سازمانی'] }), obj('a2', 'a', { facets: ['فصل پاییز', 'مخاطب سازمانی'] }), obj('b1', 'b'), obj('p', 'b', { status: 'Proposed', facets: ['مخاطب سازمانی'] })];
+  const input = { ...base, objects: objs, deliverables: [] };
+  const dom = buildMapModel(input);
+  assert.deepEqual([dom.groupBy, dom.groups.length > 0], ['domain', true]);
+
+  const dep = buildMapModel(input, { groupBy: 'dependency' });
+  assert.equal(dep.groups.length, 0, 'no boxes');
+  assert.deepEqual(['a1', 'a2', 'b1'].map((id) => v(dep, `o:${id}`).layer), ['a1', 'a2', 'b1'].map((id) => v(dom, `o:${id}`).layer), 'the columns do not depend on the grouping');
+  assert.ok(!dep.vertices.some((x) => x.kind === 'node'), 'no node cards: every object is listed');
+
+  const fac = buildMapModel(input, { groupBy: 'facet' });
+  assert.deepEqual(fac.groups.map((g) => g.label), ['مخاطب سازمانی', 'فصل پاییز', 'بدون بُعد'].sort((a, b) => (a === 'بدون بُعد' ? 1 : b === 'بدون بُعد' ? -1 : a.localeCompare(b))));
+  const lane = (label: string) => fac.groups.find((g) => g.label === label)!;
+  const inside = (g: { x: number; y: number; w: number; h: number }, id: string) => { const x = v(fac, id); return x.x >= g.x && x.y >= g.y && x.x + x.w <= g.x + g.w && x.y + x.h <= g.y + g.h; };
+  assert.ok(inside(lane('مخاطب سازمانی'), 'o:a1') && inside(lane('مخاطب سازمانی'), 'o:p'));
+  assert.ok(inside(lane('فصل پاییز'), 'o:a2'), 'a2 sits in its FIRST facet');
+  assert.ok(inside(lane('بدون بُعد'), 'o:b1'));
+  assert.equal(v(fac, 'o:a2').facet, 'فصل پاییز', 'the vertex carries its first facet for colouring');
+
+  const st = buildMapModel(input, { groupBy: 'status' });
+  assert.deepEqual(st.groups.map((g) => g.label), ['تأییدشده', 'پیشنهادی']);
+  assert.ok(st.vertices.every((x) => x.kind !== 'object' || x.x >= 0));
+  assert.deepEqual(st.edges.map((e) => e.kind).sort(), dom.edges.map((e) => e.kind).sort(), 'edges are the same whatever the grouping');
+});
