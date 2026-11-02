@@ -24,6 +24,7 @@ import { ContradictionPanel } from './components/ContradictionPanel';
 import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
 import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
+import { ContextMapView } from './components/ContextMapView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
@@ -39,7 +40,7 @@ import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
-import { needsReview } from './core/decisionGraph';
+import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
@@ -128,7 +129,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -159,6 +160,10 @@ export default function App() {
   const stale = data?.stale ?? [];
   // derived, never stored: dependents whose dependency changed after they were last written or reviewed
   const reviewNeeds = useMemo(() => needsReview(data?.objects ?? [], data?.relationships ?? [], data?.changes ?? []), [data?.objects, data?.relationships, data?.changes]);
+  const reviewIdSet = useMemo(() => new Set(reviewNeeds.keys()), [reviewNeeds]);
+  const staleIdSet = useMemo(() => new Set((data?.stale ?? []).map((s) => s.deliverableId)), [data?.stale]);
+  const waiting = useMemo(() => waitingDecisions(planDecisions(data?.objects ?? [], data?.relationships ?? [])), [data?.objects, data?.relationships]);
+  const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -224,8 +229,8 @@ export default function App() {
     showImpact(r.impact);
   };
 
-  const setStatus = async (id: string, status: ContextObject['status']) => {
-    const r = await attempt(() => dataApi.updateObject(wid, id, { status }));
+  const setStatus = async (id: string, status: ContextObject['status'], reason?: string) => {
+    const r = await attempt(() => dataApi.updateObject(wid, id, { status, ...(reason ? { reason } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
     return r.impact;
@@ -495,11 +500,19 @@ export default function App() {
     if (out.length) patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
   };
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
-  const handleAcceptProposal = async (o: ContextObject) => {
-    const impact = await setStatus(o.id, 'Confirmed');
+  const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
+    const impact = await setStatus(o.id, 'Confirmed', reason);
     if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است.` }); }
   };
-  const handleRejectProposal = async (o: ContextObject) => { await setStatus(o.id, 'Archived'); };
+  const handleRejectProposal = async (o: ContextObject, reason?: string) => { await setStatus(o.id, 'Archived', reason); };
+  /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
+  const handleReplaceWithProposal = async (o: ContextObject, replacesId: string, reason?: string) => {
+    const r = await attempt(() => dataApi.replaceWith(wid, o.id, { replacesId, ...(reason ? { reason } : {}) }));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, stale: r.stale }));
+    showImpact(r.impact);
+    toast.show({ intent: 'success', message: `«${o.title}» جای مورد قبلی نشست؛ قبلی در تاریخچه می‌ماند.` });
+  };
   /** a block of a pasted answer → a PROPOSED object (never Confirmed) */
   const handleProposeFromImport = async (p: { type: ContextObject['type']; title: string; content: string; nodeId: string; source: NonNullable<ContextObject['source']> }) => {
     const r = await attempt(() => dataApi.createObject(wid, { type: p.type, status: 'Proposed', provenance: 'AI Suggested', title: p.title, content: p.content, nodeId: p.nodeId, source: p.source }));
@@ -597,11 +610,12 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'read', label: 'سند', icon: 'BookOpen' },
                   { id: 'table', label: 'جدول', icon: 'Table2' },
+                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
                 ]}
               />
             </div>
@@ -612,6 +626,9 @@ export default function App() {
               contradictionCount={contradictions.length}
               staleCount={stale.length}
               reviews={[...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, dependencyTitles: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) }))}
+              waiting={waiting}
+              flips={flips}
+              titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
               onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
               onAcceptReview={handleAcceptReview}
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
@@ -626,7 +643,7 @@ export default function App() {
               onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
 
-            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} workspaceId={wid} objects={workspaceContexts} deliverables={deliverables} onOpenAssets={() => setActiveTab('assets')} />}
+            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
             <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} />
 
@@ -634,6 +651,7 @@ export default function App() {
               objects={workspaceContexts}
               nodes={nodes}
               onAccept={handleAcceptProposal}
+              onReplace={handleReplaceWithProposal}
               onEdit={(o) => openContext(o)}
               onReject={handleRejectProposal}
               onOpenImport={() => setIsImportOpen(true)}
@@ -665,6 +683,18 @@ export default function App() {
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onExtractNote={handleExtractNote}
+              />
+            ) : contextViewMode === 'map' ? (
+              <ContextMapView
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data?.relationships ?? []}
+                deliverables={deliverables}
+                changes={data?.changes ?? []}
+                reviewObjectIds={reviewIdSet}
+                staleAssetIds={staleIdSet}
+                onOpenObject={(obj) => openContext(obj)}
+                onOpenAssets={() => setActiveTab('assets')}
               />
             ) : (
               <ContextTableView

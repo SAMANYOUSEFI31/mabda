@@ -10,6 +10,7 @@
 
 import type { ContextChange, ContextObject, ContextRelationship } from '../types';
 import { isBaselineChange, isContentChange } from './changeLog';
+import { stronglyConnected } from './graphAlgo';
 
 export interface DepEdge { from: string; to: string }
 
@@ -48,32 +49,6 @@ export interface DecisionPlan {
   groups: string[][];
 }
 
-/** Tarjan's strongly connected components (deterministic order) */
-function components(ids: string[], deps: Map<string, string[]>): string[][] {
-  let counter = 0;
-  const index = new Map<string, number>();
-  const low = new Map<string, number>();
-  const onStack = new Set<string>();
-  const stack: string[] = [];
-  const out: string[][] = [];
-  const visit = (v: string) => {
-    index.set(v, counter); low.set(v, counter); counter++;
-    stack.push(v); onStack.add(v);
-    for (const w of deps.get(v) ?? []) {
-      if (!index.has(w)) { visit(w); low.set(v, Math.min(low.get(v)!, low.get(w)!)); }
-      else if (onStack.has(w)) low.set(v, Math.min(low.get(v)!, index.get(w)!));
-    }
-    if (low.get(v) === index.get(v)) {
-      const comp: string[] = [];
-      let w: string;
-      do { w = stack.pop()!; onStack.delete(w); comp.push(w); } while (w !== v);
-      out.push(comp.sort());
-    }
-  };
-  for (const id of ids) if (!index.has(id)) visit(id);
-  return out;
-}
-
 export function planDecisions(objects: ContextObject[], relationships: ContextRelationship[]): DecisionPlan {
   const edges = dependencyEdges(objects, relationships);
   const byId = new Map(objects.map((o) => [o.id, o]));
@@ -81,7 +56,7 @@ export function planDecisions(objects: ContextObject[], relationships: ContextRe
   const ids = new Set<string>();
   for (const e of edges) { ids.add(e.from); ids.add(e.to); deps.set(e.from, [...(deps.get(e.from) ?? []), e.to]); }
   const sorted = [...ids].sort();
-  const comps = components(sorted, deps);
+  const comps = stronglyConnected(sorted, deps);
   const compOf = new Map<string, number>();
   comps.forEach((c, i) => c.forEach((id) => compOf.set(id, i)));
   const selfLoop = new Set(edges.filter((e) => e.from === e.to).map((e) => e.from));
@@ -167,4 +142,48 @@ export function needsReview(objects: ContextObject[], relationships: ContextRela
     }
   }
   return out;
+}
+
+export interface WaitingDecisions {
+  /** its inputs are Confirmed: it can be decided now */
+  ready: DecisionUnit[];
+  /** waiting for something else; `blockedBy` says what */
+  blocked: DecisionUnit[];
+  /** cycles: decide the members together (also counted in neither list above) */
+  concurrent: DecisionUnit[];
+}
+
+/** what the «تصمیم‌های منتظر» section shows: every unit that is not done yet, split into ready / blocked / decided-together */
+export function waitingDecisions(plan: DecisionPlan): WaitingDecisions {
+  const open = plan.layers.flat().filter((u) => u.state !== 'done');
+  return {
+    ready: open.filter((u) => !u.concurrent && u.state === 'ready'),
+    blocked: open.filter((u) => !u.concurrent && u.state === 'blocked'),
+    concurrent: open.filter((u) => u.concurrent),
+  };
+}
+
+export interface FlipFlop { id: string; times: number }
+
+/**
+ * Soft warning: a decision that has been REPLACED many times (counted from the Change log: `superseded` records, followed
+ * back along the chain of replacements). Never blocks anything.
+ */
+export function flipFlops(objects: ContextObject[], changes: ContextChange[], min = 3): FlipFlop[] {
+  const predecessors = new Map<string, string[]>(); // replacement → what it replaced
+  for (const c of changes) {
+    const by = (c.after as { supersededById?: unknown } | undefined)?.supersededById;
+    if (c.kind !== 'superseded' || typeof by !== 'string') continue;
+    predecessors.set(by, [...(predecessors.get(by) ?? []), c.objectId]);
+  }
+  const depth = (id: string, seen: Set<string>): number => {
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    return Math.max(0, ...(predecessors.get(id) ?? []).map((p) => 1 + depth(p, seen)));
+  };
+  return objects
+    .filter(isActive)
+    .map((o) => ({ id: o.id, times: depth(o.id, new Set()) }))
+    .filter((x) => x.times >= min)
+    .sort((a, b) => b.times - a.times || a.id.localeCompare(b.id));
 }

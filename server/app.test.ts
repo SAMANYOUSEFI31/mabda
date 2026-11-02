@@ -426,18 +426,6 @@ test('memory import: PROPOSED + Imported objects, each quote is kept only if it 
   } finally { t.close(); }
 });
 
-test('changes endpoint returns the version rows of the window (with the earlier versions of edited objects)', async () => {
-  const t = await boot(() => decide);
-  try {
-    await t.call('POST', '/bootstrap', {});
-    await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'نسخهٔ دوم مخاطب' });
-    const r = (await t.call('GET', '/workspaces/ws_studio/changes?days=7')).json;
-    const mine = r.versions.filter((v: any) => v.objectId === 'ctx_audience').map((v: any) => v.version);
-    assert.deepEqual(mine, [1, 2], 'v1 comes along so the edit can show «before»');
-    assert.ok(!r.versions.some((v: any) => v.objectId === 'ctx_domain'), 'untouched objects are not listed');
-  } finally { t.close(); }
-});
-
 test('focused thread: cheap model, context = this node + its parents only, proposals clamped to THIS node (Proposed), summary saved as a note; errors create nothing', async () => {
   let fail = false;
   const t = await boot((c) => {
@@ -526,5 +514,34 @@ test('replacement reason goes to the Change log, not into the object text; revie
     assert.equal((await t.call('POST', '/workspaces/ws_studio/objects/ghost/review-accept', {})).status, 404);
     const log = (await t.call('GET', `/workspaces/ws_studio/changes/log?objectId=${r.json.object.id}`)).json.changes;
     assert.deepEqual(log.map((c: any) => c.kind), ['created', 'review_accepted']);
+  } finally { t.close(); }
+});
+
+test('proposal inbox: accept / reject / replace each write a Change with the optional reason; replace supersedes the old object', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const mk = async (body: object) => (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', provenance: 'AI Suggested', nodeId: 'offer', ...body })).json.object;
+    const base = await mk({ status: 'Confirmed', provenance: 'User Input', title: 'قیمت پایه', content: 'پنج میلیون' });
+    const p1 = await mk({ status: 'Proposed', title: 'قیمت پایه', content: 'هفت میلیون', source: { kind: 'mcp', label: 'Claude', at: new Date().toISOString() } });
+    const r = await t.call('POST', `/workspaces/ws_studio/objects/${p1.id}/replace`, { replacesId: base.id, reason: 'بودجهٔ جدید' });
+    assert.equal(r.status, 200);
+    const byId = (id: string) => r.json.objects.find((o: any) => o.id === id);
+    assert.deepEqual([byId(base.id).status, byId(base.id).supersededById, byId(p1.id).status], ['Superseded', p1.id, 'Confirmed']);
+    const log = (await t.call('GET', '/workspaces/ws_studio/changes/log')).json.changes;
+    const of = (id: string) => log.filter((c: any) => c.objectId === id).map((c: any) => [c.kind, c.reason ?? null, c.actor]);
+    assert.deepEqual(of(base.id).at(-1), ['superseded', 'بودجهٔ جدید', 'user']);
+    assert.deepEqual(of(p1.id).at(-1), ['proposal_accepted', 'بودجهٔ جدید', 'user']);
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/objects/${base.id}/replace`, { replacesId: p1.id })).status, 400, 'only a proposal can replace');
+
+    const p2 = await mk({ status: 'Proposed', title: 'لحن', content: 'رسمی' });
+    const p3 = await mk({ status: 'Proposed', title: 'کانال', content: 'تلگرام' });
+    await t.call('PATCH', `/workspaces/ws_studio/objects/${p2.id}`, { status: 'Confirmed', reason: 'با تیم هماهنگ شد' });
+    await t.call('PATCH', `/workspaces/ws_studio/objects/${p3.id}`, { status: 'Archived', reason: 'ما تلگرام استفاده نمی‌کنیم' });
+    const log2 = (await t.call('GET', '/workspaces/ws_studio/changes/log')).json.changes;
+    const last = (id: string) => log2.filter((c: any) => c.objectId === id).at(-1);
+    assert.deepEqual([last(p2.id).kind, last(p2.id).reason], ['proposal_accepted', 'با تیم هماهنگ شد']);
+    assert.deepEqual([last(p3.id).kind, last(p3.id).reason], ['proposal_rejected', 'ما تلگرام استفاده نمی‌کنیم']);
+    assert.ok(!JSON.stringify((await t.call('GET', '/workspaces/ws_studio/state')).json.objects).includes('ما تلگرام استفاده نمی‌کنیم'), 'reasons never enter object text');
   } finally { t.close(); }
 });

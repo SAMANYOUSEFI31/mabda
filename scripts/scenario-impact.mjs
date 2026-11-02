@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Full scenario against a REAL server + SQLite (temp DB) and a LOCAL Gemini stand-in (scripted output, not a model):
- *   audience changes → assets become «قدیمی» with a reason → rebuild at half price → fresh again.
+ *   audience changes → assets become «نیاز به بازبینی» with a reason → rebuild at half price → fresh again.
  * Also exercises: user nodes + notes (extract → Proposed), file upload + processing, node-scoped chat.
  * Screenshots → docs/screens/impact-*.png at 1280 and 390.
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-impact.mjs
@@ -113,7 +113,7 @@ async function scenario(width, tag) {
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
   await page.getByText('ردپای دانش').first().waitFor({ timeout: 30000 });
   await shot('4-asset-fresh');
-  assert.equal(await page.getByText('قدیمی', { exact: true }).count(), 0, 'nothing is stale yet');
+  assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).count(), 0, 'nothing is stale yet');
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع حقیقت');
@@ -126,13 +126,13 @@ async function scenario(width, tag) {
   console.log(`[${tag}]   toast:`, impactText);
   await shot('5-impact-toast');
 
-  step('assets: «قدیمی» badge + reason + half-price rebuild');
+  step('assets: «نیاز به بازبینی» badge + reason + half-price rebuild');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^قدیمی/ }).click();
-  await page.getByText('این دارایی قدیمی شده است').first().waitFor();
+  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).click();
+  await page.getByText('این دارایی نیاز به بازبینی دارد').first().waitFor();
   await page.getByText(/از نسخهٔ ۱ به ۲ تغییر کرد/).first().waitFor();
   await shot('6-asset-stale', true);
-  const staleBefore = await page.getByText('این دارایی قدیمی شده است').count();
+  const staleBefore = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
   await page.getByRole('button', { name: 'بازسازی با نصف قیمت' }).first().click();
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor({ timeout: 30000 });
   await page.getByText('بازسازی‌شده').first().waitFor({ timeout: 30000 });
@@ -140,8 +140,8 @@ async function scenario(width, tag) {
 
   step('assets again: one fewer stale asset, rebuilt one is fresh and replays version 2');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^قدیمی/ }).waitFor();
-  const staleAfter = await page.getByText('این دارایی قدیمی شده است').count();
+  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).waitFor();
+  const staleAfter = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
   await page.getByRole('tab', { name: /^تمام دارایی‌ها/ }).click();
   await page.getByText(/نسخهٔ ۲/).first().waitFor();

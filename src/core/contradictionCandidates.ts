@@ -8,6 +8,7 @@
  */
 
 import type { Contradiction, ContextObject } from '../types';
+import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, extractQuantities, jaccard, normalizeFa, titleTokens } from './contextEngine';
 
 export type CandidateReason = 'same_slot' | 'same_node' | 'number_differs' | 'qualifier_differs';
@@ -44,8 +45,10 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES)
   const quals = new Map(active.map((o) => [o.id, qualifiersOf(`${o.title} ${o.content}`)]));
   const out: Array<CandidatePair & { score: number }> = [];
 
-  for (let i = 0; i < active.length; i++) {
-    for (let j = i + 1; j < active.length; j++) {
+  // pairs worth looking at share a title word or a slot (N² → bounded by blocking, see pairBlocking.ts)
+  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra: groupPairs(active.map((o) => o.slotKey)) });
+  {
+    for (const [i, j] of pairs) {
       const a = active[i];
       const b = active[j];
       if (normalizeFa(a.content) === normalizeFa(b.content)) continue; // identical claims agree
