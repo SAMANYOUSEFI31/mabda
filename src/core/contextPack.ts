@@ -9,6 +9,7 @@ import type { AmbiguityMap } from './contextEngine';
 import { ancestorIds } from './nodeTree';
 import { estimateTokens } from './tokens';
 import { effectiveObjects, guardrailsFor } from './effectiveContext';
+import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
 
 export interface PackInput {
   packId: string;
@@ -32,7 +33,7 @@ export interface ContextPack {
   chars: number;
   /** exactly the objects (id + version) that appear in the pack: Confirmed and Proposed */
   refs: UsedContextRef[];
-  counts: { confirmed: number; proposed: number; gaps: number; guardrails: number };
+  counts: { confirmed: number; proposed: number; assumptions: number; rejected: number; gaps: number; guardrails: number };
 }
 
 export const PACK_MARKER = (id: string) => `<!-- mabda-pack:${id} -->`;
@@ -77,8 +78,11 @@ export function buildContextPack(input: PackInput): ContextPack {
   const guardIds = new Set<string>();
   for (const n of guardSeeds) for (const o of guardrailsFor(n, input.objects, nodes, rels, now)) guardIds.add(o.id);
 
-  const confirmed = relevant.filter((o) => o.status === 'Confirmed');
-  const proposed = relevant.filter((o) => o.status !== 'Confirmed');
+  // an assumption is neither knowledge nor merely «proposed»: it has its own section and rule
+  const assumptions = relevant.filter((o) => isAssumption(o));
+  const confirmed = relevant.filter((o) => o.status === 'Confirmed' && !o.assumption);
+  const proposed = relevant.filter((o) => o.status !== 'Confirmed' && !o.assumption);
+  const rejected = rejectedOptions(relevant);
   const path = (id: string) => ancestorIds(nodes, id).reverse().map((n) => nodes.find((x) => x.id === n)?.label ?? n).join(' ‹ ');
   const group = (list: ContextObject[]) => {
     const byNode = new Map<string, ContextObject[]>();
@@ -111,6 +115,8 @@ export function buildContextPack(input: PackInput): ContextPack {
   if (guardrails.length) parts.push(['## گاردریل‌ها (نباید نقض شوند)', ...guardrails.map((g) => `- ${g}`)].join('\n'));
   parts.push(`## واقعیت‌های تأییدشده (Confirmed)\n${confirmed.length ? group(confirmed) : 'هنوز دانش تأییدشده‌ای ثبت نشده است.'}`);
   if (proposed.length) parts.push(`## پیشنهادی — تأییدنشده (واقعیت نیست)\n${group(proposed)}`);
+  if (assumptions.length) parts.push([`## فرض‌های فعال، تأییدنشده (واقعیت نیست)`, ASSUMPTION_RULE, '', group(assumptions)].join('\n'));
+  if (rejected.length) parts.push([`## گزینه‌های بررسی‌شده و ردشده`, REJECTED_RULE, '', ...rejected.map((r) => `- «${r.title}» (در تصمیم «${r.objectTitle}»): ${r.reason}`)].join('\n'));
   if (gaps.length) {
     parts.push(['## شکاف‌ها (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));
   }
@@ -120,6 +126,6 @@ export function buildContextPack(input: PackInput): ContextPack {
   return {
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
     refs: relevant.map((o) => ({ id: o.id, version: o.version })),
-    counts: { confirmed: confirmed.length, proposed: proposed.length, gaps: gaps.length, guardrails: guardrails.length },
+    counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length },
   };
 }

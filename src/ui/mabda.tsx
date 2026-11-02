@@ -108,3 +108,20 @@ export const ORIGIN_META: Record<'own' | 'inherited' | 'global' | 'overridden' |
 export function OriginBadge({ value, className }: { value: keyof typeof ORIGIN_META; className?: string }) {
   return <MabdaBadge entry={ORIGIN_META[value]} className={className} />;
 }
+
+/** a working assumption: «فرض» — never shown as fact. Label + icon, never colour alone. */
+const ASSUMPTION: Entry = { label: 'فرض', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' };
+export function AssumptionBadge({ object, className }: { object: Pick<ContextObject, 'assumption'>; className?: string }) {
+  return object.assumption ? <MabdaBadge entry={ASSUMPTION} className={className} /> : null;
+}
+
+/** the kinds of a thinking item (derived from a note line): idea, question, assumption, open decision */
+const THINKING: Record<'idea' | 'question' | 'assumption' | 'open_decision', Entry> = {
+  idea: { label: 'ایده', icon: 'Zap', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  question: { label: 'سؤال', icon: 'MessageSquare', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  assumption: { label: 'فرض', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  open_decision: { label: 'تصمیم باز', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
+};
+export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING; className?: string }) {
+  return <MabdaBadge entry={THINKING[kind]} className={className} />;
+}

@@ -295,6 +295,17 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 12,
+    name: 'context_objects.assumption / review_by / decision_record: a Fact can be a working assumption with a review date; a Decision can carry its record (question, options weighed + why rejected, expectation, review date). NULL = none — old data is untouched',
+    up(db) {
+      db.exec(`
+        ALTER TABLE context_objects ADD COLUMN assumption INTEGER;
+        ALTER TABLE context_objects ADD COLUMN review_by TEXT;
+        ALTER TABLE context_objects ADD COLUMN decision_record TEXT;
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

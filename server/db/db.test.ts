@@ -349,7 +349,7 @@ test('reach / validUntil: migration 11 leaves old rows untouched (type default),
   migrate(db, 10);
   new Repo(db).saveWorkspace(U, ws('w1'));
   db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('c_old',?,?,'Constraint','Confirmed','User Input','قید قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
-  assert.deepEqual(migrate(db), [11]);
+  assert.deepEqual(migrate(db).filter((v) => v === 11), [11]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const old = repo.getObject(s, 'c_old')!;
@@ -385,4 +385,48 @@ test('overrides: only child-node → ancestor-node, needs a reason (kept in the 
   repo.removeOverride(s, exc.id, rule.id, { reason: 'برگشت' });
   assert.ok(!repo.listRelationships(s).some((x) => x.type === 'overrides'));
   assert.deepEqual(repo.listChanges(s, { objectId: exc.id }).filter((c) => c.after && 'overrides' in c.after).map((c) => c.after!.overrides), [[rule.id], []]);
+});
+
+test('assumption / reviewBy / decision record: migration 12 leaves old rows alone; only a Fact can be an assumption, only a Decision has a record; edits are Changes', () => {
+  const db = new Database(':memory:');
+  migrate(db, 11);
+  new Repo(db).saveWorkspace(U, ws('w1'));
+  db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('old',?,?,'Fact','Confirmed','User Input','قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
+  assert.deepEqual(migrate(db), [12]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  const old = repo.getObject(s, 'old')!;
+  assert.deepEqual([old.assumption, old.reviewBy, old.record], [undefined, undefined, undefined]);
+  const a = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'فرض', content: 'پیام‌رسان بهتر است', nodeId: 'business', assumption: true, reviewBy: '2026-09-01' });
+  assert.deepEqual([a.assumption, a.reviewBy], [true, '2026-09-01']);
+  const notFact = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'تصمیم', content: 'x', nodeId: 'business', assumption: true, reviewBy: '2026-09-01' } as never);
+  assert.deepEqual([notFact.assumption, notFact.reviewBy], [undefined, undefined], 'a Decision is never an assumption');
+  const d = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'ماهانه', nodeId: 'business', record: { question: 'چه قیمتی؟', options: [{ title: 'سالانه', rejectedReason: 'نقدینگی' }, { title: '' }, { title: 'رایگان' }], expectation: 'فروش بیشتر', reviewOn: '2026-10-01' } });
+  assert.deepEqual(d.record?.options, [{ title: 'سالانه', rejectedReason: 'نقدینگی' }, { title: 'رایگان' }]);
+  assert.equal(repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'ف', content: 'x', nodeId: 'business', record: { question: 'x' } } as never).record, undefined, 'a Fact has no record');
+  const e = repo.updateObject(s, a.id, { assumption: false }, { reason: 'ثابت شد' }).object;
+  assert.deepEqual([e.assumption, e.reviewBy, e.version], [undefined, undefined, 2], 'no longer an assumption → knowledge; the review date goes with it');
+  const ch = repo.listChanges(s, { objectId: a.id }).at(-1)!;
+  assert.deepEqual([ch.kind, ch.before?.assumption, ch.after?.assumption], ['edited', true, null]);
+  const e2 = repo.updateObject(s, d.id, { record: { question: 'چه قیمتی؟', reviewOn: '2026-11-01' } }).object;
+  assert.deepEqual([e2.record?.options, e2.version], [undefined, 2]);
+});
+
+test('outcome_noted: a due decision\'s answer is a Change (decisions only, text required); a note\'s ## sections become child nodes with a Change each and the note stays', () => {
+  const { repo, s } = fresh();
+  const dec = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'تصمیم', content: 'x', nodeId: 'business' });
+  const fact = repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'ف', content: 'x', nodeId: 'business' });
+  assert.throws(() => repo.noteOutcome(s, fact.id, 'نتیجه'), RepoError);
+  assert.throws(() => repo.noteOutcome(s, dec.id, '  '), RepoError);
+  const c = repo.noteOutcome(s, dec.id, 'فروش ۲۰٪ بیشتر شد', { actor: 'user' });
+  assert.deepEqual([c.kind, c.reason], ['outcome_noted', 'فروش ۲۰٪ بیشتر شد']);
+  assert.equal(repo.getObject(s, dec.id)!.version, 1, 'a note about the outcome does not change the decision');
+  const note = repo.createNote(s, 'business', 'مقدمه\n## قیمت\nمتن یک\n## ارسال\nمتن دو');
+  assert.throws(() => repo.nodesFromNote(s, note.id, [{ title: 'فقط یکی', body: '' }]), RepoError);
+  const nodes = repo.nodesFromNote(s, note.id, [{ title: 'قیمت', body: 'متن یک' }, { title: 'ارسال', body: 'متن دو' }]);
+  assert.deepEqual(nodes.map((n) => [n.label, n.parentId]), [['قیمت', 'business'], ['ارسال', 'business']]);
+  assert.equal(repo.getNote(s, note.id)!.content, 'مقدمه\n## قیمت\nمتن یک\n## ارسال\nمتن دو', 'the original text stays');
+  assert.deepEqual(repo.listNotes(s).filter((n) => nodes.some((x) => x.id === n.nodeId)).map((n) => n.content).sort(), ['متن دو', 'متن یک']);
+  assert.equal(repo.listChanges(s).filter((x) => x.kind === 'node_from_note').length, 0, 'node records are not in the object feed');
+  assert.equal(repo.listChanges(s, { includeNodes: true }).filter((x) => x.kind === 'node_from_note').length, 2);
 });

@@ -665,7 +665,7 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     const s2 = (await t.call('GET', '/workspaces/ws_demo/state')).json;
     assert.deepEqual(s2, s1, 'reset twice → the same state');
     assert.equal(t.p.calls.length, aiCalls, 'building, resetting and opening the showcase never calls the AI');
-    assert.ok(s1.objects.length >= 30 && s1.changes.length > 40 && s1.notes.length === 6 && s1.deliverables.length === 3 && s1.files.length === 1 && s1.specs.length === 3);
+    assert.ok(s1.objects.length >= 30 && s1.changes.length > 40 && s1.notes.length === 8 && s1.deliverables.length === 3 && s1.files.length === 1 && s1.specs.length === 3);
     assert.equal(s1.files[0].status, 'ready');
     assert.equal(s1.ledger.length, 0, 'no usage is invented');
     assert.deepEqual(s1.judgments, {}, 'no AI judgement is stored');
@@ -677,6 +677,15 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     const pack = await t.call('POST', '/workspaces/ws_demo/packs', {});
     assert.equal(pack.status, 200);
     assert.ok(pack.json.counts.confirmed >= 15 && pack.json.counts.proposed >= 5);
+    // an assumption is never a fact for an AI: even Confirmed it is in its own section, with the rule
+    assert.equal(pack.json.counts.assumptions, 2);
+    const md: string = pack.json.markdown;
+    const confirmedBlock = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## پیشنهادی'));
+    assert.ok(confirmedBlock.length > 100 && !confirmedBlock.includes('dm_assume_msg'));
+    assert.match(md, /## فرض‌های فعال، تأییدنشده[\s\S]*dm_assume_msg[\s\S]*مشتری‌ها پیام‌رسان را از ایمیل بیشتر می‌خوانند/);
+    assert.match(md, /«تخفیف ۱۵ درصد روی قیمت کارگاه» \(در تصمیم «قیمت کارگاه گروهی»\)/);
+    // the line markers of the notes are NOT injected
+    assert.ok(!md.includes('آیا دانه را آسیاب‌شده هم بفرستیم؟'), 'a note line never reaches the pack');
     const usage = await t.call('GET', '/workspaces/ws_demo/usage');
     assert.equal(usage.status, 200);
   } finally { t.close(); }

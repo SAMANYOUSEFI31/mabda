@@ -276,3 +276,24 @@ test('get_context with a nodeId returns the list IN FORCE there with an origin; 
     await c.close();
   } finally { t.close(); }
 });
+
+test('get_context: an assumption is never a fact (even Confirmed) — it comes under `assumptions` with the rule; rejected options of a decision under `rejectedOptions`', async () => {
+  const t = await boot();
+  try {
+    const mk = (b: Record<string, unknown>) => t.api('POST', '/workspaces/ws_studio/objects', { provenance: 'User Input', nodeId: 'business', ...b });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت', content: 'سی مشتری داریم' });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'فرض من', content: 'مشتری‌ها پیام‌رسان را ترجیح می‌دهند', assumption: true, reviewBy: '2026-09-01' });
+    await mk({ type: 'Decision', status: 'Confirmed', title: 'قیمت', content: 'ماهانه', record: { options: [{ title: 'سالانه', rejectedReason: 'نقدینگی' }] } });
+    const tok = await t.token('ws_studio', 'Claude');
+    const c = await t.connect(tok.token);
+    const r = await t.call(c, 'get_context', {});
+    assert.ok(r.data.facts.some((f: any) => f.title === 'واقعیت'));
+    assert.ok(!r.data.facts.some((f: any) => f.title === 'فرض من'), 'an assumption is not a fact');
+    assert.deepEqual(r.data.assumptions.map((a: any) => [a.title, a.reviewBy]), [['فرض من', '2026-09-01']]);
+    assert.match(r.data.assumptionRule, /فرض‌اند، نه واقعیت/);
+    assert.deepEqual(r.data.rejectedOptions.map((x: any) => [x.option, x.reason]), [['سالانه', 'نقدینگی']]);
+    assert.match(r.text, /## فرض‌های فعال، تأییدنشده[\s\S]*فرض من/);
+    assert.match(r.text, /## گزینه‌های بررسی‌شده و ردشده[\s\S]*«سالانه»/);
+    await c.close();
+  } finally { t.close(); }
+});

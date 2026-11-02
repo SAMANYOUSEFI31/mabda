@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
+import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '../../src/core/assumptions.ts';
 import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
@@ -81,7 +82,7 @@ export function buildMcpServer(c: McpContext): McpServer {
   // ── context ───────────────────────────────────────────────────────────
   server.registerTool('get_context', {
     title: 'خواندن Context',
-    description: 'Read knowledge. With `nodeId` you get what is IN FORCE at that node, each item with its `origin` (own = in that node, inherited = from a node above, global = a rule that holds everywhere, subtree = in a node below); overridden / expired items are listed apart under `notInForce` and are NOT to be applied. Only status Confirmed is fact; Proposed / Needs Review are returned separately under `unconfirmed` and must NOT be treated as fact. Filter by node (with sub-tree), type, status and free-text query. Pass the returned id+version to save_asset.',
+    description: 'Read knowledge. With `nodeId` you get what is IN FORCE at that node, each item with its `origin` (own = in that node, inherited = from a node above, global = a rule that holds everywhere, subtree = in a node below); overridden / expired items are listed apart under `notInForce` and are NOT to be applied. Only status Confirmed is fact — except an ASSUMPTION (`assumptions`, never a fact even when its status is Confirmed); `rejectedOptions` are choices already weighed and rejected: do not propose them again; Proposed / Needs Review are returned separately under `unconfirmed` and must NOT be treated as fact. Filter by node (with sub-tree), type, status and free-text query. Pass the returned id+version to save_asset.',
     inputSchema: {
       nodeId: z.string().optional().describe('node id from get_workspace_overview: returns what is in force there (own + inherited + global + the sub-tree), with `origin`'),
       includeSubtree: z.boolean().optional().describe('default true'),
@@ -111,14 +112,20 @@ export function buildMcpServer(c: McpContext): McpServer {
     if (a.query?.trim()) list = bm25Rank(a.query, list.map((o) => ({ o, text: `${o.title}\n${o.content}` }))).map((r) => r.chunk.o);
     list = list.slice(0, a.limit ?? 50);
     const withOrigin = (o: ContextObject) => ({ ...view(nodes, o), ...(a.nodeId ? { origin: originOf.get(o.id) } : {}), reach: reachOf(o), ...(o.validUntil ? { validUntil: o.validUntil } : {}) });
-    const facts = list.filter((o) => o.status === 'Confirmed').map(withOrigin);
-    const unconfirmed = list.filter((o) => o.status !== 'Confirmed').map(withOrigin);
+    // an assumption is never a fact (even when Confirmed): it has its own list and rule; rejected options are listed so the AI does not propose them again
+    const withKind = (o: ContextObject) => ({ ...withOrigin(o), ...(o.reviewBy ? { reviewBy: o.reviewBy } : {}) });
+    const assumptionList = list.filter((o) => isAssumption(o)).map(withKind);
+    const facts = list.filter((o) => o.status === 'Confirmed' && !o.assumption).map(withOrigin);
+    const unconfirmed = list.filter((o) => o.status !== 'Confirmed' && !o.assumption).map(withOrigin);
+    const rejectedList = rejectedOptions(list).map((r) => ({ option: r.title, reason: r.reason, decisionId: r.objectId, decision: r.objectTitle }));
     const out = notInForce.slice(0, 50).map((o) => ({ ...withOrigin(o), origin: originOf.get(o.id) ?? 'expired' }));
     const md = [
       '## واقعیت‌ها (Confirmed)', facts.length ? facts.map(mdLine).join('\n') : 'موردی نیست.',
       '## تأییدنشده (Proposed / Needs Review) — واقعیت نیست', unconfirmed.length ? unconfirmed.map(mdLine).join('\n') : 'موردی نیست.',
+      ...(assumptionList.length ? ['## فرض‌های فعال، تأییدنشده (واقعیت نیست)', ASSUMPTION_RULE, assumptionList.map(mdLine).join('\n')] : []),
+      ...(rejectedList.length ? ['## گزینه‌های بررسی‌شده و ردشده', REJECTED_RULE, rejectedList.map((r) => `- «${r.option}» (در «${r.decision}»): ${r.reason}`).join('\n')] : []),
     ].join('\n\n');
-    return reply(md, { facts, unconfirmed, ...(out.length ? { notInForce: out } : {}), note: 'Only `facts` are facts. For save_asset pass usedContext: [{id, version}] of what you used.' });
+    return reply(md, { facts, unconfirmed, ...(assumptionList.length ? { assumptions: assumptionList, assumptionRule: ASSUMPTION_RULE } : {}), ...(rejectedList.length ? { rejectedOptions: rejectedList, rejectedRule: REJECTED_RULE } : {}), ...(out.length ? { notInForce: out } : {}), note: 'Only `facts` are facts. For save_asset pass usedContext: [{id, version}] of what you used.' });
   });
 
   // ── gaps / readiness ──────────────────────────────────────────────────

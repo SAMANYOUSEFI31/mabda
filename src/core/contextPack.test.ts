@@ -94,3 +94,22 @@ test('context pack without a spec: the whole tree (or one branch chain) and no t
   const branch = buildContextPack({ packId: 'p', workspaceName: 'x', nodes: DEFAULT_TREE_NODES, objects: objs, targetNodeId: 'brand' });
   assert.deepEqual(branch.refs.map((r) => r.id), ['a'], 'brand ‹ business chain only');
 });
+
+test('an assumption is never a fact: even Confirmed it sits in its own section with the explicit rule; rejected options are listed so the AI does not propose them again', () => {
+  const nodes = [{ id: 'business', label: 'کسب‌وکار', description: '' }];
+  const base = { workspaceId: 'w', provenance: 'User Input' as const, nodeId: 'business', version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: '' };
+  const objects = [
+    { ...base, id: 'f1', type: 'Fact' as const, status: 'Confirmed' as const, title: 'واقعیت قطعی', content: 'سی نفر مشتری داریم' },
+    { ...base, id: 'a1', type: 'Fact' as const, status: 'Confirmed' as const, title: 'فرض پیام‌رسان', content: 'مشتری‌ها پیام‌رسان را بیشتر می‌خوانند', assumption: true, reviewBy: '2026-09-01' },
+    { ...base, id: 'a2', type: 'Fact' as const, status: 'Proposed' as const, title: 'فرض تمدید', content: 'بیشتر مشتری‌ها تمدید می‌کنند', assumption: true },
+    { ...base, id: 'd1', type: 'Decision' as const, status: 'Confirmed' as const, title: 'قیمت اشتراک', content: 'ماهانه', record: { options: [{ title: 'اشتراک سالانه', rejectedReason: 'نقدینگی مشتری کم است' }, { title: 'ماهانه' }] } },
+  ];
+  const pack = buildContextPack({ packId: 'p1', workspaceName: 'فضا', nodes, objects, now: new Date('2026-06-01T00:00:00Z') });
+  const md = pack.markdown;
+  const confirmedBlock = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## فرض‌های فعال'));
+  assert.ok(confirmedBlock.includes('واقعیت قطعی') && !confirmedBlock.includes('فرض پیام‌رسان') && !confirmedBlock.includes('فرض تمدید'), 'assumptions are not in the confirmed block');
+  assert.match(md, /## فرض‌های فعال، تأییدنشده \(واقعیت نیست\)\nاین‌ها فرض‌اند، نه واقعیت[\s\S]*فرض پیام‌رسان[\s\S]*فرض تمدید/);
+  assert.match(md, /## گزینه‌های بررسی‌شده و ردشده\n[\s\S]*«اشتراک سالانه» \(در تصمیم «قیمت اشتراک»\): نقدینگی مشتری کم است/);
+  assert.ok(!md.includes('«ماهانه» (در تصمیم'), 'only options with a rejection reason are listed');
+  assert.deepEqual([pack.counts.confirmed, pack.counts.assumptions, pack.counts.rejected], [2, 2, 1]);
+});

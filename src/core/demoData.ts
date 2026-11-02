@@ -8,6 +8,7 @@
  * found by the same deterministic engines as everywhere else.
  */
 
+import { lineHash } from './thinkingMarkers';
 import type {
   ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ContextRelationship, GeneratedDeliverable, Note, ObjectSource, TreeNode, WorkstreamSpec,
 } from '../types';
@@ -58,6 +59,11 @@ interface Spec {
   log?: Array<{ d: number; h?: number; kind: ContextChangeKind; to: ContextObject['status']; by?: Who; reason?: string }>;
   supersededBy?: { id: string; d: number; h?: number; by?: Who; reason?: string };
   /** how far it applies (docs/spine.md: effective context); absent = the type default */
+  /** a working assumption (Fact) and the day it should be looked at again (days ago; negative = in the future) */
+  assumption?: boolean;
+  reviewByDaysAgo?: number;
+  /** the record of a Decision: `reviewOnDaysAgo` becomes a date */
+  record?: { question?: string; options?: Array<{ title: string; rejectedReason?: string }>; expectation?: string; reviewOnDaysAgo?: number };
   reach?: 'global' | 'position';
   /** days ago the object stopped applying (an end date in the past = expired) */
   expiredDaysAgo?: number;
@@ -112,8 +118,9 @@ export function buildDemo(now: Date): DemoData {
     }
     objects.push({
       id: s.id, workspaceId: W, type: s.type, status, provenance: s.provenance, title: s.title, content, nodeId: s.node, version,
-      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.expiredDaysAgo !== undefined ? { validUntil: at(s.expiredDaysAgo, 12).slice(0, 10) } : {}),
-      ...(s.source ? { source: { kind: s.source.kind, ...(s.source.label ? { label: s.source.label } : {}), ...(s.source.reason ? { reason: s.source.reason } : {}), ...(s.source.quote ? { quote: s.source.quote } : {}), at: at(s.source.daysAgo ?? s.created[0], s.created[1] ?? 10) } } : {}),
+      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
+      ...(s.record ? { record: { ...(s.record.question ? { question: s.record.question } : {}), ...(s.record.options ? { options: s.record.options } : {}), ...(s.record.expectation ? { expectation: s.record.expectation } : {}), ...(s.record.reviewOnDaysAgo !== undefined ? { reviewOn: at(s.record.reviewOnDaysAgo, 12).slice(0, 10) } : {}) } } : {}), ...(s.expiredDaysAgo !== undefined ? { validUntil: at(s.expiredDaysAgo, 12).slice(0, 10) } : {}),
+      ...(s.source ? { source: { kind: s.source.kind, ...(s.source.label ? { label: s.source.label } : {}), ...(s.source.reason ? { reason: s.source.reason } : {}), ...(s.source.quote ? { quote: s.source.quote } : {}), ...(s.source.noteId ? { noteId: s.source.noteId, lineKey: s.source.lineKey } : {}), at: at(s.source.daysAgo ?? s.created[0], s.created[1] ?? 10) } } : {}),
       createdAt: created, updatedAt: updated,
     });
   };
@@ -180,8 +187,14 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_calendar', type: 'Decision', node: 'dn_social', title: 'تقویم محتوا', first: 'هفته‌ای ۳ پست و ۲ استوری.', status: 'Needs Review', provenance: 'User Input', slot: 'content_calendar', created: [24],
     log: [{ d: 24, h: 11, kind: 'proposal_accepted', to: 'Confirmed' }, { d: 4, kind: 'status_changed', to: 'Needs Review', reason: 'ظرفیت تیم عوض شد؛ دوباره بررسی شود.' }] });
 
+  // ── the thinking structure: assumptions (one due, one later) — never facts, even when confirmed ──────────────────
+  add({ id: 'dm_assume_msg', type: 'Fact', node: 'dn_social', title: 'مشتری‌ها پیام‌رسان را از ایمیل بیشتر می‌خوانند', first: 'مشتری‌ها پیام‌رسان را از ایمیل بیشتر می‌خوانند.', status: 'Confirmed', provenance: 'User Input', created: [14, 12], assumption: true, reviewByDaysAgo: 2 });
+  add({ id: 'dm_assume_renew', type: 'Fact', node: 'dn_sub', title: 'تمدید اشتراک بعد از سه ماه', first: 'بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند.', status: 'Proposed', provenance: 'User Input', created: [3, 11], assumption: true, reviewByDaysAgo: -20,
+    source: { kind: 'note', label: 'یادداشت', quote: 'بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند', noteId: 'dnote_7', lineKey: lineHash('بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند'), daysAgo: 3 } });
+
   // ── effective context: an exception for a sub-tree, and a rule that ended ────────────────────────
-  add({ id: 'dm_ws_group', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه گروهی', first: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد و با قیمت اشتراک ماهانه یکی نیست.', status: 'Confirmed', provenance: 'User Input', created: [9, 15] });
+  add({ id: 'dm_ws_group', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه گروهی', first: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد و با قیمت اشتراک ماهانه یکی نیست.', status: 'Confirmed', provenance: 'User Input', created: [9, 15],
+    record: { question: 'کارگاه گروهی چطور قیمت‌گذاری شود؟', options: [{ title: 'تخفیف ۱۵ درصد روی قیمت کارگاه', rejectedReason: 'با قید «تخفیف نداریم» نمی‌خواند' }, { title: 'قیمت جداگانهٔ گروهی' }], expectation: 'دست‌کم سه ثبت‌نام گروهی تا دو ماه دیگر', reviewOnDaysAgo: 3 } });
   add({ id: 'dm_old_promo', type: 'Constraint', node: 'dn_social', title: 'جشنوارهٔ پاییز', first: 'تا پایان جشنوارهٔ پاییز بستهٔ هدیه ارسال نکنیم.', status: 'Confirmed', provenance: 'User Input', created: [40, 12], reach: 'position', expiredDaysAgo: 12 });
 
   // ── more suggestions from different ways in ─────────────────────────────────────────────────
@@ -211,6 +224,8 @@ export function buildDemo(now: Date): DemoData {
     { id: 'dnote_3', nodeId: 'dn_ws', content: 'کارگاه آنلاین هم برگزار کنیم؟ جلسه‌ها را ضبط کنیم و بفروشیم.', at: at(2, 19) },
     { id: 'dnote_4', nodeId: 'dn_social', content: 'ریلز از مراحل برشته‌کاری؛ صدای ترک‌خوردن دانه خیلی جذاب است.', at: at(2, 22) },
     { id: 'dnote_5', nodeId: 'dn_support', content: 'یک راهنمای کوتاه دم‌کردن توی هر بسته بگذاریم.', at: at(1, 18) },
+    { id: 'dnote_7', nodeId: 'dn_sub', content: 'فکرهای این هفته دربارهٔ اشتراک:\n[سؤال] آیا دانه را آسیاب‌شده هم بفرستیم؟\n[تصمیم باز] قیمت اشتراک سه‌ماهه چقدر باشد؟\n[ایده] جعبهٔ هدیه برای عید\n[فرض] بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند\nاین [فرض] وسط خط است و نشانگر حساب نمی‌شود.', at: at(3, 11) },
+    { id: 'dnote_8', nodeId: 'dn_social', content: 'ایده‌های محتوا\n## ریلز\nمراحل برشته‌کاری، صدای ترک‌خوردن دانه.\n## کپشن\nکوتاه، بدون کلمات تبلیغاتی.\n[سؤال] ریلز را هفته‌ای چند بار منتشر کنیم؟', at: at(2, 12) },
     { id: 'dnote_6', nodeId: 'offer', content: 'بستهٔ آزمایشی ۲ ماهه برای مشتری‌های تازه؟ (بدون تخفیف، با یک دانهٔ اضافه)', at: at(1, 21) },
   ].map((n) => ({ id: n.id, workspaceId: W, nodeId: n.nodeId, content: n.content, createdAt: n.at, updatedAt: n.at }));
 

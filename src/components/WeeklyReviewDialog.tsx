@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { DueItems } from './DueItems';
 import React, { useMemo, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable } from '../types';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../core/weeklyReview';
@@ -21,6 +22,8 @@ interface Props {
   onConfirm: (id: string) => Promise<void>;
   onOpenObject: (o: ContextObject) => void;
   onDone: () => Promise<void>;
+  /** what has come due (assumptions to look at again, decisions asking «نتیجه چه شد؟») */
+  dueProps: React.ComponentProps<typeof DueItems>;
 }
 
 const STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمیم‌های منتظر'] as const;
@@ -28,7 +31,7 @@ const STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمیم‌�
 /** «این هفته» — five minutes, three sections one after another, every item with a one-click action. No timers, no pressure. */
 export const WeeklyReviewDialog: React.FC<Props> = (props) => (props.open ? <Review {...props} /> : null);
 
-const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone }) => {
+const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps }) => {
   const [step, setStep] = useState(0); // 3 = summary
   const [busy, setBusy] = useState<string | null>(null);
   const [handled, setHandled] = useState<string[]>([]); // objects the user accepted / confirmed during this review
@@ -107,8 +110,9 @@ const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverabl
       )}
 
       {step === 2 && (
-        data.waiting.ready.length + data.waiting.blocked.length + data.waiting.concurrent.length === 0 ? <p className="body-md text-text-subtle">تصمیم منتظری نیست.</p> : (
+        data.waiting.ready.length + data.waiting.blocked.length + data.waiting.concurrent.length === 0 && dueProps.assumptions.length + dueProps.decisions.length === 0 ? <p className="body-md text-text-subtle">تصمیم منتظری نیست.</p> : (
           <div className="flex flex-col gap-stack-lg">
+            <DueItems {...dueProps} />
             {data.waiting.ready.length > 0 && (
               <section className="flex flex-col gap-stack-xs" aria-label="آمادهٔ تصمیم">
                 <h3 className="title text-text-default">آمادهٔ تصمیم</h3>

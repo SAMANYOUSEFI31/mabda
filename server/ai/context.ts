@@ -1,5 +1,6 @@
 import type { Prompt } from './providers/provider.ts';
 import { CORE_TEXT, SYSTEM_PROMPT } from './prompts.ts';
+import { ASSUMPTION_RULE, REJECTED_RULE } from '../../src/core/assumptions.ts';
 
 export interface ContextObjectLite {
   id: string;
@@ -14,6 +15,10 @@ export interface ContextObjectLite {
   /** only for clients that send their own list: lets the service drop a position-only / expired Constraint from the guardrails */
   reach?: string;
   validUntil?: string;
+  /** a working assumption: never confirmed knowledge, shown in its own section */
+  assumption?: boolean;
+  /** options that were weighed and rejected (from a Decision's record) — the model must not propose them again */
+  rejected?: Array<{ title: string; reason: string }>;
 }
 
 export interface FileExcerpt {
@@ -65,8 +70,10 @@ export interface BuildPromptInput {
 export function buildPrompt({ contexts, focusNodeIds = [], task, nodeLabels, excerpts = [] }: BuildPromptInput): Prompt {
   const labels = { ...NODE_LABELS, ...(nodeLabels ?? {}) };
   const live = contexts.filter((c) => !EXCLUDED.has(c.status));
-  const confirmed = live.filter((c) => c.status === 'Confirmed').sort(byStableOrder);
-  const unconfirmed = live.filter((c) => c.status !== 'Confirmed').sort(byStableOrder);
+  const assumptions = live.filter((c) => c.assumption).sort(byStableOrder);
+  const confirmed = live.filter((c) => c.status === 'Confirmed' && !c.assumption).sort(byStableOrder);
+  const unconfirmed = live.filter((c) => c.status !== 'Confirmed' && !c.assumption).sort(byStableOrder);
+  const rejected = live.filter((c) => c.status === 'Confirmed' && !c.assumption).flatMap((c) => (c.rejected ?? []).map((r) => ({ ...r, of: c.title })));
 
   const prefix = confirmed.length
     ? `## دانش تأییدشدهٔ فضای کار (Confirmed — واقعیت)\n${confirmed.map((c) => line(c, labels)).join('\n')}`
@@ -75,6 +82,12 @@ export function buildPrompt({ contexts, focusNodeIds = [], task, nodeLabels, exc
   const parts: string[] = [];
   if (unconfirmed.length) {
     parts.push(`## دانش پیشنهادی / نیازمند بررسی (تأییدنشده — واقعیت نیست)\n${unconfirmed.map((c) => `${line(c, labels)} «${c.status === 'Proposed' ? 'پیشنهادی' : 'نیازمند بررسی'}»`).join('\n')}`);
+  }
+  if (assumptions.length) {
+    parts.push(`## فرض‌های فعال، تأییدنشده (واقعیت نیست)\n${ASSUMPTION_RULE}\n${assumptions.map((c) => line(c, labels)).join('\n')}`);
+  }
+  if (rejected.length) {
+    parts.push(`## گزینه‌های بررسی‌شده و ردشده\n${REJECTED_RULE}\n${rejected.map((r) => `- «${r.title}» (در تصمیم «${r.of}»): ${r.reason}`).join('\n')}`);
   }
   if (excerpts.length) {
     parts.push(`## گزیده‌های فایل‌های بارگذاری‌شده (منبع واردشده — تأییدنشده؛ واقعیت قطعی نیست)\n${excerpts.map((e) => `[${e.fileName} · بخش ${e.index + 1}]\n${e.text}`).join('\n\n')}`);

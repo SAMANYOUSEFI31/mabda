@@ -32,6 +32,11 @@ import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
+import { DueItems } from './components/DueItems';
+import { ThinkingList } from './components/ThinkingList';
+import { assumptionsDue, decisionsDue } from './core/assumptions';
+import { thinkingOf, convertedTo } from './core/thinkingMarkers';
+import type { NoteThinkingItem } from './core/thinkingMarkers';
 import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
@@ -60,7 +65,7 @@ import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
-import { Alert, Button, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
+import { Alert, Button, Card, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { AiSettingsModal } from './components/AiSettingsModal';
 import { AiStatusBanner } from './components/AiNotices';
 import { ledgerEntryFromUsage } from './core/ledger';
@@ -213,16 +218,54 @@ export default function App() {
   const handleSaveContextObject = async (draft: ContextDraft): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
       showImpact(r.impact);
       return r.object;
     }
-    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey }));
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     return r.object;
+  };
+
+  /** one targeted edit with an optional reason (a Change): promote, assumption review, … */
+  const handlePatchObject = async (id: string, p: Parameters<typeof dataApi.updateObject>[2]) => {
+    const r = await attempt(() => dataApi.updateObject(wid, id, p));
+    if (!r) return undefined;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
+    showImpact(r.impact);
+    return r.object;
+  };
+
+  // ── thinking items (derived from note lines; src/core/thinkingMarkers.ts) ──
+  const thinking = useMemo(() => thinkingOf(data?.notes ?? []), [data?.notes]);
+  const handleConvertItem = async (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => {
+    const r = await attempt(() => dataApi.convertThinkingItem(wid, item.noteId, { kind: item.kind, hash: item.hash, text: item.text }, opts));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: r.objects }));
+    toast.show({ intent: 'success', message: 'به‌صورت پیشنهادی ثبت شد؛ در صندوق پیشنهادها منتظر تأیید توست و متن یادداشت دست‌نخورده ماند.' });
+  };
+  const handleSplitNote = async (noteId: string) => {
+    const r = await attempt(() => dataApi.splitNote(wid, noteId));
+    if (!r) return;
+    patch((d) => ({ ...d, nodes: r.nodes, notes: r.notes }));
+    toast.show({ intent: 'success', message: `${formatNumber(r.created.length)} گره ساخته شد؛ یادداشت اصلی همان‌جا ماند.` });
+  };
+  // due: assumptions to look at again, decisions that ask «نتیجه چه شد؟»
+  const dueAssumptions = useMemo(() => assumptionsDue(data?.objects ?? [], new Date()), [data?.objects]);
+  const dueDecisions = useMemo(() => decisionsDue(data?.objects ?? [], data?.changes ?? [], new Date()), [data?.objects, data?.changes]);
+  const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const dueProps = {
+    assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
+    onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
+    onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
+    onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
+    onOutcome: async (id: string, text: string) => {
+      const r = await attempt(() => dataApi.noteOutcome(wid, id, text));
+      if (r) { patch((d) => ({ ...d, changes: r.changes })); toast.show({ intent: 'success', message: 'نتیجه ثبت شد.' }); }
+    },
   };
 
   const handleCreateObjects = async (drafts: ContextDraft[]): Promise<ContextObject[]> => {
@@ -760,6 +803,21 @@ export default function App() {
               onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
 
+            {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
+              <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-lg" aria-label="سؤال‌ها و تصمیم‌های باز">
+                <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
+                <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ گره‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز به AI داده نمی‌شوند.</p>
+                <ThinkingList
+                  items={thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts))}
+                  objects={workspaceContexts}
+                  nodes={nodes}
+                  onConvert={handleConvertItem}
+                  onGoToNode={(nodeId) => { setActiveTab('context'); setContextViewMode('doc'); setTimeout(() => document.getElementById(`node-${nodeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120); }}
+                />
+                <DueItems {...dueProps} />
+              </Card>
+            )}
+
             {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
             <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />
@@ -827,6 +885,9 @@ export default function App() {
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
                 onReadNode={setReadNodeId}
                 onShowEffect={setEffectNodeId}
+                thinking={thinking}
+                onConvertItem={handleConvertItem}
+                onSplitNote={handleSplitNote}
                 onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -993,6 +1054,7 @@ export default function App() {
         onAcceptReview={handleAcceptReview}
         deliverables={deliverables}
         onOpenRelated={(o) => openContext(o)}
+        onPatchObject={handlePatchObject}
       />
 
       <NodeDialogs
@@ -1122,6 +1184,7 @@ export default function App() {
         onAcceptReview={async (id) => { await handleAcceptReview(id, true); }}
         onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
         onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
+        dueProps={dueProps}
         onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
       />
       <NodeThreadPanel

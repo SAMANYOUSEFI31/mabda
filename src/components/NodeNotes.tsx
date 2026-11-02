@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import type { Note } from '../types';
+import { canSplit } from '../core/thinkingMarkers';
 import { Badge, Button, IconButton, Textarea, formatJalaliDate } from '../ui';
 
 interface Props {
@@ -16,10 +17,12 @@ interface Props {
   onDelete: (noteId: string) => Promise<void>;
   /** «استخراج»: the note becomes Proposed objects (never facts) */
   onExtract: (noteId: string) => Promise<void>;
+  /** «تبدیل به گره»: a note with several ## headings → one child node per section (the note stays) */
+  onSplit?: (noteId: string) => Promise<void>;
 }
 
 /** Free-form notes of one node. They are never sent to the model; only «استخراج» reads one, on explicit click. */
-export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd, onUpdate, onDelete, onExtract }) => {
+export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,6 +55,12 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd,
               ) : (
                 <>
                   <p className="body-md whitespace-pre-wrap text-text-default">{n.content}</p>
+                  {onSplit && canSplit(n.content) && (
+                    <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm">
+                      <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به گره؟ متن اصلی یادداشت می‌ماند.</span>
+                      <Button size="sm" variant="secondary" iconStart="Network" onClick={() => onSplit(n.id)}>تبدیل به گره</Button>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="caption text-text-subtle">{formatJalaliDate(n.updatedAt)}</span>
                     <div className="flex items-center gap-inline-xs">
