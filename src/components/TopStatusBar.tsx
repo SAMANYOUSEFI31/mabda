@@ -13,6 +13,7 @@ export const PAGE_TITLE: Record<string, string> = {
   workstreams: 'جریان‌های کار',
   chat: 'گفتگو',
   assets: 'دارایی‌ها',
+  home: 'خانه',
   ledger: 'مصرف و دفتر کل',
 };
 

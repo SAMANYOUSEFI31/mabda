@@ -34,7 +34,7 @@ try {
   const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.getByText('منبع حقیقت: استودیو').waitFor();
+  await page.getByText('خانه: استودیو').waitFor();
 
   step('studio: «کپی برای هوش مصنوعی» on an output → pack with its size');
   await nav('جریان‌های کار');

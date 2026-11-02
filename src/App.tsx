@@ -136,7 +136,7 @@ export default function App() {
 
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
-  const [activeTab, setActiveTab] = useState<string>('context');
+  const [activeTab, setActiveTab] = useState<string>('home');
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
   // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
   const viewModeSeen = useRef(contextViewMode);
@@ -512,6 +512,7 @@ export default function App() {
       setWs(r.workspaces);
       setCurrentWorkspaceId(r.workspaceId);
       setData(null);
+      setActiveTab('home');
       await reload(r.workspaceId);
       setDemoConfirm(false);
       toast.show({ intent: 'success', message: 'فضای نمونه آماده است؛ داده‌هایش ساختگی‌اند و در پلن و مصرف حساب شمرده نمی‌شوند.' });
@@ -640,7 +641,7 @@ export default function App() {
 
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
-    activeTab === 'context' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
     : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
     : undefined;
@@ -713,33 +714,27 @@ export default function App() {
 
 
 
-        {/* TAB 1: Context & Source of Truth */}
-        {activeTab === 'context' && (
+        {/* HOME: where to start — what needs you, this week, waiting decisions, the inbox, recent changes */}
+        {activeTab === 'home' && (
           <div className="space-y-stack-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
-              <div>
-                <h1 className="text-heading-md font-bold text-text-default">
-                  منبع حقیقت: {currentWorkspace.name}
-                </h1>
-                <p className="text-body-sm text-text-subtle mt-stack-xs">
-                  «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
-                </p>
-              </div>
-
-              <SegmentedControl
-                label="نمای منبع حقیقت"
-                value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
-                items={[
-                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                  { id: 'read', label: 'سند', icon: 'BookOpen' },
-                  { id: 'table', label: 'جدول', icon: 'Table2' },
-                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
-                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
-                ]}
-              />
+            <div>
+              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
+              <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
             </div>
-
+            {workspaceContexts.length === 0 && (
+              <EmptyState
+                icon="House"
+                title="از اینجا شروع کن"
+                description="مبدأ با دانشی که خودت می‌دهی کار می‌کند. هر کدام از این‌ها یک شروع است؛ بعد از اولین دانش، همین صفحه می‌گوید چه چیزی کم است."
+                action={(
+                  <div className="flex flex-wrap justify-center gap-inline-md">
+                    <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                    <Button variant="secondary" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظهٔ AI دیگر</Button>
+                    <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
+                  </div>
+                )}
+              />
+            )}
             <AttentionPanel
               specTitle={attentionSpec?.title ?? ''}
               gaps={attentionGaps}
@@ -781,6 +776,36 @@ export default function App() {
               onOpenConnect={() => setIsConnectOpen(true)}
               onOpenMemory={() => setIsMemoryOpen(true)}
             />
+
+          </div>
+        )}
+
+        {/* TAB 1: Context & Source of Truth */}
+        {activeTab === 'context' && (
+          <div className="space-y-stack-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
+              <div>
+                <h1 className="text-heading-md font-bold text-text-default">
+                  منبع حقیقت: {currentWorkspace.name}
+                </h1>
+                <p className="text-body-sm text-text-subtle mt-stack-xs">
+                  «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
+                </p>
+              </div>
+
+              <SegmentedControl
+                label="نمای منبع حقیقت"
+                value={contextViewMode}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
+                items={[
+                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                  { id: 'read', label: 'سند', icon: 'BookOpen' },
+                  { id: 'table', label: 'جدول', icon: 'Table2' },
+                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
+                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
+                ]}
+              />
+            </div>
 
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
@@ -966,6 +991,8 @@ export default function App() {
         reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
         titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
         onAcceptReview={handleAcceptReview}
+        deliverables={deliverables}
+        onOpenRelated={(o) => openContext(o)}
       />
 
       <NodeDialogs

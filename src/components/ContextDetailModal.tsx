@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
-import { ContextDraft, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ContextDraft, ContextObject, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
+import { influenceOf } from '../core/influence';
+import { InfluencePanel } from './InfluencePanel';
 import { ChangeEntry } from './ChangeEntry';
 import type { ContextChange } from '../types';
 import { dataApi } from '../services/dataApi';
@@ -32,6 +34,9 @@ interface ContextDetailModalProps {
   reviewNeed?: ReviewNeed;
   titleOf?: (id: string) => string;
   onAcceptReview?: (objectId: string) => void;
+  /** for «اثرگذاران و اثرپذیران»: the assets built from this object */
+  deliverables?: GeneratedDeliverable[];
+  onOpenRelated?: (o: ContextObject) => void;
 }
 
 /**
@@ -76,6 +81,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   reviewNeed,
   titleOf,
   onAcceptReview,
+  deliverables = [],
+  onOpenRelated,
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
 
@@ -99,9 +106,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const plan = isEditing && object ? planDecisions(allObjects, relationships) : null;
   const unit = plan?.layers.flat().find((u) => u.ids.includes(object!.id));
   const dependents = isEditing && object ? dependentsOf(object.id, relationships, allObjects) : [];
+  const influence = useMemo(() => (isEditing && object ? influenceOf(object.id, allObjects, nodes, relationships, deliverables, new Date()) : undefined), [isEditing, object, allObjects, nodes, relationships, deliverables]);
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
-  const [tab, setTab] = useState<'edit' | 'history'>('edit');
+  const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
     let live = true;
@@ -195,9 +203,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     >
       {isEditing && object && (
         <div className="mb-stack-md">
-          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `تاریخچه (${formatNumber(changes.length)})` }]} />
+          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'influence')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `تاریخچه (${formatNumber(changes.length)})` }, { id: 'influence', label: 'اثرگذاران' }]} />
         </div>
       )}
+      {tab === 'influence' && isEditing && object && influence && <InfluencePanel influence={influence} nodes={nodes} onOpenObject={onOpenRelated} />}
       {tab === 'history' && isEditing && (
         changes.length === 0 ? <p className="body-md text-text-subtle">هنوز تغییری ثبت نشده است.</p> : (
           <ol className="flex flex-col gap-stack-sm" aria-label="تاریخچهٔ تغییرها (جدیدترین اول)">
@@ -207,7 +216,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </ol>
         )
       )}
-      <form id="context-detail-form" onSubmit={handleSubmit} className={`${tab === 'history' && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+      <form id="context-detail-form" onSubmit={handleSubmit} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         <TextField
           label="عنوان شیء (کوتاه و گویا)"
           required

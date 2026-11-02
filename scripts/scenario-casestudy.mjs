@@ -39,7 +39,7 @@ try {
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click(); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).click(); };
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.getByText('منبع حقیقت: استودیو').waitFor();
+    await page.getByText('خانه: استودیو').waitFor();
 
     step(`[${width}] one click builds the showcase workspace`);
     const listBefore = (await api('/workspaces')).workspaces;
@@ -47,7 +47,7 @@ try {
     const before = listBefore.length - (hadDemo ? 1 : 0);
     await account('ساخت یا بازنشانی فضای نمونه');
     if (hadDemo) { await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click(); }
-    await page.getByText('منبع حقیقت: قهوهٔ تخصصی آنلاین').waitFor();
+    await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
     const list = (await api('/workspaces')).workspaces;
     assert.equal(list.length, before + 1);
     assert.equal(list.find((w) => w.id === 'ws_demo').isDemo, true);
@@ -83,6 +83,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] map, board, history`);
+    await nav('منبع حقیقت', 'منبع');
     await radio('نقشه'); await page.waitForTimeout(400);
     await page.getByRole('application', { name: /نقشه/ }).waitFor();
     await shot('3-map');
@@ -119,7 +120,7 @@ try {
 
     step(`[${width}] reset twice = the same state`);
     const a = JSON.stringify(await api('/workspaces/ws_demo/state'));
-    await nav('منبع حقیقت', 'منبع حقیقت');
+    await nav('منبع حقیقت', 'منبع');
     await account('ساخت یا بازنشانی فضای نمونه');
     await page.getByRole('dialog').getByText('بازنشانی فضای نمونه؟').waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();

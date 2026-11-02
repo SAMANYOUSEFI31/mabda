@@ -39,7 +39,7 @@ try {
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
     };
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.getByText('منبع حقیقت: استودیو').waitFor();
+    await page.getByText('خانه: استودیو').waitFor();
     {
       await account('کلید هوش مصنوعی');
       await page.getByLabel('کلید Gemini API').fill(KEY);

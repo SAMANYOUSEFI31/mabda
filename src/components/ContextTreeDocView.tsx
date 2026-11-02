@@ -104,8 +104,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               {nodeObjects.map((obj) => (
                 <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
                   <div className="flex items-start justify-between gap-inline-sm">
-                    <h4 className="title text-text-default">{obj.title}</h4>
-                    <div className="flex shrink-0 flex-wrap justify-end gap-inline-xs">
+                    <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
+                    <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
                       <TypeBadge value={obj.type} />
                       <ReachBadge object={obj} />
                       <StatusBadge value={obj.status} />

@@ -90,6 +90,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         </div>
 
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
+          <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
           <NavItem icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(p.contextCount)} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
@@ -163,19 +164,19 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         <div className="flex flex-col gap-stack-xs">{withDividers().map(drawerRow)}</div>
       </Dialog>
 
-      {/* Mobile bottom navigation: the four destinations + the account drawer */}
+      {/* Mobile bottom navigation: home + the four destinations (the account drawer is the button in the top bar) */}
       <BottomNav
         fixed
         className="md:hidden"
         label="منوی پایینی موبایل"
         value={activeTab}
-        onChange={(id) => (id === 'account' ? setDrawer(true) : onTabChange(id))}
+        onChange={onTabChange}
         items={[
-          { id: 'context', label: 'منبع حقیقت', icon: 'BookOpen' },
+          { id: 'home', label: 'خانه', icon: 'House' },
+          { id: 'context', label: 'منبع', icon: 'BookOpen' },
           { id: 'workstreams', label: 'جریان‌ها', icon: 'Layers' },
           { id: 'chat', label: 'گفتگو', icon: 'MessageSquare' },
           { id: 'assets', label: 'دارایی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'دارایی' },
-          { id: 'account', label: 'حساب', icon: 'User' },
         ]}
       />
     </>

@@ -38,6 +38,7 @@ try {
     const errors = [];
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("منبع حقیقت")').or(page.locator('nav[aria-label="منوی پایینی موبایل"] button:has-text("منبع")')).locator('visible=true').first().click();
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().click();
     const stage = page.getByRole('application', { name: /بوم تصمیم‌ها/ });
     await stage.waitFor();
