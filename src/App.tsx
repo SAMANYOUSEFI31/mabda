@@ -31,6 +31,7 @@ import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
+import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
@@ -165,6 +166,7 @@ export default function App() {
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
+  const [effectNodeId, setEffectNodeId] = useState<string | null>(null);
   const [threadNodeId, setThreadNodeId] = useState<string | null>(null);
   const [pendingRebuild, setPendingRebuild] = useState<GeneratedDeliverable | null>(null);
 
@@ -799,6 +801,7 @@ export default function App() {
                 onNodeAction={setNodeDialog}
                 onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
                 onReadNode={setReadNodeId}
+                onShowEffect={setEffectNodeId}
                 onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -1050,6 +1053,24 @@ export default function App() {
         }}
       />
 
+      <NodeEffectDialog
+        nodeId={effectNodeId}
+        nodes={nodes}
+        objects={workspaceContexts}
+        relationships={data?.relationships ?? []}
+        onClose={() => setEffectNodeId(null)}
+        onOverride={async (byId, targetId, reason) => {
+          const r = await dataApi.setOverride(wid, byId, targetId, reason);
+          patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+          toast.show({ intent: 'success', message: 'کنار گذاشته شد؛ برای این گره و زیرشاخه‌هایش دیگر اثر ندارد.' });
+        }}
+        onRemoveOverride={async (byId, targetId) => {
+          const r = await attempt(() => dataApi.removeOverride(wid, byId, targetId));
+          if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+        }}
+        onAddToNode={(nodeId) => { setEffectNodeId(null); openContext(null, nodeId); }}
+        onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
+      />
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />

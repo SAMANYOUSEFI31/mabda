@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
+import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
@@ -80,9 +81,9 @@ export function buildMcpServer(c: McpContext): McpServer {
   // ── context ───────────────────────────────────────────────────────────
   server.registerTool('get_context', {
     title: 'خواندن Context',
-    description: 'Read knowledge. Only status Confirmed is fact; Proposed / Needs Review are returned separately under `unconfirmed` and must NOT be treated as fact. Filter by node (with sub-tree), type, status and free-text query. Pass the returned id+version to save_asset.',
+    description: 'Read knowledge. With `nodeId` you get what is IN FORCE at that node, each item with its `origin` (own = in that node, inherited = from a node above, global = a rule that holds everywhere, subtree = in a node below); overridden / expired items are listed apart under `notInForce` and are NOT to be applied. Only status Confirmed is fact; Proposed / Needs Review are returned separately under `unconfirmed` and must NOT be treated as fact. Filter by node (with sub-tree), type, status and free-text query. Pass the returned id+version to save_asset.',
     inputSchema: {
-      nodeId: z.string().optional().describe('node id from get_workspace_overview'),
+      nodeId: z.string().optional().describe('node id from get_workspace_overview: returns what is in force there (own + inherited + global + the sub-tree), with `origin`'),
       includeSubtree: z.boolean().optional().describe('default true'),
       types: z.array(z.enum(['Fact', 'Decision', 'Constraint'])).optional(),
       statuses: z.array(z.enum(['Confirmed', 'Proposed', 'Needs Review'])).optional().describe('default: all three'),
@@ -92,18 +93,32 @@ export function buildMcpServer(c: McpContext): McpServer {
   }, async (a) => {
     const nodes = repo.listNodes(scope);
     if (a.nodeId && !nodes.some((n) => n.id === a.nodeId)) return fail(`گرهٔ «${a.nodeId}» وجود ندارد.`);
+    const now = new Date();
+    const all = repo.listObjects(scope);
     const inNodes = a.nodeId ? new Set(a.includeSubtree === false ? [a.nodeId] : subtreeIds(nodes, a.nodeId)) : null;
     const statuses = new Set(a.statuses ?? ['Confirmed', 'Proposed', 'Needs Review']);
-    let list = repo.listObjects(scope).filter((o) => statuses.has(o.status as never) && (!inNodes || inNodes.has(o.nodeId)) && (!a.types || a.types.includes(o.type as never)));
+    // at a node: what is in force there (own, inherited, global — src/core/effectiveContext.ts) plus the sub-tree
+    const eff = a.nodeId ? effectiveFor(a.nodeId, all, nodes, repo.listRelationships(scope), now) : [];
+    const originOf = new Map<string, string>(eff.map((i) => [i.object.id, i.origin]));
+    for (const o of all) if (a.nodeId && inNodes!.has(o.nodeId) && !originOf.has(o.id)) originOf.set(o.id, o.nodeId === a.nodeId ? 'own' : 'subtree');
+    const expiredNow = (o: ContextObject) => isExpired(o, now);
+    const passes = (o: ContextObject) => statuses.has(o.status as never) && (!a.types || a.types.includes(o.type as never));
+    const inScope = (o: ContextObject) => (a.nodeId ? originOf.has(o.id) : true);
+    const all2 = all.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded' ? inScope(o) && passes(o) : false);
+    const notInForce = all2.filter((o) => ['overridden', 'expired'].includes(originOf.get(o.id) ?? '') || (!a.nodeId && expiredNow(o)));
+    const dropped = new Set(notInForce.map((o) => o.id));
+    let list = all2.filter((o) => !dropped.has(o.id));
     if (a.query?.trim()) list = bm25Rank(a.query, list.map((o) => ({ o, text: `${o.title}\n${o.content}` }))).map((r) => r.chunk.o);
     list = list.slice(0, a.limit ?? 50);
-    const facts = list.filter((o) => o.status === 'Confirmed').map((o) => view(nodes, o));
-    const unconfirmed = list.filter((o) => o.status !== 'Confirmed').map((o) => view(nodes, o));
+    const withOrigin = (o: ContextObject) => ({ ...view(nodes, o), ...(a.nodeId ? { origin: originOf.get(o.id) } : {}), reach: reachOf(o), ...(o.validUntil ? { validUntil: o.validUntil } : {}) });
+    const facts = list.filter((o) => o.status === 'Confirmed').map(withOrigin);
+    const unconfirmed = list.filter((o) => o.status !== 'Confirmed').map(withOrigin);
+    const out = notInForce.slice(0, 50).map((o) => ({ ...withOrigin(o), origin: originOf.get(o.id) ?? 'expired' }));
     const md = [
       '## واقعیت‌ها (Confirmed)', facts.length ? facts.map(mdLine).join('\n') : 'موردی نیست.',
       '## تأییدنشده (Proposed / Needs Review) — واقعیت نیست', unconfirmed.length ? unconfirmed.map(mdLine).join('\n') : 'موردی نیست.',
     ].join('\n\n');
-    return reply(md, { facts, unconfirmed, note: 'Only `facts` are facts. For save_asset pass usedContext: [{id, version}] of what you used.' });
+    return reply(md, { facts, unconfirmed, ...(out.length ? { notInForce: out } : {}), note: 'Only `facts` are facts. For save_asset pass usedContext: [{id, version}] of what you used.' });
   });
 
   // ── gaps / readiness ──────────────────────────────────────────────────
