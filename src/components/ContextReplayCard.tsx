@@ -207,7 +207,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               variant="secondary"
               size="sm"
               className="h-auto min-h-touch-comfortable max-w-full flex-wrap whitespace-normal py-inset-xs text-start"
-              title="مشاهده و اصلاح این Context"
+              title="مشاهده و اصلاح این قلم دانش"
               onClick={() => onOpenContextObject(ctx)}
             >
               {ctx.title}

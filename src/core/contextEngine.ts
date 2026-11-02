@@ -69,7 +69,7 @@ export function normalizeFa(text: string): string {
     .toLowerCase();
 }
 
-/** «مخاطب اصلی (ICP)» -> «مخاطب اصلی» : the part of a label a human would actually type as a title. */
+/** «مخاطب اصلی» -> «مخاطب اصلی» : the part of a label a human would actually type as a title. */
 const labelCore = (label: string) => normalizeFa(label.replace(/\([^)]*\)/g, ''));
 
 /**

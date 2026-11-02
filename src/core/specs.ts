@@ -62,7 +62,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
       },
       {
         key: 'target_audience',
-        label: 'مخاطب اصلی (ICP)',
+        label: 'مخاطب اصلی',
         description: 'چه کسی خریدار اصلی یا کاربر هدف است',
         nodeId: 'business',
         dependsOn: ['domain_field'],
@@ -134,7 +134,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         baseCreditCost: { fast: 2, auto: 5, critique: 20, sensitive: 40 },
         acceptanceCriteria: [
           'جداسازی واقعیات رفتاری از فرضیات سطحی دموگرافیک',
-          'تعیین هزینه عدم اقدام (Cost of Inaction) برای مشتری',
+          'تعیین هزینهٔ عدم اقدام برای مشتری',
           'فهرست موانع ذهنی خرید و پاسخ‌های معتبر به آنها',
         ],
       },
@@ -159,9 +159,9 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         order: 4,
         baseCreditCost: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
         acceptanceCriteria: [
-          'دارای قلاب (Hook) قوی مبتنی بر درد مشتری',
+          'دارای قلاب (جملهٔ جذب) قوی مبتنی بر درد مشتری',
           'متصل به تجربیات و تصمیمات مندرج در درخت دانش',
-          'شامل دعوت به اقدام (CTA) بدون حالت التماسی یا فروش تهاجمی',
+          'شامل دعوت به اقدام بدون حالت التماسی یا فروش تهاجمی',
         ],
       },
       {
@@ -172,7 +172,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         order: 5,
         baseCreditCost: { fast: 2, auto: 5, critique: 20, sensitive: 40 },
         acceptanceCriteria: [
-          'معیارهای سنجش پذیرش شفاف (KPIs)',
+          'معیارهای سنجش پذیرش شفاف (شاخص‌های کلیدی)',
           'ترتیب منطقی بدون وابستگی به سرمایه سنگین',
         ],
       },
@@ -272,14 +272,14 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         id: 'del_freelance_hero',
         title: 'پروفایل لینکدین و بیانیه حرفه‌ای',
         type: 'Asset',
-        description: 'تایتل لینکدین و بخش About بدون کلمات کلیشه‌ای مانند «باانگیزه و خلاق».',
+        description: 'تایتل لینکدین و بخش «دربارهٔ من» بدون کلمات کلیشه‌ای مانند «باانگیزه و خلاق».',
         order: 1,
         baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
         acceptanceCriteria: ['تمرکز بر نتیجه تجاری برای کارفرما'],
       },
       {
         id: 'del_service_tiers',
-        title: '۳ بسته خدماتی ارزش‌محور (Good / Better / Best)',
+        title: '۳ بسته خدماتی ارزش‌محور (پایه / بهتر / بهترین)',
         type: 'Deliverable',
         description: 'شرح خدمات، دستاوردها، زمان‌بندی و شرایط همکاری.',
         order: 2,

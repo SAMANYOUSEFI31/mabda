@@ -31,12 +31,15 @@ interface Props {
   onOpenContradictions: () => void;
   /** «چه چیزی عوض شد»: opens the 7-day change feed */
   onOpenChanges: () => void;
+  /** a quiet marker (never a notification): a week since the last weekly review and something is waiting */
+  weeklyDue: boolean;
+  onOpenWeekly: () => void;
 }
 
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
@@ -92,8 +95,10 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
         })}
       </ul>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-inline-sm">
         <Button variant="ghost" size="sm" iconStart="History" onClick={onOpenChanges}>در ۷ روز اخیر چه چیزی عوض شد؟</Button>
+        <Button variant="ghost" size="sm" iconStart="ListChecks" onClick={onOpenWeekly}>بازبینی هفتگی (۵ دقیقه)</Button>
+        {weeklyDue && <Badge intent="info" icon={false}>موعد بازبینی</Badge>}
       </div>
 
       {reviews.length > 0 && (

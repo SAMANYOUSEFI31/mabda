@@ -136,7 +136,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         add={() => ({ uid: uid(), key: '', label: '', description: '', nodeId: 'business' })}
         render={(it, patch) => (
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
-            <TextField label="نام Context" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
+            <TextField label="نام قلم دانش" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
             <Select label="شاخه" value={it.nodeId} onChange={(e) => patch({ nodeId: e.target.value })} options={nodeOptions} />
             <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش شکاف)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
           </div>
@@ -161,7 +161,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
       onClose={onClose}
       size="xl"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
-      description="هر جریان کار یک مشخصهٔ داده‌محور است: Context لازم، خروجی‌های وابسته، معیار پذیرش و گاردریل. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان گاردریل اعمال می‌شوند."
+      description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و گاردریل. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان گاردریل اعمال می‌شوند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -173,7 +173,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         {!initial && (
           <Card padding="md" className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
             <div className="sm:flex-1">
-              <Select label="کپی از spec موجود" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...specs.map((s) => ({ value: s.id, label: s.title }))]} />
+              <Select label="کپی از جریان کار موجود" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...specs.map((s) => ({ value: s.id, label: s.title }))]} />
             </div>
             <Button variant="secondary" iconStart="Copy" disabled={!copyFrom} onClick={() => { const s = specs.find((x) => x.id === copyFrom); if (s) setDraft(toDraft(s, true)); }}>کپی کن</Button>
           </Card>
@@ -182,13 +182,13 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         <Card padding="lg" className="flex flex-col gap-stack-md">
           <h4 className="title text-text-default">مشخصات کلی</h4>
           <TextField label="عنوان جریان کار" required value={draft.title} onChange={(e) => set({ title: e.target.value })} placeholder="مثلاً: کتابچهٔ برند، پروپوزال پروژه…" />
-          <TextField label="هدف (Target)" required value={draft.target} onChange={(e) => set({ target: e.target.value })} placeholder="چه نتیجه‌ای ساخته شود؟" />
+          <TextField label="هدف" required value={draft.target} onChange={(e) => set({ target: e.target.value })} placeholder="چه نتیجه‌ای ساخته شود؟" />
           <Textarea label="توضیح (اختیاری)" rows={2} value={draft.description} onChange={(e) => set({ description: e.target.value })} />
         </Card>
 
-        {ctxEditor('required', 'Context لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ رادار شکاف دنبالشان می‌گردد.')}
-        {ctxEditor('suggested', 'Context پیشنهادی', 'کیفیت را بالا می‌برند.')}
-        {ctxEditor('optional', 'Context اختیاری', 'اگر باشد استفاده می‌شود.')}
+        {ctxEditor('required', 'دانش لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ رادار شکاف دنبالشان می‌گردد.')}
+        {ctxEditor('suggested', 'دانش پیشنهادی', 'کیفیت را بالا می‌برند.')}
+        {ctxEditor('optional', 'دانش اختیاری', 'اگر باشد استفاده می‌شود.')}
 
         <Card padding="lg" className="flex flex-col gap-stack-md">
           <div><h4 className="title text-text-default">خروجی‌ها و وابستگی‌ها</h4><p className="caption text-text-subtle">ترتیب اجرا از گراف وابستگی می‌آید؛ هر خروجی تا ساخته‌شدن وابستگی‌هایش قفل است.</p></div>

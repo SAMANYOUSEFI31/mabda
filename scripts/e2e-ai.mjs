@@ -48,7 +48,7 @@ await shot('3-chat-answer');
 assert.ok(await page.getByText(/با حالت «/).count(), 'plan line is shown');
 
 step('block → Context: opens a Proposed draft in the Context dialog');
-await page.getByRole('button', { name: 'به Context اضافه کن' }).first().click();
+await page.getByRole('button', { name: 'به دانش اضافه کن' }).first().click();
 await page.getByRole('dialog').waitFor();
 assert.equal(await page.getByLabel('وضعیت').inputValue(), 'Proposed');
 await shot('4-add-to-context-draft');

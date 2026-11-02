@@ -51,7 +51,7 @@ export const AiSettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }>
       open={isOpen}
       onClose={onClose}
       title="تنظیمات هوش مصنوعی"
-      description="کلید API خودت را وارد کن (BYOK). کلید رمزنگاری‌شده روی سرور ذخیره می‌شود و فقط برای درخواست‌های خودت به‌کار می‌رود."
+      description="کلید API شخصی خودت را وارد کن. کلید رمزنگاری‌شده روی سرور ذخیره می‌شود و فقط برای درخواست‌های خودت به‌کار می‌رود."
     >
       <div className="flex flex-col gap-stack-lg">
         <Card padding="md" className="flex flex-col gap-stack-sm">

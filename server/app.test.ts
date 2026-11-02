@@ -68,7 +68,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     assert.ok(edit.json.impact.count >= 2, 'the seeded asset and the new one both used the audience');
     const ids = edit.json.stale.map((s: any) => s.deliverableId);
     assert.ok(ids.includes('del_new') && ids.includes('del_inst_1'));
-    assert.match(edit.json.stale.find((s: any) => s.deliverableId === 'del_new').reasons[0].message, /«مخاطب اصلی \(ICP\)» از نسخهٔ ۱ به ۲ تغییر کرد/);
+    assert.match(edit.json.stale.find((s: any) => s.deliverableId === 'del_new').reasons[0].message, /«مخاطب اصلی» از نسخهٔ ۱ به ۲ تغییر کرد/);
 
     // rebuild: a new generation records version 2 → asset is fresh again
     const ev2 = await t.ndjson('/ai/generate', { workspaceId: 'ws_studio', deliverableId: 'x', deliverableTitle: 'پروفایل مشتری', deliverableType: 'Asset', acceptanceCriteria: ['معیار'], userMode: 'auto', targetNodeId: 'content' });
@@ -543,5 +543,100 @@ test('proposal inbox: accept / reject / replace each write a Change with the opt
     assert.deepEqual([last(p2.id).kind, last(p2.id).reason], ['proposal_accepted', 'با تیم هماهنگ شد']);
     assert.deepEqual([last(p3.id).kind, last(p3.id).reason], ['proposal_rejected', 'ما تلگرام استفاده نمی‌کنیم']);
     assert.ok(!JSON.stringify((await t.call('GET', '/workspaces/ws_studio/state')).json.objects).includes('ما تلگرام استفاده نمی‌کنیم'), 'reasons never enter object text');
+  } finally { t.close(); }
+});
+
+test('decision board: dropping a card = declared meaning (accept / backward needs explicit confirmation / derived review → accept unchanged / rank is a Change); positions of free notes are display only', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const mk = async (b: object) => (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', provenance: 'User Input', nodeId: 'offer', ...b })).json.object;
+    const c1 = await mk({ status: 'Confirmed', title: 'الف', content: 'الف' });
+    const c2 = await mk({ status: 'Confirmed', title: 'ب', content: 'ب' });
+    const p = await mk({ status: 'Proposed', title: 'پ', content: 'پ', source: { kind: 'mcp', label: 'Claude', at: new Date().toISOString() } });
+    const move = (b: object) => t.call('POST', '/workspaces/ws_studio/canvas/decisions/move', b);
+
+    // Proposed → «confirmed» column between c1 and c2 = the accept action, with the optional reason
+    await move({ objectId: c1.id, lane: 'confirmed', afterId: c2.id });
+    await move({ objectId: c2.id, lane: 'confirmed', beforeId: c1.id });
+    const r = await move({ objectId: p.id, lane: 'confirmed', beforeId: c1.id, afterId: c2.id, reason: 'با تیم هماهنگ شد' });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.objects.find((o: any) => o.id === p.id).status, 'Confirmed');
+    const of = (id: string) => r.json.changes.filter((c: any) => c.objectId === id);
+    assert.deepEqual([of(p.id).find((c: any) => c.kind === 'proposal_accepted').reason, of(p.id).find((c: any) => c.kind === 'proposal_accepted').actor], ['با تیم هماهنگ شد', 'user'], 'drag = accept, the actor is the user, not the AI that proposed it');
+    const rank = (id: string) => r.json.canvas.decisions.find((i: any) => i.itemRef === `obj:${id}`).rank;
+    assert.ok(rank(c1.id) < rank(p.id) && rank(p.id) < rank(c2.id), 'rank sits between its neighbours');
+    assert.ok(of(p.id).some((c: any) => c.kind === 'edited' && c.after.rank !== undefined), 'a declared priority is a Change');
+
+    // backward: refused without an explicit confirmation, recorded with it — never silent
+    const refused = await move({ objectId: p.id, lane: 'thinking' });
+    assert.equal(refused.status, 403);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.find((o: any) => o.id === p.id).status, 'Confirmed');
+    const back = await move({ objectId: p.id, lane: 'thinking', confirmBackward: true, reason: 'هنوز مطمئن نیستیم' });
+    assert.equal(back.json.objects.find((o: any) => o.id === p.id).status, 'Proposed');
+    assert.deepEqual(back.json.changes.filter((c: any) => c.objectId === p.id && c.kind === 'status_changed').map((c: any) => c.reason), ['هنوز مطمئن نیستیم']);
+
+    // line between two cards: a typed Relation; «replaces» needs explicit confirmation
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c1.id, type: 'depends_on' })).status, 200);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c2.id, type: 'depends_on' })).status, 400);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c1.id, type: 'friend' })).status, 400);
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/connect', { fromId: c2.id, toId: c1.id, type: 'supersedes' })).status, 403);
+
+    // c1 changes → c2 (depends on c1) lands in «needs review» (derived); dragging it to «confirmed» = accept unchanged
+    await t.call('PATCH', `/workspaces/ws_studio/objects/${c1.id}`, { content: 'الف تازه' });
+    const acc = await move({ objectId: c2.id, lane: 'confirmed' });
+    assert.ok(acc.json.changes.some((c: any) => c.objectId === c2.id && c.kind === 'review_accepted'));
+
+    // dropping into another row moves the object to that node
+    const moved = await move({ objectId: c2.id, lane: 'confirmed', nodeId: 'brand' });
+    assert.equal(moved.json.objects.find((o: any) => o.id === c2.id).nodeId, 'brand');
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/decisions/reset', {})).json.canvas.decisions.length, 0, 'auto layout clears the declared ranks');
+    assert.equal((await move({ objectId: c1.id, lane: 'nowhere' })).status, 400);
+  } finally { t.close(); }
+});
+
+test('free-thinking zone: notes with coordinates stay Notes (never Context); «تبدیل به قلم دانش» makes a PROPOSED object', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const made = await t.call('POST', '/workspaces/ws_studio/canvas/free/notes', { content: 'شاید قیمت را کم کنیم\nیک فکر خام', x: 40, y: 80 });
+    const id = made.json.note.id;
+    assert.deepEqual(made.json.canvas.free.find((i: any) => i.itemRef === `note:${id}`), { itemRef: `note:${id}`, x: 40, y: 80 });
+    const before = (await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length;
+    await t.call('PUT', `/workspaces/ws_studio/canvas/free/items/${id}`, { x: 300, y: 10 });
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.canvas.free[0].x, 300);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.length, before, 'a note is not Context');
+    const k = await t.call('POST', `/workspaces/ws_studio/canvas/free/notes/${id}/to-knowledge`, { type: 'Decision' });
+    assert.deepEqual([k.json.object.status, k.json.object.type, k.json.object.title, k.json.object.source.kind], ['Proposed', 'Decision', 'شاید قیمت را کم کنیم', 'note']);
+    assert.ok(k.json.notes.some((n: any) => n.id === id), 'the note stays');
+    await t.call('DELETE', `/workspaces/ws_studio/notes/${id}`);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.canvas.free.length, 0, 'the position is removed with the note');
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/canvas/free/notes', { content: '  ' })).status, 400);
+  } finally { t.close(); }
+});
+
+test('weekly review: the last finish time is stored per workspace and travels with the state', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.weeklyReviewAt, null);
+    const r = await t.call('POST', '/workspaces/ws_studio/weekly-review/done', {});
+    assert.ok(Date.now() - new Date(r.json.weeklyReviewAt).getTime() < 5000);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.weeklyReviewAt, r.json.weeklyReviewAt);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio2/state')).status, 404, 'other workspaces have their own');
+  } finally { t.close(); }
+});
+
+test('quick start: pasted TEXT goes through the same extraction (kind note), labelled as «متن چسبانده‌شده»; objects stay Proposed with their quote', async () => {
+  const TEXT = 'ما یک آژانس طراحی هستیم. مخاطب اصلی ما فریلنسرهای طراح‌اند.';
+  let kindSeen = '';
+  const t = await boot((c) => { if (JSON.stringify(c.schema ?? '').includes('"objects"')) { kindSeen = c.prompt.user.includes('«حافظه»') ? 'memory' : 'note'; return { objects: [{ type: 'Fact', title: 'حوزه', content: 'آژانس طراحی', nodeId: 'business', quote: 'ما یک آژانس طراحی هستیم.' }] }; } return decide; });
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/memory/import', { text: TEXT, sourceLabel: 'ChatGPT', mode: 'text' });
+    assert.equal(r.status, 200);
+    assert.deepEqual([r.json.created[0].status, r.json.created[0].source.label, r.json.created[0].source.quote], ['Proposed', 'متن چسبانده‌شده', 'ما یک آژانس طراحی هستیم.']);
+    assert.equal(kindSeen, 'note', 'the text path does not claim to be another AI’s memory');
+    assert.ok(r.json.ledger.some((l: any) => l.action === 'وارد کردن متن چسبانده‌شده'));
   } finally { t.close(); }
 });

@@ -45,11 +45,11 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
     },
     {
       title: 'هزینهٔ واقعی هر اعتبار',
-      text: 'آستانهٔ قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفتهٔ متوالی. در این حالت وزن اعتبار یا جدول routing مدل‌ها اصلاح می‌شود.',
+      text: 'آستانهٔ قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفتهٔ متوالی. در این حالت وزن اعتبار یا جدول انتخاب مدل اصلاح می‌شود.',
     },
     {
       title: 'بازسازی با نصف قیمت',
-      text: 'برای جلوگیری از سوءاستفاده، بازسازی با ۵۰٪ تخفیف فقط یک بار به ازای هر ویرایش Context مجاز است (اصلاحیهٔ ممیزی شمارهٔ ۷).',
+      text: 'برای جلوگیری از سوءاستفاده، بازسازی با ۵۰٪ تخفیف فقط یک بار به ازای هر ویرایش دانش مجاز است (اصلاحیهٔ ممیزی شمارهٔ ۷).',
     },
     {
       title: 'سقف فضای کاری در پلن Max',
@@ -201,7 +201,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
 
       {managed && activeSubTab === 'economics' && (
         <Card padding="xl" className="flex flex-col gap-stack-lg">
-          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در دفتر کل (بخش اقتصاد واحد PRD)</h3>
+          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در دفتر کل</h3>
           <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
             {redLines.map((r) => (
               <div key={r.title} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

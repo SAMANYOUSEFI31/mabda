@@ -71,9 +71,9 @@ try {
   await page.getByRole('button', { name: 'جریان کار تازه' }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('عنوان جریان کار').fill('کمپین عرضهٔ محصول');
-  await dlg.getByLabel('هدف (Target)').fill('ساخت بستهٔ کامل پیام و محتوا برای عرضهٔ محصول جدید');
+  await dlg.getByLabel('هدف').fill('ساخت بستهٔ کامل پیام و محتوا برای عرضهٔ محصول جدید');
   await dlg.getByRole('button', { name: 'افزودن مورد' }).first().click();
-  await dlg.getByLabel('نام Context').first().fill('بودجهٔ کمپین');
+  await dlg.getByLabel('نام قلم دانش').first().fill('بودجهٔ کمپین');
   for (let i = 1; i < 5; i++) await dlg.getByRole('button', { name: 'افزودن خروجی' }).click();
   for (let i = 0; i < 5; i++) {
     await dlg.getByLabel('عنوان خروجی').nth(i).fill(TITLES[i]);

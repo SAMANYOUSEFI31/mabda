@@ -24,6 +24,7 @@ import { ContradictionPanel } from './components/ContradictionPanel';
 import { pairsToJudge, unresolvedContradictions } from './core/contradictionCandidates';
 import { can } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
+import { ContextCanvasView } from './components/ContextCanvasView';
 import { ContextMapView } from './components/ContextMapView';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
@@ -41,13 +42,15 @@ import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
+import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
+import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue } from './core/weeklyReview';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
 import { LedgerPanel } from './components/LedgerPanel';
-import { OnboardingModal } from './components/OnboardingModal';
+import { QuickStartDialog } from './components/QuickStartDialog';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
 import { SpecEditorModal } from './components/SpecEditorModal';
@@ -61,6 +64,8 @@ import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
 import { chatCredits } from './core/creditEngine';
 import { DataApiError, dataApi } from './services/dataApi';
+import type { CanvasBundle } from './services/dataApi';
+import type { MovePayload } from './components/ContextCanvasView';
 import { useAiStatus } from './services/aiStatus';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from './types';
 import type { FileQuotaInfo } from './types/state';
@@ -129,7 +134,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('context');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
@@ -164,6 +169,9 @@ export default function App() {
   const staleIdSet = useMemo(() => new Set((data?.stale ?? []).map((s) => s.deliverableId)), [data?.stale]);
   const waiting = useMemo(() => waitingDecisions(planDecisions(data?.objects ?? [], data?.relationships ?? [])), [data?.objects, data?.relationships]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
+  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [] }), [data?.objects, data?.relationships, data?.changes, data?.deliverables]);
+  const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -210,16 +218,51 @@ export default function App() {
     return out;
   };
 
+  // ── boards: every action returns the pieces of state it touched ──
+  const applyBundle = (r: CanvasBundle) => patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, notes: r.notes, stale: r.stale, canvas: r.canvas }));
+  const handleCanvasMove = async (m: MovePayload) => {
+    const before = data?.objects.find((o) => o.id === m.objectId);
+    const r = await attempt(() => dataApi.canvasMove(wid, m));
+    if (!r) return;
+    applyBundle(r);
+    const after = r.objects.find((o) => o.id === m.objectId);
+    if (before?.status === 'Proposed' && after?.status === 'Confirmed') {
+      const used = deliverables.filter((d) => d.usedContext?.some((u) => u.id === m.objectId)).length;
+      toast.show({ intent: 'success', message: used ? `«${after.title}» تأیید شد؛ ${formatNumber(used)} خروجی تو از آن استفاده می‌کنند.` : `«${after.title}» تأیید شد و حالا واقعیت است.` });
+    }
+  };
+  const handleCanvasConnect = async (c: Parameters<typeof dataApi.canvasConnect>[1]) => {
+    const r = await attempt(() => dataApi.canvasConnect(wid, c));
+    if (r) { applyBundle(r); toast.show({ intent: 'success', message: c.type === 'depends_on' ? 'اتصال «وابسته به» ساخته شد.' : 'مورد قبلی جایگزین شد و در تاریخچه می‌ماند.' }); }
+  };
+  const handleFreeNoteCreate = async (n: { content: string; x: number; y: number; nodeId?: string }) => {
+    const r = await attempt(() => dataApi.freeNoteCreate(wid, n));
+    if (r) applyBundle(r);
+  };
+  const handleFreeNoteMove = (id: string, x: number, y: number) => {
+    patch((d) => ({ ...d, canvas: { ...d.canvas, free: d.canvas.free.map((i) => (i.itemRef === `note:${id}` ? { ...i, x, y } : i)) } }));
+    void attempt(() => dataApi.freeNoteMove(wid, id, x, y));
+  };
+  const handleNoteToKnowledge = async (id: string, type: 'Fact' | 'Decision' | 'Constraint') => {
+    const r = await attempt(() => dataApi.freeNoteToKnowledge(wid, id, type));
+    if (r) { applyBundle(r); toast.show({ intent: 'success', message: 'یک قلم پیشنهادی ساخته شد؛ در ستون «در فکر» منتظر تأیید توست.' }); }
+  };
+  const handleAutoLayout = async () => {
+    const a = await attempt(() => dataApi.canvasReset(wid));
+    const b = a && await attempt(() => dataApi.freeReset(wid));
+    if (b) applyBundle(b);
+  };
+
   const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
     const r = await attempt(() => dataApi.setDependencies(wid, objectId, dependsOn));
     if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
   };
   /** «بدون تغییر بپذیر» — writes a review_accepted Change; the derived «needs review» state disappears */
-  const handleAcceptReview = async (objectId: string) => {
+  const handleAcceptReview = async (objectId: string, quiet = false) => {
     const r = await attempt(() => dataApi.acceptReview(wid, objectId));
     if (!r) return;
     patch((d) => ({ ...d, changes: r.changes, stale: r.stale }));
-    toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
+    if (!quiet) toast.show({ intent: 'success', message: 'بدون تغییر پذیرفته شد؛ در تاریخچه ثبت شد.' });
   };
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
@@ -347,7 +390,7 @@ export default function App() {
       plan: del.plan,
       id: `led_${Date.now()}`,
     }));
-    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ Context بازسازی شد.' });
+    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
 
   /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
@@ -357,7 +400,7 @@ export default function App() {
     if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
-      action: deep ? 'گفتگوی عمیق' : 'گفتگوی Auto',
+      action: deep ? 'گفتگوی عمیق' : 'گفتگوی خودکار',
       mode: deep ? 'chat_deep' : 'chat_auto',
       creditCost,
       usage: result.usage,
@@ -458,7 +501,7 @@ export default function App() {
       files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
       specs,
       exportedAt: new Date().toISOString(),
-      platform: 'Mabda (مبدأ) - Source of Truth',
+      platform: 'مبدأ — منبع حقیقت کسب‌وکار',
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
@@ -502,7 +545,7 @@ export default function App() {
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
   const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
     const impact = await setStatus(o.id, 'Confirmed', reason);
-    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است.` }); }
+    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
   };
   const handleRejectProposal = async (o: ContextObject, reason?: string) => { await setStatus(o.id, 'Archived', reason); };
   /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
@@ -610,12 +653,13 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'read', label: 'سند', icon: 'BookOpen' },
                   { id: 'table', label: 'جدول', icon: 'Table2' },
                   { id: 'map', label: 'نقشه', icon: 'Workflow' },
+                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
                 ]}
               />
             </div>
@@ -629,6 +673,8 @@ export default function App() {
               waiting={waiting}
               flips={flips}
               titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
+              weeklyDue={weeklyDue}
+              onOpenWeekly={() => setWeeklyOpen(true)}
               onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
               onAcceptReview={handleAcceptReview}
               proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
@@ -683,6 +729,24 @@ export default function App() {
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onExtractNote={handleExtractNote}
+              />
+            ) : contextViewMode === 'canvas' ? (
+              <ContextCanvasView
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data?.relationships ?? []}
+                notes={data?.notes ?? []}
+                canvas={data?.canvas ?? { decisions: [], free: [] }}
+                reviewIds={reviewIdSet}
+                onMove={handleCanvasMove}
+                onConnect={handleCanvasConnect}
+                onCreateNote={handleFreeNoteCreate}
+                onMoveNote={handleFreeNoteMove}
+                onUpdateNote={handleUpdateNote}
+                onDeleteNote={handleDeleteNote}
+                onNoteToKnowledge={handleNoteToKnowledge}
+                onAutoLayout={handleAutoLayout}
+                onOpenObject={(obj) => openContext(obj)}
               />
             ) : contextViewMode === 'map' ? (
               <ContextMapView
@@ -839,20 +903,18 @@ export default function App() {
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
-      {/* 10-Minute Onboarding Modal */}
-      <OnboardingModal
-        isOpen={isOnboardingOpen}
+      <QuickStartDialog
+        open={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
-        currentWorkspace={currentWorkspace}
-        nodes={nodes}
-        onSaveProposals={handleSaveProposals}
-        onLedger={setLedger}
+        workspaceId={wid}
+        onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onCreateObjects={handleCreateObjects}
-        onCompleteOnboarding={(firstDeliverable) => {
+        onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
+        onSampleDone={(firstDeliverable) => {
           void (async () => {
             if (!(await persistDeliverable(firstDeliverable))) return;
             if (firstDeliverable.usage) {
-              await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'اولین دارایی (Onboarding)', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
+              await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'خروجی نمونهٔ شروع سریع', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
             }
           })();
         }}
@@ -905,6 +967,18 @@ export default function App() {
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <WeeklyReviewDialog
+        open={weeklyOpen}
+        onClose={() => setWeeklyOpen(false)}
+        data={weekly}
+        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...WORKSTREAM_SPECS.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
+        objects={workspaceContexts}
+        deliverables={deliverables}
+        onAcceptReview={async (id) => { await handleAcceptReview(id, true); }}
+        onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
+        onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
+        onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
+      />
       <NodeThreadPanel
         open={!!threadNodeId}
         workspaceId={wid}

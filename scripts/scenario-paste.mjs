@@ -69,13 +69,13 @@ try {
   await page.getByRole('textbox', { name: 'پاسخ AI' }).fill(answer);
   await page.getByRole('button', { name: 'تبدیل به بلوک' }).click();
   await page.getByText('بر اساس سرتیترها').waitFor();
-  await page.getByText(/اصالت: .* Context از/).waitFor();
+  await page.getByText(/اصالت: .* قلم دانش از/).waitFor();
   await shot('2-blocks');
 
   step('blocks → Context (Proposed) and → asset with the pack lineage');
   const blockCard = (t) => page.locator('div.rounded-control-sm', { has: page.getByText(t, { exact: true }) }).last();
-  await blockCard('تمرکز بر طراحان فریلنسر').getByRole('button', { name: 'به Context (پیشنهادی)' }).click();
-  await blockCard('بودجهٔ ماهانه').getByRole('button', { name: 'به Context (پیشنهادی)' }).click();
+  await blockCard('تمرکز بر طراحان فریلنسر').getByRole('button', { name: 'به دانش (پیشنهادی)' }).click();
+  await blockCard('بودجهٔ ماهانه').getByRole('button', { name: 'به دانش (پیشنهادی)' }).click();
   await blockCard('جملهٔ موقعیت‌یابی').getByRole('button', { name: 'ذخیره به‌عنوان دارایی' }).click();
   await page.getByText('در کتابخانهٔ دارایی‌ها ذخیره شد').waitFor();
   assert.equal(await page.getByText('به صندوق پیشنهادها رفت').count(), 2);

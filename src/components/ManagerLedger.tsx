@@ -59,7 +59,7 @@ export const ManagerLedger: React.FC = () => {
           { key: 'byok', label: 'هزینهٔ کاربر روی کلید خودش', numeric: true, render: (r) => <span className="text-text-subtle">{formatUsd(r.byokCostUsd, 4)}</span> },
         ]}
       />
-      <Card padding="md"><p className="caption text-text-subtle">فقط مصرفی که کلید پلتفرم پرداخته (قضاوت‌ها، پردازش فایل، مربی دانش و در صورت روشن‌بودن AI مدیریت‌شده، خروجی‌ها) هزینهٔ ما حساب می‌شود. هزینه از متادیتای واقعی توکن و قیمت‌های config/models.json می‌آید.</p></Card>
+      <Card padding="md"><p className="caption text-text-subtle">فقط مصرفی که کلید پلتفرم پرداخته (قضاوت‌ها، پردازش فایل، مربی دانش و در صورت روشن‌بودن AI مدیریت‌شده، خروجی‌ها) هزینهٔ ما حساب می‌شود. هزینه از متادیتای واقعی توکن و قیمت‌های ثبت‌شدهٔ مدل‌ها می‌آید.</p></Card>
     </div>
   );
 };
