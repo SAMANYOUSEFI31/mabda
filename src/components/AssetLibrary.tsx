@@ -20,6 +20,8 @@ interface AssetLibraryProps {
   onRebuild: (del: GeneratedDeliverable) => void;
   stale: StaleAsset[];
   onGoToWorkstreams: () => void;
+  /** this workspace's own workstreams (the filter tabs); only those that already have an output are listed */
+  workstreams: Array<{ id: string; title: string }>;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -30,6 +32,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onExtractKnowledge,
   extractingId,
   onRebuild,
+  workstreams,
   stale,
   onGoToWorkstreams,
 }) => {
@@ -71,9 +74,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         items={[
           { id: 'all', label: `تمام دارایی‌ها (${formatNumber(deliverables.length)})` },
           ...(stale.length > 0 ? [{ id: 'stale', label: `نیاز به بازبینی (${formatNumber(stale.length)})` }] : []),
-          { id: 'main_positioning', label: 'پایهٔ موقعیت‌یابی' },
-          { id: 'instagram_foundation', label: 'اینستاگرام' },
-          { id: 'freelance_profile', label: 'پروفایل فریلنسری' },
+          ...workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).map((w) => ({ id: w.id, label: w.title })),
         ]}
       />
 

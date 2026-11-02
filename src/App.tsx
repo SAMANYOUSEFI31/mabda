@@ -52,11 +52,12 @@ import { SmartChat } from './components/SmartChat';
 import { AssetLibrary } from './components/AssetLibrary';
 import { LedgerPanel } from './components/LedgerPanel';
 import { QuickStartDialog } from './components/QuickStartDialog';
+import { SpecLibraryDialog } from './components/SpecLibraryDialog';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal } from './components/AccountModal';
 import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
-import { WORKSTREAM_SPECS } from './core/specs';
+import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
 import { Alert, Button, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { AiSettingsModal } from './components/AiSettingsModal';
@@ -147,6 +148,7 @@ export default function App() {
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
@@ -188,10 +190,11 @@ export default function App() {
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, data?.objects, data?.relationships]);
-  const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...WORKSTREAM_SPECS];
+  const enabledLibrary = enabledBuiltInSpecs(data?.workspace);
+  const specs: WorkstreamSpec[] = [...(data?.specs ?? []), ...enabledLibrary];
   // the workstream shown by default belongs to THIS workspace (its own first one), not to the built-in freelance sample
   const firstOwnSpec = data?.specs[0]?.id;
-  useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? 'main_positioning'); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? enabledLibrary[0]?.id ?? ''); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, firstOwnSpec]);
   const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
@@ -483,6 +486,14 @@ export default function App() {
     toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
   };
 
+  /** the workspace's library workstreams: the explicit list, saved on the workspace */
+  const handleSetLibrarySpecs = async (ids: string[]) => { await updateWorkspace((w) => ({ ...w, enabledSpecIds: ids })); };
+  /** «شروع سریع» builds on the positioning workstream: bring it into the workspace (once) */
+  const ensureLibrarySpec = (id: string) => {
+    const w = workspacesRef.current.find((x) => x.id === wid);
+    if (w && !currentSpecIds(w).includes(id)) void handleSetLibrarySpecs([...currentSpecIds(w), id]);
+  };
+
   const handleAddCredits = (amount: number) => {
     void updateWorkspace((w) => ({ ...w, creditsRemaining: w.creditsRemaining + amount }));
     toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
@@ -526,6 +537,7 @@ export default function App() {
       planId: currentWorkspace.planId,
       creditsRemaining: 150,
       todayChatCount: 0,
+      enabledSpecIds: [], // a new workspace starts with no library workstreams: «شروع سریع» or «افزودن از کتابخانه» brings them in
       createdAt: new Date().toISOString(),
     };
     const saved = await attempt(() => dataApi.saveWorkspace(newWs));
@@ -677,6 +689,7 @@ export default function App() {
         selectedSpecId={selectedSpecId}
         onSelectSpecId={setSelectedSpecId}
         onOpenCustomSpecModal={() => openSpecEditor()}
+        onOpenSpecLibrary={() => setIsSpecLibraryOpen(true)}
         contextViewMode={contextViewMode}
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
@@ -845,7 +858,15 @@ export default function App() {
         )}
 
         {/* TAB 2: Workstreams & Gap Engine */}
-        {activeTab === 'workstreams' && (
+        {activeTab === 'workstreams' && specs.length === 0 && (
+          <EmptyState
+            icon="Layers"
+            title="این فضا هنوز جریان کاری ندارد"
+            description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز."
+            action={<div className="flex flex-wrap justify-center gap-inline-md"><Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button><Button variant="secondary" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button></div>}
+          />
+        )}
+        {activeTab === 'workstreams' && specs.length > 0 && (
           <WorkstreamStudio
             currentWorkspace={currentWorkspace}
             allContextObjects={workspaceContexts}
@@ -900,6 +921,7 @@ export default function App() {
             allContextObjects={workspaceContexts}
             stale={stale}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
+            workstreams={specs}
             onOpenContextModal={(obj) => openContext(obj)}
             onExtractKnowledge={handleExtractFromAsset}
             extractingId={extractingAssetId}
@@ -965,14 +987,17 @@ export default function App() {
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
+      {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} />}
+
       <QuickStartDialog
         open={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         workspaceId={wid}
         onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
-        onCreateObjects={handleCreateObjects}
+        onCreateObjects={(items) => { ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }}
         onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
         onSampleDone={(firstDeliverable) => {
+          ensureLibrarySpec('main_positioning');
           void (async () => {
             if (!(await persistDeliverable(firstDeliverable))) return;
             if (firstDeliverable.usage) {
@@ -1043,7 +1068,7 @@ export default function App() {
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
         data={weekly}
-        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...WORKSTREAM_SPECS.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
+        readiness={readinessPerWorkstream([...(data?.specs ?? []), ...enabledLibrary.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
         objects={workspaceContexts}
         deliverables={deliverables}
         onAcceptReview={async (id) => { await handleAcceptReview(id, true); }}

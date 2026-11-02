@@ -23,7 +23,7 @@ import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
-import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
 import { needsReview } from '../../src/core/decisionGraph.ts';
 import { buildCanvasModel, moveEffect, rankBetween } from '../../src/core/canvasModel.ts';
@@ -469,7 +469,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
 
   // ── Context pack (copy for any AI) + pasted-answer import ────────────
-  const specList = (s: Scope) => [...repo.listSpecs(s), ...WORKSTREAM_SPECS];
+  const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(LOCAL_USER, s.workspaceId))];
   router.post('/workspaces/:wid/packs', wrap((req, res) => {
     const s = scopeOf(req);
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;

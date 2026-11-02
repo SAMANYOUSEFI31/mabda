@@ -320,6 +320,10 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   assert.equal(repo.saveWorkspace(U, { ...ws('w2', 'pro'), isDemo: true } as Workspace).isDemo, undefined);
   assert.equal(repo.saveWorkspace(U, { ...demo, isDemo: false }).isDemo, true);
   assert.equal(repo.getWorkspace(U, 'w2')!.isDemo, undefined);
+  // workstream library: only real library ids survive; the showcase has none of the built-ins; absent = unchanged behaviour
+  assert.deepEqual(repo.getWorkspace(U, 'ws_demo')!.enabledSpecIds, []);
+  assert.deepEqual(repo.saveWorkspace(U, { ...ws('w2', 'pro'), enabledSpecIds: ['freelance_profile', 'nope', 'freelance_profile'] }).enabledSpecIds, ['freelance_profile']);
+  assert.equal(repo.saveWorkspace(U, { ...ws('w2', 'pro') }).enabledSpecIds, undefined);
   // the allowance only counts real workspaces: starter allows 1 and w1 is it, w2 (pro, allows 3) still fits next to the showcase
   assert.throws(() => repo.saveWorkspace(U, ws('w3', 'starter')), RepoError);
   // no object cap, never in the admin usage

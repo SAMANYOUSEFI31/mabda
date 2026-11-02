@@ -5,7 +5,7 @@ import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
-import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
 import { can, entitlementsOf, objectsRemaining } from '../../src/core/entitlements.ts';
 import { newId, RepoError } from '../db/repo.ts';
 import type { Repo, Scope } from '../db/repo.ts';
@@ -31,7 +31,7 @@ const fail = (message: string) => ({ isError: true as const, content: [{ type: '
 
 export interface McpContext { repo: Repo; scope: Scope; /** token label = «which AI» */ label: string }
 
-const specsOf = (c: McpContext): WorkstreamSpec[] => [...c.repo.listSpecs(c.scope), ...WORKSTREAM_SPECS];
+const specsOf = (c: McpContext): WorkstreamSpec[] => [...c.repo.listSpecs(c.scope), ...enabledBuiltInSpecs(c.repo.getWorkspace(c.scope.userId, c.scope.workspaceId))];
 const pathOf = (nodes: TreeNode[], id: string) => ancestorIds(nodes, id).reverse().map((n) => nodes.find((x) => x.id === n)?.label ?? n).join(' ‹ ');
 
 const view = (nodes: TreeNode[], o: ContextObject) => ({
