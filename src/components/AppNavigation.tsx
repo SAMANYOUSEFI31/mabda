@@ -17,6 +17,8 @@ interface AppNavigationProps {
   onSelectWorkspace: (ws: Workspace) => void;
   onOpenNewWorkspace: () => void;
   onOpenOnboarding: () => void;
+  /** builds (or rebuilds from nothing) the showcase workspace */
+  onResetDemo: () => void;
   onOpenPlanModal: () => void;
   onOpenAccountModal: () => void;
   onOpenLedger: () => void;
@@ -55,8 +57,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const planName = plan.title.split(' ')[0];
 
   const accountItems: Array<MenuItem & { section: 'workspace' | 'tools' | 'account' }> = [
-    ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
+    ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
+    { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
     { section: 'tools', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
     { section: 'tools', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     { section: 'tools', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
@@ -116,7 +119,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
               <span className="grid size-control-sm shrink-0 place-items-center rounded-control-sm bg-bg-neutral-subtle text-icon-subtle"><Icon name="User" size="lg" /></span>
               <span className="min-w-space-0 flex-1">
                 <span className="label-md block truncate text-text-default">{currentWorkspace.name}</span>
-                <span className="body-sm block whitespace-nowrap text-text-subtle">پلن {planName}</span>
+                <span className="body-sm block whitespace-nowrap text-text-subtle">{currentWorkspace.isDemo ? 'نمونه · ' : ''}پلن {planName}</span>
               </span>
               <Icon name="ChevronUp" size="md" className="text-icon-subtle" />
             </button>

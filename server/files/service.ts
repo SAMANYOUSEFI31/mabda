@@ -46,10 +46,16 @@ export class FileService {
     return this.repo.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter';
   }
 
+  /** the showcase workspace processes files for free and is never counted against the monthly quota */
+  private chargeOf(s: Scope, used: number, tokens: number): FileCharge {
+    const c = fileProcessingCharge(this.plan(s), used, tokens);
+    return this.repo.isDemo(s) ? { ...c, withinQuota: true, excessTokens: 0, credits: 0 } : c;
+  }
+
   quota(s: Scope) {
     const period = periodOf(this.clock());
     const used = this.repo.fileUsage(s, period);
-    return { period, used, plan: this.plan(s), ...fileProcessingCharge(this.plan(s), used, 0) };
+    return { period, used, plan: this.plan(s), ...this.chargeOf(s, used, 0) };
   }
 
   async upload(s: Scope, f: { name: string; mime: string; buffer: Buffer; nodeId?: string }): Promise<UploadResult> {
@@ -58,7 +64,7 @@ export class FileService {
     const tokens = estimateTokens(text);
     const file = this.repo.createFile(s, { name: f.name, mime: f.mime, sizeBytes: f.buffer.length, nodeId: f.nodeId, rawText: text, tokens });
     const period = periodOf(this.clock());
-    const charge = fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, period), tokens);
+    const charge = this.chargeOf(s, this.repo.fileUsage(s, period), tokens);
     return { file, charge, period, policy: this.overagePolicy(charge) };
   }
 
@@ -66,7 +72,7 @@ export class FileService {
   chargeFor(s: Scope, fileId: string): FileCharge {
     const file = this.repo.getFile(s, fileId);
     if (!file) throw new RepoError('not_found', 'فایل پیدا نشد.');
-    return fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, periodOf(this.clock())), file.tokens);
+    return this.chargeOf(s, this.repo.fileUsage(s, periodOf(this.clock())), file.tokens);
   }
 
   /** `aiUser` = whose AI key (BYOK) pays for the one-time extraction */
@@ -78,7 +84,7 @@ export class FileService {
     const text = this.repo.getFileText(s, fileId);
     if (!text) throw new RepoError('invalid', 'متن فایل در دسترس نیست؛ دوباره بارگذاری کن.');
     const period = periodOf(this.clock());
-    const charge = fileProcessingCharge(this.plan(s), this.repo.fileUsage(s, period), file.tokens);
+    const charge = this.chargeOf(s, this.repo.fileUsage(s, period), file.tokens);
     const ws = this.repo.getWorkspace(s.userId, s.workspaceId)!;
     if (this.overagePolicy(charge) === 'blocked') throw new RepoError('forbidden', 'سهمیهٔ ماهانهٔ پردازش فایل این پلن پر شده است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.');
 
@@ -103,7 +109,7 @@ export class FileService {
       const objs = res.objects.slice(0, this.repo.objectSlots(s)).map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'file', label: file.name, at: new Date().toISOString() } }));
       const summary = (res.summary ?? 'خلاصه‌ای تولید نشد.') + (res.truncated ? '\n\n(خلاصه و پیشنهادها فقط از بخش ابتدایی فایل ساخته شد؛ کل فایل برای بازیابی قطعه‌بندی شده است.)' : '');
       this.repo.setFileStatus(s, fileId, 'ready', { summary });
-      this.repo.addFileUsage(s, period, file.tokens);
+      if (!this.repo.isDemo(s)) this.repo.addFileUsage(s, period, file.tokens);
       if (creditCost > 0) this.repo.saveWorkspace(s.userId, { ...ws, creditsRemaining: Math.max(0, ws.creditsRemaining - creditCost) });
       this.repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پردازش فایل: ${file.name}`, mode: 'file_processing', creditCost, usage: res.usage, now: this.clock() }));
       return objs;

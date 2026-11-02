@@ -236,3 +236,20 @@ test('get_changes: read-only, filterable, shows who did it but never the written
     await c.close();
   } finally { t.close(); }
 });
+
+test('the showcase workspace is a normal workspace for MCP: gaps (one missing, one ambiguous), changes by actor and the review reasons stay private', async () => {
+  const t = await boot();
+  try {
+    await t.api('POST', '/demo/reset', {});
+    const tok = await t.token('ws_demo', 'Claude');
+    const c = await t.connect(tok.token);
+    const g = await t.call(c, 'get_gaps', { specId: 'demo_spec_campaign' });
+    assert.ok(JSON.stringify(g.data).includes('launch_date'));
+    const ch = await t.call(c, 'get_changes', { limit: 200 });
+    assert.ok(ch.data.count > 20);
+    assert.ok(new Set(ch.data.changes.map((x: any) => x.actor)).size >= 4);
+    assert.ok(!JSON.stringify(ch.data).includes('بعد از نظرسنجی از مشتری‌ها'), 'reasons are not returned');
+    assert.ok(ch.data.changes.some((x: any) => x.hasReason));
+    await c.close();
+  } finally { t.close(); }
+});

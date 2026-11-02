@@ -5,6 +5,7 @@ import { Repo, RepoError, newId } from './repo.ts';
 import type { ChangeMeta } from './repo.ts';
 import type { Scope } from './repo.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
+import { applyDemo, DEMO_WORKSPACE_ID } from './demo.ts';
 import type { LegacyPayload } from './legacy.ts';
 import type { AiService } from '../ai/service.ts';
 import { toAiError } from '../ai/errors.ts';
@@ -67,6 +68,12 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       imported = importLegacy(repo, LOCAL_USER, hasLegacy ? legacy! : seedPayload(), hasLegacy ? 'localStorage' : 'seed');
     }
     res.json({ workspaces: repo.listWorkspaces(LOCAL_USER), imported });
+  }));
+
+  // ── the showcase workspace: one click builds it, the same click resets it ──
+  router.post('/demo/reset', wrap((_req, res) => {
+    applyDemo(repo, LOCAL_USER, clock());
+    res.json({ workspaces: repo.listWorkspaces(LOCAL_USER), workspaceId: DEMO_WORKSPACE_ID });
   }));
 
   router.get('/workspaces', wrap((_req, res) => { res.json({ workspaces: repo.listWorkspaces(LOCAL_USER) }); }));

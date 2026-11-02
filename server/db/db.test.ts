@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
+import { applyDemo } from './demo.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 
@@ -307,4 +308,34 @@ test('depends_on: set/validated through the repo, carried over on supersede, and
   const sup = repo.supersedeObject(s, budget.id, { type: 'Decision', provenance: 'User Input', title: 'بودجه', content: 'سوم', nodeId: 'business' }, { reason: 'تغییر' });
   assert.ok(repo.dependenciesOf(s, channel.id).includes(sup.object.id), 'the dependent now also rests on the replacement');
   assert.equal(repo.computeStale(s)[0].reasons.some((x) => x.kind === 'dependency_changed'), true);
+});
+
+test('showcase workspace: decided by the server only, never counted (workspace allowance, object cap, admin usage); reset deletes all its data and nothing else', () => {
+  const db = new Database(':memory:'); migrate(db);
+  const repo = new Repo(db);
+  repo.saveWorkspace(U, ws('w1', 'starter'));
+  const demo = applyDemo(repo, U, new Date('2026-03-10T08:00:00Z'));
+  assert.equal(demo.isDemo, true);
+  // a client cannot claim the flag on a normal workspace, nor drop it from the showcase one
+  assert.equal(repo.saveWorkspace(U, { ...ws('w2', 'pro'), isDemo: true } as Workspace).isDemo, undefined);
+  assert.equal(repo.saveWorkspace(U, { ...demo, isDemo: false }).isDemo, true);
+  assert.equal(repo.getWorkspace(U, 'w2')!.isDemo, undefined);
+  // the allowance only counts real workspaces: starter allows 1 and w1 is it, w2 (pro, allows 3) still fits next to the showcase
+  assert.throws(() => repo.saveWorkspace(U, ws('w3', 'starter')), RepoError);
+  // no object cap, never in the admin usage
+  const s = { userId: U, workspaceId: demo.id };
+  assert.ok(repo.objectSlots(s) > 100_000);
+  repo.addLedger(s, { id: 'l1', workspaceId: demo.id, timestamp: '2026-03-10T09:00:00.000Z', byok: false, estimatedAiCostUsd: 1 } as never);
+  assert.ok(!repo.ledgerByWorkspaceForMonth('2026-03').some((r) => r.workspaceId === demo.id));
+  // reset: all of the showcase workspace's data goes (and the system nodes come back); other workspaces are untouched
+  const other = { userId: U, workspaceId: 'w1' };
+  repo.createObject(other, { type: 'Fact', provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' });
+  repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'x', content: 'y', nodeId: 'business' });
+  repo.createNote(s, 'business', 'n');
+  applyDemo(repo, U, new Date('2026-03-10T08:00:00Z'));
+  assert.equal(repo.listObjects(other).length, 1);
+  assert.ok(!repo.listNotes(s).some((n) => n.content === 'n'), 'the stray note is gone; the showcase notes are back');
+  assert.ok(!repo.listObjects(s).some((o) => o.title === 'x'));
+  assert.equal(repo.listLedger(s).length, 0);
+  assert.equal(repo.listNodes(s).filter((n) => n.isSystem).length, 5);
 });
