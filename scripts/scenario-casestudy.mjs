@@ -73,7 +73,7 @@ try {
 
     step(`[${width}] weekly review: three sections, then the summary`);
     await page.getByRole('button', { name: /بازبینی هفتگی/ }).first().click();
-    await page.getByRole('dialog').getByText(/بخش ۱ از ۳/).waitFor();
+    await page.getByRole('dialog').getByText(/بخش ۱ از ۴/).waitFor();
     await shot('2-weekly-1');
     await page.getByRole('dialog').getByRole('button', { name: 'دیدم؛ بعدی' }).click();
     await page.getByRole('dialog').getByText('بدون تغییر بپذیر').first().waitFor();

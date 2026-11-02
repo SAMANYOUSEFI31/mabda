@@ -93,7 +93,7 @@ const Body: React.FC<Props> = ({ onClose, metrics, measurements, objects, change
                 </span>
               </div>
               <h4 className="label-md text-text-subtle">{MX.chartTitle}</h4>
-              <MetricChart metric={m} series={series} decisions={moments} today={today()} />
+              <MetricChart metric={m} series={series} decisions={moments} focusIds={rows.filter((r) => r.expectation.metricId === m.id).map((r) => r.decision.id)} today={today()} />
             </Card>
           );
         })}
