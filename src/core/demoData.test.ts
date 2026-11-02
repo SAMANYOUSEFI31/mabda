@@ -77,8 +77,10 @@ test('contradictions: a numeric price clash (rule) and a «no discount» constra
   const rule = detectContradictions(d.objects).map((c) => [c.itemA.id, c.itemB.id].sort().join('|'));
   assert.ok(rule.includes('dm_price|dm_price2'));
   assert.ok(rule.includes('dm_discount|dm_nodiscount'));
-  const cands = candidatePairs(d.objects, 50).filter((p) => p.reasons.includes('qualifier_differs')).map((p) => p.key);
-  assert.ok(cands.includes('dm_ship_cost|dm_ship_policy'), 'رایگان vs هزینه');
+  const ship = candidatePairs(d.objects, 50, d.relationships).find((p) => p.key === 'dm_ship_cost|dm_ship_policy');
+  assert.ok(ship, 'رایگان vs هزینه، با عنوان‌های طبیعی «سیاست ارسال» / «هزینهٔ ارسال»');
+  assert.ok(ship.reasons.includes('same_node_same_type'));
+  assert.equal(d.objects.find((o) => o.id === 'dm_ship_policy')!.title, 'سیاست ارسال');
   assert.equal(unresolvedContradictions(d.objects, []).filter((c) => c.source === 'semantic').length, 0, 'no semantic verdict is invented');
 });
 

@@ -313,7 +313,7 @@ export default function App() {
   };
 
   // semantic contradictions: code picks the candidate pairs, the decision layer answers one closed question each (Pro and above)
-  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
+  const pairSig = data && can(data.workspace.planId, 'semanticContradiction') ? pairsToJudge(data.objects, data.pairJudgments, undefined, data.relationships).map((p) => `${p.key}@${p.a.version}.${p.b.version}`).join(',') : '';
   const judgedSigs = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!pairSig || !ai.judgmentsAvailable || judgedSigs.current.has(pairSig)) return;

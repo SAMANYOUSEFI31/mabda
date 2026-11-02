@@ -4,14 +4,16 @@
  * (server/ai/service.ts judgeContradictions). Rules for a candidate (any one is enough):
  *   · same slot      — both objects fill the same Gap item (slotKey) but say different things
  *   · same node      — same node and similar titles
+ *   · linked         — the two live objects are tied by depends_on, whatever their titles look like
+ *   · same node+type — same node, same type (e.g. two Decisions under «ارسال») and their TEXT overlaps enough
  *   · number / qualifier differs — similar titles, but a quantity in the same unit class or a qualifier word differs
  */
 
-import type { Contradiction, ContextObject } from '../types';
+import type { Contradiction, ContextObject, ContextRelationship } from '../types';
 import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, extractQuantities, jaccard, normalizeFa, titleTokens } from './contextEngine';
 
-export type CandidateReason = 'same_slot' | 'same_node' | 'number_differs' | 'qualifier_differs';
+export type CandidateReason = 'same_slot' | 'same_node' | 'linked' | 'same_node_same_type' | 'number_differs' | 'qualifier_differs';
 
 export interface CandidatePair {
   /** stable key: ids sorted, joined with `|` */
@@ -24,6 +26,8 @@ export interface CandidatePair {
 export const MAX_CANDIDATES = 10;
 const SAME_NODE_TITLE_SIMILARITY = 0.5;
 const TOPIC_SIMILARITY = 0.34;
+/** token overlap of the CONTENT (not the title) that makes two same-node, same-type objects worth asking about */
+export const SAME_TYPE_CONTENT_OVERLAP = 0.2;
 
 /** words that flip or bound a claim: «نداریم» vs «داریم», «حداکثر» vs «حداقل», «ماهانه» vs «سالانه» … */
 const QUALIFIERS = ['نداریم', 'ندارد', 'نمی', 'بدون', 'هرگز', 'همیشه', 'فقط', 'حداکثر', 'حداقل', 'ماهانه', 'سالانه', 'رایگان', 'انحصاری', 'اجباری', 'اختیاری'];
@@ -38,15 +42,31 @@ export const pairKey = (aId: string, bId: string) => (aId < bId ? `${aId}|${bId}
 /** The Confirmed / Proposed objects that can contradict each other (Archived and Superseded never take part). */
 const live = (os: ContextObject[]) => os.filter((o) => o.status === 'Confirmed' || o.status === 'Proposed');
 
-export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES): CandidatePair[] {
+/** index pairs of live objects tied by a depends_on edge */
+function linkedPairs(active: ContextObject[], relationships: ContextRelationship[]): Array<[number, number]> {
+  const at = new Map(active.map((o, i) => [o.id, i]));
+  const out: Array<[number, number]> = [];
+  for (const r of relationships) {
+    if (r.type !== 'depends_on') continue;
+    const i = at.get(r.sourceId), j = at.get(r.targetId);
+    if (i !== undefined && j !== undefined && i !== j) out.push([Math.min(i, j), Math.max(i, j)]);
+  }
+  return out;
+}
+
+export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = []): CandidatePair[] {
   const active = live(objects).filter((o) => o.content.trim().length > 0);
+  const linked = linkedPairs(active, relationships);
+  const linkedSet = new Set(linked.map(([i, j]) => `${i}|${j}`));
+  const contentTokens = new Map(active.map((o) => [o.id, titleTokens(o.content)]));
   const tokens = new Map(active.map((o) => [o.id, titleTokens(o.title)]));
   const quantities = new Map(active.map((o) => [o.id, extractQuantities(`${o.title} ${o.content}`)]));
   const quals = new Map(active.map((o) => [o.id, qualifiersOf(`${o.title} ${o.content}`)]));
   const out: Array<CandidatePair & { score: number }> = [];
 
   // pairs worth looking at share a title word or a slot (N² → bounded by blocking, see pairBlocking.ts)
-  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra: groupPairs(active.map((o) => o.slotKey)) });
+  const index = new Map(active.map((o, i) => [o.id, i]));
+  const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra: [...groupPairs(active.map((o) => o.slotKey)), ...groupPairs(active.map((o) => `${o.nodeId}|${o.type}`)), ...linked] });
   {
     for (const [i, j] of pairs) {
       const a = active[i];
@@ -57,6 +77,8 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES)
 
       if (a.slotKey && a.slotKey === b.slotKey) reasons.push('same_slot');
       if (a.nodeId === b.nodeId && sim >= SAME_NODE_TITLE_SIMILARITY) reasons.push('same_node');
+      if (linkedSet.has(`${index.get(a.id)}|${index.get(b.id)}`)) reasons.push('linked');
+      if (a.nodeId === b.nodeId && a.type === b.type && jaccard(contentTokens.get(a.id)!, contentTokens.get(b.id)!) >= SAME_TYPE_CONTENT_OVERLAP) reasons.push('same_node_same_type');
       if (sim >= TOPIC_SIMILARITY) {
         const qa = quantities.get(a.id)!;
         const qb = quantities.get(b.id)!;
@@ -85,9 +107,9 @@ export const isFresh = (p: CandidatePair, j: PairJudgment | undefined) => {
 };
 
 /** candidates that still need a judgement (no fresh answer, not already resolved by the user) */
-export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES): CandidatePair[] {
+export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = []): CandidatePair[] {
   const byKey = new Map(known.map((j) => [j.key, j]));
-  return candidatePairs(objects, limit).filter((p) => {
+  return candidatePairs(objects, limit, relationships).filter((p) => {
     const j = byKey.get(p.key);
     return !(j && (j.resolution || isFresh(p, j)));
   });
@@ -96,6 +118,8 @@ export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], li
 export const REASON_FA: Record<CandidateReason, string> = {
   same_slot: 'هر دو یک شکاف را پر می‌کنند',
   same_node: 'در یک گره و با عنوان نزدیک',
+  linked: 'یکی به دیگری وابسته است',
+  same_node_same_type: 'هم‌نوع در یک گره و با متن نزدیک',
   number_differs: 'عددهای متفاوت',
   qualifier_differs: 'قیدهای متفاوت',
 };

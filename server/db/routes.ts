@@ -384,7 +384,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
     if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
     const objects = repo.listObjects(s);
-    const todo = pairsToJudge(objects, repo.listPairJudgments(s));
+    const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s));
     const capped = payer() === 'us';
     const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
     const limited = todo.length > left;
