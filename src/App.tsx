@@ -33,6 +33,7 @@ import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { DueItems } from './components/DueItems';
+import { SavedPacksDialog } from './components/SavedPacksDialog';
 import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
 import { thinkingOf, convertedTo } from './core/thinkingMarkers';
@@ -155,6 +156,7 @@ export default function App() {
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
+  const [isPacksOpen, setIsPacksOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
@@ -760,9 +762,12 @@ export default function App() {
         {/* HOME: where to start — what needs you, this week, waiting decisions, the inbox, recent changes */}
         {activeTab === 'home' && (
           <div className="space-y-stack-lg">
-            <div>
-              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
-              <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
+            <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
+                <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
+              </div>
+              <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
             </div>
             {workspaceContexts.length === 0 && (
               <EmptyState
@@ -851,6 +856,7 @@ export default function App() {
                 </p>
               </div>
 
+              <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
@@ -1161,6 +1167,7 @@ export default function App() {
         onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
       />
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
+      <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
