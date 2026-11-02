@@ -10,6 +10,8 @@ import { buildChangeDigest } from './changeDigest';
 import { buildMapModel } from './mapModel';
 import { buildCanvasModel } from './canvasModel';
 import { DEFAULT_TREE_NODES } from './specs';
+import { assumptionsDue, decisionsDue, isEstablished, rejectedOptions } from './assumptions';
+import { canSplit, convertedTo, thinkingOf } from './thinkingMarkers';
 import { effectiveFor, effectiveObjects, guardrailsFor } from './effectiveContext';
 
 const NOW = new Date('2026-03-10T08:00:00Z'); // 11:30 in Tehran
@@ -45,11 +47,11 @@ test('objects: all three types in every status; Proposed come from mcp, chat, co
   assert.deepEqual([...types].sort(), ['Constraint', 'Decision', 'Fact']);
   for (const st of ['Confirmed', 'Proposed', 'Needs Review', 'Superseded', 'Archived'] as const) assert.ok(d.objects.some((o) => o.status === st), st);
   for (const t of ['Fact', 'Decision', 'Constraint'] as const) for (const st of ['Confirmed', 'Proposed'] as const) assert.ok(d.objects.some((o) => o.type === t && o.status === st) || t === 'Constraint', `${t}/${st}`);
-  const proposed = d.objects.filter((o) => o.status === 'Proposed');
+  const proposed = d.objects.filter((o) => o.status === 'Proposed' && !o.source?.noteId); // (what the user converted from a note line is hers: see the thinking test)
   assert.deepEqual([...new Set(proposed.map((o) => o.source!.kind))].sort(), ['chat', 'coach', 'file', 'mcp', 'paste']);
   assert.ok(proposed.every((o) => o.source!.reason), 'every suggestion says why');
   assert.ok(proposed.filter((o) => o.source!.kind === 'file' || o.source!.kind === 'paste').every((o) => o.source!.quote), 'imported ones keep their quote');
-  assert.ok(d.objects.every((o) => o.status !== 'Proposed' || o.provenance === 'AI Suggested' || o.provenance === 'Imported'), 'no Proposed object pretends to be user input');
+  assert.ok(d.objects.every((o) => o.status !== 'Proposed' || o.provenance === 'AI Suggested' || o.provenance === 'Imported' || !!o.source?.noteId), 'no Proposed object pretends to be user input (except a converted note line, which says so)');
   assert.ok(d.objects.every((o) => o.version >= 1 && d.versions.some((v) => v.objectId === o.id && v.version === o.version && v.content === o.content)), 'every current version has its snapshot');
 });
 
@@ -159,4 +161,31 @@ test('a parent/child contradiction is found by the level-by-level check; the obj
   assert.ok(pair, 'first of the month (parent) vs every Saturday (child)');
   assert.ok(pair.reasons.includes('inherits_conflict'));
   assert.equal(unresolvedContradictions(d.objects, []).filter((c) => c.source === 'semantic').length, 0);
+});
+
+// ── the thinking structure in the showcase ───────────────────────────────────────────────────────────────────
+test('thinking: marked note lines give open questions / decisions / ideas / assumptions; a mid-line marker is nothing; a converted line carries ✓; notes are plain text', () => {
+  const items = thinkingOf(d.notes);
+  const by = (k: string) => items.filter((i) => i.kind === k);
+  assert.deepEqual(items.filter((i) => i.noteId === 'dnote_7').map((i) => i.kind), ['question', 'open_decision', 'idea', 'assumption'], 'the line with [فرض] in the middle is not a marker');
+  assert.ok(by('question').length >= 2 && by('open_decision').length >= 1 && by('idea').length >= 1);
+  const converted = items.filter((i) => convertedTo(i, d.objects));
+  assert.deepEqual(converted.map((i) => i.text), ['بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند'], 'only the assumption was converted ✓');
+  const obj = d.objects.find((o) => o.id === convertedTo(converted[0], d.objects))!;
+  assert.deepEqual([obj.type, obj.status, obj.assumption, obj.provenance], ['Fact', 'Proposed', true, 'User Input']);
+  assert.ok(d.notes.some((n) => canSplit(n.content)), 'a note with several ## headings suggests «تبدیل به گره»');
+});
+
+test('assumptions and a decision record: one assumption is due, one is later; a Confirmed assumption is still not knowledge; the rejected option is listed; a due decision asks «نتیجه چه شد؟»', () => {
+  const ass = d.objects.filter((o) => o.assumption);
+  assert.deepEqual(ass.map((o) => [o.id, o.type]).sort(), [['dm_assume_msg', 'Fact'], ['dm_assume_renew', 'Fact']]);
+  assert.deepEqual(assumptionsDue(d.objects, NOW).map((o) => o.id), ['dm_assume_msg']);
+  assert.ok(ass.find((o) => o.id === 'dm_assume_renew')!.reviewBy! > '2026-03-10', 'the other one is due later');
+  const msg = d.objects.find((o) => o.id === 'dm_assume_msg')!;
+  assert.equal(msg.status, 'Confirmed');
+  assert.equal(isEstablished(msg), false, 'Confirmed, yet not knowledge');
+  assert.deepEqual(rejectedOptions(d.objects).map((r) => [r.objectId, r.title]), [['dm_ws_group', 'تخفیف ۱۵ درصد روی قیمت کارگاه']]);
+  assert.deepEqual(decisionsDue(d.objects, d.changes, NOW).map((o) => o.id), ['dm_ws_group']);
+  const wk = buildWeeklyReview({ objects: d.objects, relationships: d.relationships, changes: d.changes, deliverables: d.deliverables, now: NOW });
+  assert.deepEqual([wk.due.assumptions.length, wk.due.decisions.length], [1, 1], 'they show up in «این هفته» too');
 });

@@ -273,7 +273,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 <div className="flex flex-col gap-stack-xs">
                   <span className="label-md text-text-default">گزینه‌های بررسی‌شده و دلیل ردشدن هرکدام</span>
                   {options.map((o, i) => (
-                    <div key={i} className="grid grid-cols-1 gap-inline-sm sm:grid-cols-[1fr_1fr_auto]">
+                    <div key={i} className="grid grid-cols-1 gap-inline-sm sm:grid-cols-3">
                       <TextField label={`گزینهٔ ${formatNumber(i + 1)}`} value={o.title} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
                       <TextField label="چرا رد شد؟ (خالی = رد نشده)" value={o.rejectedReason} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? { ...x, rejectedReason: e.target.value } : x)))} />
                       <div className="self-end"><Button type="button" size="sm" variant="ghost" onClick={() => setOptions((l) => l.filter((_, j) => j !== i))}>حذف</Button></div>
