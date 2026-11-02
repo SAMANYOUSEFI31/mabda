@@ -11,7 +11,7 @@
 | **Provenance** | منشأ ثبت: Onboarding، User Input، AI Suggested، Imported، Asset Derived. | اعتبار نمی‌دهد؛ AI Suggested بدون تأیید واقعیت نیست. | صندوق پیشنهادها، `changeFeed` |
 | **Relation** | یال بین Objectها در سه خانواده (زیر). | برچسب تزئینی نیست. | زیر هر خانواده |
 | ↳ ساختاری `belongs_to` | Object به Node تعلق دارد (`nodeId`، نه ردیف جدا). | — | `contextEngine`، `aiContext` |
-| ↳ وابستگی `depends_on` | این تصمیم روی آن تصمیم سوار است. | وابستگی داده‌ای/زمانی بین خروجی‌ها نیست (آن در Spec است). | `decisionGraph` (ترتیب، همزمانی، نیاز به بازبینی)، `impactEngine` |
+| ↳ وابستگی `depends_on` | این تصمیم روی آن تصمیم سوار است. (دستی فقط همین و `supersedes` با تأیید صریح؛ `belongs_to` و `derived_from` ردیف نمی‌شوند.) | وابستگی داده‌ای/زمانی بین خروجی‌ها نیست (آن در Spec است). | `decisionGraph` (ترتیب، همزمانی، نیاز به بازبینی)، `impactEngine` |
 | ↳ تبار `derived_from` / `supersedes` | `supersedes`: نسخهٔ تازه جای قدیمی. `derived_from`: Asset از Objectهای با نسخهٔ دقیق (`usedContext`). | `derived_from` ردیف جدول نیست؛ همان `usedContext` است. | `impactEngine`، `contradictionCandidates` |
 | **Source** | شاهد: آنچه Object از آن آمد (کدام AI/فایل/یادداشت، چه وقت، نقل دقیق). | دلیل تغییر نیست. | صندوق پیشنهادها، `memory import` |
 | **Note** | فکر خام روی یک Node؛ هرگز به مدل نمی‌رود. | Context نیست؛ فقط با «استخراج» Proposed می‌سازد. | هیچ موتور حقیقتی؛ فقط استخراج |
@@ -22,5 +22,6 @@
 | **Lineage** | فهرست دقیق `{id, version}` Objectهای تزریق‌شده هنگام ساخت Asset. | — | `impactEngine` |
 | **Impact** | اثر یک تغییر: کدام Assetها (و وابسته‌ها) از Objectِ عوض‌شده ساخته شده‌اند. | — | `impactEngine` |
 | **Staleness** | «قدیمی» (دارایی) و «نیاز به بازبینی» (تصمیم وابسته): **مشتق**، نه ذخیره‌شده. «بدون تغییر بپذیر» فقط یک Change از نوع `review_accepted` می‌نویسد. | — | `impactEngine` (دلیل `dependency_changed`)، `decisionGraph.needsReview` |
+| **Board (بوم)** | نمای ویرایشی: ستون = وضعیت، ردیف = گره، ترتیب = «رتبه»ٔ اعلام‌شده (`canvas_view_items`)؛ یادداشت‌های آزاد فقط x/y دارند. | موقعیت چیزی را استنتاج نمی‌کند؛ هیچ موتوری x/y را نمی‌خواند. رتبه یک Change است، مختصات نه. | `canvasModel` (فقط وضعیت/گره/رتبه) |
 | **Change** | رکورد افزوده‌شونده در همان تراکنش هر تغییر: object، نسخه از/به، kind، actor (+برچسب)، reason، فقط فیلدهای تغییرکرده (`context_changes`). | متن Object نیست؛ `reason` هرگز به مدل تزریق نمی‌شود (MCP هم فقط `hasReason` می‌دهد). | `decisionGraph.needsReview`، `impactEngine`، MCP `get_changes` |
 | **AI** | اجرا، نه اعتبار: پیشنهاد می‌دهد، قضاوت بسته می‌کند؛ تأیید همیشه با کاربر. | منبع حقیقت نیست. | router، pipeline، decision layer |

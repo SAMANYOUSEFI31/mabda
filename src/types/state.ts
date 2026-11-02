@@ -23,7 +23,11 @@ export interface WorkspaceState {
   pairJudgments: import('../core/contradictionCandidates').PairJudgment[];
   /** append-only change log (who changed what, why) */
   changes: import('./index').ContextChange[];
+  /** declared positions on the boards (decision board: lane + rank; free zone: x/y, display only) */
+  canvas: { decisions: CanvasItem[]; free: CanvasItem[] };
 }
+
+export interface CanvasItem { itemRef: string; lane?: string; rank?: number; x?: number; y?: number }
 
 export interface ImpactInfo {
   count: number;

@@ -271,6 +271,20 @@ export const MIGRATIONS: Migration[] = [
       for (const a of archived) ins.run(`chg_bf_arch_${a.id}`, a.user_id, a.workspace_id, a.id, a.version, a.version, 'archived', 'system', LABEL, null, null, JSON.stringify({ status: 'Archived' }), a.updated_at);
     },
   },
+  {
+    version: 10,
+    name: 'canvas_view_items: declared position on the boards (lane + rank for the decision board, x/y for free notes) — display only',
+    up(db) {
+      db.exec(`
+        CREATE TABLE canvas_view_items (
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          view TEXT NOT NULL, item_ref TEXT NOT NULL,
+          lane TEXT, rank REAL, x REAL, y REAL,
+          PRIMARY KEY (workspace_id, view, item_ref)
+        );
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

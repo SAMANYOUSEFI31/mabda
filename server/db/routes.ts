@@ -24,6 +24,9 @@ import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
 import { can } from '../../src/core/entitlements.ts';
+import { needsReview } from '../../src/core/decisionGraph.ts';
+import { buildCanvasModel, moveEffect, rankBetween } from '../../src/core/canvasModel.ts';
+import type { Lane } from '../../src/core/canvasModel.ts';
 import { pairsToJudge } from '../../src/core/contradictionCandidates.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
@@ -108,6 +111,90 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const since = typeof req.query.since === 'string' && !Number.isNaN(Date.parse(req.query.since)) ? new Date(req.query.since).toISOString() : undefined;
     res.json({ changes: repo.listChanges(scopeOf(req), { objectId: typeof req.query.objectId === 'string' ? req.query.objectId : undefined, since }) });
   }));
+  // ── boards («بوم»): the decision board's columns ARE statuses, its rows ARE nodes, its order IS a stored rank ──
+  const LANES: Lane[] = ['thinking', 'confirmed', 'review'];
+  const canvasBundle = (s: Scope) => ({
+    objects: repo.listObjects(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), notes: repo.listNotes(s), stale: stale(s),
+    canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') },
+  });
+  const reviewIdsOf = (s: Scope) => new Set(needsReview(repo.listObjects(s), repo.listRelationships(s), repo.listChanges(s)).keys());
+
+  router.post('/workspaces/:wid/canvas/decisions/move', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const obj = repo.getObject(s, String(b.objectId ?? ''));
+    if (!obj) throw new RepoError('not_found', 'Context پیدا نشد.');
+    const lane = String(b.lane) as Lane;
+    if (!LANES.includes(lane)) throw new RepoError('invalid', 'ستون نامعتبر است.');
+    const toNode = typeof b.nodeId === 'string' && b.nodeId ? b.nodeId : obj.nodeId;
+    const eff = moveEffect(obj, reviewIdsOf(s), lane, toNode);
+    if (eff.needsConfirm && b.confirmBackward !== true) throw new RepoError('forbidden', 'برگرداندن یک مورد تأییدشده باید صریحاً تأیید شود.');
+    const meta = metaOf(b);
+    if (eff.kind === 'accept_review') {
+      repo.acceptReview(s, obj.id, meta);
+      if (eff.nodeChanged) repo.updateObject(s, obj.id, { nodeId: toNode }, meta);
+    } else if (eff.status || eff.nodeChanged) {
+      repo.updateObject(s, obj.id, { ...(eff.status ? { status: eff.status } : {}), ...(eff.nodeChanged ? { nodeId: toNode } : {}) }, meta);
+    }
+    // rank: between the card above and the card below the drop point (both given by the client), in the NEW cell
+    const ranks = new Map(repo.listCanvasItems(s, 'decisions').filter((i) => i.rank !== undefined).map((i) => [i.itemRef.slice(4), i.rank!]));
+    const model = buildCanvasModel({ nodes: repo.listNodes(s), objects: repo.listObjects(s), reviewIds: reviewIdsOf(s), ranks });
+    const rankOf = (id: unknown) => (typeof id === 'string' ? model.cards.find((c) => c.objectId === id)?.rank : undefined);
+    const prev = rankOf(b.beforeId), next = rankOf(b.afterId);
+    if (prev !== undefined || next !== undefined || eff.kind === 'accept' || eff.kind === 'accept_review' || eff.status) {
+      const rank = rankBetween(prev, next);
+      if (rank !== ranks.get(obj.id)) repo.setRank(s, obj.id, rank, lane, meta);
+    }
+    res.json(canvasBundle(s));
+  }));
+  router.post('/workspaces/:wid/canvas/decisions/reset', wrap((req, res) => { const s = scopeOf(req); repo.clearCanvas(s, 'decisions'); res.json(canvasBundle(s)); }));
+
+  /** a line between two cards = a typed Relation; only the types docs/spine.md allows by hand */
+  router.post('/workspaces/:wid/canvas/connect', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const from = String(b.fromId ?? ''), to = String(b.toId ?? '');
+    if (from === to) throw new RepoError('invalid', 'یک مورد را نمی‌شود به خودش وصل کرد.');
+    if (b.type === 'depends_on') {
+      repo.setDependencies(s, from, [...repo.dependenciesOf(s, from), to], metaOf(b));
+    } else if (b.type === 'supersedes') {
+      if (b.confirmed !== true) throw new RepoError('forbidden', 'جایگزین‌کردن یک مورد باید صریحاً تأیید شود.');
+      repo.supersedeBy(s, to, from, metaOf(b, { kind: 'superseded' }));
+    } else throw new RepoError('invalid', 'نوع اتصال مجاز نیست.');
+    res.json(canvasBundle(s));
+  }));
+
+  // free-thinking zone: Notes with coordinates. Notes are never injected into a model; «تبدیل به قلم دانش» makes a PROPOSED object.
+  router.post('/workspaces/:wid/canvas/free/notes', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const text = String(b.content ?? '').trim();
+    if (!text) throw new RepoError('invalid', 'متن یادداشت خالی است.');
+    const note = repo.createNote(s, typeof b.nodeId === 'string' && b.nodeId ? b.nodeId : 'business', text);
+    repo.saveCanvasItem(s, 'free', `note:${note.id}`, { x: Number(b.x) || 0, y: Number(b.y) || 0 });
+    res.json({ note, ...canvasBundle(s) });
+  }));
+  router.put('/workspaces/:wid/canvas/free/items/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    if (!repo.getNote(s, req.params.id)) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    repo.saveCanvasItem(s, 'free', `note:${req.params.id}`, { x: Number(body(req).x) || 0, y: Number(body(req).y) || 0 });
+    res.json({ canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') } });
+  }));
+  router.post('/workspaces/:wid/canvas/free/reset', wrap((req, res) => {
+    const s = scopeOf(req);
+    repo.listNotes(s).forEach((n, i) => repo.saveCanvasItem(s, 'free', `note:${n.id}`, { x: (i % 4) * 260, y: Math.floor(i / 4) * 150 }));
+    res.json(canvasBundle(s));
+  }));
+  router.post('/workspaces/:wid/canvas/free/notes/:id/to-knowledge', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.getNote(s, req.params.id);
+    if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    const first = note.content.split('\n').find((l) => l.trim())?.trim() ?? 'یادداشت';
+    const type = ['Fact', 'Decision', 'Constraint'].includes(String(body(req).type)) ? String(body(req).type) as 'Fact' | 'Decision' | 'Constraint' : 'Fact';
+    const object = repo.createObject(s, { type, status: 'Proposed', provenance: 'User Input', title: first.length > 70 ? `${first.slice(0, 70)}…` : first, content: note.content, nodeId: note.nodeId, source: { kind: 'note', label: 'بوم فکر آزاد', at: new Date().toISOString() } });
+    res.json({ object, ...canvasBundle(s) });
+  }));
+
   /** accept a proposal AND replace an existing object with it (the old one becomes Superseded, never deleted) */
   router.post('/workspaces/:wid/objects/:id/replace', wrap((req, res) => {
     const s = scopeOf(req);
