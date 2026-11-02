@@ -430,3 +430,82 @@ test('outcome_noted: a due decision\'s answer is a Change (decisions only, text 
   assert.equal(repo.listChanges(s).filter((x) => x.kind === 'node_from_note').length, 0, 'node records are not in the object feed');
   assert.equal(repo.listChanges(s, { includeNodes: true }).filter((x) => x.kind === 'node_from_note').length, 2);
 });
+
+// ── metrics («شاخص‌ها»): recorded results, never Context objects ───────────────────────────────────────────────
+test('migration 14: metrics and measurements exist, carry user_id / workspace_id, and old data is untouched', () => {
+  const db = new Database(':memory:');
+  migrate(db, 13);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  assert.deepEqual(migrate(db), [14]);
+  for (const t of ['metrics', 'measurements']) {
+    const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name);
+    assert.ok(cols.includes('user_id') && cols.includes('workspace_id'), `${t} is tenant-scoped`);
+  }
+  assert.equal(new Repo(db).listMetrics({ userId: U, workspaceId: 'w1' }).length, 0);
+});
+
+test('a metric and its numbers: every write leaves a Change; metric changes stay out of the Context change list', () => {
+  const { repo, s } = fresh();
+  const m = repo.createMetric(s, { name: ' سفارش   هفتگی ', unit: 'سفارش', direction: 'up', target: 120 });
+  assert.deepEqual([m.name, m.unit, m.direction, m.target], ['سفارش هفتگی', 'سفارش', 'up', 120]);
+  assert.throws(() => repo.createMetric(s, { name: 'سفارش هفتگی', direction: 'up' }), RepoError, 'duplicate name');
+  assert.throws(() => repo.createMetric(s, { name: 'x', direction: 'sideways' }), RepoError);
+  assert.throws(() => repo.createMetric(s, { name: '', direction: 'up' }), RepoError);
+  const a = repo.addMeasurement(s, { metricId: m.id, value: 100, at: '2026-03-01', note: ' خوب ' });
+  assert.deepEqual([a.status, a.source, a.note], ['Confirmed', 'manual', 'خوب']);
+  assert.throws(() => repo.addMeasurement(s, { metricId: m.id, value: Number.NaN }), RepoError);
+  assert.throws(() => repo.addMeasurement(s, { metricId: m.id, value: 1, at: '2026-02-30' }), RepoError);
+  assert.throws(() => repo.addMeasurement(s, { metricId: 'nope', value: 1 }), RepoError);
+  repo.updateMetric(s, m.id, { target: 130 });
+  repo.removeMeasurement(s, a.id);
+  repo.archiveMetric(s, m.id);
+  assert.throws(() => repo.addMeasurement(s, { metricId: m.id, value: 1 }), RepoError, 'an archived metric takes no new numbers');
+  const kinds = repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).map((c) => c.kind);
+  assert.deepEqual(kinds, ['metric_created', 'measurement_added', 'metric_edited', 'measurement_removed', 'metric_archived']);
+  assert.deepEqual(repo.listChanges(s), [], 'the Context change list (digest, weekly review) does not see metric changes');
+  assert.equal(repo.listMetrics(s).length, 1, 'archived, not deleted');
+});
+
+test('a number from an MCP client is ALWAYS a proposal: invisible to the series until the user confirms it', () => {
+  const { repo, s } = fresh();
+  const m = repo.createMetric(s, { name: 'ماندگاری', unit: '٪', direction: 'up' });
+  const p = repo.addMeasurement(s, { metricId: m.id, value: 70, at: '2026-03-02', source: 'mcp' }, { actor: 'mcp', label: 'Claude' });
+  assert.equal(p.status, 'Proposed');
+  assert.equal(repo.listMeasurements(s, { status: 'Confirmed' }).length, 0);
+  const prop = repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).at(-1)!;
+  assert.deepEqual([prop.kind, prop.actor, prop.actorLabel], ['measurement_proposed', 'mcp', 'Claude']);
+  repo.confirmMeasurement(s, p.id);
+  assert.equal(repo.getMeasurement(s, p.id)!.status, 'Confirmed');
+  assert.equal(repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).at(-1)!.kind, 'measurement_added');
+});
+
+test('pasted CSV is all-or-nothing per line set: good lines are stored, bad lines are returned; reset clears metrics', () => {
+  const { repo, s } = fresh();
+  repo.createMetric(s, { name: 'سفارش', direction: 'up' });
+  const r = repo.addMeasurementsCsv(s, 'سفارش, ۱۰, 2026-03-01\nسفارش, 12, 2026-03-08\nجز ناشناخته, 3\nسفارش, abc');
+  assert.equal(r.added.length, 2);
+  assert.deepEqual(r.errors.map((e) => e.reason), ['unknown_metric', 'bad_value']);
+  assert.ok(r.added.every((x) => x.source === 'csv' && x.status === 'Confirmed'));
+  repo.resetWorkspaceData(s);
+  assert.deepEqual([repo.listMetrics(s).length, repo.listMeasurements(s).length], [0, 0]);
+});
+
+test('the verdict on an expectation is a Change with the metric and the last number it was read against; the text alone is enough without one', () => {
+  const { repo, s } = fresh();
+  const m = repo.createMetric(s, { name: 'سفارش', direction: 'up' });
+  repo.addMeasurement(s, { metricId: m.id, value: 112, at: '2026-02-28' });
+  repo.addMeasurement(s, { metricId: m.id, value: 130, at: '2026-04-01' }); // after the `by` date: not the one it is read against
+  const d = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'کانال', content: 'اینستاگرام', nodeId: 'business', record: { metricExpectation: { metricId: m.id, direction: 'up', targetValue: 110, by: '2026-03-01' } } });
+  assert.equal(repo.getObject(s, d.id)!.record?.metricExpectation?.targetValue, 110, 'the expectation is stored with the decision');
+  assert.equal(repo.getObject(s, d.id)!.version, 1);
+  const c = repo.noteOutcome(s, d.id, '', undefined, 'met');
+  assert.equal(c.kind, 'outcome_noted');
+  assert.deepEqual([c.after?.verdict, c.after?.metricId, c.after?.value, c.after?.valueAt], ['met', m.id, 112, '2026-02-28']);
+  assert.throws(() => repo.noteOutcome(s, d.id, '', undefined), RepoError, 'neither text nor verdict');
+  assert.throws(() => repo.noteOutcome(s, d.id, 'x', undefined, 'great' as never), RepoError);
+  const plain = repo.noteOutcome(s, d.id, 'یک یادداشت ساده');
+  assert.equal(plain.after, undefined, 'a plain note carries no verdict');
+  // an invalid expectation (bad date / direction) is dropped, not stored
+  const bad = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'بد', content: 'x', nodeId: 'business', record: { metricExpectation: { metricId: m.id, direction: 'left' as never, by: '2026-13-40' } } });
+  assert.equal(repo.getObject(s, bad.id)!.record, undefined);
+});

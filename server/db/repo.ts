@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, PackSelection, SavedPack,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
@@ -11,6 +11,7 @@ import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
+import { isIsoDate, parseMeasurementCsv } from '../../src/core/metrics.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
@@ -46,6 +47,14 @@ const scopeFields = (i: { reach?: unknown; validUntil?: unknown }): Pick<Context
 /** the assumption flag, its review date and a decision record from client input (only valid, non-empty values survive) */
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const str = (v: unknown, max = 600) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+/** a decision's expectation of a Metric: a metric id, a direction, an optional finite target and the date it is looked at */
+export function cleanExpectation(v: unknown): MetricExpectation | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const x = v as Record<string, unknown>;
+  if (typeof x.metricId !== 'string' || !x.metricId || (x.direction !== 'up' && x.direction !== 'down') || typeof x.by !== 'string' || !isIsoDate(x.by)) return undefined;
+  const target = typeof x.targetValue === 'number' && Number.isFinite(x.targetValue) ? x.targetValue : undefined;
+  return { metricId: x.metricId, direction: x.direction, ...(target !== undefined ? { targetValue: target } : {}), by: x.by };
+}
 export function cleanRecord(r: unknown): DecisionRecord | undefined {
   if (!r || typeof r !== 'object') return undefined;
   const x = r as Record<string, unknown>;
@@ -53,7 +62,7 @@ export function cleanRecord(r: unknown): DecisionRecord | undefined {
     const t = str((o as { title?: unknown })?.title, 160);
     return t ? { title: t, ...(str((o as { rejectedReason?: unknown })?.rejectedReason) ? { rejectedReason: str((o as { rejectedReason?: unknown }).rejectedReason)! } : {}) } : null;
   }).filter((o): o is NonNullable<typeof o> => !!o);
-  const out: DecisionRecord = { ...(str(x.question) ? { question: str(x.question)! } : {}), ...(options.length ? { options } : {}), ...(str(x.expectation) ? { expectation: str(x.expectation)! } : {}), ...(typeof x.reviewOn === 'string' && DATE.test(x.reviewOn) ? { reviewOn: x.reviewOn } : {}) };
+  const out: DecisionRecord = { ...(str(x.question) ? { question: str(x.question)! } : {}), ...(options.length ? { options } : {}), ...(str(x.expectation) ? { expectation: str(x.expectation)! } : {}), ...(typeof x.reviewOn === 'string' && DATE.test(x.reviewOn) ? { reviewOn: x.reviewOn } : {}), ...(cleanExpectation(x.metricExpectation) ? { metricExpectation: cleanExpectation(x.metricExpectation)! } : {}) };
   return Object.keys(out).length ? out : undefined;
 }
 /** facets: trimmed, de-duplicated, short names; at most 8 per object (one free axis, no hierarchy) */
@@ -150,6 +159,9 @@ export class Repo {
       this.seedSystemNodes(s);
     })();
   }
+
+  /** run several writes as one unit (all or none) */
+  transaction<T>(fn: () => T): T { return this.db.transaction(fn)(); }
 
   assertWorkspace(s: Scope) {
     if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
@@ -463,7 +475,7 @@ export class Repo {
 
   listChanges(s: Scope, f: { objectId?: string; since?: string; limit?: number; includeNodes?: boolean } = {}): ContextChange[] {
     const where = ['workspace_id = ?', 'user_id = ?']; const args: unknown[] = [s.workspaceId, s.userId];
-    if (!f.includeNodes) where.push("object_id NOT LIKE 'node:%'"); // records about a node (not an object) are read only on request
+    if (!f.includeNodes) where.push("object_id NOT LIKE 'node:%' AND object_id NOT LIKE 'metric:%'"); // records about a node or a metric (not a Context object) are read only on request
     if (f.objectId) { where.push('object_id = ?'); args.push(f.objectId); }
     if (f.since) { where.push('at >= ?'); args.push(f.since); }
     const rows = this.db.prepare(`SELECT * FROM context_changes WHERE ${where.join(' AND ')} ORDER BY at, rowid LIMIT ?`).all(...args, f.limit ?? 5000) as Array<Record<string, unknown>>;
@@ -539,14 +551,23 @@ export class Repo {
     return { relationships: this.listRelationships(s), change: all[all.length - 1] };
   }
 
-  /** «نتیجه چه شد؟»: the answer to a due decision is a Change (kind `outcome_noted`); the text is for people, never for a model */
-  noteOutcome(s: Scope, objectId: string, text: string, meta?: ChangeMeta): ContextChange {
+  /**
+   * «نتیجه چه شد؟»: the answer to a due decision is a Change (kind `outcome_noted`); the text is for people, never for a model.
+   * With a metric expectation the user's verdict (met / partial / missed) is written into the Change, with the metric and the
+   * last confirmed number it was read against — the data a later analysis would need, nothing derived from it here.
+   */
+  noteOutcome(s: Scope, objectId: string, text: string, meta?: ChangeMeta, verdict?: ExpectationVerdict): ContextChange {
     const o = this.getObject(s, objectId);
     if (!o) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (o.type !== 'Decision') throw new RepoError('invalid', 'نتیجه فقط برای تصمیم ثبت می‌شود.');
+    if (verdict !== undefined && verdict !== 'met' && verdict !== 'partial' && verdict !== 'missed') throw new RepoError('invalid', 'داوری معتبر نیست.');
     const t = text.trim();
-    if (!t) throw new RepoError('invalid', 'نتیجه را بنویس.');
-    this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'outcome_noted', meta: { ...meta, reason: t.slice(0, 1000) } });
+    if (!t && !verdict) throw new RepoError('invalid', 'نتیجه را بنویس.');
+    const exp = o.record?.metricExpectation;
+    const last = verdict && exp ? this.listMeasurements(s, { metricId: exp.metricId, status: 'Confirmed' }).filter((m) => m.at <= exp.by).at(-1) : undefined;
+    const VERDICT_FA = { met: 'به انتظار رسید', partial: 'نیمه', missed: 'نرسید' } as const;
+    this.recordChange(s, { objectId, fromVersion: o.version, toVersion: o.version, kind: 'outcome_noted', meta: { ...meta, reason: (t || (verdict ? VERDICT_FA[verdict] : '')).slice(0, 1000) },
+      ...(verdict ? { after: { verdict, ...(exp ? { metricId: exp.metricId } : {}), ...(last ? { measurementId: last.id, value: last.value, valueAt: last.at } : {}) } } : {}) });
     const all = this.listChanges(s, { objectId });
     return all[all.length - 1];
   }
@@ -904,6 +925,124 @@ export class Repo {
   }
   deleteTemplate(userId: string, id: string) { this.db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?').run(id, userId); }
 
+  // ── metrics («شاخص‌ها»): recorded results. NOT Context objects, never facts. Every write leaves a Change (object_id `metric:<id>`);
+  //    a number suggested by an AI / MCP client is `Proposed` and invisible to charts, counts and packs until the user confirms it ──
+  private rowToMetric(r: Record<string, unknown>): Metric {
+    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, unit: (r.unit as string) ?? '', direction: r.direction as MetricDirection, ...(r.target !== null && r.target !== undefined ? { target: r.target as number } : {}), ...(r.archived ? { archived: true } : {}), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+  }
+  private rowToMeasurement(r: Record<string, unknown>): Measurement {
+    return { id: r.id as string, workspaceId: r.workspace_id as string, metricId: r.metric_id as string, value: r.value as number, at: r.at as string, ...(r.note ? { note: r.note as string } : {}), source: r.source as MeasurementSource, status: r.status as Measurement['status'], ...(r.decision_id ? { decisionId: r.decision_id as string } : {}), createdAt: r.created_at as string };
+  }
+  listMetrics(s: Scope): Metric[] {
+    return (this.db.prepare('SELECT * FROM metrics WHERE workspace_id = ? AND user_id = ? ORDER BY created_at, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map((r) => this.rowToMetric(r));
+  }
+  getMetric(s: Scope, id: string): Metric | undefined {
+    const r = this.db.prepare('SELECT * FROM metrics WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
+    return r ? this.rowToMetric(r) : undefined;
+  }
+  private cleanMetricFields(i: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown }, cur?: Metric) {
+    const name = i.name === undefined ? cur?.name : typeof i.name === 'string' ? i.name.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+    if (!name) throw new RepoError('invalid', 'نام شاخص لازم است.');
+    const direction = i.direction === undefined ? cur?.direction : i.direction;
+    if (direction !== 'up' && direction !== 'down') throw new RepoError('invalid', 'مشخص کن بالاتر بهتر است یا پایین‌تر.');
+    const unit = i.unit === undefined ? cur?.unit ?? '' : typeof i.unit === 'string' ? i.unit.trim().slice(0, 20) : '';
+    const target = i.target === undefined ? cur?.target : i.target === null || i.target === '' ? undefined : typeof i.target === 'number' && Number.isFinite(i.target) ? i.target : (() => { throw new RepoError('invalid', 'هدف باید عدد باشد.'); })();
+    return { name, unit, direction: direction as MetricDirection, target };
+  }
+  createMetric(s: Scope, i: { id?: string; name?: unknown; unit?: unknown; direction?: unknown; target?: unknown; at?: string }, meta?: ChangeMeta): Metric {
+    this.assertWorkspace(s);
+    const f = this.cleanMetricFields(i);
+    if (this.listMetrics(s).some((m) => !m.archived && m.name.toLowerCase() === f.name.toLowerCase())) throw new RepoError('invalid', 'شاخصی با این نام هست.');
+    const id = i.id ?? newId('met'); const t = i.at ?? now();
+    this.db.transaction(() => {
+      this.db.prepare('INSERT INTO metrics (id, user_id, workspace_id, name, unit, direction, target, archived, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, f.name, f.unit, f.direction, f.target ?? null, null, t, t);
+      this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 0, toVersion: 1, kind: 'metric_created', meta: { actor: 'user', ...meta }, after: { name: f.name, unit: f.unit, direction: f.direction, ...(f.target !== undefined ? { target: f.target } : {}) }, at: t });
+    })();
+    return this.getMetric(s, id)!;
+  }
+  updateMetric(s: Scope, id: string, patch: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown }, meta?: ChangeMeta): Metric {
+    const cur = this.getMetric(s, id);
+    if (!cur) throw new RepoError('not_found', 'شاخص پیدا نشد.');
+    const f = this.cleanMetricFields(patch, cur);
+    const before: Record<string, unknown> = {}; const after: Record<string, unknown> = {};
+    for (const k of ['name', 'unit', 'direction', 'target'] as const) if ((cur[k] ?? null) !== (f[k] ?? null)) { before[k] = cur[k] ?? null; after[k] = f[k] ?? null; }
+    if (!Object.keys(after).length) return cur;
+    const diff = { before, after };
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE metrics SET name=?, unit=?, direction=?, target=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?').run(f.name, f.unit, f.direction, f.target ?? null, now(), id, s.workspaceId, s.userId);
+      this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 1, toVersion: 1, kind: 'metric_edited', meta: { actor: 'user', ...meta }, before: diff.before, after: diff.after });
+    })();
+    return this.getMetric(s, id)!;
+  }
+  /** archived, never deleted: its numbers and the decisions that pointed at it stay readable */
+  archiveMetric(s: Scope, id: string, meta?: ChangeMeta): Metric {
+    const cur = this.getMetric(s, id);
+    if (!cur) throw new RepoError('not_found', 'شاخص پیدا نشد.');
+    if (cur.archived) return cur;
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE metrics SET archived = 1, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(now(), id, s.workspaceId, s.userId);
+      this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 1, toVersion: 1, kind: 'metric_archived', meta: { actor: 'user', ...meta } });
+    })();
+    return this.getMetric(s, id)!;
+  }
+
+  listMeasurements(s: Scope, f: { metricId?: string; status?: Measurement['status'] } = {}): Measurement[] {
+    const where = ['workspace_id = ?', 'user_id = ?']; const args: unknown[] = [s.workspaceId, s.userId];
+    if (f.metricId) { where.push('metric_id = ?'); args.push(f.metricId); }
+    if (f.status) { where.push('status = ?'); args.push(f.status); }
+    return (this.db.prepare(`SELECT * FROM measurements WHERE ${where.join(' AND ')} ORDER BY at, created_at, id`).all(...args) as Array<Record<string, unknown>>).map((r) => this.rowToMeasurement(r));
+  }
+  getMeasurement(s: Scope, id: string): Measurement | undefined {
+    const r = this.db.prepare('SELECT * FROM measurements WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
+    return r ? this.rowToMeasurement(r) : undefined;
+  }
+  /**
+   * One number. `status` is Confirmed for the user's own entries (manual / csv) and ALWAYS Proposed for source `mcp` —
+   * an AI client cannot write a confirmed number, whatever it passes.
+   */
+  addMeasurement(s: Scope, i: { id?: string; metricId: string; value: unknown; at?: string; note?: unknown; source?: MeasurementSource; decisionId?: string; createdAt?: string }, meta?: ChangeMeta): Measurement {
+    const metric = this.getMetric(s, i.metricId);
+    if (!metric) throw new RepoError('not_found', 'شاخص پیدا نشد.');
+    if (metric.archived) throw new RepoError('invalid', 'این شاخص بایگانی شده است.');
+    if (typeof i.value !== 'number' || !Number.isFinite(i.value)) throw new RepoError('invalid', 'مقدار باید عدد باشد.');
+    const source: MeasurementSource = i.source ?? 'manual';
+    const at = i.at ?? now().slice(0, 10);
+    if (!isIsoDate(at)) throw new RepoError('invalid', 'تاریخ معتبر نیست.');
+    const status: Measurement['status'] = source === 'mcp' ? 'Proposed' : 'Confirmed';
+    const note = typeof i.note === 'string' && i.note.trim() ? i.note.trim().slice(0, 300) : undefined;
+    const id = i.id ?? newId('msr'); const created = i.createdAt ?? now();
+    this.db.transaction(() => {
+      this.db.prepare('INSERT INTO measurements (id, user_id, workspace_id, metric_id, value, at, note, source, status, decision_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, i.metricId, i.value, at, note ?? null, source, status, i.decisionId ?? null, created);
+      this.recordChange(s, { objectId: `metric:${i.metricId}`, fromVersion: 1, toVersion: 1, kind: status === 'Proposed' ? 'measurement_proposed' : 'measurement_added', meta: { actor: source === 'mcp' ? 'mcp' : 'user', ...meta }, after: { measurementId: id, value: i.value, at, source, ...(i.decisionId ? { decisionId: i.decisionId } : {}) }, at: created });
+    })();
+    return this.getMeasurement(s, id)!;
+  }
+  /** pasted CSV → numbers in one transaction; lines that cannot be read are returned, never guessed */
+  addMeasurementsCsv(s: Scope, text: string, meta?: ChangeMeta): { added: Measurement[]; errors: ReturnType<typeof parseMeasurementCsv>['errors'] } {
+    const parsed = parseMeasurementCsv(text, this.listMetrics(s), now().slice(0, 10));
+    const added = this.db.transaction(() => parsed.rows.map((r) => this.addMeasurement(s, { metricId: r.metricId, value: r.value, at: r.at, note: r.note, source: 'csv' }, meta)))();
+    return { added, errors: parsed.errors };
+  }
+  /** «تأیید عدد»: a Proposed number becomes the user's own */
+  confirmMeasurement(s: Scope, id: string, meta?: ChangeMeta): Measurement {
+    const m = this.getMeasurement(s, id);
+    if (!m) throw new RepoError('not_found', 'عدد پیدا نشد.');
+    if (m.status === 'Confirmed') return m;
+    this.db.transaction(() => {
+      this.db.prepare("UPDATE measurements SET status = 'Confirmed' WHERE id = ? AND workspace_id = ? AND user_id = ?").run(id, s.workspaceId, s.userId);
+      this.recordChange(s, { objectId: `metric:${m.metricId}`, fromVersion: 1, toVersion: 1, kind: 'measurement_added', meta: { actor: 'user', ...meta }, after: { measurementId: id, value: m.value, at: m.at, source: m.source, confirmed: true } });
+    })();
+    return this.getMeasurement(s, id)!;
+  }
+  removeMeasurement(s: Scope, id: string, meta?: ChangeMeta) {
+    const m = this.getMeasurement(s, id);
+    if (!m) throw new RepoError('not_found', 'عدد پیدا نشد.');
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM measurements WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
+      this.recordChange(s, { objectId: `metric:${m.metricId}`, fromVersion: 1, toVersion: 1, kind: 'measurement_removed', meta: { actor: 'user', ...meta }, before: { measurementId: id, value: m.value, at: m.at, status: m.status } });
+    })();
+  }
+
   // ── saved packs: a named selection (docs/spine.md → «بستهٔ ذخیره‌شده»); resolved by server/db/packs.ts ──
   private cleanSelection(s: Scope, sel: Partial<PackSelection> | undefined): PackSelection {
     const nodes = new Set(this.listNodes(s).map((n) => n.id));
@@ -961,6 +1100,7 @@ export class Repo {
       judgments: this.listJudgments(s),
       pairJudgments: this.listPairJudgments(s),
       changes: this.listChanges(s),
+      metrics: this.listMetrics(s), measurements: this.listMeasurements(s),
       canvas: { decisions: this.listCanvasItems(s, 'decisions'), free: this.listCanvasItems(s, 'free') },
       weeklyReviewAt: this.weeklyReviewAt(s),
     };

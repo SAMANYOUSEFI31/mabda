@@ -29,7 +29,50 @@ export interface DecisionRecord {
   expectation?: string;
   /** YYYY-MM-DD */
   reviewOn?: string;
+  /** what the user expects to see in a Metric by a date — a statement to compare against, never a claim about cause */
+  metricExpectation?: MetricExpectation;
 }
+
+/** «انتظار»: the Metric, which way it should go, an optional target, and the date by which it is looked at */
+export interface MetricExpectation {
+  metricId: string;
+  direction: MetricDirection;
+  targetValue?: number;
+  /** YYYY-MM-DD */
+  by: string;
+}
+
+/** a number the user follows (not a Context object, never a fact): `up` = higher is better */
+export type MetricDirection = 'up' | 'down';
+export interface Metric {
+  id: string;
+  workspaceId: string;
+  name: string;
+  unit: string;
+  direction: MetricDirection;
+  target?: number;
+  archived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export type MeasurementSource = 'manual' | 'csv' | 'mcp' | 'demo';
+/** one recorded value. `Proposed` = suggested by an AI/MCP client: it is not drawn, counted or packed until the user confirms */
+export interface Measurement {
+  id: string;
+  workspaceId: string;
+  metricId: string;
+  value: number;
+  /** YYYY-MM-DD */
+  at: string;
+  note?: string;
+  source: MeasurementSource;
+  status: 'Confirmed' | 'Proposed';
+  /** the decision being reviewed when the value was recorded (for future analysis; no meaning is derived from it here) */
+  decisionId?: string;
+  createdAt: string;
+}
+/** the user's verdict on a decision's expectation, written with «نتیجه چه شد؟» */
+export type ExpectationVerdict = 'met' | 'partial' | 'missed';
 
 export interface ContextObject {
   id: string;
@@ -80,7 +123,8 @@ export interface ContextRelationship {
 
 export type ContextChangeKind =
   | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
-  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note';
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note'
+  | 'metric_created' | 'metric_edited' | 'metric_archived' | 'measurement_added' | 'measurement_proposed' | 'measurement_removed';
 export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
 
 /** One append-only record of what happened to a Context object. `reason` is for people only: it is never injected into a model prompt. */

@@ -38,7 +38,7 @@ test('server instructions tell the AI the rules; all tools are listed', async ()
     const tok = await t.token();
     const c = await t.connect(tok.token);
     const tools = (await c.listTools()).tools.map((x) => x.name).sort();
-    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_pack', 'get_readiness', 'get_workspace_overview', 'list_assets', 'list_packs', 'propose_context_updates', 'save_asset']);
+    assert.deepEqual(tools, ['check_impact', 'get_asset', 'get_changes', 'get_context', 'get_gaps', 'get_metrics', 'get_pack', 'get_readiness', 'get_workspace_overview', 'list_assets', 'list_packs', 'propose_context_updates', 'propose_measurement', 'save_asset']);
     const ins = c.getInstructions() ?? '';
     assert.match(ins, /get_gaps/);
     assert.match(ins, /propose_context_updates/);
@@ -463,5 +463,77 @@ test('starters and templates: applying a starter makes grey SAMPLES (twice = no 
     assert.equal((await t.api('POST', '/workspaces/ws_studio/templates', { kind: 'workstream', sourceId: 'main_positioning' })).status, 404, 'a library workstream is not «hers»');
     await t.api('DELETE', `/templates/${tid}`);
     assert.equal((await t.api('GET', '/templates')).json.templates.length, 0);
+  } finally { t.close(); }
+});
+
+test('metrics over MCP: get_metrics reads confirmed numbers and expectations; propose_measurement only ever proposes; samples and proposals never reach it', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const m = t.repo.createMetric(s, { name: 'سفارش هفتگی', unit: 'سفارش', direction: 'up', target: 120 });
+    t.repo.addMeasurement(s, { metricId: m.id, value: 100, at: '2026-03-01' });
+    t.repo.addMeasurement(s, { metricId: m.id, value: 111, at: '2026-03-08' });
+    // a decision recorded on 2026-02-20 (explicit time, like the showcase builder): the numbers of 03-01 and 03-08 come AFTER it
+    const dec = { id: 'dec_metric', workspaceId: 'ws_studio', type: 'Decision' as const, status: 'Confirmed' as const, provenance: 'User Input' as const, title: 'کانال اینستاگرام', content: 'x', nodeId: 'brand', version: 1, createdAt: '2026-02-20T08:00:00.000Z', updatedAt: '2026-02-20T08:00:00.000Z', record: { metricExpectation: { metricId: m.id, direction: 'up' as const, targetValue: 110, by: '2026-03-09' } } };
+    t.repo.importObject(s, dec, { silent: true });
+    t.repo.importChange(s, { id: 'chg_metric_dec', workspaceId: 'ws_studio', objectId: 'dec_metric', fromVersion: 0, toVersion: 1, kind: 'created', actor: 'user', after: { status: 'Confirmed' }, at: '2026-02-20T08:00:00.000Z' });
+    // a sample decision that "expects" the metric must stay invisible
+    t.repo.createSample(s, { id: 'smp_exp', type: 'Decision', nodeId: 'brand', title: 'مثال: نمونه', content: 'مثال' });
+    const tok = await t.token();
+    const c = await t.connect(tok.token);
+
+    const g = await t.call(c, 'get_metrics');
+    assert.equal(g.isError, false);
+    assert.deepEqual(g.data.metrics.map((x: any) => [x.name, x.latest?.value, x.numbers.length, x.awaitingConfirmation]), [['سفارش هفتگی', 111, 2, 0]]);
+    assert.deepEqual(g.data.expectations.map((e: any) => [e.decisionId, e.numberBefore, e.numberAfter]), [['dec_metric', null, 111]]);
+    assert.ok(!JSON.stringify(g.data).includes('smp_exp') && !g.text.includes('مثال'), 'a sample never reaches this path');
+
+    const p = await t.call(c, 'propose_measurement', { metricId: m.id, value: 140, at: '2026-03-09', note: 'از گزارش فروشگاه' });
+    assert.equal(p.isError, false);
+    assert.equal(p.data.status, 'Proposed', 'whatever the client asks, it is a proposal');
+    const g2 = await t.call(c, 'get_metrics');
+    assert.equal(g2.data.metrics[0].latest.value, 111, 'the proposal is not the latest number');
+    assert.equal(g2.data.metrics[0].awaitingConfirmation, 1);
+    assert.deepEqual(g2.data.expectations.map((e: any) => e.numberAfter), [111]);
+    // not in a pack either
+    const pack = (await t.api('POST', '/workspaces/ws_studio/packs', {})).json;
+    assert.match(pack.markdown, /## اندازه‌گیری‌ها/);
+    assert.ok(!pack.markdown.includes('140'), 'a proposed number is not packed');
+    assert.match(pack.markdown, /111/);
+    // the user confirms in Mabda → now it counts
+    const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
+    assert.equal(st.measurements.filter((x: any) => x.status === 'Proposed').length, 1);
+    await t.api('POST', `/workspaces/ws_studio/measurements/${p.data.measurementId}/confirm`, {});
+    assert.equal((await t.call(c, 'get_metrics')).data.metrics[0].latest.value, 140);
+
+    // bad input is an error result, not a crash
+    assert.equal((await t.call(c, 'propose_measurement', { metricId: 'nope', value: 1 })).isError, true);
+    assert.equal((await t.call(c, 'get_metrics', { metricId: 'nope' })).isError, true);
+    // the browser can never write an MCP-sourced (or any non-manual) confirmed number by claiming a source
+    const forged = (await t.api('POST', '/workspaces/ws_studio/measurements', { metricId: m.id, value: 5, source: 'mcp', status: 'Proposed' })).json.measurement;
+    assert.deepEqual([forged.source, forged.status], ['manual', 'Confirmed']);
+    // the change list of the workspace does not carry metric records
+    assert.ok(!(await t.call(c, 'get_changes', {})).data.changes.some((x: any) => String(x.objectId).startsWith('metric:')));
+    await c.close();
+  } finally { t.close(); }
+});
+
+test('a saved pack carries the metrics section too, separate from the facts', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const m = t.repo.createMetric(s, { name: 'ماندگاری', unit: 'درصد', direction: 'up', target: 70 });
+    t.repo.addMeasurement(s, { metricId: m.id, value: 64, at: '2026-03-03' });
+    t.repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'یک واقعیت', content: 'متن', nodeId: 'brand' });
+    const pk = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'همه', selection: { nodeIds: [] }, instruction: '' })).json.pack;
+    const md: string = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${pk.id}/render`)).json.markdown;
+    assert.match(md, /## اندازه‌گیری‌ها[\s\S]*ماندگاری[\s\S]*64/);
+    const facts = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## اندازه‌گیری‌ها'));
+    assert.ok(!facts.includes('ماندگاری'));
+    const tok = await t.token();
+    const c = await t.connect(tok.token);
+    const viaMcp = (await t.call(c, 'get_pack', { packId: pk.id })).text;
+    assert.match(viaMcp, /## اندازه‌گیری‌ها/, 'the same function renders it for MCP');
+    await c.close();
   } finally { t.close(); }
 });

@@ -3,12 +3,13 @@
  * knowledge. Pure: the server builds it (so it can store the lineage), the UI only shows and copies it.
  */
 
-import type { ContextObject, ContextRelationship, DeliverableSpec, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
+import type { ContextChange, ContextObject, Measurement, Metric, ContextRelationship, DeliverableSpec, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { AmbiguityMap } from './contextEngine';
 import { ancestorIds } from './nodeTree';
 import { estimateTokens } from './tokens';
 import { effectiveObjects, guardrailsFor } from './effectiveContext';
+import { metricsPackSection } from './metrics';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
 
 export interface PackInput {
@@ -31,6 +32,8 @@ export interface PackInput {
   statuses?: Array<'Proposed' | 'Needs Review'>;
   includeAssumptions?: boolean;
   instruction?: string;
+  /** recorded results: a SEPARATE section (confirmed numbers only, never knowledge). Absent = no section */
+  metrics?: { metrics: Metric[]; measurements: Measurement[]; changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] };
 }
 
 export interface ContextPack {
@@ -39,7 +42,7 @@ export interface ContextPack {
   chars: number;
   /** exactly the objects (id + version) that appear in the pack: Confirmed and Proposed */
   refs: UsedContextRef[];
-  counts: { confirmed: number; proposed: number; assumptions: number; rejected: number; gaps: number; guardrails: number };
+  counts: { confirmed: number; proposed: number; assumptions: number; rejected: number; gaps: number; guardrails: number; metrics: number };
 }
 
 export const PACK_MARKER = (id: string) => `<!-- mabda-pack:${id} -->`;
@@ -129,6 +132,8 @@ export function buildContextPack(input: PackInput): ContextPack {
   if (proposed.length) parts.push(`## پیشنهادی — تأییدنشده (واقعیت نیست)\n${group(proposed)}`);
   if (assumptions.length) parts.push([`## فرض‌های فعال، تأییدنشده (واقعیت نیست)`, ASSUMPTION_RULE, '', group(assumptions)].join('\n'));
   if (rejected.length) parts.push([`## گزینه‌های بررسی‌شده و ردشده`, REJECTED_RULE, '', ...rejected.map((r) => `- «${r.title}» (در تصمیم «${r.objectTitle}»): ${r.reason}`)].join('\n'));
+  const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now) : null;
+  if (metricsSection) parts.push(metricsSection);
   if (gaps.length) {
     parts.push(['## شکاف‌ها (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));
   }
@@ -138,6 +143,6 @@ export function buildContextPack(input: PackInput): ContextPack {
   return {
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
     refs: relevant.map((o) => ({ id: o.id, version: o.version })),
-    counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length },
+    counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? input.metrics!.metrics.filter((m) => !m.archived).length : 0 },
   };
 }
