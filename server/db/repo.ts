@@ -10,7 +10,7 @@ import { actorOfSource, diffFields, statusChangeKind } from '../../src/core/chan
 import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
-import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
@@ -113,7 +113,7 @@ export class Repo {
       ws = { ...ws, ...((opts.demo || stored?.isDemo) ? { isDemo: true } : { isDemo: undefined }) };
       if (!ws.isDemo) delete ws.isDemo;
       // only ids of the library survive, once, in library order
-      if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = WORKSTREAM_SPECS.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
+      if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = LIBRARY.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
       if (!exists) {
         // the showcase workspace is not counted: it never uses up a plan's workspace allowance
         if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));

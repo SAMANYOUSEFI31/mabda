@@ -176,6 +176,8 @@ export interface WorkstreamSpec {
     nodeId: string;
   }>;
   deliverables: Array<DeliverableSpec>;
+  /** the public framework this workstream follows (named, never quoted) */
+  reference?: string;
   /** rules every output of this workstream must obey; Confirmed Constraint objects are applied on top automatically */
   guardrails?: string[];
 }

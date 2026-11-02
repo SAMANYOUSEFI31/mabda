@@ -15,7 +15,7 @@ import {
   WorkstreamSpec,
 } from '../types';
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../types';
-import { WORKSTREAM_SPECS } from '../core/specs';
+import { LIBRARY } from '../core/specs';
 import { calculateReadinessAndGaps, objectsToJudge } from '../core/contextEngine';
 import type { AmbiguityMap } from '../core/contextEngine';
 import { lockOf, lockReason, topologicalOrder } from '../core/specGraph';
@@ -120,7 +120,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const currentDeliverableSpec =
     orderedDeliverables.find((d) => d.id === selectedDeliverableId) ||
     orderedDeliverables[0];
-  const isCustomSpec = !WORKSTREAM_SPECS.some((s) => s.id === currentSpec.id);
+  const isCustomSpec = !LIBRARY.some((s) => s.id === currentSpec.id);
 
   const readiness = calculateReadinessAndGaps(currentSpec, allContextObjects, [], judgments);
 

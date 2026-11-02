@@ -1,0 +1,89 @@
+/**
+ * The workstream LIBRARY beyond the three originals: general-purpose frameworks, each with the public source it follows
+ * (named, never quoted). A workspace takes the ones it wants (`Workspace.enabledSpecIds`); none of them is on by default.
+ */
+
+import type { DeliverableSpec, WorkstreamSpec } from '../types';
+
+type Item = [key: string, label: string, description: string, nodeId: string];
+type Del = [id: string, title: string, description: string, criteria: string[], dependsOn?: string[]];
+
+const COST = {
+  Asset: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
+  Deliverable: { fast: 12, auto: 20, critique: 40, sensitive: 70 },
+} as const;
+
+const make = (id: string, title: string, target: string, description: string, reference: string, required: Item[], suggested: Item[], dels: Del[], guardrails: string[] = []): WorkstreamSpec => ({
+  id, title, target, description, reference,
+  requiredContext: required.map(([key, label, d, nodeId]) => ({ key, label, description: d, nodeId })),
+  suggestedContext: suggested.map(([key, label, d, nodeId]) => ({ key, label, description: d, nodeId })),
+  optionalContext: [],
+  deliverables: dels.map(([did, dt, dd, criteria, dependsOn], i): DeliverableSpec => ({
+    id: did, title: dt, type: i === 0 ? 'Asset' : 'Deliverable', description: dd, order: i + 1, ...(dependsOn ? { dependsOn } : {}),
+    baseCreditCost: { ...COST[i === 0 ? 'Asset' : 'Deliverable'] }, acceptanceCriteria: criteria,
+  })),
+  ...(guardrails.length ? { guardrails } : {}),
+});
+
+export const LIBRARY_SPECS: WorkstreamSpec[] = [
+  make('lib_icp', 'مشتری ایدئال (ICP)', 'تعریف دقیق «چه کسی» و «چه زمانی» می‌خرد، و چه کسی مشتری ما نیست',
+    'مشتری ایدئال را از کاری که می‌خواهد انجام شود و موقعیت خریدش توصیف می‌کند، نه از ویژگی‌های ظاهری.',
+    'چارچوب Jobs-to-be-Done (Clayton Christensen، Tony Ulwick) و راهنمای عمومی ICP در آموزش‌های HubSpot',
+    [['target_audience', 'مخاطب اصلی', 'کدام گروه از مردم یا شرکت‌ها بیشترین ارزش را از ما می‌گیرند', 'business'],
+     ['customer_job', 'کاری که مشتری می‌خواهد انجام شود', 'مشتری ما را برای چه کار یا نتیجه‌ای «استخدام» می‌کند', 'business'],
+     ['buying_trigger', 'جرقهٔ خرید', 'چه اتفاقی مشتری را از «بعداً» به «الان» می‌رساند', 'business']],
+    [['disqualifiers', 'چه کسی مشتری ما نیست', 'ویژگی‌هایی که یعنی این مشتری برای ما مناسب نیست', 'business'], ['alternatives', 'جایگزین‌های فعلی مشتری', 'امروز با چه چیزی این کار را انجام می‌دهد', 'business']],
+    [['del_lib_icp_profile', 'پروفایل مشتری ایدئال', 'یک صفحه: چه کسی، چه کاری، چه جرقه‌ای، چه کسی نه', ['از «کار مشتری» شروع شده، نه از سن و جنسیت', 'یک جملهٔ «مشتری ما نیست» دارد']],
+     ['del_lib_icp_questions', 'سؤال‌های مصاحبه با مشتری', 'ده سؤال برای مصاحبه که جرقهٔ خرید و جایگزین‌ها را روشن می‌کند', ['سؤال‌ها دربارهٔ رفتار گذشته‌اند، نه نظر دربارهٔ آینده'], ['del_lib_icp_profile']]]),
+  make('lib_offer', 'آفر', 'ساختن آفری که ارزشش برای مشتری روشن و قابل مقایسه است',
+    'آفر را از چهار اهرم ارزش می‌سازد: نتیجهٔ رؤیایی، احتمال تحقق، زمان تا نتیجه و زحمت مشتری.',
+    'معادلهٔ ارزش (Value Equation) در کتاب $100M Offers نوشتهٔ Alex Hormozi (۲۰۲۱)',
+    [['core_promise', 'وعدهٔ اصلی', 'نتیجه‌ای که مشتری می‌خرد، به زبان خودش', 'offer'],
+     ['price_point', 'قیمت', 'قیمت نهایی و واحد آن (ماهانه، یک‌بار، …)', 'offer'],
+     ['time_to_result', 'زمان تا نتیجه', 'مشتری چه زمانی اولین نتیجه را می‌بیند', 'offer']],
+    [['guarantee', 'تضمین', 'چه ریسکی را از دوش مشتری برمی‌داریم', 'offer'], ['bonuses', 'امتیازهای همراه', 'چه چیزی کنار آفر می‌دهیم که ارزشش را بالا می‌برد', 'offer']],
+    [['del_offer_statement', 'جملهٔ آفر', 'آفر در سه جمله: وعده، زمان، تضمین', ['وعده با یک عدد یا نتیجهٔ قابل‌سنجش گفته شده']],
+     ['del_offer_stack', 'پشتهٔ آفر', 'فهرست هر چیزی که مشتری می‌گیرد و ارزش هرکدام', ['هر مورد یک نتیجه برای مشتری دارد، نه یک ویژگی'], ['del_offer_statement']]],
+    ['قیمت را بدون تکیه بر عددی که در Context نیست ننویس']),
+  make('lib_brand_voice', 'لحن برند', 'تعریف لحنی که همه با آن بنویسند: چه بگوییم، چه نگوییم',
+    'لحن را روی چهار بُعد می‌سنجد و برای هر بُعد مثال «بله / نه» می‌نویسد.',
+    'چهار بُعد لحن (Tone of Voice) از Nielsen Norman Group',
+    [['voice_dimensions', 'جای ما روی بُعدهای لحن', 'جدی یا شوخ‌طبع؛ رسمی یا غیررسمی؛ محترمانه یا گستاخ؛ پرشور یا خنثی', 'brand'],
+     ['voice_words', 'واژه‌هایی که می‌گوییم', 'واژه‌های کلیدی برند', 'brand'],
+     ['voice_avoid', 'واژه‌هایی که نمی‌گوییم', 'کلمات و حالت‌هایی که با برند نمی‌خوانند', 'brand']],
+    [['voice_examples', 'مثال‌های واقعی', 'دو جملهٔ واقعی که «همین است»', 'brand']],
+    [['del_voice_guide', 'راهنمای لحن یک‌صفحه‌ای', 'چهار بُعد، فهرست «بگو / نگو» و دو مثال', ['هر بُعد یک مثال «بله» و یک مثال «نه» دارد']],
+     ['del_voice_rewrite', 'بازنویسی نمونه', 'یک متن واقعی را با لحن برند بازنویسی می‌کند', ['فقط واژه‌های «بگو» و بدون واژه‌های «نگو» است'], ['del_voice_guide']]],
+    ['از واژه‌هایی که در «واژه‌هایی که نمی‌گوییم» آمده‌اند استفاده نکن']),
+  make('lib_content_pillars', 'ستون‌های محتوا', 'سه تا پنج ستون محتوایی که هر پست زیر یکی از آن‌هاست',
+    'ستون‌ها را از مخاطب و جرقهٔ خرید می‌سازد تا محتوا پراکنده نشود.',
+    'مفهوم «content pillars» در راهنماهای Content Marketing Institute و Hootsuite',
+    [['target_audience', 'مخاطب اصلی', 'برای چه کسی می‌نویسیم', 'business'],
+     ['content_pillars', 'ستون‌های محتوا', 'سه تا پنج موضوع که برند دربارهٔ آن‌ها حرف می‌زند', 'content'],
+     ['content_channels', 'کانال‌ها', 'کجا منتشر می‌کنیم', 'content']],
+    [['content_frequency', 'ریتم انتشار', 'چند بار در هفته', 'content'], ['content_formats', 'قالب‌ها', 'کوتاه، آموزشی، پشت‌صحنه، …', 'content']],
+    [['del_pillars_map', 'نقشهٔ ستون‌ها', 'هر ستون با هدف، مخاطب و سه نمونه ایده', ['هر ایده به یک ستون وصل است']],
+     ['del_pillars_calendar', 'تقویم چهار هفته', 'تقویم کوتاه بر پایهٔ ستون‌ها', ['هر هفته دست‌کم دو ستون پوشش داده شده'], ['del_pillars_map']]]),
+  make('lib_launch_plan', 'برنامهٔ لانچ', 'برنامهٔ عرضه با تاریخ، هدف و کانال‌ها — پیش، حین و پس از لانچ',
+    'یک خط زمانی ساده با یک هدف قابل‌سنجش و کارهای هر مرحله.',
+    'راهنمای لانچ Product Hunt و مفهوم «محصول حداقلی» در Lean Startup نوشتهٔ Eric Ries',
+    [['launch_date', 'تاریخ لانچ', 'کدام روز عرضه می‌کنیم', 'offer'], ['launch_goal', 'هدف لانچ', 'یک عدد: ثبت‌نام، فروش یا لیست انتظار', 'offer'], ['launch_channel', 'کانال اصلی لانچ', 'مخاطب را کجا پیدا می‌کنیم', 'content']],
+    [['launch_audience_warm', 'مخاطب گرم', 'چه کسانی از قبل منتظرند', 'business'], ['launch_assets', 'دارایی‌های لازم', 'صفحه، ایمیل، پست، …', 'content']],
+    [['del_launch_timeline', 'خط زمانی لانچ', 'سه مرحله: دو هفته قبل، روز لانچ، دو هفته بعد', ['هر مرحله مسئول و تاریخ دارد']],
+     ['del_launch_message', 'پیام اعلام', 'متن اعلام لانچ برای کانال اصلی', ['وعدهٔ آفر در جملهٔ اول است'], ['del_launch_timeline']]]),
+  make('lib_support_policy', 'سیاست پاسخ به مشتری', 'تعریف زمان، لحن و مسیر ارجاع پاسخ‌گویی',
+    'قول‌هایی که به مشتری می‌دهیم را روشن می‌کند تا هیچ پاسخی سلیقه‌ای نباشد.',
+    'راهنماهای عمومی پشتیبانی مشتری Help Scout و Zendesk و مفهوم SLA',
+    [['response_time', 'زمان پاسخ', 'حداکثر زمان اولین پاسخ (ساعت کاری)', 'product'], ['support_channels', 'کانال‌های پشتیبانی', 'مشتری از کجا پیام می‌دهد', 'product'], ['escalation', 'مسیر ارجاع', 'چه موردی و به چه کسی ارجاع می‌شود', 'product']],
+    [['refund_policy', 'سیاست بازگشت وجه', 'چه زمانی و چطور', 'offer'], ['support_tone', 'لحن با مشتری', 'مثلاً صمیمی ولی محترم', 'brand']],
+    [['del_support_policy', 'سیاست پاسخ‌گویی', 'یک صفحه برای تیم: قول‌ها، زمان‌ها، ارجاع', ['هر قول یک عدد یا شرط روشن دارد']],
+     ['del_support_templates', 'پاسخ‌های آماده', 'پنج الگوی پاسخ برای موارد رایج', ['با لحن برند نوشته شده‌اند'], ['del_support_policy']]]),
+  make('lib_sales_page', 'صفحهٔ فروش', 'ساختار صفحه‌ای که مشتری را از مسئله به اقدام می‌رساند',
+    'صفحه را از دید مشتری می‌نویسد: مسئله، راه‌حل، مدرک، یک دعوت به اقدام.',
+    'چارچوب StoryBrand نوشتهٔ Donald Miller (Building a StoryBrand) و ساختار AIDA',
+    [['core_promise', 'وعدهٔ اصلی', 'نتیجه‌ای که مشتری می‌خرد', 'offer'], ['social_proof', 'مدرک و اعتماد', 'نظر، عدد یا نمونهٔ واقعی', 'brand'], ['call_to_action', 'دعوت به اقدام', 'یک اقدام روشن: ثبت‌نام، خرید، تماس', 'offer']],
+    [['objections', 'اعتراض‌های رایج', 'چرا نمی‌خرند', 'business'], ['price_point', 'قیمت', 'اگر در صفحه می‌آید', 'offer']],
+    [['del_sales_outline', 'اسکلت صفحه', 'بخش‌ها به ترتیب: مسئله، راه‌حل، مدرک، اعتراض‌ها، اقدام', ['فقط یک دعوت به اقدام اصلی دارد']],
+     ['del_sales_copy', 'متن صفحه', 'متن کامل بر پایهٔ اسکلت', ['هر ادعا مدرکی در Context دارد'], ['del_sales_outline']]],
+    ['ادعایی که در Context نیست ننویس']),
+];

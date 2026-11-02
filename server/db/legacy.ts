@@ -1,6 +1,6 @@
 import type { ChatSession, ContextObject, ContextRelationship, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
 import { INITIAL_CONTEXT_OBJECTS, INITIAL_DELIVERABLES, INITIAL_LEDGER, INITIAL_RELATIONSHIPS, INITIAL_WORKSPACES } from '../../src/core/seedData.ts';
-import { WORKSTREAM_SPECS } from '../../src/core/specs.ts';
+import { LIBRARY } from '../../src/core/specs.ts';
 import type { Repo } from './repo.ts';
 
 /** Everything the old localStorage-based client kept. Sent once by the browser to POST /api/bootstrap. */
@@ -52,7 +52,7 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
       for (const c of arr<ChatSession>(list)) { repo.saveSession({ userId, workspaceId: wid }, c); counts.sessions++; }
     }
     // custom specs only; built-ins come from code
-    const builtIn = new Set(WORKSTREAM_SPECS.map((s) => s.id));
+    const builtIn = new Set(LIBRARY.map((s) => s.id));
     const first = workspaces[0]?.id;
     if (first) for (const sp of arr<WorkstreamSpec>(payload.specs)) if (!builtIn.has(sp.id)) { repo.saveSpec({ userId, workspaceId: first }, sp); counts.specs++; }
     repo.markImported(userId, source);

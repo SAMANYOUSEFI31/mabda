@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { Workspace } from '../types';
-import { WORKSTREAM_SPECS, currentSpecIds } from '../core/specs';
+import { LIBRARY, currentSpecIds } from '../core/specs';
 import { Badge, Button, Dialog, formatNumber } from '../ui';
 
 interface Props {
@@ -28,7 +28,7 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
     <Dialog open={open} onClose={onClose} size="md" title="کتابخانهٔ جریان‌های کار" footer={<Button variant="primary" onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-md">
         <p className="body-sm text-text-subtle">جریان‌های آماده؛ هر فضا فقط آن‌هایی را نشان می‌دهد که از اینجا برداشته. حذف فقط پنهانش می‌کند و دارایی‌های ساخته‌شده می‌مانند.</p>
-        {WORKSTREAM_SPECS.map((s) => {
+        {LIBRARY.map((s) => {
           const on = ids.includes(s.id);
           return (
             <div key={s.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
@@ -37,6 +37,7 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
                 {on && <Badge intent="success" icon="Check">در این فضا</Badge>}
               </div>
               <p className="body-sm text-text-subtle">{s.description} · {formatNumber(s.deliverables.length)} خروجی</p>
+              {s.reference && <p className="caption text-text-subtle">منبع: {s.reference}</p>}
               <div>
                 <Button variant="secondary" size="sm" iconStart={on ? 'Minus' : 'Plus'} loading={busy === s.id} onClick={() => toggle(s.id)}>{on ? 'حذف از این فضا' : 'افزودن به این فضا'}</Button>
               </div>
