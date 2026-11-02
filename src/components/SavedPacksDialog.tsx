@@ -14,7 +14,7 @@ interface Props { open: boolean; workspaceId: string; nodes: TreeNode[]; objects
 
 const EMPTY: PackSelection = { nodeIds: [], facets: [], statuses: [], includeAssumptions: true };
 
-/** print-friendly copy: a new window with the Markdown as plain, right-to-left text */
+/** print-friendly copy: a new window with the Markdown as plain RTL text */
 export function printPack(name: string, markdown: string) {
   const w = window.open('', '_blank');
   if (!w) return false;

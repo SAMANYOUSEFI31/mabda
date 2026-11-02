@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
 import { childrenOf } from '../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
 import { ThinkingList } from './ThinkingList';
@@ -28,6 +28,11 @@ interface ContextTreeDocViewProps {
   thinking: NoteThinkingItem[];
   onConvertItem: (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => Promise<void>;
   onSplitNote: (noteId: string) => Promise<void>;
+  /** grey examples (starter / template): displayed, never part of knowledge */
+  samples: ContextObject[];
+  onDeleteSamples: (nodeIds?: string[]) => Promise<void>;
+  onSaveAsTemplate: (nodeId: string) => void;
+  onOpenStarters: () => void;
   onOpenThread: (nodeId: string) => void;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
@@ -60,6 +65,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     </Card>
   );
 
+  const sampleCard = (obj: ContextObject) => (
+    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm border-dashed opacity-70">
+      <div className="flex items-start justify-between gap-inline-sm">
+        <h4 className="title min-w-space-0 flex-1 text-text-subtle">{obj.title}</h4>
+        <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs"><SampleBadge /><TypeBadge value={obj.type} /></div>
+      </div>
+      <p className="body-md line-clamp-3 text-text-subtle">{obj.content}</p>
+      <p className="caption text-text-subtle">با نوشتن متن خودت روی این مثال، مال خودت می‌شود.</p>
+    </Card>
+  );
+
   const renderNode = (node: TreeNode, path: string, depth: number): React.ReactNode => {
     const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
     const nodeNotes = props.notes.filter((n) => n.nodeId === node.id);
@@ -69,6 +85,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const established = nodeObjects.filter((o) => o.status === 'Confirmed' && !o.assumption);
     const notThinkingYet = nodeObjects.filter((o) => !(o.status === 'Confirmed' && !o.assumption));
     const thinking = props.thinking.filter((i) => i.nodeId === node.id);
+    const nodeSamples = props.samples.filter((o) => o.nodeId === node.id);
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
     return (
@@ -92,6 +109,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               items={[
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
                 { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
+                { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی', icon: 'Network', disabled: !!node.isSystem, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
                 { divider: true },
@@ -101,7 +119,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
         </div>
 
-        {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && !notesOpen ? (
+        {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && nodeSamples.length === 0 && !notesOpen ? (
           <EmptyState
             icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
@@ -141,6 +159,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                     onSplit={props.onSplitNote}
                   />
                 )}
+              </section>
+            )}
+
+            {/* نمونه‌ها: grey examples that came with a starter or a template — they are not knowledge and no AI sees them */}
+            {nodeSamples.length > 0 && (
+              <section className="flex flex-col gap-stack-sm" aria-label="نمونه‌ها">
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <h4 className="label-md text-text-subtle">نمونه‌ها (به AI نمی‌رسند)</h4>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این گره</Button>
+                </div>
+                <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{nodeSamples.map(sampleCard)}</div>
               </section>
             )}
 

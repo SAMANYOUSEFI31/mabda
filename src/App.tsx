@@ -34,6 +34,7 @@ import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { DueItems } from './components/DueItems';
 import { SavedPacksDialog } from './components/SavedPacksDialog';
+import { StarterDialog } from './components/StarterDialog';
 import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
 import { thinkingOf, convertedTo } from './core/thinkingMarkers';
@@ -157,6 +158,8 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPacksOpen, setIsPacksOpen] = useState(false);
+  const [isStarterOpen, setIsStarterOpen] = useState(false);
+  const [templateDraft, setTemplateDraft] = useState<{ kind: 'node' | 'workstream'; sourceId: string; name: string } | null>(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
@@ -268,6 +271,30 @@ export default function App() {
       const r = await attempt(() => dataApi.noteOutcome(wid, id, text));
       if (r) { patch((d) => ({ ...d, changes: r.changes })); toast.show({ intent: 'success', message: 'نتیجه ثبت شد.' }); }
     },
+  };
+
+  // ── examples (starters / templates) ──
+  const handleApplyStarter = async (starterId: string) => {
+    const r = await attempt(() => dataApi.applyStarter(wid, starterId));
+    if (!r) return;
+    patch((d) => ({ ...d, samples: r.samples }));
+    toast.show({ intent: 'success', message: r.added ? `${formatNumber(r.added)} نمونهٔ خاکستری اضافه شد؛ به AI نمی‌رسند.` : 'این نمونه‌ها قبلاً اضافه شده‌اند.' });
+  };
+  const handleDeleteSamples = async (nodeIds?: string[]) => {
+    const r = await attempt(() => dataApi.deleteSamples(wid, nodeIds));
+    if (r) patch((d) => ({ ...d, samples: r.samples }));
+  };
+  const handleSaveTemplate = async () => {
+    if (!templateDraft?.name.trim()) return;
+    const r = await attempt(() => dataApi.saveTemplate(wid, { ...templateDraft, name: templateDraft.name.trim() }));
+    if (r) { toast.show({ intent: 'success', message: 'قالب ذخیره شد؛ در «کتابخانهٔ جریان‌ها › قالب‌های من» می‌توانی در هر فضایی بیاوری.' }); setTemplateDraft(null); }
+  };
+  const handleApplyTemplate = async (templateId: string, parentId?: string) => {
+    const r = await attempt(() => dataApi.applyTemplate(wid, templateId, parentId));
+    if (!r) return;
+    if (r.nodes) patch((d) => ({ ...d, nodes: r.nodes!, samples: r.samples ?? d.samples }));
+    if (r.spec) { patch((d) => ({ ...d, specs: [r.spec!, ...d.specs] })); }
+    toast.show({ intent: 'success', message: r.spec ? 'جریان کار به این فضا آمد.' : `گره‌ها آمدند و ${formatNumber(r.added ?? 0)} نمونهٔ خاکستری اضافه شد.` });
   };
 
   const handleCreateObjects = async (drafts: ContextDraft[]): Promise<ContextObject[]> => {
@@ -778,6 +805,7 @@ export default function App() {
                   <div className="flex flex-wrap justify-center gap-inline-md">
                     <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
                     <Button variant="secondary" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظهٔ AI دیگر</Button>
+                    <Button variant="secondary" iconStart="Layers" onClick={() => setIsStarterOpen(true)}>اسکلت شروع</Button>
                     <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
                   </div>
                 )}
@@ -894,6 +922,10 @@ export default function App() {
                 thinking={thinking}
                 onConvertItem={handleConvertItem}
                 onSplitNote={handleSplitNote}
+                samples={data.samples ?? []}
+                onDeleteSamples={handleDeleteSamples}
+                onSaveAsTemplate={(nodeId) => setTemplateDraft({ kind: 'node', sourceId: nodeId, name: nodes.find((n) => n.id === nodeId)?.label ?? '' })}
+                onOpenStarters={() => setIsStarterOpen(true)}
                 onOpenThread={setThreadNodeId}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -936,6 +968,7 @@ export default function App() {
                 nodes={nodes}
                 onSelectObject={(obj) => openContext(obj)}
                 onAddNew={() => openContext(null)}
+                samples={data.samples ?? []}
               />
             )}
 
@@ -974,6 +1007,7 @@ export default function App() {
             onOpenSpecEditor={openSpecEditor}
             judgments={data.judgments}
             onJudge={handleJudge}
+            onSaveTemplate={(spec) => setTemplateDraft({ kind: 'workstream', sourceId: spec.id, name: spec.title })}
             onAddContextObject={handleSaveContextObject}
             onSaveDeliverable={handleSaveDeliverable}
             pendingRebuild={pendingRebuild}
@@ -1085,7 +1119,7 @@ export default function App() {
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
-      {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} />}
+      {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes.map((n) => ({ id: n.id, label: n.label }))} />}
 
       <QuickStartDialog
         open={isOnboardingOpen}
@@ -1167,6 +1201,19 @@ export default function App() {
         onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
       />
       <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
+      <StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} />
+      <Dialog
+        open={!!templateDraft}
+        onClose={() => setTemplateDraft(null)}
+        size="sm"
+        title="ذخیره به‌عنوان قالب"
+        footer={<><Button variant="ghost" onClick={() => setTemplateDraft(null)}>انصراف</Button><Button variant="primary" disabled={!templateDraft?.name.trim()} onClick={handleSaveTemplate}>ذخیرهٔ قالب</Button></>}
+      >
+        <div className="flex flex-col gap-stack-sm">
+          <TextField label="نام قالب" value={templateDraft?.name ?? ''} onChange={(e) => setTemplateDraft((d) => (d ? { ...d, name: e.target.value } : d))} />
+          <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
+        </div>
+      </Dialog>
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
