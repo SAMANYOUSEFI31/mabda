@@ -891,6 +891,19 @@ export class Repo {
       .map((r) => ({ id: r.id as string, title: r.title as string, tokens: r.tokens as number, createdAt: r.created_at as string }));
   }
 
+  // ── templates: the user's own node / workstream, reusable in any of her workspaces (examples, never knowledge) ──
+  listTemplates(userId: string): Array<{ id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }> {
+    return (this.db.prepare('SELECT * FROM templates WHERE user_id = ? ORDER BY created_at DESC, id').all(userId) as Array<Record<string, unknown>>).map((r) => ({ id: r.id as string, kind: r.kind as 'node' | 'workstream', name: r.name as string, payload: JSON.parse(r.payload as string), createdAt: r.created_at as string }));
+  }
+  saveTemplate(s: Scope, kind: 'node' | 'workstream', name: string, payload: unknown, at?: string, id?: string) {
+    const n = name.trim().slice(0, 80);
+    if (!n) throw new RepoError('invalid', 'نام قالب لازم است.');
+    const tid = id ?? newId('tpl');
+    this.db.prepare('INSERT OR REPLACE INTO templates (id, user_id, workspace_id, kind, name, payload, created_at) VALUES (?,?,?,?,?,?,?)').run(tid, s.userId, s.workspaceId, kind, n, JSON.stringify(payload), at ?? now());
+    return tid;
+  }
+  deleteTemplate(userId: string, id: string) { this.db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?').run(id, userId); }
+
   // ── saved packs: a named selection (docs/spine.md → «بستهٔ ذخیره‌شده»); resolved by server/db/packs.ts ──
   private cleanSelection(s: Scope, sel: Partial<PackSelection> | undefined): PackSelection {
     const nodes = new Set(this.listNodes(s).map((n) => n.id));

@@ -420,3 +420,45 @@ test('saved packs: built once, resolved through the effective context (a section
     assert.equal(t.repo.listSavedPacks(s).length, 1);
   } finally { t.close(); }
 });
+
+test('starters and templates: applying a starter makes grey SAMPLES (twice = no duplicates, no cap used, no Change); removing them leaves nothing; a node template comes back as real nodes + samples; a workstream template needs Pro', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const before = { objects: t.repo.listObjects(s).length, active: t.repo.countActiveObjects(s), changes: t.repo.listChanges(s).length };
+    const r1 = (await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json;
+    assert.ok(r1.added >= 6 && r1.samples.length === r1.added);
+    assert.ok(r1.samples.every((o: any) => o.sample === true && o.content.startsWith('مثال:')));
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json.added, 0, 'twice does not duplicate');
+    assert.deepEqual([t.repo.listObjects(s).length, t.repo.countActiveObjects(s), t.repo.listChanges(s).length], [before.objects, before.active, before.changes], 'no cap, no knowledge, no Change');
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/ghost/apply', {})).status, 404);
+    const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
+    assert.ok(st.samples.length === r1.added && !st.objects.some((o: any) => o.sample));
+    // editing an example makes it hers (it enters knowledge only then)
+    const mine = (await t.api('PATCH', `/workspaces/ws_studio/objects/${r1.samples[0].id}`, { content: 'متن واقعی خودم' })).json.object;
+    assert.equal(mine.sample, undefined);
+    assert.equal(t.repo.listObjects(s).length, before.objects + 1);
+    const removed = (await t.api('POST', '/workspaces/ws_studio/samples/delete', {})).json;
+    assert.equal(removed.removed, r1.added - 1);
+    assert.equal(removed.samples.length, 0);
+
+    // a node template: save → list → apply (real nodes, samples)
+    const n = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'offer', label: 'کارگاه' })).json.node.id;
+    const k = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: n, label: 'جلسه‌ها' })).json.node.id;
+    await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'قیمت کارگاه', content: 'نود هزار', nodeId: n });
+    await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'فقط پیشنهاد', content: 'x', nodeId: k });
+    const tid = (await t.api('POST', '/workspaces/ws_studio/templates', { kind: 'node', sourceId: n, name: 'قالب کارگاه' })).json.id;
+    assert.ok((await t.api('GET', '/templates')).json.templates.some((x: any) => x.id === tid && x.name === 'قالب کارگاه'));
+    const ap = (await t.api('POST', `/workspaces/ws_studio/templates/${tid}/apply`, { parentId: 'brand' })).json;
+    assert.equal(ap.added, 1, 'only the Confirmed decision became an example');
+    const nn = ap.nodes.find((x: any) => x.id === ap.rootId);
+    assert.deepEqual([nn.label, nn.parentId], ['کارگاه', 'brand']);
+    assert.ok(ap.nodes.some((x: any) => x.parentId === ap.rootId && x.label === 'جلسه‌ها'));
+    assert.ok(ap.samples.every((o: any) => o.sample && o.nodeId === ap.rootId));
+    assert.ok(ap.samples.every((o: any) => !t.repo.listObjects(s).some((x) => x.id === o.id)), 'the example copies of a template are not in any list an AI path reads');
+    // a workstream template: only the user's own spec; applying needs Pro (this workspace has it)
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/templates', { kind: 'workstream', sourceId: 'main_positioning' })).status, 404, 'a library workstream is not «hers»');
+    await t.api('DELETE', `/templates/${tid}`);
+    assert.equal((await t.api('GET', '/templates')).json.templates.length, 0);
+  } finally { t.close(); }
+});
