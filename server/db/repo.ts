@@ -267,15 +267,43 @@ export class Repo {
   }
 
   /** Raw insert for the one-time localStorage import: keeps id, status, timestamps and version as they were. */
-  importObject(s: Scope, o: ContextObject) {
+  importObject(s: Scope, o: ContextObject, opts: { silent?: boolean } = {}) {
     const node = this.listNodes(s).some((n) => n.id === o.nodeId) ? o.nodeId : 'business';
     // old localStorage data may carry the retired «Asset» type
     const type = CONTEXT_TYPES.includes(o.type) ? o.type : 'Fact';
     this.db.transaction(() => {
       if (this.db.prepare('SELECT 1 FROM context_objects WHERE id = ?').get(o.id)) return;
       this.insertObject(s, { ...o, type, nodeId: node, version: o.version ?? 1 });
-      this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: o.version ?? 1, kind: 'created', meta: { actor: 'system', label: 'ورود داده‌های قدیمی' }, at: o.createdAt, after: { type, title: o.title, nodeId: node, status: o.status } });
+      if (!opts.silent) this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: o.version ?? 1, kind: 'created', meta: { actor: 'system', label: 'ورود داده‌های قدیمی' }, at: o.createdAt, after: { type, title: o.title, nodeId: node, status: o.status } });
     })();
+  }
+
+  // ── raw inserts that keep ids, versions and timestamps as given — used by the showcase workspace's builder only ──
+  importNode(s: Scope, n: TreeNode) {
+    this.db.prepare('INSERT OR REPLACE INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)').run(n.id, s.userId, s.workspaceId, n.parentId ?? null, n.label, n.description, n.order ?? 0);
+  }
+
+  importVersion(s: Scope, v: { objectId: string; version: number; type: string; title: string; content: string; at: string }) {
+    this.db.prepare('INSERT OR REPLACE INTO context_object_versions (object_id, version, user_id, workspace_id, type, title, content, created_at) VALUES (?,?,?,?,?,?,?,?)').run(v.objectId, v.version, s.userId, s.workspaceId, v.type, v.title, v.content, v.at);
+  }
+
+  importChange(s: Scope, c: ContextChange) {
+    this.db.prepare('INSERT OR REPLACE INTO context_changes (id,user_id,workspace_id,object_id,from_version,to_version,kind,actor,actor_label,reason,before,after,at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(c.id, s.userId, s.workspaceId, c.objectId, c.fromVersion, c.toVersion, c.kind, c.actor, c.actorLabel ?? null, c.reason ?? null, c.before ? JSON.stringify(c.before) : null, c.after ? JSON.stringify(c.after) : null, c.at);
+  }
+
+  importNote(s: Scope, n: Note) {
+    this.db.prepare('INSERT OR REPLACE INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, n.nodeId, n.content, n.createdAt, n.updatedAt);
+  }
+
+  importFile(s: Scope, f: { id: string; nodeId: string; name: string; mime: string; rawText: string; summary: string; tokens: number; createdAt: string; chunks: Array<{ index: number; text: string; tokens: number }> }) {
+    this.db.prepare("INSERT OR REPLACE INTO files (id, user_id, workspace_id, node_id, name, mime, size_bytes, status, tokens, raw_text, summary, created_at) VALUES (?,?,?,?,?,?,?,'ready',?,?,?,?)")
+      .run(f.id, s.userId, s.workspaceId, f.nodeId, f.name, f.mime, Buffer.byteLength(f.rawText), f.tokens, f.rawText, f.summary, f.createdAt);
+    this.saveChunks(s, f.id, f.chunks);
+  }
+
+  importSpec(s: Scope, spec: WorkstreamSpec, createdAt: string) {
+    this.db.prepare('INSERT OR REPLACE INTO specs (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(spec.id, s.userId, s.workspaceId, JSON.stringify(spec), createdAt);
   }
 
   importRelationship(s: Scope, r: ContextRelationship) {

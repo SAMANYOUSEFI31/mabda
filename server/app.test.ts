@@ -640,3 +640,36 @@ test('quick start: pasted TEXT goes through the same extraction (kind note), lab
     assert.ok(r.json.ledger.some((l: any) => l.action === 'وارد کردن متن چسبانده‌شده'));
   } finally { t.close(); }
 });
+
+test('showcase workspace: one click builds it; a second reset gives exactly the same state; it works through the normal routes (pack, usage) and is not counted', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const first = await t.call('POST', '/demo/reset', {});
+    assert.equal(first.status, 200);
+    assert.equal(first.json.workspaceId, 'ws_demo');
+    assert.equal(first.json.workspaces.find((w: any) => w.id === 'ws_demo').isDemo, true);
+    const s1 = (await t.call('GET', '/workspaces/ws_demo/state')).json;
+    // dirty it, reset again → identical
+    await t.call('POST', '/workspaces/ws_demo/objects', { type: 'Fact', provenance: 'User Input', title: 'اضافی', content: 'x', nodeId: 'business' });
+    await t.call('POST', '/workspaces/ws_demo/canvas/free/notes', { content: 'یادداشت اضافی', x: 1, y: 2 });
+    await t.call('POST', '/workspaces/ws_demo/weekly-review/done', {});
+    assert.equal((await t.call('POST', '/demo/reset', {})).status, 200);
+    const s2 = (await t.call('GET', '/workspaces/ws_demo/state')).json;
+    assert.deepEqual(s2, s1, 'reset twice → the same state');
+    assert.ok(s1.objects.length >= 30 && s1.changes.length > 40 && s1.notes.length === 6 && s1.deliverables.length === 3 && s1.files.length === 1 && s1.specs.length === 3);
+    assert.equal(s1.files[0].status, 'ready');
+    assert.equal(s1.ledger.length, 0, 'no usage is invented');
+    assert.deepEqual(s1.judgments, {}, 'no AI judgement is stored');
+    assert.deepEqual(s1.pairJudgments, []);
+    assert.equal(s1.weeklyReviewAt, null);
+    assert.equal(s1.stale.length, 2, 'one asset needs review from a direct effect, one from a dependency');
+    // the other workspaces are untouched, and the showcase is not in the usage meter of the account
+    assert.equal((await t.call('GET', '/workspaces')).json.workspaces.length, 3);
+    const pack = await t.call('POST', '/workspaces/ws_demo/packs', {});
+    assert.equal(pack.status, 200);
+    assert.ok(pack.json.counts.confirmed >= 15 && pack.json.counts.proposed >= 5);
+    const usage = await t.call('GET', '/workspaces/ws_demo/usage');
+    assert.equal(usage.status, 200);
+  } finally { t.close(); }
+});

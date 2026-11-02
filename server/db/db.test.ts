@@ -334,7 +334,8 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   repo.createNote(s, 'business', 'n');
   applyDemo(repo, U, new Date('2026-03-10T08:00:00Z'));
   assert.equal(repo.listObjects(other).length, 1);
-  assert.equal(repo.listNotes(s).length, 0);
+  assert.ok(!repo.listNotes(s).some((n) => n.content === 'n'), 'the stray note is gone; the showcase notes are back');
+  assert.ok(!repo.listObjects(s).some((o) => o.title === 'x'));
   assert.equal(repo.listLedger(s).length, 0);
   assert.equal(repo.listNodes(s).filter((n) => n.isSystem).length, 5);
 });
