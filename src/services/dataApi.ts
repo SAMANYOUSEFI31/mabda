@@ -93,7 +93,7 @@ export const dataApi = {
   state: (id: string) => call<WorkspaceState>('GET', `${ws(id)}/state`),
   saveWorkspace: (w: Workspace) => call<Workspace>('PUT', ws(w.id), w),
 
-  createNode: (id: string, input: { parentId: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
+  createNode: (id: string, input: { parentId?: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
   renameNode: (id: string, nodeId: string, patch: { label?: string; description?: string }) => call<{ nodes: TreeNode[] }>('PATCH', `${ws(id)}/nodes/${nodeId}`, patch),
   moveNode: (id: string, nodeId: string, parentId: string, index?: number) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index }),
   deleteNode: (id: string, nodeId: string, transferTo?: string) =>
@@ -155,7 +155,7 @@ export const dataApi = {
   deleteSavedPack: (id: string, packId: string) => call<{ ok: boolean }>('DELETE', `${ws(id)}/saved-packs/${packId}`),
   aiRequest: (id: string, input: { kind: import('../core/aiRequest').RequestKind; request: string; scopeNodeId?: string; tokenBudget?: number; extraIds?: string[]; packId?: string; record?: boolean }) => call<import('../core/aiRequest').AiRequestResult & { packId: string; recorded: boolean }>('POST', `${ws(id)}/ai-requests`, input),
   renderSavedPack: (id: string, packId: string) => call<{ markdown: string; tokens: number; counts: Record<string, number> }>('GET', `${ws(id)}/saved-packs/${packId}/render`),
-  applyStarter: (id: string, starterId: string) => call<{ added: number; samples: ContextObject[] }>('POST', `${ws(id)}/starters/${starterId}/apply`, {}),
+  applyStarter: (id: string, starterId: string) => call<{ added: number; samples: ContextObject[]; nodes?: TreeNode[] }>('POST', `${ws(id)}/starters/${starterId}/apply`, {}),
   deleteSamples: (id: string, nodeIds?: string[]) => call<{ removed: number; samples: ContextObject[] }>('POST', `${ws(id)}/samples/delete`, nodeIds ? { nodeIds } : {}),
   listTemplates: () => call<{ templates: Array<{ id: string; kind: 'node' | 'workstream'; name: string; createdAt: string }> }>('GET', '/templates'),
   saveTemplate: (id: string, t: { kind: 'node' | 'workstream'; sourceId: string; name: string }) => call<{ id: string }>('POST', `${ws(id)}/templates`, t),

@@ -491,10 +491,12 @@ test('starters and templates: applying a starter makes grey SAMPLES (twice = no 
     const s = { userId: 'local', workspaceId: 'ws_studio' };
     const before = { objects: t.repo.listObjects(s).length, active: t.repo.countActiveObjects(s), changes: t.repo.listChanges(s).length };
     const r1 = (await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json;
-    assert.ok(r1.added >= 6 && r1.samples.length === r1.added);
+    assert.ok(r1.added >= 6 && r1.samples.length === r1.added, JSON.stringify(r1).slice(0, 300));
     assert.ok(r1.samples.every((o: any) => o.sample === true && o.content.startsWith('مثال:')));
     assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/services/apply', {})).json.added, 0, 'twice does not duplicate');
     assert.deepEqual([t.repo.listObjects(s).length, t.repo.countActiveObjects(s), t.repo.listChanges(s).length], [before.objects, before.active, before.changes], 'no cap, no knowledge, no Change');
+    assert.equal(t.repo.listNodes(s).filter((n) => n.label === 'بسته‌های خدمت').length, 1, 'the starter brought its own node once; the second apply reused it');
+    assert.ok(r1.samples.some((o: any) => o.nodeId === t.repo.listNodes(s).find((n) => n.label === 'بسته‌های خدمت')!.id), 'its examples sit in that node');
     assert.equal((await t.api('POST', '/workspaces/ws_studio/starters/ghost/apply', {})).status, 404);
     const st = (await t.api('GET', '/workspaces/ws_studio/state')).json;
     assert.ok(st.samples.length === r1.added && !st.objects.some((o: any) => o.sample));

@@ -23,7 +23,7 @@ interface Props {
 /** The library of ready-made workstreams. A workspace shows only the ones it took from here (plus its own). Removing one only hides it: outputs already built stay in «دارایی‌ها». */
 export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, onChange, onApplyTemplate, nodes }) => {
   const [templates, setTemplates] = useState<Array<{ id: string; kind: 'node' | 'workstream'; name: string }>>([]);
-  const [parent, setParent] = useState('business');
+  const [parent, setParent] = useState('');
   useEffect(() => { if (open) dataApi.listTemplates().then((r) => setTemplates(r.templates)).catch(() => setTemplates([])); }, [open]);
   const [busy, setBusy] = useState<string | null>(null);
   const ids = currentSpecIds(workspace);
@@ -55,12 +55,12 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
           <h3 className="label-md text-text-default">قالب‌های من</h3>
           {templates.length === 0 ? <p className="body-sm text-text-subtle">هنوز قالبی نساخته‌ای: از منوی هر گره «ذخیره به‌عنوان قالب» را بزن.</p> : (
             <>
-              <Select label="گره‌های قالب زیر کدام گره بیایند؟" value={parent} onChange={(e) => setParent(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
+              <Select label="گره‌های قالب زیر کدام گره بیایند؟" value={parent || (nodes[0]?.id ?? '')} onChange={(e) => setParent(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
               {templates.map((t) => (
                 <div key={t.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default p-inset-lg">
                   <span className="label-md text-text-default">{t.name} <Badge intent="neutral" icon={false}>{t.kind === 'node' ? 'گره' : 'جریان کار'}</Badge></span>
                   <span className="flex gap-inline-xs">
-                    <Button size="sm" variant="secondary" iconStart="Plus" loading={busy === t.id} onClick={async () => { setBusy(t.id); try { await onApplyTemplate(t.id, parent); } finally { setBusy(null); } }}>افزودن به این فضا</Button>
+                    <Button size="sm" variant="secondary" iconStart="Plus" loading={busy === t.id} onClick={async () => { setBusy(t.id); try { await onApplyTemplate(t.id, parent || undefined); } finally { setBusy(null); } }}>افزودن به این فضا</Button>
                     <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف قالب ${t.name}`} onClick={async () => { await dataApi.deleteTemplate(t.id); setTemplates((l) => l.filter((x) => x.id !== t.id)); }}>حذف</Button>
                   </span>
                 </div>

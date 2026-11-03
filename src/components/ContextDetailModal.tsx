@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
-import { flatten } from '../core/nodeTree';
+import { defaultNodeId, flatten } from '../core/nodeTree';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { MentionTextarea } from './MentionTextarea';
@@ -88,7 +88,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   onArchive,
   nodes,
   workspaceId,
-  defaultNodeId = 'business',
+  defaultNodeId: defaultNodeIdProp = '',
   allObjects = [],
   metrics = [],
   relationships = [],
@@ -111,7 +111,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [titleTouched, setTitleTouched] = useState(keepsOwn && !!object?.title);
   const [type, setType] = useState<ContextType>(object?.type || 'Fact');
   const [status, setStatus] = useState<ContextStatus>(object?.status || 'Confirmed');
-  const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeId);
+  const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeIdProp || defaultNodeId(nodes));
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );

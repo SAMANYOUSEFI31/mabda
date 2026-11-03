@@ -31,7 +31,7 @@ export function contextDraftFromBlock(block: ContentBlock, workspaceId: string, 
     provenance: 'AI Suggested',
     title: p?.title ?? titleFromMarkdown(block.markdown),
     content: p?.content ?? block.markdown,
-    nodeId: p?.nodeId ?? 'business',
+    nodeId: p?.nodeId ?? '', // '' = the default place of the workspace's tree (the dialog and the server decide)
     version: 1,
     source: { kind: 'chat', at: now },
     createdAt: now,

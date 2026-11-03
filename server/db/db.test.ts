@@ -5,6 +5,7 @@ import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migration
 import { Repo, RepoError } from './repo.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import { applyDemo } from './demo.ts';
+import { treeOrder } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 
@@ -46,10 +47,10 @@ test('every table carries user_id and workspace_id', () => {
   }
 });
 
-test('a new workspace gets the 5 system nodes; data of another user/workspace is invisible', () => {
+test('a new workspace gets the 5 nodes of the default start (ordinary, unlocked); data of another user/workspace is invisible', () => {
   const { repo, s } = fresh();
-  assert.deepEqual(repo.listNodes(s).map((n) => n.id), ['business', 'brand', 'product', 'offer', 'content']);
-  assert.ok(repo.listNodes(s).every((n) => n.isSystem));
+  assert.deepEqual(treeOrder(repo.listNodes(s)), ['business', 'brand', 'content', 'product', 'offer'], 'the starting tree, in tree order');
+  assert.equal(repo.listNodes(s).length, 5, 'the starting tree is back'); assert.ok(repo.listNodes(s).every((n) => !('isSystem' in n)), 'no node is locked');
   repo.saveWorkspace(U, ws('w2'));
   const o = repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'business' });
   assert.equal(repo.listObjects({ userId: U, workspaceId: 'w2' }).length, 0);
@@ -57,11 +58,13 @@ test('a new workspace gets the 5 system nodes; data of another user/workspace is
   assert.equal(repo.getObject({ userId: U, workspaceId: 'w2' }, o.id), undefined);
 });
 
-test('nodes: system = rename only; user nodes create / move / delete (empty or with transfer)', () => {
+test('nodes: nothing is locked — rename, move, create, delete (empty or with transfer); the last root stays', () => {
   const { repo, s } = fresh();
   assert.equal(repo.updateNode(s, 'brand', { label: 'هویت برند' }).label, 'هویت برند');
-  assert.throws(() => repo.deleteNode(s, 'brand'), (e) => e instanceof RepoError && e.code === 'forbidden');
-  assert.throws(() => repo.moveNode(s, 'brand', 'offer'), (e) => e instanceof RepoError && e.code === 'forbidden');
+  repo.moveNode(s, 'brand', 'offer'); // a node of the default start moves like any other
+  repo.moveNode(s, 'brand', 'business');
+  assert.throws(() => repo.deleteNode(s, 'brand'), RepoError, 'brand has a child node: it needs a place to go');
+  assert.throws(() => repo.deleteNode(s, 'business', 'brand'), (e) => e instanceof RepoError && /آخرین گرهٔ اصلی/.test(e.message), 'the last root is never deleted: knowledge must live somewhere');
   const a = repo.createNode(s, { parentId: 'content', label: 'کمپین' });
   const b = repo.createNode(s, { parentId: a.id, label: 'اینستاگرام' });
   assert.throws(() => repo.moveNode(s, a.id, b.id), RepoError);
@@ -342,7 +345,7 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   assert.ok(!repo.listNotes(s).some((n) => n.content === 'n'), 'the stray note is gone; the showcase notes are back');
   assert.ok(!repo.listObjects(s).some((o) => o.title === 'x'));
   assert.equal(repo.listLedger(s).length, 0);
-  assert.equal(repo.listNodes(s).filter((n) => n.isSystem).length, 5);
+  assert.ok(['business', 'brand', 'product', 'offer', 'content'].every((id) => repo.listNodes(s).some((n) => n.id === id)), 'the showcase keeps the default start as its base');
 });
 
 test('reach / validUntil: migration 11 leaves old rows untouched (type default), values are validated, an edit is a Change and bumps the version', () => {
@@ -556,4 +559,24 @@ test('the verdict on an expectation is a Change with the metric and the last num
   // an invalid expectation (bad date / direction) is dropped, not stored
   const bad = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'بد', content: 'x', nodeId: 'business', record: { metricExpectation: { metricId: m.id, direction: 'left' as never, by: '2026-13-40' } } });
   assert.equal(repo.getObject(s, bad.id)!.record, undefined);
+});
+
+test('migration 18: nodes that were locked (is_system = 1) are ordinary now — and nothing else changes', () => {
+  const db = new Database(':memory:');
+  migrate(db, 17);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('business', U, 'w1', null, 'کسب‌وکار', '', 1, 0);
+  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('mine', U, 'w1', 'business', 'گرهٔ من', '', 0, 1);
+  db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('c1', U, 'w1', 'Fact', 'Confirmed', 'User Input', 'عنوان', 'متن', 'business', 't', 't');
+  assert.deepEqual(migrate(db), [18]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  assert.deepEqual(repo.listNodes(s).map((n) => [n.id, n.label]), [['business', 'کسب‌وکار'], ['mine', 'گرهٔ من']], 'the nodes are intact');
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM tree_nodes WHERE is_system = 1').get() as { n: number }).n, 0);
+  assert.equal(repo.listObjects(s)[0].nodeId, 'business', 'the knowledge is untouched');
+  // the node that used to be locked now deletes like any other once another root exists
+  const root = repo.createNode(s, { label: 'خدمات' });
+  repo.deleteNode(s, 'business', root.id);
+  assert.equal(repo.listObjects(s)[0].nodeId, root.id);
+  assert.ok(!repo.listNodes(s).some((n) => n.id === 'business'));
 });

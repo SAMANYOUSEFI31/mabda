@@ -15,14 +15,14 @@ import {
   extractQuantities,
 } from './contextEngine';
 import { calculateCreditCost, checkChatFairUse, chatCountToday } from './creditEngine';
-import { WORKSTREAM_SPECS } from './specs';
+import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from './specs';
 import { ContextObject } from '../types';
 
 test('getAncestorNodeIds traverses parent branches up to root', () => {
-  const chain = getAncestorNodeIds('offer');
+  const chain = getAncestorNodeIds('offer', DEFAULT_TREE_NODES);
   assert.deepEqual(chain, ['offer', 'product', 'business']);
 
-  const brandChain = getAncestorNodeIds('content');
+  const brandChain = getAncestorNodeIds('content', DEFAULT_TREE_NODES);
   assert.deepEqual(brandChain, ['content', 'brand', 'business']);
 });
 

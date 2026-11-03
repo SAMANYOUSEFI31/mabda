@@ -377,6 +377,13 @@ export const MIGRATIONS: Migration[] = [
       db.exec('ALTER TABLE context_objects ADD COLUMN examples TEXT;');
     },
   },
+  {
+    version: 18,
+    name: 'tree_nodes.is_system is retired: no node is locked any more (the five default nodes are an ordinary starting point). The column stays, always 0 — nothing is deleted',
+    up(db) {
+      db.exec('UPDATE tree_nodes SET is_system = 0;');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

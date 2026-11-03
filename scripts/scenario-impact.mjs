@@ -65,7 +65,7 @@ async function scenario(width, tag) {
   await page.getByText('کلید شخصی فعال').waitFor();
   await page.keyboard.press('Escape');
 
-  step('tree: user node under «محتوا», rename a system node, a note and «استخراج»');
+  step('tree: user node under «محتوا», rename a node of the default start, a note and «استخراج»');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
   await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
   await page.getByLabel('نام گره').fill('کمپین پاییز');
@@ -78,9 +78,9 @@ async function scenario(width, tag) {
   await page.getByLabel('نام گره').fill('هویت و پیام برند');
   await page.getByRole('button', { name: 'ذخیرهٔ نام' }).click();
   await page.getByRole('heading', { name: 'هویت و پیام برند' }).waitFor();
-  // system nodes cannot be deleted
+  // no node is locked: «حذف» of a node of the default start is an ordinary, enabled action
   await page.getByRole('button', { name: 'عملیات گرهٔ هویت و پیام برند' }).click();
-  assert.ok(await page.getByRole('menuitem', { name: 'حذف' }).isDisabled(), 'system node: delete disabled');
+  assert.ok(await page.getByRole('menuitem', { name: 'حذف' }).isEnabled(), 'no node is locked');
   await page.keyboard.press('Escape');
   const campaign = page.locator('section', { has: page.getByRole('heading', { name: 'کمپین پاییز' }) }).last();
   await campaign.getByRole('button', { name: /یادداشت‌ها/ }).click();

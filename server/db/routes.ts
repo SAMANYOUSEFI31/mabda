@@ -15,7 +15,7 @@ import { clampProposal } from '../ai/service.ts';
 import { FileService } from '../files/service.ts';
 import { FileExtractError, MAX_FILE_BYTES } from '../files/extract.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
-import { ancestorIds } from '../../src/core/nodeTree.ts';
+import { ancestorIds, defaultNodeId, resolveNodeId } from '../../src/core/nodeTree.ts';
 import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
 import { entitlementsOf } from '../../src/core/entitlements.ts';
@@ -27,7 +27,8 @@ import { renderSavedPack } from './packs.ts';
 import { renderAiRequest } from './aiRequests.ts';
 import { isRequestKind, KIND_LABEL } from '../../src/core/aiRequest.ts';
 import { STARTERS } from '../../src/core/starters.ts';
-import { nodeTemplateOf, workstreamTemplateOf } from '../../src/core/templates.ts';
+import { planNodes, sampleNode } from '../../src/core/startTemplate.ts';
+import { nodeTemplateOf, nodeTemplateToStart, workstreamTemplateOf } from '../../src/core/templates.ts';
 import type { NodeTemplate, NodeTemplateNode } from '../../src/core/templates.ts';
 import type { SavedPack } from '../../src/types/index.ts';
 import { convertedTo, findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
@@ -188,7 +189,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     const text = String(b.content ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متن یادداشت خالی است.');
-    const note = repo.createNote(s, typeof b.nodeId === 'string' && b.nodeId ? b.nodeId : 'business', text);
+    const note = repo.createNote(s, typeof b.nodeId === 'string' ? b.nodeId : '', text);
     repo.saveCanvasItem(s, 'free', `note:${note.id}`, { x: Number(b.x) || 0, y: Number(b.y) || 0 });
     res.json({ note, ...canvasBundle(s) });
   }));
@@ -409,7 +410,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
-    const r = await ai.extract(aiUserOf(req), { kind: plain ? 'note' : 'memory', text, nodeId: 'business', nodes }, ctl.signal);
+    const r = await ai.extract(aiUserOf(req), { kind: plain ? 'note' : 'memory', text, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
     const at = new Date().toISOString();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: sourceName, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
@@ -429,7 +430,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
-    const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: 'business', nodes }, ctl.signal);
+    const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
     const at = new Date().toISOString();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Asset Derived', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'asset', label: del.title, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
@@ -535,7 +536,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (!text) throw new RepoError('invalid', 'متنی برای Coach نوشته نشده است.');
     if (payer() === 'us' && coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ Context Coach برای پلن این فضای کاری پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
     const nodes = repo.listNodes(s);
-    const nodeId = nodes.some((n) => n.id === b.nodeId) ? String(b.nodeId) : 'business';
+    const nodeId = resolveNodeId(nodes, typeof b.nodeId === 'string' ? b.nodeId : undefined);
     const node = nodes.find((n) => n.id === nodeId);
     const chain = new Set(ancestorIds(nodes, nodeId));
     const existing = repo.listObjects(s).filter((o) => o.status === 'Confirmed' && chain.has(o.nodeId)).slice(0, 12).map((o) => `${o.title}: ${o.content}`);
@@ -570,8 +571,18 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const s = scopeOf(req);
     const st = STARTERS.find((x) => x.id === req.params.id);
     if (!st) throw new RepoError('not_found', 'اسکلت شروع پیدا نشد.');
-    const made = st.samples.map((x) => repo.createSample(s, x)).filter(Boolean);
-    res.json({ added: made.length, samples: repo.listSampleObjects(s) });
+    // a start template may bring nodes (put under the first root; a node of the same name anywhere is reused, so applying twice adds nothing)
+    const under = defaultNodeId(repo.listNodes(s)) || undefined;
+    const created = new Map<string, string>();
+    for (const n of planNodes(st, repo.listNodes(s), under, (k) => k)) {
+      const parent = (n.parentId && created.get(n.parentId)) || under;
+      const same = repo.listNodes(s).find((x) => x.label === n.label); // a node of the same name ANYWHERE in the tree is the one meant (she may have built it herself, elsewhere)
+      created.set(n.key, same?.id ?? repo.createNode(s, { parentId: parent as string, label: n.label, description: n.description }).id);
+    }
+    // the examples: `node` is a node of this template, else a hint for a node of THIS workspace; a node that is not there → the default place
+    const nodes = repo.listNodes(s);
+    const made = st.samples.map((x) => repo.createSample(s, { type: x.type, title: x.title, content: x.content, nodeId: sampleNode(x, created, nodes), ...(x.slotKey ? { slotKey: x.slotKey } : {}), ...(x.facets ? { facets: x.facets } : {}) })).filter(Boolean);
+    res.json({ added: made.length, samples: repo.listSampleObjects(s), nodes });
   }));
   /** remove the examples (all, or only those of some nodes) */
   router.post('/workspaces/:wid/samples/delete', wrap((req, res) => {
@@ -607,18 +618,18 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       res.json({ spec: repo.saveSpec(s, spec) });
       return;
     }
-    const parentId = String(body(req).parentId ?? 'business');
-    const tpl = t.payload as NodeTemplate;
-    const made = new Map<string, string>(); // path key → node id
-    const create = (n: NodeTemplateNode, path: number[], parent: string) => {
-      const node = repo.createNode(s, { parentId: parent, label: n.label, description: n.description });
-      made.set(path.join('.'), node.id);
-      n.children.forEach((c, i) => create(c, [...path, i], node.id));
-    };
-    create(tpl.root, [], parentId);
+    const parentId = resolveNodeId(repo.listNodes(s), typeof body(req).parentId === 'string' ? String(body(req).parentId) : undefined);
+    // the saved node is read as a start template (one data format): its nodes are planned, then created under `parentId`
+    const tpl = nodeTemplateToStart(t.payload as NodeTemplate, t.id);
+    const plan = planNodes(tpl, repo.listNodes(s), parentId, (k) => k);
+    const made = new Map<string, string>(); // template key → the node id that was really created
+    for (const n of plan) {
+      const node = repo.createNode(s, { parentId: (n.parentId && made.get(n.parentId)) || parentId, label: n.label, description: n.description });
+      made.set(n.key, node.id);
+    }
     let added = 0;
-    for (const o of tpl.objects) { const nid = made.get(o.path.join('.')); if (nid && repo.createSample(s, { type: o.type, title: o.title, content: o.content, nodeId: nid, facets: o.facets, slotKey: o.slotKey })) added++; }
-    res.json({ nodes: repo.listNodes(s), samples: repo.listSampleObjects(s), added, rootId: made.get('') });
+    for (const o of tpl.samples) { const nid = made.get(o.node); if (nid && repo.createSample(s, { type: o.type, title: o.title, content: o.content, nodeId: nid, facets: o.facets, slotKey: o.slotKey })) added++; }
+    res.json({ nodes: repo.listNodes(s), samples: repo.listSampleObjects(s), added, rootId: made.get(tpl.nodes[0].key) });
   }));
 
   // ── saved packs: build once, paste anywhere (UI copy / print, MCP list_packs / get_pack) ──

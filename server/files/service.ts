@@ -9,6 +9,7 @@ import type { ExtractRequest, ExtractResult } from '../ai/service.ts';
 import type { FileExcerpt } from '../ai/context.ts';
 import { RepoError } from '../db/repo.ts';
 import type { Repo, Scope } from '../db/repo.ts';
+import { defaultNodeId } from '../../src/core/nodeTree.ts';
 import { extractText } from './extract.ts';
 
 export type Extractor = (aiUser: string, req: ExtractRequest) => Promise<ExtractResult>;
@@ -92,7 +93,7 @@ export class FileService {
     let res: ExtractResult;
     try {
       res = await this.extract(aiUser, {
-        kind: 'file', text, nodeId: file.nodeId ?? 'business',
+        kind: 'file', text, nodeId: file.nodeId ?? defaultNodeId(this.repo.listNodes(s)),
         nodes: this.repo.listNodes(s).map((n) => ({ id: n.id, label: n.label })), wantSummary: true,
       });
     } catch (e) {

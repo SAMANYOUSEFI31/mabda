@@ -21,7 +21,7 @@ UI ── chat ─────────► /api/ai/chat     (NDJSON) ─► s
 | `decision.ts` | لایهٔ تصمیم: `decide(state, questions[]) → {choice, probability}[]`؛ پیاده‌سازی با سطح cheap؛ جایگزینی با پیاده‌کردن `DecisionLayer` |
 | `router.ts` | جدول قطعی + لایهٔ تصمیم. اطمینان < ۰٫۷ یا اهمیت زیاد = یک سطح بالاتر. sensitive و tierهای `requiresExplicitSelection` فقط با انتخاب صریح |
 | `pipeline.ts` | single / cascade (ارتقا یک‌بار) / critique؛ validator با معیارهای پذیرش + گاردریل (Constraintهای Confirmed) |
-| `context.ts` | پیشوند ثابت: system → Core → Confirmed (ترتیب ثابت)؛ بخش متغیر: Proposed با برچسب «تأییدنشده» |
+| `context.ts` | پیشوند ثابت: system → Core → Confirmed (ترتیب = ترتیب واقعی درخت Workspace: `nodeRank` عمق‌اول و `order` هر سطح، بعد زمان و شناسه؛ هیچ شناسهٔ گره‌ای در کد نیست و گره‌های کاربر آخر نمی‌افتند؛ برچسب گره‌ها از خود Workspace می‌آید)؛ بخش متغیر: Proposed با برچسب «تأییدنشده» |
 | `runner.ts` | اجرای مرحله‌ها، timeout با AbortController، ثبت usage واقعی و هزینه |
 | `blocks.ts`, `schemas.ts` | JSON schema بلوک‌ها `{id,kind,markdown,proposal?}` و parser افزایشی برای streaming |
 | `byok.ts` | ذخیرهٔ کلید با AES-256-GCM (`MABDA_SECRET` یا `server/data/secret.key`) |
@@ -51,7 +51,7 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 - **نسخه:** `ContextObject.version` با ویرایش عنوان/متن/نوع زیاد می‌شود (تغییر وضعیت یا جابه‌جایی گره نه). `supersede` شمارهٔ نسخه را ادامه می‌دهد و رابطهٔ `supersedes` می‌سازد.
 - **اصالت:** `GeneratedDeliverable.usedContext = [{id, version}]` دقیقاً همان چیزی است که در prompt تزریق شد (`injectedRefs` در `server/ai/context.ts`). برای خروجی‌ها = Contextهای مرتبط با گره هدف (زنجیرهٔ والدها) + همهٔ Constraintهای تأییدشده؛ برای گفتگو = همهٔ Contextهای محدودهٔ گفتگو.
 - **اثر تغییر:** `src/core/impactEngine.ts` (`computeStaleAssets`, `newlyStale`, `halfPriceRebuildAvailable`). بازسازی نصف‌قیمت یک‌بار برای هر مجموعه‌تغییر (`halfPriceUsedFor`).
-- **گره‌ها:** قوانین در `src/core/nodeTree.ts`؛ سیستمی = فقط تغییر نام. **یادداشت** هرگز تزریق نمی‌شود؛ «استخراج» فقط Proposed می‌سازد.
+- **گره‌ها:** قوانین در `src/core/nodeTree.ts`؛ هیچ گره‌ای قفل نیست (همه تغییر نام، جابه‌جایی و حذف می‌شوند؛ حذف گرهٔ پُر فقط با انتقال محتوا؛ آخرین ریشه حذف نمی‌شود). «جای پیش‌فرض» (`defaultNodeId`) = اولین ریشهٔ درخت، نه شناسهٔ ثابت. هدف تولید خروجی = کل Workspace (`'*'`). **یادداشت** هرگز تزریق نمی‌شود؛ «استخراج» فقط Proposed می‌سازد.
 - **فایل:** `server/files/*` — txt/md/pdf/docx ≤ ۲۵MB، پردازش یک‌بارِ cheap (`AiService.extract`)، قطعه‌های ~۸۰۰ توکنی، بازیابی BM25 (`src/core/retrieval.ts`) فقط از فایل‌های `ready` و در بودجهٔ ۳۰۰۰ توکن؛ سهمیهٔ ماهانهٔ توکن (Starter 150k / Pro 500k / Max 1.5M) و بیش از آن ۲ اعتبار به ازای هر ۲۰ هزار توکن (`fileProcessingCharge`).
 - **سناریوی کامل:** `node scripts/scenario-impact.mjs` (سرور واقعی + stand-in Gemini) → `docs/screens/impact-*.png`.
 

@@ -78,6 +78,7 @@ import { WorkstreamSpec } from './types';
 import { Alert, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { HomeTodo } from './components/HomeTodo';
 import { effectiveObjects } from './core/effectiveContext';
+import { defaultNodeId, resolveNodeId } from './core/nodeTree';
 import { homeActions } from './core/homeActions';
 import type { HomeAction } from './core/homeActions';
 import { visibleFeatures } from './core/visibleFeatures';
@@ -170,7 +171,7 @@ export default function App() {
   }, [contextViewMode]);
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
-  const [modalDefaultNodeId, setModalDefaultNodeId] = useState('business');
+  const [modalDefaultNodeId, setModalDefaultNodeId] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPacksOpen, setIsPacksOpen] = useState(false);
@@ -419,7 +420,7 @@ export default function App() {
   const handleApplyStarter = async (starterId: string) => {
     const r = await attempt(() => dataApi.applyStarter(wid, starterId));
     if (!r) return;
-    patch((d) => ({ ...d, samples: r.samples }));
+    patch((d) => ({ ...d, samples: r.samples, ...(r.nodes ? { nodes: r.nodes } : {}) }));
     toast.show({ intent: 'success', message: r.added ? `${formatNumber(r.added)} نمونهٔ خاکستری اضافه شد؛ به AI نمی‌رسند.` : 'این نمونه‌ها قبلاً اضافه شده‌اند.' });
   };
   const handleDeleteSamples = async (nodeIds?: string[]) => {
@@ -442,7 +443,7 @@ export default function App() {
   const handleCreateObjects = async (drafts: ContextDraft[]): Promise<ContextObject[]> => {
     const out: ContextObject[] = [];
     for (const dr of drafts) {
-      const r = await dataApi.createObject(wid, { type: dr.type, status: dr.status, provenance: dr.provenance, title: dr.title, content: dr.content, nodeId: dr.nodeId });
+      const r = await dataApi.createObject(wid, { type: dr.type, status: dr.status, provenance: dr.provenance, title: dr.title, content: dr.content, nodeId: resolveNodeId(nodes, dr.nodeId) });
       out.push(r.object);
     }
     patch((d) => ({ ...d, objects: [...out.slice().reverse(), ...d.objects] }));
@@ -870,7 +871,7 @@ export default function App() {
     : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
     : undefined;
 
-  const openContext = (obj: ContextObject | null, nodeId = 'business') => {
+  const openContext = (obj: ContextObject | null, nodeId = defaultNodeId(nodes)) => {
     setSelectedContextObject(obj);
     setModalDefaultNodeId(nodeId);
     setIsContextModalOpen(true);
@@ -1290,6 +1291,7 @@ export default function App() {
         nodes={nodes}
         objects={workspaceContexts}
         notes={data.notes}
+        files={data.files}
         onClose={() => setNodeDialog(null)}
         workspaceId={wid}
         onCreate={async (parentId, label, description) => {

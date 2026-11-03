@@ -1,8 +1,9 @@
 /**
- * Rules of the 3-layer tree (decisions v3.1 §4):
- *  - system nodes: rename only (no delete, no move)
- *  - user nodes: create / move / delete freely under any node
- *  - delete a user node only when it is empty, or after moving its content to another node
+ * Rules of the tree. THE TREE IS DATA: no node is locked and no node id is known to the code (the five nodes of the default
+ * start are an ordinary starting point, see startTemplate.ts). What stays:
+ *  - every piece of knowledge lives in some node, so there is always at least one root (the last one is not deleted)
+ *  - a node with content is deleted only after the content moves somewhere (default: its parent; a root → another root)
+ *  - a node never moves under itself
  * Pure functions: the server enforces them, the UI uses the same functions to explain why an action is disabled.
  */
 
@@ -58,7 +59,6 @@ export function canCreateUnder(nodes: TreeNode[], parentId: string, label: strin
 export function canMove(nodes: TreeNode[], id: string, newParentId: string): Check {
   const node = nodes.find((n) => n.id === id);
   if (!node) return no('این گره وجود ندارد.');
-  if (node.isSystem) return no('گره‌های سیستمی فقط تغییر نام دارند و جابه‌جا نمی‌شوند.');
   if (!nodes.some((n) => n.id === newParentId)) return no('مقصد وجود ندارد.');
   if (subtreeIds(nodes, id).includes(newParentId)) return no('گره را نمی‌شود زیر خودش یا زیرشاخه‌هایش گذاشت.');
   return { ok: true };
@@ -67,11 +67,14 @@ export function canMove(nodes: TreeNode[], id: string, newParentId: string): Che
 export interface NodeContent {
   objects: number;
   notes: number;
+  /** files added to this node */
+  files: number;
   children: number;
 }
 
-export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[]): NodeContent {
+export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[], files: Array<{ nodeId?: string }> = []): NodeContent {
   return {
+    files: files.filter((f) => f.nodeId === id).length,
     objects: objects.filter((o) => o.nodeId === id).length,
     notes: notes.filter((n) => n.nodeId === id).length,
     children: nodes.filter((n) => n.parentId === id).length,
@@ -87,14 +90,15 @@ export function canDelete(
   objects: Pick<ContextObject, 'nodeId'>[],
   notes: Pick<Note, 'nodeId'>[],
   transferTo?: string,
+  files: Array<{ nodeId?: string }> = [],
 ): DeleteCheck {
   const node = nodes.find((n) => n.id === id);
   if (!node) return no('این گره وجود ندارد.');
-  if (node.isSystem) return no('گره‌های سیستمی حذف نمی‌شوند؛ فقط می‌توان نامشان را عوض کرد.');
-  const content = contentOf(nodes, id, objects, notes);
-  const empty = content.objects + content.notes + content.children === 0;
+  if (!node.parentId && nodes.filter((n) => !n.parentId).length <= 1) return no('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
+  const content = contentOf(nodes, id, objects, notes, files);
+  const empty = content.objects + content.notes + content.files + content.children === 0;
   if (empty) return { ok: true };
-  if (!transferTo) return { ok: false, reason: 'این گره خالی نیست؛ محتوا را به گرهٔ دیگری منتقل کن.', needsTransfer: true, content };
+  if (!transferTo) return { ok: false, reason: 'این بخش خالی نیست؛ محتوایش را به بخش دیگری ببر.', needsTransfer: true, content };
   if (!nodes.some((n) => n.id === transferTo)) return no('گرهٔ مقصد وجود ندارد.');
   if (subtreeIds(nodes, id).includes(transferTo)) return no('مقصد نمی‌تواند خودِ گره یا زیرشاخه‌اش باشد.');
   return { ok: true };
@@ -122,4 +126,27 @@ export function flatten(nodes: TreeNode[]): Array<{ node: TreeNode; depth: numbe
   };
   walk(undefined, 0);
   return out;
+}
+
+/**
+ * Where something with no place of its own goes (a note, a file, an extracted piece of knowledge, an answer to a Gap):
+ * the first root of the tree, by order. It is an ordinary node — rename it, move it, delete it — nothing knows its id.
+ * '' only when the workspace has no node at all (a brand-new, still empty one).
+ */
+export function defaultNodeId(nodes: TreeNode[]): string {
+  return childrenOf(nodes, undefined)[0]?.id ?? nodes.slice().sort(byOrder)[0]?.id ?? '';
+}
+
+/** `hint` when that node exists, otherwise the default place (a template's or a spec item's `nodeId` is only a hint) */
+export const resolveNodeId = (nodes: TreeNode[], hint: string | undefined | null): string => (hint && nodes.some((n) => n.id === hint) ? hint : defaultNodeId(nodes));
+
+/** the node ids in tree order (depth first, siblings by `order`): the order knowledge is laid out for an AI */
+export const treeOrder = (nodes: TreeNode[]): string[] => flatten(nodes).map((x) => x.node.id);
+
+/** where the content of a node about to be deleted goes by default: its parent; a root → the next other root; none when it is the last root */
+export function defaultTransferTarget(nodes: TreeNode[], id: string): string | undefined {
+  const node = nodes.find((n) => n.id === id);
+  if (!node) return undefined;
+  if (node.parentId && nodes.some((n) => n.id === node.parentId)) return node.parentId;
+  return childrenOf(nodes, undefined).find((n) => n.id !== id)?.id;
 }

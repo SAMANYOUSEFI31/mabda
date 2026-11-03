@@ -1,7 +1,6 @@
 /** JSON schemas (standard JSON Schema) for structured model output. */
 
 export const BLOCK_KINDS = ['heading', 'paragraph', 'list', 'table', 'fact', 'decision', 'constraint', 'question'] as const;
-export const NODE_IDS = ['business', 'brand', 'product', 'offer', 'content'] as const;
 export const PROPOSAL_TYPES = ['Fact', 'Decision', 'Constraint'] as const;
 
 export const BLOCKS_SCHEMA = {
