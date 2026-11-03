@@ -107,6 +107,7 @@ try {
   step('the pasted asset is in the library with the pack lineage');
   await nav('دارایی‌ها');
   await page.getByText('جملهٔ موقعیت‌یابی', { exact: true }).first().waitFor();
+  await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).first().click();
   await page.getByRole('button', { name: 'مشاهدهٔ ورودی‌ها' }).first().click().catch(() => {});
   await shot('5-asset-lineage', true);
   assert.deepEqual(errors, [], 'no page errors');

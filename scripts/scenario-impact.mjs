@@ -118,7 +118,7 @@ async function scenario(width, tag) {
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
   await page.getByText('ردپای دانش').first().waitFor({ timeout: 30000 });
   await shot('4-asset-fresh');
-  assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).count(), 0, 'nothing is stale yet');
+  assert.equal(await page.getByText('به‌روز نیست', { exact: true }).count(), 0, 'nothing is stale yet');
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع');
@@ -131,13 +131,13 @@ async function scenario(width, tag) {
   console.log(`[${tag}]   toast:`, impactText);
   await shot('5-impact-toast');
 
-  step('assets: «نیاز به بازبینی» badge + reason + half-price rebuild');
+  step('assets: «به‌روز نیست» badge + reason + half-price rebuild');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).click();
-  await page.getByText('این دارایی نیاز به بازبینی دارد').first().waitFor();
+  await page.getByRole('tab', { name: /^به‌روز نیست/ }).click();
+  await page.getByText('این خروجی به‌روز نیست').first().waitFor();
   await page.getByText(/از نسخهٔ ۱ به ۲ تغییر کرد/).first().waitFor();
   await shot('6-asset-stale', true);
-  const staleBefore = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
+  const staleBefore = await page.getByText('این خروجی به‌روز نیست').count();
   await page.getByRole('button', { name: 'بازسازی با نصف قیمت' }).first().click();
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor({ timeout: 30000 });
   await page.getByText('بازسازی‌شده').first().waitFor({ timeout: 30000 });
@@ -145,8 +145,8 @@ async function scenario(width, tag) {
 
   step('assets again: one fewer stale asset, rebuilt one is fresh and replays version 2');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).waitFor();
-  const staleAfter = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
+  await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
+  const staleAfter = await page.getByText('این خروجی به‌روز نیست').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
   await page.getByRole('tab', { name: /^تمام دارایی‌ها/ }).click();
   await page.getByText(/نسخهٔ ۲/).first().waitFor();

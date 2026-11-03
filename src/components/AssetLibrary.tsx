@@ -82,7 +82,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
         onChange={setFilter}
         items={[
           { id: 'all', label: `تمام دارایی‌ها (${formatNumber(deliverables.length)})` },
-          ...(stale.length > 0 ? [{ id: 'stale', label: `نیاز به بازبینی (${formatNumber(stale.length)})` }] : []),
+          ...(stale.length > 0 ? [{ id: 'stale', label: `به‌روز نیست (${formatNumber(stale.length)})` }] : []),
           ...workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).map((w) => ({ id: w.id, label: w.title })),
         ]}
       />
