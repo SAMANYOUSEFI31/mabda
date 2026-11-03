@@ -107,6 +107,7 @@ try {
     assert.ok((await dlg.locator('details li').count()) >= 4, 'the drafts open to their edits');
     // a reason field exists for confirmed knowledge only
     await dlg.getByRole('tab', { name: 'ویرایش' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر' }).click();
     assert.equal(await dlg.getByLabel('دلیل این ویرایش (اختیاری)').count(), 1);
     await page.keyboard.press('Escape');
     assert.deepEqual(errors, []);

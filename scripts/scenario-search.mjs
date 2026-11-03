@@ -49,6 +49,7 @@ try {
 
     step(`[${width}] Ctrl/⌘+K opens it with the input focused; a few letters find things, grouped`);
     await openPalette();
+    await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role')), 'combobox', 'the focus is in the input');
     await type('لحن');
     await options().first().waitFor();

@@ -64,13 +64,14 @@ try {
     step(`[${width}] switch to «ممیزی»: the rules change; the left-out list tells why`);
     await dlg.getByRole('radio', { name: 'ممیزی' }).click();
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('قواعد این کار (ممیزی)')));
+    await dlg.locator('summary', { hasText: 'ببین چه چیزی می‌رود' }).click(); // what goes in is one click away, not in the way
     await dlg.locator('summary', { hasText: 'خارج شد' }).click();
     await dlg.getByText(/تأییدنشده \(واقعیت نیست\)/).first().waitFor();
     assert.ok((await dlg.innerText()).includes('ادعای معلق'));
     await shot('2-audit');
 
     step(`[${width}] copy: the clipboard holds exactly the preview, and the answer comes back through import`);
-    await dlg.getByRole('button', { name: 'کپی', exact: true }).click();
+    await dlg.getByRole('button', { name: 'کپی برای AI خودم' }).click();
     await page.getByText(/کپی شد/).first().waitFor();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     assert.equal(clip.replace(/\s+$/, ''), (await preview()).replace(/\s+$/, ''));
@@ -78,7 +79,7 @@ try {
     assert.ok(marker, 'the pack marker links the answer');
     assert.ok((await api(`/workspaces/${wid}/packs`)).packs.some((p) => p.id === marker), 'the request is recorded');
 
-    await dlg.getByRole('button', { name: 'پاسخ AI را وارد کن' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'پاسخ AI را وارد کن' }).click();
     const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن پاسخ AI بیرونی' });
     await imp.waitFor();
     await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با قید «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);
