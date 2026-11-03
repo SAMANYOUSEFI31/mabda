@@ -103,7 +103,7 @@ try {
     await dlg.getByText('تأیید شد در نسخهٔ ۴').waitFor();
     await dlg.getByText(/آخرین تأیید: نسخهٔ ۴/).first().waitFor();
     await shot('4-history');
-    await dlg.locator('summary', { hasText: '۴ پیش‌نویس' }).click();
+    // the newest group of drafts is OPEN by default: the last change is seen without a hunt
     assert.ok((await dlg.locator('details li').count()) >= 4, 'the drafts open to their edits');
     // a reason field exists for confirmed knowledge only
     await dlg.getByRole('tab', { name: 'ویرایش' }).click();

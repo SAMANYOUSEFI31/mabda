@@ -113,3 +113,38 @@ export function approvalsOf(changes: Ch[]): Record<string, ApprovalInfo> {
   for (const [id, list] of by) { const a = versionHistory(list).lastApproval; if (a) out[id] = a; }
   return out;
 }
+
+export interface VersionText { version: number; title: string; content: string; at: string }
+
+/**
+ * The text of every version of ONE object, rebuilt from its Change records (each edit carries the before and after of the
+ * title and the text), oldest first. Only versions whose text is known are listed; used by «مقایسهٔ دو نسخه» and by the
+ * outputs' «what changed since you were built». Pure.
+ */
+export function versionTexts(changes: Ch[]): VersionText[] {
+  const sorted = [...changes].sort((a, b) => a.at.localeCompare(b.at) || a.toVersion - b.toVersion);
+  const out = new Map<number, VersionText>();
+  let title = '', content = '';
+  const put = (version: number, at: string) => { if (title || content) out.set(version, { version, title, content, at }); };
+  for (const c of sorted) {
+    const b = c.before as { title?: unknown; content?: unknown } | undefined;
+    const a = c.after as { title?: unknown; content?: unknown } | undefined;
+    if (c.kind === 'created' || c.kind === 'imported') {
+      if (typeof a?.title === 'string') title = a.title;
+      if (typeof a?.content === 'string') content = a.content;
+      put(c.toVersion, c.at);
+      continue;
+    }
+    if (!bumped(c)) continue;
+    // an edit: what it started from (when nothing earlier is known) and what it produced
+    if (!out.has(c.fromVersion)) {
+      if (typeof b?.title === 'string') title = b.title;
+      if (typeof b?.content === 'string') content = b.content;
+      put(c.fromVersion, c.at);
+    }
+    if (typeof a?.title === 'string') title = a.title;
+    if (typeof a?.content === 'string') content = a.content;
+    put(c.toVersion, c.at);
+  }
+  return [...out.values()].sort((x, y) => x.version - y.version);
+}

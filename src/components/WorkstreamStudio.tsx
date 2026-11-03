@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ContextChange,
   ContextDraft,
   ContextObject,
   TreeNode,
@@ -48,6 +49,8 @@ interface WorkstreamStudioProps {
   onSaveTemplate?: (spec: WorkstreamSpec) => void;
   /** assets that are stale because the Context they were built from changed */
   stale: StaleAsset[];
+  /** the change log (what changed since an output was built) */
+  changes?: ContextChange[];
   nodes: TreeNode[];
   onAddContextObject: (obj: ContextDraft) => void;
   onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild') => void;
@@ -74,6 +77,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onJudge,
   onSaveTemplate,
   stale,
+  changes,
   nodes,
   onAddContextObject,
   onSaveDeliverable,
@@ -559,6 +563,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   deliverable={del}
                   allContextObjects={allContextObjects}
                   stale={stale.find((x) => x.deliverableId === del.id)}
+                  changes={changes}
                   onOpenContextObject={onOpenContextModal}
                   onRebuild={(target) => handleGenerate(true, target)}
                   isRebuilding={isGenerating}

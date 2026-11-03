@@ -1204,6 +1204,7 @@ export default function App() {
             allDeliverables={deliverables}
             specs={specs}
             stale={stale}
+            changes={data.changes}
             nodes={nodes}
             selectedSpecId={selectedSpecId}
             onSelectSpecId={setSelectedSpecId}
@@ -1233,6 +1234,7 @@ export default function App() {
             deliverables={deliverables}
             allContextObjects={workspaceContexts}
             stale={stale}
+            changes={data.changes}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
             workstreams={specs}
             onOpenContextModal={(obj) => openContext(obj)}

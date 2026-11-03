@@ -288,3 +288,26 @@ test('showcase: an «@» reference suggests a link (and creates none); a note ca
   assert.ok(searchIndex(ix, 'هدیه').note.length >= 1, 'a note is found');
   assert.ok(!JSON.stringify(searchIndex(ix, 'مثال')).includes('smp_demo'), 'examples are not searched');
 });
+
+import { diffWords, diffStats } from './textDiff';
+import { versionTexts } from './versionHistory';
+
+test('showcase history: every edit has a real before and after that differ and diff to something; the rebuilt versions end in the object\'s current text (the same path the product writes)', () => {
+  const d = buildDemo(NOW);
+  const edits = d.changes.filter((c) => c.kind === 'edited' && c.toVersion > c.fromVersion);
+  assert.ok(edits.length >= 6, 'the showcase has real edits');
+  for (const c of edits) {
+    const b = c.before as { content?: string }, a = c.after as { content?: string };
+    assert.ok(typeof b?.content === 'string' && typeof a?.content === 'string' && b.content !== a.content, `edit ${c.id}: before and after are different texts`);
+    const s = diffStats(diffWords(b.content!, a.content!));
+    assert.ok(s.added + s.removed > 0, `edit ${c.id}: the diff has something to show`);
+  }
+  for (const o of d.objects.filter((x) => x.status !== 'Proposed')) {
+    const mine = d.changes.filter((c) => c.objectId === o.id);
+    const texts = versionTexts(mine);
+    if (!mine.some((c) => c.kind === 'edited' && c.toVersion > c.fromVersion)) continue;
+    assert.equal(texts[texts.length - 1].content, o.content, `${o.title}: the last version in the log is the object's text`);
+    assert.equal(texts[texts.length - 1].version, o.version, `${o.title}: …at the object's version`);
+    assert.ok(texts.length >= 2, `${o.title}: two versions can be compared`);
+  }
+});

@@ -70,3 +70,21 @@ export function titleSimilarity(a: string, b: string): number {
   for (const t of x) if (y.has(t)) n++;
   return n / (x.size + y.size - n);
 }
+
+/** how many WORDS were removed and added (whitespace and single punctuation are not counted) */
+export function diffStats(segments: DiffSegment[]): { removed: number; added: number } {
+  const words = (t: string) => (t.match(/[\p{L}\p{N}\p{M}‌‍_]+/gu) ?? []).length;
+  let removed = 0, added = 0;
+  for (const s of segments) { if (s.kind === 'del') removed += words(s.text); else if (s.kind === 'add') added += words(s.text); }
+  return { removed, added };
+}
+
+/** «۲ کلمه حذف، ۳ کلمه اضافه» — the one line above a before/after (`fa` formats numbers) */
+export function diffSummary(segments: DiffSegment[], fa: (n: number) => string = String): string {
+  const { removed, added } = diffStats(segments);
+  if (!removed && !added) return segments.some((s) => s.kind !== 'same') ? 'فقط نشانه‌گذاری یا فاصله عوض شد' : 'متن تغییری نکرده';
+  const parts: string[] = [];
+  if (removed) parts.push(`${fa(removed)} کلمه حذف`);
+  if (added) parts.push(`${fa(added)} کلمه اضافه`);
+  return parts.join('، ');
+}

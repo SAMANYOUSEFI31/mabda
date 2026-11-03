@@ -56,3 +56,31 @@ test('titleSimilarity: close titles score high, unrelated ones low', () => {
   assert.ok(titleSimilarity('قیمت پایه', 'لحن برند') < 0.2);
   assert.equal(titleSimilarity('', 'x'), 0);
 });
+
+import { diffStats, diffSummary } from './textDiff';
+import { versionTexts } from './versionHistory';
+import type { ContextChange } from '../types';
+
+test('diffStats / diffSummary: words removed and added, in plain Persian', () => {
+  const s = diffWords('قیمت ماهانه ۳۰۰ هزار تومان است', 'قیمت ماهانه ۴۵۰ هزار تومان برای چهار بسته است');
+  assert.deepEqual(diffStats(s), { removed: 1, added: 4 });
+  assert.equal(diffSummary(s), '1 کلمه حذف، 4 کلمه اضافه');
+  assert.equal(diffSummary(diffWords('الف ب', 'الف ب')), 'متن تغییری نکرده');
+  assert.equal(diffSummary(diffWords('الف ب', 'الف')), '1 کلمه حذف');
+  assert.equal(diffSummary(diffWords('الف ب', 'الف ب.')), 'فقط نشانه‌گذاری یا فاصله عوض شد');
+  assert.equal(diffSummary(diffWords('a', 'b c'), (n) => `«${n}»`), '«1» کلمه حذف، «2» کلمه اضافه');
+});
+
+const ch = (id: string, p: Partial<ContextChange>): ContextChange => ({ id, workspaceId: 'w', objectId: 'o1', fromVersion: 0, toVersion: 1, kind: 'edited', actor: 'user', at: '2026-01-01T00:00:00Z', ...p } as ContextChange);
+test('versionTexts: every version of one object rebuilt from its Change records', () => {
+  const v = versionTexts([
+    ch('c3', { fromVersion: 2, toVersion: 3, at: '2026-01-03T00:00:00Z', before: { content: 'دو' }, after: { content: 'سه' } }),
+    ch('c1', { kind: 'created', fromVersion: 0, toVersion: 1, at: '2026-01-01T00:00:00Z', after: { title: 'عنوان', content: 'یک' } }),
+    ch('c2', { fromVersion: 1, toVersion: 2, at: '2026-01-02T00:00:00Z', before: { content: 'یک' }, after: { content: 'دو', title: 'عنوان تازه' } }),
+    ch('m', { kind: 'status_changed', fromVersion: 3, toVersion: 3, at: '2026-01-04T00:00:00Z', before: { status: 'Proposed' }, after: { status: 'Confirmed' } }),
+  ]);
+  assert.deepEqual(v.map((x) => [x.version, x.title, x.content]), [[1, 'عنوان', 'یک'], [2, 'عنوان تازه', 'دو'], [3, 'عنوان تازه', 'سه']]);
+  assert.deepEqual(versionTexts([]), []);
+  // only an edit is known (no creation record): its before and after are still two comparable versions
+  assert.deepEqual(versionTexts([ch('x', { fromVersion: 4, toVersion: 5, before: { content: 'الف' }, after: { content: 'ب' } })]).map((x) => [x.version, x.content]), [[4, 'الف'], [5, 'ب']]);
+});
