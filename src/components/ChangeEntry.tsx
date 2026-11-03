@@ -26,21 +26,21 @@ function shown(field: string, v: unknown, l: Lookups): string {
 }
 
 /** One entry of the timeline: who, what, why, when — and the before/after of what changed. */
-export const ChangeEntry: React.FC<{ change: ContextChange; objectTitle?: string } & Lookups> = ({ change: c, objectTitle, ...l }) => {
+export const ChangeEntry: React.FC<{ change: ContextChange; objectTitle?: string; /** only what changed (inside a milestone that already says who, when and why) */ bare?: boolean } & Lookups> = ({ change: c, objectTitle, bare, ...l }) => {
   const fields = Object.keys(c.after ?? {}).filter((f) => f in (c.before ?? {}) || f === 'dependsOn');
   const textFields = fields.filter((f) => TEXT_FIELDS.has(f));
   const other = Object.keys(c.after ?? {}).filter((f) => !TEXT_FIELDS.has(f));
   return (
-    <li className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
-      <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+    <li className={bare ? 'flex flex-col gap-stack-xs' : 'flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md'}>
+      {!bare && <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <span className="flex flex-wrap items-center gap-inline-sm">
           <Badge intent={c.kind === 'proposal_rejected' || c.kind === 'archived' ? 'neutral' : c.kind === 'superseded' || c.kind === 'contradiction_resolved' ? 'warning' : c.kind === 'edited' ? 'info' : 'success'} icon={false}>{CHANGE_KIND_FA[c.kind]}</Badge>
           {objectTitle && <span className="label-md text-text-default">{objectTitle}</span>}
           <span className="body-sm text-text-subtle">{ACTOR_FA[c.actor]}{c.actorLabel ? ` (${c.actorLabel})` : ''}</span>
         </span>
         <span className="body-sm text-text-subtle">{formatJalaliDate(c.at)}</span>
-      </div>
-      {c.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{c.reason}</p>}
+      </div>}
+      {!bare && c.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{c.reason}</p>}
       {textFields.map((f) => (
         <div key={f} className="flex flex-col gap-stack-xs">
           <span className="label-sm text-text-subtle">{FIELD_FA[f]}</span>

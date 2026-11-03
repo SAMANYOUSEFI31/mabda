@@ -65,7 +65,7 @@ export const VersionHistoryView: React.FC<{ changes: ContextChange[] } & Lookups
                   <span className="body-sm text-text-subtle">{ACTOR_FA[e.actor]}{e.actorLabel ? ` (${e.actorLabel})` : ''} · {formatJalaliDate(e.at)}</span>
                 </div>
                 {e.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{e.reason}</p>}
-                {e.how === 'edited' && <ul className="flex flex-col gap-stack-xs">{e.changes.map((c) => <ChangeEntry key={c.id} change={{ ...c, reason: undefined }} {...l} />)}</ul>}
+                {e.how === 'edited' && <ul className="flex flex-col gap-stack-xs">{e.changes.map((c) => <ChangeEntry key={c.id} bare change={{ ...c, reason: undefined }} {...l} />)}</ul>}
               </li>
             );
           }

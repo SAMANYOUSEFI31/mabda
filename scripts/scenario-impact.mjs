@@ -93,7 +93,7 @@ async function scenario(width, tag) {
   step('files: upload a txt, processed once (summary + Proposed + chunks)');
   const f = join(dir, 'brief.txt');
   writeFileSync(f, 'بودجهٔ کمپین پاییز پنجاه میلیون تومان است.\n\nکانال اصلی کمپین اینستاگرام است و مخاطب فریلنسرها هستند.\n\n'.repeat(30));
-  await page.locator('input[type=file]').setInputFiles(f);
+  await page.getByLabel('انتخاب فایل', { exact: true }).setInputFiles(f);
   await page.getByText('آماده', { exact: true }).first().waitFor({ timeout: 30000 });
   await page.getByText(/قطعه/).first().waitFor();
   await shot('2-files', true);
