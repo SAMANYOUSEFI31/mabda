@@ -471,6 +471,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     </span>
                   )}
                   {ai.byok && preview && previewState === 'ready' && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
+                  {!ai.available && previewState === 'idle' && <span className="body-sm text-text-subtle">برای ساخت، اول کلید هوش مصنوعی را وصل کن (حساب ‹ کلید هوش مصنوعی).</span>}
                   {managed && <span className="body-sm text-text-subtle">موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر</span>}
                 </div>
                 {isGenerating ? (
