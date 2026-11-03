@@ -55,6 +55,7 @@ try {
     assert.ok(st.objects.length >= 30 && st.changes.length > 40);
 
     step(`[${width}] home: what needs you (contradictions, review, waiting decisions, flip-flop warning)`);
+    await page.locator('button[aria-controls="home-all"]').click(); // everything beyond the top three waits under «همه»
     await page.getByText('تصمیم‌های منتظر').first().waitFor();
     await page.getByText('تصمیم همزمان').first().waitFor();
     await page.getByText(/چند بار عوض شده/).first().waitFor();

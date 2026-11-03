@@ -58,14 +58,15 @@ interface CardProps {
  */
 export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const { item, lod } = p;
-  const tone = p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
-  const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dimmed ? 'opacity-40' : ''} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
+  // focus mode: a card that is not part of the selection gets a quieter BACKGROUND and BORDER — its text is never made transparent, so every title stays readable (contrast ≥ 3:1, measured in screens.mjs)
+  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
+  const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
 
   if (lod === 'far') {
     return (
       <div
-        data-item-id={item.id} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={aria(item)} aria-pressed={p.selected}
+        data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={aria(item)} aria-pressed={p.selected}
         onClick={(e) => p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)}
         className={`${common} ${item.kind === 'note' ? 'bg-bg-warning-subtle' : ''}`} style={style}
       />
@@ -74,7 +75,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const role = item.kind === 'object' ? 'group' : 'group';
   return (
     <div
-      data-item-id={item.id} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
+      data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
       onPointerDown={(e) => p.onPointerDown?.(e, item)}
       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey); }}
       onDoubleClick={() => p.onOpen(item)}
@@ -109,7 +110,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
           <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Badge intent="warning" icon={false}>قدیمی</Badge>}</span>
         )}
         {item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
-        <span className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} text-text-default ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>
+        <span data-card-title="" className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} ${p.dimmed ? 'text-text-subtle' : 'text-text-default'} ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>
         {lod === 'near' && item.summary && item.kind !== 'node' && <span className="body-sm line-clamp-1 text-text-subtle">{item.summary}</span>}
       </div>
     </div>
@@ -124,10 +125,10 @@ interface NoteProps { item: SceneItem; selected: boolean; dimmed: boolean; lod: 
 export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
   const { item } = p;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
-  const base = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${p.selected ? 'border-border-selected' : 'border-border-default'} bg-bg-warning-subtle ${p.dimmed ? 'opacity-40' : ''}`;
+  const base = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${p.dimmed ? 'border-border-subtle bg-surface-sunken' : `${p.selected ? 'border-border-selected' : 'border-border-default'} bg-bg-warning-subtle`}`;
   if (p.lod === 'far') return <div data-item-id={item.id} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={`یادداشت آزاد: ${item.label}`} onClick={(e) => p.onSelect(item.id, e.shiftKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={base} style={style} />;
   return (
-    <div data-item-id={item.id} data-no-pan="" data-lod={p.lod} tabIndex={0} role="group" aria-label={`یادداشت آزاد: ${item.label}. با کلیدهای جهت‌دار جابه‌جا می‌شود.`}
+    <div data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod={p.lod} tabIndex={0} role="group" aria-label={`یادداشت آزاد: ${item.label}. با کلیدهای جهت‌دار جابه‌جا می‌شود.`}
       onPointerDown={(e) => p.onPointerDown(e, item)} onClick={(e) => { if ((e.target as HTMLElement).closest('button, textarea')) return; p.onSelect(item.id, e.shiftKey); }}
       onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={`${base} p-inset-sm`} style={style}>
       <div dir="rtl" className="flex h-full flex-col gap-stack-xs">
@@ -148,7 +149,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
                 </span>
               )}
             </span>
-            <p className="body-sm line-clamp-3 flex-1 whitespace-pre-wrap text-text-default">{p.lod === 'near' ? item.summary : item.label}</p>
+            <p data-card-title="" className={`body-sm line-clamp-3 flex-1 whitespace-pre-wrap ${p.dimmed ? 'text-text-subtle' : 'text-text-default'}`}>{p.lod === 'near' ? item.summary : item.label}</p>
           </>
         )}
       </div>

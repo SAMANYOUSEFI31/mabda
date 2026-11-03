@@ -481,7 +481,7 @@ test('migration 15: a saved pack may be a saved «درخواست برای AI» (
 test('migration 16 + usage counters: a catalog key is counted, anything else is refused, and nothing but key / number / time is stored', () => {
   const db = new Database(':memory:');
   migrate(db, 15);
-  assert.deepEqual(migrate(db), [16]);
+  assert.deepEqual(migrate(db, 16), [16]);
   const repo = new Repo(db);
   repo.bumpUsage(U, 'view.home'); repo.bumpUsage(U, 'view.home'); repo.bumpUsage(U, 'dialog.record');
   const rows = repo.listUsage(U);

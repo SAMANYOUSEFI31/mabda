@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import type { ContextObject, Note } from '../types';
 import { MentionTextarea } from './MentionTextarea';
+import { NoteLines } from './NoteLines';
 import { canSplit } from '../core/thinkingMarkers';
 import { Badge, Button, IconButton, Textarea, formatJalaliDate } from '../ui';
 
@@ -57,7 +58,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                 </>
               ) : (
                 <>
-                  <p className="body-md whitespace-pre-wrap text-text-default">{n.content}</p>
+                  <NoteLines content={n.content} onChange={(c) => onUpdate(n.id, c)} />
                   {onSplit && canSplit(n.content) && (
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm">
                       <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به گره؟ متن اصلی یادداشت می‌ماند.</span>

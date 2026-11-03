@@ -180,3 +180,14 @@ test('validator sees the confirmed Context and judges consistency with it; a con
   assert.deepEqual(o3.checks!.map((x) => x.kind), ['consistency'], 'consistency alone is a valid check set');
   assert.equal(o3.validationFailed, false);
 });
+
+test('validator: a guardrail question carries the red line\'s right / wrong examples (via the guardrail text)', async () => {
+  const { runChecks } = await import('./pipeline.ts');
+  const { guardrailText } = await import('../../src/core/redlineExamples.ts');
+  let asked: Array<{ id: string; question: string }> = [];
+  const decisions = { decide: async (_s: unknown, qs: Array<{ id: string; question: string; options: string[] }>) => { asked = qs; return { answers: qs.map((q) => ({ id: q.id, choice: q.options[0], probability: 0.9 })) }; } };
+  const g = guardrailText({ type: 'Constraint', title: 'بدون تخفیف', content: 'تخفیف نمی‌دهیم', examples: [{ kind: 'good', text: 'ارسال رایگان' }, { kind: 'bad', text: 'نصف قیمت' }] });
+  await runChecks({ decisions, acceptanceCriteria: [], guardrails: [g], prompt: buildPrompt({ contexts: [], task: 'x' }) } as never, [{ id: 'b1', kind: 'paragraph', markdown: 'متن' }] as never, []);
+  const q = asked.find((x) => x.id === 'g0')!.question;
+  assert.ok(q.includes('مثال درست: ارسال رایگان') && q.includes('مثال نادرست: نصف قیمت'), q);
+});

@@ -3,6 +3,7 @@ import { AiError } from '../ai/errors.ts';
 import type { ContextObjectLite } from '../ai/context.ts';
 import { subtreeIds } from '../../src/core/nodeTree.ts';
 import { effectiveObjects, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
+import { examplesOf } from '../../src/core/redlineExamples.ts';
 import type { ContextObject } from '../../src/types/index.ts';
 import type { FileService } from '../files/service.ts';
 import type { Repo, Scope } from './repo.ts';
@@ -23,6 +24,7 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
   const toLite = (o: ContextObject): ContextObjectLite => ({
     id: o.id, type: o.type, status: o.status, title: o.title, content: o.content, nodeId: o.nodeId, version: o.version, createdAt: o.createdAt,
     ...(o.assumption ? { assumption: true } : {}),
+    ...(examplesOf(o).length ? { examples: examplesOf(o) } : {}),
     ...(rejectedOf(o).length ? { rejected: rejectedOf(o) } : {}),
   });
   /**

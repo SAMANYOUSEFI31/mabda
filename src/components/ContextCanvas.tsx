@@ -53,11 +53,9 @@ type Pending = { kind: 'accept'; payload: MovePayload; title: string } | { kind:
 const PREF_KEY = 'mabda.canvas.prefs';
 const TIPS_KEY = 'mabda.canvas.tips';
 const TIPS = [
-  'یک کارت را انتخاب کن تا اثرگذارانش روشن شود.',
-  'روی فضای خالی دابل‌کلیک کن تا یادداشت تازه بسازی؛ از دستگیرهٔ ۵ هر کارت بکش تا خط تازه بکشی.',
-  'با F تمام‌صفحه شو و با «؟» میان‌برها را ببین. هر کاری را با Ctrl+Z برمی‌گردانی.',
+  'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود؛ روی فضای خالی دابل‌کلیک کن تا یادداشت تازه بسازی. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
-const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
+const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
 const readPrefs = (): Partial<{ layout: CanvasLayout; boxes: boolean; columns: BoardColumns; rows: BoardRows }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
 const readTips = (): number[] => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]'); } catch { return []; } };
@@ -305,6 +303,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     else if (mod && e.code === 'KeyY') { e.preventDefault(); void doRedo(); }
     else if (mod && e.code === 'KeyK') { e.preventDefault(); document.getElementById('canvas-search')?.focus(); }
     else if (!mod && e.code === 'KeyF') { e.preventDefault(); setFullscreen((v) => !v); }
+    else if (!mod && e.code === 'KeyI') { e.preventDefault(); setInspectorOpen((v) => !v); }
     else if (!mod && (e.key === '?' || e.key === '؟')) { e.preventDefault(); setHelpOpen((v) => !v); }
     else if (!mod && e.key === '/') { e.preventDefault(); document.getElementById('canvas-search')?.focus(); }
   };
@@ -381,11 +380,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {facetNames.length > 0 && layout !== 'free' && <Switch label="رنگ بر اساس بُعد" checked={colorFacet} onChange={(e) => setColorFacet(e.target.checked)} />}
     </div>
   );
+  // the toolbar shows FIVE controls at most (docs/canvas-design.md): layout · card search · «گزینه‌ها» · zoom group · full screen.
+  // Everything else (undo / redo, auto layout, inspector, JSON Canvas, shortcuts, «this layout?») lives under «⋯» and in the shortcuts.
   const toolbar = (
-    <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم">
+    <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
       <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={(['relations', 'board', 'free'] as CanvasLayout[]).map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />
-      <IconButton icon="CircleHelp" label="این چیدمان چیست؟" aria-expanded={aboutOpen} onClick={() => setAboutOpen((v) => !v)} />
-      <Popover label="گزینه‌های نما" trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
       <span className="relative">
       <TextField id="canvas-search" size="md" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); } }} className="w-space-40" />
       {results.length > 0 && (
@@ -394,17 +393,22 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         </ul>
       )}
       </span>
-      <span className="ms-auto flex items-center gap-inline-xs">
-        <IconButton icon="Undo2" label="برگرداندن (Ctrl+Z)" disabled={!canUndo(hist) || busy} onClick={() => void doUndo()} />
-        <IconButton icon="Redo2" label="از نو (Ctrl+Shift+Z)" disabled={!canRedo(hist) || busy} onClick={() => void doRedo()} />
-        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />}
-        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
+      <Popover label="گزینه‌های نما" trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
+      <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
+        <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />
         <IconButton icon="Maximize" label="متناسب‌سازی" onClick={fit} />
-        <IconButton icon="PanelRight" label={inspectorOpen ? 'بستن بازرس' : 'باز کردن بازرس'} aria-expanded={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />
-        <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Fullscreen'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
+        <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />
+      </span>
+      <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Fullscreen'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
+      <span className="ms-auto" data-toolbar-overflow="">
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
+          { label: 'برگرداندن (Ctrl+Z)', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
+          { label: 'از نو (Ctrl+Shift+Z)', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
+          { divider: true },
           { label: 'یادداشت تازه', icon: 'Plus', onSelect: () => setNewNote({ content: '', nodeId: 'business', x: 0, y: 0 }) },
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
+          { label: inspectorOpen ? 'بستن بازرس' : 'باز کردن بازرس', icon: 'PanelRight', onSelect: () => setInspectorOpen((v) => !v) },
+          { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
           { divider: true },
           { label: 'خروجی JSON Canvas', icon: 'Download', onSelect: exportCanvas },
           { label: 'ورود JSON Canvas', icon: 'Upload', onSelect: () => fileInput.current?.click() },
@@ -522,7 +526,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {sheet && toolbar}
 
       <input ref={fileInput} type="file" accept=".canvas,application/json" className="sr-only" aria-label="انتخاب فایل بوم" tabIndex={-1} onChange={(e) => void importCanvas(e.target.files?.[0])} />
-      {!fullscreen && <div className="flex flex-wrap gap-inline-xs"><Button size="sm" variant="ghost" iconStart="Download" onClick={exportCanvas}>خروجی JSON Canvas</Button><Button size="sm" variant="ghost" iconStart="Upload" onClick={() => fileInput.current?.click()}>ورود JSON Canvas</Button></div>}
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} size="sm" title="میان‌برهای بوم">
         <dl className="flex flex-col gap-stack-sm">{SHORTCUTS.map(([k, v]) => <div key={k} className="flex items-start justify-between gap-inline-md"><dt className="label-md text-text-default"><kbd>{k}</kbd></dt><dd className="body-sm text-text-subtle">{v}</dd></div>)}</dl>

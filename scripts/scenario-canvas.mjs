@@ -18,6 +18,7 @@ const dir = mkdtempSync(join(tmpdir(), 'mabda-canvas-'));
 const PORT = 3106;
 const BASE = `http://127.0.0.1:${PORT}`;
 const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true });
+const more = async (page, name) => { await page.getByTestId('canvas-toolbar').getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name }).click(); };
 const api = async (path, method = 'GET', body) => (await fetch(`${BASE}/api${path}`, { method, headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) })).json();
 const step = (m) => console.log('•', m);
 
@@ -105,13 +106,13 @@ try {
     await page.getByRole('dialog').getByRole('button', { name: 'تأیید', exact: true }).click();
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).objects.find((o) => o.id === prop.id).status, 'Confirmed');
-    await page.getByRole('button', { name: /^برگرداندن/ }).click();
+    await more(page, /^برگرداندن/);
     await page.waitForTimeout(700);
     assert.equal((await api('/workspaces/ws_demo/state')).objects.find((o) => o.id === prop.id).status, 'Proposed', 'Ctrl+Z puts it back (a normal, recorded change)');
-    await page.getByRole('button', { name: /^از نو/ }).click();
+    await more(page, /^از نو/);
     await page.waitForTimeout(700);
     assert.equal((await api('/workspaces/ws_demo/state')).objects.find((o) => o.id === prop.id).status, 'Confirmed', 'redo');
-    await page.getByRole('button', { name: /^برگرداندن/ }).click(); await page.waitForTimeout(500);
+    await more(page, /^برگرداندن/); await page.waitForTimeout(500);
 
     step(`[${width}] board columns are a view: dependency layer columns are display-only`);
     await page.getByRole('button', { name: /^گزینه‌ها/ }).click();
@@ -129,7 +130,7 @@ try {
     await shot('4-free');
     const box = await stage.boundingBox();
     const notesBefore = (await api('/workspaces/ws_demo/state')).notes.length;
-    if (mobile) { await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'یادداشت تازه' }).click(); } // touch path: no double-click
+    if (mobile) { await page.keyboard.press('Escape'); await page.getByTestId('canvas-toolbar').getByRole('button', { name: 'بیشتر' }).evaluate((n) => n.click()); await page.getByRole('menuitem', { name: 'یادداشت تازه' }).click(); } // touch path: no double-click
     else await page.mouse.dblclick(box.x + box.width - 140, box.y + 300);
     await page.getByRole('dialog').locator('textarea').fill('یک فکر تازه از روی بوم');
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).click();
@@ -138,6 +139,7 @@ try {
     const free0 = (await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length;
     await layoutTab('رابطه‌ها');
     await click(page.locator('[data-item-id^="o:"]').first());
+    await page.getByTestId('canvas-inspector').getByRole('button', { name: /^بیشتر/ }).click(); // placing is a detail: under «بیشتر»
     await page.getByTestId('canvas-inspector').getByRole('button', { name: 'بگذار در فضای آزاد' }).click();
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length, free0 + 1);

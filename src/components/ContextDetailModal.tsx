@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ContextDraft, ContextObject, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
+import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
@@ -17,6 +17,7 @@ import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../core/versionHistory';
 import type { ContextChange } from '../types';
 import { MX } from '../core/metricsText';
+import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../core/redlineExamples';
 import { parseNumber } from '../core/metrics';
 import { dataApi } from '../services/dataApi';
 import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
@@ -115,6 +116,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
+  const [examples, setExamples] = useState<RedlineExample[]>(object?.examples ?? []);
   const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
@@ -205,6 +207,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
       ...(validUntil ? { validUntil } : {}),
       ...(facetsFinal().length ? { facets: facetsFinal() } : {}),
+      ...(canHaveExamples({ type, reach: type === 'Constraint' ? reach : object?.reach }) && cleanExamples(examples) ? { examples: cleanExamples(examples) } : {}),
       ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
       ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn || (expMetric && expBy))
         ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}), ...(expMetric && expBy ? { metricExpectation: { metricId: expMetric, direction: expDir, ...(expTargetNum !== null ? { targetValue: expTargetNum } : {}), by: expBy } } : {}) } }
@@ -352,6 +355,21 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
             <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، گاردریل است.' : 'فقط برای این گره و زیرگره‌هایش گاردریل است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+          </div>
+        )}
+        {canHaveExamples({ type, reach: type === 'Constraint' ? reach : object?.reach }) && (
+          <div className="flex flex-col gap-stack-sm" role="group" aria-label="مثال‌ها" data-testid="redline-examples">
+            {examples.map((ex, i) => (
+              <div key={i} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle p-inset-md">
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <SegmentedControl label={`مثال ${formatNumber(i + 1)}`} value={ex.kind} onChange={(v) => setExamples((l) => l.map((x, j) => (j === i ? { ...x, kind: v as RedlineExample['kind'] } : x)))} items={[{ id: 'good', label: 'درست' }, { id: 'bad', label: 'نادرست' }]} />
+                  <Button type="button" size="sm" variant="ghost" iconStart="X" aria-label={`حذف مثال ${formatNumber(i + 1)}`} onClick={() => setExamples((l) => l.filter((_, j) => j !== i))}>حذف</Button>
+                </div>
+                <TextField label="متن کوتاه مثال" value={ex.text} maxLength={EXAMPLE_MAX_CHARS} onChange={(e) => setExamples((l) => l.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))} hint={ex.kind === 'good' ? 'یک نمونه از آنچه این قاعده را رعایت می‌کند.' : 'یک نمونه از آنچه این قاعده را می‌شکند.'} />
+              </div>
+            ))}
+            {examples.length < EXAMPLE_LIMIT && <div><Button type="button" size="sm" variant="ghost" iconStart="Plus" onClick={() => setExamples((l) => [...l, { kind: l.some((x) => x.kind === 'good') ? 'bad' : 'good', text: '' }])}>افزودن مثال</Button></div>}
+            {examples.length > 0 && <p className="body-sm text-text-subtle">مثال‌ها کنار همین قاعده به AI می‌روند تا مرز را بهتر بفهمد.</p>}
           </div>
         )}
         {isEditing && !isSupersedingMode && reasonAllowed(object!.status) && (

@@ -11,6 +11,7 @@ import { runPipeline } from './pipeline.ts';
 import { BLOCKS_INSTRUCTION, CHAT_MODE_HINT, COACH_INSTRUCTION, EXTRACT_INSTRUCTION, MEMORY_INSTRUCTION, PARSE_INSTRUCTION, SYSTEM_PROMPT, THREAD_INSTRUCTION, THREAD_SUMMARY_INSTRUCTION } from './prompts.ts';
 import { BLOCKS_SCHEMA, COACH_SCHEMA, EXTRACT_SCHEMA, PARSE_SCHEMA, SUMMARY_SCHEMA } from './schemas.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
+import { exampleSuffix } from '../../src/core/redlineExamples.ts';
 import { applyBand, route, sanitizePlan } from './router.ts';
 import { StageRunner, sumUsage } from './runner.ts';
 import type { SessionResolver } from './session.ts';
@@ -255,7 +256,7 @@ export class AiService {
       // (the server's own source already hands over the list that is IN FORCE at the target node; a client-supplied list is only trusted for global, unexpired Constraints)
       const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && c.reach !== 'position' && !(c.validUntil && c.validUntil < new Date().toISOString().slice(0, 10)) && !seen.has(c.id))];
       // guardrails = the spec's own rules + every Confirmed Constraint of the workspace (applied automatically)
-      const guardrails = [...new Set([...(req.specGuardrails ?? []).map((g) => g.trim()).filter(Boolean), ...all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}`)])];
+      const guardrails = [...new Set([...(req.specGuardrails ?? []).map((g) => g.trim()).filter(Boolean), ...all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}${exampleSuffix(c.examples)}`)])];
       const task = [
         `## کار: ${req.deliverableTitle}`,
         req.specTarget ? `هدف جریان کار: ${req.specTarget}` : '',

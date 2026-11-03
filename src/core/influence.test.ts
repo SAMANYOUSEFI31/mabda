@@ -50,3 +50,30 @@ test('an object nothing rests on shapes nothing but its own sub-tree; archived d
   assert.deepEqual(i.shapes.assets.map((d) => d.id), ['viaChild']);
   assert.deepEqual(i.shapedBy.dependencies.map((o) => o.id), ['x'], 'child rests on x');
 });
+
+import { aboutSentence, influenceSummary } from './influence';
+import type { Influence } from './influence';
+
+const inf = (b: number, a: number): Influence => ({
+  shapedBy: { dependencies: Array(b).fill({}) as never, constraints: [], exceptions: [], inputs: [] },
+  shapes: { dependents: Array(a).fill({}) as never, assets: [], scope: { kind: 'global', nodeIds: [], exceptNodeIds: [] } },
+});
+test('influenceSummary: «N چیز روی این اثر دارد و M چیز از آن اثر می‌گیرد» in all four shapes', () => {
+  assert.equal(influenceSummary(inf(2, 3)).sentence, '2 چیز روی این اثر دارد و 3 چیز از آن اثر می‌گیرد.');
+  assert.equal(influenceSummary(inf(2, 0)).sentence, '2 چیز روی این اثر دارد و چیزی از آن اثر نمی‌گیرد.');
+  assert.equal(influenceSummary(inf(0, 4), (n) => `«${n}»`).sentence, 'چیزی روی این اثر ندارد و «4» چیز از آن اثر می‌گیرد.');
+  assert.equal(influenceSummary(inf(0, 0)).sentence, 'هنوز چیزی به این وصل نیست.');
+  assert.deepEqual([influenceSummary(inf(1, 5)).before, influenceSummary(inf(1, 5)).after], [1, 5]);
+});
+
+test('aboutSentence: one plain sentence — kind, place, reach, and only when it matters that it is not final', () => {
+  assert.equal(aboutSentence({ type: 'Constraint', status: 'Confirmed' }, 'آفر'), 'خط قرمزی در «آفر»؛ همه‌جا اعمال می‌شود.');
+  assert.equal(aboutSentence({ type: 'Constraint', status: 'Confirmed', reach: 'position' }, 'آفر'), 'خط قرمزی در «آفر»؛ فقط در همین بخش اعمال می‌شود.');
+  assert.equal(aboutSentence({ type: 'Fact', status: 'Confirmed' }, 'مخاطب'), 'واقعیتی در «مخاطب».');
+  assert.equal(aboutSentence({ type: 'Decision', status: 'Confirmed' }, 'قیمت'), 'تصمیمی در «قیمت».');
+  assert.equal(aboutSentence({ type: 'Decision', status: 'Confirmed', reach: 'global' }, 'قیمت'), 'تصمیمی در «قیمت»؛ همه‌جا اعمال می‌شود.');
+  assert.equal(aboutSentence({ type: 'Fact', status: 'Proposed' }, 'مخاطب'), 'واقعیتی در «مخاطب» که هنوز تأیید نشده.');
+  assert.equal(aboutSentence({ type: 'Fact', status: 'Confirmed', assumption: true }, 'مخاطب'), 'فرضی در «مخاطب» که هنوز واقعیت نیست.');
+  assert.equal(aboutSentence({ type: 'Fact', status: 'Confirmed' }, 'مخاطب', { review: true }), 'واقعیتی در «مخاطب» که نیاز به بازبینی دارد.');
+  assert.equal(aboutSentence({ type: 'Fact', status: 'Confirmed' }, ''), 'واقعیتی.');
+});

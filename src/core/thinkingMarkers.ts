@@ -3,6 +3,8 @@
  * WITHOUT a separate section: a line that STARTS with `[ایده]` `[سؤال]` `[فرض]` `[تصمیم باز]` (or `[Idea]` `[Question]`
  * `[Assumption]` `[Open Decision]`) is a derived «thinking item». Pure.
  *
+ *  • NO SYNTAX NEEDED: a line that ENDS with `؟` or `?` is a «question» by itself (the user never has to learn a bracket);
+ *    an explicit marker on the same line wins. `markLine` writes a marker for the user from a small menu
  *  • derived, never stored: the note text is the only thing that exists, and it is never rewritten
  *  • tied to its note by note id + a hash of the line, so a soft re-match survives a small edit
  *  • notes are never injected into a model, so neither are their items; an item only becomes knowledge when the user
@@ -18,6 +20,8 @@ export const THINKING_FA: Record<ThinkingKind, string> = { idea: 'ایده', que
 
 export interface ThinkingItem {
   kind: ThinkingKind;
+  /** true when the kind was recognised from the line's ending (؟ / ?), not from a bracket marker */
+  inferred?: boolean;
   /** the text after the marker (as the user wrote it, trimmed) */
   text: string;
   /** 0-based line of the note */
@@ -47,12 +51,26 @@ export function lineHash(text: string): string {
   return h.toString(36);
 }
 
+/** the line ends with ؟ or ? (closing quotes / brackets / invisible marks / spaces after it are ignored); a heading (`#`) and a bare «؟» are not questions */
+const TAIL = new RegExp(`[\\s${MARKS}»"')\\]}”’]*$`);
+export function isQuestionLine(line: string): boolean {
+  const t = line.replace(TAIL, '');
+  if (!/[؟?]$/.test(t)) return false;
+  const body = line.replace(LEAD, '').trim();
+  if (!/\s/.test(body) && body.includes('://')) return false; // a bare link that ends with «?»
+  return !body.startsWith('#') && /[\p{L}\p{N}]/u.test(t.slice(0, -1));
+}
+
 export function parseThinking(content: string): ThinkingItem[] {
   const out: ThinkingItem[] = [];
   content.split(/\r?\n/).forEach((raw, line) => {
     const rest = raw.replace(LEAD, '');
     const m = MARKER.exec(rest);
-    if (!m) return; // a marker in the middle of a line is not a marker
+    if (!m) {
+      // a marker in the middle of a line is not a marker; but a line that ends with a question mark is a question
+      if (isQuestionLine(rest)) out.push({ kind: 'question', inferred: true, text: rest.trim(), line, hash: lineHash(rest) });
+      return;
+    }
     const text = rest.slice(m[0].length).trim();
     if (!text) return;
     out.push({ kind: KIND_OF(m[1]), text, line, hash: lineHash(text) });
@@ -103,3 +121,45 @@ export function headingSections(content: string): Array<{ title: string; body: s
   return out.map((s) => ({ title: s.title, body: s.lines.join('\n').trim() }));
 }
 export const canSplit = (content: string) => headingSections(content).length >= 2;
+
+/** the marker written for each kind (Persian; the parser reads Latin too) */
+export const MARKER_OF: Record<ThinkingKind, string> = { idea: '[ایده]', question: '[سؤال]', assumption: '[فرض]', open_decision: '[تصمیم باز]' };
+
+/**
+ * «علامت بزن»: put (or replace, or with `null` remove) the marker of line `line` — the user never types a bracket.
+ * Only that line changes; its bullet / number, its text and every other line stay exactly as written. A line that is already
+ * recognised as that kind (explicitly, or as a question by its «؟») is left as is. Pure.
+ */
+export function markLine(content: string, line: number, kind: ThinkingKind | null): string {
+  const lines = content.split('\n');
+  const raw = lines[line];
+  if (raw === undefined) return content;
+  const cr = raw.endsWith('\r') ? '\r' : '';
+  const body = cr ? raw.slice(0, -1) : raw;
+  const lead = LEAD.exec(body)?.[0] ?? '';
+  const rest = body.slice(lead.length);
+  const m = MARKER.exec(rest);
+  const text = m ? rest.slice(m[0].length) : rest;
+  if (!text.trim()) return content;
+  if (kind === null) { if (!m) return content; lines[line] = `${lead}${text}${cr}`; return lines.join('\n'); }
+  if (m && KIND_OF(m[1]) === kind) return content;
+  if (!m && kind === 'question' && isQuestionLine(rest)) return content;
+  lines[line] = `${lead}${MARKER_OF[kind]} ${text}${cr}`;
+  return lines.join('\n');
+}
+
+/** a line as it is SHOWN: the bracket marker is not displayed (the badge says it); bullet and text stay */
+export function displayLine(line: string): string {
+  const lead = LEAD.exec(line)?.[0] ?? '';
+  const rest = line.slice(lead.length);
+  const m = MARKER.exec(rest);
+  return m ? `${lead}${rest.slice(m[0].length)}` : line;
+}
+
+/** the kind a line currently has (explicit marker, or a question by its ending) — for the checked entry of the menu */
+export function kindOfLine(line: string): ThinkingKind | null {
+  const rest = line.replace(LEAD, '');
+  const m = MARKER.exec(rest);
+  if (m) return KIND_OF(m[1]);
+  return isQuestionLine(rest) ? 'question' : null;
+}

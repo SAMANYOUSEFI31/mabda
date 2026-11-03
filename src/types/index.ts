@@ -74,6 +74,8 @@ export interface Measurement {
 /** the user's verdict on a decision's expectation, written with «نتیجه چه شد؟» */
 export type ExpectationVerdict = 'met' | 'partial' | 'missed';
 
+export interface RedlineExample { kind: 'good' | 'bad'; text: string }
+
 export interface ContextObject {
   id: string;
   workspaceId: string;
@@ -92,6 +94,8 @@ export interface ContextObject {
   slotKey?: string;
   /** how far the object's effect reaches: 'position' = its node and sub-nodes; 'global' = everywhere. Absent = the type's default (Constraint: global, Fact/Decision: position) */
   reach?: 'global' | 'position';
+  /** up to three short «right / wrong» examples of a red line (a Constraint, or a Decision that reaches everywhere): they travel next to it into the AI request, the Context pack, MCP and the validator. Never on samples */
+  examples?: RedlineExample[];
   /** ISO date after which the object no longer applies (never injected, kept in history). Absent = no end */
   validUntil?: string;
   /** a Fact that is a working assumption: never «confirmed knowledge», even if its status is Confirmed. It is reviewed by `reviewBy` */

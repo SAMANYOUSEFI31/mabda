@@ -20,7 +20,7 @@ const TABS = [
 ];
 
 const audit = () => {
-  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], edges: [], primaries: 0 };
+  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], edges: [], canvas: [], primaries: 0, dimmedChecked: 0 };
   // contrast: composite ancestor backgrounds, compare with text color (WCAG relative luminance)
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
   const over = (top, bot) => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 });
@@ -37,6 +37,8 @@ const audit = () => {
     if (own) {
       const fs = parseFloat(getComputedStyle(el).fontSize);
       const fg = parse(getComputedStyle(el).color);
+      // transparency of any ancestor (opacity-*) lowers the real contrast too — it is part of the measurement
+      if (fg) { let op = 1; for (let a = el; a; a = a.parentElement) op *= parseFloat(getComputedStyle(a).opacity); fg.a *= op; }
       if (fg && !el.closest('[disabled], .is-disabled, :disabled')) {
         const bg = bgOf(el); const f = over(fg, bg);
         const l1 = lum(f), l2 = lum(bg); const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
@@ -59,6 +61,30 @@ const audit = () => {
         out.touch.push(`${Math.round(r.width)}x${Math.round(r.height)} <${el.tagName.toLowerCase()}> "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}"`);
       }
     }
+  }
+  // canvas toolbar: at most FIVE visible controls (docs/canvas-design.md); the «⋯» overflow is not one of them
+  const tb = document.querySelector('[data-testid=canvas-toolbar]');
+  if (tb && vis(tb)) {
+    const controls = [...tb.children].filter((c) => vis(c) && !c.hasAttribute('data-toolbar-overflow'));
+    if (controls.length > 5) out.canvas.push(`toolbar shows ${controls.length} controls (max 5)`);
+  }
+  // focus mode: a card outside the selection is quieter by background and border — its title must stay readable (≥ 3:1, opacity counted)
+  for (const t of document.querySelectorAll('[data-dimmed=true] [data-card-title]')) {
+    if (!vis(t)) continue;
+    out.dimmedChecked++;
+    const fg = parse(getComputedStyle(t).color); let op = 1;
+    for (let a = t; a; a = a.parentElement) op *= parseFloat(getComputedStyle(a).opacity);
+    if (!fg) continue;
+    fg.a *= op; const bg = bgOf(t); const f = over(fg, bg);
+    const ratio = (Math.max(lum(f), lum(bg)) + 0.05) / (Math.min(lum(f), lum(bg)) + 0.05);
+    if (ratio < 3) out.canvas.push(`dimmed card title ${ratio.toFixed(2)}:1 "${t.textContent.trim().slice(0, 24)}"`);
+  }
+  // inspector first view: one plain sentence, at most two actions
+  const ins = document.querySelector('[data-testid=inspector-object]');
+  if (ins && vis(ins)) {
+    if (!ins.querySelector('[data-testid=inspector-about]')) out.canvas.push('inspector: no plain sentence');
+    const acts = [...(ins.querySelector('[data-testid=inspector-actions]')?.querySelectorAll('button') ?? [])].filter(vis);
+    if (acts.length > 2) out.canvas.push(`inspector shows ${acts.length} actions (max 2)`);
   }
   // canvas lines: contrast ≥ 3:1 against the canvas background, stroke ≥ 1.5px, arrow head ≥ 10px
   const stage = document.querySelector('[data-testid=canvas-stage]');
@@ -100,8 +126,9 @@ for (const size of SIZES) {
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/${name}-${size.name}.png`, fullPage: false });
     const r = await page.evaluate(audit);
-    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.primaries > 1;
-    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
+    if (r.dimmedChecked) console.log(`  [${size.name}] ${name}: ${r.dimmedChecked} dimmed card titles measured`);
+    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.canvas.length || r.primaries > 1;
+    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges', 'canvas']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
   };
   const goTab = async (t) => {
     const mobile = size.width < 768;
@@ -164,7 +191,8 @@ for (const size of SIZES) {
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
   await layoutTab('رابطه‌ها'); await shoot('canvas-relations');
-  await page.locator('[data-item-id^="o:"]').first().click({ force: true }).catch(() => {}); await page.waitForTimeout(250); await shoot('canvas-relations-selected');
+  await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(350); await shoot('canvas-relations-selected');
+  await page.getByTestId('canvas-inspector').getByRole('button', { name: /^به چه چیزی وابسته است/ }).click({ timeout: 2000 }).catch(() => {}); await page.getByTestId('canvas-inspector').getByRole('button', { name: /^چه چیزی روی آن سوار است/ }).click({ timeout: 2000 }).catch(() => {}); await shoot('canvas-inspector-open');
   await layoutTab('تابلو'); await shoot('canvas-board');
   await layoutTab('آزاد'); await shoot('canvas-free');
   await layoutTab('رابطه‌ها');

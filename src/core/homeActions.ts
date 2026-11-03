@@ -10,8 +10,8 @@
 
 import { formatNumber } from '../ui/format';
 
-export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due';
-export type HomeTarget = { type: 'asset' | 'object'; id: string } | { type: 'contradictions' | 'proposals' | 'weekly' | 'due' };
+export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking';
+export type HomeTarget = { type: 'asset' | 'object'; id: string } | { type: 'contradictions' | 'proposals' | 'weekly' | 'due' | 'thinking' };
 export interface HomeAction { id: string; kind: HomeActionKind; text: string; button: string; target: HomeTarget; score: number }
 
 export interface HomeInput {
@@ -26,6 +26,8 @@ export interface HomeInput {
   proposedCount: number;
   weekly: { due: boolean; changes: number };
   dueCount: number;
+  /** open questions and open decisions written in notes (a line that ends with «؟» counts) that have not become knowledge */
+  openThinking?: number;
 }
 
 export const HOME_TOP = 3;
@@ -48,6 +50,8 @@ export function homeActions(input: HomeInput): { top: HomeAction[]; rest: HomeAc
   if (input.proposedCount > 0) all.push({ id: 'proposals', kind: 'proposals', text: `${fa(input.proposedCount)} پیشنهاد منتظر تأیید توست.`, button: 'مرور کن', target: { type: 'proposals' }, score: 60 });
   if (input.weekly.due) all.push({ id: 'weekly', kind: 'weekly', text: `بازبینی هفتگی: ${fa(input.weekly.changes)} تغییر در این هفته بوده.`, button: 'شروع (۵ دقیقه)', target: { type: 'weekly' }, score: 55 });
   if (input.dueCount > 0) all.push({ id: 'due', kind: 'due', text: `${fa(input.dueCount)} مورد موعد بازبینی دارد.`, button: 'ببین', target: { type: 'due' }, score: 50 });
+
+  if ((input.openThinking ?? 0) > 0) all.push({ id: 'thinking', kind: 'thinking', text: `${fa(input.openThinking!)} سؤال یا تصمیم باز در یادداشت‌هایت مانده است.`, button: 'ببین', target: { type: 'thinking' }, score: 45 });
 
   all.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   const seen = new Set<HomeActionKind>();

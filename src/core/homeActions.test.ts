@@ -63,3 +63,13 @@ test('targets: an output goes to the assets, a decision opens, the rest scroll t
   assert.deepEqual(t.weekly, { type: 'weekly' });
   assert.deepEqual(t.due, { type: 'due' });
 });
+
+test('open questions / decisions written in notes: one calm line, below every engine kind; absent when there are none', () => {
+  assert.equal(homeActions(base()).total, 0);
+  const r = homeActions(base({ openThinking: 3 }));
+  assert.deepEqual(r.top.map((a) => [a.kind, a.target]), [['thinking', { type: 'thinking' }]]);
+  assert.match(r.top[0].text, /۳|3/);
+  const busy = homeActions(base({ openThinking: 1, proposedCount: 2, dueCount: 1, weekly: { due: true, changes: 1 } }));
+  assert.deepEqual(busy.top.map((a) => a.kind), ['proposals', 'weekly', 'due']);
+  assert.deepEqual(busy.rest.map((a) => a.kind), ['thinking']);
+});

@@ -370,6 +370,13 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 17,
+    name: 'context_objects.examples: up to three right / wrong examples of a red line (a JSON array of {kind, text}). NULL = none — old data is untouched',
+    up(db) {
+      db.exec('ALTER TABLE context_objects ADD COLUMN examples TEXT;');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

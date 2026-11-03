@@ -598,3 +598,23 @@ test('a saved pack carries the metrics section too, separate from the facts', as
     await c.close();
   } finally { t.close(); }
 });
+
+test('red-line examples travel with the rule over MCP (get_context, get_gaps guardrails, the request prompt) and over the pack route', async () => {
+  const t = await boot();
+  try {
+    const made = await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Constraint', provenance: 'User Input', title: 'قید-مثال-یکتا', content: 'هرگز وعدهٔ سود قطعی نده', nodeId: 'business', examples: [{ kind: 'good', text: 'ممکن است سود کنید' }, { kind: 'bad', text: 'سود تضمینی ۳۰٪' }] });
+    assert.equal(made.status, 200);
+    const c = await t.connect((await t.token()).token);
+    const ctx = await t.call(c, 'get_context', { types: ['Constraint'] });
+    const row = ctx.data.facts.find((f: any) => f.title === 'قید-مثال-یکتا');
+    assert.deepEqual(row.examples.map((e: any) => e.kind), ['good', 'bad']);
+    assert.match(ctx.text, /قید-مثال-یکتا.*مثال درست: ممکن است سود کنید؛ مثال نادرست: سود تضمینی ۳۰٪/);
+    const gaps = await t.call(c, 'get_gaps', { specId: 'main_positioning' });
+    assert.ok((gaps.data.guardrails as string[]).some((g) => g.includes('قید-مثال-یکتا') && g.includes('مثال نادرست: سود تضمینی ۳۰٪')));
+    const prompt = await c.getPrompt({ name: 'request_question', arguments: { request: 'سؤال' } });
+    assert.match(String((prompt.messages[0].content as { text: string }).text), /مثال درست: ممکن است سود کنید/);
+    const pack = await t.api('POST', '/workspaces/ws_studio/packs', {});
+    assert.match(JSON.stringify(pack.json), /مثال نادرست: سود تضمینی/);
+    await c.close();
+  } finally { t.close(); }
+});

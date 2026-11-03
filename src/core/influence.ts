@@ -67,3 +67,25 @@ export function influenceOf(objectId: string, objects: ContextObject[], nodes: T
   }
   return { shapedBy: { dependencies, constraints, exceptions, inputs }, shapes: { dependents, assets, scope: { kind, nodeIds: nodeIds.filter((n) => !except.has(n)), exceptNodeIds: [...except] } } };
 }
+
+/** how many things shape this one (above) and how many it shapes (below): the one-line summary of the inspector */
+export function influenceSummary(inf: Influence, fmt: (n: number) => string = String): { before: number; after: number; sentence: string } {
+  const before = inf.shapedBy.dependencies.length + inf.shapedBy.constraints.length + inf.shapedBy.inputs.length;
+  const after = inf.shapes.dependents.length + inf.shapes.assets.length;
+  const sentence = !before && !after
+    ? 'هنوز چیزی به این وصل نیست.'
+    : before && after ? `${fmt(before)} چیز روی این اثر دارد و ${fmt(after)} چیز از آن اثر می‌گیرد.`
+    : before ? `${fmt(before)} چیز روی این اثر دارد و چیزی از آن اثر نمی‌گیرد.`
+    : `چیزی روی این اثر ندارد و ${fmt(after)} چیز از آن اثر می‌گیرد.`;
+  return { before, after, sentence };
+}
+
+const KIND_FA = { Fact: 'واقعیتی', Decision: 'تصمیمی', Constraint: 'خط قرمزی' } as const;
+/** ONE plain sentence about an item for the top of the inspector: what it is, where, how far it reaches, and — only when it matters — that it is not final */
+export function aboutSentence(o: Pick<ContextObject, 'type' | 'status' | 'assumption' | 'reach'>, nodeLabel: string, opts: { review?: boolean; expired?: boolean } = {}): string {
+  const where = nodeLabel ? ` در «${nodeLabel}»` : '';
+  const base = o.assumption ? `فرضی${where}` : `${KIND_FA[o.type]}${where}`;
+  const reach = o.type === 'Constraint' || (o.type === 'Decision' && reachOf(o) === 'global') ? (reachOf(o) === 'global' ? '؛ همه‌جا اعمال می‌شود' : '؛ فقط در همین بخش اعمال می‌شود') : '';
+  const state = opts.expired ? ' که منقضی شده' : o.status === 'Proposed' ? ' که هنوز تأیید نشده' : o.status === 'Needs Review' || opts.review ? ' که نیاز به بازبینی دارد' : o.assumption ? ' که هنوز واقعیت نیست' : '';
+  return `${base}${state}${reach}.`;
+}

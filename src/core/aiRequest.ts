@@ -15,6 +15,7 @@
 
 import type { ContextChange, ContextObject, ContextRelationship, GapItem, Measurement, Metric, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
+import { exampleLines } from './redlineExamples';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { AmbiguityMap } from './contextEngine';
 import { effectiveFor, IN_FORCE, reachOf } from './effectiveContext';
@@ -373,7 +374,7 @@ function renderDoc(o: ContextObject, nodePath: string): string {
   const extra: string[] = [];
   if (o.type === 'Decision' && o.record?.question) extra.push(`سؤال تصمیم: ${o.record.question}`);
   if (o.type === 'Decision' && o.record?.expectation) extra.push(`انتظار: ${o.record.expectation}`);
-  const body = [o.title, o.content.replace(/\n{2,}/g, '\n').trim(), ...extra].filter(Boolean).join('\n');
+  const body = [o.title, o.content.replace(/\n{2,}/g, '\n').trim(), ...extra, ...exampleLines(o)].filter(Boolean).join('\n');
   const attrs = `id="${refOf(o)}" type="${o.type}" node="${safe(nodePath)}" source="${SOURCE_FA[o.provenance]}"${o.reviewBy ? ` review_by="${o.reviewBy}"` : ''}`;
   return `<document ${attrs}>\n${safe(body)}\n</document>`;
 }
