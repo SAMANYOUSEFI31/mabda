@@ -104,7 +104,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <div className="flex min-w-space-0 flex-wrap items-baseline gap-x-inline-sm">
             <span className="label-md tabular-nums text-text-subtlest">{path}</span>
             <h3 id={`node-${node.id}`} tabIndex={-1} className="doc-anchor heading-xs text-text-default">{node.label}</h3>
-            {node.isSystem ? <Badge intent="neutral" icon="Lock">سیستمی</Badge> : null}
             {node.description && <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>}
           </div>
           <div className="flex flex-wrap items-center gap-inline-xs">
@@ -123,9 +122,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
-                { label: 'جابه‌جایی', icon: 'Network', disabled: !!node.isSystem, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                { label: 'جابه‌جایی', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
                 { divider: true },
-                { label: 'حذف', icon: 'Trash2', intent: 'danger', disabled: !!node.isSystem, onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
+                { label: 'حذف', icon: 'Trash2', intent: 'danger', onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
               ]}
             />
           </div>

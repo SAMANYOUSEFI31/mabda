@@ -4,15 +4,17 @@
  */
 
 import type { ContextType } from '../types';
+import { TEMPLATE_SCHEMA } from './startTemplate';
+import type { StartTemplate, TemplateSample } from './startTemplate';
 
-export interface StarterSample { type: ContextType; nodeId: string; title: string; content: string; slotKey?: string; facets?: string[] }
-export interface Starter { id: string; title: string; description: string; samples: StarterSample[] }
+/** the kinds of business below are ordinary start templates (the same data format as any other): they bring no nodes, only examples; `node` is a hint for a node of the workspace */
+export type Starter = StartTemplate;
 
-const s = (type: ContextType, nodeId: string, title: string, content: string, slotKey?: string, facets?: string[]): StarterSample => ({ type, nodeId, title, content: `مثال: ${content}`, ...(slotKey ? { slotKey } : {}), ...(facets ? { facets } : {}) });
+const s = (type: ContextType, nodeId: string, title: string, content: string, slotKey?: string, facets?: string[]): TemplateSample => ({ type, node: nodeId, title, content: `مثال: ${content}`, ...(slotKey ? { slotKey } : {}), ...(facets ? { facets } : {}) });
 
 export const STARTERS: Starter[] = [
   {
-    id: 'cohort_course', title: 'دوره / کوهورت', description: 'آموزش گروهی با شروع و پایان مشخص و ظرفیت محدود.',
+    id: 'cohort_course', title: 'دوره / کوهورت', description: 'آموزش گروهی با شروع و پایان مشخص و ظرفیت محدود.', schema: TEMPLATE_SCHEMA, version: 1, nodes: [],
     samples: [
       s('Fact', 'business', 'حوزهٔ آموزش', 'آموزش طراحی محصول به طراحان تازه‌کار.', 'domain_field'),
       s('Decision', 'business', 'مخاطب اصلی', 'طراحان با ۱ تا ۳ سال سابقه که می‌خواهند مسیر ارشد شوند.', 'target_audience', ['مخاطب اصلی']),
@@ -25,7 +27,7 @@ export const STARTERS: Starter[] = [
     ],
   },
   {
-    id: 'services', title: 'خدمات', description: 'کار پروژه‌ای یا مشاوره‌ای برای مشتری‌های مشخص.',
+    id: 'services', title: 'خدمات', description: 'کار پروژه‌ای یا مشاوره‌ای برای مشتری‌های مشخص.', schema: TEMPLATE_SCHEMA, version: 1, nodes: [],
     samples: [
       s('Fact', 'business', 'حوزهٔ خدمت', 'طراحی و اجرای کمپین محتوا برای کسب‌وکارهای کوچک.', 'domain_field'),
       s('Decision', 'business', 'مشتری ایدئال', 'صاحب کسب‌وکار ۵ تا ۲۰ نفره که تیم بازاریابی ندارد.', 'target_audience', ['مخاطب اصلی']),
@@ -38,7 +40,7 @@ export const STARTERS: Starter[] = [
     ],
   },
   {
-    id: 'product', title: 'محصول', description: 'محصول نرم‌افزاری یا فیزیکی با قیمت و نسخه‌های مشخص.',
+    id: 'product', title: 'محصول', description: 'محصول نرم‌افزاری یا فیزیکی با قیمت و نسخه‌های مشخص.', schema: TEMPLATE_SCHEMA, version: 1, nodes: [],
     samples: [
       s('Fact', 'business', 'حوزهٔ محصول', 'اپلیکیشن مدیریت وظیفه برای تیم‌های دورکار.', 'domain_field'),
       s('Decision', 'business', 'مخاطب اصلی', 'مدیر تیم‌های ۵ تا ۱۵ نفره در شرکت‌های نرم‌افزاری.', 'target_audience', ['مخاطب اصلی']),
@@ -51,7 +53,7 @@ export const STARTERS: Starter[] = [
     ],
   },
   {
-    id: 'insta_shop', title: 'فروشگاه اینستاگرامی', description: 'فروش مستقیم از صفحه با ارسال پستی و پیام خصوصی.',
+    id: 'insta_shop', title: 'فروشگاه اینستاگرامی', description: 'فروش مستقیم از صفحه با ارسال پستی و پیام خصوصی.', schema: TEMPLATE_SCHEMA, version: 1, nodes: [],
     samples: [
       s('Fact', 'business', 'حوزهٔ فروشگاه', 'لوازم دست‌ساز چوبی برای آشپزخانه.', 'domain_field'),
       s('Decision', 'business', 'مخاطب اصلی', 'خانم‌های ۲۵ تا ۴۰ ساله که برای خانهٔ جدید یا هدیه می‌خرند.', 'target_audience', ['مخاطب اصلی']),

@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../types';
-import { DEFAULT_TREE_NODES } from '../core/specs';
 import type { TreeNode } from '../types';
 import { useAiStatus } from '../services/aiStatus';
 import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber } from '../ui';
@@ -33,7 +32,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
   );
 
-  const nodeLabel = (id: string) => (nodes ?? DEFAULT_TREE_NODES).find((n) => n.id === id)?.label ?? id;
+  const nodeLabel = (id: string) => (nodes ?? []).find((n) => n.id === id)?.label ?? id;
   const submitCustom = (gap: GapItem) => {
     const v = customAnswers[gap.key]?.trim();
     if (v) onAnswerGap(gap, v);

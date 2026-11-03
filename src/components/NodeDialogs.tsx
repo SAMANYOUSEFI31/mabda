@@ -72,7 +72,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? `گرهٔ جدید زیر «${parent?.label ?? ''}»` : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'rename' && node?.isSystem ? 'گرهٔ سیستمی است: فقط نامش قابل تغییر است، حذف و جابه‌جایی ندارد.' : state.kind === 'create' ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined}
+        description={state.kind === 'create' ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>

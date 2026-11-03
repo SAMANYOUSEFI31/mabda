@@ -24,12 +24,12 @@ test('a workstream template is the spec without its id', () => {
   assert.ok(!('id' in t) && t.title === LIBRARY_SPECS[0].title);
 });
 
-test('the four starters: every sample is an example (text says «مثال»), uses real system nodes, and a slotKey only where a library workstream asks for it', () => {
+test('the four starters: every sample is an example (text says «مثال»), hints at nodes of the default start, and a slotKey only where a library workstream asks for it', () => {
   assert.deepEqual(STARTERS.map((s) => s.id), ['cohort_course', 'services', 'product', 'insta_shop']);
   const nodeIds = new Set(DEFAULT_TREE_NODES.map((n) => n.id));
   for (const st of STARTERS) {
     assert.ok(st.samples.length >= 6, st.id);
-    assert.ok(st.samples.every((x) => x.content.startsWith('مثال:') && nodeIds.has(x.nodeId)), st.id);
-    assert.equal(new Set(st.samples.map((x) => `${x.nodeId}|${x.title}`)).size, st.samples.length, `${st.id}: no duplicate (node, title)`);
+    assert.ok(st.samples.every((x) => x.content.startsWith('مثال:') && nodeIds.has(x.node)), st.id);
+    assert.equal(new Set(st.samples.map((x) => `${x.node}|${x.title}`)).size, st.samples.length, `${st.id}: no duplicate (node, title)`);
   }
 });

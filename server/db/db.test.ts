@@ -49,7 +49,7 @@ test('every table carries user_id and workspace_id', () => {
 test('a new workspace gets the 5 system nodes; data of another user/workspace is invisible', () => {
   const { repo, s } = fresh();
   assert.deepEqual(repo.listNodes(s).map((n) => n.id), ['business', 'brand', 'product', 'offer', 'content']);
-  assert.ok(repo.listNodes(s).every((n) => n.isSystem));
+  assert.equal(repo.listNodes(s).length, 5, 'the starting tree is back'); assert.ok(repo.listNodes(s).every((n) => !('isSystem' in n)), 'no node is locked');
   repo.saveWorkspace(U, ws('w2'));
   const o = repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'business' });
   assert.equal(repo.listObjects({ userId: U, workspaceId: 'w2' }).length, 0);
@@ -342,7 +342,7 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   assert.ok(!repo.listNotes(s).some((n) => n.content === 'n'), 'the stray note is gone; the showcase notes are back');
   assert.ok(!repo.listObjects(s).some((o) => o.title === 'x'));
   assert.equal(repo.listLedger(s).length, 0);
-  assert.equal(repo.listNodes(s).filter((n) => n.isSystem).length, 5);
+  assert.equal(repo.listNodes(s).length, 5);
 });
 
 test('reach / validUntil: migration 11 leaves old rows untouched (type default), values are validated, an edit is a Change and bumps the version', () => {

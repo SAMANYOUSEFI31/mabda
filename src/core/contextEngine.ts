@@ -12,13 +12,12 @@ import {  ContextObject,
   TreeNode,
   WorkstreamSpec,
 } from '../types';
-import { DEFAULT_TREE_NODES } from './specs';
 
 /**
  * Returns parent chain for a node to resolve context inheritance:
- * e.g. 'offer' -> ['offer', 'product', 'business']
+ * e.g. a node → [node, its parent, … its root] (the tree is the workspace's own)
  */
-export function getAncestorNodeIds(nodeId: string, nodes: TreeNode[] = DEFAULT_TREE_NODES): string[] {
+export function getAncestorNodeIds(nodeId: string, nodes: TreeNode[]): string[] {
   const result: string[] = [nodeId];
   let current = nodes.find((n) => n.id === nodeId);
   while (current && current.parentId) {
@@ -35,7 +34,7 @@ export function getAncestorNodeIds(nodeId: string, nodes: TreeNode[] = DEFAULT_T
 export function resolveActiveContextsForNode(
   nodeId: string,
   allObjects: ContextObject[],
-  nodes: TreeNode[] = DEFAULT_TREE_NODES
+  nodes: TreeNode[]
 ): ContextObject[] {
   const validNodeIds = new Set(getAncestorNodeIds(nodeId, nodes));
 

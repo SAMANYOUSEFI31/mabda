@@ -4,13 +4,15 @@ import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
   Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, RedlineExample, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict,
 } from '../../src/types/index.ts';
-import { canCreateUnder, canDelete, canMove, canRename, nextOrder, reorderSiblings } from '../../src/core/nodeTree.ts';
+import { canCreateUnder, canDelete, canMove, canRename, defaultNodeId, nextOrder, reorderSiblings, resolveNodeId } from '../../src/core/nodeTree.ts';
+import { planNodes } from '../../src/core/startTemplate.ts';
+import type { StartTemplate } from '../../src/core/startTemplate.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
 import { actorOfSource, diffFields, statusChangeKind } from '../../src/core/changeLog.ts';
 import { pairKey } from '../../src/core/contradictionCandidates.ts';
 import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
-import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
+import { DEFAULT_START, LIBRARY } from '../../src/core/specs.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../src/core/metrics.ts';
 import { reasonAllowed } from '../../src/core/versionHistory.ts';
 import { isFeatureKey } from '../../src/core/usage.ts';
@@ -89,7 +91,7 @@ const rowToObject = (r: Record<string, unknown>): ContextObject => ({
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
   id: r.id as string, label: r.label as string, description: r.description as string,
-  ...(r.parent_id ? { parentId: r.parent_id as string } : {}), isSystem: !!r.is_system, order: r.ord as number,
+  ...(r.parent_id ? { parentId: r.parent_id as string } : {}), order: r.ord as number,
 });
 const rowToNote = (r: Record<string, unknown>): Note => ({
   id: r.id as string, workspaceId: r.workspace_id as string, nodeId: r.node_id as string, content: r.content as string,
@@ -131,7 +133,7 @@ export class Repo {
         // the showcase workspace is not counted: it never uses up a plan's workspace allowance
         if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
-        this.seedSystemNodes({ userId, workspaceId: ws.id });
+        this.seedStartNodes({ userId, workspaceId: ws.id });
       } else {
         const r = this.db.prepare('UPDATE workspaces SET data = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(ws), ws.id, userId);
         if (!r.changes) throw new RepoError('forbidden', 'این فضای کاری مال شما نیست.');
@@ -140,9 +142,17 @@ export class Repo {
     })();
   }
 
-  private seedSystemNodes(s: Scope) {
-    const ins = this.db.prepare('INSERT OR IGNORE INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,1,?)');
-    DEFAULT_TREE_NODES.forEach((n, i) => ins.run(n.id, s.userId, s.workspaceId, n.parentId ?? null, n.label, n.description, n.order ?? i));
+  /** the nodes of a start template (default: the ordinary starting point); none of them is locked */
+  private seedStartNodes(s: Scope, template: StartTemplate = DEFAULT_START) {
+    const ins = this.db.prepare('INSERT OR IGNORE INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)');
+    for (const n of planNodes(template, [], undefined, (k) => k)) ins.run(n.id, s.userId, s.workspaceId, n.parentId ?? null, n.label, n.description, n.order);
+  }
+  /** an empty / absent node id means «the default place»; a given one must exist */
+  private placeNode(s: Scope, nodeId: string | undefined): string {
+    const nodes = this.listNodes(s);
+    if (!nodeId) return defaultNodeId(nodes);
+    if (!nodes.some((n) => n.id === nodeId)) throw new RepoError('invalid', 'گرهٔ مقصد وجود ندارد.');
+    return nodeId;
   }
 
   /**
@@ -160,7 +170,7 @@ export class Repo {
         if (cols.includes('workspace_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ?`).run(s.workspaceId);
       }
       this.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(s.userId, `weekly_review:${s.workspaceId}`);
-      this.seedSystemNodes(s);
+      this.seedStartNodes(s);
     })();
   }
 
@@ -196,7 +206,7 @@ export class Repo {
     const nodes = this.listNodes(s);
     const ok = canCreateUnder(nodes, input.parentId, input.label);
     if (!ok.ok) throw new RepoError('invalid', ok.reason);
-    const node: TreeNode = { id: newId('nd'), label: input.label.trim(), description: input.description?.trim() ?? '', parentId: input.parentId, isSystem: false, order: nextOrder(nodes, input.parentId) };
+    const node: TreeNode = { id: newId('nd'), label: input.label.trim(), description: input.description?.trim() ?? '', parentId: input.parentId, order: nextOrder(nodes, input.parentId) };
     this.db.prepare('INSERT INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)')
       .run(node.id, s.userId, s.workspaceId, node.parentId, node.label, node.description, node.order);
     return node;
@@ -346,7 +356,7 @@ export class Repo {
 
   createObject(s: Scope, input: ObjectInput & { id?: string }, meta?: ChangeMeta): ContextObject {
     this.assertWorkspace(s);
-    this.requireNode(s, input.nodeId);
+    input = { ...input, nodeId: this.placeNode(s, input.nodeId) };
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
     if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
@@ -362,7 +372,7 @@ export class Repo {
 
   /** Raw insert for the one-time localStorage import: keeps id, status, timestamps and version as they were. */
   importObject(s: Scope, o: ContextObject, opts: { silent?: boolean } = {}) {
-    const node = this.listNodes(s).some((n) => n.id === o.nodeId) ? o.nodeId : 'business';
+    const node = resolveNodeId(this.listNodes(s), o.nodeId);
     // old localStorage data may carry the retired «Asset» type
     const type = CONTEXT_TYPES.includes(o.type) ? o.type : 'Fact';
     this.db.transaction(() => {
@@ -672,7 +682,7 @@ export class Repo {
 
   createNote(s: Scope, nodeId: string, content: string): Note {
     this.assertWorkspace(s);
-    this.requireNode(s, nodeId);
+    nodeId = this.placeNode(s, nodeId);
     const t = now();
     const n: Note = { id: newId('note'), workspaceId: s.workspaceId, nodeId, content, createdAt: t, updatedAt: t };
     this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, content, t, t);

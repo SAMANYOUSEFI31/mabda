@@ -127,7 +127,7 @@ export interface ContextRelationship {
 
 export type ContextChangeKind =
   | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
-  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note'
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note' | 'node_deleted'
   | 'metric_created' | 'metric_edited' | 'metric_archived' | 'measurement_added' | 'measurement_proposed' | 'measurement_removed';
 export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
 
@@ -155,7 +155,6 @@ export interface TreeNode {
   parentId?: string;
   description: string;
   /** system nodes can only be renamed: no delete, no move */
-  isSystem?: boolean;
   /** position among siblings */
   order?: number;
 }

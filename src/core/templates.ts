@@ -5,6 +5,8 @@
  */
 
 import type { ContextObject, TreeNode, WorkstreamSpec } from '../types';
+import { TEMPLATE_SCHEMA } from './startTemplate';
+import type { StartTemplate, TemplateNode } from './startTemplate';
 
 export interface NodeTemplateNode { label: string; description: string; children: NodeTemplateNode[] }
 export interface NodeTemplateObject { /** the child-index path from the template's root node ([] = the root itself) */ path: number[]; type: ContextObject['type']; title: string; content: string; facets?: string[]; slotKey?: string }
@@ -27,3 +29,18 @@ export function nodeTemplateOf(nodeId: string, nodes: TreeNode[], objects: Conte
 
 /** a workstream template is the spec without its id (the id is made when it is brought in) */
 export const workstreamTemplateOf = (spec: WorkstreamSpec): Omit<WorkstreamSpec, 'id'> => { const { id: _id, ...rest } = spec; return rest; };
+
+/**
+ * A saved node is the SAME versioned data format as a start template (`StartTemplate`): its nodes get keys from their path
+ * («n», «n.0», «n.0.1»), its knowledge becomes samples on those keys. The stored shape (`NodeTemplate`) stays as it is on disk;
+ * this is the one reading of it that the rest of the code uses.
+ */
+export function nodeTemplateToStart(t: NodeTemplate, id = 'node', version = 1): StartTemplate {
+  const keyOf = (path: number[]) => ['n', ...path].join('.');
+  const conv = (n: NodeTemplateNode, path: number[]): TemplateNode => ({ key: keyOf(path), label: n.label, description: n.description, ...(n.children.length ? { children: n.children.map((c, i) => conv(c, [...path, i])) } : {}) });
+  return {
+    schema: TEMPLATE_SCHEMA, id, version, title: t.root.label, description: t.root.description,
+    nodes: [conv(t.root, [])],
+    samples: t.objects.map((o) => ({ node: keyOf(o.path), type: o.type, title: o.title, content: o.content, ...(o.slotKey ? { slotKey: o.slotKey } : {}), ...(o.facets?.length ? { facets: o.facets } : {}) })),
+  };
+}

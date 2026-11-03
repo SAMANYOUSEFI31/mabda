@@ -5,48 +5,32 @@
 
 import { TreeNode, Workspace, WorkstreamSpec } from '../types';
 import { LIBRARY_SPECS } from './specLibrary';
+import { TEMPLATE_SCHEMA, templateTree } from './startTemplate';
+import type { StartTemplate } from './startTemplate';
 
-export const DEFAULT_TREE_NODES: TreeNode[] = [
-  {
-    id: 'business',
-    isSystem: true,
-    order: 0,
-    label: 'کسب‌وکار و بنیان',
-    description: 'هویت، مأموریت، چشم‌انداز و مدل کلی درآمدی',
-  },
-  {
-    id: 'brand',
-    isSystem: true,
-    order: 1,
-    label: 'برند و پیام',
-    parentId: 'business',
-    description: 'لحن، موقعیت‌یابی، تمایزها و ارزش‌های اساسی',
-  },
-  {
-    id: 'product',
-    isSystem: true,
-    order: 2,
-    label: 'محصول و خدمت',
-    parentId: 'business',
-    description: 'ویژگی‌ها، کارکردها و ارزش پیشنهادی کلیدی',
-  },
-  {
-    id: 'offer',
-    isSystem: true,
-    order: 3,
-    label: 'آفر و قیمت‌گذاری',
-    parentId: 'product',
-    description: 'بسته‌های قیمتی، شرایط تحویل و محدودیت‌های فروش',
-  },
-  {
-    id: 'content',
-    isSystem: true,
-    order: 4,
-    label: 'محتوا و بازاریابی',
-    parentId: 'brand',
-    description: 'ستون‌های محتوایی، کانال‌های توزیع و تقویم ایده‌ها',
-  },
-];
+/**
+ * The ordinary starting point of a new workspace (data, not law): five nodes any user may rename, move or delete. The keys are
+ * also the node ids of a brand-new workspace, which keeps the workflow hints (`nodeId`) below meaningful; a hint that points to a
+ * node that is gone just falls back to the default place (`resolveNodeId`).
+ */
+export const DEFAULT_START: StartTemplate = {
+  schema: TEMPLATE_SCHEMA, id: 'default', version: 1, title: 'کسب‌وکار و محصول', description: 'ساختار پیش‌فرض برای کسب‌وکار محصولی؛ هر گره‌اش را می‌شود عوض کرد.',
+  nodes: [{
+    key: 'business', label: 'کسب‌وکار و بنیان', description: 'هویت، مأموریت، چشم‌انداز و مدل کلی درآمدی',
+    children: [
+      { key: 'brand', label: 'برند و پیام', description: 'لحن، موقعیت‌یابی، تمایزها و ارزش‌های اساسی', children: [
+        { key: 'content', label: 'محتوا و بازاریابی', description: 'ستون‌های محتوایی، کانال‌های توزیع و تقویم ایده‌ها' },
+      ] },
+      { key: 'product', label: 'محصول و خدمت', description: 'ویژگی‌ها، کارکردها و ارزش پیشنهادی کلیدی', children: [
+        { key: 'offer', label: 'آفر و قیمت‌گذاری', description: 'بسته‌های قیمتی، شرایط تحویل و محدودیت‌های فروش' },
+      ] },
+    ],
+  }],
+  samples: [],
+};
+
+/** the starting tree as rows (some engines and tests want a concrete tree; real workspaces read their own from the database) */
+export const DEFAULT_TREE_NODES: TreeNode[] = templateTree(DEFAULT_START);
 
 export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
   {

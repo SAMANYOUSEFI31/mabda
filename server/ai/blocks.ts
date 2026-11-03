@@ -20,7 +20,7 @@ export function normalizeBlock(raw: unknown, index: number, used: Set<string>): 
       type: p.type as BlockProposal['type'],
       title: p.title.trim(),
       content: p.content.trim(),
-      nodeId: typeof p.nodeId === 'string' && p.nodeId.trim() ? p.nodeId.trim() : 'business',
+      nodeId: typeof p.nodeId === 'string' && p.nodeId.trim() ? p.nodeId.trim() : '', // '' = the default place (decided by the workspace's tree)
     };
     if (typeof p.reason === 'string' && p.reason.trim()) proposal.reason = p.reason.trim();
     block.proposal = proposal;

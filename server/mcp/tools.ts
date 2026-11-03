@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../../src/types/index.ts';
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
-import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
+import { ancestorIds, resolveNodeId, subtreeIds } from '../../src/core/nodeTree.ts';
 import { renderSavedPack } from '../db/packs.ts';
 import { renderAiRequest } from '../db/aiRequests.ts';
 import { REQUEST_KINDS } from '../../src/core/aiRequest.ts';
@@ -66,7 +66,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     const dels = repo.listDeliverables(scope);
     const built = new Set(dels.map((d) => d.deliverableId));
     const active = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
-    const tree = nodes.map((n) => ({ id: n.id, label: n.label, parentId: n.parentId ?? null, path: pathOf(nodes, n.id), isSystem: !!n.isSystem, confirmed: active.filter((o) => o.nodeId === n.id && o.status === 'Confirmed').length, unconfirmed: active.filter((o) => o.nodeId === n.id && o.status !== 'Confirmed').length }));
+    const tree = nodes.map((n) => ({ id: n.id, label: n.label, parentId: n.parentId ?? null, path: pathOf(nodes, n.id), confirmed: active.filter((o) => o.nodeId === n.id && o.status === 'Confirmed').length, unconfirmed: active.filter((o) => o.nodeId === n.id && o.status !== 'Confirmed').length }));
     const specs = specsOf(c).map((s) => ({
       id: s.id, title: s.title, target: s.target, guardrails: s.guardrails ?? [],
       deliverables: s.deliverables.map((d) => ({ id: d.id, title: d.title, dependsOn: d.dependsOn ?? [], built: built.has(d.id), locked: lockOf(d, s.deliverables, built).locked })),
@@ -235,7 +235,7 @@ export function buildMcpServer(c: McpContext): McpServer {
       try {
         const dup = existing.find((o) => o.title === u.title.trim() && o.content === u.content);
         if (dup) { results.push({ ok: true, id: dup.id, title: u.title, status: 'Proposed', note: 'همین پیشنهاد از قبل در صندوق است.' }); continue; }
-        const nodeId = u.nodeId && nodes.some((n) => n.id === u.nodeId) ? u.nodeId : 'business';
+        const nodeId = resolveNodeId(nodes, u.nodeId);
         const knownSlots = new Set(specsOf(c).flatMap((s) => [...s.requiredContext, ...s.suggestedContext, ...s.optionalContext].map((x) => x.key)));
         const slotKey = u.slotKey && knownSlots.has(u.slotKey) ? u.slotKey : undefined;
         // status is fixed here on purpose: nothing a client sends can make it Confirmed
