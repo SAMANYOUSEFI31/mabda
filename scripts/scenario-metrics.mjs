@@ -45,6 +45,7 @@ try {
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
 
     step(`[${width}] home: the plain count of expectation versus result`);
+    await page.locator('button[aria-controls="home-all"]').click(); // the full list is under «همه»
     const tally = page.getByTestId('expectation-tally');
     await tally.waitFor();
     assert.match(await tally.innerText(), /۱ به انتظار رسید · ۰ نیمه · ۱ نرسید · ۲ باز \(۱ موعدش رسیده\)/);

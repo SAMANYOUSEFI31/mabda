@@ -90,7 +90,8 @@ try {
   await mcp.close();
   await nav('منبع حقیقت');
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByText('3 منتظر تأیید').or(page.getByText('۳ منتظر تأیید')).first().waitFor();
+  await page.getByText(/[3۳] پیشنهاد منتظر تأیید توست/).first().waitFor(); // the home says it in one line…
+  await page.locator('button[aria-controls="home-all"]').click(); // …and the inbox itself is under «همه»
   await page.getByText(/AI بیرونی \(MCP\) \(«Claude»\)/).waitFor();
   await page.getByText(/پاسخ چسبانده‌شده/).first().waitFor();
   await shot('4-inbox', true);
@@ -100,7 +101,7 @@ try {
   await item('بدون وعدهٔ درآمد').getByRole('button', { name: 'تأیید' }).click();
   await page.getByText(/تأیید شد و حالا واقعیت است/).waitFor();
   await item('بودجهٔ ماهانه').getByRole('button', { name: 'رد' }).click();
-  await page.getByText('۱ منتظر تأیید').or(page.getByText('1 منتظر تأیید')).first().waitFor();
+  await page.getByText(/[1۱] پیشنهاد منتظر تأیید توست/).first().waitFor();
 
   step('the pasted asset is in the library with the pack lineage');
   await nav('دارایی‌ها');

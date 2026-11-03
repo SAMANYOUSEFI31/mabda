@@ -130,7 +130,7 @@ try {
     await shot('4-free');
     const box = await stage.boundingBox();
     const notesBefore = (await api('/workspaces/ws_demo/state')).notes.length;
-    if (mobile) { await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'یادداشت تازه' }).click(); } // touch path: no double-click
+    if (mobile) { await page.keyboard.press('Escape'); await page.getByTestId('canvas-toolbar').getByRole('button', { name: 'بیشتر' }).evaluate((n) => n.click()); await page.getByRole('menuitem', { name: 'یادداشت تازه' }).click(); } // touch path: no double-click
     else await page.mouse.dblclick(box.x + box.width - 140, box.y + 300);
     await page.getByRole('dialog').locator('textarea').fill('یک فکر تازه از روی بوم');
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).click();
@@ -139,6 +139,7 @@ try {
     const free0 = (await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length;
     await layoutTab('رابطه‌ها');
     await click(page.locator('[data-item-id^="o:"]').first());
+    await page.getByTestId('canvas-inspector').getByRole('button', { name: /^بیشتر/ }).click(); // placing is a detail: under «بیشتر»
     await page.getByTestId('canvas-inspector').getByRole('button', { name: 'بگذار در فضای آزاد' }).click();
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length, free0 + 1);
