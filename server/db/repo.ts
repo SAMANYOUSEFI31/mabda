@@ -12,6 +12,7 @@ import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../src/core/metrics.ts';
+import { isRequestKind, REQUEST_MAX_CHARS } from '../../src/core/aiRequest.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 
@@ -1058,7 +1059,7 @@ export class Repo {
     };
   }
   private rowToPack(r: Record<string, unknown>): SavedPack {
-    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, selection: JSON.parse(r.selection as string) as PackSelection, instruction: (r.instruction as string) ?? '', createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, selection: JSON.parse(r.selection as string) as PackSelection, instruction: (r.instruction as string) ?? '', createdAt: r.created_at as string, updatedAt: r.updated_at as string, ...(isRequestKind(r.kind) ? { kind: r.kind, template: (r.template as string) ?? '' } : {}) };
   }
   listSavedPacks(s: Scope): SavedPack[] {
     return (this.db.prepare('SELECT * FROM saved_packs WHERE workspace_id = ? AND user_id = ? ORDER BY updated_at DESC, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map((r) => this.rowToPack(r));
@@ -1067,25 +1068,27 @@ export class Repo {
     const r = this.db.prepare('SELECT * FROM saved_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
     return r ? this.rowToPack(r) : undefined;
   }
-  saveSavedPack(s: Scope, input: { id?: string; name: string; selection?: Partial<PackSelection>; instruction?: string }): SavedPack {
+  saveSavedPack(s: Scope, input: { id?: string; name: string; selection?: Partial<PackSelection>; instruction?: string; kind?: unknown; template?: unknown }): SavedPack {
     this.assertWorkspace(s);
     const name = input.name?.trim().slice(0, 80);
     if (!name) throw new RepoError('invalid', 'نام بسته لازم است.');
     const selection = JSON.stringify(this.cleanSelection(s, input.selection));
     const instruction = (input.instruction ?? '').trim().slice(0, 1000);
+    const kind = isRequestKind(input.kind) ? input.kind : null;
+    const template = kind ? String(input.template ?? '').trim().slice(0, REQUEST_MAX_CHARS) : null;
     const t = now();
     if (input.id) {
-      const r = this.db.prepare('UPDATE saved_packs SET name = ?, selection = ?, instruction = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(name, selection, instruction, t, input.id, s.workspaceId, s.userId);
+      const r = this.db.prepare('UPDATE saved_packs SET name = ?, selection = ?, instruction = ?, kind = ?, template = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(name, selection, instruction, kind, template, t, input.id, s.workspaceId, s.userId);
       if (!r.changes) throw new RepoError('not_found', 'بسته پیدا نشد.');
       return this.getSavedPack(s, input.id)!;
     }
     const id = newId('pk');
-    this.db.prepare('INSERT INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, name, selection, instruction, t, t);
+    this.db.prepare('INSERT INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, name, selection, instruction, kind, template, t, t);
     return this.getSavedPack(s, id)!;
   }
   /** the demo builder: raw insert with explicit timestamps */
   importSavedPack(s: Scope, p: SavedPack) {
-    this.db.prepare('INSERT OR REPLACE INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)').run(p.id, s.userId, s.workspaceId, p.name, JSON.stringify(this.cleanSelection(s, p.selection)), p.instruction, p.createdAt, p.updatedAt);
+    this.db.prepare('INSERT OR REPLACE INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(p.id, s.userId, s.workspaceId, p.name, JSON.stringify(this.cleanSelection(s, p.selection)), p.instruction, p.kind ?? null, p.kind ? (p.template ?? '') : null, p.createdAt, p.updatedAt);
   }
   deleteSavedPack(s: Scope, id: string) {
     this.db.prepare('DELETE FROM saved_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);

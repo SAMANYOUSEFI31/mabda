@@ -436,12 +436,26 @@ test('migration 14: metrics and measurements exist, carry user_id / workspace_id
   const db = new Database(':memory:');
   migrate(db, 13);
   db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
-  assert.deepEqual(migrate(db), [14]);
+  assert.deepEqual(migrate(db, 14), [14]);
   for (const t of ['metrics', 'measurements']) {
     const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name);
     assert.ok(cols.includes('user_id') && cols.includes('workspace_id'), `${t} is tenant-scoped`);
   }
   assert.equal(new Repo(db).listMetrics({ userId: U, workspaceId: 'w1' }).length, 0);
+});
+
+test('migration 15: a saved pack may be a saved «درخواست برای AI» (kind + template); old packs stay plain', () => {
+  const db = new Database(':memory:');
+  migrate(db, 14);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  db.prepare("INSERT INTO saved_packs (id,user_id,workspace_id,name,selection,instruction,created_at,updated_at) VALUES ('pk_old',?,?,?,?,?,?,?)").run(U, 'w1', 'قدیمی', JSON.stringify({ nodeIds: [], facets: [], statuses: [], includeAssumptions: true }), '', 'x', 'x');
+  assert.deepEqual(migrate(db), [15]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  assert.equal(repo.getSavedPack(s, 'pk_old')!.kind, undefined);
+  const q = repo.saveSavedPack(s, { name: 'ممیزی', kind: 'audit', template: ' طرح را بسنج ', selection: {} });
+  assert.deepEqual([q.kind, q.template], ['audit', 'طرح را بسنج']);
+  assert.equal(repo.saveSavedPack(s, { id: q.id, name: 'ممیزی', kind: 'zzz', template: 'x', selection: {} }).kind, undefined, 'an unknown kind makes it a plain pack');
 });
 
 test('a metric and its numbers: every write leaves a Change; metric changes stay out of the Context change list', () => {

@@ -249,7 +249,7 @@ test('the showcase workspace is a normal workspace for MCP: gaps (one missing, o
     const g = await t.call(c, 'get_gaps', { specId: 'demo_spec_campaign' });
     assert.ok(JSON.stringify(g.data).includes('launch_date'));
     const lp = await t.call(c, 'list_packs');
-    assert.deepEqual(lp.data.packs.map((p: any) => p.name).sort(), ['پاسخ به مشتری', 'کارگاه پاییز (با پیشنهادی‌ها)', 'متن تبلیغ اشتراک'].sort());
+    assert.deepEqual(lp.data.packs.map((p: any) => p.name).sort(), ['پاسخ به مشتری', 'کارگاه پاییز (با پیشنهادی‌ها)', 'متن تبلیغ اشتراک', 'ممیزی — طرح تخفیف پاییز', 'تصمیم — کانال فروش کارگاه'].sort());
     assert.ok(!JSON.stringify(lp).includes('مثال:'), 'no grey example in any pack');
     const ov = await t.call(c, 'get_workspace_overview', {});
     assert.deepEqual(JSON.stringify(ov.data).includes('main_positioning') || JSON.stringify(ov.data).includes('freelance_profile'), false, 'the showcase shows only its own workstreams, not the library');
@@ -421,6 +421,67 @@ test('saved packs: built once, resolved through the effective context (a section
     await c.close();
     await t.api('DELETE', `/workspaces/ws_studio/saved-packs/${other.id}`);
     assert.equal(t.repo.listSavedPacks(s).length, 1);
+  } finally { t.close(); }
+});
+
+test('«درخواست برای AI»: kind + one line + scope → the assembled prompt (API, saved request, MCP prompts); samples and Proposed never come; recording links the pack for the answer import', async () => {
+  const t = await boot();
+  try {
+    const s = { userId: 'local', workspaceId: 'ws_studio' };
+    const SECRET = 'نمونهٔ-ممنوع-در-درخواست';
+    const mk = (b: Record<string, unknown>) => t.api('POST', '/workspaces/ws_studio/objects', { provenance: 'User Input', ...b }).then((r) => r.json.object);
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'مخاطب اصلی', content: 'فریلنسرهای طراح-تأییدشده', nodeId: 'business' });
+    await mk({ type: 'Constraint', status: 'Confirmed', title: 'قید فارسی', content: 'فقط-فارسی', nodeId: 'business' });
+    await mk({ type: 'Fact', status: 'Proposed', title: 'پیشنهاد معلق', content: 'پیشنهاد-معلق', nodeId: 'business' });
+    t.repo.createSample(s, { type: 'Fact', title: `نمونه ${SECRET}`, content: SECRET, nodeId: 'business' });
+
+    // preview: not recorded
+    const pv = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'question', request: 'مخاطب اصلی ما کیست؟', packId: 'rq_preview1' })).json;
+    assert.equal(pv.recorded, false);
+    assert.equal(t.repo.getPack(s, 'rq_preview1'), undefined);
+    assert.match(pv.markdown, /^<!-- mabda-pack:rq_preview1 -->/);
+    assert.ok(pv.markdown.includes('فریلنسرهای طراح-تأییدشده') && pv.markdown.includes('فقط-فارسی'));
+    assert.ok(!pv.markdown.includes('پیشنهاد-معلق') && !pv.markdown.includes(SECRET), 'Proposed and samples never come');
+    assert.ok(pv.markdown.indexOf('## درخواست من') > pv.markdown.indexOf('</documents>'));
+    assert.ok(pv.excluded.some((e: any) => e.reason === 'unconfirmed'));
+    assert.ok(!JSON.stringify(pv).includes(SECRET), 'a sample is not even listed as left out');
+    // same input → same text
+    const again = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'question', request: 'مخاطب اصلی ما کیست؟', packId: 'rq_preview1' })).json;
+    assert.equal(again.markdown, pv.markdown);
+
+    // record: stored with the used objects, once; an empty line cannot be recorded; a bad kind is refused
+    const rec = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با قیدها جور است؟', packId: 'rq_record01', record: true })).json;
+    assert.equal(rec.recorded, true);
+    assert.deepEqual(t.repo.getPack(s, 'rq_record01')!.refs.map((r) => r.id).sort(), rec.refs.map((r: any) => r.id).sort());
+    await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با قیدها جور است؟', packId: 'rq_record01', record: true });
+    assert.equal(t.repo.listPacks(s).filter((p) => p.id === 'rq_record01').length, 1);
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: ' ', record: true })).status, 400);
+    assert.equal((await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'nope', request: 'x' })).status, 400);
+    // the answer can come back: the recorded pack id is found by the import
+    const imp = (await t.api('POST', '/workspaces/ws_studio/imports/parse', { text: `<!-- mabda-pack:rq_record01 -->\n## Asset: گزارش\nمتن` })).json;
+    assert.equal(imp.packId, 'rq_record01');
+
+    // saved request: kind + template in the saved-packs table, resolved afresh each time
+    const saved = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'ممیزی هفتگی', kind: 'audit', template: 'طرح هفته را بسنج', selection: { nodeIds: ['business'], facets: [], statuses: [], includeAssumptions: true } })).json.pack;
+    assert.equal(saved.kind, 'audit');
+    assert.equal(saved.template, 'طرح هفته را بسنج');
+    const rendered = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${saved.id}/render`)).json.markdown as string;
+    assert.match(rendered, /## قواعد این کار \(ممیزی\)/);
+    assert.ok(rendered.includes('طرح هفته را بسنج') && !rendered.includes(SECRET));
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت دیرتر', content: 'دیرتر-آمد', nodeId: 'business' });
+    assert.ok(((await t.api('GET', `/workspaces/ws_studio/saved-packs/${saved.id}/render`)).json.markdown as string).includes('دیرتر-آمد'), 'resolved afresh');
+    const plain = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'ساده', kind: 'bogus', template: 'x' })).json.pack;
+    assert.equal(plain.kind, undefined, 'an unknown kind is a plain pack');
+
+    // MCP: a prompt per kind
+    const c = await t.connect((await t.token()).token);
+    const prompts = (await c.listPrompts()).prompts.map((p) => p.name);
+    for (const k of ['question', 'audit', 'draft', 'decision', 'change_review', 'free']) assert.ok(prompts.includes(`request_${k}`), k);
+    const pr = await c.getPrompt({ name: 'request_decision', arguments: { request: 'کانال اصلی کدام باشد؟' } });
+    const text = JSON.stringify(pr);
+    assert.ok(text.includes('کانال اصلی کدام باشد؟') && text.includes('فقط-فارسی') && !text.includes(SECRET) && !text.includes('پیشنهاد-معلق'));
+    assert.match(text, /قواعد این کار \(تصمیم\)/);
+    await c.close();
   } finally { t.close(); }
 });
 

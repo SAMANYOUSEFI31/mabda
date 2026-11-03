@@ -194,11 +194,12 @@ test('assumptions and a decision record: one assumption is due, one is later; a 
 });
 
 // ── packs, facets, samples, a template in the showcase ───────────────────────────────────────────
+import { buildAiRequest } from './aiRequest';
 import { buildContextPack } from './contextPack';
 
 test('showcase packs: three different selections, resolved through the effective context; assumptions and rejected options apart; no sample anywhere', () => {
   const packOf = (id: string) => { const p = d.packs.find((x) => x.id === id)!; return buildContextPack({ packId: p.id, workspaceName: 'x', nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, now: NOW, targetNodeIds: p.selection.nodeIds, facets: p.selection.facets, statuses: p.selection.statuses, includeAssumptions: p.selection.includeAssumptions, instruction: p.instruction }); };
-  assert.equal(d.packs.length, 3);
+  assert.equal(d.packs.filter((p) => !p.kind).length, 3);
   const ads = packOf('pk_demo_ads');
   assert.ok(ads.markdown.includes('## دستور') && ads.markdown.includes('dm_pack@') && ads.markdown.includes('dm_assume_renew'), 'subscription pack: its decisions and its assumption (apart)');
   assert.ok(!ads.markdown.includes('dm_ws_refund'), 'a workshop rule (position) never enters the subscription pack');
@@ -209,7 +210,7 @@ test('showcase packs: three different selections, resolved through the effective
   const ws = packOf('pk_demo_ws');
   assert.ok(ws.markdown.includes('تخفیف ۱۵ درصد روی قیمت کارگاه') && ws.markdown.includes('گزینه‌های بررسی‌شده و ردشده'), 'the rejected option reaches the AI so it is not proposed again');
   assert.ok(ws.markdown.includes('dm_ws_plan@') && ws.counts.proposed >= 1, 'proposed items are labelled unconfirmed');
-  for (const p of d.packs) assert.ok(!packOf(p.id).markdown.includes('مثال:'), 'no sample text in any pack');
+  for (const p of d.packs.filter((x) => !x.kind)) assert.ok(!packOf(p.id).markdown.includes('مثال:'), 'no sample text in any pack');
 });
 
 test('showcase facets, samples and template: three facets on a real axis; three grey samples; the template holds the workshop branch', () => {
@@ -241,4 +242,16 @@ test('metrics in the showcase: three metrics, twelve numbers, four decisions wit
   assert.deepEqual(verdictTally(rows), { met: 1, partial: 0, missed: 1, open: 2 });
   // each decision has a moment on the time line, taken from the Change table
   assert.ok(rows.every((r) => !!r.moment), 'every expectation decision has a decision day');
+});
+
+test('showcase saved requests: an audit and a decision, each assembled from confirmed knowledge only — no sample, no Proposed as fact', () => {
+  const reqs = d.packs.filter((p) => p.kind);
+  assert.deepEqual(reqs.map((p) => p.kind).sort(), ['audit', 'decision']);
+  for (const p of reqs) {
+    const r = buildAiRequest({ kind: p.kind!, request: p.template!, scopeNodeId: p.selection.nodeIds[0], workspaceName: 'x', nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, now: NOW });
+    assert.ok(r.included.length > 0 && r.markdown.includes(p.template!));
+    assert.ok(!r.markdown.includes('مثال:'), 'no sample text');
+    assert.ok(r.included.every((i) => d.objects.find((o) => o.id === i.id)!.status === 'Confirmed'), 'only Confirmed is sent');
+    assert.ok(r.excluded.some((e) => e.reason === 'unconfirmed') || p.kind === 'decision', 'what is not confirmed is left out with a reason');
+  }
 });

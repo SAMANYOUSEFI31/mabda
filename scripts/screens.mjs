@@ -174,6 +174,13 @@ for (const size of SIZES) {
   await layoutTab('رابطه‌ها');
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
+  await goTab(TABS[0]);
+  await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
+  await page.getByRole('dialog').getByRole('radio', { name: 'ممیزی' }).click();
+  await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');
+  await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));
+  await shoot('dialog-request'); await closeDialog();
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();
 }

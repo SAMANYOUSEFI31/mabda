@@ -24,6 +24,8 @@ import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts'
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { renderSavedPack } from './packs.ts';
+import { renderAiRequest } from './aiRequests.ts';
+import { isRequestKind, KIND_LABEL } from '../../src/core/aiRequest.ts';
 import { STARTERS } from '../../src/core/starters.ts';
 import { nodeTemplateOf, workstreamTemplateOf } from '../../src/core/templates.ts';
 import type { NodeTemplate, NodeTemplateNode } from '../../src/core/templates.ts';
@@ -622,8 +624,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   // ── saved packs: build once, paste anywhere (UI copy / print, MCP list_packs / get_pack) ──
   const packSummary = (s: Scope, p: SavedPack) => { const r = renderSavedPack(repo, s, p, clock()); return { ...p, tokens: r.tokens, counts: r.counts }; };
   router.get('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); res.json({ packs: repo.listSavedPacks(s).map((p) => packSummary(s, p)) }); }));
-  router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
-  router.put('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { id: req.params.id, name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '' })) }); }));
+  router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template })) }); }));
+  router.put('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { id: req.params.id, name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template })) }); }));
   router.delete('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { repo.deleteSavedPack(scopeOf(req), req.params.id); res.json({ ok: true }); }));
   router.get('/workspaces/:wid/saved-packs/:id/render', wrap((req, res) => {
     const s = scopeOf(req);
@@ -648,6 +650,25 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const title = deliverable ? `${spec!.title} ‹ ${deliverable.title}` : spec ? spec.title : `کل ${ws.name}`;
     const saved = repo.savePack(s, { title, specId: spec?.id, deliverableId: deliverable?.id, refs: pack.refs, tokens: pack.tokens }, id);
     res.json({ id: saved.id, title, createdAt: saved.createdAt, markdown: pack.markdown, tokens: pack.tokens, chars: pack.chars, counts: pack.counts });
+  }));
+  // «درخواست برای AI»: kind + one line (+ scope) → the assembled prompt. `record` stores the pack (lineage for the import of the answer); a preview does not
+  router.post('/workspaces/:wid/ai-requests', wrap((req, res) => {
+    const s = scopeOf(req);
+    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
+    const b = body(req);
+    if (!isRequestKind(b.kind)) throw new RepoError('invalid', 'نوع کار نامعتبر است.');
+    const request = typeof b.request === 'string' ? b.request.trim() : '';
+    const record = b.record === true;
+    if (record && !request) throw new RepoError('invalid', 'درخواست را یک خط بنویس.');
+    const wanted = typeof b.packId === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(b.packId) ? b.packId : newId('rq');
+    const r = renderAiRequest(repo, s, {
+      kind: b.kind, request, scopeNodeId: typeof b.scopeNodeId === 'string' && b.scopeNodeId ? b.scopeNodeId : undefined,
+      tokenBudget: typeof b.tokenBudget === 'number' ? b.tokenBudget : undefined,
+      extraIds: Array.isArray(b.extraIds) ? b.extraIds.filter((x): x is string => typeof x === 'string').slice(0, 200) : undefined, packId: wanted,
+    }, clock());
+    if (record && !repo.getPack(s, wanted)) repo.savePack(s, { title: `${KIND_LABEL[b.kind]} — ${request.slice(0, 60)}`, refs: r.refs, tokens: r.tokens }, wanted);
+    res.json({ ...r, packId: wanted, recorded: record });
   }));
   router.get('/workspaces/:wid/packs', wrap((req, res) => { res.json({ packs: repo.listPacks(scopeOf(req)) }); }));
 

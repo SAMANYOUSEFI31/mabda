@@ -7,6 +7,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ContextObject, PackSelection, SavedPack, TreeNode } from '../types';
 import { dataApi, DataApiError } from '../services/dataApi';
 import { flatten } from '../core/nodeTree';
+import { KIND_LABEL } from '../core/aiRequest';
+import type { RequestKind } from '../core/aiRequest';
 import { Alert, Badge, Button, Checkbox, Dialog, EmptyState, Spinner, TextField, Textarea, formatNumber, useToast } from '../ui';
 
 type PackRow = SavedPack & { tokens: number; counts: { confirmed: number; proposed: number; assumptions: number; rejected: number } };
@@ -31,7 +33,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
   const toast = useToast();
   const [packs, setPacks] = useState<PackRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id?: string; name: string; instruction: string; selection: PackSelection } | null>(null);
+  const [editing, setEditing] = useState<{ id?: string; name: string; instruction: string; selection: PackSelection; kind?: RequestKind; template?: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const facetNames = useMemo(() => [...new Set(objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [objects]);
 
@@ -72,7 +74,9 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
       {editing ? (
         <div className="flex flex-col gap-stack-md" role="group" aria-label="ویرایش بسته">
           <TextField label="نام بسته" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: برای نوشتن متن تبلیغ" />
-          <Textarea label="دستور کوتاه برای AI (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />
+          {editing.kind
+            ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ گرهٔ اول دامنه است." />
+            : <Textarea label="دستور کوتاه برای AI (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
           <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام گره‌ها؟ (هیچ‌کدام = کل درخت)</legend>
             <div className="grid grid-cols-1 gap-inline-xs sm:grid-cols-2">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
           </fieldset>
@@ -104,11 +108,12 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
                   {p.counts.assumptions > 0 && <Badge intent="neutral" icon={false}>{formatNumber(p.counts.assumptions)} فرض</Badge>}
                 </span>
               </div>
+              {p.kind && <p className="body-sm text-text-subtle"><Badge intent="neutral" icon="Sparkles">درخواست: {KIND_LABEL[p.kind]}</Badge> {p.template}</p>}
               {p.instruction && <p className="body-sm text-text-subtle">{p.instruction}</p>}
               <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} گره` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
               <div className="flex flex-wrap gap-inline-xs">
                 <Button size="sm" variant="secondary" iconStart="Copy" loading={busy === `c${p.id}`} onClick={() => copy(p)}>کپی</Button>
-                <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection })}>ویرایش</Button>
+                <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, kind: p.kind, template: p.template })}>ویرایش</Button>
                 <Button size="sm" variant="ghost" iconStart="FileText" loading={busy === `p${p.id}`} onClick={() => print(p)}>نسخهٔ چاپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { await dataApi.deleteSavedPack(workspaceId, p.id); await load(); }}>حذف</Button>
               </div>
