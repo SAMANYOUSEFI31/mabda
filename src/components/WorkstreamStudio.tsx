@@ -230,7 +230,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           deliverableType: runSpec.type,
           acceptanceCriteria: runSpec.acceptanceCriteria,
           workspaceId: currentWorkspace.id,
-          targetNodeId: 'content',
+          targetNodeId: '*', // the whole workspace: the tree is the user's, no node is special
           specTarget: runWorkstream.target,
           specGuardrails: runWorkstream.guardrails,
           outputBand: runSpec.outputBand,

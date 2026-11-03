@@ -616,7 +616,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const plan = planNodes(tpl, repo.listNodes(s), parentId, (k) => k);
     const made = new Map<string, string>(); // template key → the node id that was really created
     for (const n of plan) {
-      const node = repo.createNode(s, { parentId: n.parentId ? made.get(n.parentId)! : parentId, label: n.label, description: n.description });
+      const node = repo.createNode(s, { parentId: (n.parentId && made.get(n.parentId)) || parentId, label: n.label, description: n.description });
       made.set(n.key, node.id);
     }
     let added = 0;

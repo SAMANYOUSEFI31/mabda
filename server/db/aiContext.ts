@@ -1,7 +1,7 @@
 import type { ContextSource } from '../ai/routes.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ContextObjectLite } from '../ai/context.ts';
-import { subtreeIds } from '../../src/core/nodeTree.ts';
+import { subtreeIds, treeOrder } from '../../src/core/nodeTree.ts';
 import { effectiveObjects, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { examplesOf } from '../../src/core/redlineExamples.ts';
 import type { ContextObject } from '../../src/types/index.ts';
@@ -21,8 +21,10 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
     if (!repo.getWorkspace(userId, workspaceId)) throw new AiError('bad_request', { message: 'فضای کاری پیدا نشد.', retryable: false });
     return { userId, workspaceId };
   };
-  const toLite = (o: ContextObject): ContextObjectLite => ({
-    id: o.id, type: o.type, status: o.status, title: o.title, content: o.content, nodeId: o.nodeId, version: o.version, createdAt: o.createdAt,
+  /** node id → its place in the tree order (depth first); read fresh per call because the tree is the user's to change */
+  const rankOf = (s: Scope) => new Map(treeOrder(repo.listNodes(s)).map((id, i) => [id, i]));
+  const toLite = (o: ContextObject, rank: Map<string, number>): ContextObjectLite => ({
+    id: o.id, ...(rank.has(o.nodeId) ? { nodeRank: rank.get(o.nodeId) } : {}), type: o.type, status: o.status, title: o.title, content: o.content, nodeId: o.nodeId, version: o.version, createdAt: o.createdAt,
     ...(o.assumption ? { assumption: true } : {}),
     ...(examplesOf(o).length ? { examples: examplesOf(o) } : {}),
     ...(rejectedOf(o).length ? { rejected: rejectedOf(o) } : {}),
@@ -31,8 +33,10 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
    * Whole-workspace view (no node): everything live and not expired. A Constraint that only applies to its own section
    * (reach = position) is NOT a rule for the whole workspace.
    */
-  const whole = (s: Scope): ContextObjectLite[] =>
-    repo.listObjects(s).filter((o) => live(o) && !isExpired(o, clock()) && !(o.type === 'Constraint' && reachOf(o) === 'position')).map(toLite);
+  const whole = (s: Scope): ContextObjectLite[] => {
+    const rank = rankOf(s);
+    return repo.listObjects(s).filter((o) => live(o) && !isExpired(o, clock()) && !(o.type === 'Constraint' && reachOf(o) === 'position')).map((o) => toLite(o, rank));
+  };
   /**
    * What is IN FORCE at a node (src/core/effectiveContext.ts): its own and inherited objects, global Constraints, minus
    * exceptions and expired ones. Node chat also sees the node's sub-tree (that is where it may propose).
@@ -45,7 +49,8 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
       const sub = new Set(subtreeIds(nodes, nodeId));
       for (const o of all) if (sub.has(o.nodeId) && live(o) && !isExpired(o, clock())) list.set(o.id, o);
     }
-    return [...list.values()].map(toLite);
+    const rank = rankOf(s);
+    return [...list.values()].map((o) => toLite(o, rank));
   };
 
   return {
@@ -64,10 +69,9 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
     forGenerate(workspaceId, { targetNodeId, title, criteria, dependencyAssetIds }) {
       const s = scopeOf(workspaceId);
       const nodes = repo.listNodes(s);
-      // '*' = the whole workspace (onboarding's first asset uses every fact the user just confirmed)
-      const target = targetNodeId && nodes.some((n) => n.id === targetNodeId) ? targetNodeId : 'content';
-      // the list IN FORCE at the target node is both what the model reads and where the guardrails come from
-      const inForce = targetNodeId === '*' ? whole(s) : effective(s, target);
+      // '*' (or no / an unknown node) = the whole workspace; no node of the tree is special to the code. A given node → what is in force there.
+      // The list IN FORCE is both what the model reads and where the guardrails come from
+      const inForce = targetNodeId && targetNodeId !== '*' && nodes.some((n) => n.id === targetNodeId) ? effective(s, targetNodeId) : whole(s);
       return {
         contextObjects: inForce, contextList: inForce, nodeLabels: Object.fromEntries(nodes.map((n) => [n.id, n.label])),
         excerpts: files.excerpts(s, `${title}\n${criteria.join('\n')}`),

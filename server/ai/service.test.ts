@@ -123,15 +123,15 @@ test('startup verification: picks the first available candidate and warns instea
 });
 
 test('prompt layout: stable prefix is order-independent; Proposed never enters the prefix', () => {
-  const a = { id: 'a', type: 'Fact', status: 'Confirmed', title: 'الف', content: '۱', nodeId: 'brand' };
-  const b = { id: 'b', type: 'Decision', status: 'Confirmed', title: 'ب', content: '۲', nodeId: 'business' };
+  const a = { id: 'a', type: 'Fact', status: 'Confirmed', title: 'الف', content: '۱', nodeId: 'brand', nodeRank: 1 };
+  const b = { id: 'b', type: 'Decision', status: 'Confirmed', title: 'ب', content: '۲', nodeId: 'business', nodeRank: 0 };
   const c = { id: 'c', type: 'Fact', status: 'Proposed', title: 'پیشنهاد', content: '۳', nodeId: 'business' };
   const d = { id: 'd', type: 'Fact', status: 'Superseded', title: 'قدیمی', content: '۴', nodeId: 'business' };
   const p1 = buildPrompt({ contexts: [a, b, c, d], task: 'T1' });
   const p2 = buildPrompt({ contexts: [d, c, b, a], task: 'T2' });
   assert.equal(p1.prefix, p2.prefix);
   assert.equal(p1.system, p2.system);
-  assert.ok(p1.prefix!.indexOf('ب') < p1.prefix!.indexOf('الف'), 'business before brand');
+  assert.ok(p1.prefix!.indexOf('ب') < p1.prefix!.indexOf('الف'), 'the node that comes first in the tree comes first');
   assert.ok(!p1.prefix!.includes('پیشنهاد') && !p1.prefix!.includes('قدیمی'));
   assert.match(p1.user, /تأییدنشده/);
   assert.match(p1.user, /«پیشنهادی»/);
@@ -312,4 +312,12 @@ test('generate: from a client-supplied list only global, unexpired Constraints j
   const r = (ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>).result;
   assert.deepEqual(r.usedContext.map((u) => u.id).sort(), ['global', 'legacy']);
   assert.deepEqual(r.checks?.filter((c) => c.kind === 'guardrail').map((c) => c.text).sort(), ['global: global متن', 'legacy: legacy متن']);
+});
+
+test('prompt layout: the order is the REAL tree order — a user node placed first leads, no node name is known to the code', () => {
+  const mine = { id: 'm', type: 'Fact', status: 'Confirmed', title: 'اولی', content: '۱', nodeId: 'nd_mine', nodeRank: 0 };
+  const old = { id: 'o', type: 'Fact', status: 'Confirmed', title: 'دومی', content: '۲', nodeId: 'business', nodeRank: 5 };
+  const p = buildPrompt({ contexts: [old, mine], task: 'T', nodeLabels: { nd_mine: 'بسته‌های خدمت', business: 'کسب‌وکار' } });
+  assert.ok(p.prefix!.indexOf('اولی') < p.prefix!.indexOf('دومی'));
+  assert.match(p.prefix!, /\(بسته‌های خدمت\)/, 'the label comes from the workspace, not from a table in the code');
 });

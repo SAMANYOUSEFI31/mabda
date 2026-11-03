@@ -5,6 +5,7 @@ import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migration
 import { Repo, RepoError } from './repo.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import { applyDemo } from './demo.ts';
+import { treeOrder } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 
@@ -46,9 +47,9 @@ test('every table carries user_id and workspace_id', () => {
   }
 });
 
-test('a new workspace gets the 5 system nodes; data of another user/workspace is invisible', () => {
+test('a new workspace gets the 5 nodes of the default start (ordinary, unlocked); data of another user/workspace is invisible', () => {
   const { repo, s } = fresh();
-  assert.deepEqual(repo.listNodes(s).map((n) => n.id), ['business', 'brand', 'product', 'offer', 'content']);
+  assert.deepEqual(treeOrder(repo.listNodes(s)), ['business', 'brand', 'content', 'product', 'offer'], 'the starting tree, in tree order');
   assert.equal(repo.listNodes(s).length, 5, 'the starting tree is back'); assert.ok(repo.listNodes(s).every((n) => !('isSystem' in n)), 'no node is locked');
   repo.saveWorkspace(U, ws('w2'));
   const o = repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'business' });
@@ -57,11 +58,13 @@ test('a new workspace gets the 5 system nodes; data of another user/workspace is
   assert.equal(repo.getObject({ userId: U, workspaceId: 'w2' }, o.id), undefined);
 });
 
-test('nodes: system = rename only; user nodes create / move / delete (empty or with transfer)', () => {
+test('nodes: nothing is locked — rename, move, create, delete (empty or with transfer); the last root stays', () => {
   const { repo, s } = fresh();
   assert.equal(repo.updateNode(s, 'brand', { label: 'هویت برند' }).label, 'هویت برند');
-  assert.throws(() => repo.deleteNode(s, 'brand'), (e) => e instanceof RepoError && e.code === 'forbidden');
-  assert.throws(() => repo.moveNode(s, 'brand', 'offer'), (e) => e instanceof RepoError && e.code === 'forbidden');
+  repo.moveNode(s, 'brand', 'offer'); // a node of the default start moves like any other
+  repo.moveNode(s, 'brand', 'business');
+  assert.throws(() => repo.deleteNode(s, 'brand'), RepoError, 'brand has a child node: it needs a place to go');
+  assert.throws(() => repo.deleteNode(s, 'business', 'brand'), (e) => e instanceof RepoError && /آخرین گرهٔ اصلی/.test(e.message), 'the last root is never deleted: knowledge must live somewhere');
   const a = repo.createNode(s, { parentId: 'content', label: 'کمپین' });
   const b = repo.createNode(s, { parentId: a.id, label: 'اینستاگرام' });
   assert.throws(() => repo.moveNode(s, a.id, b.id), RepoError);
@@ -342,7 +345,7 @@ test('showcase workspace: decided by the server only, never counted (workspace a
   assert.ok(!repo.listNotes(s).some((n) => n.content === 'n'), 'the stray note is gone; the showcase notes are back');
   assert.ok(!repo.listObjects(s).some((o) => o.title === 'x'));
   assert.equal(repo.listLedger(s).length, 0);
-  assert.equal(repo.listNodes(s).length, 5);
+  assert.ok(['business', 'brand', 'product', 'offer', 'content'].every((id) => repo.listNodes(s).some((n) => n.id === id)), 'the showcase keeps the default start as its base');
 });
 
 test('reach / validUntil: migration 11 leaves old rows untouched (type default), values are validated, an edit is a Change and bumps the version', () => {

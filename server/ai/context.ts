@@ -14,6 +14,8 @@ export interface ContextObjectLite {
   /** version at the time of injection — stored in the asset as lineage */
   version?: number;
   createdAt?: string;
+  /** the position of the object's node in the tree (depth first, siblings by order): what orders the knowledge for the model */
+  nodeRank?: number;
   /** only for clients that send their own list: lets the service drop a position-only / expired Constraint from the guardrails */
   reach?: string;
   validUntil?: string;
@@ -37,20 +39,17 @@ export function injectedRefs(contexts: ContextObjectLite[]): Array<{ id: string;
   return contexts.filter((c) => !EXCLUDED.has(c.status)).sort(byStableOrder).map((c) => ({ id: c.id, version: c.version ?? 1 }));
 }
 
-export const NODE_ORDER = ['business', 'brand', 'product', 'offer', 'content', 'asset'];
-export const NODE_LABELS: Record<string, string> = {
-  business: 'کسب‌وکار', brand: 'برند', product: 'محصول', offer: 'آفر', content: 'محتوا', asset: 'دارایی',
-};
 
 /** Statuses that are never shown to the model. */
 const EXCLUDED = new Set(['Superseded', 'Archived']);
 
+/** the order the knowledge is laid out in: the REAL order of the workspace's tree (`nodeRank`: depth first, siblings by order); a list from a client that has no rank falls back to time then id */
 const byStableOrder = (a: ContextObjectLite, b: ContextObjectLite) =>
-  (NODE_ORDER.indexOf(a.nodeId) + 1 || 99) - (NODE_ORDER.indexOf(b.nodeId) + 1 || 99) ||
+  (a.nodeRank ?? Number.MAX_SAFE_INTEGER) - (b.nodeRank ?? Number.MAX_SAFE_INTEGER) ||
   (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
   a.id.localeCompare(b.id);
 
-const line = (c: ContextObjectLite, labels: Record<string, string> = NODE_LABELS) => `- [${c.type}] (${labels[c.nodeId] ?? NODE_LABELS[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}${exampleSuffix(c.examples)}`;
+const line = (c: ContextObjectLite, labels: Record<string, string> = {}) => `- [${c.type}] (${labels[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}${exampleSuffix(c.examples)}`;
 
 export interface BuildPromptInput {
   contexts: ContextObjectLite[];
@@ -72,7 +71,7 @@ export interface BuildPromptInput {
  * Proposed / Needs Review items are never placed in the stable prefix and are always labelled as unconfirmed.
  */
 export function buildPrompt({ contexts, focusNodeIds = [], task, nodeLabels, excerpts = [] }: BuildPromptInput): Prompt {
-  const labels = { ...NODE_LABELS, ...(nodeLabels ?? {}) };
+  const labels = { ...(nodeLabels ?? {}) };
   const live = contexts.filter((c) => !EXCLUDED.has(c.status));
   const assumptions = live.filter((c) => c.assumption).sort(byStableOrder);
   const confirmed = live.filter((c) => c.status === 'Confirmed' && !c.assumption).sort(byStableOrder);
