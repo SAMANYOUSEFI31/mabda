@@ -312,7 +312,6 @@ test('showcase history: every edit has a real before and after that differ and d
   }
 });
 
-import { buildAiRequest } from './aiRequest';
 import { thinkingSpace } from './thinkingSpace';
 
 test('showcase thinking: one confirmed knowledge has an unapproved rewrite — it waits in the thinking space and no request or pack reads it', () => {

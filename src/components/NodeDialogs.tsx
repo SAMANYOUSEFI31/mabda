@@ -132,9 +132,11 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
           <Select label="کجا برود؟" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, { value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }, ...options(nodes, exclude)]} />
           {!check.ok && check.reason && <Alert intent="warning">{check.reason}</Alert>}
           {effect && effect.sentences.length > 0 && (
-            <Alert intent="warning" title="بعد از جابه‌جایی چیزی عوض می‌شود" data-testid="move-effect">
-              <ul className="list-inside list-disc">{effect.sentences.map((x) => <li key={x}>{x}</li>)}</ul>
-            </Alert>
+            <div data-testid="move-effect">
+              <Alert intent="warning" title="بعد از جابه‌جایی چیزی عوض می‌شود">
+                <ul className="list-inside list-disc">{effect.sentences.map((x) => <li key={x}>{x}</li>)}</ul>
+              </Alert>
+            </div>
           )}
           {effect && effect.sentences.length === 0 && <p className="body-sm text-text-subtle" data-testid="move-effect">دانشی از بیرون روی این بخش‌ها عوض نمی‌شود.</p>}
           {check.ok && target && <TextField label="دلیل (اختیاری)" value={moveReason} onChange={(e) => setMoveReason(e.target.value)} hint="در تاریخچه می‌ماند." />}

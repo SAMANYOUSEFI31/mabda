@@ -75,7 +75,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const role = item.kind === 'object' ? 'group' : 'group';
   return (
     <div
-      data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
+      data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-pending={item.pending || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
       onPointerDown={(e) => p.onPointerDown?.(e, item)}
       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey); }}
       onDoubleClick={() => p.onOpen(item)}
