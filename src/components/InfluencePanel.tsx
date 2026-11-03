@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, TreeNode } from '../types';
 import type { Influence } from '../core/influence';
-import { Badge, OriginBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Icon, OriginBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 
 interface Props {
   influence: Influence;
   nodes: TreeNode[];
   onOpenObject?: (o: ContextObject) => void;
   onOpenAssets?: () => void;
+  /** the inspector's version: every group is a CLOSED section in plain words (the full panel stays in the detail dialog) */
+  compact?: boolean;
 }
 
 const Row: React.FC<{ o: ContextObject; extra?: React.ReactNode; onOpen?: (o: ContextObject) => void }> = ({ o, extra, onOpen }) => (
@@ -29,9 +31,57 @@ const Group: React.FC<{ title: string; empty: string; count: number; children: R
 );
 
 /** «اثرگذاران و اثرپذیران»: above = what shapes this object, below = what it shapes. Built from effectiveFor + decisionGraph only. */
-export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject, onOpenAssets }) => {
+/** a closed-by-default section: a quiet button with a count, the content only when asked for */
+export const Closed: React.FC<{ title: string; count: number; children: React.ReactNode }> = ({ title, count, children }) => {
+  const [open, setOpen] = useState(false);
+  const id = React.useId();
+  return (
+    <div className="flex flex-col gap-stack-xs">
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)} className="label-md flex min-h-touch w-full items-center justify-between gap-inline-sm rounded-control-sm px-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle">
+        <span>{title}{count ? ` (${formatNumber(count)})` : ''}</span>
+        <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size="sm" className="shrink-0 text-icon-subtle" />
+      </button>
+      {open && <div id={id} className="flex flex-col gap-stack-xs ps-inset-md">{children}</div>}
+    </div>
+  );
+};
+
+export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject, onOpenAssets, compact }) => {
   const { shapedBy, shapes } = influence;
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-stack-xs" role="region" aria-label="جزئیات اثرگذاری" data-testid="inspector-details">
+        <Closed title="به چه چیزی وابسته است" count={shapedBy.dependencies.length}>
+          {shapedBy.dependencies.length ? <ul className="flex flex-col gap-stack-xs">{shapedBy.dependencies.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}</ul> : <p className="body-sm text-text-subtle">به مورد دیگری وابسته نیست.</p>}
+        </Closed>
+        <Closed title="خط قرمزهایی که اینجا اعمال می‌شوند" count={shapedBy.constraints.length}>
+          {shapedBy.constraints.length ? <ul className="flex flex-col gap-stack-xs">{shapedBy.constraints.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}</ul> : <p className="body-sm text-text-subtle">خط قرمزی در این بخش اثر ندارد.</p>}
+        </Closed>
+        <Closed title="اینجا اعمال نشود" count={shapedBy.exceptions.length}>
+          {shapedBy.exceptions.length ? <ul className="flex flex-col gap-stack-xs">{shapedBy.exceptions.map((e) => (
+            <li key={`${e.by.id}>${e.target.id}`} className="body-md text-text-default">
+              {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای بخش خودش و زیربخش‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای یک بخش پایین‌تر کنار می‌گذارد.</>}
+            </li>
+          ))}</ul> : <p className="body-sm text-text-subtle">جایی نیست که اعمال نشود.</p>}
+        </Closed>
+        <Closed title="آنچه از بخش بالاتر آمده" count={shapedBy.inputs.length}>
+          {shapedBy.inputs.length ? <ul className="flex flex-col gap-stack-xs">{shapedBy.inputs.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}</ul> : <p className="body-sm text-text-subtle">چیزی از بخش‌های بالاتر نرسیده.</p>}
+        </Closed>
+        <Closed title="چه چیزی روی آن سوار است" count={shapes.dependents.length}>
+          {shapes.dependents.length ? <ul className="flex flex-col gap-stack-xs">{shapes.dependents.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}</ul> : <p className="body-sm text-text-subtle">چیزی روی آن سوار نیست.</p>}
+        </Closed>
+        <Closed title="خروجی‌های ساخته‌شده از آن" count={shapes.assets.length}>
+          {shapes.assets.length ? <ul className="flex flex-col gap-stack-xs">{shapes.assets.map((d: GeneratedDeliverable) => (
+            <li key={d.id} className="flex items-center justify-between gap-inline-sm">
+              <span className="body-md text-text-default">{d.title}</span>
+              {onOpenAssets && <button type="button" className="caption text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>خروجی‌ها</button>}
+            </li>
+          ))}</ul> : <p className="body-sm text-text-subtle">خروجی‌ای از آن ساخته نشده.</p>}
+        </Closed>
+      </div>
+    );
+  }
   const scopeText = shapes.scope.kind === 'global'
     ? 'در همهٔ گره‌ها اثر دارد'
     : shapes.scope.nodeIds.length === 1 ? `فقط در «${label(shapes.scope.nodeIds[0])}»` : `در ${formatNumber(shapes.scope.nodeIds.length)} گره: ${shapes.scope.nodeIds.slice(0, 4).map(label).join('، ')}${shapes.scope.nodeIds.length > 4 ? '…' : ''}`;

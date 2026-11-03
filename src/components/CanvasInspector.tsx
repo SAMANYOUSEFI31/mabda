@@ -9,10 +9,9 @@ import type { Scene, SceneEdge, SceneItem } from '../core/canvasScene';
 import { EDGE_ABOUT, LAYOUT_ABOUT, LAYOUT_FA } from '../core/canvasScene';
 import { LOD_FA } from '../core/canvasLod';
 import type { Lod } from '../core/canvasLod';
-import { influenceOf } from '../core/influence';
-import { dependentsOf } from '../core/decisionGraph';
+import { aboutSentence, influenceOf, influenceSummary } from '../core/influence';
 import { Badge, Button, StatusBadge, TypeBadge, formatNumber } from '../ui';
-import { InfluencePanel } from './InfluencePanel';
+import { Closed as DetailSection, InfluencePanel } from './InfluencePanel';
 import { EDGE_STYLE } from './CanvasEdges';
 
 interface Props {
@@ -95,7 +94,6 @@ export const CanvasInspector: React.FC<Props> = (p) => {
             ))}
           </ul>
         )}
-        <p className="body-sm text-text-subtle">یک کارت را انتخاب کن تا اثرگذارانش روشن شود.</p>
       </div>
     );
   }
@@ -103,21 +101,27 @@ export const CanvasInspector: React.FC<Props> = (p) => {
   const o = item.objectId ? p.objects.find((x) => x.id === item.objectId) : undefined;
   if (item.kind === 'object' && o) {
     const inf = influenceOf(o.id, p.objects, p.nodes, p.relationships, p.deliverables, p.now);
-    const dependents = dependentsOf(o.id, p.relationships, p.objects).length;
+    const sum = inf ? influenceSummary(inf, formatNumber) : undefined;
+    const moveBtn = <Button key="move" size="sm" variant="secondary" iconStart="Link2" onClick={() => p.onActions(o.id)}>انتقال و اتصال</Button>;
     return (
-      <div className="flex flex-col gap-stack-sm" data-testid="inspector-object">
+      <div key={o.id} className="flex flex-col gap-stack-sm" data-testid="inspector-object">
         <h3 className="heading-xs text-text-default">{o.title}</h3>
-        <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.review && <Badge intent="warning" icon={false}>نیاز به بازبینی</Badge>}{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}{item.global && <Badge intent="neutral" icon={false}>دامنهٔ کل</Badge>}</div>
-        <p className="body-sm text-text-subtle">{nodeLabel(o.nodeId)}</p>
-        <p className="body-md text-text-default">{o.content.length > 260 ? `${o.content.slice(0, 260)}…` : o.content}</p>
-        <p className="body-sm text-text-subtle">{formatNumber(dependents)} مورد روی آن سوارند.</p>
-        <div className="flex flex-wrap gap-inline-xs">
+        <p className="body-md text-text-default" data-testid="inspector-about">{aboutSentence(o, nodeLabel(o.nodeId), { review: item.review, expired: item.expired })}</p>
+        {sum && <p className="body-sm text-text-subtle" data-testid="inspector-summary">{sum.sentence}</p>}
+        {/* at most two actions in the first view; everything else is one click away under «بیشتر» */}
+        <div className="flex flex-wrap gap-inline-xs" data-testid="inspector-actions">
+          {item.review ? <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button> : moveBtn}
           <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
-          <Button size="sm" variant="secondary" iconStart="Link2" onClick={() => p.onActions(o.id)}>انتقال و اتصال</Button>
-          {item.review && <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button>}
-          {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از فضای آزاد بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در فضای آزاد</Button> : null}
         </div>
-        {inf && <InfluencePanel influence={inf} nodes={p.nodes} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} />}
+        {inf && <InfluencePanel compact influence={inf} nodes={p.nodes} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} />}
+        <DetailSection title="بیشتر" count={0}>
+          <p className="body-md whitespace-pre-wrap text-text-default">{o.content.length > 400 ? `${o.content.slice(0, 400)}…` : o.content}</p>
+          <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}</div>
+          <div className="flex flex-wrap gap-inline-xs">
+            {item.review && moveBtn}
+            {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از فضای آزاد بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در فضای آزاد</Button> : null}
+          </div>
+        </DetailSection>
       </div>
     );
   }
