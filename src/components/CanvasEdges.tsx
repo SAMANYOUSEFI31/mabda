@@ -72,7 +72,7 @@ export const CanvasEdges = React.memo(function CanvasEdges({ width, height, rout
                 const i = info(edge);
                 return (
                   <g key={edge.id} data-edge={edge.id} data-kind={edge.kind} className={i.dim ? 'opacity-35' : ''}>
-                    <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={i.w} strokeDasharray={st.dash} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
+                    <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={i.w} strokeDasharray={edge.pending ? '2 6' : st.dash} data-pending={edge.pending || undefined} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
                   </g>
                 );
               })}

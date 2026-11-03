@@ -47,6 +47,14 @@ export interface CanvasProps {
   onOpenObject: (o: ContextObject) => void;
   onOpenAssets: () => void;
   onAddKnowledge: () => void;
+  /** «بوم حقیقت» (default): only the approved relations map. «بوم فکر»: free + board, with open thoughts and suggestions in a tray. */
+  mode?: 'truth' | 'thinking';
+  /** a new value turns «نشان بده چه در راه است» on (the thinking space asks «اگر همه را تأیید کنم؟») */
+  previewNonce?: number;
+  /** thinking canvas: go to the truth map with the suggestions shown */
+  onPreviewTruth?: () => void;
+  /** a free note (a thought) becomes a SECTION of the tree: she picks the name and the parent */
+  onNoteToSection?: (noteId: string) => void;
 }
 
 type Pending = { kind: 'accept'; payload: MovePayload; title: string } | { kind: 'backward'; payload: MovePayload; title: string } | null;
@@ -57,7 +65,8 @@ const TIPS = [
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
-const readPrefs = (): Partial<{ layout: CanvasLayout; boxes: boolean; columns: BoardColumns; rows: BoardRows }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
+const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['relations'], thinking: ['free', 'board'] };
+const readPrefs = (): Partial<{ layouts: Partial<Record<'truth' | 'thinking', CanvasLayout>>; boxes: boolean; columns: BoardColumns; rows: BoardRows }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
 const readTips = (): number[] => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]'); } catch { return []; } };
 function useMedia(q: string): boolean {
   const [m, setM] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(q).matches : false));
@@ -65,12 +74,15 @@ function useMedia(q: string): boolean {
   return m;
 }
 
-/** «بوم»: one view, three layouts (رابطه‌ها · تابلو · آزاد). See docs/canvas-design.md for the principles every choice below answers to. */
+/** «بوم»: ONE engine, two spaces — «بوم حقیقت» (رابطه‌ها، فقط تأییدشده) and «بوم فکر» (آزاد · تابلو، با سینی «تازه‌ها»). The layout of each is remembered on its own. See docs/canvas-design.md for the principles every choice below answers to. */
 export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const toast = useToast();
   const prefs = useMemo(readPrefs, []);
   const isMobile = useMedia('(max-width: 767px)');
-  const [layout, setLayout] = useState<CanvasLayout>(prefs.layout ?? 'relations');
+  const mode = p.mode ?? 'truth';
+  const layouts = MODE_LAYOUTS[mode];
+  const [layout, setLayoutRaw] = useState<CanvasLayout>(() => { const l = prefs.layouts?.[mode]; return l && layouts.includes(l) ? l : layouts[0]; });
+  const setLayout = (l: CanvasLayout) => setLayoutRaw(layouts.includes(l) ? l : layouts[0]);
   const [boxes, setBoxes] = useState(prefs.boxes ?? true);
   const [columns, setColumns] = useState<BoardColumns>(prefs.columns ?? 'status');
   const [rows, setRows] = useState<BoardRows>(prefs.rows ?? 'domain');
@@ -92,15 +104,16 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [ctx, setCtx] = useState<{ item: SceneItem; x: number; y: number } | null>(null);
   const [tipsDone, setTipsDone] = useState<number[]>(readTips);
   const [hist, setHist] = useState(() => createHistory());
-  useEffect(() => { try { localStorage.setItem(PREF_KEY, JSON.stringify({ layout, boxes, columns, rows })); } catch { /* a per-viewer convenience only */ } }, [layout, boxes, columns, rows]);
+  useEffect(() => { try { const old = readPrefs(); localStorage.setItem(PREF_KEY, JSON.stringify({ layouts: { ...old.layouts, [mode]: layout }, boxes, columns, rows })); } catch { /* a per-viewer convenience only */ } }, [layout, boxes, columns, rows, mode]);
+  useEffect(() => { if (p.previewNonce) setShowPending(true); }, [p.previewNonce]);
 
   const root = useRef<HTMLDivElement>(null);
       const fileInput = useRef<HTMLInputElement>(null);
   const now = useMemo(() => new Date(), []);
 
   const scene: Scene = useMemo(
-    () => buildScene(layout, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending }),
-    [layout, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending],
+    () => buildScene(layout, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending, tray: mode === 'thinking' }),
+    [layout, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending, mode],
   );
   const byId = useMemo(() => new Map(scene.items.map((i) => [i.id, i])), [scene]);
   const objectById = useMemo(() => new Map(p.objects.map((o) => [o.id, o])), [p.objects]);
@@ -322,7 +335,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   // ── double-click on the empty stage = a new note; long press (touch) = the card menu ──
   const onStageDouble = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) return;
+    if (mode !== 'thinking' || (e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) return;
     const s = toStage(e.clientX, e.clientY);
     setNewNote({ content: '', nodeId: '', x: Math.max(0, Math.round(s.x)), y: Math.max(0, Math.round(s.y)) });
   };
@@ -348,7 +361,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     try {
       const r = fromJsonCanvas(await file.text());
       for (const c of r.cards) await p.onCreateNote({ content: c.text, x: Math.max(0, Math.round(c.x)), y: Math.max(0, Math.round(c.y)) });
-      toast.show({ intent: 'success', message: `${formatNumber(r.cards.length)} یادداشت در فضای آزاد گذاشته شد${r.skipped ? ` (${formatNumber(r.skipped)} مورد از نوع دیگر کنار ماند)` : ''}.` });
+      toast.show({ intent: 'success', message: `${formatNumber(r.cards.length)} یادداشت در بوم فکر گذاشته شد${r.skipped ? ` (${formatNumber(r.skipped)} مورد از نوع دیگر کنار ماند)` : ''}.` });
       setLayout('free');
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof Error ? e.message : 'ورود فایل ناموفق بود.' }); }
   };
@@ -387,7 +400,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   // Everything else (undo / redo, auto layout, inspector, JSON Canvas, shortcuts, «this layout?») lives under «⋯» and in the shortcuts.
   const toolbar = (
     <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
-      <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={(['relations', 'board', 'free'] as CanvasLayout[]).map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />
+      {layouts.length > 1 && <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={layouts.map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />}
       <span className="relative">
       <TextField id="canvas-search" size="md" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); } }} className="w-space-40" />
       {results.length > 0 && (
@@ -408,7 +421,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           { label: 'برگرداندن (Ctrl+Z)', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
           { label: 'از نو (Ctrl+Shift+Z)', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
           { divider: true },
-          { label: 'یادداشت تازه', icon: 'Plus', onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) },
+          ...(mode === 'thinking' ? [{ label: 'یادداشت تازه', icon: 'Plus' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: inspectorOpen ? 'بستن بازرس' : 'باز کردن بازرس', icon: 'PanelRight', onSelect: () => setInspectorOpen((v) => !v) },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -432,8 +445,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <CanvasInspector
         scene={scene} selection={selection} selectedEdge={edge(selectedEdge)} objects={p.objects} nodes={p.nodes} relationships={p.relationships} deliverables={p.deliverables} lod={lod} now={now}
         canMoveStatus={boardStatus} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} onActions={setActions} onAcceptReview={p.onAcceptReview}
-        onPlace={(id) => { void p.onPlaceObject(id, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); }}
-        onUnplace={(id) => void p.onUnplaceObject(id)} placed={!!sel1?.objectId && placedIds.has(sel1.objectId)} onClear={clearSelection} onSelect={(id) => select(id)}
+        onPlace={mode === 'thinking' ? (id) => { void p.onPlaceObject(id, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); } : undefined}
+        onUnplace={mode === 'thinking' ? (id) => void p.onUnplaceObject(id) : undefined} placed={!!sel1?.objectId && placedIds.has(sel1.objectId)} onClear={clearSelection} onSelect={(id) => select(id)}
       />
     </aside>
   );
@@ -443,7 +456,12 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} aria-label="بوم" data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
       {!sheet && toolbar}
       {aboutOpen && <Alert intent="info" title={`چیدمان «${LAYOUT_FA[layout]}»: ${aboutText.question}`} onClose={() => setAboutOpen(false)}>{aboutText.what}</Alert>}
-      {!aboutOpen && <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>}
+      {!aboutOpen && (
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+          <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
+          {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Workflow" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>}
+        </div>
+      )}
       {tip !== undefined && !stageEmpty && (
         <div role="note" data-testid="canvas-tip" className="flex items-center justify-between gap-inline-sm rounded-control border border-border-info-subtle bg-bg-info-subtle px-inset-md py-inset-xs">
           <p className="body-sm text-text-default"><b>نکته:</b> {TIPS[tip]}</p>
@@ -503,7 +521,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
-                  <p className="body-md text-text-default">{layout === 'free' ? 'فضای فکر آزاد خالی است؛ روی فضای خالی دابل‌کلیک کن تا یادداشت بسازی.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
+                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا «کارت از منبع» را بگذار.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
                   <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
                 </div>
               </div>
@@ -517,8 +535,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             <div role="menu" aria-label="منوی کارت" className="fixed z-dialog flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised" style={{ insetBlockStart: ctx.y, insetInlineStart: ctx.x }} onKeyDown={(e) => { if (e.key === 'Escape') setCtx(null); }}>
               {([
                 ['انتخاب و روشن کردن اثرگذارها', () => select(ctx.item.id)],
-                ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], [placedIds.has(ctx.item.objectId) ? 'از فضای آزاد بردار' : 'بگذار در فضای آزاد', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] as Array<[string, () => void]> : []),
-                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['تبدیل به قلم دانش', () => setToKnowledge(ctx.item.noteId!)]] as Array<[string, () => void]> : []),
+                ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], ...(mode === 'thinking' ? [[placedIds.has(ctx.item.objectId) ? 'از بوم فکر بردار' : 'بگذار در بوم فکر', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] : [])] as Array<[string, () => void]> : []),
+                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['تبدیل به قلم دانش', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
               ] as Array<[string, () => void]>).map(([label, fn]) => <button key={label} type="button" role="menuitem" autoFocus={label.startsWith('انتخاب')} className="body-sm rounded-control-sm px-inset-sm py-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { setCtx(null); fn(); }}>{label}</button>)}
             </div>
           )}
@@ -578,7 +596,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         )}
       </Dialog>
 
-      <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="یادداشت تازه در فضای آزاد"
+      <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="فکر تازه روی بوم فکر"
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">

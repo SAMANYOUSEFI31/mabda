@@ -10,9 +10,10 @@ import { Breadcrumb, Button } from '../ui';
 
 export const PAGE_TITLE: Record<string, string> = {
   context: 'منبع حقیقت',
-  workstreams: 'جریان‌های کار',
+  workstreams: 'خروجی‌ها · ساخت',
+  thinking: 'فکر',
   chat: 'گفتگو',
-  assets: 'دارایی‌ها',
+  assets: 'خروجی‌ها',
   home: 'خانه',
   ledger: 'مصرف و دفتر کل',
 };

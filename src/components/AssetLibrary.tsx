@@ -70,7 +70,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     <div className="flex flex-col gap-stack-lg">
       <div className="flex items-start justify-between gap-inline-md">
         <div>
-          <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
+          <h2 className="heading-sm text-text-default">خروجی‌های تو</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.</p>
         </div>
         <Menu

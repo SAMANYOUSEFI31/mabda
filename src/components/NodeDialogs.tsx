@@ -12,7 +12,7 @@ import { CoachPanel } from './CoachPanel';
 import type { LedgerEntry } from '../types';
 
 export type NodeDialogState =
-  | { kind: 'create'; parentId: string }
+  | { kind: 'create'; parentId: string; /** prefilled name (a thought turned into a section) */ label?: string; /** show the parent picker (with the top level) */ chooseParent?: boolean; thought?: { noteId: string; line: number; text: string } }
   | { kind: 'rename'; nodeId: string }
   | { kind: 'move'; nodeId: string; /** a destination chosen by a quick move («یک سطح بیرون بیاور»): '' = the top level */ preset?: string }
   | { kind: 'delete'; nodeId: string }
@@ -35,6 +35,8 @@ interface Props {
   onOpenAiSettings: () => void;
   onRename: (nodeId: string, label: string, description: string) => Promise<void>;
   onMove: (nodeId: string, parentId: string, reason?: string) => Promise<void>;
+  /** a thought that became a section: its line in the note is done */
+  onThoughtSectioned?: (thought: { noteId: string; line: number; text: string }, label: string) => Promise<void>;
   relationships?: ContextRelationship[];
   onDelete: (nodeId: string, transferTo?: string) => Promise<void>;
 }
@@ -45,9 +47,10 @@ const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
 
-const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], relationships = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
+const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], relationships = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete, onThoughtSectioned }) => {
   const node = 'nodeId' in state ? nodes.find((n) => n.id === state.nodeId) : undefined;
-  const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : '');
+  const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : state.kind === 'create' ? state.label ?? '' : '');
+  const [createParent, setCreateParent] = useState(state.kind === 'create' ? state.parentId : '');
   const [description, setDescription] = useState(state.kind === 'rename' ? node?.description ?? '' : '');
   const [target, setTarget] = useState(state.kind === 'move' && state.preset !== undefined ? (state.preset === '' ? ROOT_TARGET : state.preset) : '');
   const [moveReason, setMoveReason] = useState('');
@@ -69,14 +72,14 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
   }
 
   if (state.kind === 'create' || state.kind === 'rename') {
-    const parent = nodes.find((n) => n.id === (state.kind === 'create' ? state.parentId : ''));
+    const parent = nodes.find((n) => n.id === (state.kind === 'create' ? createParent : ''));
     return (
       <Dialog
         open
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? (parent ? `گرهٔ جدید زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'create' ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined}
+        description={state.kind === 'create' ? (state.thought ? 'فکرت به یک بخش از ساختار تبدیل می‌شود؛ خط فکر در یادداشت با ✓ می‌ماند.' : 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.') : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -95,11 +98,17 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
             if (state.kind === 'create') {
               // the dialog is replaced by the Coach for the new node (no close in between)
               setBusy(true);
-              onCreate(state.parentId, label.trim(), description.trim()).then(onOpenCoach).catch(() => undefined).finally(() => setBusy(false));
+              if (state.thought) {
+                const th = state.thought;
+                onCreate(createParent, label.trim(), description.trim()).then(() => onThoughtSectioned?.(th, label.trim())).then(onClose).catch(() => undefined).finally(() => setBusy(false));
+              } else onCreate(createParent, label.trim(), description.trim()).then(onOpenCoach).catch(() => undefined).finally(() => setBusy(false));
             } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}
         >
           <TextField label="نام گره" required autoFocus value={label} onChange={(e) => setLabel(e.target.value)} placeholder="مثلاً: کمپین پاییز" />
+          {state.kind === 'create' && state.chooseParent && (
+            <Select label="زیر کدام بخش؟" value={createParent} onChange={(e) => setCreateParent(e.target.value)} options={[{ value: '', label: 'بخش اصلی (سطح اول)' }, ...flatten(nodes).map((x) => ({ value: x.node.id, label: `${'— '.repeat(x.depth)}${x.node.label}` }))]} />
+          )}
           <Textarea label="توضیح کوتاه (اختیاری)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </form>
       </Dialog>

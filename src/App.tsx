@@ -57,7 +57,7 @@ import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { ThinkingSpace } from './components/ThinkingSpace';
 import { ThoughtDialog } from './components/ThoughtDialog';
-import { thoughtToDraft } from './core/thoughts';
+import { resolveThoughtLine, sectionNameFromThought, thoughtToDraft } from './core/thoughts';
 import { thinkingSpace } from './core/thinkingSpace';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
 import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
@@ -165,7 +165,11 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas' | 'thinking'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas'>('doc');
+  // «فکر» is its own destination (not a view of the truth): a list to review and decide, and a canvas to think on
+  const [thinkingView, setThinkingView] = useState<'list' | 'canvas'>('list');
+  /** a new value makes the truth map show what is on its way (the thinking space asks «اگر همه را تأیید کنم؟») */
+  const [previewNonce, setPreviewNonce] = useState(0);
   // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
   const viewModeSeen = useRef(contextViewMode);
   useEffect(() => {
@@ -291,6 +295,7 @@ export default function App() {
       case 'record': openContext(null); break;
       case 'thought': setThoughtDialog({}); break;
       case 'go-thinking': openThinkingSpace(); break;
+      case 'go-thinking-canvas': setThinkingView('canvas'); setActiveTab('thinking'); break;
       case 'ai-request': setAiRequest({ scopeNodeId: '' }); break;
       case 'go-home': setActiveTab('home'); break;
       case 'go-context': setActiveTab('context'); setContextViewMode('doc'); break;
@@ -624,7 +629,22 @@ export default function App() {
   // «فضای فکر» (thoughts that are not truth yet) and «فکر تازه»
   const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string } | null>(null);
   const [spaceNode, setSpaceNode] = useState<string | undefined>(undefined);
-  const openThinkingSpace = (nodeId?: string) => { setSpaceNode(nodeId); setActiveTab('context'); setContextViewMode('thinking'); };
+  const openThinkingSpace = (nodeId?: string) => { setSpaceNode(nodeId); setThinkingView('list'); setActiveTab('thinking'); };
+  const previewTruth = () => { setPreviewNonce((n) => n + 1); setActiveTab('context'); setContextViewMode('canvas'); };
+  /** a thought becomes a SECTION: she names it and picks the parent (or the top level); the thought's line is then done */
+  const startSectionFromThought = (t: { noteId: string; nodeId: string; line: number; text: string }) => setNodeDialog({ kind: 'create', parentId: t.nodeId, label: sectionNameFromThought(t.text), chooseParent: true, thought: { noteId: t.noteId, line: t.line, text: t.text } });
+  const startSectionFromNote = (noteId: string) => {
+    const n = data?.notes.find((x) => x.id === noteId);
+    if (!n) return;
+    const first = thinkingOf([n]).find((i) => !convertedTo(i, workspaceContexts));
+    const text = first?.text ?? n.content.split('\n')[0];
+    setNodeDialog({ kind: 'create', parentId: n.nodeId, label: sectionNameFromThought(text), chooseParent: true, ...(first ? { thought: { noteId: n.id, line: first.line, text: first.text } } : {}) });
+  };
+  const handleThoughtSectioned = async (t: { noteId: string; line: number; text: string }, label: string) => {
+    const n = data?.notes.find((x) => x.id === t.noteId);
+    if (n) await handleUpdateNote(n.id, resolveThoughtLine(n.content, t, label));
+    toast.show({ intent: 'success', message: `بخش «${label}» ساخته شد. می‌توانی در «ساختار» پرش کنی؛ فکر اولیه با ✓ در یادداشت ماند.` });
+  };
   const handleSaveThought = async (nodeId: string, content: string) => {
     await handleAddNote(nodeId, content);
     toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش. به AI نمی‌رسد.' });
@@ -902,9 +922,49 @@ export default function App() {
   };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
+  /** what is waiting for her in the thinking space: suggestions, drafts, open thoughts (the badge of «فکر») */
+  const thinkingBadge = useMemo(() => {
+    if (!data) return 0;
+    const v = thinkingSpace({ objects: workspaceContexts, notes: data.notes, nodes });
+    return v.waiting.length + v.thoughts.length;
+  }, [data, workspaceContexts, nodes]);
+
+  const renderCanvas = (mode: 'truth' | 'thinking') => (
+    <ContextCanvas
+      mode={mode}
+      previewNonce={mode === 'truth' ? previewNonce : undefined}
+      onPreviewTruth={mode === 'thinking' ? previewTruth : undefined}
+      onNoteToSection={mode === 'thinking' ? startSectionFromNote : undefined}
+              nodes={nodes}
+              objects={workspaceContexts}
+              relationships={data?.relationships ?? []}
+              deliverables={deliverables}
+              notes={data?.notes ?? []}
+              canvas={data?.canvas ?? { decisions: [], free: [] }}
+              reviewIds={reviewIdSet}
+              staleAssetIds={staleIdSet}
+              onMove={handleCanvasMove}
+              onConnect={handleCanvasConnect}
+              onSetDependencies={handleSetDependencies}
+              onCreateNote={handleFreeNoteCreate}
+              onMoveNote={handleFreeNoteMove}
+              onUpdateNote={handleUpdateNote}
+              onDeleteNote={handleDeleteNote}
+              onNoteToKnowledge={handleNoteToKnowledge}
+              onPlaceObject={handlePlaceObject}
+              onUnplaceObject={handleUnplaceObject}
+              onAutoLayout={handleAutoLayout}
+              onAcceptReview={(id) => handleAcceptReview(id, true)}
+              onOpenObject={(obj) => openContext(obj)}
+              onOpenAssets={() => setActiveTab('assets')}
+              onAddKnowledge={() => openContext(null)}
+  />
+  );
+
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
     activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    : activeTab === 'thinking' ? { label: 'فکر تازه', icon: 'Plus', onClick: () => setThoughtDialog({ nodeId: spaceNode }) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
     : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
     : undefined;
@@ -962,6 +1022,7 @@ export default function App() {
         onChangeContextViewMode={setContextViewMode}
         contextCount={workspaceContexts.length}
         deliverablesCount={deliverables.length}
+        thinkingCount={thinkingBadge}
       />
 
       {/* Main Content Area */}
@@ -1122,13 +1183,12 @@ export default function App() {
                 <SegmentedControl
                   label="نمای منبع حقیقت"
                   value={contextViewMode}
-                  onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas' | 'thinking')}
+                  onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
                   items={[
                     { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                     { id: 'read', label: 'سند', icon: 'BookOpen' },
                     { id: 'canvas', label: 'بوم', icon: 'Workflow' },
                     ...(contextViewMode === 'table' ? [{ id: 'table', label: 'جدول', icon: 'Table2' as const }] : []),
-                    ...(contextViewMode === 'thinking' ? [{ id: 'thinking', label: 'فضای فکر', icon: 'Lightbulb' as const }] : []),
                   ]}
                 />
                 <Menu
@@ -1136,7 +1196,6 @@ export default function App() {
                   align="end"
                   trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
                   items={[
-                    { label: 'فضای فکر', icon: contextViewMode === 'thinking' ? 'Check' : 'Lightbulb', onSelect: () => setContextViewMode('thinking') },
                     { label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') },
                   ]}
                 />
@@ -1152,23 +1211,6 @@ export default function App() {
                 approvals={approvals}
                 fileName={currentWorkspace.name}
                 empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
-              />
-            ) : contextViewMode === 'thinking' ? (
-              <ThinkingSpace
-                objects={workspaceContexts}
-                notes={data.notes}
-                nodes={nodes}
-                nodeId={spaceNode}
-                onNodeChange={setSpaceNode}
-                onNewThought={() => setThoughtDialog({ nodeId: spaceNode })}
-                onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
-                onOpenObject={(o) => openContext(o)}
-                onApproveDraft={handleApproveDraft}
-                onRejectDraft={handleRejectDraft}
-                proposals={{
-                  onAccept: handleAcceptProposal, onReplace: handleReplaceWithProposal, onEdit: (o) => openContext(o), onReject: handleRejectProposal,
-                  onOpenImport: () => setIsImportOpen(true), onOpenPack: () => setPackTarget({ title: currentWorkspace.name }), onOpenConnect: () => setIsConnectOpen(true), onOpenMemory: () => setIsMemoryOpen(true),
-                }}
               />
             ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
@@ -1203,31 +1245,7 @@ export default function App() {
                 onExtractNote={handleExtractNote}
               />
             ) : contextViewMode === 'canvas' ? (
-              <ContextCanvas
-                nodes={nodes}
-                objects={workspaceContexts}
-                relationships={data?.relationships ?? []}
-                deliverables={deliverables}
-                notes={data?.notes ?? []}
-                canvas={data?.canvas ?? { decisions: [], free: [] }}
-                reviewIds={reviewIdSet}
-                staleAssetIds={staleIdSet}
-                onMove={handleCanvasMove}
-                onConnect={handleCanvasConnect}
-                onSetDependencies={handleSetDependencies}
-                onCreateNote={handleFreeNoteCreate}
-                onMoveNote={handleFreeNoteMove}
-                onUpdateNote={handleUpdateNote}
-                onDeleteNote={handleDeleteNote}
-                onNoteToKnowledge={handleNoteToKnowledge}
-                onPlaceObject={handlePlaceObject}
-                onUnplaceObject={handleUnplaceObject}
-                onAutoLayout={handleAutoLayout}
-                onAcceptReview={(id) => handleAcceptReview(id, true)}
-                onOpenObject={(obj) => openContext(obj)}
-                onOpenAssets={() => setActiveTab('assets')}
-                onAddKnowledge={() => openContext(null)}
-              />
+              renderCanvas('truth')
             ) : (
               <ContextTableView
                 objects={workspaceContexts}
@@ -1251,6 +1269,46 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'thinking' && (
+          <div className="space-y-stack-lg">
+            <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
+                <p className="text-body-sm text-text-subtle mt-stack-xs">هرچه هنوز حقیقت نیست اینجاست: فکر ← پیشنهادی ← تأییدشده. منبع حقیقت تمیز می‌ماند.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-inline-sm">
+                <SegmentedControl
+                  label="نمای فکر"
+                  value={thinkingView}
+                  onChange={(id) => setThinkingView(id as 'list' | 'canvas')}
+                  items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
+                />
+                <Button variant="primary" iconStart="Plus" onClick={() => setThoughtDialog({ nodeId: spaceNode })}>فکر تازه</Button>
+              </div>
+            </div>
+            <div id="thinking-view" />
+            {thinkingView === 'canvas' ? renderCanvas('thinking') : (
+              <ThinkingSpace
+          objects={workspaceContexts}
+          notes={data.notes}
+          nodes={nodes}
+          nodeId={spaceNode}
+          onNodeChange={setSpaceNode}
+          onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
+          onOpenObject={(o) => openContext(o)}
+          onApproveDraft={handleApproveDraft}
+          onRejectDraft={handleRejectDraft}
+          proposals={{
+            onAccept: handleAcceptProposal, onReplace: handleReplaceWithProposal, onEdit: (o) => openContext(o), onReject: handleRejectProposal,
+            onOpenImport: () => setIsImportOpen(true), onOpenPack: () => setPackTarget({ title: currentWorkspace.name }), onOpenConnect: () => setIsConnectOpen(true), onOpenMemory: () => setIsMemoryOpen(true),
+          }}
+                onPreviewTruth={previewTruth}
+                onToSection={(item) => startSectionFromThought(item)}
+              />
+            )}
+          </div>
+        )}
+
         {/* TAB 2: Workstreams & Gap Engine */}
         {activeTab === 'workstreams' && specs.length === 0 && (
           <EmptyState
@@ -1259,6 +1317,9 @@ export default function App() {
             description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز."
             action={<div className="flex flex-wrap justify-center gap-inline-md"><Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button><Button variant="secondary" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button></div>}
           />
+        )}
+        {activeTab === 'workstreams' && specs.length > 0 && (
+          <Button variant="ghost" size="sm" iconStart="ArrowRight" onClick={() => setActiveTab('assets')}>همهٔ خروجی‌ها</Button>
         )}
         {activeTab === 'workstreams' && specs.length > 0 && (
           <WorkstreamStudio
@@ -1291,6 +1352,35 @@ export default function App() {
 
         {/* TAB 4: Asset Library */}
         {activeTab === 'assets' && (
+          <div className="space-y-stack-lg">
+            <div>
+              <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
+              <p className="text-body-sm text-text-subtle mt-stack-xs">بالا: با چه چیزی می‌سازی. پایین: چه ساخته‌ای و کدام‌ها دیگر به‌روز نیستند.</p>
+            </div>
+            <section className="flex flex-col gap-stack-md" aria-label="بساز" data-testid="outputs-build">
+              <h2 className="heading-sm text-text-default">بساز</h2>
+              {specs.length === 0 ? (
+                <EmptyState icon="Layers" title="این فضا هنوز جریان کاری ندارد" description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
+              ) : (
+                <ul className="grid gap-stack-md sm:grid-cols-2" aria-label="جریان‌های کار">
+                  {specs.map((sp) => (
+                    <li key={sp.id}>
+                      <Card padding="lg" className="flex h-full flex-col justify-between gap-stack-sm">
+                        <div className="flex flex-col gap-stack-xs">
+                          <span className="label-md text-text-default">{sp.title}</span>
+                          <p className="body-sm text-text-subtle">{sp.description}</p>
+                        </div>
+                        <div><Button size="sm" variant="secondary" iconStart="Sparkles" aria-label={`بساز: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>بساز</Button></div>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex flex-wrap gap-inline-sm">
+                <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button>
+                <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>
+              </div>
+            </section>
           <AssetLibrary
             focus={focusAsset}
             currentWorkspace={currentWorkspace}
@@ -1309,6 +1399,7 @@ export default function App() {
               setActiveTab('workstreams');
             }}
           />
+          </div>
         )}
 
         {/* TAB 5: Ledger & Economics */}
@@ -1372,6 +1463,7 @@ export default function App() {
         relationships={data.relationships}
         onMove={(nodeId, parentId, reason) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId, undefined, reason))}
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
+        onThoughtSectioned={handleThoughtSectioned}
       />
 
       {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes.map((n) => ({ id: n.id, label: n.label }))} />}

@@ -18,6 +18,8 @@ interface Props {
   onGoToNode?: (nodeId: string) => void;
   /** the way up: «به دانش ببر» opens the knowledge form prefilled from the line (nothing is saved until she saves it) */
   onPrefill?: (item: NoteThinkingItem) => void;
+  /** «ساخت بخش»: the thought becomes a section of the tree (she picks the name and the parent) */
+  onToSection?: (item: NoteThinkingItem) => void;
   empty?: string;
 }
 
@@ -25,7 +27,7 @@ interface Props {
  * Thinking items derived from note lines. Nothing is stored: converting makes a PROPOSED object whose source is the line,
  * and the item then carries ✓. A question stays a question; an idea can stay a note.
  */
-export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert, onGoToNode, onPrefill, empty }) => {
+export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert, onGoToNode, onPrefill, onToSection, empty }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const label = (id: string) => nodes?.find((n) => n.id === id)?.label ?? id;
   const run = async (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => { setBusy(item.key); try { await onConvert(item, opts); } finally { setBusy(null); } };
@@ -44,6 +46,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert
             </span>
             <span className="flex items-center gap-inline-xs">
               {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به گره</Button>}
+              {!done && onToSection && <Button size="sm" variant="ghost" iconStart="Network" onClick={() => onToSection(it)}>ساخت بخش</Button>}
               {!done && onPrefill && <Button size="sm" variant="secondary" iconStart="Wand2" onClick={() => onPrefill(it)}>به دانش ببر</Button>}
               {!done && !onPrefill && it.kind === 'idea' && (
                 <Menu
