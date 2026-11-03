@@ -24,6 +24,8 @@ interface ContextTreeDocViewProps {
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
   onShowEffect: (nodeId: string) => void;
+  /** how many things are in force at a node (own, from above, everywhere) — the summary sentence */
+  effectCount: (nodeId: string) => number;
   /** thinking items derived from every note (src/core/thinkingMarkers.ts) */
   thinking: NoteThinkingItem[];
   onConvertItem: (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => Promise<void>;
@@ -48,6 +50,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
+  const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
+  const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const card = (obj: ContextObject) => (
@@ -102,15 +106,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {node.description && <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>}
           </div>
           <div className="flex flex-wrap items-center gap-inline-xs">
-            <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
-            <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
-            <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
-            <Button size="sm" variant="ghost" iconStart="Sparkles" onClick={() => props.onOpenAiRequest(node.id)}>درخواست برای AI</Button>
+            {/* one main action; everything else is under «⋯» */}
+            <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
             <Menu
               label={`عملیات گرهٔ ${node.label}`}
               align="end"
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
+                { label: 'درخواست برای AI', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
+                { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
+                { label: 'گفتگوی متمرکز', icon: 'Pencil', onSelect: () => props.onOpenThread(node.id) },
+                { divider: true },
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
                 { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
@@ -133,12 +139,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <>
             {/* وضعیت فعلی: what is established here */}
             {(established.length > 0 || nodeObjects.length > 0) && (
-              <section className="flex flex-col gap-stack-sm" aria-label="وضعیت فعلی">
+              <section className="flex flex-col gap-stack-sm" aria-label="الان درست است">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                  <h4 className="label-md text-text-default">وضعیت فعلی</h4>
-                  <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>آنچه اینجا اثر دارد</Button>
+                  <h4 className="label-md text-text-default">الان درست است</h4>
+                  <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button>
                 </div>
-                {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این گره تأیید نشده.</p> : <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{established.map(card)}</div>}
+                {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
+                  <>
+                    <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
+                  </>
+                )}
               </section>
             )}
 
