@@ -63,7 +63,7 @@ test('collapsed nodes stand for their objects: counts, merged edges with a count
   assert.equal(m.rep['o:a2'], 'n:a');
   const dep = m.edges.filter((e) => e.kind === 'dependency');
   assert.deepEqual(dep.map((e) => [e.from, e.to, e.count]), [['n:b', 'n:a', 1]], 'a2→a1 is inside one group and disappears; b1→a1 becomes b→a');
-  assert.deepEqual(m.edges.find((e) => e.kind === 'lineage'), { id: 'lineage|a:x|n:b', from: 'a:x', to: 'n:b', kind: 'lineage', label: 'ساخته‌شده از', count: 1 });
+  assert.deepEqual(m.edges.find((e) => e.kind === 'lineage'), { id: 'lineage|a:x|n:b', from: 'a:x', to: 'n:b', kind: 'lineage', label: 'ساخته‌شده از', count: 1, influencer: 'n:b', influenced: 'a:x' });
   assert.equal(m.summary.collapsedNodes, 2);
   const one = buildMapModel(base, { expanded: new Set(['a']) });
   assert.ok(one.vertices.some((x) => x.id === 'o:a1') && !one.vertices.some((x) => x.id === 'o:b1'));
@@ -75,6 +75,10 @@ test('superseded objects are hidden unless history is shown; assets can be hidde
   assert.ok(!buildMapModel({ ...base, objects: objs, relationships: rels }).vertices.some((x) => x.id === 'o:old'));
   const h = buildMapModel({ ...base, objects: objs, relationships: rels }, { includeHistory: true });
   assert.equal(h.edges.find((e) => e.kind === 'supersedes')!.label, 'جایگزین کرد');
+  const sup = h.edges.find((e) => e.kind === 'supersedes')!;
+  assert.deepEqual([sup.influencer, sup.influenced], ['o:a1', 'o:old'], 'the new one acts on the old one');
+  const dep = h.edges.find((e) => e.kind === 'dependency')!;
+  assert.deepEqual([dep.influencer, dep.influenced], [dep.to, dep.from], 'a dependency is drawn from the depended-on to the dependent');
   assert.ok(!buildMapModel(base, { showAssets: false }).vertices.some((x) => x.kind === 'asset'));
   const c = buildMapModel(base, { assetClusterAbove: 0 });
   assert.deepEqual([c.vertices.some((x) => x.kind === 'assets'), c.rep['a:x']], [true, 'assets']);

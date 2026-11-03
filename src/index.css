@@ -88,3 +88,7 @@
 .list-persian { list-style-type: persian; }
 .canvas-card:not(.is-ghost) { cursor: grab; }
 .canvas-card:not(.is-ghost):active { cursor: grabbing; }
+
+/* Canvas: cards glide to their new place when the layout changes (≤ 200ms); nothing moves for people who ask for less motion. */
+.canvas-glide { transition: transform 200ms ease, opacity 120ms ease; }
+@media (prefers-reduced-motion: reduce) { .canvas-glide { transition: none; } }

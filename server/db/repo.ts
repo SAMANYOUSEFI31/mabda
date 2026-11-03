@@ -507,6 +507,10 @@ export class Repo {
       .run(s.userId, s.workspaceId, view, itemRef, v.lane ?? null, v.rank ?? null, v.x ?? null, v.y ?? null);
   }
 
+  removeCanvasItem(s: Scope, view: 'decisions' | 'free', itemRef: string) {
+    this.db.prepare('DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = ? AND item_ref = ?').run(s.workspaceId, s.userId, view, itemRef);
+  }
+
   clearCanvas(s: Scope, view: 'decisions' | 'free') {
     this.db.prepare('DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = ?').run(s.workspaceId, s.userId, view);
   }

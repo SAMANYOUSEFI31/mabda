@@ -48,7 +48,12 @@ export interface MapVertex {
 }
 /** the box of a node that contains objects and/or sub-nodes (depth 0 = a root node). Not a vertex: it has no edges. */
 export interface MapGroup { id: string; nodeId: string; label: string; depth: number; /** objects directly in this node */ count: number; /** its objects are listed inside the box */ expanded: boolean; x: number; y: number; w: number; h: number }
-export interface MapEdge { id: string; from: string; to: string; kind: MapEdgeKind; label: string; count: number }
+/**
+ * `from` / `to` are the relation as stored (A depends on B: from = A, to = B). `influencer` / `influenced` are the DRAWING direction:
+ * an arrow always points from what acts to what is acted on — a dependency B → A, an asset built from an object: object → asset,
+ * a replacement: the new one → the old one.
+ */
+export interface MapEdge { id: string; from: string; to: string; kind: MapEdgeKind; label: string; count: number; influencer: string; influenced: string }
 
 export interface MapInput {
   nodes: TreeNode[];
@@ -110,7 +115,7 @@ export interface MapModel {
 }
 
 export const CARD_W = 220;
-export const CARD_H = 64;
+export const CARD_H = 120;
 export const GAP_X = 96;
 export const GAP_Y = 20;
 export const GROUP_PAD = 14;
@@ -189,7 +194,7 @@ export function buildMapModel(rawInput: MapInput, rawOpts: MapOptions = {}): Map
     const key = `${kind}|${a}|${b}`;
     const cur = edgeMap.get(key);
     if (cur) cur.count++;
-    else edgeMap.set(key, { id: key, from: a, to: b, kind, label: EDGE_LABEL[kind], count: 1, flowFrom: b, flowTo: a });
+    else edgeMap.set(key, { id: key, from: a, to: b, kind, label: EDGE_LABEL[kind], count: 1, influencer: kind === 'supersedes' ? a : b, influenced: kind === 'supersedes' ? b : a, flowFrom: b, flowTo: a });
   };
   for (const r of input.relationships) {
     if (r.type === 'depends_on') link('dependency', `o:${r.sourceId}`, `o:${r.targetId}`);

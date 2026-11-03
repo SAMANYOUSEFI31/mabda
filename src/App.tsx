@@ -25,8 +25,7 @@ import { unresolvedContradictions } from './core/contradictionCandidates';
 import { JUDGE_SETTLE_MS, baselineOf, changedSince, pairsAfterChange, type VersionBaseline } from './core/judgePolicy';
 import { can, entitlementsOf } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
-import { ContextCanvasView } from './components/ContextCanvasView';
-import { ContextMapView } from './components/ContextMapView';
+import { ContextCanvas } from './components/ContextCanvas';
 import { ContextTableView } from './components/ContextTableView';
 import { DocReader } from './components/DocReader';
 import { AttentionPanel } from './components/AttentionPanel';
@@ -79,7 +78,7 @@ import { chatCredits } from './core/creditEngine';
 import { DataApiError, dataApi } from './services/dataApi';
 import type { MetricsBundle } from './services/dataApi';
 import type { CanvasBundle } from './services/dataApi';
-import type { MovePayload } from './components/ContextCanvasView';
+import type { MovePayload } from './components/ContextCanvas';
 import { useAiStatus } from './services/aiStatus';
 import type { ExpectationVerdict, MetricDirection } from './types';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from './types';
@@ -149,13 +148,13 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'map' | 'canvas'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas'>('doc');
   // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
   const viewModeSeen = useRef(contextViewMode);
   useEffect(() => {
     if (viewModeSeen.current === contextViewMode) return;
     viewModeSeen.current = contextViewMode;
-    if (contextViewMode === 'map' || contextViewMode === 'canvas') setTimeout(() => document.getElementById('context-view')?.scrollIntoView({ block: 'start' }), 30);
+    if (contextViewMode === 'canvas') setTimeout(() => document.getElementById('context-view')?.scrollIntoView({ block: 'start' }), 30);
   }, [contextViewMode]);
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
@@ -364,6 +363,15 @@ export default function App() {
   const handleFreeNoteMove = (id: string, x: number, y: number) => {
     patch((d) => ({ ...d, canvas: { ...d.canvas, free: d.canvas.free.map((i) => (i.itemRef === `note:${id}` ? { ...i, x, y } : i)) } }));
     void attempt(() => dataApi.freeNoteMove(wid, id, x, y));
+  };
+  const handlePlaceObject = async (id: string, x: number, y: number) => {
+    patch((d) => ({ ...d, canvas: { ...d.canvas, free: d.canvas.free.some((i) => i.itemRef === `obj:${id}`) ? d.canvas.free.map((i) => (i.itemRef === `obj:${id}` ? { ...i, x, y } : i)) : [...d.canvas.free, { itemRef: `obj:${id}`, x, y }] } }));
+    const r = await attempt(() => dataApi.freeObjectPlace(wid, id, x, y));
+    if (r) patch((d) => ({ ...d, canvas: r.canvas }));
+  };
+  const handleUnplaceObject = async (id: string) => {
+    const r = await attempt(() => dataApi.freeObjectRemove(wid, id));
+    if (r) patch((d) => ({ ...d, canvas: r.canvas }));
   };
   const handleNoteToKnowledge = async (id: string, type: 'Fact' | 'Decision' | 'Constraint') => {
     const r = await attempt(() => dataApi.freeNoteToKnowledge(wid, id, type));
@@ -939,13 +947,12 @@ export default function App() {
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'map' | 'canvas')}
+                onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'read', label: 'سند', icon: 'BookOpen' },
                   { id: 'table', label: 'جدول', icon: 'Table2' },
-                  { id: 'map', label: 'نقشه', icon: 'Workflow' },
-                  { id: 'canvas', label: 'بوم', icon: 'Layers' },
+                  { id: 'canvas', label: 'بوم', icon: 'Workflow' },
                 ]}
               />
             </div>
@@ -984,34 +991,30 @@ export default function App() {
                 onExtractNote={handleExtractNote}
               />
             ) : contextViewMode === 'canvas' ? (
-              <ContextCanvasView
+              <ContextCanvas
                 nodes={nodes}
                 objects={workspaceContexts}
                 relationships={data?.relationships ?? []}
+                deliverables={deliverables}
                 notes={data?.notes ?? []}
                 canvas={data?.canvas ?? { decisions: [], free: [] }}
                 reviewIds={reviewIdSet}
+                staleAssetIds={staleIdSet}
                 onMove={handleCanvasMove}
                 onConnect={handleCanvasConnect}
+                onSetDependencies={handleSetDependencies}
                 onCreateNote={handleFreeNoteCreate}
                 onMoveNote={handleFreeNoteMove}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
                 onNoteToKnowledge={handleNoteToKnowledge}
+                onPlaceObject={handlePlaceObject}
+                onUnplaceObject={handleUnplaceObject}
                 onAutoLayout={handleAutoLayout}
-                onOpenObject={(obj) => openContext(obj)}
-              />
-            ) : contextViewMode === 'map' ? (
-              <ContextMapView
-                nodes={nodes}
-                objects={workspaceContexts}
-                relationships={data?.relationships ?? []}
-                deliverables={deliverables}
-                changes={data?.changes ?? []}
-                reviewObjectIds={reviewIdSet}
-                staleAssetIds={staleIdSet}
+                onAcceptReview={(id) => handleAcceptReview(id, true)}
                 onOpenObject={(obj) => openContext(obj)}
                 onOpenAssets={() => setActiveTab('assets')}
+                onAddKnowledge={() => openContext(null)}
               />
             ) : (
               <ContextTableView

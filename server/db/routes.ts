@@ -128,7 +128,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.post('/workspaces/:wid/weekly-review/done', wrap((req, res) => { res.json({ weeklyReviewAt: repo.markWeeklyReview(scopeOf(req)) }); }));
 
   // ── boards («بوم»): the decision board's columns ARE statuses, its rows ARE nodes, its order IS a stored rank ──
-  const LANES: Lane[] = ['thinking', 'confirmed', 'review'];
+  const LANES: Lane[] = ['thinking', 'confirmed'];
   const canvasBundle = (s: Scope) => ({
     objects: repo.listObjects(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), notes: repo.listNotes(s), stale: stale(s),
     canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') },
@@ -194,6 +194,18 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const s = scopeOf(req);
     if (!repo.getNote(s, req.params.id)) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     repo.saveCanvasItem(s, 'free', `note:${req.params.id}`, { x: Number(body(req).x) || 0, y: Number(body(req).y) || 0 });
+    res.json({ canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') } });
+  }));
+  // a card (a real object) placed in the free space: only where it is DRAWN is stored; the object itself is untouched
+  router.put('/workspaces/:wid/canvas/free/objects/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    if (!repo.getObject(s, req.params.id)) throw new RepoError('not_found', 'Context پیدا نشد.');
+    repo.saveCanvasItem(s, 'free', `obj:${req.params.id}`, { x: Number(body(req).x) || 0, y: Number(body(req).y) || 0 });
+    res.json({ canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') } });
+  }));
+  router.delete('/workspaces/:wid/canvas/free/objects/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    repo.removeCanvasItem(s, 'free', `obj:${req.params.id}`);
     res.json({ canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') } });
   }));
   router.post('/workspaces/:wid/canvas/free/reset', wrap((req, res) => {

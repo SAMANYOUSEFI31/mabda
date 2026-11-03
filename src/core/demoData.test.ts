@@ -117,7 +117,8 @@ test('last week: Changes by user, MCP «Claude», chat, import and coach — wit
 
 test('notes, file, boards: free notes with coordinates, a ready text file with a summary, decision-board ranks that point at real objects', () => {
   assert.ok(d.notes.length >= 5 && new Set(d.notes.map((n) => n.nodeId)).size >= 4);
-  assert.ok(d.canvas.free.every((i) => d.notes.some((n) => `note:${n.id}` === i.itemRef) && i.x !== undefined && i.y !== undefined));
+  assert.ok(d.canvas.free.every((i) => (d.notes.some((n) => `note:${n.id}` === i.itemRef) || d.objects.some((o) => `obj:${o.id}` === i.itemRef)) && i.x !== undefined && i.y !== undefined));
+  assert.equal(d.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length, 3, 'three real cards sit in the free space beside the notes');
   assert.ok(d.canvas.decisions.every((i) => byId.has(i.itemRef.slice(4)) && i.rank !== undefined));
   assert.ok(d.file.summary.length > 20 && d.file.chunks.length >= 1 && d.nodes.some((n) => n.id === d.file.nodeId));
 });
@@ -126,7 +127,8 @@ test('the map and the board lay the showcase out without surprises', () => {
   const m = buildMapModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, deliverables: d.deliverables });
   assert.ok(m.edges.some((e) => e.kind === 'dependency') && m.edges.some((e) => e.kind === 'lineage') && m.groups.length > 0);
   const board = buildCanvasModel({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, reviewIds: new Set(needsReview(d.objects, d.relationships, d.changes).keys()), ranks: new Map(d.canvas.decisions.map((i) => [i.itemRef.slice(4), i.rank!])) });
-  for (const lane of ['thinking', 'confirmed', 'review'] as const) assert.ok(board.cards.some((c) => c.lane === lane), lane);
+  for (const lane of ['thinking', 'confirmed'] as const) assert.ok(board.cards.some((c) => c.lane === lane), lane);
+  assert.ok(board.cards.some((c) => c.review), 'the review badge is on some cards');
 });
 
 // ── effective context in the showcase ──────────────────────────────────────────────────────────

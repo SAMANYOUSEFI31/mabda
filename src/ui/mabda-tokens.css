@@ -107,9 +107,21 @@
   --mabda-ledger-refunded-fg: var(--text-info);
   --mabda-ledger-refunded-border: var(--border-info-subtle);
   --mabda-ledger-refunded-icon: var(--icon-info);
+  /* canvas lines: the strongest foreground of each intent (contrast ≥ 3:1 on the canvas background is measured in scripts/screens.mjs);
+     the halo is the canvas background itself, so a crossing line reads as «in front» */
+  --mabda-edge-dependency: var(--text-default);
+  --mabda-edge-lineage: var(--text-info);
+  --mabda-edge-supersedes: var(--text-warning);
+  --mabda-edge-halo: var(--surface-sunken);
+  --mabda-edge-chip-bg: var(--surface-raised);
 }
 
 @theme inline {
+  --color-mabda-edge-dependency: var(--mabda-edge-dependency);
+  --color-mabda-edge-lineage: var(--mabda-edge-lineage);
+  --color-mabda-edge-supersedes: var(--mabda-edge-supersedes);
+  --color-mabda-edge-halo: var(--mabda-edge-halo);
+  --color-mabda-edge-chip-bg: var(--mabda-edge-chip-bg);
   --color-mabda-type-fact-bg: var(--mabda-type-fact-bg);
   --color-mabda-type-fact-fg: var(--mabda-type-fact-fg);
   --color-mabda-type-fact-border: var(--mabda-type-fact-border);
