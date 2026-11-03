@@ -76,6 +76,9 @@ export type ExpectationVerdict = 'met' | 'partial' | 'missed';
 
 export interface RedlineExample { kind: 'good' | 'bad'; text: string }
 
+/** an edit of CONFIRMED knowledge that nobody approved yet: it sits on the object, and no AI, MCP, pack, export or engine ever reads it — they read the object's own (approved) text */
+export interface ObjectDraft { title: string; content: string; examples?: RedlineExample[]; at: string; reason?: string }
+
 export interface ContextObject {
   id: string;
   workspaceId: string;
@@ -96,6 +99,8 @@ export interface ContextObject {
   reach?: 'global' | 'position';
   /** up to three short «right / wrong» examples of a red line (a Constraint, or a Decision that reaches everywhere): they travel next to it into the AI request, the Context pack, MCP and the validator. Never on samples */
   examples?: RedlineExample[];
+  /** the unapproved rewrite of this (Confirmed) object, if any. The text above is still the truth until it is approved */
+  draft?: ObjectDraft;
   /** ISO date after which the object no longer applies (never injected, kept in history). Absent = no end */
   validUntil?: string;
   /** a Fact that is a working assumption: never «confirmed knowledge», even if its status is Confirmed. It is reviewed by `reviewBy` */

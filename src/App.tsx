@@ -299,13 +299,14 @@ export default function App() {
     }
   };
 
-  const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string }): Promise<ContextObject | undefined> => {
+  const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string; asDraft?: boolean }): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}) }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}), ...(opts?.asDraft ? { asDraft: true } : {}) }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
-      showImpact(r.impact);
+      if (opts?.asDraft) toast.show({ intent: 'success', message: r.object.draft ? 'پیش‌نویس ذخیره شد؛ AI و خروجی‌ها هنوز متن تأییدشده را می‌بینند. در «فضای فکر» تأییدش کن.' : 'پیش‌نویس برداشته شد؛ متن تأییدشده همان است.' });
+      else showImpact(r.impact);
       return r.object;
     }
     const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets, examples: draft.examples }));
@@ -494,6 +495,20 @@ export default function App() {
     if (b) applyBundle(b);
   };
 
+  /** «تأیید و جایگزین کن» / «رد کن» for the unapproved rewrite of a confirmed knowledge */
+  const handleApproveDraft = async (objectId: string) => {
+    const r = await attempt(() => dataApi.approveDraft(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
+    showImpact(r.impact);
+    void reload(wid);
+  };
+  const handleRejectDraft = async (objectId: string) => {
+    const r = await attempt(() => dataApi.rejectDraft(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)) }));
+    toast.show({ intent: 'info', message: 'پیش‌نویس رد شد؛ متن تأییدشده همان بود.' });
+  };
   const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
     const r = await attempt(() => dataApi.setDependencies(wid, objectId, dependsOn));
     if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
@@ -1269,6 +1284,8 @@ export default function App() {
         object={selectedContextObject}
         onClose={() => setIsContextModalOpen(false)}
         onSave={handleSaveContextObject}
+        onApproveDraft={handleApproveDraft}
+        onRejectDraft={handleRejectDraft}
         onSupersede={handleSupersedeContext}
         onArchive={handleArchiveContext}
         nodes={nodes}

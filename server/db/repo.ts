@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, RedlineExample, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, RedlineExample, ObjectDraft, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict,
 } from '../../src/types/index.ts';
 import { canCreateUnder, canDelete, canMove, canRename, defaultNodeId, nextOrder, reorderSiblings, resolveNodeId } from '../../src/core/nodeTree.ts';
 import { planNodes } from '../../src/core/startTemplate.ts';
@@ -86,7 +86,7 @@ const thinkingFields = (i: { type?: unknown; assumption?: unknown; reviewBy?: un
 const rowToObject = (r: Record<string, unknown>): ContextObject => ({
   id: r.id as string, workspaceId: r.workspace_id as string, type: r.type as ContextType, status: r.status as ContextStatus,
   provenance: r.provenance as ContextProvenance, title: r.title as string, content: r.content as string, nodeId: r.node_id as string,
-  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.facets ? { facets: JSON.parse(r.facets as string) as string[] } : {}), ...(r.sample ? { sample: true } : {}), ...(r.assumption ? { assumption: true } : {}), ...(r.review_by ? { reviewBy: r.review_by as string } : {}), ...(r.decision_record ? { record: JSON.parse(r.decision_record as string) as DecisionRecord } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.examples ? { examples: JSON.parse(r.examples as string) as RedlineExample[] } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
+  version: r.version as number, ...(r.source ? { source: JSON.parse(r.source as string) as ObjectSource } : {}), ...(r.slot_key ? { slotKey: r.slot_key as string } : {}), ...(r.facets ? { facets: JSON.parse(r.facets as string) as string[] } : {}), ...(r.sample ? { sample: true } : {}), ...(r.assumption ? { assumption: true } : {}), ...(r.review_by ? { reviewBy: r.review_by as string } : {}), ...(r.decision_record ? { record: JSON.parse(r.decision_record as string) as DecisionRecord } : {}), ...(r.reach ? { reach: r.reach as ContextObject['reach'] } : {}), ...(r.valid_until ? { validUntil: r.valid_until as string } : {}), ...(r.examples ? { examples: JSON.parse(r.examples as string) as RedlineExample[] } : {}), ...(r.draft ? { draft: JSON.parse(r.draft as string) as ObjectDraft } : {}), ...(r.superseded_by_id ? { supersededById: r.superseded_by_id as string } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToNode = (r: Record<string, unknown>): TreeNode => ({
@@ -271,6 +271,27 @@ export class Repo {
   }
 
   // ── context objects ─────────────────────────────────────────────────────
+  private setDraft(s: Scope, id: string, draft: ObjectDraft | null) {
+    this.db.prepare('UPDATE context_objects SET draft = ? WHERE id = ? AND workspace_id = ?').run(draft ? JSON.stringify(draft) : null, id, s.workspaceId);
+  }
+
+  /** «تأیید»: the draft REPLACES the text — a normal confirmed edit (version + 1, a milestone in the history, the reason the user gave) */
+  approveDraft(s: Scope, id: string, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
+    const cur = this.getObjectAny(s, id);
+    if (!cur?.draft) throw new RepoError('not_found', 'پیش‌نویسی برای تأیید نیست.');
+    const d = cur.draft;
+    this.setDraft(s, id, null);
+    return this.updateObject(s, id, { title: d.title, content: d.content, examples: d.examples ?? null }, { ...meta, reason: meta?.reason ?? d.reason });
+  }
+
+  /** «رد»: the draft is thrown away; the approved text never changed */
+  rejectDraft(s: Scope, id: string): ContextObject {
+    const cur = this.getObjectAny(s, id);
+    if (!cur?.draft) throw new RepoError('not_found', 'پیش‌نویسی برای رد نیست.');
+    this.setDraft(s, id, null);
+    return this.getObjectAny(s, id)!;
+  }
+
   /**
    * THE one door to the user's knowledge for every AI path and every engine (injection, packs, MCP, Gap, Readiness,
    * contradictions, the validator, impact …): SAMPLES ARE NOT HERE. A sample (starter / template example) is only visible
@@ -425,9 +446,22 @@ export class Repo {
   }
 
   /** Edit in place. title / content / type changes bump `version`; status or node moves do not. */
-  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown; facets?: unknown; examples?: unknown }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
+  updateObject(s: Scope, id: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey' | 'reach' | 'validUntil'>> & { reach?: unknown; validUntil?: unknown; assumption?: unknown; reviewBy?: unknown; record?: unknown; facets?: unknown; examples?: unknown; /** keep a change of the text as a DRAFT (only for Confirmed knowledge); the approved text stays the truth */ asDraft?: boolean }, meta?: ChangeMeta): { object: ContextObject; impact: ImpactResult } {
     const cur = this.getObjectAny(s, id); // an example can be edited: writing over it makes it the user's own
     if (!cur) throw new RepoError('not_found', 'Context پیدا نشد.');
+    if (patch.asDraft && cur.status === 'Confirmed' && !cur.sample) {
+      // the TEXT (title, text, examples) of confirmed knowledge becomes a draft; the rest of the patch (where it lives, status, reach …) applies as before
+      const title = typeof patch.title === 'string' ? patch.title.trim() || cur.title : cur.title;
+      const content = typeof patch.content === 'string' ? patch.content : cur.content;
+      const examples = 'examples' in patch ? cleanExamples(patch.examples) : cur.draft?.examples ?? cur.examples;
+      const same = title === cur.title && content === cur.content && JSON.stringify(examples ?? null) === JSON.stringify(cur.examples ?? null);
+      const { title: _t, content: _c, examples: _e, asDraft: _d, ...rest } = patch;
+      void _t; void _c; void _e; void _d;
+      this.setDraft(s, id, same ? null : { title, content, ...(examples ? { examples } : {}), at: now(), ...(meta?.reason ? { reason: meta.reason } : {}) });
+      return this.updateObject(s, id, rest, { ...meta, reason: undefined });
+    }
+    // writing the text directly replaces it AND whatever draft was waiting (a draft never survives a direct replace)
+    if (cur.draft && ('content' in patch || 'title' in patch)) this.setDraft(s, id, null);
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
     if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {

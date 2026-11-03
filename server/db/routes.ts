@@ -118,6 +118,13 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const r = repo.updateObject(s, req.params.id, patch, metaOf(body(req)));
     res.json({ ...r, stale: stale(s) });
   }));
+  /** an unapproved edit of confirmed knowledge: approve (it replaces the text) or reject (it is thrown away) */
+  router.post('/workspaces/:wid/objects/:id/draft/approve', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.approveDraft(s, req.params.id, metaOf(body(req)));
+    res.json({ ...r, stale: stale(s) });
+  }));
+  router.delete('/workspaces/:wid/objects/:id/draft', wrap((req, res) => { const s = scopeOf(req); res.json({ object: repo.rejectDraft(s, req.params.id) }); }));
   router.post('/workspaces/:wid/objects/:id/supersede', wrap((req, res) => {
     const s = scopeOf(req);
     const { change: _c, reason: _r, ...input } = body(req);

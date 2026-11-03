@@ -384,6 +384,13 @@ export const MIGRATIONS: Migration[] = [
       db.exec('UPDATE tree_nodes SET is_system = 0;');
     },
   },
+  {
+    version: 19,
+    name: 'context_objects.draft: an edit of confirmed knowledge waits ON the object as a draft (JSON {title, content, examples, at, reason}); the columns above stay the approved truth. NULL = no draft — old data is untouched',
+    up(db) {
+      db.exec('ALTER TABLE context_objects ADD COLUMN draft TEXT;');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
