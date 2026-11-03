@@ -12,7 +12,7 @@
 
 import type { ContextChange, ContextObject } from '../types';
 
-type Ch = Pick<ContextChange, 'id' | 'objectId' | 'fromVersion' | 'toVersion' | 'kind' | 'actor' | 'actorLabel' | 'reason' | 'before' | 'after' | 'at'>;
+type Ch = ContextChange;
 
 export type HistoryEntry =
   | { type: 'milestone'; id: string; version: number; at: string; how: 'created' | 'accepted' | 'status' | 'edited'; reason?: string; actor: Ch['actor']; actorLabel?: string; changes: Ch[] }
