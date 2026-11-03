@@ -98,7 +98,7 @@ try {
     assert.deepEqual([objs[0].status, objs[0].source?.kind], ['Proposed', 'note'], 'proposed, and the line it came from is remembered');
     await space.getByText('منتظر تصمیم تو').first().waitFor();
     await shot('3-waiting');
-    await space.getByRole('button', { name: 'تأیید' }).first().click();
+    await space.getByRole('button', { name: 'تأیید', exact: true }).first().click();
     await page.waitForTimeout(700);
     objs = (await state()).objects;
     assert.equal(objs[0].status, 'Confirmed');

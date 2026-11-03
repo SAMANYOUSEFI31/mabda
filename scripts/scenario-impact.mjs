@@ -50,7 +50,7 @@ async function scenario(width, tag) {
   const desktop = width >= 768;
   const goTab = async (d, m) => {
     await page.locator('[aria-label="اعلان‌ها"] button[aria-label="بستن"]').evaluateAll((bs) => bs.forEach((b) => b.click())); // a lingering toast must not cover the bottom nav
-    if (desktop) await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).click();
+    if (desktop) await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).first().click();
     else await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click();
   };
 
