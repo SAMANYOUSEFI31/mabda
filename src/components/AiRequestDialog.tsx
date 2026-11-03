@@ -120,11 +120,11 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
               {result.counts.rejected > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.rejected)} گزینهٔ ردشده</Badge>}
             </div>
             {result.overBudget && <Alert intent="warning">قیدها و تصمیم‌های سراسری از بودجه بیشترند؛ همیشه می‌آیند. دامنه را کوچک‌تر کن.</Alert>}
-            {result.longText && <p className="caption text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
+            {result.longText && <p className="body-sm text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
             <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code bidi-plain" />
 
             <details className="rounded-control border border-border-default p-inset-md">
-              <summary className="label-md cursor-pointer text-text-default">شامل شد ({formatNumber(result.included.length)})</summary>
+              <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">شامل شد ({formatNumber(result.included.length)})</summary>
               <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="شامل‌شده‌ها">
                 {result.included.map((i) => (
                   <li key={i.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -139,7 +139,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
             </details>
             {left.length > 0 && (
               <details className="rounded-control border border-border-default p-inset-md">
-                <summary className="label-md cursor-pointer text-text-default">خارج شد ({formatNumber(result.excluded.length)}) — با دلیل و امکان افزودن</summary>
+                <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">خارج شد ({formatNumber(result.excluded.length)}) — با دلیل و امکان افزودن</summary>
                 <div className="mt-stack-sm flex flex-col gap-stack-md">
                   {left.map(([reason, items]) => (
                     <section key={reason} aria-label={EXCLUDE_REASON_FA[reason]}>
@@ -160,7 +160,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
             )}
           </>
         )}
-        <p className="caption text-text-subtle">هیچ AI‌ای اینجا صدا زده نمی‌شود. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
+        <p className="body-sm text-text-subtle">هیچ AI‌ای اینجا صدا زده نمی‌شود. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
       </div>
     </Dialog>
   );
