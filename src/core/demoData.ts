@@ -77,6 +77,8 @@ interface Spec {
   reach?: 'global' | 'position';
   /** right / wrong examples of a red line */
   examples?: RedlineExample[];
+  /** an unapproved rewrite of this confirmed knowledge: `daysAgo` it was written (the text above stays the truth) */
+  draft?: { content: string; reason?: string; daysAgo: number };
   /** days ago the object stopped applying (an end date in the past = expired) */
   expiredDaysAgo?: number;
 }
@@ -130,7 +132,7 @@ export function buildDemo(now: Date): DemoData {
     }
     objects.push({
       id: s.id, workspaceId: W, type: s.type, status, provenance: s.provenance, title: s.title, content, nodeId: s.node, version,
-      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.examples ? { examples: s.examples } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
+      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.examples ? { examples: s.examples } : {}), ...(s.draft ? { draft: { title: s.title, content: s.draft.content, at: at(s.draft.daysAgo, 17), ...(s.draft.reason ? { reason: s.draft.reason } : {}) } } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
       ...(s.record ? { record: { ...(s.record.question ? { question: s.record.question } : {}), ...(s.record.options ? { options: s.record.options } : {}), ...(s.record.expectation ? { expectation: s.record.expectation } : {}), ...(s.record.reviewOnDaysAgo !== undefined ? { reviewOn: at(s.record.reviewOnDaysAgo, 12).slice(0, 10) } : {}) } } : {}), ...(s.expiredDaysAgo !== undefined ? { validUntil: at(s.expiredDaysAgo, 12).slice(0, 10) } : {}),
       ...(s.source ? { source: { kind: s.source.kind, ...(s.source.label ? { label: s.source.label } : {}), ...(s.source.reason ? { reason: s.source.reason } : {}), ...(s.source.quote ? { quote: s.source.quote } : {}), ...(s.source.noteId ? { noteId: s.source.noteId, lineKey: s.source.lineKey } : {}), at: at(s.source.daysAgo ?? s.created[0], s.created[1] ?? 10) } } : {}),
       createdAt: created, updatedAt: updated,
@@ -216,6 +218,7 @@ export function buildDemo(now: Date): DemoData {
 
   // ── effective context: an exception for a sub-tree, and a rule that ended ────────────────────────
   add({ id: 'dm_ws_group', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه گروهی', first: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد و با قیمت اشتراک ماهانه یکی نیست.', status: 'Confirmed', provenance: 'User Input', created: [9, 15],
+    draft: { content: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد؛ برای ۸ نفر به بالا ۱۰٪ کمتر از قیمت هر نفر.', reason: 'برای گروه‌های بزرگ‌تر قیمت پلکانی را امتحان می‌کنیم.', daysAgo: 1 },
     record: { question: 'کارگاه گروهی چطور قیمت‌گذاری شود؟', options: [{ title: 'تخفیف ۱۵ درصد روی قیمت کارگاه', rejectedReason: 'با قید «تخفیف نداریم» نمی‌خواند' }, { title: 'قیمت جداگانهٔ گروهی' }], expectation: 'دست‌کم سه ثبت‌نام گروهی تا دو ماه دیگر', reviewOnDaysAgo: 3 } });
   add({ id: 'dm_old_promo', type: 'Constraint', node: 'dn_social', title: 'جشنوارهٔ پاییز', first: 'تا پایان جشنوارهٔ پاییز بستهٔ هدیه ارسال نکنیم.', status: 'Confirmed', provenance: 'User Input', created: [40, 12], reach: 'position', expiredDaysAgo: 12 });
 
