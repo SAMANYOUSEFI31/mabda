@@ -715,6 +715,12 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     });
   }));
 
+  // usage counters: any client may add one (a catalog key only); only an admin may read them
+  router.post('/usage', wrap((req, res) => { repo.bumpUsage(LOCAL_USER, body(req).feature); res.json({ ok: true }); }));
+  router.get('/admin/usage', wrap((_req, res) => {
+    if (!deps.admin) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
+    res.json({ rows: repo.listUsage(LOCAL_USER) });
+  }));
   router.get('/admin/cost-report', wrap((req, res) => {
     if (!deps.admin) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
     const month = typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month) ? req.query.month : clock().toISOString().slice(0, 7);

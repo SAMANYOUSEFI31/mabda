@@ -9,6 +9,7 @@ import { EXCLUDE_REASON_FA, INCLUDE_REASON_FA, KIND_LABEL, REQUEST_KINDS } from 
 import type { AiRequestResult, ExcludeReason, RequestKind } from '../core/aiRequest';
 import { flatten } from '../core/nodeTree';
 import { dataApi, DataApiError } from '../services/dataApi';
+import { track } from '../services/usage';
 import { Alert, Badge, Button, Dialog, Select, Spinner, TextField, Textarea, formatNumber, useToast } from '../ui';
 
 type Result = AiRequestResult & { packId: string; recorded: boolean };
@@ -64,7 +65,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
     try {
       const r = await dataApi.aiRequest(workspaceId, { kind, request, scopeNodeId: scope || undefined, extraIds, packId, record: true });
       try { await navigator.clipboard.writeText(r.markdown); } catch { const ta = document.createElement('textarea'); ta.value = r.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-      setResult(r); setCopied(true);
+      setResult(r); setCopied(true); track('action.ai-copy');
       toast.show({ intent: 'success', message: 'کپی شد. در Claude یا ChatGPT بچسبان؛ پاسخ را که گرفتی، «پاسخ AI را وارد کن».' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };

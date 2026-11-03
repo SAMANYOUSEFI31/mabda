@@ -8,6 +8,7 @@ import { Workspace, WorkstreamSpec } from '../types';
 import { PLANS } from '../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, formatNumber } from '../ui';
 import type { IconName, MenuItem } from '../ui';
+import { useAiStatus } from '../services/aiStatus';
 
 type ContextView = 'doc' | 'read' | 'table' | 'canvas';
 
@@ -23,6 +24,8 @@ interface AppNavigationProps {
   onOpenAccountModal: () => void;
   /** Ctrl/⌘+K: the global search and commands */
   onOpenSearch: () => void;
+  /** admin only: how often each feature is used on this install */
+  onOpenUsage?: () => void;
   onOpenLedger: () => void;
   onOpenAiSettings: () => void;
   onOpenConnect: () => void;
@@ -58,6 +61,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
   const planName = plan.title.split(' ')[0];
 
+  const ai = useAiStatus();
   const accountItems: Array<MenuItem & { section: 'workspace' | 'tools' | 'account' }> = [
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
@@ -68,6 +72,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'tools', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
     { section: 'tools', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
     { section: 'tools', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
+    ...(p.onOpenUsage && ai.admin ? [{ section: 'tools' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];
   const withDividers = (): MenuItem[] => {

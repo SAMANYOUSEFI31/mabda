@@ -668,6 +668,21 @@ test('quick start: pasted TEXT goes through the same extraction (kind note), lab
   } finally { t.close(); }
 });
 
+test('usage counters: any client adds a catalog key; only the admin reads them; free text is refused', async () => {
+  const off = await boot(() => decide);
+  try {
+    assert.equal((await off.call('POST', '/usage', { feature: 'view.home' })).status, 200);
+    assert.equal((await off.call('POST', '/usage', { feature: 'قیمت اشتراک' })).status, 400);
+    assert.equal((await off.call('GET', '/admin/usage')).status, 404, 'without the admin switch the numbers are not served');
+  } finally { off.close(); }
+  const on = await boot(() => decide, { admin: true });
+  try {
+    await on.call('POST', '/usage', { feature: 'dialog.record' }); await on.call('POST', '/usage', { feature: 'dialog.record' });
+    const r = (await on.call('GET', '/admin/usage')).json;
+    assert.deepEqual(r.rows.map((x: any) => [x.feature, x.count]), [['dialog.record', 2]]);
+  } finally { on.close(); }
+});
+
 test('showcase workspace: one click builds it; a second reset gives exactly the same state; it works through the normal routes (pack, usage) and is not counted', async () => {
   const t = await boot(() => decide);
   try {

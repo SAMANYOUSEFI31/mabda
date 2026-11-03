@@ -36,6 +36,8 @@ import { DueItems } from './components/DueItems';
 import { SavedPacksDialog } from './components/SavedPacksDialog';
 import { AiRequestDialog } from './components/AiRequestDialog';
 import { CommandPalette } from './components/CommandPalette';
+import { UsageDialog } from './components/UsageDialog';
+import { track } from './services/usage';
 import { buildSearchIndex } from './core/globalSearch';
 import type { SearchHit } from './core/globalSearch';
 import { StarterDialog } from './components/StarterDialog';
@@ -195,6 +197,7 @@ export default function App() {
   const workspaceContexts = data?.objects ?? [];
   // ── global search (Ctrl/⌘+K): the index is built once per data change; notes are for DISPLAY here, never for an AI ──
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [usageOpen, setUsageOpen] = useState(false);
   const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
   const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: data?.deliverables ?? [], notes: data?.notes ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes]);
@@ -218,6 +221,19 @@ export default function App() {
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  // ── local usage counters (a feature KEY only, never data; src/core/usage.ts) ──
+  useEffect(() => { track(`view.${activeTab}`); }, [activeTab]);
+  useEffect(() => { if (activeTab === 'context') track(`context.${contextViewMode}`); }, [activeTab, contextViewMode]);
+  useEffect(() => { if (paletteOpen) track('dialog.search'); }, [paletteOpen]);
+  useEffect(() => { if (aiRequest) track('dialog.ai-request'); }, [aiRequest]);
+  useEffect(() => { if (isPacksOpen) track('dialog.packs'); }, [isPacksOpen]);
+  useEffect(() => { if (isImportOpen) track('dialog.import'); }, [isImportOpen]);
+  useEffect(() => { if (metricsOpen) track('dialog.metrics'); }, [metricsOpen]);
+  useEffect(() => { if (weeklyOpen) track('dialog.weekly'); }, [weeklyOpen]);
+  useEffect(() => { if (isOnboardingOpen) track('dialog.quickstart'); }, [isOnboardingOpen]);
+  useEffect(() => { if (isConnectOpen) track('dialog.connect'); }, [isConnectOpen]);
+  useEffect(() => { if (isMemoryOpen) track('dialog.memory'); }, [isMemoryOpen]);
+  useEffect(() => { if (isContextModalOpen) track('dialog.record'); }, [isContextModalOpen]);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -284,6 +300,7 @@ export default function App() {
     const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    track('action.record');
     return r.object;
   };
 
@@ -779,6 +796,7 @@ export default function App() {
   };
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
   const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
+    track('action.accept-proposal');
     const impact = await setStatus(o.id, 'Confirmed', reason);
     if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
   };
@@ -839,6 +857,7 @@ export default function App() {
         onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
         onOpenSearch={() => setPaletteOpen(true)}
+        onOpenUsage={() => setUsageOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
@@ -1324,6 +1343,7 @@ export default function App() {
           <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
         </div>
       </Dialog>
+      <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
       <AiRequestDialog open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
