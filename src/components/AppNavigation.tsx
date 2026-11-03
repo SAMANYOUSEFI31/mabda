@@ -21,6 +21,8 @@ interface AppNavigationProps {
   onResetDemo: () => void;
   onOpenPlanModal: () => void;
   onOpenAccountModal: () => void;
+  /** Ctrl/⌘+K: the global search and commands */
+  onOpenSearch: () => void;
   onOpenLedger: () => void;
   onOpenAiSettings: () => void;
   onOpenConnect: () => void;
@@ -87,6 +89,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             <span className="body-sm block text-text-subtle">منبع حقیقت کسب‌وکار</span>
           </div>
         </div>
+
+        <Button variant="secondary" iconStart="Search" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K">جستجو <span className="caption text-text-subtle" dir="ltr">Ctrl K</span></Button>
 
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
@@ -155,7 +159,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <span className="title text-text-default">مبدأ</span>
           <span className="body-sm truncate text-text-subtle">· {currentWorkspace.name}</span>
         </span>
-        <IconButton icon="User" label="حساب کاربری" variant="secondary" onClick={() => setDrawer(true)} />
+        <span className="flex items-center gap-inline-xs">
+          <IconButton icon="Search" label="جستجو" variant="secondary" onClick={p.onOpenSearch} />
+          <IconButton icon="User" label="حساب کاربری" variant="secondary" onClick={() => setDrawer(true)} />
+        </span>
       </header>
 
       {/* Mobile account drawer */}
