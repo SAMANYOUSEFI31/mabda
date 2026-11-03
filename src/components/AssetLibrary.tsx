@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../core/impactEngine';
-import { Button, Card, EmptyState, Tabs, formatNumber, useToast } from '../ui';
+import { Button, EmptyState, IconButton, Menu, Tabs, formatNumber, useToast } from '../ui';
 
 interface AssetLibraryProps {
   currentWorkspace: Workspace;
@@ -66,15 +66,18 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
 
   return (
     <div className="flex flex-col gap-stack-lg">
-      <Card padding="xl" className="flex flex-col justify-between gap-inline-lg md:flex-row md:items-center">
+      <div className="flex items-start justify-between gap-inline-md">
         <div>
           <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
-          <p className="body-sm mt-stack-xs text-text-subtle">
-            از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.
-          </p>
+          <p className="body-sm mt-stack-xs text-text-subtle">از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.</p>
         </div>
-        <Button variant="secondary" iconStart="Download" onClick={handleExportJson}>خروجی گرفتن JSON</Button>
-      </Card>
+        <Menu
+          label="بیشتر دربارهٔ کتابخانه"
+          align="end"
+          trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ کتابخانه" variant="secondary" />}
+          items={[{ label: 'خروجی گرفتن JSON', icon: 'Download', onSelect: handleExportJson }]}
+        />
+      </div>
 
       <Tabs
         label="فیلتر دارایی‌ها"

@@ -147,7 +147,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
       <div className="flex flex-col gap-stack-md">
         <div role="radiogroup" aria-label="نوع کار" className="grid grid-cols-2 gap-inline-sm sm:grid-cols-3">
           {REQUEST_KINDS.map((k) => (
-            <Button key={k.kind} size="md" className="w-full" variant={k.kind === kind ? 'secondary' : 'ghost'} iconStart={k.kind === kind ? 'Check' : undefined} role="radio" aria-checked={k.kind === kind} onClick={() => { setKind(k.kind); setExtraIds([]); }}>{k.label}</Button>
+            <Button key={k.kind} size="md" className={`w-full ${k.kind === kind ? '' : 'border border-border-default'}`} variant={k.kind === kind ? 'secondary' : 'ghost'} iconStart={k.kind === kind ? 'Check' : undefined} role="radio" aria-checked={k.kind === kind} onClick={() => { setKind(k.kind); setExtraIds([]); }}>{k.label}</Button>
           ))}
         </div>
         <p className="body-sm text-text-subtle">{meta.hint}</p>
@@ -170,7 +170,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
         {error && <Alert intent="danger">{error}</Alert>}
         {!result && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت" /><span className="body-md">در حال ساخت…</span></div>}
         {result && (
-          <ClosedSection title={<>با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن — جزئیات</>}>
+          <ClosedSection keepMounted title={<>با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن — جزئیات</>}>
           <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
               <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>

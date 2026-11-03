@@ -11,6 +11,8 @@ interface Props {
   /** a number after the title, only when > 0 */
   count?: number;
   defaultOpen?: boolean;
+  /** keep the content in the page while closed (hidden): for content that other code reads, like the exact text a button will copy */
+  keepMounted?: boolean;
   children: React.ReactNode;
 }
 
@@ -18,7 +20,7 @@ interface Props {
  * THE shared «closed section» (docs/design-principles.md → الگوهای مشترک): a full-width row, title at the start, a chevron at the end,
  * ≥ 44px tall; the content only when asked for. Everywhere the app hides a detail behind «بیشتر / جزئیات» it uses this.
  */
-export const ClosedSection: React.FC<Props> = ({ title, count, defaultOpen = false, children }) => {
+export const ClosedSection: React.FC<Props> = ({ title, count, defaultOpen = false, keepMounted = false, children }) => {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   return (
@@ -27,7 +29,7 @@ export const ClosedSection: React.FC<Props> = ({ title, count, defaultOpen = fal
         <span>{title}{count ? ` (${formatNumber(count)})` : ''}</span>
         <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size="sm" className="shrink-0 text-icon-subtle" />
       </button>
-      {open && <div id={id} className="flex flex-col gap-stack-xs ps-inset-md">{children}</div>}
+      {(open || keepMounted) && <div id={id} hidden={!open} className="flex flex-col gap-stack-xs ps-inset-md">{children}</div>}
     </div>
   );
 };

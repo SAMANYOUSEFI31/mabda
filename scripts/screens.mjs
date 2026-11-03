@@ -180,7 +180,8 @@ for (const size of SIZES) {
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
-  await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect'); await closeDialog();
+  await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect');
+  await page.getByRole('dialog').getByRole('button', { name: 'ساخت کلید' }).click({ timeout: 2500 }).catch(() => {}); await page.waitForTimeout(400); await shoot('dialog-connect-2'); await closeDialog();
   // the canvas on the showcase workspace: its four states (relations, board, free, full screen)
   await accountItem('ساخت یا بازنشانی فضای نمونه');
   await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 2500 }).catch(() => {});
@@ -198,6 +199,9 @@ for (const size of SIZES) {
   await layoutTab('رابطه‌ها');
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  // the showcase's outputs (two are «به‌روز نیست») and the workflow page with its questions
+  await goTab(TABS[3]); await shoot('assets-demo');
+  await goTab(TABS[2]); await shoot('workstreams-demo');
   // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
   await goTab(TABS[0]);
   await shoot('home-demo');
