@@ -444,6 +444,25 @@ test('migration 14: metrics and measurements exist, carry user_id / workspace_id
   assert.equal(new Repo(db).listMetrics({ userId: U, workspaceId: 'w1' }).length, 0);
 });
 
+test('a reason is kept only for an edit of CONFIRMED knowledge; a draft edit carries none; the history groups drafts and ends them with the approval', async () => {
+  const { repo, s } = fresh();
+  const { versionHistory } = await import('../../src/core/versionHistory.ts');
+  const o = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'AI Suggested', title: 'قیمت', content: 'سی', nodeId: 'business' }, { actor: 'mcp', label: 'Claude' });
+  repo.updateObject(s, o.id, { content: 'چهل' }, { actor: 'user', reason: 'دلیل-پیش‌نویس' });
+  repo.updateObject(s, o.id, { content: 'پنجاه' }, { actor: 'user', reason: 'دلیل-دوم' });
+  repo.updateObject(s, o.id, { status: 'Confirmed' }, { actor: 'user', reason: 'تأیید با دلیل' });
+  repo.updateObject(s, o.id, { content: 'شصت' }, { actor: 'user', reason: 'قیمت بالا رفت' });
+  const list = repo.listChanges(s, { objectId: o.id });
+  assert.ok(!list.some((c) => c.reason === 'دلیل-پیش‌نویس' || c.reason === 'دلیل-دوم'), 'draft edits record no reason');
+  assert.ok(list.some((c) => c.kind === 'proposal_accepted' && c.reason === 'تأیید با دلیل'), 'approving may carry a reason');
+  assert.ok(list.some((c) => c.kind === 'edited' && c.reason === 'قیمت بالا رفت'), 'a confirmed edit keeps its reason');
+  const h = versionHistory(list);
+  assert.deepEqual(h.entries.map((e) => e.type), ['drafts', 'milestone', 'milestone']);
+  assert.equal((h.entries[0] as any).count, 3);
+  assert.equal(h.lastApproval?.version, 4);
+  assert.equal(repo.getObject(s, o.id)!.version, 4, 'the version counter is the same as before');
+});
+
 test('migration 15: a saved pack may be a saved «درخواست برای AI» (kind + template); old packs stay plain', () => {
   const db = new Database(':memory:');
   migrate(db, 14);
