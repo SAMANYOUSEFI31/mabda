@@ -177,6 +177,9 @@ export default function App() {
     viewModeSeen.current = contextViewMode;
     if (contextViewMode === 'canvas') setTimeout(() => document.getElementById('context-view')?.scrollIntoView({ block: 'start' }), 30);
   }, [contextViewMode]);
+  // a new destination opens at its top (the scroll of the previous page must not carry over)
+  const tabSeen = useRef(activeTab);
+  useEffect(() => { if (tabSeen.current === activeTab) return; tabSeen.current = activeTab; window.scrollTo({ top: 0 }); }, [activeTab]);
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('');

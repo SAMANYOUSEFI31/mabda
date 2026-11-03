@@ -203,6 +203,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [noteDrag, setNoteDrag] = useState<{ id: string; x: number; y: number } | null>(null);
 
+  // the thinking canvas opens ON the tray («تازه‌ها»): what has no place yet is what she came to deal with
+  const trayShape = useRef('');
+  useEffect(() => {
+    if (mode !== 'thinking' || layout !== 'free') { trayShape.current = ''; return; }
+    const first = scene.items.find((i) => i.unplaced);
+    if (first && trayShape.current !== shapeKey && size.w > 0) { trayShape.current = shapeKey; setTimeout(() => reveal(first.x, first.y, first.w, first.h), 0); }
+  }, [mode, layout, scene.items, size.w, reveal, shapeKey]);
   const boardStatus = layout === 'board' && scene.board?.columns === 'status';
   const dragEnabled = boardStatus || layout === 'free';
 
