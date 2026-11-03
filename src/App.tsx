@@ -300,13 +300,13 @@ export default function App() {
   const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string }): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, ...(opts?.reason ? { reason: opts.reason } : {}) }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}) }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
       showImpact(r.impact);
       return r.object;
     }
-    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets }));
+    const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets, examples: draft.examples }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     track('action.record');

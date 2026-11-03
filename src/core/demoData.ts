@@ -13,7 +13,7 @@ import { nodeTemplateOf } from './templates';
 import type { NodeTemplate } from './templates';
 import { DEFAULT_TREE_NODES } from './specs';
 import type {
-  ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ContextRelationship, GeneratedDeliverable, Note, ObjectSource, SavedPack, TreeNode, WorkstreamSpec,
+  ContextChange, ContextChangeActor, ContextChangeKind, ContextObject, ContextRelationship, GeneratedDeliverable, Note, ObjectSource, RedlineExample, SavedPack, TreeNode, WorkstreamSpec,
 } from '../types';
 
 const TEHRAN_OFFSET_MIN = 210; // UTC+3:30 (no daylight saving)
@@ -75,6 +75,8 @@ interface Spec {
   /** the record of a Decision: `reviewOnDaysAgo` becomes a date */
   record?: { question?: string; options?: Array<{ title: string; rejectedReason?: string }>; expectation?: string; reviewOnDaysAgo?: number };
   reach?: 'global' | 'position';
+  /** right / wrong examples of a red line */
+  examples?: RedlineExample[];
   /** days ago the object stopped applying (an end date in the past = expired) */
   expiredDaysAgo?: number;
 }
@@ -128,7 +130,7 @@ export function buildDemo(now: Date): DemoData {
     }
     objects.push({
       id: s.id, workspaceId: W, type: s.type, status, provenance: s.provenance, title: s.title, content, nodeId: s.node, version,
-      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
+      ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.examples ? { examples: s.examples } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
       ...(s.record ? { record: { ...(s.record.question ? { question: s.record.question } : {}), ...(s.record.options ? { options: s.record.options } : {}), ...(s.record.expectation ? { expectation: s.record.expectation } : {}), ...(s.record.reviewOnDaysAgo !== undefined ? { reviewOn: at(s.record.reviewOnDaysAgo, 12).slice(0, 10) } : {}) } } : {}), ...(s.expiredDaysAgo !== undefined ? { validUntil: at(s.expiredDaysAgo, 12).slice(0, 10) } : {}),
       ...(s.source ? { source: { kind: s.source.kind, ...(s.source.label ? { label: s.source.label } : {}), ...(s.source.reason ? { reason: s.source.reason } : {}), ...(s.source.quote ? { quote: s.source.quote } : {}), ...(s.source.noteId ? { noteId: s.source.noteId, lineKey: s.source.lineKey } : {}), at: at(s.source.daysAgo ?? s.created[0], s.created[1] ?? 10) } } : {}),
       createdAt: created, updatedAt: updated,
@@ -149,7 +151,8 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_problem', type: 'Fact', node: 'business', title: 'معضل اصلی مخاطب', first: 'پیدا کردن قهوهٔ خوب سخت است.', status: 'Confirmed', provenance: 'User Input', slot: 'core_problem', created: [40, 12],
     edits: [{ d: 2, content: 'پیدا کردن قهوهٔ واقعاً تازه سخت است: بیشتر دانه‌ها هفته‌ها پیش برشته شده‌اند و تاریخ برشته روی بسته نیست.', reason: 'بعد از جواب‌های نظرسنجی.' }] });
   add({ id: 'dm_valueprop', type: 'Decision', node: 'product', title: 'پیشنهاد ارزش', first: 'قهوهٔ تازه‌برشته با تاریخ برشتهٔ روی بسته و یک منشأ تازه در هر ماه.', status: 'Confirmed', provenance: 'User Input', slot: 'value_proposition', created: [38] });
-  add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30], reach: 'global' });
+  add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30], reach: 'global',
+    examples: [{ kind: 'good', text: 'اشتراک سه‌ماهه را با یک دانهٔ هدیه همراه می‌کنیم.' }, { kind: 'bad', text: 'فقط تا آخر هفته ۲۰٪ تخفیف!' }] });
   add({ id: 'dm_discount', type: 'Decision', node: 'offer', title: 'کمپین ماه اول', first: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 15],
     source: { kind: 'mcp', label: 'Claude', reason: 'در گفتگو گفتی می‌خواهی ماه اول جذاب باشد.' } });
 
@@ -190,7 +193,8 @@ export function buildDemo(now: Date): DemoData {
   // ── workshop ───────────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_ws_price', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه', first: '۸۵۰ هزار تومان برای هر شرکت‌کننده.', status: 'Confirmed', provenance: 'User Input', slot: 'workshop_price', created: [22] });
   add({ id: 'dm_ws_cap', type: 'Fact', node: 'dn_ws', title: 'ظرفیت کارگاه', first: 'هر دوره حداکثر ۱۲ نفر ظرفیت دارد.', status: 'Confirmed', provenance: 'User Input', slot: 'workshop_capacity', created: [22, 11] });
-  add({ id: 'dm_ws_refund', type: 'Constraint', node: 'dn_ws', title: 'بازگشت وجه کارگاه', first: 'تا ۴۸ ساعت قبل از کارگاه بازگشت وجه کامل داریم؛ بعد از آن بازگشت وجه نداریم.', status: 'Confirmed', provenance: 'User Input', created: [22, 12], reach: 'position' });
+  add({ id: 'dm_ws_refund', type: 'Constraint', node: 'dn_ws', title: 'بازگشت وجه کارگاه', first: 'تا ۴۸ ساعت قبل از کارگاه بازگشت وجه کامل داریم؛ بعد از آن بازگشت وجه نداریم.', status: 'Confirmed', provenance: 'User Input', created: [22, 12], reach: 'position',
+    examples: [{ kind: 'good', text: 'انصراف ۵۰ ساعت قبل از کارگاه: بازگشت کامل وجه.' }, { kind: 'bad', text: 'انصراف همان روز کارگاه: بازگشت وجه.' }] });
   add({ id: 'dm_ws_plan', type: 'Decision', node: 'dn_ws_prog', title: 'برنامهٔ جلسه‌ها', first: 'سه جلسهٔ دو ساعته: آشنایی با دانه، برشته‌کاری، قهوه‌چشی.', status: 'Proposed', provenance: 'AI Suggested', created: [5, 11],
     source: { kind: 'coach', reason: 'از جواب‌هایت دربارهٔ کارگاه ساختم؛ بررسی‌اش کن.' } });
 
@@ -237,9 +241,9 @@ export function buildDemo(now: Date): DemoData {
 
   // ── notes: raw thoughts (never fed to a model) ────────────────────────────────────────────────
   const notes: Note[] = [
-    { id: 'dnote_1', nodeId: 'business', content: 'شاید یک اشتراک هدیه هم بسازیم؟ مناسب عید و تولد؛ کانالش را از @«کانال اصلی تبلیغ» برداریم؟', at: at(5, 20) },
-    { id: 'dnote_2', nodeId: 'dn_sub', content: 'اگر دانه را آسیاب‌شده بفرستیم شکایت‌ها کم می‌شود؟ ولی عطرش زود می‌پرد.', at: at(3, 21) },
-    { id: 'dnote_3', nodeId: 'dn_ws', content: 'کارگاه آنلاین هم برگزار کنیم؟ جلسه‌ها را ضبط کنیم و بفروشیم.', at: at(2, 19) },
+    { id: 'dnote_1', nodeId: 'business', content: 'شاید یک اشتراک هدیه هم بسازیم؟ مناسب عید و تولد؛\nکانالش را از @«کانال اصلی تبلیغ» برداریم؟', at: at(5, 20) },
+    { id: 'dnote_2', nodeId: 'dn_sub', content: 'اگر دانه را آسیاب‌شده بفرستیم شکایت‌ها کم می‌شود؟\nولی عطرش زود می‌پرد.', at: at(3, 21) },
+    { id: 'dnote_3', nodeId: 'dn_ws', content: 'کارگاه آنلاین هم برگزار کنیم؟\nجلسه‌ها را ضبط کنیم و بفروشیم.', at: at(2, 19) },
     { id: 'dnote_4', nodeId: 'dn_social', content: 'ریلز از مراحل برشته‌کاری؛ صدای ترک‌خوردن دانه خیلی جذاب است.', at: at(2, 22) },
     { id: 'dnote_5', nodeId: 'dn_support', content: 'یک راهنمای کوتاه دم‌کردن توی هر بسته بگذاریم.', at: at(1, 18) },
     { id: 'dnote_7', nodeId: 'dn_sub', content: 'فکرهای این هفته دربارهٔ اشتراک:\n[سؤال] آیا دانه را آسیاب‌شده هم بفرستیم؟\n[تصمیم باز] قیمت اشتراک سه‌ماهه چقدر باشد؟\n[ایده] جعبهٔ هدیه برای عید\n[فرض] بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند\nاین [فرض] وسط خط است و نشانگر حساب نمی‌شود.', at: at(3, 11) },
