@@ -78,7 +78,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
                     <span className="mt-stack-xs text-text-subtle"><Icon name={ICON[h.kind]} size="md" /></span>
                     <span className="flex min-w-space-0 flex-1 flex-col">
                       <span className="body-md text-text-default">{h.title}</span>
-                      {h.subtitle && <span className="caption truncate text-text-subtle">{h.subtitle}</span>}
+                      {h.subtitle && <span className="body-sm truncate text-text-subtle">{h.subtitle}</span>}
                       {h.snippet && <span className="body-sm text-text-subtle">{h.snippet}</span>}
                     </span>
                   </div>
