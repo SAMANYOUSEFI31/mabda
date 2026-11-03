@@ -67,7 +67,7 @@ test('free: notes and placed cards sit where they were stored; nothing placed = 
 });
 
 test('the same data in the three layouts gives the same set of objects in «رابطه‌ها» and «تابلو» minus history', () => {
-  const rel = new Set(buildScene('relations', input, { showAssets: false }).items.filter((i) => i.kind === 'object').map((i) => i.objectId));
+  const rel = new Set(buildScene('relations', input, { showAssets: false, showPending: true }).items.filter((i) => i.kind === 'object').map((i) => i.objectId));
   const board = new Set(buildScene('board', input).items.map((i) => i.objectId));
   for (const id of board) assert.ok(rel.has(id!), `${id} is on the board but not in the relations view`);
 });
@@ -109,4 +109,18 @@ test('sceneDrop: the column from x, the row from y, the slot among the other car
   assert.equal(self.index, 1, 'dragging a card over itself keeps it between its neighbours');
   assert.equal(sceneDrop(s, -900, 0), undefined);
   assert.equal(sceneDrop(buildScene('relations', input), 10, 10), undefined, 'only the board has cells');
+});
+
+test('«بوم حقیقت»: the relations map shows only what is approved; «نشان بده چه در راه است» adds suggestions and reviews, flagged pending (drawn faint) — and the relations between them', () => {
+  const o = (id: string, status: ContextObject['status'], extra: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status, provenance: 'User Input', title: `t ${id}`, content: `c ${id}`, nodeId: 'offer', version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01', ...extra });
+  const input = { nodes: DEFAULT_TREE_NODES, objects: [o('a', 'Confirmed'), o('b', 'Proposed'), o('c', 'Needs Review')], relationships: [{ id: 'r', type: 'depends_on' as const, sourceId: 'b', targetId: 'a', createdAt: '' }], deliverables: [], notes: [], canvas: { decisions: [], free: [] }, reviewIds: new Set<string>(), staleAssetIds: new Set<string>(), now: new Date('2026-06-01') };
+  const ids = (sc: ReturnType<typeof buildScene>) => sc.items.filter((i) => i.kind === 'object').map((i) => i.objectId).sort();
+  const base = buildScene('relations', input, {});
+  assert.deepEqual(ids(base), ['a']);
+  assert.equal(base.edges.length, 0);
+  const all = buildScene('relations', input, { showPending: true });
+  assert.deepEqual(ids(all), ['a', 'b', 'c']);
+  assert.deepEqual(all.items.filter((i) => i.pending).map((i) => i.objectId).sort(), ['b', 'c']);
+  assert.ok(!all.items.find((i) => i.objectId === 'a')!.pending);
+  assert.equal(all.edges.length, 1, 'the effect of a suggestion is seen before it is approved');
 });

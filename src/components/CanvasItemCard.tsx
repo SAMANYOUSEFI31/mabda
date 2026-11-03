@@ -59,7 +59,7 @@ interface CardProps {
 export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const { item, lod } = p;
   // focus mode: a card that is not part of the selection gets a quieter BACKGROUND and BORDER — its text is never made transparent, so every title stays readable (contrast ≥ 3:1, measured in screens.mjs)
-  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
+  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : item.pending && !p.selected ? 'border-dashed border-border-default bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
   const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
 

@@ -82,7 +82,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
         </ul>
       )}
 
-      <MentionTextarea label="یادداشت تازه" rows={2} value={draft} onValueChange={setDraft} objects={objects} placeholder="هر چیزی که هنوز ساختار ندارد؛ بعداً می‌توانی «استخراج» کنی." hint="با @ نام یک دانش را بیاور. یادداشت رابطه نمی‌سازد؛ وقتی به دانش تبدیل شود، همان‌جا رابطه را پیشنهاد می‌دهیم." />
+      <MentionTextarea label="یادداشت تازه" rows={2} value={draft} onValueChange={setDraft} objects={objects} placeholder="هر چیزی که هنوز ساختار ندارد؛ بعداً می‌توانی «استخراج» کنی." hint="برای ایده، سؤال یا فرض از «فکر تازه» استفاده کن. با @ نام یک دانش را بیاور. یادداشت رابطه نمی‌سازد؛ وقتی به دانش تبدیل شود، همان‌جا رابطه را پیشنهاد می‌دهیم." />
       <div className="flex justify-end">
         <Button size="sm" variant="secondary" iconStart="Plus" loading={busy} disabled={!draft.trim()} onClick={add}>افزودن یادداشت</Button>
       </div>

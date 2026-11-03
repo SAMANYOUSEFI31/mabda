@@ -77,6 +77,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [showAssets, setShowAssets] = useState(true);
   const [history, setHistory] = useState(false);
   const [onlyReview, setOnlyReview] = useState(false);
+  const [showPending, setShowPending] = useState(false);
   const [showAllEdges, setShowAllEdges] = useState(false);
   const [colorFacet, setColorFacet] = useState(false);
   const [expanded, setExpanded] = useState<Set<string> | null>(null);
@@ -98,15 +99,15 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const now = useMemo(() => new Date(), []);
 
   const scene: Scene = useMemo(
-    () => buildScene(layout, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview }),
-    [layout, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview],
+    () => buildScene(layout, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending }),
+    [layout, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending],
   );
   const byId = useMemo(() => new Map(scene.items.map((i) => [i.id, i])), [scene]);
   const objectById = useMemo(() => new Map(p.objects.map((o) => [o.id, o])), [p.objects]);
   const facetNames = useMemo(() => [...new Set(p.objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [p.objects]);
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
-  const shapeKey = `${layout}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${scene.items.length}`;
+  const shapeKey = `${layout}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${showPending}|${scene.items.length}`;
   const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? 0.68 : layout === 'board' ? 1 : 0.85, fullscreen);
   const lod = lodOf(view.k);
 
@@ -363,7 +364,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const sheet = isMobile && fullscreen;
 
   const aboutText = LAYOUT_ABOUT[layout];
-  const optionsCount = (onlyReview ? 1 : 0) + (showAllEdges ? 1 : 0) + (colorFacet ? 1 : 0) + (layout === 'relations' ? (boxes ? 0 : 1) + (showAssets ? 0 : 1) + (history ? 1 : 0) : layout === 'board' ? (columns !== 'status' ? 1 : 0) + (rows !== 'domain' ? 1 : 0) : 0);
+  const optionsCount = (onlyReview ? 1 : 0) + (showPending ? 1 : 0) + (showAllEdges ? 1 : 0) + (colorFacet ? 1 : 0) + (layout === 'relations' ? (boxes ? 0 : 1) + (showAssets ? 0 : 1) + (history ? 1 : 0) : layout === 'board' ? (columns !== 'status' ? 1 : 0) + (rows !== 'domain' ? 1 : 0) : 0);
   const options = (
     <div className="flex min-w-overlay-xs flex-col gap-stack-sm p-inset-sm" role="group" aria-label="گزینه‌های نما">
       <p className="body-sm text-text-subtle">فقط نمایش را عوض می‌کنند؛ چیزی ذخیره نمی‌شود.</p>
@@ -376,6 +377,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <Select label="ستون‌ها" hint="فقط «وضعیت» با کشیدن چیزی را عوض می‌کند." value={columns} onChange={(e) => setColumns(e.target.value as BoardColumns)} options={(Object.keys(BOARD_COLUMNS_FA) as BoardColumns[]).map((k) => ({ value: k, label: BOARD_COLUMNS_FA[k] }))} />
         <Select label="ردیف‌ها" hint="«دامنه»: ردیف = گرهٔ درخت." value={rows} onChange={(e) => setRows(e.target.value as BoardRows)} options={(Object.keys(BOARD_ROWS_FA) as BoardRows[]).map((k) => ({ value: k, label: BOARD_ROWS_FA[k] }))} />
       </>)}
+      {layout === 'relations' && <Switch label="نشان بده چه در راه است" checked={showPending} onChange={(e) => setShowPending(e.target.checked)} />}
       <Switch label="فقط نیاز به بازبینی" checked={onlyReview} onChange={(e) => setOnlyReview(e.target.checked)} />
       {scene.edges.length > 0 && <Switch label="نمایش همهٔ خط‌ها" checked={showAllEdges} onChange={(e) => setShowAllEdges(e.target.checked)} />}
       {facetNames.length > 0 && layout !== 'free' && <Switch label="رنگ بر اساس بُعد" checked={colorFacet} onChange={(e) => setColorFacet(e.target.checked)} />}

@@ -289,6 +289,8 @@ export default function App() {
     if (hit.kind === 'asset') { setActiveTab('assets'); setFocusAsset({ id: hit.id, n }); return; }
     switch (hit.id) {
       case 'record': openContext(null); break;
+      case 'thought': setThoughtDialog({}); break;
+      case 'go-thinking': openThinkingSpace(); break;
       case 'ai-request': setAiRequest({ scopeNodeId: '' }); break;
       case 'go-home': setActiveTab('home'); break;
       case 'go-context': setActiveTab('context'); setContextViewMode('doc'); break;
@@ -388,7 +390,8 @@ export default function App() {
     else if (t.type === 'weekly') setWeeklyOpen(true);
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
-    else reveal('open-thinking'); // «due» and «thinking»
+    else if (t.type === 'thinking') openThinkingSpace();
+    else reveal('open-thinking'); // «due»
   };
   const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const metrics = data?.metrics ?? [];
