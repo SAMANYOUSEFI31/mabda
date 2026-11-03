@@ -54,19 +54,37 @@ export const CanvasEdges = React.memo(function CanvasEdges({ width, height, rout
           </marker>
         ))}
       </defs>
-      {routed.map(({ edge, route }) => {
-        const st = EDGE_STYLE[edge.kind];
-        const strong = emphasized.has(edge.id) || hovered === edge.id || selectedEdge === edge.id;
-        const dim = hasFocus && !showAll && !strong;
-        const w = st.width + (strong ? EMPHASIS_EXTRA : 0);
+      {/* two layers: ALL halos first, then ALL lines — a halo never cuts a line that was drawn before it. Emphasised lines come last (in front). */}
+      {(() => {
+        const info = (edge: SceneEdge) => {
+          const strong = emphasized.has(edge.id) || hovered === edge.id || selectedEdge === edge.id;
+          return { strong, dim: hasFocus && !showAll && !strong, w: EDGE_STYLE[edge.kind].width + (strong ? EMPHASIS_EXTRA : 0) };
+        };
+        const ordered = [...routed].sort((x, y) => Number(info(x.edge).strong) - Number(info(y.edge).strong));
         return (
-          <g key={edge.id} data-edge={edge.id} data-kind={edge.kind} className={dim ? 'opacity-35' : ''}>
-            <path d={route.d} fill="none" className="stroke-mabda-edge-halo" strokeWidth={w + 4} strokeLinecap="round" strokeLinejoin="round" />
-            <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={w} strokeDasharray={st.dash} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
-            <path d={route.d} fill="none" stroke="transparent" strokeWidth={16} className="cursor-pointer" style={{ pointerEvents: 'stroke' }} onPointerEnter={() => onHover(edge.id)} onPointerLeave={() => onHover(null)} onClick={(e) => { e.stopPropagation(); onSelect(edge.id); }} />
-          </g>
+          <>
+            <g data-layer="halo">
+              {ordered.map(({ edge, route }) => { const i = info(edge); return <path key={edge.id} d={route.d} fill="none" className={`stroke-mabda-edge-halo ${i.dim ? 'opacity-35' : ''}`} strokeWidth={i.w + 4} strokeLinecap="round" strokeLinejoin="round" />; })}
+            </g>
+            <g data-layer="line">
+              {ordered.map(({ edge, route }) => {
+                const st = EDGE_STYLE[edge.kind];
+                const i = info(edge);
+                return (
+                  <g key={edge.id} data-edge={edge.id} data-kind={edge.kind} className={i.dim ? 'opacity-35' : ''}>
+                    <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={i.w} strokeDasharray={st.dash} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
+                  </g>
+                );
+              })}
+            </g>
+            <g data-layer="hit">
+              {ordered.map(({ edge, route }) => (
+                <path key={edge.id} d={route.d} fill="none" stroke="transparent" strokeWidth={16} className="cursor-pointer" style={{ pointerEvents: 'stroke' }} onPointerEnter={() => onHover(edge.id)} onPointerLeave={() => onHover(null)} onClick={(e) => { e.stopPropagation(); onSelect(edge.id); }} />
+              ))}
+            </g>
+          </>
         );
-      })}
+      })()}
     </svg>
   );
 });

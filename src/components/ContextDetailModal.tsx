@@ -11,6 +11,8 @@ import { flatten } from '../core/nodeTree';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { MentionTextarea } from './MentionTextarea';
+import { RelationPicker } from './RelationPicker';
+import { affectPlan, affectedBy } from '../core/relationPlan';
 import { TYPE_CHIP_FA, guessTitle, guessType } from '../core/knowledgeGuess';
 import { suggestLinks } from '../core/mentions';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
@@ -136,7 +138,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
   const [deps, setDeps] = useState<string[]>(currentDeps);
-  const [depsOpen, setDepsOpen] = useState(false);
+  const currentEffects = object && isEditing ? affectedBy(object.id, relationships) : [];
+  const [effects, setEffects] = useState<string[]>(currentEffects);
   const candidates = allObjects.filter((o) => o.id !== object?.id && o.status !== 'Superseded' && o.status !== 'Archived' && o.status !== 'Proposed');
   const sameDeps = deps.slice().sort().join('|') === currentDeps.slice().sort().join('|');
   const plan = isEditing && object ? planDecisions(allObjects, relationships) : null;
@@ -219,6 +222,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       const saved = await onSave(updated, isEditing && reasonAllowed(object!.status) && editReason.trim() ? { reason: editReason.trim() } : undefined);
       const id = isEditing ? object!.id : saved?.id;
       if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
+      // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
+      if (id && onSetDependencies) for (const step of affectPlan(id, effects, relationships)) await onSetDependencies(step.objectId, step.dependsOn);
     })();
     onClose();
   };
@@ -438,20 +443,17 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         )}
 
         {onSetDependencies && candidates.length > 0 && (
-          <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
-            <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-              <span className="label-md text-text-default">وابسته به ({formatNumber(deps.length)})</span>
-              <Button type="button" size="sm" variant="ghost" aria-expanded={depsOpen} onClick={() => setDepsOpen((v) => !v)}>{depsOpen ? 'بستن فهرست' : 'انتخاب وابستگی‌ها'}</Button>
-            </div>
-            <p className="body-sm text-text-subtle">اگر این تصمیم روی تصمیم‌های دیگری سوار است، آن‌ها را انتخاب کن. با تغییر آن‌ها، این مورد و خروجی‌های ساخته‌شده از آن «نیاز به بازبینی» می‌شوند.</p>
-            {depsOpen && (
-              <div className="grid grid-cols-1 gap-stack-xs sm:grid-cols-2">
-                {candidates.map((o) => (
-                  <Checkbox key={o.id} label={o.title} checked={deps.includes(o.id)} onChange={(e) => setDeps((cur) => (e.target.checked ? [...cur, o.id] : cur.filter((x) => x !== o.id)))} />
-                ))}
-              </div>
-            )}
-            {!depsOpen && deps.length > 0 && <p className="body-sm text-text-default">{deps.map((id) => titleOf?.(id) ?? id).join('، ')}</p>}
+          <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md" role="group" aria-label="ارتباط با دانش دیگر" data-testid="relations">
+            <RelationPicker
+              label="بر چه تکیه دارد؟"
+              hint="اگر این مورد روی تصمیم یا دانش دیگری سوار است، آن را بگذار. با تغییرِ آن‌ها، این مورد و خروجی‌های ساخته‌شده از آن نیاز به بازبینی پیدا می‌کنند."
+              options={candidates} selected={deps} onChange={setDeps} titleOf={(id) => titleOf?.(id) ?? id}
+            />
+            <RelationPicker
+              label="روی چه اثر دارد؟"
+              hint="مواردی که به این تکیه دارند. با تغییرِ این مورد آن‌ها نیاز به بازبینی پیدا می‌کنند."
+              options={candidates} selected={effects} onChange={setEffects} titleOf={(id) => titleOf?.(id) ?? id}
+            />
             {isEditing && (dependents.length > 0 || unit?.concurrent) && (
               <p className="body-sm text-text-subtle">
                 {dependents.length > 0 ? `${formatNumber(dependents.length)} مورد (مستقیم یا غیرمستقیم) روی این مورد سوارند. ` : ''}

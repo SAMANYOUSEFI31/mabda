@@ -4,7 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { ContextObject, GeneratedDeliverable } from '../types';
+import { ContextChange, ContextObject, GeneratedDeliverable } from '../types';
+import { versionTexts } from '../core/versionHistory';
+import { BeforeAfter } from './BeforeAfter';
 import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
 import { PlanLine } from './AiNotices';
 import { useAiStatus } from '../services/aiStatus';
@@ -21,6 +23,8 @@ interface ContextReplayCardProps {
   isRebuilding?: boolean;
   /** present when a Context this asset was built from has changed */
   stale?: StaleAsset;
+  /** the change log: with it, a piece of knowledge that moved on since this output was built shows WHAT changed */
+  changes?: ContextChange[];
 }
 
 
@@ -31,6 +35,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   onRebuild,
   isRebuilding = false,
   stale,
+  changes,
 }) => {
   const [showCritique, setShowCritique] = useState(false);
   const [showRawContext, setShowRawContext] = useState(false);
@@ -147,6 +152,19 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                 </Button>
               ))}
             </div>
+            {/* what changed since this output was built: the text of the version it saw next to the text now */}
+            {usedObjects.filter(({ ref, obj }) => obj.version !== ref.version).map(({ ref, obj }) => {
+              const texts = versionTexts((changes ?? []).filter((c) => c.objectId === obj.id));
+              const then = texts.find((t) => t.version === ref.version);
+              const now = texts.find((t) => t.version === obj.version);
+              if (!then || !now || (then.content === now.content && then.title === now.title)) return null;
+              return (
+                <div key={`${obj.id}-diff`} className="flex flex-col gap-stack-xs" data-testid="replay-diff">
+                  <span className="label-md text-text-default">«{obj.title}» از نسخهٔ {formatNumber(ref.version)} به {formatNumber(obj.version)}</span>
+                  <BeforeAfter before={then.content} after={now.content} />
+                </div>
+              );
+            })}
             <div>
               <Button variant="ghost" size="sm" iconEnd={showRawContext ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showRawContext} onClick={() => setShowRawContext(!showRawContext)}>
                 {showRawContext ? 'بستن ورودی‌ها' : 'مشاهدهٔ ورودی‌ها'}

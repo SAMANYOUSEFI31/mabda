@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
+import { ContextChange, ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../core/impactEngine';
 import { Button, EmptyState, IconButton, Menu, Tabs, formatNumber, useToast } from '../ui';
@@ -19,6 +19,7 @@ interface AssetLibraryProps {
   extractingId?: string | null;
   onRebuild: (del: GeneratedDeliverable) => void;
   stale: StaleAsset[];
+  changes?: ContextChange[];
   onGoToWorkstreams: () => void;
   /** this workspace's own workstreams (the filter tabs); only those that already have an output are listed */
   workstreams: Array<{ id: string; title: string }>;
@@ -36,6 +37,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onRebuild,
   workstreams,
   stale,
+  changes,
   onGoToWorkstreams,
   focus,
 }) => {
@@ -105,6 +107,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 deliverable={del}
                 allContextObjects={allContextObjects}
                 stale={stale.find((x) => x.deliverableId === del.id)}
+                changes={changes}
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
               />

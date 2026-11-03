@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { diffWords, isSame, sidesOf } from '../core/textDiff';
+import { diffSummary, diffWords, isSame, sidesOf } from '../core/textDiff';
+import { formatNumber } from '../ui';
 import type { DiffSegment } from '../core/textDiff';
 
 const Side: React.FC<{ title: string; segments: DiffSegment[]; mark: 'del' | 'add'; empty: string }> = ({ title, segments, mark, empty }) => (
@@ -25,10 +26,14 @@ export const BeforeAfter: React.FC<{ before?: string; after?: string; className?
   const segs = useMemo(() => diffWords(before, after), [before, after]);
   const { before: b, after: a } = sidesOf(segs);
   return (
-    <div className={`flex flex-col gap-inline-sm sm:flex-row ${className ?? ''}`} role="group" aria-label="قبل و بعد">
-      <Side title="قبل" segments={before ? b : []} mark="del" empty="چیزی نبود" />
-      <Side title="بعد" segments={after ? a : []} mark="add" empty="خالی شد" />
-      {isSame(segs) && before && <span className="sr-only">متن تغییری نکرده است</span>}
+    <div className={`flex flex-col gap-stack-xs ${className ?? ''}`}>
+      {/* the one line above the two texts: how much changed */}
+      {before && after && <p className="caption text-text-subtle" data-testid="diff-summary">{diffSummary(segs, formatNumber)}</p>}
+      <div className="flex flex-col gap-inline-sm sm:flex-row" role="group" aria-label="قبل و بعد">
+        <Side title="قبل" segments={before ? b : []} mark="del" empty="چیزی نبود" />
+        <Side title="بعد" segments={after ? a : []} mark="add" empty="خالی شد" />
+        {isSame(segs) && before && <span className="sr-only">متن تغییری نکرده است</span>}
+      </div>
     </div>
   );
 };
