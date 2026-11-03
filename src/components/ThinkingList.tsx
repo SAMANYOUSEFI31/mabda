@@ -16,6 +16,8 @@ interface Props {
   nodes?: TreeNode[];
   onConvert: (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => Promise<void>;
   onGoToNode?: (nodeId: string) => void;
+  /** the way up: «به دانش ببر» opens the knowledge form prefilled from the line (nothing is saved until she saves it) */
+  onPrefill?: (item: NoteThinkingItem) => void;
   empty?: string;
 }
 
@@ -23,7 +25,7 @@ interface Props {
  * Thinking items derived from note lines. Nothing is stored: converting makes a PROPOSED object whose source is the line,
  * and the item then carries ✓. A question stays a question; an idea can stay a note.
  */
-export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert, onGoToNode, empty }) => {
+export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert, onGoToNode, onPrefill, empty }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const label = (id: string) => nodes?.find((n) => n.id === id)?.label ?? id;
   const run = async (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => { setBusy(item.key); try { await onConvert(item, opts); } finally { setBusy(null); } };
@@ -42,7 +44,8 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert
             </span>
             <span className="flex items-center gap-inline-xs">
               {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به گره</Button>}
-              {!done && it.kind === 'idea' && (
+              {!done && onPrefill && <Button size="sm" variant="secondary" iconStart="Wand2" onClick={() => onPrefill(it)}>به دانش ببر</Button>}
+              {!done && !onPrefill && it.kind === 'idea' && (
                 <Menu
                   label="تبدیل ایده"
                   align="end"
@@ -55,7 +58,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert
                   ]}
                 />
               )}
-              {!done && (it.kind === 'assumption' || it.kind === 'open_decision') && (
+              {!done && !onPrefill && (it.kind === 'assumption' || it.kind === 'open_decision') && (
                 <Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === it.key} onClick={() => run(it)}>تبدیل به قلم دانش</Button>
               )}
             </span>

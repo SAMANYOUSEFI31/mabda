@@ -10,7 +10,7 @@ import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, 
 import type { IconName, MenuItem } from '../ui';
 import { useAiStatus } from '../services/aiStatus';
 
-type ContextView = 'doc' | 'read' | 'table' | 'canvas';
+type ContextView = 'doc' | 'read' | 'table' | 'canvas' | 'thinking';
 
 interface AppNavigationProps {
   currentWorkspace: Workspace;
@@ -47,6 +47,7 @@ const VIEWS: Array<{ id: ContextView; label: string }> = [
   { id: 'doc', label: 'ساختار' },
   { id: 'read', label: 'سند خوانا' },
   { id: 'canvas', label: 'بوم' },
+  { id: 'thinking', label: 'فضای فکر' },
 ];
 
 /**
