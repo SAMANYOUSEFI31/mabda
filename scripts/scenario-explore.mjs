@@ -72,13 +72,14 @@ try {
     step(`[${width}] ب: «یک فکر خام دربارهٔ گرهٔ ارسال» — in the structure view, one calm invitation in the node itself`);
     const ship = page.locator('section', { has: page.getByRole('heading', { name: 'ارسال و بسته‌بندی' }) }).last();
     await ship.scrollIntoViewIfNeeded();
-    const invite = ship.getByRole('button', { name: 'فکر خامی داری؟ بنویس' });
-    if (await invite.count()) await invite.click();
-    await ship.getByLabel('یادداشت تازه').fill('اگر ارسال را روز پنجشنبه ثابت کنیم شکایت‌ها کم می‌شود؟');
-    await ship.getByRole('button', { name: 'افزودن یادداشت' }).click();
-    await ship.getByText(/روز پنجشنبه ثابت/).first().waitFor();
-    assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => n.content.includes('پنجشنبه')), 'the note is saved');
+    // the node's calm invitation opens «فکر تازه» for THIS node; if the node already has thoughts, its counter opens the space and the box is the button there
     assert.ok(await ship.getByRole('button', { name: /فایل یا متنی داری/ }).count() >= 1, 'a file can be added to this node from the node');
+    const invite = ship.getByRole('button', { name: 'فکر خامی داری؟ بنویس' });
+    if (await invite.count()) await invite.click(); else { await ship.getByTestId('open-thoughts').click(); await page.getByRole('button', { name: 'فکر تازه' }).first().click(); }
+    await page.getByRole('dialog').getByLabel('فکرت را بنویس').fill('اگر ارسال را روز پنجشنبه ثابت کنیم شکایت‌ها کم می‌شود؟');
+    await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).click();
+    await page.waitForTimeout(600);
+    assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => n.content.includes('پنجشنبه')), 'the note is saved');
     await shot('3-raw-thought');
 
     step(`[${width}] ج: «دانشی ثبت کن که به قید تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);

@@ -43,11 +43,13 @@ try {
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] write one note with several marker lines`);
+    // the note (several marker lines) is written the way the old box did — through the API; the NEW ways to write a thought are in scenario-thinking-space
+    await api('/workspaces/ws_studio/notes', 'POST', { nodeId: 'business', content: `فکرهای امروز\n[سؤال] ${Q}\n[تصمیم باز] ${D}\n[فرض] ${A}\n[ایده] ${I}\nاین [فرض] وسط خط است ${unique}` });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByText(/^خانه: /).waitFor();
     await nav('منبع حقیقت', 'منبع');
-    await page.getByRole('button', { name: /^یادداشت‌ها/ }).first().click();
-    await page.getByLabel('یادداشت تازه').first().fill(`فکرهای امروز\n[سؤال] ${Q}\n[تصمیم باز] ${D}\n[فرض] ${A}\n[ایده] ${I}\nاین [فرض] وسط خط است ${unique}`);
-    await page.getByRole('button', { name: 'افزودن یادداشت' }).first().click();
-    await page.getByText(Q).first().waitFor();
+    await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().evaluate((n) => n.click());
+    await page.getByTestId('open-thoughts').first().waitFor();
     await shot('1-node');
 
     step(`[${width}] «خانه»: the open question and the open decision are collected; an idea and an assumption are not «open»`);
@@ -55,18 +57,19 @@ try {
     // the home says it in ONE line («N سؤال یا تصمیم باز…» + «ببین»); the full list is under «همه»
     await page.getByText(/سؤال یا تصمیم باز در یادداشت/).waitFor();
     await page.getByRole('button', { name: 'ببین' }).first().click();
-    await page.getByRole('heading', { name: 'سؤال‌ها و تصمیم‌های باز' }).waitFor();
-    await page.getByText(Q).first().waitFor();
-    await page.getByText(D).first().waitFor();
-    assert.equal(await page.locator('#open-thinking').getByText(I).count(), 0, 'ideas are not open questions');
-    assert.equal(await page.locator('#open-thinking').getByText(`وسط خط ${unique}`).count(), 0, 'a marker in the middle of a line is nothing');
+    const space = page.getByTestId('thinking-space');
+    await space.waitFor();
+    await space.getByText(Q).first().waitFor();
+    await space.getByText(D).first().waitFor();
+    await space.getByText(I).first().waitFor(); // the space shows ideas too (they are thoughts); the HOME line counts only questions and open decisions
+    assert.equal(await space.getByText(`وسط خط ${unique}`).count(), 0, 'a marker in the middle of a line is nothing');
     await shot('2-home');
 
-    step(`[${width}] convert the assumption: PROPOSED, flagged, with the note line as its quote`);
-    await nav('منبع حقیقت', 'منبع');
-    const row = page.getByRole('list', { name: 'مورد فکری' }).first().locator('li').filter({ hasText: A });
-    await row.getByRole('button', { name: 'تبدیل به قلم دانش' }).click();
-    await row.getByText(/تبدیل شد/).waitFor();
+    step(`[${width}] convert the assumption: the form is PREFILLED, saved as PROPOSED, flagged, with the note line as its quote`);
+    const row = space.locator('li').filter({ hasText: A });
+    await row.getByRole('button', { name: 'به دانش ببر' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).first().click();
+    await page.waitForTimeout(800);
     const st1 = await api('/workspaces/ws_studio/state');
     const made = st1.objects.find((o) => o.content === A);
     assert.ok(made, 'the object exists');

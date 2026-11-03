@@ -165,7 +165,7 @@ try {
     await shot('7-canvas-pending');
 
     step(`[${width}] د: the quick start says what it built — node by node, approved vs waiting, with «ببین» and the way to the thinking space`);
-    await account('شروع سریع');
+    await page.mouse.click(5, 300); await page.waitForTimeout(200); await account('شروع سریع');
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill('طراحی کمپین محتوا');
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کسب‌وکارهای کوچک');

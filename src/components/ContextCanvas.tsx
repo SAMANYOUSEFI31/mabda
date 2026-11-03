@@ -396,7 +396,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         </ul>
       )}
       </span>
-      <Popover label="گزینه‌های نما" trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
+      <Popover label="گزینه‌های نما" align={isMobile ? 'end' : 'start'} trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
         <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />
         <IconButton icon="Maximize" label="متناسب‌سازی" onClick={fit} />
