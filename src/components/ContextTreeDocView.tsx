@@ -39,6 +39,8 @@ interface ContextTreeDocViewProps {
   onOpenAiRequest: (nodeId: string) => void;
   /** the global search asks to show a node's notes (`n` makes a repeated request count) */
   openNotesFor?: { nodeId: string; n: number } | null;
+  /** adds a file to a node (it is processed later, from the files list) */
+  onUploadFile: (file: File, nodeId: string) => Promise<void>;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -189,10 +191,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               </section>
             )}
 
-            {/* منابع: files and where the proposals came from */}
+            {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
+            <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
+              {!notesOpen && thinking.length === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="FileText" onClick={() => toggleNotes(node.id)}>فکر خامی داری؟ بنویس</Button>}
+              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>فایل یا متنی داری؟ اضافه کن</Button>
+              <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
+            </div>
+
+            {/* از کجا آمده: the files of this node and where the proposals came from */}
             {(nodeFiles.length > 0 || sources.length > 0) && (
-              <section className="flex flex-col gap-stack-xs" aria-label="منابع">
-                <h4 className="label-md text-text-default">منابع</h4>
+              <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
+                <h4 className="label-md text-text-default">از کجا آمده</h4>
                 {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>}
                 {sources.length > 0 && <p className="caption text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
               </section>

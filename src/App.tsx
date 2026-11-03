@@ -1134,6 +1134,7 @@ export default function App() {
                 onOpenThread={setThreadNodeId}
                 onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 openNotesFor={focusNotes}
+                onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در بخش «فایل‌ها» پردازشش کن.' }); }}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
