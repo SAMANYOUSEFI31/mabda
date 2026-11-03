@@ -57,11 +57,10 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
   };
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="چه چیزی به تو نیاز دارد">
+    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="همهٔ کارها">
       <div className="flex flex-col gap-stack-xs">
         <div className="flex flex-wrap items-center gap-inline-sm">
-          <h2 className="heading-sm text-text-default">چه چیزی به تو نیاز دارد؟</h2>
-          <Badge intent={total ? 'warning' : 'success'} icon={false}>{total ? `${formatNumber(total)} مورد` : 'همه‌چیز هماهنگ است'}</Badge>
+          <h2 className="heading-sm text-text-default">همهٔ کارها</h2>
         </div>
         <p className="body-sm text-text-subtle">
           {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم وارد منبع حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}

@@ -282,7 +282,6 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           objects={allObjects}
           selfId={object?.id}
           placeholder="مثلاً: مخاطب اصلی ما فریلنسرهای طراح‌اند. / تخفیف نداریم. / تصمیم گرفتیم اینستاگرام کانال اصلی باشد."
-          hint="هر چه می‌دانی بنویس؛ عنوان و نوعش را خودمان حدس می‌زنیم و می‌توانی عوضشان کنی."
         />
         <TextField
           label="عنوان"
@@ -303,8 +302,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? 'کسب‌وکار'}</Button>}
             items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => setNodeId(node.id) }))}
           />
-          {!typeTouched && content.trim() && <span className="body-sm text-text-subtle">نوع را خودمان حدس زدیم.</span>}
         </div>
+        {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ هر کدام درست نیست، عوضش کن.</p>}
         {linkSuggestions.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه از ارجاع‌ها">
             {linkSuggestions.map((sg) => (

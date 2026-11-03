@@ -948,7 +948,9 @@ export default function App() {
               </div>
               <div className="flex flex-wrap items-center gap-inline-sm">
                 {workspaceContexts.length > 0 && <Button variant="primary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای AI</Button>}
-                <Menu
+                {/* on phones the page action of the top bar does not exist: recording knowledge must still be one tap away */}
+                {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>}
+                {workspaceContexts.length > 0 && <Menu
                   label="بیشتر"
                   align="end"
                   trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
@@ -959,7 +961,7 @@ export default function App() {
                     { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
                     { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
                   ]}
-                />
+                />}
               </div>
             </div>
             {workspaceContexts.length === 0 && (
@@ -1075,6 +1077,7 @@ export default function App() {
 
               <div className="flex flex-wrap items-center gap-inline-sm">
                 {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
+                <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>
                 <SegmentedControl
                   label="نمای منبع حقیقت"
                   value={contextViewMode}
