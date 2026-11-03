@@ -49,6 +49,7 @@ async function scenario(width, tag) {
   const step = (m) => console.log(`[${tag}] •`, m);
   const desktop = width >= 768;
   const goTab = async (d, m) => {
+    await page.locator('[aria-label="اعلان‌ها"] button[aria-label="بستن"]').evaluateAll((bs) => bs.forEach((b) => b.click())); // a lingering toast must not cover the bottom nav
     if (desktop) await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).click();
     else await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click();
   };
@@ -98,7 +99,8 @@ async function scenario(width, tag) {
   await shot('2-files', true);
 
   step('«درخواست برای AI» from the node: scope preselected, «همین‌جا جواب بده» answers through the chat route; the block goes to knowledge on a click');
-  await campaign.getByRole('button', { name: 'درخواست برای AI' }).click();
+  await campaign.getByRole('button', { name: 'عملیات گرهٔ کمپین پاییز' }).click(); // the node page has ONE main action; the rest is under «⋯»
+  await page.getByRole('menuitem', { name: 'درخواست برای AI' }).click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('درباره کجا؟').waitFor();
   assert.equal(await dlg.getByLabel('درباره کجا؟').inputValue() !== '', true, 'scope preselected');
@@ -117,7 +119,7 @@ async function scenario(width, tag) {
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
   await page.getByText('ردپای دانش').first().waitFor({ timeout: 30000 });
   await shot('4-asset-fresh');
-  assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).count(), 0, 'nothing is stale yet');
+  assert.equal(await page.getByText('به‌روز نیست', { exact: true }).count(), 0, 'nothing is stale yet');
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع');
@@ -130,13 +132,13 @@ async function scenario(width, tag) {
   console.log(`[${tag}]   toast:`, impactText);
   await shot('5-impact-toast');
 
-  step('assets: «نیاز به بازبینی» badge + reason + half-price rebuild');
+  step('assets: «به‌روز نیست» badge + reason + half-price rebuild');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).click();
-  await page.getByText('این دارایی نیاز به بازبینی دارد').first().waitFor();
+  await page.getByRole('tab', { name: /^به‌روز نیست/ }).click();
+  await page.getByText('این خروجی به‌روز نیست').first().waitFor();
   await page.getByText(/از نسخهٔ ۱ به ۲ تغییر کرد/).first().waitFor();
   await shot('6-asset-stale', true);
-  const staleBefore = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
+  const staleBefore = await page.getByText('این خروجی به‌روز نیست').count();
   await page.getByRole('button', { name: 'بازسازی با نصف قیمت' }).first().click();
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor({ timeout: 30000 });
   await page.getByText('بازسازی‌شده').first().waitFor({ timeout: 30000 });
@@ -144,10 +146,11 @@ async function scenario(width, tag) {
 
   step('assets again: one fewer stale asset, rebuilt one is fresh and replays version 2');
   await goTab('دارایی‌ها', 'دارایی‌ها');
-  await page.getByRole('tab', { name: /^نیاز به بازبینی/ }).waitFor();
-  const staleAfter = await page.getByText('این دارایی نیاز به بازبینی دارد').count();
+  await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
+  const staleAfter = await page.getByText('این خروجی به‌روز نیست').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
   await page.getByRole('tab', { name: /^تمام دارایی‌ها/ }).click();
+  for (const b of await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).all()) await b.click(); // the trail is a closed section
   await page.getByText(/نسخهٔ ۲/).first().waitFor();
   await shot('8-after-rebuild', true);
 

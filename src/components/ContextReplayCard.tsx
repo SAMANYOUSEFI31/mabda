@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ContextObject, GeneratedDeliverable } from '../types';
-import { Alert, Badge, Button, Card, Divider, Markdown, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
+import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../ui';
 import { PlanLine } from './AiNotices';
 import { useAiStatus } from '../services/aiStatus';
 import { halfPriceRebuildAvailable } from '../core/impactEngine';
@@ -35,6 +35,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const [showCritique, setShowCritique] = useState(false);
   const [showRawContext, setShowRawContext] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [traceOpen, setTraceOpen] = useState(false);
 
   // exactly what was injected: id + the version the model saw; the object may have moved on since
   const usedObjects = (deliverable.usedContext || [])
@@ -53,59 +54,51 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const rebuildLabel = sample ? 'ساخت با AI' : halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی';
+  const failed = (deliverable.checks ?? []).filter((c) => !c.passed).length;
+  const passedAll = !!deliverable.checks?.length && failed === 0;
+  const traceId = `trace-${deliverable.id}`;
+
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label={deliverable.title}>
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-inline-md border-b border-border-default pb-inset-md sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-stack-xs">
-          <div className="flex flex-wrap items-center gap-inline-sm">
-            <h3 className="title text-text-default">{deliverable.title}</h3>
+    <Card padding="lg" className="flex flex-col gap-stack-md" aria-label={deliverable.title}>
+      {/* the same anatomy as a canvas card: title · a row of badges · a short line · one action (+ «⋯») */}
+      <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
+        <div className="flex min-w-space-0 flex-col gap-stack-xs">
+          <h3 className="title text-text-default">{deliverable.title}</h3>
+          <div className="flex flex-wrap items-center gap-inline-xs">
             {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : <ModeBadge value={deliverable.executionMode} />}
-            {stale && <Badge intent="warning" icon="TriangleAlert">نیاز به بازبینی</Badge>}
-            {deliverable.rebuildCount > 0 && (
-              <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>
-            )}
+            {stale && <Badge intent="warning" icon="TriangleAlert">به‌روز نیست</Badge>}
+            {deliverable.rebuildCount > 0 && <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
+            {deliverable.checks && deliverable.checks.length > 0 && <Badge intent={passedAll ? 'success' : 'warning'} icon={false}>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Badge>}
           </div>
           <span className="caption text-text-subtle">
             {formatJalaliDate(deliverable.createdAt)}{ai.managedEnabled ? ` · مصرف اعتبار: ${formatNumber(deliverable.creditCost)}` : ''}
           </span>
         </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-inline-sm">
-          <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>
-            {copied ? 'کپی شد' : 'کپی خروجی'}
-          </Button>
-          {deliverable.critiqueFeedback && (
-            <Button
-              variant="secondary"
-              size="sm"
-              iconStart="Eye"
-              aria-expanded={showCritique}
-              onClick={() => setShowCritique(!showCritique)}
-            >
-              نقد و چک‌لیست
-            </Button>
-          )}
+        <div className="flex shrink-0 items-center gap-inline-xs">
+          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="Sparkles" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
+          <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
+          <Menu
+            label="بیشتر دربارهٔ این خروجی"
+            align="end"
+            trigger={<IconButton icon="Ellipsis" label={`بیشتر دربارهٔ ${deliverable.title}`} size="sm" />}
+            items={[
+              ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'Eye' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
+              ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
+              { label: traceOpen ? 'بستن ردپای دانش' : 'ردپای دانش و معیارها', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
+            ]}
+          />
         </div>
       </div>
 
+      {/* «به‌روز نیست»: ONE sentence of reason and ONE action */}
       {stale && (
         <Alert
           intent="warning"
-          title="این دارایی نیاز به بازبینی دارد"
-          action={
-            canRebuild ? (
-              <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
-                {sample ? 'ساخت با AI' : halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
-              </Button>
-            ) : undefined
-          }
+          title="این خروجی به‌روز نیست"
+          action={canRebuild ? <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>{rebuildLabel}</Button> : undefined}
         >
-          <ul className="list-inside list-disc">
-            {stale.reasons.map((r) => (
-              <li key={`${r.objectId}-${r.kind}`}>{r.message}</li>
-            ))}
-          </ul>
+          {stale.reasons[0]?.message}{stale.reasons.length > 1 ? ` (و ${formatNumber(stale.reasons.length - 1)} دلیل دیگر)` : ''}
         </Alert>
       )}
 
@@ -127,126 +120,83 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       </div>
       <PlanLine plan={deliverable.plan} usage={deliverable.usage} credits={deliverable.creditCost} />
 
-      {deliverable.checks && deliverable.checks.length > 0 && (
-        <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg" aria-label="نتیجهٔ بررسی معیارها و گاردریل‌ها">
-          <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-            <span className="label-md text-text-default">معیارهای پذیرش و گاردریل‌ها</span>
-            <Badge intent={deliverable.checks.every((c) => c.passed) ? 'success' : 'warning'} icon={false}>
-              {formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} برقرار
-            </Badge>
-          </div>
-          <ul className="flex flex-col gap-stack-xs">
-            {deliverable.checks.map((c, i) => (
-              <li key={i} className="flex items-start gap-inline-sm">
-                <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
-                <div className="flex min-w-space-0 flex-col">
-                  <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'گاردریل: ' : ''}{c.text}</span>
-                  <span className="caption text-text-subtle">{c.reason}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Critique breakdown */}
-      {showCritique && deliverable.critiqueFeedback && (
-        <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-info-subtle bg-bg-info-subtle p-inset-lg">
-          <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-            <span className="label-md text-text-info">ارزیابی منتقد هوشمند و چک‌لیست پذیرش</span>
-            {deliverable.checks && deliverable.checks.length > 0 && (
-              <span className="label-md tabular-nums text-text-default">
-                {formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-inline-md md:grid-cols-2">
-            <div className="flex flex-col gap-stack-xs">
-              <span className="label-md text-text-success">نقاط قوت محتوا</span>
-              <ul className="body-sm list-inside list-disc text-text-default">
-                {deliverable.critiqueFeedback.strengths.map((s, idx) => (
-                  <li key={idx}>{s}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col gap-stack-xs">
-              <span className="label-md text-text-warning">اصلاحات اعمال‌شده</span>
-              <ul className="body-sm list-inside list-disc text-text-default">
-                {deliverable.critiqueFeedback.improvementsMade.map((i, idx) => (
-                  <li key={idx}>{i}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Context Replay (the Aha moment) */}
-      <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
-        <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-          <div className="flex flex-wrap items-baseline gap-inline-sm">
-            <span className="label-md text-text-default">ردپای دانش</span>
-            <span className="body-sm text-text-subtle">
-              این خروجی بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش کسب‌وکار شما ساخته شد.
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconEnd={showRawContext ? 'ChevronUp' : 'ChevronDown'}
-            aria-expanded={showRawContext}
-            onClick={() => setShowRawContext(!showRawContext)}
-          >
-            {showRawContext ? 'بستن ورودی‌ها' : 'مشاهدهٔ ورودی‌ها'}
+      {/* the trail (what it was built from) and the criteria: a closed section */}
+      <div className="flex flex-col gap-stack-sm">
+        <div>
+          <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
+            ردپای دانش و معیارها
           </Button>
+          <span className="body-sm ms-inline-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.</span>
         </div>
-
-        <div className="flex flex-wrap gap-inline-sm">
-          {usedObjects.map(({ ref, obj: ctx }) => (
-            <Button
-              key={`${ref.id}-${ref.version}`}
-              variant="secondary"
-              size="sm"
-              className="h-auto min-h-touch-comfortable max-w-full flex-wrap whitespace-normal py-inset-xs text-start"
-              title="مشاهده و اصلاح این قلم دانش"
-              onClick={() => onOpenContextObject(ctx)}
-            >
-              {ctx.title}
-              <span className="caption ms-inline-xs text-text-subtle">
-                ({TYPE_META[ctx.type].label} · نسخهٔ {formatNumber(ref.version)}{ctx.version !== ref.version ? `، اکنون ${formatNumber(ctx.version)}` : ''})
-              </span>
-            </Button>
-          ))}
-        </div>
-
-        {showRawContext && (
-          <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md">
-            {usedObjects.map(({ ref, obj: ctx }) => (
-              <div key={`${ref.id}-${ref.version}`} className="rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-                <span className="label-md mb-stack-xs block text-text-default">{ctx.title}</span>
-                <span className="body-sm text-text-subtle">{ctx.content}</span>
+        {traceOpen && (
+          <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+            <div className="flex flex-wrap gap-inline-sm">
+              {usedObjects.map(({ ref, obj: ctx }) => (
+                <Button
+                  key={`${ref.id}-${ref.version}`}
+                  variant="secondary"
+                  size="sm"
+                  className="h-auto min-h-touch-comfortable max-w-full flex-wrap whitespace-normal py-inset-xs text-start"
+                  title="مشاهده و اصلاح این قلم دانش"
+                  onClick={() => onOpenContextObject(ctx)}
+                >
+                  {ctx.title}
+                  <span className="caption ms-inline-xs text-text-subtle">
+                    ({TYPE_META[ctx.type].label} · نسخهٔ {formatNumber(ref.version)}{ctx.version !== ref.version ? `، اکنون ${formatNumber(ctx.version)}` : ''})
+                  </span>
+                </Button>
+              ))}
+            </div>
+            <div>
+              <Button variant="ghost" size="sm" iconEnd={showRawContext ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showRawContext} onClick={() => setShowRawContext(!showRawContext)}>
+                {showRawContext ? 'بستن ورودی‌ها' : 'مشاهدهٔ ورودی‌ها'}
+              </Button>
+            </div>
+            {showRawContext && (
+              <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md">
+                {usedObjects.map(({ ref, obj: ctx }) => (
+                  <div key={`${ref.id}-${ref.version}`} className="rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+                    <span className="label-md mb-stack-xs block text-text-default">{ctx.title}</span>
+                    <span className="body-sm text-text-subtle">{ctx.content}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        <Divider />
-        {canRebuild && (
-        <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-center">
-          <span className="body-sm text-text-subtle">
-            {sample ? 'این متن را دستی نوشته‌ایم و خروجی هوش مصنوعی نیست. با «ساخت با AI» از همین دانش و با کلید خودت یک خروجی واقعی می‌سازی که جای این نمونه می‌نشیند.' : !ai.managedEnabled
-              ? (stale ? 'دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ می‌توانی با آخرین نسخه بازسازی کنی.' : 'دانشی تغییر نکرده؛ بازسازی خروجی تازه‌ای با همان دانش می‌سازد.')
-              : halfPrice
-              ? `دانشی که این خروجی بر پایهٔ آن ساخته شد تغییر کرده؛ بازسازی یک‌بار برای این تغییر با نصف قیمت (حدود ${formatNumber(Math.ceil(deliverable.creditCost * 0.5))} اعتبار) انجام می‌شود.`
-              : stale
-              ? 'تخفیف نصف‌قیمت برای این تغییر قبلاً استفاده شده است.'
-              : 'دانشی تغییر نکرده؛ بازسازی با قیمت کامل انجام می‌شود.'}
-          </span>
-          <Button variant="secondary" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>
-            {sample ? 'ساخت با AI' : halfPrice ? 'بازسازی با نصف قیمت' : 'بازسازی'}
-          </Button>
-        </div>
+            {deliverable.checks && deliverable.checks.length > 0 && (
+              <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md" aria-label="نتیجهٔ بررسی معیارها و گاردریل‌ها">
+                <span className="label-md text-text-default">معیارهای پذیرش و گاردریل‌ها</span>
+                <ul className="flex flex-col gap-stack-xs">
+                  {deliverable.checks.map((c, i) => (
+                    <li key={i} className="flex items-start gap-inline-sm">
+                      <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
+                      <div className="flex min-w-space-0 flex-col">
+                        <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'گاردریل: ' : ''}{c.text}</span>
+                        <span className="caption text-text-subtle">{c.reason}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {showCritique && deliverable.critiqueFeedback && (
+              <div className="flex flex-col gap-stack-md border-t border-border-default pt-inset-md">
+                <span className="label-md text-text-default">ارزیابی منتقد و چک‌لیست پذیرش</span>
+                <div className="grid grid-cols-1 gap-inline-md md:grid-cols-2">
+                  <div className="flex flex-col gap-stack-xs">
+                    <span className="label-md text-text-success">نقاط قوت محتوا</span>
+                    <ul className="body-sm list-inside list-disc text-text-default">{deliverable.critiqueFeedback.strengths.map((x, idx) => (<li key={idx}>{x}</li>))}</ul>
+                  </div>
+                  <div className="flex flex-col gap-stack-xs">
+                    <span className="label-md text-text-warning">اصلاحات اعمال‌شده</span>
+                    <ul className="body-sm list-inside list-disc text-text-default">{deliverable.critiqueFeedback.improvementsMade.map((x, idx) => (<li key={idx}>{x}</li>))}</ul>
+                  </div>
+                </div>
+              </div>
+            )}
+            {sample && <p className="body-sm text-text-subtle">این متن را دستی نوشته‌ایم و خروجی هوش مصنوعی نیست. با «ساخت با AI» از همین دانش و با کلید خودت یک خروجی واقعی می‌سازی.</p>}
+          </div>
         )}
       </div>
     </Card>

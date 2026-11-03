@@ -117,12 +117,13 @@ try {
     assert.ok(enabled, `${t} is unlocked after its dependencies were built (${built.join('، ') || '—'})`);
     await btn.click();
     await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
-    await page.getByText('معیارهای پذیرش و گاردریل‌ها').first().waitFor({ timeout: 40000 });
+    await page.getByText(/معیار برقرار/).first().waitFor({ timeout: 40000 }); // the card header says how many checks hold; the list is in the closed «ردپای دانش و معیارها»
     built.push(t);
     console.log('  built:', t);
     if (t === TITLES[0]) await shot('4-first-output-checks');
   }
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).click();
+  for (const b of await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).all()) await b.click();
   const cards = await page.getByText('معیارهای پذیرش و گاردریل‌ها').count();
   assert.equal(cards, 5, 'every output shows its checks');
   assert.ok(await page.getByText(/گاردریل: از واژهٔ «ارزان»/).count() >= 5, 'spec guardrail checked on every output');
@@ -133,7 +134,8 @@ try {
   await account('آکادمی رشد فریلنسرها');
   await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
   await nav('جریان‌های کار');
-  await page.getByRole('button', { name: 'تعریف جریان کار سفارشی' }).click();
+  await page.getByRole('button', { name: 'بیشتر دربارهٔ جریان کار' }).click(); // the editor / library are under «⋯»
+  await page.getByRole('menuitem', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();
   await shot('6-starter-gated');
 

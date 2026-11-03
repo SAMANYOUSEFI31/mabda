@@ -77,6 +77,7 @@ import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
 import { Alert, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { HomeTodo } from './components/HomeTodo';
+import { effectiveObjects } from './core/effectiveContext';
 import { homeActions } from './core/homeActions';
 import type { HomeAction } from './core/homeActions';
 import { visibleFeatures } from './core/visibleFeatures';
@@ -1122,6 +1123,7 @@ export default function App() {
                 onChatWithNode={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 onReadNode={setReadNodeId}
                 onShowEffect={setEffectNodeId}
+                effectCount={(id) => effectiveObjects(id, workspaceContexts, nodes, data.relationships ?? [], new Date()).length}
                 thinking={thinking}
                 onConvertItem={handleConvertItem}
                 onSplitNote={handleSplitNote}

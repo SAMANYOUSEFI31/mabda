@@ -64,8 +64,8 @@ try {
     step(`[${width}] switch to «ممیزی»: the rules change; the left-out list tells why`);
     await dlg.getByRole('radio', { name: 'ممیزی' }).click();
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('قواعد این کار (ممیزی)')));
-    await dlg.locator('summary', { hasText: 'ببین چه چیزی می‌رود' }).click(); // what goes in is one click away, not in the way
-    await dlg.locator('summary', { hasText: 'خارج شد' }).click();
+    await dlg.getByRole('button', { name: /مورد از دانشت/ }).click(); // what goes in is one click away, not in the way
+    await dlg.getByRole('button', { name: /^خارج شد/ }).click();
     await dlg.getByText(/تأییدنشده \(واقعیت نیست\)/).first().waitFor();
     assert.ok((await dlg.innerText()).includes('ادعای معلق'));
     await shot('2-audit');

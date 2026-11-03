@@ -55,7 +55,7 @@ try {
     assert.ok(st.objects.length >= 30 && st.changes.length > 40);
 
     step(`[${width}] home: what needs you (contradictions, review, waiting decisions, flip-flop warning)`);
-    await page.locator('button[aria-controls="home-all"]').click(); // everything beyond the top three waits under «همه»
+    { const all = page.locator('button[aria-controls="home-all"]'); if ((await all.getAttribute('aria-expanded')) !== 'true') await all.click(); } // everything beyond the top three waits under «همه»
     await page.getByText('تصمیم‌های منتظر').first().waitFor();
     await page.getByText('تصمیم همزمان').first().waitFor();
     await page.getByText(/چند بار عوض شده/).first().waitFor();
@@ -115,7 +115,8 @@ try {
     step(`[${width}] assets: three hand-made samples, two need a review, «ساخت با AI» is offered`);
     await nav('دارایی‌ها', 'دارایی‌ها');
     assert.equal(await page.getByText('نمونهٔ دستی', { exact: true }).count(), 3);
-    assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).count() >= 2, true);
+    await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll('span, div')].filter((e) => e.children.length < 3 && e.textContent.trim() === 'به‌روز نیست').length >= 2, null, { timeout: 8000 });
     assert.ok((await page.getByRole('button', { name: 'ساخت با AI' }).count()) >= 3);
     assert.ok((await page.getByText(/به «.*» وابسته است و «.*» تغییر کرده/).count()) >= 1, 'dependency_changed reason');
     await shot('6-assets');

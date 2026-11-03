@@ -61,17 +61,18 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const planName = plan.title.split(' ')[0];
 
   const ai = useAiStatus();
-  const accountItems: Array<MenuItem & { section: 'workspace' | 'tools' | 'account' }> = [
+  const accountItems: Array<MenuItem & { section: 'workspace' | 'connect' | 'plan' | 'account' }> = [
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
-    { section: 'tools', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
-    { section: 'tools', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
-    { section: 'tools', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
-    { section: 'tools', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
-    { section: 'tools', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
-    { section: 'tools', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
-    ...(p.onOpenUsage && ai.admin ? [{ section: 'tools' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
+    // grouped by what you are doing: connect AI · plan and usage · the account (a divider between groups)
+    { section: 'connect', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
+    { section: 'connect', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
+    { section: 'connect', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
+    { section: 'plan', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
+    { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
+    ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
+    { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
     { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];
   const withDividers = (): MenuItem[] => {
