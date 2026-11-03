@@ -76,6 +76,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-inline-xs">
+          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="Sparkles" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
           <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
           <Menu
             label="بیشتر دربارهٔ این خروجی"
@@ -83,7 +84,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             trigger={<IconButton icon="Ellipsis" label={`بیشتر دربارهٔ ${deliverable.title}`} size="sm" />}
             items={[
               ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'Eye' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
-              ...(canRebuild && !stale ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
+              ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
               { label: traceOpen ? 'بستن ردپای دانش' : 'ردپای دانش و معیارها', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
             ]}
           />

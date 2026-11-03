@@ -49,6 +49,7 @@ async function scenario(width, tag) {
   const step = (m) => console.log(`[${tag}] •`, m);
   const desktop = width >= 768;
   const goTab = async (d, m) => {
+    await page.locator('[aria-label="اعلان‌ها"] button[aria-label="بستن"]').evaluateAll((bs) => bs.forEach((b) => b.click())); // a lingering toast must not cover the bottom nav
     if (desktop) await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).click();
     else await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click();
   };
@@ -149,6 +150,7 @@ async function scenario(width, tag) {
   const staleAfter = await page.getByText('این خروجی به‌روز نیست').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
   await page.getByRole('tab', { name: /^تمام دارایی‌ها/ }).click();
+  for (const b of await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).all()) await b.click(); // the trail is a closed section
   await page.getByText(/نسخهٔ ۲/).first().waitFor();
   await shot('8-after-rebuild', true);
 
