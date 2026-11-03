@@ -420,7 +420,7 @@ export default function App() {
   const handleApplyStarter = async (starterId: string) => {
     const r = await attempt(() => dataApi.applyStarter(wid, starterId));
     if (!r) return;
-    patch((d) => ({ ...d, samples: r.samples }));
+    patch((d) => ({ ...d, samples: r.samples, ...(r.nodes ? { nodes: r.nodes } : {}) }));
     toast.show({ intent: 'success', message: r.added ? `${formatNumber(r.added)} نمونهٔ خاکستری اضافه شد؛ به AI نمی‌رسند.` : 'این نمونه‌ها قبلاً اضافه شده‌اند.' });
   };
   const handleDeleteSamples = async (nodeIds?: string[]) => {

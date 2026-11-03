@@ -571,10 +571,18 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const s = scopeOf(req);
     const st = STARTERS.find((x) => x.id === req.params.id);
     if (!st) throw new RepoError('not_found', 'اسکلت شروع پیدا نشد.');
-    // a start template's examples: `node` is a hint for a node of THIS workspace; a node that is not there → the default place
+    // a start template may bring nodes (put under the first root; a node of the same name under the same parent is reused, so applying twice adds nothing)
+    const under = defaultNodeId(repo.listNodes(s)) || undefined;
+    const created = new Map<string, string>();
+    for (const n of planNodes(st, repo.listNodes(s), under, (k) => k)) {
+      const parent = (n.parentId && created.get(n.parentId)) || under;
+      const same = repo.listNodes(s).find((x) => (x.parentId ?? undefined) === parent && x.label === n.label);
+      created.set(n.key, same?.id ?? repo.createNode(s, { parentId: parent as string, label: n.label, description: n.description }).id);
+    }
+    // the examples: `node` is a node of this template, else a hint for a node of THIS workspace; a node that is not there → the default place
     const nodes = repo.listNodes(s);
-    const made = st.samples.map((x) => repo.createSample(s, { type: x.type, title: x.title, content: x.content, nodeId: sampleNode(x, new Map(), nodes), ...(x.slotKey ? { slotKey: x.slotKey } : {}), ...(x.facets ? { facets: x.facets } : {}) })).filter(Boolean);
-    res.json({ added: made.length, samples: repo.listSampleObjects(s) });
+    const made = st.samples.map((x) => repo.createSample(s, { type: x.type, title: x.title, content: x.content, nodeId: sampleNode(x, created, nodes), ...(x.slotKey ? { slotKey: x.slotKey } : {}), ...(x.facets ? { facets: x.facets } : {}) })).filter(Boolean);
+    res.json({ added: made.length, samples: repo.listSampleObjects(s), nodes });
   }));
   /** remove the examples (all, or only those of some nodes) */
   router.post('/workspaces/:wid/samples/delete', wrap((req, res) => {

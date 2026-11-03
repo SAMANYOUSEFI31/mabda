@@ -29,7 +29,7 @@ test('the four starters: every sample is an example (text says «مثال»), hi
   const nodeIds = new Set(DEFAULT_TREE_NODES.map((n) => n.id));
   for (const st of STARTERS) {
     assert.ok(st.samples.length >= 6, st.id);
-    assert.ok(st.samples.every((x) => x.content.startsWith('مثال:') && nodeIds.has(x.node)), st.id);
+    assert.ok(st.samples.every((x) => x.content.startsWith('مثال:') && (nodeIds.has(x.node) || st.nodes.some((n) => n.key === x.node))), st.id);
     assert.equal(new Set(st.samples.map((x) => `${x.node}|${x.title}`)).size, st.samples.length, `${st.id}: no duplicate (node, title)`);
   }
 });
