@@ -14,6 +14,7 @@ import type { CanvasItem } from '../types/state';
 import { buildCanvasModel, CARD_H as BOARD_CARD_H, CARD_W as BOARD_CARD_W } from './canvasModel';
 import type { BoardColumns, BoardRows } from './canvasModel';
 import { isExpired, reachOf } from './effectiveContext';
+import { thinkingOf, convertedTo } from './thinkingMarkers';
 import { buildMapModel, EDGE_LABEL } from './mapModel';
 import type { MapEdgeKind } from './mapModel';
 
@@ -50,6 +51,8 @@ export interface SceneItem {
   review?: boolean; assumption?: boolean; expired?: boolean; global?: boolean; sample?: boolean;
   /** not approved yet (a suggestion or a «needs review»): only drawn when «نشان بده چه در راه است» is on */
   pending?: boolean;
+  /** thinking canvas: not placed yet — shown in the «تازه‌ها» tray until she drags it somewhere */
+  unplaced?: boolean;
   facet?: string;
   count?: number;
   expanded?: boolean;
@@ -57,7 +60,7 @@ export interface SceneItem {
   lane?: 'thinking' | 'confirmed';
 }
 export interface SceneBox { id: string; kind: 'group' | 'column' | 'row' | 'zone'; label: string; depth: number; x: number; y: number; w: number; h: number; nodeId?: string; count?: number; expanded?: boolean; hint?: string }
-export interface SceneEdge { id: string; kind: MapEdgeKind; label: string; /** the one that acts */ influencer: string; /** the one that is acted on */ influenced: string; count: number }
+export interface SceneEdge { id: string; kind: MapEdgeKind; label: string; /** one end is not approved yet: a suggested relation — it becomes real by itself when that end is approved */ pending?: boolean; /** the one that acts */ influencer: string; /** the one that is acted on */ influenced: string; count: number }
 export interface Scene { /** board: the ordered object ids of every cell (`column|row`) — what an undo of a move restores */ cells?: Record<string, string[]>; layout: CanvasLayout; items: SceneItem[]; boxes: SceneBox[]; edges: SceneEdge[]; width: number; height: number; summary: { objects: number; assets: number; notes: number }; /** the board's column / row kinds (display only unless columns = status) */ board?: { columns: BoardColumns; rows: BoardRows } }
 
 export interface SceneInput {
@@ -81,7 +84,15 @@ export interface SceneOptions {
   onlyReview?: boolean;
   /** relations («بوم حقیقت»): the map shows only what is approved; with this on, suggestions and what needs a look appear too — drawn faint, so their effect is seen BEFORE a yes */
   showPending?: boolean;
+  /** free («بوم فکر»): also show what has no place yet — open thoughts and suggestions — in a «تازه‌ها» tray */
+  tray?: boolean;
 }
+
+/** a relation with an end that is not approved yet (a suggestion, a thing that needs a look): a suggested relation, not truth */
+export const isPendingRelation = (r: { sourceId: string; targetId: string }, byId: Map<string, Pick<ContextObject, 'status'>>): boolean => {
+  const bad = (id: string) => { const o = byId.get(id); return !!o && (o.status === 'Proposed' || o.status === 'Needs Review'); };
+  return bad(r.sourceId) || bad(r.targetId);
+};
 
 const extract = (s: string, n = 140) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
 const badges = (o: ContextObject, review: boolean, now: Date) => ({
@@ -106,7 +117,8 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
       };
     });
     const boxes: SceneBox[] = m.groups.map((g) => ({ id: g.id, kind: 'group', label: g.label, depth: g.depth, x: g.x, y: g.y, w: g.w, h: g.h, nodeId: g.nodeId, count: g.count, expanded: g.expanded, hint: 'گرهٔ درخت (دامنه)؛ ترتیب ندارد.' }));
-    const edges: SceneEdge[] = m.edges.map((e) => ({ id: e.id, kind: e.kind, label: e.label, influencer: e.influencer, influenced: e.influenced, count: e.count }));
+    const idOf = (v: string) => (v.startsWith('o:') ? v.slice(2) : v);
+    const edges: SceneEdge[] = m.edges.map((e) => ({ id: e.id, kind: e.kind, label: e.label, influencer: e.influencer, influenced: e.influenced, count: e.count, ...(isPendingRelation({ sourceId: idOf(e.influencer), targetId: idOf(e.influenced) }, byId) ? { pending: true } : {}) }));
     return { layout, items, boxes, edges, width: m.width, height: m.height, summary: { objects: m.summary.objects, assets: m.summary.assets, notes: 0 } };
   }
 
@@ -141,15 +153,42 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
       if (o && (!opts.onlyReview || input.reviewIds.has(o.id) || o.status === 'Needs Review')) items.push({ id: `o:${o.id}`, kind: 'object', label: o.title, summary: extract(o.content), x: i.x ?? 0, y: i.y ?? 0, w: BOARD_CARD_W, h: BOARD_CARD_H, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, ...badges(o, input.reviewIds.has(o.id), now) });
     }
   }
+  for (const it of items) if (it.objectId) { const o = byId.get(it.objectId); if (o && (o.status === 'Proposed' || o.status === 'Needs Review')) it.pending = true; }
+  const boxes: SceneBox[] = [];
+  if (opts.tray) {
+    // what has no place yet: suggestions, things that need a look, and notes holding an open thought — in one column after everything placed
+    const placedObj = new Set(items.map((i) => i.objectId).filter(Boolean));
+    const placedNote = new Set(items.map((i) => i.noteId).filter(Boolean));
+    const loose: SceneItem[] = [];
+    const bad = new Set(['Proposed', 'Needs Review']);
+    for (const o of input.objects) {
+      if (!bad.has(o.status) || o.sample || placedObj.has(o.id)) continue;
+      if (opts.onlyReview && !input.reviewIds.has(o.id) && o.status !== 'Needs Review') continue;
+      loose.push({ id: `o:${o.id}`, kind: 'object', label: o.title, summary: extract(o.content), x: 0, y: 0, w: BOARD_CARD_W, h: BOARD_CARD_H, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, pending: true, unplaced: true, ...badges(o, input.reviewIds.has(o.id), now) });
+    }
+    const placedNoteIds = new Set(input.canvas.free.filter((i) => i.itemRef.startsWith('note:')).map((i) => i.itemRef.slice(5)));
+    for (const n of input.notes) {
+      if (placedNote.has(n.id) || placedNoteIds.has(n.id)) continue;
+      const open = thinkingOf([n]).filter((t) => !convertedTo(t, input.objects));
+      if (open.length === 0) continue;
+      loose.push({ id: `note:${n.id}`, kind: 'note', label: n.content.split('\n')[0].slice(0, 80), summary: extract(n.content, 400), x: 0, y: 0, w: NOTE_W, h: NOTE_H, noteId: n.id, nodeId: n.nodeId, unplaced: true });
+    }
+    if (loose.length) {
+      const x0 = items.length ? Math.max(...items.map((i) => i.x + i.w)) + 80 : 40;
+      let y = 60;
+      for (const it of loose) { it.x = x0; it.y = y; y += it.h + 24; items.push(it); }
+      boxes.push({ id: 'zone:tray', kind: 'zone', label: 'تازه‌ها — هنوز جایی نگذاشته‌ای', depth: 0, x: x0 - 20, y: 10, w: Math.max(...loose.map((i) => i.w)) + 40, h: y - 10, hint: 'فکرهای باز و پیشنهادها. هر کدام را بکش و جایی بگذار؛ تا نگذاری فقط اینجا دیده می‌شود.' });
+    }
+  }
   const present = new Set(items.map((i) => i.objectId));
   const edges: SceneEdge[] = [];
   for (const r of input.relationships) {
     if (r.type !== 'depends_on' || !present.has(r.sourceId) || !present.has(r.targetId)) continue;
-    edges.push({ id: `dependency|o:${r.sourceId}|o:${r.targetId}`, kind: 'dependency', label: EDGE_LABEL.dependency, influencer: `o:${r.targetId}`, influenced: `o:${r.sourceId}`, count: 1 });
+    edges.push({ id: `dependency|o:${r.sourceId}|o:${r.targetId}`, kind: 'dependency', label: EDGE_LABEL.dependency, influencer: `o:${r.targetId}`, influenced: `o:${r.sourceId}`, count: 1, ...(isPendingRelation(r, byId) ? { pending: true } : {}) });
   }
   const width = Math.max(960, ...items.map((i) => i.x + i.w + 60));
   const height = Math.max(520, ...items.map((i) => i.y + i.h + 60));
-  return { layout, items, boxes: [], edges, width, height, summary: { objects: items.filter((i) => i.kind === 'object').length, assets: 0, notes: items.filter((i) => i.kind === 'note').length } };
+  return { layout, items, boxes, edges, width, height, summary: { objects: items.filter((i) => i.kind === 'object').length, assets: 0, notes: items.filter((i) => i.kind === 'note').length } };
 }
 
 /** objects that can be placed in the free space: live, not placed yet */

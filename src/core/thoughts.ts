@@ -38,3 +38,21 @@ export function thoughtToDraft(item: NoteThinkingItem, workspaceId: string, now:
     ...(assumption ? { assumption: true } : {}),
   };
 }
+
+/**
+ * A thought that became a SECTION (a tree node) is done: its line stays in the note as a plain record — no marker and not a
+ * question any more — so the open-thought lists stop counting it. Only that line changes; every other line is as she typed it.
+ */
+export function resolveThoughtLine(content: string, item: Pick<NoteThinkingItem, 'line' | 'text'>, sectionLabel: string): string {
+  const lines = content.split(/\r?\n/);
+  if (item.line < 0 || item.line >= lines.length) return content;
+  lines[item.line] = `${item.text} ✓ (بخش «${sectionLabel.replace(/[»\n]+/g, ' ').trim()}» از همین ساخته شد)`;
+  return lines.join('\n');
+}
+
+/** a name for the section made from a thought: the first sentence, short */
+export function sectionNameFromThought(text: string): string {
+  const first = text.replace(/\s+/g, ' ').trim().split(/[.!؟?،:؛]/)[0].trim();
+  const words = first.split(' ').slice(0, 6).join(' ');
+  return words.slice(0, 48);
+}

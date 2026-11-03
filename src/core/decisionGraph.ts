@@ -112,7 +112,9 @@ export interface ReviewNeed {
 /** DERIVED review state. Superseded/Archived dependencies still count (their replacement is exactly what changed). */
 export function needsReview(objects: ContextObject[], relationships: ContextRelationship[], changes: ContextChange[]): Map<string, ReviewNeed> {
   const deps = new Map<string, string[]>();
-  for (const r of relationships) if (r.type === 'depends_on') deps.set(r.sourceId, [...(deps.get(r.sourceId) ?? []), r.targetId]);
+  // a suggestion (Proposed) is not truth: a relation to one — however it was drawn — neither flags nor is flagged
+  const proposed = new Set(objects.filter((o) => o.status === 'Proposed').map((o) => o.id));
+  for (const r of relationships) if (r.type === 'depends_on' && !proposed.has(r.sourceId) && !proposed.has(r.targetId)) deps.set(r.sourceId, [...(deps.get(r.sourceId) ?? []), r.targetId]);
   const latest = (pred: (c: ContextChange) => boolean) => {
     const m = new Map<string, string>();
     for (const c of changes) if (pred(c) && (m.get(c.objectId) ?? '') < c.at) m.set(c.objectId, c.at);

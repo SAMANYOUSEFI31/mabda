@@ -36,7 +36,8 @@ const quoted = (titles: string[]) => titles.map((t) => `«${t}»`).join('، ');
 function refLines(o: ContextObject, ctx: Ctx): string[] {
   if (!ctx.refs) return [];
   const byId = new Map(ctx.all.map((x) => [x.id, x]));
-  const live = (id: string) => { const x = byId.get(id); return x && isActive(x) ? x.title : undefined; };
+  // a relation to a suggestion (Proposed) is not truth yet: it only appears after that end is approved
+  const live = (id: string) => { const x = byId.get(id); return x && isActive(x) && x.status !== 'Proposed' ? x.title : undefined; };
   const rels = ctx.relationships ?? [];
   const deps = [...new Set(rels.filter((r) => r.type === 'depends_on' && r.sourceId === o.id).map((r) => live(r.targetId)).filter((t): t is string => !!t))];
   const from = [

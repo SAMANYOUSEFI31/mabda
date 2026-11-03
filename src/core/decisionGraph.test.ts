@@ -102,3 +102,12 @@ test('flipFlops: a decision replaced 3+ times (chain from the Change log) is fla
   const cyc = [sup('p', 'q'), sup('q', 'p')];
   assert.doesNotThrow(() => flipFlops([obj('p'), obj('q')], cyc, 1));
 });
+
+test('needsReview: a relation to a suggestion (Proposed) does not make truth «need a look» — thinking never reaches the truth engines', () => {
+  const objects = [obj('A'), obj('B', { status: 'Proposed' }), obj('C')];
+  const rels = [dep('C', 'B')];
+  const edited = [chg('B', 'edited', '2026-02-01T00:00:00Z', { content: 'new' }), chg('C', 'created', '2026-01-01T00:00:00Z')];
+  assert.equal(needsReview(objects, rels, edited).size, 0, 'C rests on a suggestion that changed: not flagged');
+  const approved = [obj('A'), obj('B'), obj('C')];
+  assert.deepEqual([...needsReview(approved, rels, edited).keys()], ['C'], 'once B is approved the same relation is real');
+});
