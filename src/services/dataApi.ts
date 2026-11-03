@@ -93,7 +93,7 @@ export const dataApi = {
   state: (id: string) => call<WorkspaceState>('GET', `${ws(id)}/state`),
   saveWorkspace: (w: Workspace) => call<Workspace>('PUT', ws(w.id), w),
 
-  createNode: (id: string, input: { parentId: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
+  createNode: (id: string, input: { parentId?: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
   renameNode: (id: string, nodeId: string, patch: { label?: string; description?: string }) => call<{ nodes: TreeNode[] }>('PATCH', `${ws(id)}/nodes/${nodeId}`, patch),
   moveNode: (id: string, nodeId: string, parentId: string, index?: number) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index }),
   deleteNode: (id: string, nodeId: string, transferTo?: string) =>

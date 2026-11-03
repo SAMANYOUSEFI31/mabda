@@ -202,13 +202,15 @@ export class Repo {
     return (this.db.prepare('SELECT * FROM tree_nodes WHERE workspace_id = ? AND user_id = ? ORDER BY ord, id').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToNode);
   }
 
-  createNode(s: Scope, input: { parentId: string; label: string; description?: string }): TreeNode {
+  /** a node under `parentId`, or a new ROOT when `parentId` is empty (the tree may have several roots; the first one is the default place) */
+  createNode(s: Scope, input: { parentId?: string; label: string; description?: string }): TreeNode {
     const nodes = this.listNodes(s);
-    const ok = canCreateUnder(nodes, input.parentId, input.label);
+    const parentId = input.parentId || undefined;
+    const ok = parentId ? canCreateUnder(nodes, parentId, input.label) : input.label.trim() ? { ok: true as const } : { ok: false as const, reason: 'نام گره نمی‌تواند خالی باشد.' };
     if (!ok.ok) throw new RepoError('invalid', ok.reason);
-    const node: TreeNode = { id: newId('nd'), label: input.label.trim(), description: input.description?.trim() ?? '', parentId: input.parentId, order: nextOrder(nodes, input.parentId) };
+    const node: TreeNode = { id: newId('nd'), label: input.label.trim(), description: input.description?.trim() ?? '', ...(parentId ? { parentId } : {}), order: nextOrder(nodes, parentId) };
     this.db.prepare('INSERT INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)')
-      .run(node.id, s.userId, s.workspaceId, node.parentId, node.label, node.description, node.order);
+        .run(node.id, s.userId, s.workspaceId, node.parentId ?? null, node.label, node.description, node.order);
     return node;
   }
 

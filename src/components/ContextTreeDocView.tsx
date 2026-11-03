@@ -223,7 +223,10 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             هر بخش یک گره است و هر کارت یک قلم دانش. برای خواندن به‌صورت یک سند زیبا، «خواندن سند» را بزن.
           </p>
         </div>
-        <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>
+        <div className="flex flex-wrap items-center gap-inline-sm">
+          <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>
+          <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
+        </div>
       </div>
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
     </Card>

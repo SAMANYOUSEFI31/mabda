@@ -72,7 +72,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         open
         onClose={onClose}
         size="sm"
-        title={state.kind === 'create' ? `گرهٔ جدید زیر «${parent?.label ?? ''}»` : `تغییر نام «${node?.label ?? ''}»`}
+        title={state.kind === 'create' ? (parent ? `گرهٔ جدید زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
         description={state.kind === 'create' ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined}
         footer={
           <>
