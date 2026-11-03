@@ -121,7 +121,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
             </div>
             {result.overBudget && <Alert intent="warning">قیدها و تصمیم‌های سراسری از بودجه بیشترند؛ همیشه می‌آیند. دامنه را کوچک‌تر کن.</Alert>}
             {result.longText && <p className="caption text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
-            <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code" />
+            <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code bidi-plain" />
 
             <details className="rounded-control border border-border-default p-inset-md">
               <summary className="label-md cursor-pointer text-text-default">شامل شد ({formatNumber(result.included.length)})</summary>
