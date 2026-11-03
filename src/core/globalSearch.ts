@@ -26,6 +26,8 @@ export interface SearchHit {
   /** a piece of the text around the match, when the match is not in the title */
   snippet?: string;
   score: number;
+  /** how many of the typed words this hit contains (the first sort key) */
+  covered?: number;
 }
 export type SearchGroups = Record<SearchKind, SearchHit[]>;
 
@@ -144,15 +146,25 @@ export function searchIndex(index: SearchIndex, query: string, opts: { limitPerG
     scored.push({ d, covered, score: score + (nt.startsWith(q) ? 6 : nt.includes(q) ? 3 : 0) });
   }
   scored.sort((a, b) => b.covered - a.covered || b.score - a.score || a.d.id.localeCompare(b.d.id));
-  for (const { d, score } of scored) {
+  for (const { d, score, covered } of scored) {
     const g = out[d.kind];
     if (g.length >= limit) continue;
     const inTitle = typed.some((t) => normalizeFa(d.title).includes(t));
-    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(!inTitle || d.kind === 'note' ? { snippet: snippetOf(d.content, typed) } : {}), score });
+    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(!inTitle || d.kind === 'note' ? { snippet: snippetOf(d.content, typed) } : {}), score, covered });
   }
   return out;
 }
 
-/** one flat list in the order the palette shows it (groups in `SEARCH_GROUP_ORDER`), for keyboard movement */
-export const flattenGroups = (g: SearchGroups): SearchHit[] => SEARCH_GROUP_ORDER.flatMap((k) => g[k]);
+/**
+ * The order the palette shows the groups: commands first (a command you typed is what you want), then the other groups by how
+ * good their best hit is — so the exact thing you named is the first row, whatever kind it is. Ties keep `SEARCH_GROUP_ORDER`.
+ */
+export function groupOrder(g: SearchGroups): SearchKind[] {
+  const rest = SEARCH_GROUP_ORDER.filter((k) => k !== 'command' && g[k].length > 0);
+  const best = (k: SearchKind) => g[k][0];
+  rest.sort((a, b) => (best(b).covered ?? 0) - (best(a).covered ?? 0) || best(b).score - best(a).score || SEARCH_GROUP_ORDER.indexOf(a) - SEARCH_GROUP_ORDER.indexOf(b));
+  return [...(g.command.length ? (['command'] as SearchKind[]) : []), ...rest];
+}
+/** one flat list in the order the palette shows it (`groupOrder`), for keyboard movement */
+export const flattenGroups = (g: SearchGroups): SearchHit[] => groupOrder(g).flatMap((k) => g[k]);
 export const totalHits = (g: SearchGroups): number => flattenGroups(g).length;

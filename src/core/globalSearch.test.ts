@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSearchIndex, expandQuery, flattenGroups, searchIndex, totalHits } from './globalSearch';
+import { buildSearchIndex, expandQuery, flattenGroups, groupOrder, searchIndex, totalHits } from './globalSearch';
 import type { ContextObject, TreeNode } from '../types';
 
 const nodes: TreeNode[] = [
@@ -97,4 +97,13 @@ test('a big workspace: found with a few letters, fast, limited per group', () =>
   assert.equal(g.object[0].id, 'needle');
   assert.ok(searchIndex(index, 'موضو', { limitPerGroup: 4 }).object.length === 4);
   assert.ok(ms < 3000, `index + search took ${ms}ms`);
+});
+
+test('the group with the best hit comes first, so the thing you named is the first row; commands stay on top', () => {
+  const ix = buildSearchIndex({ nodes: [...nodes, { id: 'sup', label: 'پشتیبانی', parentId: 'business', description: 'ساعت و زمان پاسخ به مشتری', order: 5 }], objects: [o('h', { title: 'ساعت پاسخگویی', content: 'نه تا شش' })] });
+  const g = searchIndex(ix, 'ساعت پاسخ');
+  assert.equal(flattenGroups(g)[0].id, 'h', 'the object whose title you typed beats a node whose description mentions the words');
+  assert.deepEqual(groupOrder(g).slice(0, 2), ['object', 'node']);
+  const c = searchIndex(ix, 'ثبت');
+  assert.equal(groupOrder(c)[0], 'command');
 });

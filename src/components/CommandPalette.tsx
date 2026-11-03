@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { SEARCH_GROUP_LABEL, SEARCH_GROUP_ORDER, flattenGroups, searchIndex } from '../core/globalSearch';
+import { SEARCH_GROUP_LABEL, flattenGroups, groupOrder, searchIndex } from '../core/globalSearch';
 import type { SearchHit, SearchIndex } from '../core/globalSearch';
 import { Dialog, Icon, formatNumber } from '../ui';
 import type { IconName } from '../ui';
@@ -30,6 +30,9 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
   const [active, setActive] = useState(0);
   const uid = useId();
   const listRef = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  // the dialog places focus on its own after mounting; the search box takes it right after
+  useEffect(() => { const t = setTimeout(() => input.current?.focus(), 30); return () => clearTimeout(t); }, []);
   const groups = useMemo(() => searchIndex(index, query), [index, query]);
   const flat = useMemo(() => flattenGroups(groups), [groups]);
   const optionId = (i: number) => `${uid}-o${i}`;
@@ -53,7 +56,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
         <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md">
           <Icon name="Search" size="md" />
           <input
-            id={`${uid}-q`} autoFocus type="search" role="combobox" aria-expanded="true" aria-controls={`${uid}-l`} aria-autocomplete="list"
+            id={`${uid}-q`} ref={input} autoFocus type="search" role="combobox" aria-expanded="true" aria-controls={`${uid}-l`} aria-autocomplete="list"
             aria-activedescendant={flat.length ? optionId(active) : undefined} aria-label="جستجو" autoComplete="off"
             value={query} onChange={(e) => setQuery(e.target.value)} placeholder="مثلاً: قیمت، لحن، ثبت دانش…"
             className="body-md min-h-touch-comfortable w-full min-w-space-0 bg-transparent text-text-default outline-none"
@@ -61,7 +64,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
         </div>
         <div ref={listRef} id={`${uid}-l`} role="listbox" aria-label="نتیجه‌ها" className="palette-list flex flex-col gap-stack-md">
           {flat.length === 0 && <p className="body-md text-text-subtle" role="status">{query.trim() ? 'چیزی پیدا نشد. با چند حرف دیگر امتحان کن.' : 'شروع به نوشتن کن.'}</p>}
-          {SEARCH_GROUP_ORDER.map((k) => groups[k].length === 0 ? null : (
+          {groupOrder(groups).map((k) => (
             <div key={k} role="group" aria-label={SEARCH_GROUP_LABEL[k]} className="flex flex-col gap-stack-xs">
               <h3 className="label-sm text-text-subtle">{SEARCH_GROUP_LABEL[k]} ({formatNumber(groups[k].length)})</h3>
               {groups[k].map((h) => {

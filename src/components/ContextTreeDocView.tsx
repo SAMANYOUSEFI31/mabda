@@ -156,6 +156,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                   <NodeNotes
                     nodeId={node.id}
                     notes={nodeNotes}
+                    objects={activeObjects}
                     extractingId={props.extractingNoteId}
                     onAdd={props.onAddNote}
                     onUpdate={props.onUpdateNote}

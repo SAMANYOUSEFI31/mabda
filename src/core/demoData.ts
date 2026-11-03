@@ -161,7 +161,7 @@ export function buildDemo(now: Date): DemoData {
     edits: [
       { d: 10, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی.' },
       { d: 9, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی و با جمله‌های کوتاه.' },
-      { d: 8, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی، جمله‌های کوتاه و خطاب «شما».' },
+      { d: 8, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی، جمله‌های کوتاه و خطاب «شما». زمان پاسخ را طبق @«ساعت پاسخگویی» می‌گوییم.' },
     ],
     log: [{ d: 7, kind: 'proposal_accepted', to: 'Confirmed', reason: 'بعد از مرور سه نسخه، همین لحن را نگه می‌داریم.' }] });
   add({ id: 'dm_price2', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۵۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', created: [12] });
@@ -237,7 +237,7 @@ export function buildDemo(now: Date): DemoData {
 
   // ── notes: raw thoughts (never fed to a model) ────────────────────────────────────────────────
   const notes: Note[] = [
-    { id: 'dnote_1', nodeId: 'business', content: 'شاید یک اشتراک هدیه هم بسازیم؟ مناسب عید و تولد.', at: at(5, 20) },
+    { id: 'dnote_1', nodeId: 'business', content: 'شاید یک اشتراک هدیه هم بسازیم؟ مناسب عید و تولد؛ کانالش را از @«کانال اصلی تبلیغ» برداریم؟', at: at(5, 20) },
     { id: 'dnote_2', nodeId: 'dn_sub', content: 'اگر دانه را آسیاب‌شده بفرستیم شکایت‌ها کم می‌شود؟ ولی عطرش زود می‌پرد.', at: at(3, 21) },
     { id: 'dnote_3', nodeId: 'dn_ws', content: 'کارگاه آنلاین هم برگزار کنیم؟ جلسه‌ها را ضبط کنیم و بفروشیم.', at: at(2, 19) },
     { id: 'dnote_4', nodeId: 'dn_social', content: 'ریلز از مراحل برشته‌کاری؛ صدای ترک‌خوردن دانه خیلی جذاب است.', at: at(2, 22) },
