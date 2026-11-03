@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OutlineItem } from '../core/contextMarkdown';
-import { Button, Menu, Markdown, SegmentedControl, Switch, useToast } from '../ui';
+import { Button, IconButton, Menu, Markdown, SegmentedControl, Switch, useToast } from '../ui';
 
 interface DocReaderProps {
   markdown: string;
@@ -94,7 +94,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   const withOutline = items.length > 0 && view === 'read';
 
   const doc = markdown.trim().length === 0 ? (empty ?? null) : view === 'read' ? (
-    <article className="w-full min-w-space-0 rounded-control border border-border-default bg-surface-raised p-inset-xl" aria-label="سند">
+    <article className="w-full min-w-space-0 rounded-container border border-border-default bg-surface-raised p-inset-lg lg:p-inset-xl" aria-label="سند">
       <Markdown variant="document" anchors={items.map(({ id, text }) => ({ id, text }))}>{markdown}</Markdown>
     </article>
   ) : (
@@ -113,9 +113,16 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
         />
         <div className="flex flex-wrap items-center gap-inline-xs">
           {refs && <Switch label="با ارجاع‌ها" checked={refs.checked} onChange={(e) => refs.onChange(e.target.checked)} />}
-          {withOutline && <Button size="sm" variant="ghost" iconStart="Link2" onClick={copyLink} disabled={!active}>پیوند این بخش</Button>}
-          <Button size="sm" variant="ghost" iconStart="Copy" onClick={copy}>کپی</Button>
-          <Button size="sm" variant="ghost" iconStart="Download" onClick={download}>دانلود .md</Button>
+          <Menu
+            label="بیشتر دربارهٔ سند"
+            align="end"
+            trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ سند" size="sm" />}
+            items={[
+              { label: 'کپی متن (Markdown)', icon: 'Copy', onSelect: () => { void copy(); } },
+              { label: 'دانلود .md', icon: 'Download', onSelect: download },
+              ...(withOutline ? [{ label: 'پیوند این بخش', icon: 'Link2' as const, disabled: !active, onSelect: () => { void copyLink(); } }] : []),
+            ]}
+          />
         </div>
       </div>
       {withOutline && (

@@ -55,7 +55,7 @@ export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, a
       fileName={`${fileName} - ${tab.label}`}
       empty={empty}
       refs={{ checked: refs, onChange: (on) => { setRefs(on); try { localStorage.setItem(REFS_KEY, on ? '1' : '0'); } catch { /* optional */ } } }}
-      header={tabs.length > 1 ? <Tabs label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); window.history.replaceState(null, '', window.location.pathname + window.location.search); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /> : undefined}
+      header={tabs.length > 1 ? <div className="max-w-full overflow-x-auto"><Tabs label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); window.history.replaceState(null, '', window.location.pathname + window.location.search); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /></div> : undefined}
     />
   );
 };
