@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
-import { childrenOf } from '../core/nodeTree';
+import { childrenOf, quickMoves } from '../core/nodeTree';
 import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
@@ -40,6 +40,8 @@ interface ContextTreeDocViewProps {
   openNotesFor?: { nodeId: string; n: number } | null;
   /** adds a file to a node (it is processed later, from the files list) */
   onUploadFile: (file: File, nodeId: string) => Promise<void>;
+  /** reorder among siblings: the node goes to this position under the same parent */
+  onReorderNode: (nodeId: string, index: number) => Promise<void>;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -53,6 +55,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
   const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
   const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const quick = (id: string) => quickMoves(nodes, id);
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const card = (obj: ContextObject) => (
@@ -121,7 +124,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
-                { label: 'جابه‌جایی', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                // the quick moves: reorder at once (nothing changes for what reaches it); a change of level shows its effect first
+                { label: 'بالاتر ببر', icon: 'ChevronUp', disabled: quick(node.id).up === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).up!) },
+                { label: 'پایین‌تر ببر', icon: 'ChevronDown', disabled: quick(node.id).down === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).down!) },
+                { label: 'یک سطح بیرون بیاور', icon: 'ArrowRight', disabled: !quick(node.id).outdent, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id, preset: quick(node.id).outdent!.parentId }) },
+                { label: 'بگذار زیر بخش قبلی', icon: 'ArrowLeft', disabled: !quick(node.id).indent, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id, preset: quick(node.id).indent!.parentId }) },
                 { divider: true },
                 { label: 'حذف', icon: 'Trash2', intent: 'danger', onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
               ]}

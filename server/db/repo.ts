@@ -227,16 +227,21 @@ export class Repo {
     return { ...cur, label: label.trim(), description };
   }
 
-  moveNode(s: Scope, id: string, parentId: string, index?: number): TreeNode[] {
+  /** `parentId` '' = the top level. Knowledge, notes, files, relations and history live in the nodes and go with them; the move is one record (`node:<id>`) with an optional reason. */
+  moveNode(s: Scope, id: string, parentId: string, index?: number, reason?: string): TreeNode[] {
     return this.db.transaction(() => {
       const nodes = this.listNodes(s);
       const ok = canMove(nodes, id, parentId);
-      if (!ok.ok) throw new RepoError(ok.reason.includes('سیستمی') ? 'forbidden' : 'invalid', ok.reason);
+      if (!ok.ok) throw new RepoError('invalid', ok.reason);
+      const to = parentId || undefined;
+      const here = nodes.find((n) => n.id === id)!;
       const upd = this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?');
-      const moved = nodes.map((n) => (n.id === id ? { ...n, parentId } : n));
-      for (const o of reorderSiblings(moved, parentId, id, index ?? nextOrder(nodes, parentId))) {
-        upd.run(parentId, o.order, s.workspaceId, o.id);
+      const moved = nodes.map((n) => (n.id === id ? { ...n, parentId: to } : n));
+      for (const o of reorderSiblings(moved, to, id, index ?? nextOrder(nodes, to))) {
+        upd.run(o.id === id ? to ?? null : moved.find((n) => n.id === o.id)?.parentId ?? null, o.order, s.workspaceId, o.id);
       }
+      const label = (pid?: string | null) => (pid ? nodes.find((n) => n.id === pid)?.label ?? '' : 'سطح اصلی');
+      if ((here.parentId ?? undefined) !== to) this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_moved', meta: { actor: 'user', reason: reason?.trim() || `گرهٔ «${here.label}» از «${label(here.parentId)}» به «${label(to)}» رفت` }, before: { parent: label(here.parentId) }, after: { parent: label(to) } });
       return this.listNodes(s);
     })();
   }

@@ -580,3 +580,35 @@ test('migration 18: nodes that were locked (is_system = 1) are ordinary now — 
   assert.equal(repo.listObjects(s)[0].nodeId, root.id);
   assert.ok(!repo.listNodes(s).some((n) => n.id === 'business'));
 });
+
+test('moving a node: to the top level, between levels and within its siblings — its knowledge, notes and relations go with it, and the move is on record', () => {
+  const { repo, s } = fresh();
+  const w = repo.createNode(s, { parentId: 'offer', label: 'کارگاه' });
+  const k = repo.createNode(s, { parentId: w.id, label: 'جلسه‌ها' });
+  const o = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت کارگاه', content: 'نود', nodeId: k.id });
+  const n = repo.createNote(s, w.id, 'یادداشت کارگاه');
+  const f = repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'دیگری', content: 'x', nodeId: 'product' });
+  repo.setDependencies(s, o.id, [f.id]);
+  // to the top level
+  repo.moveNode(s, w.id, '', undefined, 'کارگاه مستقل شد');
+  let nodes = repo.listNodes(s);
+  assert.equal(nodes.find((x) => x.id === w.id)!.parentId, undefined, 'a main section now');
+  assert.equal(nodes.find((x) => x.id === k.id)!.parentId, w.id, 'its own sub-nodes stay under it');
+  assert.equal(repo.getObject(s, o.id)!.nodeId, k.id, 'the knowledge stays where it is — in its node');
+  assert.equal(repo.listNotes(s).find((x) => x.id === n.id)!.nodeId, w.id);
+  assert.ok(repo.listRelationships(s).some((r) => r.sourceId === o.id && r.targetId === f.id), 'relations are untouched');
+  const rec = repo.listChanges(s, { includeNodes: true }).find((c) => c.kind === 'node_moved' && c.objectId === `node:${w.id}`);
+  assert.equal(rec?.reason, 'کارگاه مستقل شد');
+  // back under a node, then reordered among siblings
+  repo.moveNode(s, w.id, 'brand');
+  assert.equal(repo.listNodes(s).find((x) => x.id === w.id)!.parentId, 'brand');
+  const second = repo.createNode(s, { parentId: 'brand', label: 'دوم' });
+  repo.moveNode(s, second.id, 'brand', 0);
+  const kids = repo.listNodes(s).filter((x) => x.parentId === 'brand').sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((x) => x.id);
+  assert.equal(kids[0], second.id, 'reordered to the first place');
+  // never into itself; moving to the same place records nothing new
+  assert.throws(() => repo.moveNode(s, w.id, k.id), RepoError);
+  const before = repo.listChanges(s, { includeNodes: true }).length;
+  repo.moveNode(s, second.id, 'brand', 1);
+  assert.equal(repo.listChanges(s, { includeNodes: true }).length, before, 'a pure reorder is not a «moved» record');
+});

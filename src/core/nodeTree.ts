@@ -56,12 +56,33 @@ export function canCreateUnder(nodes: TreeNode[], parentId: string, label: strin
   return { ok: true };
 }
 
+/** the value of the «سطح اصلی» choice in a picker; the API and the core use '' for «no parent» */
+export const ROOT_TARGET = '__root';
+
+/** `newParentId === ''` = the top level (a main section). A node moves under any node that is not itself or inside itself. */
 export function canMove(nodes: TreeNode[], id: string, newParentId: string): Check {
   const node = nodes.find((n) => n.id === id);
   if (!node) return no('این گره وجود ندارد.');
+  if (!newParentId) return { ok: true };
   if (!nodes.some((n) => n.id === newParentId)) return no('مقصد وجود ندارد.');
   if (subtreeIds(nodes, id).includes(newParentId)) return no('گره را نمی‌شود زیر خودش یا زیرشاخه‌هایش گذاشت.');
   return { ok: true };
+}
+
+/** the quick moves of the node menu: where each one would put the node (undefined = not possible now). '' = the top level */
+export function quickMoves(nodes: TreeNode[], id: string): { up?: number; down?: number; outdent?: { parentId: string }; indent?: { parentId: string } } {
+  const node = nodes.find((n) => n.id === id);
+  if (!node) return {};
+  const sibs = childrenOf(nodes, node.parentId ?? undefined);
+  const at = sibs.findIndex((n) => n.id === id);
+  const prev = sibs[at - 1];
+  const parent = node.parentId ? nodes.find((n) => n.id === node.parentId) : undefined;
+  return {
+    ...(at > 0 ? { up: at - 1 } : {}),
+    ...(at >= 0 && at < sibs.length - 1 ? { down: at + 1 } : {}),
+    ...(parent ? { outdent: { parentId: parent.parentId ?? '' } } : {}),
+    ...(prev ? { indent: { parentId: prev.id } } : {}),
+  };
 }
 
 export interface NodeContent {

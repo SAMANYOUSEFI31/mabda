@@ -1195,6 +1195,7 @@ export default function App() {
                 onOpenThread={setThreadNodeId}
                 onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 openNotesFor={focusNotes}
+                onReorderNode={async (nodeId, index) => { await nodeOp(() => dataApi.moveNode(wid, nodeId, nodes.find((n) => n.id === nodeId)?.parentId ?? '', index)); }}
                 onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در بخش «فایل‌ها» پردازشش کن.' }); }}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -1368,7 +1369,8 @@ export default function App() {
         onLedger={setLedger}
         onOpenAiSettings={() => setIsAiSettingsOpen(true)}
         onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
-        onMove={(nodeId, parentId) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId))}
+        relationships={data.relationships}
+        onMove={(nodeId, parentId, reason) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId, undefined, reason))}
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
