@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ContextObject, GeneratedDeliverable, Workspace } from '../types';
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../core/impactEngine';
@@ -22,6 +22,8 @@ interface AssetLibraryProps {
   onGoToWorkstreams: () => void;
   /** this workspace's own workstreams (the filter tabs); only those that already have an output are listed */
   workstreams: Array<{ id: string; title: string }>;
+  /** the global search points at one asset: show it among all and scroll to it */
+  focus?: { id: string; n: number } | null;
 }
 
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
@@ -35,9 +37,16 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   workstreams,
   stale,
   onGoToWorkstreams,
+  focus,
 }) => {
   const [filter, setFilter] = useState<string>('all');
   const toast = useToast();
+  useEffect(() => {
+    if (!focus) return undefined;
+    setFilter('all');
+    const t = setTimeout(() => { const el = document.getElementById(`asset-${focus.id}`); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); }, 80);
+    return () => clearTimeout(t);
+  }, [focus]);
 
   const filtered = deliverables.filter((d) => {
     if (d.workspaceId !== currentWorkspace.id) return false;
@@ -88,7 +97,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
       ) : (
         <div className="flex flex-col gap-stack-lg">
           {filtered.map((del) => (
-            <div key={del.id} className="flex flex-col gap-stack-sm">
+            <div key={del.id} id={`asset-${del.id}`} tabIndex={-1} className="doc-anchor flex flex-col gap-stack-sm">
               <ContextReplayCard
                 deliverable={del}
                 allContextObjects={allContextObjects}

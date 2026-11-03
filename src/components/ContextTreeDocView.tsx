@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
 import { childrenOf } from '../core/nodeTree';
 import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
@@ -35,6 +35,8 @@ interface ContextTreeDocViewProps {
   onOpenStarters: () => void;
   onOpenThread: (nodeId: string) => void;
   onOpenAiRequest: (nodeId: string) => void;
+  /** the global search asks to show a node's notes (`n` makes a repeated request count) */
+  openNotesFor?: { nodeId: string; n: number } | null;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -45,6 +47,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const { objects, nodes } = props;
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+  useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const card = (obj: ContextObject) => (
@@ -94,7 +97,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         <div className="flex flex-col gap-inline-sm border-b border-border-subtle pb-inset-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-space-0 flex-wrap items-baseline gap-x-inline-sm">
             <span className="label-md tabular-nums text-text-subtlest">{path}</span>
-            <h3 id={`node-${node.id}`} className="heading-xs text-text-default">{node.label}</h3>
+            <h3 id={`node-${node.id}`} tabIndex={-1} className="doc-anchor heading-xs text-text-default">{node.label}</h3>
             {node.isSystem ? <Badge intent="neutral" icon="Lock">سیستمی</Badge> : null}
             {node.description && <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>}
           </div>
@@ -153,6 +156,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                   <NodeNotes
                     nodeId={node.id}
                     notes={nodeNotes}
+                    objects={activeObjects}
                     extractingId={props.extractingNoteId}
                     onAdd={props.onAddNote}
                     onUpdate={props.onUpdateNote}

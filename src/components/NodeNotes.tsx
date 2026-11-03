@@ -4,13 +4,16 @@
  */
 
 import React, { useState } from 'react';
-import type { Note } from '../types';
+import type { ContextObject, Note } from '../types';
+import { MentionTextarea } from './MentionTextarea';
 import { canSplit } from '../core/thinkingMarkers';
 import { Badge, Button, IconButton, Textarea, formatJalaliDate } from '../ui';
 
 interface Props {
   nodeId: string;
   notes: Note[];
+  /** for «@»: the knowledge a note can name (a note itself holds no relationship) */
+  objects: ContextObject[];
   extractingId: string | null;
   onAdd: (nodeId: string, content: string) => Promise<void>;
   onUpdate: (noteId: string, content: string) => Promise<void>;
@@ -22,7 +25,7 @@ interface Props {
 }
 
 /** Free-form notes of one node. They are never sent to the model; only «استخراج» reads one, on explicit click. */
-export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
+export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +49,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd,
             <li key={n.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-raised p-inset-md">
               {editing?.id === n.id ? (
                 <>
-                  <Textarea label="ویرایش یادداشت" rows={3} value={editing.text} onChange={(e) => setEditing({ id: n.id, text: e.target.value })} />
+                  <MentionTextarea label="ویرایش یادداشت" rows={3} value={editing.text} onValueChange={(t) => setEditing({ id: n.id, text: t })} objects={objects} />
                   <div className="flex justify-end gap-inline-xs">
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>انصراف</Button>
                     <Button size="sm" variant="secondary" disabled={!editing.text.trim()} onClick={async () => { await onUpdate(n.id, editing.text.trim()); setEditing(null); }}>ذخیره</Button>
@@ -78,7 +81,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, extractingId, onAdd,
         </ul>
       )}
 
-      <Textarea label="یادداشت تازه" rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="هر چیزی که هنوز ساختار ندارد؛ بعداً می‌توانی «استخراج» کنی." />
+      <MentionTextarea label="یادداشت تازه" rows={2} value={draft} onValueChange={setDraft} objects={objects} placeholder="هر چیزی که هنوز ساختار ندارد؛ بعداً می‌توانی «استخراج» کنی." hint="با @ نام یک دانش را بیاور. یادداشت رابطه نمی‌سازد؛ وقتی به دانش تبدیل شود، همان‌جا رابطه را پیشنهاد می‌دهیم." />
       <div className="flex justify-end">
         <Button size="sm" variant="secondary" iconStart="Plus" loading={busy} disabled={!draft.trim()} onClick={add}>افزودن یادداشت</Button>
       </div>

@@ -10,6 +10,8 @@ import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
+import { MentionTextarea } from './MentionTextarea';
+import { suggestLinks } from '../core/mentions';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../core/versionHistory';
 import type { ContextChange } from '../types';
@@ -138,6 +140,16 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
   const [editReason, setEditReason] = useState('');
+  // «@» references only SUGGEST a link: nothing is linked until she says yes; «نه» is remembered per pair
+  const noKey = (targetId: string) => `${object?.id ?? 'new'}>${targetId}`;
+  const readNo = (): string[] => { try { return JSON.parse(localStorage.getItem('mabda.mentions.no') ?? '[]') as string[]; } catch { return []; } };
+  const [turnedDown, setTurnedDown] = useState<string[]>(readNo);
+  const linkSuggestions = useMemo(
+    () => suggestLinks({ text: content, selfId: object?.id, objects: allObjects, relationships, dismissed: [...deps, ...allObjects.map((o) => o.id).filter((id) => turnedDown.includes(noKey(id)))] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [content, object?.id, allObjects, relationships, deps, turnedDown],
+  );
+  const turnDown = (targetId: string) => { const next = [...turnedDown, noKey(targetId)].slice(-200); setTurnedDown(next); try { localStorage.setItem('mabda.mentions.no', JSON.stringify(next)); } catch { /* optional */ } };
   const history = useMemo(() => versionHistory(changes), [changes]);
   const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
   useEffect(() => {
@@ -348,12 +360,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             items={[{ id: 'edit', label: 'ویرایش', icon: 'Pencil' }, { id: 'preview', label: 'پیش‌نمایش', icon: 'Eye' }]}
           />
           {contentView === 'edit' ? (
-            <Textarea
+            <MentionTextarea
               label="محتوای دقیق دانش"
               required
               rows={5}
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onValueChange={setContent}
+              objects={allObjects}
+              selfId={object?.id}
               placeholder="توضیح کامل واقعیت، تصمیم یا خط قرمز به زبان صریح… (Markdown پشتیبانی می‌شود)"
             />
           ) : (
@@ -362,6 +376,20 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             </div>
           )}
         </div>
+
+        {linkSuggestions.length > 0 && (
+          <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه از ارجاع‌ها">
+            {linkSuggestions.map((sg) => (
+              <li key={sg.targetId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default bg-surface-sunken p-inset-md">
+                <span className="body-sm text-text-default">این متن به «{sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟ <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
+                <span className="flex items-center gap-inline-xs">
+                  <Button type="button" size="sm" variant="secondary" iconStart="Link2" disabled={deps.length >= 20} onClick={() => setDeps((cur) => [...cur, sg.targetId])}>بساز</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => turnDown(sg.targetId)}>نه</Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {isEditing && object && reviewNeed && onAcceptReview && (
           <Alert

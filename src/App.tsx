@@ -35,6 +35,9 @@ import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { DueItems } from './components/DueItems';
 import { SavedPacksDialog } from './components/SavedPacksDialog';
 import { AiRequestDialog } from './components/AiRequestDialog';
+import { CommandPalette } from './components/CommandPalette';
+import { buildSearchIndex } from './core/globalSearch';
+import type { SearchHit } from './core/globalSearch';
 import { StarterDialog } from './components/StarterDialog';
 import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
@@ -190,6 +193,18 @@ export default function App() {
 
   const nodes = data?.nodes ?? [];
   const workspaceContexts = data?.objects ?? [];
+  // ── global search (Ctrl/⌘+K): the index is built once per data change; notes are for DISPLAY here, never for an AI ──
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
+  const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
+  const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: data?.deliverables ?? [], notes: data?.notes ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes]);
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); setPaletteOpen((o) => !o); } };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, []);
+  /** scroll to an element that appears after a tab / view change (it may take a moment to mount) */
+  const revealWhenThere = (id: string) => { let tries = 0; const t = setInterval(() => { const el = document.getElementById(id); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); } }, 60); };
   const deliverables = data?.deliverables ?? [];
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
@@ -229,6 +244,34 @@ export default function App() {
 
   // ── Context objects ────────────────────────────────────────────────────────────────────────────
   /** create (no id / unknown id) or edit in place (known id: title/content/type edits bump the version) */
+  /** what Enter does on a palette row */
+  const handlePick = (hit: SearchHit) => {
+    const n = Date.now();
+    if (hit.kind === 'object') { const o = workspaceContexts.find((x) => x.id === hit.id); if (o) openContext(o); return; }
+    if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${hit.id}`); return; }
+    if (hit.kind === 'note') {
+      const nodeId = (data?.notes ?? []).find((x) => x.id === hit.id)?.nodeId;
+      if (!nodeId) return;
+      setActiveTab('context'); setContextViewMode('doc'); setFocusNotes({ nodeId, n }); revealWhenThere(`node-${nodeId}`);
+      return;
+    }
+    if (hit.kind === 'asset') { setActiveTab('assets'); setFocusAsset({ id: hit.id, n }); return; }
+    switch (hit.id) {
+      case 'record': openContext(null); break;
+      case 'ai-request': setAiRequest({ scopeNodeId: '' }); break;
+      case 'go-home': setActiveTab('home'); break;
+      case 'go-context': setActiveTab('context'); setContextViewMode('doc'); break;
+      case 'go-doc': setActiveTab('context'); setContextViewMode('read'); break;
+      case 'go-canvas': setActiveTab('context'); setContextViewMode('canvas'); break;
+      case 'go-assets': setActiveTab('assets'); break;
+      case 'go-workstreams': setActiveTab('workstreams'); break;
+      case 'metrics': setMetricsOpen(true); break;
+      case 'packs': setIsPacksOpen(true); break;
+      case 'import': setIsImportOpen(true); break;
+      default: break;
+    }
+  };
+
   const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string }): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
@@ -795,6 +838,7 @@ export default function App() {
         allWorkspaces={workspaces}
         onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
+        onOpenSearch={() => setPaletteOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
@@ -994,6 +1038,7 @@ export default function App() {
                 onOpenStarters={() => setIsStarterOpen(true)}
                 onOpenThread={setThreadNodeId}
                 onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
+                openNotesFor={focusNotes}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
@@ -1108,6 +1153,7 @@ export default function App() {
         {/* TAB 4: Asset Library */}
         {activeTab === 'assets' && (
           <AssetLibrary
+            focus={focusAsset}
             currentWorkspace={currentWorkspace}
             deliverables={deliverables}
             allContextObjects={workspaceContexts}
@@ -1278,6 +1324,7 @@ export default function App() {
           <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
         </div>
       </Dialog>
+      <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
       <AiRequestDialog open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />

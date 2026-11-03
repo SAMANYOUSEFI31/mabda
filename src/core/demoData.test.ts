@@ -196,6 +196,8 @@ test('assumptions and a decision record: one assumption is due, one is later; a 
 // ── packs, facets, samples, a template in the showcase ───────────────────────────────────────────
 import { buildAiRequest } from './aiRequest';
 import { approvalsOf, versionHistory } from './versionHistory';
+import { extractMentions, suggestLinks } from './mentions';
+import { buildSearchIndex, searchIndex } from './globalSearch';
 import { buildContextPack } from './contextPack';
 
 test('showcase packs: three different selections, resolved through the effective context; assumptions and rejected options apart; no sample anywhere', () => {
@@ -269,4 +271,20 @@ test('showcase version path: one object with three rewrites and one approval rea
   // an object nobody ever drafted is a single milestone at its first version
   const plain = versionHistory(d.changes.filter((c) => c.objectId === 'dm_voice'));
   assert.equal(plain.entries.filter((e) => e.type === 'milestone').length >= 1, true);
+});
+
+test('showcase: an «@» reference suggests a link (and creates none); a note can name knowledge; everything is found with a few letters', () => {
+  const tone = d.objects.find((x) => x.id === 'dm_tone')!;
+  assert.match(tone.content, /@«ساعت پاسخگویی»/);
+  const before = JSON.stringify(d.relationships);
+  const sg = suggestLinks({ text: tone.content, selfId: tone.id, objects: d.objects, relationships: d.relationships });
+  assert.deepEqual(sg.map((x) => x.targetId), ['dm_sup_hours']);
+  assert.equal(JSON.stringify(d.relationships), before, 'suggesting changes nothing');
+  assert.ok(!d.relationships.some((r) => r.sourceId === 'dm_tone' && r.targetId === 'dm_sup_hours'), 'and the demo has no such link yet');
+  const note = d.notes.find((n) => /@«/.test(n.content))!;
+  assert.equal(extractMentions(note.content, d.objects)[0].objectId, 'dm_channel');
+  const ix = buildSearchIndex({ nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, deliverables: [], notes: d.notes.map((n) => ({ id: n.id, nodeId: n.nodeId, content: n.content })) });
+  assert.ok(searchIndex(ix, 'قیم').object.some((h) => h.id === 'dm_price2'));
+  assert.ok(searchIndex(ix, 'هدیه').note.length >= 1, 'a note is found');
+  assert.ok(!JSON.stringify(searchIndex(ix, 'مثال')).includes('smp_demo'), 'examples are not searched');
 });

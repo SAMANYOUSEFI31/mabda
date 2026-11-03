@@ -181,6 +181,11 @@ for (const size of SIZES) {
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));
   await shoot('dialog-request'); await closeDialog();
+  // the global search: a few letters, grouped results (the keyboard shortcut on desktop, the header button on phones)
+  if (mobile) await page.getByRole('button', { name: 'جستجو' }).first().click(); else await page.keyboard.press('Control+KeyK');
+  await page.getByRole('combobox', { name: 'جستجو' }).fill('قیم');
+  await page.locator('[role=dialog] [role=option]').first().waitFor();
+  await shoot('dialog-search'); await closeDialog();
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();
 }
