@@ -84,3 +84,11 @@ test('versionTexts: every version of one object rebuilt from its Change records'
   // only an edit is known (no creation record): its before and after are still two comparable versions
   assert.deepEqual(versionTexts([ch('x', { fromVersion: 4, toVersion: 5, before: { content: 'الف' }, after: { content: 'ب' } })]).map((x) => [x.version, x.content]), [[4, 'الف'], [5, 'ب']]);
 });
+
+test('versionTexts: a creation record without text — the first version\'s text comes from the first edit\'s before', () => {
+  const v = versionTexts([
+    ch('c1', { kind: 'created', fromVersion: 0, toVersion: 1, at: '2026-01-01T00:00:00Z', after: { type: 'Fact', title: 'عنوان', status: 'Confirmed' } }),
+    ch('c2', { fromVersion: 1, toVersion: 2, at: '2026-01-02T00:00:00Z', before: { content: 'یک' }, after: { content: 'دو' } }),
+  ]);
+  assert.deepEqual(v.map((x) => [x.version, x.title, x.content]), [[1, 'عنوان', 'یک'], [2, 'عنوان', 'دو']]);
+});

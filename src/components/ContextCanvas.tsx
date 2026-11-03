@@ -147,9 +147,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     const it = byId.get(id);
     if (!it) return;
     setSelection([id]); setSelectedEdge(null);
+    if (isMobile) setInspectorOpen(true); // like a tap: the sentence about the card shows
     setView((cur) => { const k = Math.max(cur.k, 0.9); return { k, x: size.w / 2 - (it.x + it.w / 2) * k, y: size.h / 2 - (it.y + it.h / 2) * k }; });
     setTimeout(() => (box.current?.querySelector(`[data-item-id="${CSS.escape(id)}"]`) as HTMLElement | null)?.focus({ preventScroll: true }), 80);
-  }, [byId, setView, size.w, size.h, box]);
+  }, [byId, setView, size.w, size.h, box, isMobile]);
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];

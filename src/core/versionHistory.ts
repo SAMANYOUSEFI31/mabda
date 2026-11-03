@@ -137,10 +137,12 @@ export function versionTexts(changes: Ch[]): VersionText[] {
     }
     if (!bumped(c)) continue;
     // an edit: what it started from (when nothing earlier is known) and what it produced
-    if (!out.has(c.fromVersion)) {
+    // (a creation record keeps the title but not the text, so the text of the first version comes from the first edit's «before»)
+    const known = out.get(c.fromVersion);
+    if (!known || (!known.content && typeof b?.content === 'string')) {
       if (typeof b?.title === 'string') title = b.title;
       if (typeof b?.content === 'string') content = b.content;
-      put(c.fromVersion, c.at);
+      put(c.fromVersion, known?.at ?? c.at);
     }
     if (typeof a?.title === 'string') title = a.title;
     if (typeof a?.content === 'string') content = a.content;
