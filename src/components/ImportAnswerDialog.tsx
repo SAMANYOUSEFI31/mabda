@@ -49,7 +49,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
 
   const toContext = async (b: ParsedBlock) => {
     if (!isContextKind(b.kind)) return;
-    const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: b.markdown, nodeId: 'business', source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
+    const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: b.markdown, nodeId: '', source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
     if (ok) mark(b.id, 'به صندوق پیشنهادها رفت');
   };
 

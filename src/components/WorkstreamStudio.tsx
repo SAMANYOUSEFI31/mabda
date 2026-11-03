@@ -17,6 +17,7 @@ import {
 } from '../types';
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../types';
 import { LIBRARY } from '../core/specs';
+import { resolveNodeId } from '../core/nodeTree';
 import { calculateReadinessAndGaps, objectsToJudge } from '../core/contextEngine';
 import type { AmbiguityMap } from '../core/contextEngine';
 import { lockOf, lockReason, topologicalOrder } from '../core/specGraph';
@@ -299,7 +300,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const answerGap = (gap: (typeof readiness.gaps)[number]) => {
     const text = (answers[gap.key] ?? '').trim();
     if (!text) return;
-    onAddContextObject({ workspaceId: currentWorkspace.id, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input', title: gap.label, content: text, nodeId: gap.nodeId, slotKey: gap.key });
+    onAddContextObject({ workspaceId: currentWorkspace.id, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input', title: gap.label, content: text, nodeId: resolveNodeId(nodes, gap.nodeId), slotKey: gap.key });
     setAnswers((m) => { const n = { ...m }; delete n[gap.key]; return n; });
   };
   const modeCost = (m: ExecutionMode) =>
@@ -523,7 +524,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 provenance: 'User Input',
                 title: gap.label,
                 content: answer,
-                nodeId: gap.nodeId,
+                nodeId: resolveNodeId(nodes, gap.nodeId), // the spec's node is only a hint: when that node is gone the answer goes to the default place
                 slotKey: gap.key,
               };
               onAddContextObject(newObj);

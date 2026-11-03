@@ -245,10 +245,14 @@ export class Repo {
       const nodes = this.listNodes(s);
       const objects = this.listObjects(s);
       const notes = this.listNotes(s);
-      const ok = canDelete(nodes, id, objects, notes, transferTo);
+      const files = this.listFiles(s);
+      const ok = canDelete(nodes, id, objects, notes, transferTo, files);
       if (!ok.ok) throw new RepoError(ok.reason.includes('سیستمی') ? 'forbidden' : 'invalid', ok.reason);
+      const here = nodes.find((n) => n.id === id)!;
+      const target = nodes.find((n) => n.id === transferTo);
       if (transferTo) {
-        for (const o of objects.filter((x) => x.nodeId === id)) this.recordChange(s, { objectId: o.id, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta: { actor: 'user', reason: 'حذف گره؛ محتوا منتقل شد' }, before: { nodeId: id }, after: { nodeId: transferTo } });
+        // nothing is lost or archived in silence: every piece of knowledge that moves gets a Change that says why (and where)
+        for (const o of objects.filter((x) => x.nodeId === id)) this.recordChange(s, { objectId: o.id, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta: { actor: 'user', reason: `گرهٔ «${here.label}» حذف شد؛ این دانش به «${target?.label ?? ''}» رفت` }, before: { nodeId: id }, after: { nodeId: transferTo } });
         this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
@@ -256,6 +260,9 @@ export class Repo {
         const base = nextOrder(nodes, transferTo);
         kids.forEach((k, i) => this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(transferTo, base + i, s.workspaceId, k.id));
       }
+      // the deletion itself is a record too (object id `node:<id>`: it is not in the knowledge feed, but it is there)
+      const moved = { objects: objects.filter((x) => x.nodeId === id).length, notes: notes.filter((x) => x.nodeId === id).length, files: files.filter((x) => x.nodeId === id).length, nodes: nodes.filter((n) => n.parentId === id).length };
+      this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: target ? `گرهٔ «${here.label}» حذف شد؛ ${moved.objects} دانش، ${moved.notes} یادداشت، ${moved.files} فایل و ${moved.nodes} زیربخش به «${target.label}» رفت` : `گرهٔ خالی «${here.label}» حذف شد` }, before: { label: here.label }, after: {} });
       this.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND id = ?').run(s.workspaceId, id);
       return this.listNodes(s);
     })();

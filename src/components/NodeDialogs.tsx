@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { ContextObject, Note, TreeNode } from '../types';
-import { canDelete, canMove, contentOf, flatten, subtreeIds } from '../core/nodeTree';
+import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, subtreeIds } from '../core/nodeTree';
 import { Alert, Button, Dialog, Select, TextField, Textarea, formatNumber } from '../ui';
 import { CoachPanel } from './CoachPanel';
 import type { LedgerEntry } from '../types';
@@ -23,6 +23,7 @@ interface Props {
   nodes: TreeNode[];
   objects: ContextObject[];
   notes: Note[];
+  files?: Array<{ nodeId?: string }>;
   onClose: () => void;
   workspaceId: string;
   /** returns the id of the created node (the Coach opens for it right after) */
@@ -42,7 +43,7 @@ const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
 
-const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
+const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
   const node = 'nodeId' in state ? nodes.find((n) => n.id === state.nodeId) : undefined;
   const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : '');
   const [description, setDescription] = useState(state.kind === 'rename' ? node?.description ?? '' : '');
@@ -128,10 +129,13 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
     );
   }
 
-  // delete
-  const content = contentOf(nodes, node.id, objects, notes);
-  const empty = content.objects + content.notes + content.children === 0;
-  const check = canDelete(nodes, node.id, objects, notes, empty ? undefined : target || undefined);
+  // delete: nothing is lost. A node with content asks where it goes (default: its parent; a root → another root); the only root stays
+  const content = contentOf(nodes, node.id, objects, notes, files);
+  const empty = content.objects + content.notes + content.files + content.children === 0;
+  const chosen = target || defaultTransferTarget(nodes, node.id) || '';
+  const check = canDelete(nodes, node.id, objects, notes, empty ? undefined : chosen || undefined, files);
+  const dest = nodes.find((n) => n.id === chosen)?.label ?? '';
+  const parts = [[content.objects, 'دانش'], [content.notes, 'یادداشت'], [content.files, 'فایل'], [content.children, 'زیربخش']].filter(([n]) => (n as number) > 0).map(([n, w]) => `${formatNumber(n as number)} ${w}`).join('، ');
   return (
     <Dialog
       open
@@ -141,24 +145,24 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
-          <Button variant="danger" loading={busy} disabled={!check.ok} onClick={() => run(() => onDelete(node.id, empty ? undefined : target))}>
-            {empty ? 'حذف گره' : 'انتقال محتوا و حذف گره'}
+          <Button variant="danger" loading={busy} disabled={!check.ok} onClick={() => run(() => onDelete(node.id, empty ? undefined : chosen))}>
+            {empty ? 'حذف' : 'حذف و بردن محتوا'}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-stack-md">
         {empty ? (
-          <p className="body-md text-text-default">این گره خالی است و بدون هیچ اثری حذف می‌شود.</p>
+          <p className="body-md text-text-default">این بخش خالی است و بدون هیچ اثری حذف می‌شود.</p>
         ) : (
           <>
-            <Alert intent="warning" title="این گره خالی نیست">
-              {formatNumber(content.objects)} قلم دانش، {formatNumber(content.notes)} یادداشت و {formatNumber(content.children)} زیرگره دارد. چیزی پاک نمی‌شود؛ همه به گرهٔ مقصد منتقل می‌شوند.
+            <Alert intent="info" title={`${parts} در این بخش هست`}>
+              چیزی پاک نمی‌شود: همه به «{dest || 'جای دیگر'}» می‌روند و برای هر دانش در تاریخچه می‌ماند چرا و کجا رفت. می‌توانی مقصد را عوض کنی.
             </Alert>
-            <Select label="انتقال محتوا به" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...options(nodes, new Set(subtreeIds(nodes, node.id)))]} />
+            {chosen || nodes.length > 1 ? <Select label="کجا برود؟" value={chosen} onChange={(e) => setTarget(e.target.value)} options={options(nodes, new Set(subtreeIds(nodes, node.id)))} /> : null}
           </>
         )}
-        {!check.ok && target && <Alert intent="warning">{check.reason}</Alert>}
+        {!check.ok && <Alert intent="warning">{check.reason}</Alert>}
       </div>
     </Dialog>
   );

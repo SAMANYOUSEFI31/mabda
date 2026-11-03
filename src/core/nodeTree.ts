@@ -67,11 +67,14 @@ export function canMove(nodes: TreeNode[], id: string, newParentId: string): Che
 export interface NodeContent {
   objects: number;
   notes: number;
+  /** files added to this node */
+  files: number;
   children: number;
 }
 
-export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[]): NodeContent {
+export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[], files: Array<{ nodeId?: string }> = []): NodeContent {
   return {
+    files: files.filter((f) => f.nodeId === id).length,
     objects: objects.filter((o) => o.nodeId === id).length,
     notes: notes.filter((n) => n.nodeId === id).length,
     children: nodes.filter((n) => n.parentId === id).length,
@@ -87,14 +90,15 @@ export function canDelete(
   objects: Pick<ContextObject, 'nodeId'>[],
   notes: Pick<Note, 'nodeId'>[],
   transferTo?: string,
+  files: Array<{ nodeId?: string }> = [],
 ): DeleteCheck {
   const node = nodes.find((n) => n.id === id);
   if (!node) return no('این گره وجود ندارد.');
   if (!node.parentId && nodes.filter((n) => !n.parentId).length <= 1) return no('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
-  const content = contentOf(nodes, id, objects, notes);
-  const empty = content.objects + content.notes + content.children === 0;
+  const content = contentOf(nodes, id, objects, notes, files);
+  const empty = content.objects + content.notes + content.files + content.children === 0;
   if (empty) return { ok: true };
-  if (!transferTo) return { ok: false, reason: 'این گره خالی نیست؛ محتوا را به گرهٔ دیگری منتقل کن.', needsTransfer: true, content };
+  if (!transferTo) return { ok: false, reason: 'این بخش خالی نیست؛ محتوایش را به بخش دیگری ببر.', needsTransfer: true, content };
   if (!nodes.some((n) => n.id === transferTo)) return no('گرهٔ مقصد وجود ندارد.');
   if (subtreeIds(nodes, id).includes(transferTo)) return no('مقصد نمی‌تواند خودِ گره یا زیرشاخه‌اش باشد.');
   return { ok: true };

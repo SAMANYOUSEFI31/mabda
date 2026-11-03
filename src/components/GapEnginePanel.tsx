@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { resolveNodeId } from '../core/nodeTree';
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../types';
 import type { TreeNode } from '../types';
@@ -32,7 +33,8 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
   );
 
-  const nodeLabel = (id: string) => (nodes ?? []).find((n) => n.id === id)?.label ?? id;
+  // the spec's node is a hint: when that node is gone the answer goes to the default place of the tree
+  const nodeLabel = (id: string) => (nodes ?? []).find((n) => n.id === resolveNodeId(nodes ?? [], id))?.label ?? 'جای پیش‌فرض';
   const submitCustom = (gap: GapItem) => {
     const v = customAnswers[gap.key]?.trim();
     if (v) onAnswerGap(gap, v);
@@ -134,7 +136,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                       <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md sm:flex-row sm:items-center sm:justify-between">
                         <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این شکاف</Button>
                         <span className="body-sm text-text-subtle">
-                          پاسخ مستقیم به‌عنوان یک شیء تأییدشده در شاخهٔ «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
+                          پاسخ مستقیم به‌عنوان یک دانش تأییدشده در بخش «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
                         </span>
                       </div>
                     </div>

@@ -323,7 +323,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const onStageDouble = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) return;
     const s = toStage(e.clientX, e.clientY);
-    setNewNote({ content: '', nodeId: 'business', x: Math.max(0, Math.round(s.x)), y: Math.max(0, Math.round(s.y)) });
+    setNewNote({ content: '', nodeId: '', x: Math.max(0, Math.round(s.x)), y: Math.max(0, Math.round(s.y)) });
   };
   const press = useRef<number | undefined>(undefined);
   const onCardDown = (e: React.PointerEvent, item: SceneItem) => {
@@ -406,7 +406,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           { label: 'برگرداندن (Ctrl+Z)', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
           { label: 'از نو (Ctrl+Shift+Z)', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
           { divider: true },
-          { label: 'یادداشت تازه', icon: 'Plus', onSelect: () => setNewNote({ content: '', nodeId: 'business', x: 0, y: 0 }) },
+          { label: 'یادداشت تازه', icon: 'Plus', onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) },
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: inspectorOpen ? 'بستن بازرس' : 'باز کردن بازرس', icon: 'PanelRight', onSelect: () => setInspectorOpen((v) => !v) },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -502,7 +502,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
                   <p className="body-md text-text-default">{layout === 'free' ? 'فضای فکر آزاد خالی است؛ روی فضای خالی دابل‌کلیک کن تا یادداشت بسازی.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
-                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: 'business', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
+                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
                 </div>
               </div>
             )}

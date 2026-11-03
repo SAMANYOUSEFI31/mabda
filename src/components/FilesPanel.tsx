@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { defaultNodeId } from '../core/nodeTree';
 import React, { useRef, useState } from 'react';
 import type { StoredFile, TreeNode } from '../types';
 import type { FileChargeInfo, FileQuotaInfo } from '../types/state';
@@ -36,7 +37,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
   const managed = ai.managedEnabled;
   const [blocked, setBlocked] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const [nodeId, setNodeId] = useState('business');
+  const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ file: StoredFile; charge: FileChargeInfo } | null>(null);
 

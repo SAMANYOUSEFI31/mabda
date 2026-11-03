@@ -133,7 +133,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
       <div><h4 className="title text-text-default">{title}</h4><p className="caption text-text-subtle">{hint}</p></div>
       <Rows<CtxItem>
         items={draft[key]} onChange={(next) => set({ [key]: next } as Partial<Draft>)} addLabel="افزودن مورد"
-        add={() => ({ uid: uid(), key: '', label: '', description: '', nodeId: 'business' })}
+        add={() => ({ uid: uid(), key: '', label: '', description: '', nodeId: '' })}
         render={(it, patch) => (
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
             <TextField label="نام قلم دانش" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
