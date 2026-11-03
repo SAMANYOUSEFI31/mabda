@@ -101,3 +101,15 @@ export const MILESTONE_FA: Record<ApprovalInfo['how'], string> = { created: 'ث�
 export const milestoneLabel = (e: Extract<HistoryEntry, { type: 'milestone' }>, fa: (n: number) => string): string =>
   e.how === 'edited' ? `ویرایش تأییدشده → نسخهٔ ${fa(e.version)}` : e.how === 'created' ? `ثبت و تأیید شد در نسخهٔ ${fa(e.version)}` : `تأیید شد در نسخهٔ ${fa(e.version)}`;
 export const draftsLabel = (e: Extract<HistoryEntry, { type: 'drafts' }>, fa: (n: number) => string): string => `${fa(e.count)} پیش‌نویس`;
+
+/** the last approval of every object, from one change list (records of metrics and nodes are not objects and are skipped) */
+export function approvalsOf(changes: Ch[]): Record<string, ApprovalInfo> {
+  const by = new Map<string, Ch[]>();
+  for (const c of changes) {
+    if (c.objectId.startsWith('metric:') || c.objectId.startsWith('node:')) continue;
+    by.set(c.objectId, [...(by.get(c.objectId) ?? []), c]);
+  }
+  const out: Record<string, ApprovalInfo> = {};
+  for (const [id, list] of by) { const a = versionHistory(list).lastApproval; if (a) out[id] = a; }
+  return out;
+}

@@ -156,6 +156,14 @@ export function buildDemo(now: Date): DemoData {
   // ── subscription ───────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_price', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۴۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_price', created: [33],
     edits: [{ d: 9, content: '۴۵۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', reason: 'قیمت دانهٔ خام بالا رفت.' }] });
+  // one object with a path: Claude drafted it, the user rewrote it three times (drafts), then approved it (one milestone, version 4)
+  add({ id: 'dm_tone', type: 'Decision', node: 'dn_support', title: 'لحن پاسخ به مشتری', first: 'لحن رسمی و فنی برای پاسخ به مشتری.', status: 'Confirmed', provenance: 'AI Suggested', by: CLAUDE, source: { kind: 'mcp', label: 'Claude', reason: 'پیشنهاد لحن بر پایهٔ پیام‌های پشتیبانی', daysAgo: 11 }, created: [11],
+    edits: [
+      { d: 10, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی.' },
+      { d: 9, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی و با جمله‌های کوتاه.' },
+      { d: 8, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی، جمله‌های کوتاه و خطاب «شما».' },
+    ],
+    log: [{ d: 7, kind: 'proposal_accepted', to: 'Confirmed', reason: 'بعد از مرور سه نسخه، همین لحن را نگه می‌داریم.' }] });
   add({ id: 'dm_price2', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۵۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', created: [12] });
   add({ id: 'dm_pack', type: 'Decision', node: 'dn_sub', title: 'بستهٔ اشتراک', first: 'هر ماه چهار بستهٔ ۲۵۰ گرمی: دو تک‌خاستگاه و دو ترکیب خانگی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_package', created: [33, 11],
     log: [{ d: 33, h: 11, kind: 'proposal_accepted', to: 'Confirmed' }, { d: 8, kind: 'review_accepted', to: 'Confirmed', reason: 'قیمت عوض شد ولی بسته همان است.' }] });

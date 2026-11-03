@@ -4,6 +4,29 @@ import type { Components } from 'react-markdown';
 import { cx } from './cx.ts';
 import { Link } from './Button.tsx';
 
+/** an expected heading and the id it gets (the reading document passes stable ids: a node's or object's, never made from the text) */
+export interface HeadingAnchor { id: string; text: string }
+interface HNode { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: HNode[] }
+const textOf = (n: HNode): string => (n.type === 'text' ? n.value ?? '' : (n.children ?? []).map(textOf).join(''));
+
+/**
+ * rehype plugin: gives the i-th expected heading its id. A heading that is not next in the list (a «##» written inside an object's
+ * own text) gets none and does not shift the list, so ids never land on the wrong heading.
+ */
+function rehypeAnchors(anchors: HeadingAnchor[]) {
+  return () => (tree: HNode) => {
+    let i = 0;
+    const walk = (n: HNode) => {
+      if (n.type === 'element' && /^h[1-6]$/.test(n.tagName ?? '') && anchors[i] && textOf(n).trim() === anchors[i].text.trim()) {
+        n.properties = { ...(n.properties ?? {}), id: anchors[i].id };
+        i++;
+      }
+      n.children?.forEach(walk);
+    };
+    walk(tree);
+  };
+}
+
 /**
  * Renders model/asset Markdown (GFM tables, lists, emphasis) with Bushido tokens, RTL-aware.
  * Raw HTML in the source is NOT rendered (react-markdown default), so model output cannot inject markup.
@@ -37,22 +60,22 @@ const compact: Components = {
 /** Reading-document typography: real heading hierarchy, roomy rhythm, headings separated like a printed document. */
 const document: Components = {
   ...compact,
-  h1: ({ children }) => <h2 dir="auto" className="heading-lg border-b border-border-default pb-inset-md text-text-default">{children}</h2>,
-  h2: ({ children }) => <h3 dir="auto" className="heading-md mt-stack-xl border-b border-border-subtle pb-inset-sm text-text-default">{children}</h3>,
-  h3: ({ children }) => <h4 dir="auto" className="heading-sm mt-stack-lg text-text-default">{children}</h4>,
-  h4: ({ children }) => <h5 dir="auto" className="heading-xs mt-stack-md text-text-default">{children}</h5>,
-  h5: ({ children }) => <h5 dir="auto" className="title mt-stack-sm text-text-default">{children}</h5>,
-  h6: ({ children }) => <h6 dir="auto" className="label-md text-text-subtle">{children}</h6>,
+  h1: ({ children, id }) => <h2 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-lg border-b border-border-default pb-inset-md text-text-default">{children}</h2>,
+  h2: ({ children, id }) => <h3 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-md mt-stack-xl border-b border-border-subtle pb-inset-sm text-text-default">{children}</h3>,
+  h3: ({ children, id }) => <h4 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-sm mt-stack-lg text-text-default">{children}</h4>,
+  h4: ({ children, id }) => <h5 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-xs mt-stack-md text-text-default">{children}</h5>,
+  h5: ({ children, id }) => <h5 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor title mt-stack-sm text-text-default">{children}</h5>,
+  h6: ({ children, id }) => <h6 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor label-md text-text-subtle">{children}</h6>,
   p: ({ children }) => <p dir="auto" className="body-md text-text-default">{children}</p>,
   // a line written _like this_ is document metadata (type · status · version): quiet, not body text
   em: ({ children }) => <span className="label-sm text-text-subtle">{children}</span>,
   blockquote: ({ children }) => <blockquote dir="auto" className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
 };
 
-export function Markdown({ children, className, variant = 'compact' }: { children: string; className?: string; variant?: 'compact' | 'document' }) {
+export function Markdown({ children, className, variant = 'compact', anchors }: { children: string; className?: string; variant?: 'compact' | 'document'; anchors?: HeadingAnchor[] }) {
   return (
     <div className={cx('flex flex-col', variant === 'document' ? 'gap-stack-md' : 'gap-stack-sm', className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={variant === 'document' ? document : compact}>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={anchors?.length ? [rehypeAnchors(anchors)] : []} components={variant === 'document' ? document : compact}>{children}</ReactMarkdown>
     </div>
   );
 }

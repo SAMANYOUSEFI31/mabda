@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { draftsLabel, milestoneLabel, newestFirst, reasonAllowed, versionHistory } from './versionHistory';
+import { approvalsOf, draftsLabel, milestoneLabel, newestFirst, reasonAllowed, versionHistory } from './versionHistory';
 import type { ContextChange } from '../types';
 
 let n = 0;
@@ -94,4 +94,11 @@ test('superseded / archived are events; input order does not matter; newestFirst
 test('a reason is allowed only for confirmed knowledge, never for a draft', () => {
   assert.equal(reasonAllowed('Confirmed'), true);
   for (const s of ['Proposed', 'Needs Review', 'Superseded', 'Archived', undefined] as const) assert.equal(reasonAllowed(s), false, String(s));
+});
+
+test('approvalsOf: the last approval per object; never-approved objects and metric / node records are absent', () => {
+  const other = [ch({ objectId: 'o2', kind: 'created', fromVersion: 0, toVersion: 1, at: '2026-03-01T00:00:00Z', after: { status: 'Proposed' } }), ch({ objectId: 'metric:m1', kind: 'metric_created', fromVersion: 0, toVersion: 1, at: '2026-03-01T00:00:00Z' })];
+  const a = approvalsOf([...path(), ...other]);
+  assert.deepEqual(Object.keys(a), ['o1']);
+  assert.equal(a.o1.version, 4);
 });

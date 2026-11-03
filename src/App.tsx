@@ -27,7 +27,8 @@ import { can, entitlementsOf } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextCanvas } from './components/ContextCanvas';
 import { ContextTableView } from './components/ContextTableView';
-import { DocReader } from './components/DocReader';
+import { DocWorkspace } from './components/DocWorkspace';
+import { approvalsOf } from './core/versionHistory';
 import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
@@ -39,7 +40,6 @@ import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
 import { thinkingOf, convertedTo } from './core/thinkingMarkers';
 import type { NoteThinkingItem } from './core/thinkingMarkers';
-import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
 import type { NodeDialogState } from './components/NodeDialogs';
@@ -163,6 +163,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPacksOpen, setIsPacksOpen] = useState(false);
+  const approvals = useMemo(() => approvalsOf(data?.changes ?? []), [data?.changes]);
   /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
   const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
@@ -963,8 +964,11 @@ export default function App() {
 
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
-              <DocReader
-                markdown={contextToMarkdown({ nodes, objects: workspaceContexts, title: currentWorkspace.name })}
+              <DocWorkspace
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data.relationships}
+                approvals={approvals}
                 fileName={currentWorkspace.name}
                 empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
               />
@@ -1260,7 +1264,7 @@ export default function App() {
         onAddToNode={(nodeId) => { setEffectNodeId(null); openContext(null, nodeId); }}
         onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
       />
-      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
+      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} relationships={data?.relationships ?? []} onClose={() => setReadNodeId(null)} />
       <StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} />
       <Dialog
         open={!!templateDraft}
