@@ -115,7 +115,8 @@ try {
     step(`[${width}] assets: three hand-made samples, two need a review, «ساخت با AI» is offered`);
     await nav('دارایی‌ها', 'دارایی‌ها');
     assert.equal(await page.getByText('نمونهٔ دستی', { exact: true }).count(), 3);
-    assert.equal(await page.getByText('به‌روز نیست', { exact: true }).count() >= 2, true);
+    await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
+    await page.waitForFunction(() => [...document.querySelectorAll('span, div')].filter((e) => e.children.length < 3 && e.textContent.trim() === 'به‌روز نیست').length >= 2, null, { timeout: 8000 });
     assert.ok((await page.getByRole('button', { name: 'ساخت با AI' }).count()) >= 3);
     assert.ok((await page.getByText(/به «.*» وابسته است و «.*» تغییر کرده/).count()) >= 1, 'dependency_changed reason');
     await shot('6-assets');
