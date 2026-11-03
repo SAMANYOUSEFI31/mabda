@@ -52,6 +52,9 @@ try {
 
     step(`[${width}] «خانه»: the open question and the open decision are collected; an idea and an assumption are not «open»`);
     await nav('خانه', 'خانه');
+    // the home says it in ONE line («N سؤال یا تصمیم باز…» + «ببین»); the full list is under «همه»
+    await page.getByText(/سؤال یا تصمیم باز در یادداشت/).waitFor();
+    await page.getByRole('button', { name: 'ببین' }).first().click();
     await page.getByRole('heading', { name: 'سؤال‌ها و تصمیم‌های باز' }).waitFor();
     await page.getByText(Q).first().waitFor();
     await page.getByText(D).first().waitFor();

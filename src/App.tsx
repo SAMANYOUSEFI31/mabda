@@ -361,8 +361,9 @@ export default function App() {
     proposedCount: workspaceContexts.filter((o) => o.status === 'Proposed').length,
     weekly: { due: weeklyDue, changes: weekly.digest.total },
     dueCount: dueAssumptions.length + dueDecisions.length,
+    openThinking: thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)).length,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts]);
+  }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts, thinking]);
   const handleHomeAct = (a: HomeAction) => {
     track('action.home-todo');
     const reveal = (id: string) => { setHomeAllOpen(true); revealWhenThere(id); };
@@ -372,7 +373,7 @@ export default function App() {
     else if (t.type === 'weekly') setWeeklyOpen(true);
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
-    else reveal('open-thinking');
+    else reveal('open-thinking'); // «due» and «thinking»
   };
   const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const metrics = data?.metrics ?? [];
@@ -978,10 +979,10 @@ export default function App() {
                 )}
               />
             )}
-            {workspaceContexts.length > 0 && (
+            {(workspaceContexts.length > 0 || homePlan.total > 0) && (
               <HomeTodo top={homePlan.top} total={homePlan.total} onAct={handleHomeAct} allOpen={homeAllOpen} onToggleAll={() => setHomeAllOpen((v) => !v)} />
             )}
-            {homeAllOpen && workspaceContexts.length > 0 && (
+            {homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
               <div id="home-all" className="flex flex-col gap-stack-lg">
             <AttentionPanel
               specTitle={attentionSpec?.title ?? ''}

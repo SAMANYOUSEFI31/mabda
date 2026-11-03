@@ -8,7 +8,7 @@ import type { HomeAction } from '../core/homeActions';
 import { Button, Card, Icon, formatNumber } from '../ui';
 import type { IconName } from '../ui';
 
-const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock' };
+const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp' };
 
 interface Props {
   top: HomeAction[];
