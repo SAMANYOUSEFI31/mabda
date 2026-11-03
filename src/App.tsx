@@ -1383,6 +1383,9 @@ export default function App() {
         onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onCreateObjects={(items) => { ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }}
         onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
+        nodes={nodes}
+        onGoToNode={(nodeId) => { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${nodeId}`); }}
+        onOpenThinking={() => openThinkingSpace()}
         onSampleDone={(firstDeliverable) => {
           ensureLibrarySpec('main_positioning');
           void (async () => {
