@@ -135,7 +135,7 @@ export const EXCLUDE_REASON_FA: Record<ExcludeReason, string> = {
   budget: 'بودجه پر شد',
   unranked: 'به درخواست ربطی پیدا نشد',
 };
-/** a left-out object the user may still add by hand */
+/** a skipped object the user may still add by hand */
 const ADDABLE: ReadonlySet<ExcludeReason> = new Set<ExcludeReason>(['scope', 'budget', 'unranked']);
 
 export interface IncludedItem { id: string; version: number; type: ContextObject['type']; title: string; nodeLabel: string; reason: IncludeReason; tokens: number; assumption: boolean }

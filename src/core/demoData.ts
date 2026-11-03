@@ -342,6 +342,9 @@ export function buildDemo(now: Date): DemoData {
     { id: 'pk_demo_ads', workspaceId: W, name: 'متن تبلیغ اشتراک', instruction: 'فقط از همین بسته کار کن؛ اگر چیزی کم بود، بپرس و حدس نزن.', selection: { nodeIds: ['dn_sub', 'dn_ship'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(6, 10), updatedAt: at(6, 10) },
     { id: 'pk_demo_support', workspaceId: W, name: 'پاسخ به مشتری', instruction: 'لحن صمیمی و محترم؛ هیچ تخفیفی وعده نده.', selection: { nodeIds: ['dn_support'], facets: [], statuses: [], includeAssumptions: false }, createdAt: at(5, 10), updatedAt: at(4, 15) },
     { id: 'pk_demo_ws', workspaceId: W, name: 'کارگاه پاییز (با پیشنهادی‌ها)', instruction: 'پیشنهادی‌ها واقعیت نیستند؛ فقط برای ایده گرفتن‌اند.', selection: { nodeIds: ['dn_ws', 'dn_ws_prog'], facets: ['کارگاه'], statuses: ['Proposed'], includeAssumptions: false }, createdAt: at(3, 10), updatedAt: at(3, 10) },
+    // two saved «درخواست برای AI»: the kind of work + one line, resolved afresh from the current knowledge each time
+    { id: 'pk_demo_req_audit', workspaceId: W, name: 'ممیزی — طرح تخفیف پاییز', instruction: '', kind: 'audit', template: 'طرح تخفیف پاییز با قیدهای ما جور است؟', selection: { nodeIds: ['dn_sub'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(2, 10), updatedAt: at(2, 10) },
+    { id: 'pk_demo_req_decision', workspaceId: W, name: 'تصمیم — کانال فروش کارگاه', instruction: '', kind: 'decision', template: 'کانال اصلی فروش کارگاه کدام باشد؟', selection: { nodeIds: ['dn_ws'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(1, 10), updatedAt: at(1, 10) },
   ];
   // ── a template of the user's own: the workshop branch ──
   const tpl = nodeTemplateOf('dn_ws', [...DEFAULT_TREE_NODES, ...nodes], objects);

@@ -137,7 +137,7 @@ test('a small workspace brings everything (reason «small»); the budget never c
   assert.ok(tiny.overBudget, 'and the result says the budget was exceeded');
 });
 
-test('manual add: a left-out object comes with reason «manual» and leaves the left-out list', () => {
+test('manual add: a skipped object comes with reason «manual» and leaves the skipped list', () => {
   const objects = bigWorkspace();
   const r1 = buildAiRequest(base({ request: 'کانال جذب مشتری', objects, tokenBudget: 800 }));
   const left = r1.excluded.find((e) => e.reason === 'budget' || e.reason === 'unranked')!;

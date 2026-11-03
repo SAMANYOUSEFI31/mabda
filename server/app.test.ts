@@ -692,7 +692,7 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     assert.deepEqual([s1.metrics.length, s1.measurements.length], [3, 12], 'three metrics with twelve recorded numbers');
     assert.equal(s1.objects.filter((o: any) => o.record?.metricExpectation).length, 4, 'four decisions state an expectation');
     assert.ok(!s1.objects.some((o: any) => o.sample), 'examples are not in the knowledge list');
-    assert.equal((await t.call('GET', '/workspaces/ws_demo/saved-packs')).json.packs.length, 3);
+    assert.equal((await t.call('GET', '/workspaces/ws_demo/saved-packs')).json.packs.length, 5, 'three packs and two saved requests');
     assert.equal((await t.call('GET', '/templates')).json.templates.length, 1, 'the user template survives a reset (it belongs to the user)');
     assert.equal(s1.ledger.length, 0, 'no usage is invented');
     assert.deepEqual(s1.judgments, {}, 'no AI judgement is stored');

@@ -33,6 +33,7 @@ import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
 import { DueItems } from './components/DueItems';
 import { SavedPacksDialog } from './components/SavedPacksDialog';
+import { AiRequestDialog } from './components/AiRequestDialog';
 import { StarterDialog } from './components/StarterDialog';
 import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
@@ -162,6 +163,8 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPacksOpen, setIsPacksOpen] = useState(false);
+  /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
+  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
   const [templateDraft, setTemplateDraft] = useState<{ kind: 'node' | 'workstream'; sourceId: string; name: string } | null>(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -836,6 +839,7 @@ export default function App() {
                 <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
               </div>
               <div className="flex flex-wrap gap-inline-sm">
+                <Button variant="secondary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای AI</Button>
                 <Button variant="secondary" iconStart="TrendingUp" onClick={() => setMetricsOpen(true)}>{MX.navTitle}</Button>
                 <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
               </div>
@@ -985,6 +989,7 @@ export default function App() {
                 onSaveAsTemplate={(nodeId) => setTemplateDraft({ kind: 'node', sourceId: nodeId, name: nodes.find((n) => n.id === nodeId)?.label ?? '' })}
                 onOpenStarters={() => setIsStarterOpen(true)}
                 onOpenThread={setThreadNodeId}
+                onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
                 onDeleteNote={handleDeleteNote}
@@ -1269,6 +1274,7 @@ export default function App() {
           <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
         </div>
       </Dialog>
+      <AiRequestDialog open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
