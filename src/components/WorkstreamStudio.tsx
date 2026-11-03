@@ -30,7 +30,7 @@ import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
 import { contextDraftFromBlock } from '../core/blocks';
-import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Switch, Tabs, formatNumber, useToast } from '../ui';
+import { Alert, Badge, Button, Card, EmptyState, IconButton, List, ListItem, Menu, OptionCard, Progress, Select, Spinner, Switch, Tabs, TextField, formatNumber, useToast } from '../ui';
 
 interface WorkstreamStudioProps {
   currentWorkspace: Workspace;
@@ -102,6 +102,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   );
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('auto');
   const [manualModeOpen, setManualModeOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const importantMode: ExecutionMode | null = PLANS[currentWorkspace.planId].allowedModes.includes('sensitive') ? 'sensitive' : PLANS[currentWorkspace.planId].allowedModes.includes('critique') ? 'critique' : null;
   const [isGenerating, setIsGenerating] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>('');
@@ -288,7 +290,14 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
 
   const builtIds = new Set(workstreamDeliverables.map((d) => d.deliverableId));
   const lock = lockOf(currentDeliverableSpec, currentSpec.deliverables, builtIds);
-  const requiredMissing = readiness.gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length;
+  // what is missing, required first: at most THREE questions are asked here; the rest wait in «چه چیزی کم است»
+  const todo = [...readiness.gaps].filter((g) => g.status !== 'confirmed').sort((a, b) => (a.importance === 'required' ? 0 : 1) - (b.importance === 'required' ? 0 : 1)).slice(0, 3);
+  const answerGap = (gap: (typeof readiness.gaps)[number]) => {
+    const text = (answers[gap.key] ?? '').trim();
+    if (!text) return;
+    onAddContextObject({ workspaceId: currentWorkspace.id, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input', title: gap.label, content: text, nodeId: gap.nodeId, slotKey: gap.key });
+    setAnswers((m) => { const n = { ...m }; delete n[gap.key]; return n; });
+  };
   const modeCost = (m: ExecutionMode) =>
     calculateCreditCost({
       deliverableType: currentDeliverableSpec.type,
@@ -298,37 +307,33 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
 
   return (
     <div className="flex flex-col gap-stack-lg">
-      {/* Spec selector + readiness summary */}
-      <Card padding="lg" className="flex flex-col justify-between gap-inline-lg md:flex-row md:items-end">
-        <div className="flex min-w-space-0 flex-1 flex-col gap-stack-sm">
-          <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
-            <div className="min-w-overlay-xs sm:flex-1">
-              <Select
-                label="جریان کار فعال"
-                value={selectedSpecId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const s = specs.find((x) => x.id === id);
-                  setSelectedSpecId(id);
-                  if (s?.deliverables.length) { try { setSelectedDeliverableId(topologicalOrder(s.deliverables)[0].id); } catch { setSelectedDeliverableId(s.deliverables[0].id); } }
-                }}
-                options={specs.map((s) => ({ value: s.id, label: s.title }))}
-              />
-            </div>
-            <Button variant="secondary" iconStart="Plus" onClick={() => onOpenSpecEditor()}>
-              تعریف جریان کار سفارشی
-            </Button>
-            {isCustomSpec && <Button variant="secondary" iconStart="Pencil" onClick={() => onOpenSpecEditor(currentSpec)}>ویرایش</Button>}
-            {isCustomSpec && onSaveTemplate && <Button variant="ghost" iconStart="Package" onClick={() => onSaveTemplate(currentSpec)}>ذخیره به‌عنوان قالب</Button>}
-            <Button variant="secondary" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, title: currentSpec.title })}>کپی جریان کار برای AI</Button>
-          </div>
+      {/* which workflow — the library, the editor and the template live under «⋯» */}
+      <Card padding="lg" className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
+        <div className="min-w-overlay-xs sm:flex-1">
+          <Select
+            label="جریان کار فعال"
+            value={selectedSpecId}
+            onChange={(e) => {
+              const id = e.target.value;
+              const sp = specs.find((x) => x.id === id);
+              setSelectedSpecId(id);
+              if (sp?.deliverables.length) { try { setSelectedDeliverableId(topologicalOrder(sp.deliverables)[0].id); } catch { setSelectedDeliverableId(sp.deliverables[0].id); } }
+            }}
+            options={specs.map((sp) => ({ value: sp.id, label: sp.title }))}
+          />
         </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-sm">
-          <span className="body-sm text-text-subtle">وضعیت رادار شکاف:</span>
-          <span className="label-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪ آماده</span>
-          <Button size="sm" variant="ghost" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>ببین چه چیزی کم است</Button>
-        </div>
+        <Menu
+          label="بیشتر دربارهٔ جریان کار"
+          align="end"
+          trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ جریان کار" variant="secondary" />}
+          items={[
+            { label: 'تعریف جریان کار سفارشی', icon: 'Plus', onSelect: () => onOpenSpecEditor() },
+            ...(isCustomSpec ? [{ label: 'ویرایش این جریان کار', icon: 'Pencil' as const, onSelect: () => onOpenSpecEditor(currentSpec) }] : []),
+            ...(isCustomSpec && onSaveTemplate ? [{ label: 'ذخیره به‌عنوان قالب', icon: 'Package' as const, onSelect: () => onSaveTemplate(currentSpec) }] : []),
+            { divider: true },
+            { label: 'کپی جریان کار برای AI', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, title: currentSpec.title }) },
+          ]}
+        />
       </Card>
 
       <Tabs
@@ -342,23 +347,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         ]}
       />
 
-      {/* TAB 1: create */}
+      {/* TAB 1: create — three steps: pick an output ← one sentence about readiness (+ at most three questions, answered here) ← «ساخت» */}
       {activeTab === 'create' && (
         <div className="flex flex-col gap-stack-md">
-          <Alert
-            intent={requiredMissing === 0 ? 'success' : 'warning'}
-            title={`وضعیت آمادگی منبع حقیقت: ${readiness.status === 'ready' ? 'تأییدشده' : 'نیازمند تکمیل مدارک'} (${formatNumber(readiness.score)}٪)`}
-            action={<Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>ببین چه چیزی کم است و کامل کن</Button>}
-          >
-            {requiredMissing === 0
-              ? 'تمامی پیش‌نیازهای الزامی در درخت حقیقت موجود است. خروجی با حداکثر دقت تولید می‌شود.'
-              : `${formatNumber(requiredMissing)} شکاف بحرانی در دانش کسب‌وکار شناسایی شد.`}
-          </Alert>
-
           <div className="grid grid-cols-1 gap-inline-xl lg:grid-cols-3">
-            {/* Deliverables list */}
+            {/* step 1: which output */}
             <div className="flex flex-col gap-stack-sm lg:col-span-1">
-              <h3 className="title text-text-default">خروجی‌ها به ترتیب ساخت</h3>
+              <h3 className="title text-text-default">کدام خروجی؟</h3>
               <List label="خروجی‌های این جریان کار">
                 {orderedDeliverables.map((del, idx) => {
                   const dl = lockOf(del, currentSpec.deliverables, builtIds);
@@ -382,99 +377,101 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               </List>
             </div>
 
-            {/* Execution */}
             <Card padding="xl" className="flex flex-col gap-stack-lg lg:col-span-2">
-              <div className="flex flex-col gap-stack-xs">
-                <span className="label-md text-text-subtle">
-                  خروجی انتخابی (گام {formatNumber(orderedDeliverables.indexOf(currentDeliverableSpec) + 1)} از {formatNumber(orderedDeliverables.length)})
-                </span>
-                <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>
-                <p className="body-sm text-text-default">{currentDeliverableSpec.description}</p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-inline-sm">
-                <Button variant="secondary" size="sm" iconStart="Copy" onClick={() => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title })}>کپی برای هوش مصنوعی</Button>
-                <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
+              <div className="flex items-start justify-between gap-inline-sm">
+                <div className="flex min-w-space-0 flex-col gap-stack-xs">
+                  <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>
+                  <p className="body-sm text-text-subtle">{currentDeliverableSpec.description}</p>
+                </div>
+                <Menu
+                  label="بیشتر دربارهٔ این خروجی"
+                  align="end"
+                  trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ این خروجی" size="sm" />}
+                  items={[
+                    { label: 'کپی برای هوش مصنوعی', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title }) },
+                    { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: onOpenImport },
+                    { label: moreOpen ? 'بستن جزئیات اجرا' : 'جزئیات اجرا (حالت، معیارها)', icon: 'Settings', onSelect: () => setMoreOpen((v) => !v) },
+                  ]}
+                />
               </div>
 
               {lock.locked && <Alert intent="warning" title="این خروجی هنوز قفل است">{lockReason(lock)}</Alert>}
 
-              <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
-                <span className="label-md text-text-default">معیار پذیرش خروجی</span>
-                <ul className="body-sm list-inside list-disc text-text-subtle">
-                  {currentDeliverableSpec.acceptanceCriteria.map((c, idx) => (
-                    <li key={idx}>{c}</li>
-                  ))}
-                </ul>
-                {(currentSpec.guardrails?.length ?? 0) > 0 && (
-                  <>
-                    <span className="label-md mt-stack-sm text-text-default">گاردریل‌های این جریان کار</span>
-                    <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
-                  </>
-                )}
-                <span className="body-sm text-text-subtle">محدودیت‌های تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
+              {/* step 2: one sentence about readiness, then at most three questions, answered right here */}
+              <div className="flex flex-col gap-stack-sm" data-testid="readiness-line">
+                <p className="body-md text-text-default">
+                  {todo.length === 0
+                    ? 'همه‌چیز لازم را داریم؛ آمادهٔ ساخت است.'
+                    : `برای ساخت بهتر ${formatNumber(todo.length)} چیز کم است${readiness.gaps.length > todo.length ? ` (${formatNumber(readiness.gaps.length - todo.length)} مورد دیگر در «چه چیزی کم است»)` : ''}؛ می‌توانی همین‌جا جواب بدهی یا بدون آن‌ها بسازی.`}
+                </p>
+                {todo.map((g) => (
+                  <div key={g.key} className="flex flex-col gap-stack-xs sm:flex-row sm:items-end">
+                    <div className="flex-1">
+                      <TextField label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
+                    </div>
+                    <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>ثبت</Button>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
-                <div className="flex flex-col justify-between gap-inline-sm sm:flex-row sm:items-center">
-                  <div className="flex flex-col gap-stack-xs">
-                    <span className="label-md text-text-default">مبدأ خودش انتخاب می‌کند</span>
-                    <span className="body-sm text-text-subtle">مدل، عمق کار و بررسی را براساس نوع خروجی تعیین می‌کند و پیش از ساخت اینجا نشانت می‌دهد.</span>
+              {moreOpen && (
+                <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg" id="run-details">
+                  <div className="flex flex-col gap-stack-sm">
+                    <span className="label-md text-text-default">معیار پذیرش خروجی</span>
+                    <ul className="body-sm list-inside list-disc text-text-subtle">
+                      {currentDeliverableSpec.acceptanceCriteria.map((c, idx) => (<li key={idx}>{c}</li>))}
+                    </ul>
+                    {(currentSpec.guardrails?.length ?? 0) > 0 && (
+                      <>
+                        <span className="label-md mt-stack-sm text-text-default">گاردریل‌های این جریان کار</span>
+                        <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
+                      </>
+                    )}
+                    <span className="body-sm text-text-subtle">محدودیت‌های تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
                   </div>
-                  <div className="flex flex-col gap-stack-xs">
-                  <Switch
-                    checked={executionMode === 'sensitive' || executionMode === 'critique'}
-                    disabled={!importantMode}
-                    onChange={(e) => setExecutionMode(e.target.checked && importantMode ? importantMode : 'auto')}
-                    label="این خروجی مهم است (بررسی دقیق‌تر)"
-                  />
-                  {!importantMode && <span className="body-sm text-text-subtle">بررسی دقیق‌تر در پلن فعلی فعال نیست.</span>}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-inline-sm">
-                  <Button variant="ghost" size="sm" iconEnd={manualModeOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={manualModeOpen} onClick={() => setManualModeOpen((v) => !v)}>
-                    تغییر دستی
-                  </Button>
-                  {executionMode !== 'auto' && executionMode !== 'sensitive' && (
-                    <Button variant="ghost" size="sm" iconStart="Undo2" onClick={() => setExecutionMode('auto')}>برگرد به خودکار</Button>
-                  )}
-                </div>
-                {manualModeOpen && (
-                  <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
-                    <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined} selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
-                    <OptionCard title="خودکار" description="پیشنهاد مبدأ" meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined} selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
-                    <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined} selected={executionMode === 'critique'} disabled={!plan.allowedModes.includes('critique')} onClick={() => setExecutionMode('critique')} />
-                    <OptionCard title="حساس" description="بررسی دقیق + شکاف + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!plan.allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
-                  </div>
-                )}
-              </div>
-
-              {/* Pre-execution credit indicator (P2): derived from the router's plan, the same plan is executed */}
-              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} onOpenSettings={onOpenAiSettings} />}
-              <div className="flex flex-col justify-between gap-inline-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg sm:flex-row sm:items-center">
-                <div className="body-sm flex flex-col gap-stack-xs">
-                  <div>
-                    <span className="text-text-subtle">{managed ? 'هزینهٔ این اجرا: ' : 'حالت اجرا: '}</span>
-                    {previewState === 'loading' ? (
-                      <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
-                    ) : (
-                      <span className="label-md tabular-nums text-text-default">
-                        {!managed ? (preview ? 'آمادهٔ اجرا' : '—') : ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}
-                      </span>
+                  <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
+                    <Switch
+                      checked={executionMode === 'sensitive' || executionMode === 'critique'}
+                      disabled={!importantMode}
+                      onChange={(e) => setExecutionMode(e.target.checked && importantMode ? importantMode : 'auto')}
+                      label="این خروجی مهم است (بررسی دقیق‌تر)"
+                    />
+                    {!importantMode && <span className="body-sm text-text-subtle">بررسی دقیق‌تر در پلن فعلی فعال نیست.</span>}
+                    <div className="flex flex-wrap items-center gap-inline-sm">
+                      <Button variant="ghost" size="sm" iconEnd={manualModeOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={manualModeOpen} onClick={() => setManualModeOpen((v) => !v)}>تغییر دستی</Button>
+                      {executionMode !== 'auto' && executionMode !== 'sensitive' && (
+                        <Button variant="ghost" size="sm" iconStart="Undo2" onClick={() => setExecutionMode('auto')}>برگرد به خودکار</Button>
+                      )}
+                    </div>
+                    {manualModeOpen && (
+                      <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
+                        <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined} selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
+                        <OptionCard title="خودکار" description="پیشنهاد مبدأ" meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined} selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
+                        <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined} selected={executionMode === 'critique'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('critique')} onClick={() => setExecutionMode('critique')} />
+                        <OptionCard title="حساس" description="بررسی دقیق + شکاف + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
+                      </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* step 3: build. The reason for «auto» is ONE plain line */}
+              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} onOpenSettings={onOpenAiSettings} />}
+              <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
+                <div className="body-sm flex flex-col gap-stack-xs">
+                  {previewState === 'loading' ? (
+                    <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
+                  ) : managed ? (
+                    <span className="label-md tabular-nums text-text-default">{ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}</span>
+                  ) : null}
                   {preview && previewState === 'ready' && (
-                    <>
-                      <span className="caption text-text-subtle">
-                        {preview.plan.reason}
-                        {managed && planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
-                      </span>
-                      {ai.byok && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
-                    </>
+                    <span className="body-sm text-text-subtle" data-testid="auto-reason">
+                      {executionMode === 'auto' ? 'مبدأ خودش انتخاب کرد: ' : 'حالت انتخابی: '}{preview.plan.reason}
+                      {managed && planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
+                    </span>
                   )}
-                  {managed && <span className="body-sm text-text-subtle">
-                    موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر
-                  </span>}
+                  {ai.byok && preview && previewState === 'ready' && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
+                  {managed && <span className="body-sm text-text-subtle">موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر</span>}
                 </div>
                 {isGenerating ? (
                   <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>

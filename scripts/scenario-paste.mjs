@@ -38,7 +38,8 @@ try {
 
   step('studio: «کپی برای هوش مصنوعی» on an output → pack with its size');
   await nav('جریان‌های کار');
-  await page.getByRole('button', { name: 'کپی برای هوش مصنوعی' }).click();
+  await page.getByRole('button', { name: 'بیشتر دربارهٔ این خروجی' }).click(); // the copy is under «⋯» of the output
+  await page.getByRole('menuitem', { name: 'کپی برای هوش مصنوعی' }).click();
   await page.getByText(/حدود .* توکن/).first().waitFor();
   const pack = await page.getByLabel('پیش‌نمایش بسته (فقط‌خواندنی)').inputValue();
   assert.match(pack, /<!-- mabda-pack:/);

@@ -133,7 +133,8 @@ try {
   await account('آکادمی رشد فریلنسرها');
   await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
   await nav('جریان‌های کار');
-  await page.getByRole('button', { name: 'تعریف جریان کار سفارشی' }).click();
+  await page.getByRole('button', { name: 'بیشتر دربارهٔ جریان کار' }).click(); // the editor / library are under «⋯»
+  await page.getByRole('menuitem', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();
   await shot('6-starter-gated');
 
