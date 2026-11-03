@@ -17,14 +17,16 @@ interface Props {
   titleOf: (id: string) => string;
 }
 
-const SHOWN = 6;
+const SHOWN = 5;
 
 /** choose other pieces of knowledge by typing a few letters: the chosen ones are chips (tap to remove), the matches are a short list */
 export const RelationPicker: React.FC<Props> = ({ label, hint, options, selected, onChange, titleOf }) => {
   const [q, setQ] = useState('');
   const matches = useMemo(() => {
     const n = normalizeFa(q.trim());
-    return options.filter((o) => !selected.includes(o.id) && (!n || normalizeFa(`${o.title} ${o.content}`).includes(n))).slice(0, SHOWN);
+    // nothing is listed until a few letters are typed: two pickers must not fill the dialog
+    if (!n) return [];
+    return options.filter((o) => !selected.includes(o.id) && normalizeFa(`${o.title} ${o.content}`).includes(n)).slice(0, SHOWN);
   }, [q, options, selected]);
   return (
     <div className="flex flex-col gap-stack-xs" role="group" aria-label={label}>
