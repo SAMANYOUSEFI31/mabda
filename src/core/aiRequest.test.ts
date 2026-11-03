@@ -158,8 +158,8 @@ test('rejected options of a decision are listed with the rule; an expired decisi
 
 test('change_review: before / after of recent changes, the reason text is never injected, old changes are dropped', () => {
   const changes = [
-    { objectId: 'f_price', fromVersion: 1, toVersion: 2, kind: 'content_edited' as const, actor: 'user' as const, at: '2026-05-20T10:00:00Z', before: { content: 'قیمت سی هزار' }, after: { content: 'قیمت پنجاه هزار' } },
-    { objectId: 'f_aud', fromVersion: 1, toVersion: 2, kind: 'content_edited' as const, actor: 'user' as const, at: '2025-01-01T10:00:00Z', before: { content: 'قدیمی‌ترین' }, after: { content: 'قدیمی' } },
+    { objectId: 'f_price', fromVersion: 1, toVersion: 2, kind: 'edited' as const, actor: 'user' as const, at: '2026-05-20T10:00:00Z', before: { content: 'قیمت سی هزار' }, after: { content: 'قیمت پنجاه هزار' } },
+    { objectId: 'f_aud', fromVersion: 1, toVersion: 2, kind: 'edited' as const, actor: 'user' as const, at: '2025-01-01T10:00:00Z', before: { content: 'قدیمی‌ترین' }, after: { content: 'قدیمی' } },
   ];
   const withReason = changes.map((c) => ({ ...c, reason: 'راز-دلیل' }));
   const r = buildAiRequest(base({ kind: 'change_review', request: 'تغییر قیمت', changes: withReason }));

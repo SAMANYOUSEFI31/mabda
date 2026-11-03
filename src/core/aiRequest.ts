@@ -382,9 +382,10 @@ function gapsSection(gaps: Array<Pick<GapItem, 'label' | 'status' | 'question' |
   return ['## شکاف‌ها (چیزهایی که هنوز ثبت یا روشن نشده)', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}${g.importance === 'required' ? ' (ضروری)' : ''}: **${safe(g.label)}** — ${safe(g.question)}`)].join('\n');
 }
 
+const CHANGE_KIND_FA: Partial<Record<string, string>> = { created: 'ساخته شد', edited: 'ویرایش شد', status_changed: 'وضعیت عوض شد', superseded: 'جایگزین شد', archived: 'بایگانی شد', proposal_accepted: 'پیشنهاد پذیرفته شد', imported: 'وارد شد' };
 const SHOWN_FIELDS = ['title', 'content', 'status', 'type'] as const;
 function changesSection(changes: NonNullable<AiRequestInput['changes']>, find: (id: string) => ContextObject | undefined): string {
-  const KIND = (c: (typeof changes)[number]) => c.kind.replace(/_/g, ' ');
+  const KIND = (c: (typeof changes)[number]) => CHANGE_KIND_FA[c.kind] ?? c.kind.replace(/_/g, ' ');
   const val = (v: unknown) => clip(String(v ?? '—').replace(/\s+/g, ' '), 400);
   const lines = changes.map((c) => {
     const o = find(c.objectId);
