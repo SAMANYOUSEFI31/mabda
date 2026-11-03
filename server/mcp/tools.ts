@@ -10,6 +10,7 @@ import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '.
 import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { expectationRows, latestOf, proposedMeasurements, seriesOf } from '../../src/core/metrics.ts';
 import { bm25Rank } from '../../src/core/retrieval.ts';
+import { exampleSuffix, examplesOf, guardrailText } from '../../src/core/redlineExamples.ts';
 import { lockOf, lockReason } from '../../src/core/specGraph.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
 import { can, entitlementsOf, objectsRemaining } from '../../src/core/entitlements.ts';
@@ -44,8 +45,9 @@ const pathOf = (nodes: TreeNode[], id: string) => ancestorIds(nodes, id).reverse
 const view = (nodes: TreeNode[], o: ContextObject) => ({
   id: o.id, version: o.version, type: o.type, status: o.status, nodeId: o.nodeId, nodePath: pathOf(nodes, o.nodeId), title: o.title, content: o.content,
   ...(o.source ? { source: o.source } : {}), ...(o.slotKey ? { slotKey: o.slotKey } : {}),
+  ...(examplesOf(o).length ? { examples: examplesOf(o) } : {}),
 });
-const mdLine = (v: ReturnType<typeof view>) => `- **[${v.type}] ${v.title}** (\`${v.id}@v${v.version}\`, ${v.nodePath}): ${v.content.replace(/\n+/g, ' ')}`;
+const mdLine = (v: ReturnType<typeof view>) => `- **[${v.type}] ${v.title}** (\`${v.id}@v${v.version}\`, ${v.nodePath}): ${v.content.replace(/\n+/g, ' ')}${exampleSuffix(v.examples)}`;
 
 export function buildMcpServer(c: McpContext): McpServer {
   const { repo, scope } = c;
@@ -190,7 +192,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     const data = {
       specId: spec.id, gaps: r.gaps.map((g) => ({ key: g.key, label: g.label, importance: g.importance, status: g.status, nodeId: g.nodeId, question: g.question, suggestedAnswers: g.suggestedAnswers })),
       ...(del ? { deliverable: { id: del.id, title: del.title, acceptanceCriteria: del.acceptanceCriteria, dependsOn: del.dependsOn ?? [], locked: lock!.locked, lockReason: lockReason(lock!) } } : {}),
-      guardrails: [...(spec.guardrails ?? []), ...repo.listObjects(scope).filter((o) => o.status === 'Confirmed' && o.type === 'Constraint').map((o) => `${o.title}: ${o.content}`)],
+      guardrails: [...(spec.guardrails ?? []), ...repo.listObjects(scope).filter((o) => o.status === 'Confirmed' && o.type === 'Constraint').map(guardrailText)],
     };
     const md = [
       `## شکاف‌ها — ${spec.title}`, data.gaps.length ? data.gaps.map((g) => `- (${g.importance === 'required' ? 'الزامی' : 'پیشنهادی'}, ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}) **${g.label}**: ${g.question}`).join('\n') : 'شکافی نیست.',

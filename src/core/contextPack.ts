@@ -9,6 +9,7 @@ import type { AmbiguityMap } from './contextEngine';
 import { ancestorIds } from './nodeTree';
 import { estimateTokens } from './tokens';
 import { effectiveObjects, guardrailsFor } from './effectiveContext';
+import { guardrailText } from './redlineExamples';
 import { metricsPackSection } from './metrics';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
 
@@ -104,7 +105,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     return [...byNode.entries()].map(([n, os]) => `### ${path(n)}\n${os.map(line).join('\n')}`).join('\n\n');
   };
 
-  const guardrails = [...(spec?.guardrails ?? []), ...input.objects.filter((o) => guardIds.has(o.id)).map((o) => `${o.title}: ${o.content}`)].filter(Boolean);
+  const guardrails = [...(spec?.guardrails ?? []), ...input.objects.filter((o) => guardIds.has(o.id)).map(guardrailText)].filter(Boolean);
   const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
   const depTitles = (deliverable?.dependsOn ?? []).map((id) => spec?.deliverables.find((d) => d.id === id)?.title).filter(Boolean);
 

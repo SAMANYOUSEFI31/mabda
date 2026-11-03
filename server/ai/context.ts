@@ -1,6 +1,8 @@
 import type { Prompt } from './providers/provider.ts';
 import { CORE_TEXT, SYSTEM_PROMPT } from './prompts.ts';
 import { ASSUMPTION_RULE, REJECTED_RULE } from '../../src/core/assumptions.ts';
+import { exampleSuffix } from '../../src/core/redlineExamples.ts';
+import type { RedlineExample } from '../../src/types/index.ts';
 
 export interface ContextObjectLite {
   id: string;
@@ -17,6 +19,8 @@ export interface ContextObjectLite {
   validUntil?: string;
   /** a working assumption: never confirmed knowledge, shown in its own section */
   assumption?: boolean;
+  /** right / wrong examples of a red line (a Constraint or a global Decision); never from a sample */
+  examples?: RedlineExample[];
   /** options that were weighed and rejected (from a Decision's record) — the model must not propose them again */
   rejected?: Array<{ title: string; reason: string }>;
 }
@@ -46,7 +50,7 @@ const byStableOrder = (a: ContextObjectLite, b: ContextObjectLite) =>
   (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
   a.id.localeCompare(b.id);
 
-const line = (c: ContextObjectLite, labels: Record<string, string> = NODE_LABELS) => `- [${c.type}] (${labels[c.nodeId] ?? NODE_LABELS[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}`;
+const line = (c: ContextObjectLite, labels: Record<string, string> = NODE_LABELS) => `- [${c.type}] (${labels[c.nodeId] ?? NODE_LABELS[c.nodeId] ?? c.nodeId}) ${c.title}: ${c.content}${exampleSuffix(c.examples)}`;
 
 export interface BuildPromptInput {
   contexts: ContextObjectLite[];
