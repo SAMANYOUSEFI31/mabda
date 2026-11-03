@@ -4,13 +4,18 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type { TreeNode } from '../types';
+import type { ChatMessage, ChatSession, ContentBlock, GenerationResult, TreeNode } from '../types';
 import { EXCLUDE_REASON_FA, INCLUDE_REASON_FA, KIND_LABEL, REQUEST_KINDS } from '../core/aiRequest';
 import type { AiRequestResult, ExcludeReason, RequestKind } from '../core/aiRequest';
 import { flatten } from '../core/nodeTree';
 import { dataApi, DataApiError } from '../services/dataApi';
 import { track } from '../services/usage';
-import { Alert, Badge, Button, Dialog, Select, Spinner, TextField, Textarea, formatNumber, useToast } from '../ui';
+import { asAiError, streamChat } from '../services/apiClient';
+import type { AiErrorInfo } from '../types';
+import { useAiStatus } from '../services/aiStatus';
+import { AiErrorNotice } from './AiNotices';
+import { BlockView } from './BlockView';
+import { Alert, Badge, Button, Dialog, IconButton, Menu, Select, Spinner, TextField, Textarea, formatJalaliDate, formatNumber, useToast } from '../ui';
 
 type Result = AiRequestResult & { packId: string; recorded: boolean };
 interface Props {
@@ -21,6 +26,14 @@ interface Props {
   scopeNodeId?: string;
   onClose: () => void;
   onOpenImport: () => void;
+  /** earlier answers (the old chat sessions): they stay reachable here, nothing is lost */
+  sessions: ChatSession[];
+  onSaveSession: (s: ChatSession) => void;
+  /** counts the question and records its real usage (the same accounting as the old chat) */
+  onAnswered: (result: GenerationResult) => void;
+  /** «به دانش اضافه کن»: opens the knowledge dialog with a draft made from the block */
+  onAddKnowledge: (block: ContentBlock) => void;
+  onOpenAiSettings: () => void;
 }
 
 const SHOWN = 40;
@@ -32,15 +45,21 @@ const newPackId = () => `rq_${Date.now().toString(36)}${Math.random().toString(3
  */
 export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner {...props} /> : null);
 
-const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOpenImport }) => {
+const MODE_OF: Record<RequestKind, 'discovery' | 'audit' | 'advisor'> = { question: 'discovery', audit: 'audit', draft: 'discovery', decision: 'advisor', change_review: 'audit', free: 'discovery' };
+
+const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onOpenAiSettings }) => {
   const toast = useToast();
+  const ai = useAiStatus();
+  const [answer, setAnswer] = useState<{ blocks: ContentBlock[]; text: string; streaming: boolean } | null>(null);
+  const [answerError, setAnswerError] = useState<AiErrorInfo | null>(null);
+  const [past, setPast] = useState<string | null>(null);
   const [kind, setKind] = useState<RequestKind>('question');
   const [request, setRequest] = useState('');
   const [scope, setScope] = useState(scopeNodeId ?? '');
   const [extraIds, setExtraIds] = useState<string[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'copy' | 'save' | null>(null);
+  const [busy, setBusy] = useState<'copy' | 'save' | 'answer' | null>(null);
   const [copied, setCopied] = useState(false);
   const packId = useMemo(newPackId, []);
   const meta = REQUEST_KINDS.find((k) => k.kind === kind)!;
@@ -69,11 +88,30 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
       toast.show({ intent: 'success', message: 'کپی شد. در Claude یا ChatGPT بچسبان؛ پاسخ را که گرفتی، «پاسخ AI را وارد کن».' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
+  /** «همین‌جا جواب بده»: the same chat route and the user's own key; nothing is invented — a failure is an error with «دوباره» */
+  const answerHere = async () => {
+    if (!ready) return;
+    if (!ai.available) { setAnswerError({ kind: 'no_key', message: 'برای جواب گرفتن همین‌جا، یک کلید هوش مصنوعی لازم است. یا «کپی برای AI خودم» را بزن و در Claude یا ChatGPT بچسبان.', retryable: false } as AiErrorInfo); setAnswer(null); return; }
+    setAnswerError(null); setAnswer({ blocks: [], text: '', streaming: true }); setBusy('answer');
+    let live: ContentBlock[] = [];
+    try {
+      const res = await streamChat(
+        { message: request.trim(), workspaceId, scopeNodeId: scope || undefined, focusNodeIds: [], chatMode: MODE_OF[kind], deep: false },
+        { onBlock: (b) => { live = [...live, b]; setAnswer({ blocks: live, text: '', streaming: true }); } },
+      );
+      setAnswer({ blocks: res.blocks, text: res.markdown, streaming: false });
+      const now = new Date().toISOString();
+      const user: ChatMessage = { id: `msg_u_${Date.now()}`, role: 'user', content: request.trim(), timestamp: now, executionMode: 'auto', creditCost: 0 };
+      const asst: ChatMessage = { id: `msg_a_${Date.now()}`, role: 'assistant', content: res.markdown, timestamp: now, executionMode: 'auto', creditCost: 0, blocks: res.blocks, plan: res.plan, usage: res.usage, usedContext: res.usedContext };
+      onSaveSession({ id: `sess_${Date.now()}`, workspaceId, title: request.trim().slice(0, 30), createdAt: now, updatedAt: now, chatMode: MODE_OF[kind], selectedNodeIds: [], ...(scope ? { scopeNodeId: scope } : {}), messages: [user, asst] });
+      onAnswered(res); track('action.ai-answer');
+    } catch (e) { setAnswer(null); setAnswerError(asAiError(e)); } finally { setBusy(null); }
+  };
   const save = async () => {
     setBusy('save');
     try {
       await dataApi.createSavedPack(workspaceId, { name: `${KIND_LABEL[kind]} — ${request.trim().slice(0, 40)}`, instruction: '', selection: { nodeIds: scope ? [scope] : [], facets: [], statuses: [], includeAssumptions: true }, kind, template: request.trim() });
-      toast.show({ intent: 'success', message: 'درخواست ذخیره شد؛ در «بسته‌های Context» هر بار با دانش روز ساخته می‌شود.' });
+      toast.show({ intent: 'success', message: 'درخواست ذخیره شد؛ در «بسته‌های دانش» هر بار با دانش روز ساخته می‌شود.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'ذخیره نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
 
@@ -89,9 +127,18 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
-          <Button variant="ghost" iconStart="Upload" onClick={() => { onClose(); onOpenImport(); }}>پاسخ AI را وارد کن</Button>
-          <Button variant="secondary" iconStart="Package" disabled={!ready} loading={busy === 'save'} onClick={save}>ذخیره به‌عنوان درخواست</Button>
-          <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
+          <Menu
+            label="بیشتر"
+            align="start"
+            side="top"
+            trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="ghost" />}
+            items={[
+              { label: 'ذخیره به‌عنوان درخواست', icon: 'Package', disabled: !ready, onSelect: () => { void save(); } },
+              { label: 'پاسخ AI را وارد کن', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
+            ]}
+          />
+          <Button variant="secondary" iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>
+          <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای AI خودم'}</Button>
         </>
       }
     >
@@ -109,10 +156,21 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
         />
         <Select label="دامنه" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="فقط دانشی که در این گره و بالاتر از آن اثر دارد می‌آید؛ قیدها همیشه."/>
 
+        {answerError && <AiErrorNotice error={answerError} onRetry={answerError.kind === 'no_key' ? undefined : answerHere} retrying={busy === 'answer'} onOpenSettings={onOpenAiSettings} />}
+        {answer && (
+          <section className="flex flex-col gap-stack-sm rounded-control border border-border-default bg-surface-sunken p-inset-lg" aria-label="پاسخ" aria-live="polite">
+            <h3 className="label-md text-text-default">پاسخ</h3>
+            {answer.blocks.length === 0 && answer.streaming && <div className="body-sm flex items-center gap-inline-sm text-text-subtle"><Spinner size="sm" label="در حال نوشتن" />در حال نوشتن…</div>}
+            {answer.blocks.map((b) => <BlockView key={b.id} block={b} onAddToContext={answer.streaming ? undefined : onAddKnowledge} />)}
+            {answer.blocks.length === 0 && !answer.streaming && answer.text && <p className="body-md whitespace-pre-line text-text-default">{answer.text}</p>}
+          </section>
+        )}
         {error && <Alert intent="danger">{error}</Alert>}
         {!result && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت" /><span className="body-md">در حال ساخت…</span></div>}
         {result && (
-          <>
+          <details className="rounded-control border border-border-default p-inset-md">
+            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">ببین چه چیزی می‌رود ({formatNumber(result.included.length)} مورد · حدود {formatNumber(result.tokens)} توکن)</summary>
+          <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
               <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>
               <Badge intent="success" icon={false}>شامل شد ({formatNumber(result.included.length)})</Badge>
@@ -159,9 +217,33 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                 </div>
               </details>
             )}
-          </>
+          </div>
+          </details>
         )}
-        <p className="body-sm text-text-subtle">هیچ AI‌ای اینجا صدا زده نمی‌شود. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
+        {sessions.length > 0 && (
+          <details className="rounded-control border border-border-default p-inset-md">
+            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">پاسخ‌های قبلی ({formatNumber(sessions.length)})</summary>
+            <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="پاسخ‌های قبلی">
+              {[...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((sess) => (
+                <li key={sess.id} className="flex flex-col gap-stack-xs">
+                  <Button size="sm" variant="ghost" aria-expanded={past === sess.id} onClick={() => setPast(past === sess.id ? null : sess.id)}>{sess.title || 'گفتگو'} · {formatJalaliDate(sess.updatedAt)}</Button>
+                  {past === sess.id && (
+                    <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+                      {sess.messages.map((m) => (
+                        <div key={m.id} className="flex flex-col gap-stack-xs">
+                          {m.role === 'user' ? <p className="body-md text-text-default"><span className="label-sm text-text-subtle">پرسش: </span>{m.content}</p>
+                            : m.blocks?.length ? m.blocks.map((b) => <BlockView key={b.id} block={b} onAddToContext={onAddKnowledge} />)
+                            : m.content ? <p className="body-md whitespace-pre-line text-text-default">{m.content}</p> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        <p className="body-sm text-text-subtle">«کپی» هیچ AI‌ای را صدا نمی‌زند. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
       </div>
     </Dialog>
   );

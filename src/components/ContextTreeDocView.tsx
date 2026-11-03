@@ -104,7 +104,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <div className="flex flex-wrap items-center gap-inline-xs">
             <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
             <Button size="sm" variant="ghost" iconStart="BookOpen" onClick={() => props.onReadNode(node.id)}>خواندن سند</Button>
-            <Button size="sm" variant="ghost" iconStart="MessageSquare" onClick={() => props.onChatWithNode(node.id)}>گفتگو با این گره</Button>
             <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => props.onOpenThread(node.id)}>گفتگوی متمرکز</Button>
             <Button size="sm" variant="ghost" iconStart="Sparkles" onClick={() => props.onOpenAiRequest(node.id)}>درخواست برای AI</Button>
             <Menu
@@ -113,7 +112,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی', icon: 'Network', disabled: !!node.isSystem, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },

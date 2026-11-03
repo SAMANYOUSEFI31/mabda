@@ -43,7 +43,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-assets', title: 'رفتن به دارایی‌ها', keywords: ['خروجی'] },
   { id: 'go-workstreams', title: 'رفتن به جریان‌های کار', keywords: ['خروجی', 'ساخت'] },
   { id: 'metrics', title: 'شاخص‌ها و اعداد', keywords: ['نتیجه', 'عدد', 'نمودار'] },
-  { id: 'packs', title: 'بسته‌های Context', keywords: ['کپی', 'بسته'] },
+  { id: 'packs', title: 'بسته‌های دانش', keywords: ['کپی', 'بسته'] },
   { id: 'import', title: 'وارد کردن پاسخ AI', keywords: ['چسباندن', 'پاسخ'] },
 ];
 

@@ -126,7 +126,7 @@ for (const size of SIZES) {
   await page.getByRole('button', { name: /افزودن دانش/ }).first().click(); await shoot('dialog-context'); await closeDialog();
 
   await goTab(TABS[2]); await shoot('workstreams-create');
-  await page.getByRole("tab", { name: /شکاف/ }).click(); await shoot('workstreams-gap');
+  await page.getByRole("tab", { name: /چه چیزی کم است/ }).click(); await shoot('workstreams-gap');
   await page.getByRole("tab", { name: /^خروجی‌ها/ }).click(); await shoot('workstreams-history');
 
   await goTab(TABS[3]); await shoot('chat');

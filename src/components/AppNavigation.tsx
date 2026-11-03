@@ -46,12 +46,11 @@ interface AppNavigationProps {
 const VIEWS: Array<{ id: ContextView; label: string }> = [
   { id: 'doc', label: 'ساختار' },
   { id: 'read', label: 'سند خوانا' },
-  { id: 'table', label: 'جدول' },
   { id: 'canvas', label: 'بوم' },
 ];
 
 /**
- * Shell navigation: four destinations (منبع حقیقت، جریان‌های کار، گفتگو، دارایی‌ها). Each has a sub-menu that is open ONLY while
+ * Shell navigation: four destinations (خانه، منبع حقیقت، جریان‌های کار، دارایی‌ها). Each has a sub-menu that is open ONLY while
  * its section is active (accordion, aria-expanded). Everything that is not daily work lives in the one «حساب کاربری» menu,
  * which is also the only place the plan is shown.
  */
@@ -115,7 +114,6 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             </div>
           )}
 
-          <NavItem icon="MessageSquare" label="گفتگو" selected={activeTab === 'chat'} onClick={() => onTabChange('chat')} />
           <NavItem icon="Package" label="دارایی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
         </nav>
       </div>
@@ -186,7 +184,6 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           { id: 'home', label: 'خانه', icon: 'House' },
           { id: 'context', label: 'منبع', icon: 'BookOpen' },
           { id: 'workstreams', label: 'جریان‌ها', icon: 'Layers' },
-          { id: 'chat', label: 'گفتگو', icon: 'MessageSquare' },
           { id: 'assets', label: 'دارایی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'دارایی' },
         ]}
       />

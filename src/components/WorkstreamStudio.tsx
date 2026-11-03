@@ -30,7 +30,6 @@ import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice, PlanLine } from './AiNotices';
 import { BlockView } from './BlockView';
 import { contextDraftFromBlock } from '../core/blocks';
-import { KnowledgeGapChart } from './KnowledgeGapChart';
 import { Alert, Badge, Button, Card, EmptyState, List, ListItem, OptionCard, Progress, Select, Spinner, Switch, Tabs, formatNumber, useToast } from '../ui';
 
 interface WorkstreamStudioProps {
@@ -328,7 +327,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         <div className="flex shrink-0 flex-wrap items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-lg py-inset-sm">
           <span className="body-sm text-text-subtle">وضعیت رادار شکاف:</span>
           <span className="label-md tabular-nums text-text-default">{formatNumber(readiness.score)}٪ آماده</span>
-          <Button size="sm" variant="ghost" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>بررسی شکاف‌ها</Button>
+          <Button size="sm" variant="ghost" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>ببین چه چیزی کم است</Button>
         </div>
       </Card>
 
@@ -338,7 +337,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         onChange={(id) => setActiveTab(id as typeof activeTab)}
         items={[
           { id: 'create', label: 'تولید' },
-          { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `شکاف‌ها (${formatNumber(readiness.gaps.length)})` : 'شکاف‌ها' },
+          { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `چه چیزی کم است (${formatNumber(readiness.gaps.length)})` : 'چه چیزی کم است' },
           { id: 'history', label: `خروجی‌ها (${formatNumber(workstreamDeliverables.length)})` },
         ]}
       />
@@ -349,7 +348,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           <Alert
             intent={requiredMissing === 0 ? 'success' : 'warning'}
             title={`وضعیت آمادگی منبع حقیقت: ${readiness.status === 'ready' ? 'تأییدشده' : 'نیازمند تکمیل مدارک'} (${formatNumber(readiness.score)}٪)`}
-            action={<Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>مشاهدهٔ رادار و برطرف‌سازی شکاف‌ها</Button>}
+            action={<Button variant="secondary" size="sm" iconEnd="ArrowLeft" onClick={() => setActiveTab('gap_analysis')}>ببین چه چیزی کم است و کامل کن</Button>}
           >
             {requiredMissing === 0
               ? 'تمامی پیش‌نیازهای الزامی در درخت حقیقت موجود است. خروجی با حداکثر دقت تولید می‌شود.'
@@ -510,27 +509,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       {/* TAB 2: gap radar & panel */}
       {activeTab === 'gap_analysis' && (
         <div className="flex flex-col gap-stack-lg">
-          <KnowledgeGapChart
-            currentSpec={currentSpec}
-            allContextObjects={allContextObjects}
-            readiness={readiness}
-            onOpenContextModalForNode={(nodeId) => {
-              onOpenContextModal({
-                id: '',
-                workspaceId: currentWorkspace.id,
-                type: 'Fact',
-                status: 'Confirmed',
-                provenance: 'User Input',
-                title: '',
-                content: '',
-                nodeId,
-                version: 1,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              });
-            }}
-          />
-
           <GapEnginePanel
             nodes={nodes}
             spec={currentSpec}

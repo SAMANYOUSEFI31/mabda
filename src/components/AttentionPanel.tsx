@@ -34,12 +34,15 @@ interface Props {
   /** a quiet marker (never a notification): a week since the last weekly review and something is waiting */
   weeklyDue: boolean;
   onOpenWeekly: () => void;
+  /** level 2: the weekly review and the order of decisions appear only when there is something in them */
+  showWeekly?: boolean;
+  showWaiting?: boolean;
 }
 
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
@@ -53,14 +56,6 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
     setDraft((d) => ({ ...d, [gap.key]: '' }));
   };
 
-  const chips: Array<{ icon: IconName; label: string; count: number; onClick?: () => void; hint: string }> = [
-    { icon: 'Info', label: 'سؤال باز', count: gaps.length, onClick: onOpenStudio, hint: 'برای ساخت خروجی لازم است' },
-    { icon: 'TriangleAlert', label: 'تناقض', count: contradictionCount, onClick: onOpenContradictions, hint: 'دو مورد با هم نمی‌خوانند (پایین همین صفحه)' },
-    { icon: 'Network', label: 'دانش نیاز به بازبینی', count: reviews.length, onClick: () => document.getElementById('needs-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), hint: 'تصمیمی که به آن وابسته‌ای عوض شده' },
-    { icon: 'RefreshCw', label: 'خروجی نیاز به بازبینی', count: staleCount, onClick: onOpenAssets, hint: 'با نسخهٔ قبلِ دانش ساخته شده' },
-    { icon: 'Inbox', label: 'پیشنهاد AI', count: proposedCount, onClick: onOpenProposals, hint: 'منتظر تأیید تو' },
-  ];
-
   return (
     <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="چه چیزی به تو نیاز دارد">
       <div className="flex flex-col gap-stack-xs">
@@ -73,32 +68,10 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
         </p>
       </div>
 
-      <ul className="grid grid-cols-2 gap-inline-md lg:grid-cols-5">
-        {chips.map((c) => {
-          const inner = (
-            <>
-              <span className="flex items-center gap-inline-xs label-md text-text-default"><Icon name={c.icon} size="md" className={c.count ? 'text-icon-warning' : 'text-icon-subtle'} />{c.label}</span>
-              <span className="text-numeric-md tabular-nums text-text-default">{formatNumber(c.count)}</span>
-              <span className="caption text-text-subtle">{c.hint}</span>
-            </>
-          );
-          const cls = 'flex h-full w-full flex-col items-start gap-stack-xs rounded-control border border-border-default bg-surface-sunken p-inset-md text-start';
-          return (
-            <li key={c.label}>
-              {c.onClick && c.count > 0 ? (
-                <button type="button" onClick={c.onClick} className={`${cls} min-h-touch-comfortable transition-colors hover:bg-interaction-hover active:bg-interaction-pressed`}>{inner}</button>
-              ) : (
-                <div className={cls}>{inner}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
       <div className="flex flex-wrap items-center gap-inline-sm">
         <Button variant="ghost" size="sm" iconStart="History" onClick={onOpenChanges}>در ۷ روز اخیر چه چیزی عوض شد؟</Button>
-        <Button variant="ghost" size="sm" iconStart="ListChecks" onClick={onOpenWeekly}>بازبینی هفتگی (۵ دقیقه)</Button>
-        {weeklyDue && <Badge intent="info" icon={false}>موعد بازبینی</Badge>}
+        {showWeekly && <Button variant="ghost" size="sm" iconStart="ListChecks" onClick={onOpenWeekly}>بازبینی هفتگی (۵ دقیقه)</Button>}
+        {showWeekly && weeklyDue && <Badge intent="info" icon={false}>موعد بازبینی</Badge>}
       </div>
 
       {reviews.length > 0 && (
@@ -119,7 +92,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
         </div>
       )}
 
-      {anyWaiting && (
+      {showWaiting && anyWaiting && (
         <div id="waiting-decisions" className="flex flex-col gap-stack-md border-t border-border-default pt-inset-lg">
           <h3 className="title text-text-default">تصمیم‌های منتظر</h3>
           {waiting.ready.length > 0 && (
