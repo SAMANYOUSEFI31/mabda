@@ -311,3 +311,17 @@ test('showcase history: every edit has a real before and after that differ and d
     assert.ok(texts.length >= 2, `${o.title}: two versions can be compared`);
   }
 });
+
+import { thinkingSpace } from './thinkingSpace';
+
+test('showcase thinking: one confirmed knowledge has an unapproved rewrite — it waits in the thinking space and no request or pack reads it', () => {
+  const d = buildDemo(NOW);
+  const withDraft = d.objects.filter((o) => o.draft);
+  assert.equal(withDraft.length, 1);
+  const o = withDraft[0];
+  assert.equal(o.status, 'Confirmed');
+  assert.ok(thinkingSpace({ objects: d.objects, notes: d.notes, nodes: [...DEFAULT_TREE_NODES, ...d.nodes] }).waiting.some((w) => w.type === 'draft' && w.object.id === o.id));
+  const r = buildAiRequest({ kind: 'question', request: 'قیمت کارگاه گروهی چقدر است؟', workspaceName: 'x', nodes: [...DEFAULT_TREE_NODES, ...d.nodes], objects: d.objects, relationships: d.relationships, now: NOW });
+  assert.ok(r.markdown.includes(o.content) || !r.included.some((i) => i.id === o.id), 'the approved text is what a request carries');
+  assert.ok(!r.markdown.includes(o.draft!.content), 'the draft text is nowhere in a request');
+});

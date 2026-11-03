@@ -55,6 +55,10 @@ import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
 import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
+import { ThinkingSpace } from './components/ThinkingSpace';
+import { ThoughtDialog } from './components/ThoughtDialog';
+import { thoughtToDraft } from './core/thoughts';
+import { thinkingSpace } from './core/thinkingSpace';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
 import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
 import { MetricsDialog } from './components/MetricsDialog';
@@ -161,7 +165,7 @@ export default function App() {
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas'>('doc');
+  const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas' | 'thinking'>('doc');
   // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
   const viewModeSeen = useRef(contextViewMode);
   useEffect(() => {
@@ -285,6 +289,8 @@ export default function App() {
     if (hit.kind === 'asset') { setActiveTab('assets'); setFocusAsset({ id: hit.id, n }); return; }
     switch (hit.id) {
       case 'record': openContext(null); break;
+      case 'thought': setThoughtDialog({}); break;
+      case 'go-thinking': openThinkingSpace(); break;
       case 'ai-request': setAiRequest({ scopeNodeId: '' }); break;
       case 'go-home': setActiveTab('home'); break;
       case 'go-context': setActiveTab('context'); setContextViewMode('doc'); break;
@@ -299,13 +305,14 @@ export default function App() {
     }
   };
 
-  const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string }): Promise<ContextObject | undefined> => {
+  const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string; asDraft?: boolean }): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}) }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}), ...(opts?.asDraft ? { asDraft: true } : {}) }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
-      showImpact(r.impact);
+      if (opts?.asDraft) toast.show({ intent: 'success', message: r.object.draft ? 'پیش‌نویس ذخیره شد؛ AI و خروجی‌ها هنوز متن تأییدشده را می‌بینند. در «فضای فکر» تأییدش کن.' : 'پیش‌نویس برداشته شد؛ متن تأییدشده همان است.' });
+      else showImpact(r.impact);
       return r.object;
     }
     const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets, examples: draft.examples }));
@@ -327,6 +334,14 @@ export default function App() {
 
   // ── thinking items (derived from note lines; src/core/thinkingMarkers.ts) ──
   const thinking = useMemo(() => thinkingOf(data?.notes ?? []), [data?.notes]);
+  /** «N فکر باز» per node: open thoughts + what waits for approval (one pass, not one per node) */
+  const openCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    const v = thinkingSpace({ objects: workspaceContexts, notes: data?.notes ?? [], nodes });
+    for (const w of v.waiting) m.set(w.object.nodeId, (m.get(w.object.nodeId) ?? 0) + 1);
+    for (const t of v.thoughts) m.set(t.nodeId, (m.get(t.nodeId) ?? 0) + 1);
+    return m;
+  }, [workspaceContexts, data?.notes, nodes]);
   const handleConvertItem = async (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => {
     const r = await attempt(() => dataApi.convertThinkingItem(wid, item.noteId, { kind: item.kind, hash: item.hash, text: item.text }, opts));
     if (!r) return;
@@ -375,7 +390,8 @@ export default function App() {
     else if (t.type === 'weekly') setWeeklyOpen(true);
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
-    else reveal('open-thinking'); // «due» and «thinking»
+    else if (t.type === 'thinking') openThinkingSpace();
+    else reveal('open-thinking'); // «due»
   };
   const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const metrics = data?.metrics ?? [];
@@ -494,6 +510,20 @@ export default function App() {
     if (b) applyBundle(b);
   };
 
+  /** «تأیید و جایگزین کن» / «رد کن» for the unapproved rewrite of a confirmed knowledge */
+  const handleApproveDraft = async (objectId: string) => {
+    const r = await attempt(() => dataApi.approveDraft(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
+    showImpact(r.impact);
+    void reload(wid);
+  };
+  const handleRejectDraft = async (objectId: string) => {
+    const r = await attempt(() => dataApi.rejectDraft(wid, objectId));
+    if (!r) return;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)) }));
+    toast.show({ intent: 'info', message: 'پیش‌نویس رد شد؛ متن تأییدشده همان بود.' });
+  };
   const handleSetDependencies = async (objectId: string, dependsOn: string[]) => {
     const r = await attempt(() => dataApi.setDependencies(wid, objectId, dependsOn));
     if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes, stale: r.stale }));
@@ -591,6 +621,14 @@ export default function App() {
   };
 
   // ── notes ──────────────────────────────────────────────────────────────────────────────────────
+  // «فضای فکر» (thoughts that are not truth yet) and «فکر تازه»
+  const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string } | null>(null);
+  const [spaceNode, setSpaceNode] = useState<string | undefined>(undefined);
+  const openThinkingSpace = (nodeId?: string) => { setSpaceNode(nodeId); setActiveTab('context'); setContextViewMode('thinking'); };
+  const handleSaveThought = async (nodeId: string, content: string) => {
+    await handleAddNote(nodeId, content);
+    toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش. به AI نمی‌رسد.' });
+  };
   const handleAddNote = async (nodeId: string, content: string) => {
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
     if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes] }));
@@ -1084,19 +1122,23 @@ export default function App() {
                 <SegmentedControl
                   label="نمای منبع حقیقت"
                   value={contextViewMode}
-                  onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
+                  onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas' | 'thinking')}
                   items={[
                     { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                     { id: 'read', label: 'سند', icon: 'BookOpen' },
                     { id: 'canvas', label: 'بوم', icon: 'Workflow' },
                     ...(contextViewMode === 'table' ? [{ id: 'table', label: 'جدول', icon: 'Table2' as const }] : []),
+                    ...(contextViewMode === 'thinking' ? [{ id: 'thinking', label: 'فضای فکر', icon: 'Lightbulb' as const }] : []),
                   ]}
                 />
                 <Menu
                   label="نماهای بیشتر"
                   align="end"
                   trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
-                  items={[{ label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') }]}
+                  items={[
+                    { label: 'فضای فکر', icon: contextViewMode === 'thinking' ? 'Check' : 'Lightbulb', onSelect: () => setContextViewMode('thinking') },
+                    { label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') },
+                  ]}
                 />
               </div>
             </div>
@@ -1110,6 +1152,23 @@ export default function App() {
                 approvals={approvals}
                 fileName={currentWorkspace.name}
                 empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
+              />
+            ) : contextViewMode === 'thinking' ? (
+              <ThinkingSpace
+                objects={workspaceContexts}
+                notes={data.notes}
+                nodes={nodes}
+                nodeId={spaceNode}
+                onNodeChange={setSpaceNode}
+                onNewThought={() => setThoughtDialog({ nodeId: spaceNode })}
+                onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
+                onOpenObject={(o) => openContext(o)}
+                onApproveDraft={handleApproveDraft}
+                onRejectDraft={handleRejectDraft}
+                proposals={{
+                  onAccept: handleAcceptProposal, onReplace: handleReplaceWithProposal, onEdit: (o) => openContext(o), onReject: handleRejectProposal,
+                  onOpenImport: () => setIsImportOpen(true), onOpenPack: () => setPackTarget({ title: currentWorkspace.name }), onOpenConnect: () => setIsConnectOpen(true), onOpenMemory: () => setIsMemoryOpen(true),
+                }}
               />
             ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
@@ -1125,8 +1184,9 @@ export default function App() {
                 onReadNode={setReadNodeId}
                 onShowEffect={setEffectNodeId}
                 effectCount={(id) => effectiveObjects(id, workspaceContexts, nodes, data.relationships ?? [], new Date()).length}
-                thinking={thinking}
-                onConvertItem={handleConvertItem}
+                openCount={(id) => openCounts.get(id) ?? 0}
+                onOpenThinking={(id) => openThinkingSpace(id)}
+                onNewThought={(id) => setThoughtDialog({ nodeId: id })}
                 onSplitNote={handleSplitNote}
                 samples={data.samples ?? []}
                 onDeleteSamples={handleDeleteSamples}
@@ -1135,6 +1195,7 @@ export default function App() {
                 onOpenThread={setThreadNodeId}
                 onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 openNotesFor={focusNotes}
+                onReorderNode={async (nodeId, index) => { await nodeOp(() => dataApi.moveNode(wid, nodeId, nodes.find((n) => n.id === nodeId)?.parentId ?? '', index)); }}
                 onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در بخش «فایل‌ها» پردازشش کن.' }); }}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
@@ -1269,6 +1330,8 @@ export default function App() {
         object={selectedContextObject}
         onClose={() => setIsContextModalOpen(false)}
         onSave={handleSaveContextObject}
+        onApproveDraft={handleApproveDraft}
+        onRejectDraft={handleRejectDraft}
         onSupersede={handleSupersedeContext}
         onArchive={handleArchiveContext}
         nodes={nodes}
@@ -1286,6 +1349,7 @@ export default function App() {
         onPatchObject={handlePatchObject}
       />
 
+      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} onSave={handleSaveThought} />
       <NodeDialogs
         state={nodeDialog}
         nodes={nodes}
@@ -1305,7 +1369,8 @@ export default function App() {
         onLedger={setLedger}
         onOpenAiSettings={() => setIsAiSettingsOpen(true)}
         onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
-        onMove={(nodeId, parentId) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId))}
+        relationships={data.relationships}
+        onMove={(nodeId, parentId, reason) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId, undefined, reason))}
         onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
       />
 
@@ -1318,6 +1383,9 @@ export default function App() {
         onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onCreateObjects={(items) => { ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }}
         onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
+        nodes={nodes}
+        onGoToNode={(nodeId) => { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${nodeId}`); }}
+        onOpenThinking={() => openThinkingSpace()}
         onSampleDone={(firstDeliverable) => {
           ensureLibrarySpec('main_positioning');
           void (async () => {

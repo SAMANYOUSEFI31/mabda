@@ -12,6 +12,7 @@ import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { MentionTextarea } from './MentionTextarea';
 import { RelationPicker } from './RelationPicker';
+import { BeforeAfter } from './BeforeAfter';
 import { affectPlan, affectedBy } from '../core/relationPlan';
 import { TYPE_CHIP_FA, guessTitle, guessType } from '../core/knowledgeGuess';
 import { suggestLinks } from '../core/mentions';
@@ -29,7 +30,10 @@ interface ContextDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** `reason` only for an edit of confirmed knowledge: it is stored in the Change, never in the text */
-  onSave: (saved: ContextDraft, opts?: { reason?: string }) => void | Promise<ContextObject | undefined>;
+  onSave: (saved: ContextDraft, opts?: { reason?: string; asDraft?: boolean }) => void | Promise<ContextObject | undefined>;
+  /** the unapproved rewrite of this confirmed knowledge: approve (it replaces the text) / reject (it is dropped) */
+  onApproveDraft?: (id: string) => Promise<void>;
+  onRejectDraft?: (id: string) => Promise<void>;
   /** the reason is stored in the Change log, never in the object's text */
   onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => void;
   onArchive: (id: string) => void;
@@ -84,6 +88,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   object,
   onClose,
   onSave,
+  onApproveDraft,
+  onRejectDraft,
   onSupersede,
   onArchive,
   nodes,
@@ -102,8 +108,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
 
-  const [title, setTitle] = useState(object?.title || '');
-  const [content, setContent] = useState(object?.content || '');
+  // opening a knowledge that has a draft continues the DRAFT (the approved text is shown next to it, below)
+  const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
+  const [content, setContent] = useState(object?.draft?.content ?? object?.content ?? '');
+  const [applyNow, setApplyNow] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   // the kind and the title are guessed from the text until the user picks / writes her own (src/core/knowledgeGuess.ts)
   const keepsOwn = !!object; // editing, or a prefilled draft that already has them
@@ -175,6 +183,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const facetsFinal = () => { const f = facetDraft.replace(/\s+/g, ' ').trim().slice(0, 40); return f && !facets.includes(f) && facets.length < 8 ? [...facets, f] : facets; };
   const knownFacets = useMemo(() => [...new Set(allObjects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [allObjects]);
 
+  // editing the TEXT of confirmed knowledge: the user chooses — keep it as a draft (nothing downstream sees it) or replace the text now
+  const confirmedEdit = isEditing && !!object && object.status === 'Confirmed' && !object.sample && !isSupersedingMode;
+  const textChanged = confirmedEdit && (content.trim() !== object!.content.trim() || (title.trim() || guessTitle(content)) !== object!.title);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalTitle = title.trim() || guessTitle(content);
@@ -219,7 +230,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
     void (async () => {
-      const saved = await onSave(updated, isEditing && reasonAllowed(object!.status) && editReason.trim() ? { reason: editReason.trim() } : undefined);
+      const asDraft = confirmedEdit && !applyNow && (textChanged || !!object?.draft);
+      const reason = isEditing && reasonAllowed(object!.status) && editReason.trim() ? editReason.trim() : undefined;
+      const saved = await onSave(updated, reason || asDraft ? { ...(reason ? { reason } : {}), ...(asDraft ? { asDraft: true } : {}) } : undefined);
       const id = isEditing ? object!.id : saved?.id;
       if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
       // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
@@ -346,6 +359,24 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
             />
           </Card>
+        )}
+        {object?.draft && (
+          <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
+            <div className="flex flex-col gap-stack-sm">
+              <p className="body-sm text-text-default">تا تأیید نشود، AI و خروجی‌ها همین متنِ تأییدشده را می‌بینند. پایین، متن تأییدشده در برابر پیش‌نویس است.</p>
+              <BeforeAfter before={object.content} after={object.draft.content} />
+              <div className="flex flex-wrap gap-inline-sm">
+                {onApproveDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>تأیید و جایگزین کن</Button>}
+                {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد کن</Button>}
+              </div>
+            </div>
+          </Alert>
+        )}
+        {confirmedEdit && textChanged && (
+          <div className="flex flex-col gap-stack-xs" data-testid="draft-choice">
+            <SegmentedControl label="این تغییر" value={applyNow ? 'now' : 'draft'} onChange={(v) => setApplyNow(v === 'now')} items={[{ id: 'draft', label: 'پیش‌نویس بماند' }, { id: 'now', label: 'همین حالا جایگزین شود' }]} />
+            <p className="body-sm text-text-subtle">{applyNow ? 'متن تازه فوراً جای متن تأییدشده می‌نشیند و AI همین را می‌بیند.' : 'متن تأییدشده همان می‌ماند و AI و خروجی‌ها هنوز آن را می‌بینند؛ وقتی پیش‌نویس را تأیید کنی جایش را می‌گیرد.'}</p>
+          </div>
         )}
         <div>
           <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>بیشتر</Button>

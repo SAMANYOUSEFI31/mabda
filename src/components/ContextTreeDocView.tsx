@@ -5,12 +5,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { ContextObject, Note, StoredFile, TreeNode } from '../types';
-import { childrenOf } from '../core/nodeTree';
+import { childrenOf, quickMoves } from '../core/nodeTree';
 import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
-import { ThinkingList } from './ThinkingList';
-import type { NoteThinkingItem } from '../core/thinkingMarkers';
 
 interface ContextTreeDocViewProps {
   objects: ContextObject[];
@@ -26,9 +24,10 @@ interface ContextTreeDocViewProps {
   onShowEffect: (nodeId: string) => void;
   /** how many things are in force at a node (own, from above, everywhere) — the summary sentence */
   effectCount: (nodeId: string) => number;
-  /** thinking items derived from every note (src/core/thinkingMarkers.ts) */
-  thinking: NoteThinkingItem[];
-  onConvertItem: (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => Promise<void>;
+  /** how many thoughts and waiting suggestions this node has («۳ فکر باز») */
+  openCount: (nodeId: string) => number;
+  onOpenThinking: (nodeId: string) => void;
+  onNewThought: (nodeId: string) => void;
   onSplitNote: (noteId: string) => Promise<void>;
   /** grey examples (starter / template): displayed, never part of knowledge */
   samples: ContextObject[];
@@ -41,6 +40,8 @@ interface ContextTreeDocViewProps {
   openNotesFor?: { nodeId: string; n: number } | null;
   /** adds a file to a node (it is processed later, from the files list) */
   onUploadFile: (file: File, nodeId: string) => Promise<void>;
+  /** reorder among siblings: the node goes to this position under the same parent */
+  onReorderNode: (nodeId: string, index: number) => Promise<void>;
   onAddNote: (nodeId: string, content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
@@ -54,6 +55,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
   const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
   const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const quick = (id: string) => quickMoves(nodes, id);
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const card = (obj: ContextObject) => (
@@ -64,6 +66,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <TypeBadge value={obj.type} />
           <AssumptionBadge object={obj} />
           <ReachBadge object={obj} />
+          <AssumptionBadge object={obj} />
           <StatusBadge value={obj.status} />
         </div>
       </div>
@@ -92,9 +95,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const nodeFiles = props.files.filter((f) => f.nodeId === node.id);
     const kids = childrenOf(nodes, node.id);
     const notesOpen = openNotes.has(node.id);
-    const established = nodeObjects.filter((o) => o.status === 'Confirmed' && !o.assumption);
-    const notThinkingYet = nodeObjects.filter((o) => !(o.status === 'Confirmed' && !o.assumption));
-    const thinking = props.thinking.filter((i) => i.nodeId === node.id);
+    // the truth: approved knowledge only (a confirmed assumption stays, with its badge — it IS approved and the AI reads it in its own section)
+    const established = nodeObjects.filter((o) => o.status === 'Confirmed');
     const nodeSamples = props.samples.filter((o) => o.nodeId === node.id);
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
@@ -122,7 +124,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
-                { label: 'جابه‌جایی', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                // the quick moves: reorder at once (nothing changes for what reaches it); a change of level shows its effect first
+                { label: 'بالاتر ببر', icon: 'ChevronUp', disabled: quick(node.id).up === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).up!) },
+                { label: 'پایین‌تر ببر', icon: 'ChevronDown', disabled: quick(node.id).down === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).down!) },
+                { label: 'یک سطح بیرون بیاور', icon: 'ArrowRight', disabled: !quick(node.id).outdent, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id, preset: quick(node.id).outdent!.parentId }) },
+                { label: 'بگذار زیر بخش قبلی', icon: 'ArrowLeft', disabled: !quick(node.id).indent, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id, preset: quick(node.id).indent!.parentId }) },
                 { divider: true },
                 { label: 'حذف', icon: 'Trash2', intent: 'danger', onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
               ]}
@@ -154,15 +161,14 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               </section>
             )}
 
-            {/* در حال فکر: proposals, assumptions, thinking items from notes, the notes themselves */}
-            {(thinking.length > 0 || notThinkingYet.length > 0 || nodeNotes.length > 0 || notesOpen) && (
-              <section className="flex flex-col gap-stack-sm" aria-label="در حال فکر">
-                <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                  <h4 className="label-md text-text-default">در حال فکر</h4>
-                  <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>
+            {/* the truth stays clean: what is still a thought or a suggestion is NOT listed here — one calm counter opens it in the thinking space,
+                where it is already filtered to this node. The raw notes of the node are one closed click away. */}
+            {(props.openCount(node.id) > 0 || nodeNotes.length > 0 || notesOpen) && (
+              <section className="flex flex-col gap-stack-sm" aria-label="فکر و یادداشت">
+                <div className="flex flex-wrap items-center gap-inline-xs">
+                  {props.openCount(node.id) > 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" data-testid="open-thoughts" onClick={() => props.onOpenThinking(node.id)}>{formatNumber(props.openCount(node.id))} فکر باز</Button>}
+                  {(nodeNotes.length > 0 || notesOpen) && <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>}
                 </div>
-                {notThinkingYet.length > 0 && <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{notThinkingYet.map(card)}</div>}
-                <ThinkingList items={thinking} objects={objects} onConvert={(item, opts) => props.onConvertItem(item, opts)} />
                 {notesOpen && (
                   <NodeNotes
                     nodeId={node.id}
@@ -192,7 +198,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
             {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
             <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
-              {!notesOpen && thinking.length === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="FileText" onClick={() => toggleNotes(node.id)}>فکر خامی داری؟ بنویس</Button>}
+              {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="FileText" onClick={() => props.onNewThought(node.id)}>فکر خامی داری؟ بنویس</Button>}
               <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>فایل یا متنی داری؟ اضافه کن</Button>
               <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
             </div>

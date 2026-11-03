@@ -48,6 +48,8 @@ export interface SceneItem {
   status?: ContextObject['status'];
   /** badges */
   review?: boolean; assumption?: boolean; expired?: boolean; global?: boolean; sample?: boolean;
+  /** not approved yet (a suggestion or a «needs review»): only drawn when «نشان بده چه در راه است» is on */
+  pending?: boolean;
   facet?: string;
   count?: number;
   expanded?: boolean;
@@ -77,6 +79,8 @@ export interface SceneOptions {
   columns?: BoardColumns; rows?: BoardRows;
   /** keep only what needs a review (a filter, not a column) */
   onlyReview?: boolean;
+  /** relations («بوم حقیقت»): the map shows only what is approved; with this on, suggestions and what needs a look appear too — drawn faint, so their effect is seen BEFORE a yes */
+  showPending?: boolean;
 }
 
 const extract = (s: string, n = 140) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
@@ -90,14 +94,15 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
   const filterObjects = (list: ContextObject[]) => (opts.onlyReview ? list.filter((o) => input.reviewIds.has(o.id) || o.status === 'Needs Review') : list);
 
   if (layout === 'relations') {
-    const objects = filterObjects(input.objects);
+    const isPending = (o: ContextObject) => o.status === 'Proposed' || o.status === 'Needs Review';
+    const objects = filterObjects(opts.showPending ? input.objects : input.objects.filter((o) => !isPending(o)));
     const m = buildMapModel({ nodes: input.nodes, objects, relationships: input.relationships, deliverables: input.deliverables, reviewObjectIds: input.reviewIds, staleAssetIds: input.staleAssetIds }, { showAssets: opts.showAssets ?? true, includeHistory: opts.includeHistory, groupBy: opts.boxes === false ? 'dependency' : 'domain', expanded: opts.expanded });
     const items: SceneItem[] = m.vertices.map((v) => {
       const o = v.objectId ? byId.get(v.objectId) : undefined;
       return {
         id: v.id, kind: v.kind, label: v.label, x: v.x, y: v.y, w: v.w, h: v.h, ...(v.objectId ? { objectId: v.objectId } : {}), ...(v.nodeId ? { nodeId: v.nodeId } : {}), ...(v.assetId ? { assetId: v.assetId } : {}),
         ...(v.type ? { type: v.type } : {}), ...(v.status ? { status: v.status } : {}), ...(v.facet ? { facet: v.facet } : {}), ...(v.count !== undefined ? { count: v.count } : {}), ...(v.expanded !== undefined ? { expanded: v.expanded } : {}),
-        ...(o ? { summary: extract(o.content), ...badges(o, !!v.review, now) } : v.review ? { review: true } : {}),
+        ...(o ? { summary: extract(o.content), ...badges(o, !!v.review, now), ...(isPending(o) ? { pending: true } : {}) } : v.review ? { review: true } : {}),
       };
     });
     const boxes: SceneBox[] = m.groups.map((g) => ({ id: g.id, kind: 'group', label: g.label, depth: g.depth, x: g.x, y: g.y, w: g.w, h: g.h, nodeId: g.nodeId, count: g.count, expanded: g.expanded, hint: 'گرهٔ درخت (دامنه)؛ ترتیب ندارد.' }));

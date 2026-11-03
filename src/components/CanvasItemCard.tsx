@@ -59,7 +59,7 @@ interface CardProps {
 export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const { item, lod } = p;
   // focus mode: a card that is not part of the selection gets a quieter BACKGROUND and BORDER — its text is never made transparent, so every title stays readable (contrast ≥ 3:1, measured in screens.mjs)
-  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
+  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : item.pending && !p.selected ? 'border-dashed border-border-default bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
   const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
 
@@ -75,7 +75,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const role = item.kind === 'object' ? 'group' : 'group';
   return (
     <div
-      data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
+      data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-pending={item.pending || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
       onPointerDown={(e) => p.onPointerDown?.(e, item)}
       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey); }}
       onDoubleClick={() => p.onOpen(item)}

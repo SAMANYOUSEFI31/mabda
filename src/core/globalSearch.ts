@@ -34,6 +34,8 @@ export type SearchGroups = Record<SearchKind, SearchHit[]>;
 export interface SearchCommand { id: string; title: string; keywords?: string[] }
 /** the shortcuts of the palette; the UI binds each id to an action */
 export const COMMANDS: SearchCommand[] = [
+  { id: 'thought', title: 'فکر تازه', keywords: ['ایده', 'سؤال', 'فرض', 'تصمیم باز', 'یادداشت', 'فکر خام'] },
+  { id: 'go-thinking', title: 'رفتن به فضای فکر', keywords: ['فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'قید'] },
   { id: 'ai-request', title: 'درخواست برای AI', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },

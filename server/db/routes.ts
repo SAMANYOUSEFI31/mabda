@@ -98,7 +98,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   // ── nodes ────────────────────────────────────────────────────────────
   router.post('/workspaces/:wid/nodes', wrap((req, res) => { res.json({ node: repo.createNode(scopeOf(req), body(req) as never), nodes: repo.listNodes(scopeOf(req)) }); }));
   router.patch('/workspaces/:wid/nodes/:id', wrap((req, res) => { const s = scopeOf(req); repo.updateNode(s, req.params.id, body(req)); res.json({ nodes: repo.listNodes(s) }); }));
-  router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, String(body(req).parentId), body(req).index) }); }));
+  router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined) }); }));
   router.delete('/workspaces/:wid/nodes/:id', wrap((req, res) => {
     const s = scopeOf(req);
     const nodes = repo.deleteNode(s, req.params.id, typeof req.query.transferTo === 'string' ? req.query.transferTo : undefined);
@@ -118,6 +118,13 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const r = repo.updateObject(s, req.params.id, patch, metaOf(body(req)));
     res.json({ ...r, stale: stale(s) });
   }));
+  /** an unapproved edit of confirmed knowledge: approve (it replaces the text) or reject (it is thrown away) */
+  router.post('/workspaces/:wid/objects/:id/draft/approve', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = repo.approveDraft(s, req.params.id, metaOf(body(req)));
+    res.json({ ...r, stale: stale(s) });
+  }));
+  router.delete('/workspaces/:wid/objects/:id/draft', wrap((req, res) => { const s = scopeOf(req); res.json({ object: repo.rejectDraft(s, req.params.id) }); }));
   router.post('/workspaces/:wid/objects/:id/supersede', wrap((req, res) => {
     const s = scopeOf(req);
     const { change: _c, reason: _r, ...input } = body(req);

@@ -10,6 +10,7 @@ import { dataApi, DataApiError } from '../services/dataApi';
 import { asAiError, generateDeliverableApi } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice } from './AiNotices';
+import { quickStartSummary } from '../core/quickStartSummary';
 import { Alert, Badge, Button, Checkbox, Dialog, Markdown, OptionCard, Progress, Select, Spinner, TextField, Textarea, TypeBadge, formatNumber, useToast } from '../ui';
 
 interface Props {
@@ -21,6 +22,12 @@ interface Props {
   onConfirmMany: (ids: string[]) => Promise<void>;
   onSampleDone: (d: GeneratedDeliverable) => void;
   onOpenAiSettings: () => void;
+  /** the workspace's nodes: the summary names where things went */
+  nodes: Array<{ id: string; label: string }>;
+  /** «ببین»: close and open that node in the structure */
+  onGoToNode: (nodeId: string) => void;
+  /** the suggestions that are not approved yet wait in the thinking space */
+  onOpenThinking: () => void;
 }
 
 type Path = 'text' | 'memory' | 'questions';
@@ -40,7 +47,7 @@ const QUESTIONS: Array<{ key: string; label: string; type: ContextDraft['type'];
  */
 export const QuickStartDialog: React.FC<Props> = (props) => (props.open ? <Wizard {...props} /> : null);
 
-const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, onOpenAiSettings }) => {
+const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, onOpenAiSettings, nodes, onGoToNode, onOpenThinking }) => {
   const ai = useAiStatus();
   const toast = useToast();
   const [step, setStep] = useState<'choose' | 'input' | 'review' | 'pack'>('choose');
@@ -59,6 +66,8 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
   const [sampling, setSampling] = useState(false);
   const saved = useRef<ContextObject[] | null>(null); // a retry must not create the answers twice
 
+  // what this quick start left behind: the answers (approved) or the extracted items (approved if picked, else still suggestions)
+  const made = quickStartSummary(path === 'questions' ? (saved.current ?? []) : created.map((o) => ({ nodeId: o.nodeId, status: picked.has(o.id) ? 'Confirmed' : o.status })), nodes);
   const answered = QUESTIONS.filter((q) => answers[q.key]?.trim());
   const fail = (e: unknown) => setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته. دوباره تلاش کن.');
 
@@ -195,6 +204,24 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
         {step === 'pack' && (
           <div className="flex flex-col gap-stack-lg">
             {!pack && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت بسته" /><span className="body-md">در حال ساخت بسته…</span></div>}
+            {made.rows.length > 0 && (
+              <section className="flex flex-col gap-stack-sm" aria-label="چه ساخته شد" data-testid="quickstart-made">
+                <h3 className="title text-text-default">چه ساخته شد</h3>
+                <ul className="flex flex-col gap-stack-xs">
+                  {made.rows.map((r) => (
+                    <li key={r.nodeId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-md">
+                      <span className="body-md text-text-default">«{r.label}»: {r.confirmed > 0 ? `${formatNumber(r.confirmed)} تأییدشده` : ''}{r.confirmed > 0 && r.proposed > 0 ? '، ' : ''}{r.proposed > 0 ? `${formatNumber(r.proposed)} پیشنهادی` : ''}</span>
+                      <Button size="sm" variant="ghost" onClick={() => { onClose(); onGoToNode(r.nodeId); }}>ببین</Button>
+                    </li>
+                  ))}
+                </ul>
+                {made.proposed > 0 && (
+                  <Alert intent="info" title={`${formatNumber(made.proposed)} مورد پیشنهادی است`} action={<Button size="sm" variant="secondary" onClick={() => { onClose(); onOpenThinking(); }}>رفتن به فضای فکر</Button>}>
+                    پیشنهادی‌ها هنوز جزو حقیقت نیستند و به AI نمی‌رسند. در «فضای فکر» هرکدام را تأیید یا رد کن.
+                  </Alert>
+                )}
+              </section>
+            )}
             {pack && (
               <section className="flex flex-col gap-stack-sm" aria-label="بستهٔ دانش">
                 <h3 className="title text-text-default">بستهٔ دانش تو آماده است</h3>

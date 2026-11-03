@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import type { ContextObject, Note, TreeNode } from '../types';
-import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, subtreeIds } from '../core/nodeTree';
+import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
+import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, ROOT_TARGET, subtreeIds } from '../core/nodeTree';
+import { moveEffect } from '../core/nodeMove';
 import { Alert, Button, Dialog, Select, TextField, Textarea, formatNumber } from '../ui';
 import { CoachPanel } from './CoachPanel';
 import type { LedgerEntry } from '../types';
@@ -13,7 +14,7 @@ import type { LedgerEntry } from '../types';
 export type NodeDialogState =
   | { kind: 'create'; parentId: string }
   | { kind: 'rename'; nodeId: string }
-  | { kind: 'move'; nodeId: string }
+  | { kind: 'move'; nodeId: string; /** a destination chosen by a quick move («یک سطح بیرون بیاور»): '' = the top level */ preset?: string }
   | { kind: 'delete'; nodeId: string }
   | { kind: 'coach'; nodeId: string }
   | null;
@@ -33,7 +34,8 @@ interface Props {
   onLedger: (ledger: LedgerEntry[]) => void;
   onOpenAiSettings: () => void;
   onRename: (nodeId: string, label: string, description: string) => Promise<void>;
-  onMove: (nodeId: string, parentId: string) => Promise<void>;
+  onMove: (nodeId: string, parentId: string, reason?: string) => Promise<void>;
+  relationships?: ContextRelationship[];
   onDelete: (nodeId: string, transferTo?: string) => Promise<void>;
 }
 
@@ -43,11 +45,12 @@ const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
 
-const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
+const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], relationships = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete }) => {
   const node = 'nodeId' in state ? nodes.find((n) => n.id === state.nodeId) : undefined;
   const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : '');
   const [description, setDescription] = useState(state.kind === 'rename' ? node?.description ?? '' : '');
-  const [target, setTarget] = useState('');
+  const [target, setTarget] = useState(state.kind === 'move' && state.preset !== undefined ? (state.preset === '' ? ROOT_TARGET : state.preset) : '');
+  const [moveReason, setMoveReason] = useState('');
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -107,23 +110,36 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
 
   if (state.kind === 'move') {
     const exclude = new Set(subtreeIds(nodes, node.id));
-    const check = target ? canMove(nodes, node.id, target) : { ok: false as const, reason: '' };
+    const parent = target === ROOT_TARGET ? '' : target;
+    const check = target ? canMove(nodes, node.id, parent) : { ok: false as const, reason: '' };
+    // what changes BEFORE she says yes: approved knowledge that stops (or starts) reaching the moved sections
+    const effect = target && check.ok ? moveEffect(nodes, objects, relationships, node.id, parent, new Date()) : undefined;
     return (
       <Dialog
         open
         onClose={onClose}
         size="sm"
         title={`جابه‌جایی «${node.label}»`}
+        description="دانش، یادداشت، فایل، رابطه و تاریخچهٔ این بخش (و زیربخش‌هایش) با آن می‌روند."
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
-            <Button variant="primary" loading={busy} disabled={!check.ok} onClick={() => run(() => onMove(node.id, target))}>جابه‌جا کن</Button>
+            <Button variant="primary" loading={busy} disabled={!check.ok} onClick={() => run(() => onMove(node.id, parent, moveReason.trim() || undefined))}>جابه‌جا کن</Button>
           </>
         }
       >
         <div className="flex flex-col gap-stack-md">
-          <Select label="مقصد (گرهٔ والد جدید)" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...options(nodes, exclude)]} />
+          <Select label="کجا برود؟" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, { value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }, ...options(nodes, exclude)]} />
           {!check.ok && check.reason && <Alert intent="warning">{check.reason}</Alert>}
+          {effect && effect.sentences.length > 0 && (
+            <div data-testid="move-effect">
+              <Alert intent="warning" title="بعد از جابه‌جایی چیزی عوض می‌شود">
+                <ul className="list-inside list-disc">{effect.sentences.map((x) => <li key={x}>{x}</li>)}</ul>
+              </Alert>
+            </div>
+          )}
+          {effect && effect.sentences.length === 0 && <p className="body-sm text-text-subtle" data-testid="move-effect">دانشی از بیرون روی این بخش‌ها عوض نمی‌شود.</p>}
+          {check.ok && target && <TextField label="دلیل (اختیاری)" value={moveReason} onChange={(e) => setMoveReason(e.target.value)} hint="در تاریخچه می‌ماند." />}
         </div>
       </Dialog>
     );
