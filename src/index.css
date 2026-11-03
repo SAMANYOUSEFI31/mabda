@@ -95,3 +95,12 @@
 
 /* A prompt preview mixes Persian lines with LTR markers (<!-- … -->, tags): every line takes its own direction, so none is flipped. */
 .bidi-plain textarea { unicode-bidi: plaintext; }
+
+/* The reading document: a heading reached from the outline or a permalink stops below the top edge and shows where it landed. */
+.doc-anchor { scroll-margin-block-start: var(--space-24, 96px); }
+.doc-anchor:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
+/* the outline rail stays in view while the long document scrolls (desktop); on phones it is a menu instead */
+.doc-outline { position: sticky; inset-block-start: var(--space-16, 64px); max-block-size: calc(100dvh - var(--space-24, 96px)); overflow-y: auto; }
+/* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
+.doc-bar { position: sticky; inset-block-start: var(--space-16); z-index: 5; padding-block: var(--space-2); background: var(--surface-page); }
+.doc-bar .bsh-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }

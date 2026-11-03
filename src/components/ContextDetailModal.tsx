@@ -10,7 +10,8 @@ import type { ReviewNeed } from '../core/decisionGraph';
 import { flatten } from '../core/nodeTree';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
-import { ChangeEntry } from './ChangeEntry';
+import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
+import { reasonAllowed, versionHistory } from '../core/versionHistory';
 import type { ContextChange } from '../types';
 import { MX } from '../core/metricsText';
 import { parseNumber } from '../core/metrics';
@@ -21,7 +22,8 @@ interface ContextDetailModalProps {
   object: ContextObject | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (saved: ContextDraft) => void | Promise<ContextObject | undefined>;
+  /** `reason` only for an edit of confirmed knowledge: it is stored in the Change, never in the text */
+  onSave: (saved: ContextDraft, opts?: { reason?: string }) => void | Promise<ContextObject | undefined>;
   /** the reason is stored in the Change log, never in the object's text */
   onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => void;
   onArchive: (id: string) => void;
@@ -135,6 +137,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const parentNodeId = object ? nodes.find((n) => n.id === object.nodeId)?.parentId : undefined;
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
+  const [editReason, setEditReason] = useState('');
+  const history = useMemo(() => versionHistory(changes), [changes]);
   const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
@@ -189,7 +193,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
     void (async () => {
-      const saved = await onSave(updated);
+      const saved = await onSave(updated, isEditing && reasonAllowed(object!.status) && editReason.trim() ? { reason: editReason.trim() } : undefined);
       const id = isEditing ? object!.id : saved?.id;
       if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
     })();
@@ -238,19 +242,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       }
     >
       {isEditing && object && (
-        <div className="mb-stack-md">
-          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'influence')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `تاریخچه (${formatNumber(changes.length)})` }, { id: 'influence', label: 'اثرگذاران' }]} />
+        <div className="mb-stack-md flex flex-col gap-stack-sm">
+          <ApprovalBadge history={history} />
+          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'influence')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `نسخه‌ها (${formatNumber(history.entries.length)})` }, { id: 'influence', label: 'اثرگذاران' }]} />
         </div>
       )}
       {tab === 'influence' && isEditing && object && influence && <InfluencePanel influence={influence} nodes={nodes} onOpenObject={onOpenRelated} />}
       {tab === 'history' && isEditing && (
-        changes.length === 0 ? <p className="body-md text-text-subtle">هنوز تغییری ثبت نشده است.</p> : (
-          <ol className="flex flex-col gap-stack-sm" aria-label="تاریخچهٔ تغییرها (جدیدترین اول)">
-            {changes.slice().reverse().map((c) => (
-              <ChangeEntry key={c.id} change={c} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
-            ))}
-          </ol>
-        )
+        <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
       <form id="context-detail-form" onSubmit={handleSubmit} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         <TextField
@@ -275,6 +274,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
             <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، گاردریل است.' : 'فقط برای این گره و زیرگره‌هایش گاردریل است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
           </div>
+        )}
+        {isEditing && !isSupersedingMode && reasonAllowed(object!.status) && (
+          <TextField label="دلیل این ویرایش (اختیاری)" value={editReason} onChange={(e) => setEditReason(e.target.value)} hint="فقط برای ویرایش دانش تأییدشده است؛ در مسیر نسخه‌ها ثبت می‌شود، نه در متن. پیش‌نویس دلیل نمی‌گیرد." />
         )}
         <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
         <div className="flex flex-col gap-stack-xs" role="group" aria-label="بُعدها">

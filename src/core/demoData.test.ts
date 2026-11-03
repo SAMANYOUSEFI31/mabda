@@ -195,6 +195,7 @@ test('assumptions and a decision record: one assumption is due, one is later; a 
 
 // ── packs, facets, samples, a template in the showcase ───────────────────────────────────────────
 import { buildAiRequest } from './aiRequest';
+import { approvalsOf, versionHistory } from './versionHistory';
 import { buildContextPack } from './contextPack';
 
 test('showcase packs: three different selections, resolved through the effective context; assumptions and rejected options apart; no sample anywhere', () => {
@@ -254,4 +255,18 @@ test('showcase saved requests: an audit and a decision, each assembled from conf
     assert.ok(r.included.every((i) => d.objects.find((o) => o.id === i.id)!.status === 'Confirmed'), 'only Confirmed is sent');
     assert.ok(r.excluded.some((e) => e.reason === 'unconfirmed') || p.kind === 'decision', 'what is not confirmed is left out with a reason');
   }
+});
+
+test('showcase version path: one object with three rewrites and one approval reads as «۴ پیش‌نویس» → «تأیید شد در نسخهٔ ۴»; the version counter is unchanged', () => {
+  const tone = d.objects.find((x) => x.id === 'dm_tone')!;
+  assert.equal(tone.version, 4);
+  assert.equal(tone.status, 'Confirmed');
+  const h = versionHistory(d.changes.filter((c) => c.objectId === 'dm_tone'));
+  assert.deepEqual(h.entries.map((e) => e.type), ['drafts', 'milestone']);
+  assert.equal((h.entries[0] as { count: number }).count, 4);
+  assert.deepEqual([h.lastApproval?.version, h.lastApproval?.how, h.draftsSinceApproval], [4, 'accepted', 0]);
+  assert.equal(approvalsOf(d.changes).dm_tone.version, 4);
+  // an object nobody ever drafted is a single milestone at its first version
+  const plain = versionHistory(d.changes.filter((c) => c.objectId === 'dm_voice'));
+  assert.equal(plain.entries.filter((e) => e.type === 'milestone').length >= 1, true);
 });

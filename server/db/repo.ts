@@ -12,6 +12,7 @@ import type { PairJudgment } from '../../src/core/contradictionCandidates.ts';
 import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../src/core/metrics.ts';
+import { reasonAllowed } from '../../src/core/versionHistory.ts';
 import { isRequestKind, REQUEST_MAX_CHARS } from '../../src/core/aiRequest.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
@@ -438,7 +439,8 @@ export class Repo {
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
       if (st) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: cur.version, kind: statusChangeKind(cur.status, next.status), meta, before: st.before, after: st.after });
       const rest = diffFields(cur, next, ['type', 'title', 'content', 'nodeId', 'slotKey', 'provenance', 'reach', 'validUntil', 'assumption', 'reviewBy', 'record', 'facets']);
-      if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta, before: rest.before, after: rest.after });
+      // a reason belongs to an edit of CONFIRMED knowledge; a draft (Proposed / Needs Review …) carries none (src/core/versionHistory.ts)
+      if (rest) this.recordChange(s, { objectId: id, fromVersion: cur.version, toVersion: next.version, kind: meta?.kind ?? 'edited', meta: reasonAllowed(cur.status) ? meta : { ...meta, reason: undefined }, before: rest.before, after: rest.after });
       return next;
     })());
     return { object: value, impact };

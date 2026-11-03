@@ -14,3 +14,4 @@ export type { TabItem, TableColumn } from './Navigation.tsx';
 export * from './format.ts';
 export * from './mabda.tsx';
 export { Markdown } from './Markdown.tsx';
+export type { HeadingAnchor } from './Markdown.tsx';

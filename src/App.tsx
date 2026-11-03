@@ -27,7 +27,8 @@ import { can, entitlementsOf } from './core/entitlements';
 import { ContextTreeDocView } from './components/ContextTreeDocView';
 import { ContextCanvas } from './components/ContextCanvas';
 import { ContextTableView } from './components/ContextTableView';
-import { DocReader } from './components/DocReader';
+import { DocWorkspace } from './components/DocWorkspace';
+import { approvalsOf } from './core/versionHistory';
 import { AttentionPanel } from './components/AttentionPanel';
 import { NodeReaderDialog } from './components/NodeReaderDialog';
 import { NodeEffectDialog } from './components/NodeEffectDialog';
@@ -39,7 +40,6 @@ import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
 import { thinkingOf, convertedTo } from './core/thinkingMarkers';
 import type { NoteThinkingItem } from './core/thinkingMarkers';
-import { contextToMarkdown } from './core/contextMarkdown';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
 import type { NodeDialogState } from './components/NodeDialogs';
@@ -163,6 +163,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSpecLibraryOpen, setIsSpecLibraryOpen] = useState(false);
   const [isPacksOpen, setIsPacksOpen] = useState(false);
+  const approvals = useMemo(() => approvalsOf(data?.changes ?? []), [data?.changes]);
   /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
   const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
@@ -228,10 +229,10 @@ export default function App() {
 
   // ── Context objects ────────────────────────────────────────────────────────────────────────────
   /** create (no id / unknown id) or edit in place (known id: title/content/type edits bump the version) */
-  const handleSaveContextObject = async (draft: ContextDraft): Promise<ContextObject | undefined> => {
+  const handleSaveContextObject = async (draft: ContextDraft, opts?: { reason?: string }): Promise<ContextObject | undefined> => {
     const existing = draft.id ? workspaceContexts.find((o) => o.id === draft.id) : undefined;
     if (existing) {
-      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null }));
+      const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, ...(opts?.reason ? { reason: opts.reason } : {}) }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
       showImpact(r.impact);
@@ -963,8 +964,11 @@ export default function App() {
 
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
-              <DocReader
-                markdown={contextToMarkdown({ nodes, objects: workspaceContexts, title: currentWorkspace.name })}
+              <DocWorkspace
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data.relationships}
+                approvals={approvals}
                 fileName={currentWorkspace.name}
                 empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
               />
@@ -1260,7 +1264,7 @@ export default function App() {
         onAddToNode={(nodeId) => { setEffectNodeId(null); openContext(null, nodeId); }}
         onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
       />
-      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} onClose={() => setReadNodeId(null)} />
+      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} relationships={data?.relationships ?? []} onClose={() => setReadNodeId(null)} />
       <StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} />
       <Dialog
         open={!!templateDraft}

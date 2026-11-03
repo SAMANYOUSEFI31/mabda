@@ -93,3 +93,15 @@ test('dependency_changed only counts changes AFTER the asset was built (a rebuil
   const after = { ...asset('rebuilt', [['B', 1]]), createdAt: '2026-02-10T00:00:00Z' };
   assert.deepEqual(computeStaleAssets([before, after], objects, { relationships: rel, changes }).map((s) => s.deliverableId), ['old']);
 });
+
+test('a draft edit reaches only what consumed that version: an asset built from c1@v2 is untouched by drafts of another object, and an unconsumed draft affects nothing', () => {
+  const assets = [asset('a_uses_c1', [['c1', 2]]), asset('a_uses_c2', [['c2', 1]])];
+  // c3 is a Proposed draft edited three times: no asset consumed it (a Proposed object is never injected), so no asset is stale
+  const objs = [obj({ id: 'c1', version: 2 }), obj({ id: 'c2', version: 1 }), obj({ id: 'c3', status: 'Proposed', version: 4 })];
+  assert.deepEqual(computeStaleAssets(assets, objs), []);
+  // editing c1 (a new version) makes ONLY the asset that used c1 stale
+  const after = computeStaleAssets(assets, objs.map((o) => (o.id === 'c1' ? { ...o, version: 3 } : o)));
+  assert.deepEqual(after.map((s) => s.deliverableId), ['a_uses_c1']);
+  // an asset built from c1@v3 stays fresh when only c3's drafts move on
+  assert.deepEqual(computeStaleAssets([asset('a_v3', [['c1', 3]])], objs.map((o) => (o.id === 'c1' ? { ...o, version: 3 } : o.id === 'c3' ? { ...o, version: 9 } : o))), []);
+});
