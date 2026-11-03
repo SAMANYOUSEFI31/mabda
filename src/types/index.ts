@@ -410,7 +410,12 @@ export interface PackSelection {
   /** assumptions go in their own labelled section, with the rule */
   includeAssumptions: boolean;
 }
-export interface SavedPack { id: string; workspaceId: string; name: string; selection: PackSelection; /** a short instruction for the AI that opens the pack */ instruction: string; createdAt: string; updatedAt: string }
+export interface SavedPack {
+  id: string; workspaceId: string; name: string; selection: PackSelection; /** a short instruction for the AI that opens the pack */ instruction: string; createdAt: string; updatedAt: string;
+  /** a saved «درخواست برای AI»: the kind of work and the user's one line (the template). Both absent = a plain pack. It is resolved afresh each time (src/core/aiRequest.ts) */
+  kind?: 'question' | 'audit' | 'draft' | 'decision' | 'change_review' | 'free';
+  template?: string;
+}
 
 export interface Workspace {
   id: string;

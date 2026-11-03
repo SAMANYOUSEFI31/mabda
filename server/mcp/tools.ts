@@ -4,6 +4,8 @@ import type { ContextObject, GeneratedDeliverable, TreeNode, WorkstreamSpec } fr
 import { calculateReadinessAndGaps } from '../../src/core/contextEngine.ts';
 import { ancestorIds, subtreeIds } from '../../src/core/nodeTree.ts';
 import { renderSavedPack } from '../db/packs.ts';
+import { renderAiRequest } from '../db/aiRequests.ts';
+import { REQUEST_KINDS } from '../../src/core/aiRequest.ts';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '../../src/core/assumptions.ts';
 import { effectiveFor, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { expectationRows, latestOf, proposedMeasurements, seriesOf } from '../../src/core/metrics.ts';
@@ -157,6 +159,15 @@ export function buildMcpServer(c: McpContext): McpServer {
   for (const p of repo.listSavedPacks(scope)) {
     server.registerPrompt(`pack_${p.id}`, { title: p.name, description: p.instruction || `بستهٔ Context: ${p.name}` }, async () => ({ messages: [{ role: 'user', content: { type: 'text', text: renderSavedPack(repo, scope, p, packNow()).markdown } }] }));
     server.registerResource(`pack_${p.id}`, `mabda://pack/${p.id}`, { title: p.name, description: p.instruction || undefined, mimeType: 'text/markdown' }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: 'text/markdown', text: renderSavedPack(repo, scope, p, packNow()).markdown }] }));
+  }
+
+  // one prompt per kind of work (سؤال، ممیزی، پیش‌نویس، تصمیم، بازبینی تغییر، آزاد): the same text the app's «درخواست برای AI» builds, from the live workspace
+  for (const k of REQUEST_KINDS) {
+    server.registerPrompt(`request_${k.kind}`, {
+      title: `درخواست: ${k.label}`,
+      description: `${k.hint} (مثال: ${k.example})`,
+      argsSchema: { request: z.string().describe('درخواست در یک خط'), scope: z.string().optional().describe('شناسهٔ گره (اختیاری؛ پیش‌فرض کل درخت)') },
+    }, async (a) => ({ messages: [{ role: 'user', content: { type: 'text', text: renderAiRequest(repo, scope, { kind: k.kind, request: a.request, scopeNodeId: a.scope }, packNow()).markdown } }] }));
   }
 
   // ── gaps / readiness ──────────────────────────────────────────────────

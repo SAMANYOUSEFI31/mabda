@@ -348,6 +348,16 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 15,
+    name: 'saved_packs: kind + template — a saved «درخواست برای AI» (the kind of work and the user\'s one line) lives in the same table as the packs. NULL = a plain pack',
+    up(db) {
+      db.exec(`
+        ALTER TABLE saved_packs ADD COLUMN kind TEXT;
+        ALTER TABLE saved_packs ADD COLUMN template TEXT;
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
