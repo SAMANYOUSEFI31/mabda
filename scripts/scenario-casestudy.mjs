@@ -99,7 +99,7 @@ try {
 
     step(`[${width}] history of an object (who, what, why) with before/after`);
     await page.getByText('مخاطب اصلی', { exact: true }).first().click();
-    await page.getByRole('tab', { name: /^تاریخچه/ }).click();
+    await page.getByRole('tab', { name: /^نسخه‌ها/ }).click();
     await page.getByText(/دلیل: بعد از نظرسنجی/).waitFor();
     await shot('5-history');
     await page.keyboard.press('Escape');
