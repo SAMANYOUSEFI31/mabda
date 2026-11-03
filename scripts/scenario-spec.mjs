@@ -68,7 +68,7 @@ try {
   await page.keyboard.press('Escape');
 
   step('spec editor: 5 outputs, dependencies, 2 guardrails; a cycle is blocked');
-  await nav('جریان‌های کار');
+  await nav('خروجی‌ها');
   await page.getByRole('button', { name: 'جریان کار تازه' }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('عنوان جریان کار').fill('کمپین عرضهٔ محصول');
@@ -133,7 +133,7 @@ try {
   step('Pro and above only: the Starter workspace gets the upgrade notice');
   await account('آکادمی رشد فریلنسرها');
   await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
-  await nav('جریان‌های کار');
+  await nav('خروجی‌ها'); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
   await page.getByRole('button', { name: 'بیشتر دربارهٔ جریان کار' }).click(); // the editor / library are under «⋯»
   await page.getByRole('menuitem', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();

@@ -87,13 +87,15 @@ try {
     await nav('منبع حقیقت', 'منبع');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
     const layoutTab = async (n) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${n}$`) }).first().evaluate((x) => x.click()); await page.waitForTimeout(450); };
-    await layoutTab('رابطه‌ها');
     await page.getByRole('application', { name: /بوم/ }).waitFor();
     await shot('3-map');
+    await nav('فکر', 'فکر');
+    await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
     await layoutTab('تابلو');
     await shot('4-board');
     await layoutTab('آزاد');
     assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => /شاید یک اشتراک هدیه/.test(n.content)), 'the free notes are in the showcase');
+    await nav('منبع حقیقت', 'منبع');
     await radio('ساختار');
     await page.getByRole('heading', { name: 'اشتراک ماهانه' }).first().waitFor();
     await page.getByText('بستهٔ اشتراک', { exact: true }).first().waitFor().catch(() => {});
@@ -106,14 +108,14 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] workstreams: ready / missing / ambiguous`);
-    await nav('جریان‌های کار', 'جریان‌ها');
+    await nav('خروجی‌ها', 'خروجی‌ها'); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
     await page.waitForTimeout(500); await shot('7-workstreams');
     if (!mobile) await page.locator('text=معرفی برند >> visible=true').first().waitFor();
     const specs = (await api('/workspaces/ws_demo/state')).specs;
     assert.equal(specs.length, 3);
 
     step(`[${width}] assets: three hand-made samples, two need a review, «ساخت با AI» is offered`);
-    await nav('دارایی‌ها', 'دارایی‌ها');
+    await nav('خروجی‌ها', 'خروجی‌ها');
     assert.equal(await page.getByText('نمونهٔ دستی', { exact: true }).count(), 3);
     await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
     await page.waitForFunction(() => [...document.querySelectorAll('span, div')].filter((e) => e.children.length < 3 && e.textContent.trim() === 'به‌روز نیست').length >= 2, null, { timeout: 8000 });

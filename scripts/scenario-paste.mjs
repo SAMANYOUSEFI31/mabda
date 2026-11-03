@@ -37,7 +37,7 @@ try {
   await page.getByText('خانه: استودیو').waitFor();
 
   step('studio: «کپی برای هوش مصنوعی» on an output → pack with its size');
-  await nav('جریان‌های کار');
+  await nav('خروجی‌ها'); await page.getByTestId('build-main_positioning').click();
   await page.getByRole('button', { name: 'بیشتر دربارهٔ این خروجی' }).click(); // the copy is under «⋯» of the output
   await page.getByRole('menuitem', { name: 'کپی برای هوش مصنوعی' }).click();
   await page.getByText(/حدود .* توکن/).first().waitFor();
@@ -105,7 +105,7 @@ try {
   await page.getByText(/[1۱] پیشنهاد منتظر تأیید توست/).first().waitFor();
 
   step('the pasted asset is in the library with the pack lineage');
-  await nav('دارایی‌ها');
+  await nav('خروجی‌ها');
   await page.getByText('جملهٔ موقعیت‌یابی', { exact: true }).first().waitFor();
   await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).first().click();
   await page.getByRole('button', { name: 'مشاهدهٔ ورودی‌ها' }).first().click().catch(() => {});

@@ -39,6 +39,10 @@ try {
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
     };
     const layoutTab = async (name) => { await click(page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first()); await page.waitForTimeout(450); };
+    const nav = (m, d) => click(page.locator(mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`));
+    /** the truth map («بوم حقیقت») lives in «منبع حقیقت»; the thinking canvas («بوم فکر») in «فکر» */
+    const toTruth = async () => { await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first()); await stage.waitFor(); await page.waitForTimeout(300); };
+    const toThinking = async () => { await nav('فکر', 'فکر'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first()); await stage.waitFor(); await page.waitForTimeout(300); };
     const stage = page.getByTestId('canvas-stage');
     const root = page.getByTestId('canvas-root');
 
@@ -53,10 +57,10 @@ try {
     await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first());
     await stage.waitFor();
 
-    step(`[${width}] one «بوم» (the old «نقشه» is gone) with three layouts, each answering one question`);
+    step(`[${width}] one canvas engine, two spaces: the truth map has ONE layout (no switch); the thinking canvas has «آزاد» and «تابلو»`);
     assert.equal(await page.locator('[role=radio]').filter({ hasText: /^نقشه$/ }).count(), 0);
-    for (const l of ['رابطه‌ها', 'تابلو', 'آزاد']) assert.ok(await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${l}$`) }).count() >= 1, l);
-    await layoutTab('رابطه‌ها');
+    for (const l of ['تابلو', 'آزاد']) assert.equal(await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${l}$`) }).count(), 0, `${l} is not on the truth map`);
+    await page.getByTestId('layout-about').waitFor();
     await page.getByTestId('layout-about').waitFor();
     assert.match(await page.getByTestId('layout-about').innerText(), /چه چیزی روی چه چیزی اثر می‌گذارد/);
     await page.getByTestId('canvas-tip').waitFor();
@@ -88,7 +92,8 @@ try {
     await page.getByRole('switch', { name: 'نمایش همهٔ خط‌ها' }).uncheck({ force: true });
     await page.keyboard.press('Escape');
 
-    step(`[${width}] board: status columns, «needs review» is a badge (not a column), a move by the actions dialog, undo and redo`);
+    step(`[${width}] board (in the thinking canvas): status columns, «needs review» is a badge (not a column), a move by the actions dialog, undo and redo`);
+    await toThinking();
     await layoutTab('تابلو');
     assert.equal(await page.getByText('نیاز به بازبینی', { exact: true }).locator('visible=true').count().catch(() => 0) >= 0, true);
     const cols = await page.locator('[data-testid=canvas-stage] >> text=/^(در فکر|تأییدشده)$/').count();
@@ -137,16 +142,16 @@ try {
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).notes.length, notesBefore + 1);
     const free0 = (await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length;
-    await layoutTab('رابطه‌ها');
+    await layoutTab('تابلو');
     await click(page.locator('[data-item-id^="o:"]').first());
     await page.getByTestId('canvas-inspector').getByRole('button', { name: /^بیشتر/ }).click(); // placing is a detail: under «بیشتر»
-    await page.getByTestId('canvas-inspector').getByRole('button', { name: 'بگذار در فضای آزاد' }).click();
+    await page.getByTestId('canvas-inspector').getByRole('button', { name: 'بگذار در بوم فکر' }).click();
     await page.waitForTimeout(600);
     assert.equal((await api('/workspaces/ws_demo/state')).canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length, free0 + 1);
     assert.equal(await page.getByTestId('layout-about').innerText().catch(() => ''), 'می‌خواهم قبل از ساختار دادن فکر کنم.', 'placing a card shows the free layout');
 
     step(`[${width}] full screen keeps layout, zoom and selection; ESC leaves; the page is not scrollable meanwhile`);
-    await layoutTab('رابطه‌ها');
+    await toTruth();
     await click(page.locator('[data-item-id^="o:"]').first());
     const zoomBefore = await page.locator('[data-testid=canvas-stage] >> text=/٪/').first().innerText();
     const selectedBefore = await page.locator('[data-testid=canvas-inspector] h3').first().innerText();

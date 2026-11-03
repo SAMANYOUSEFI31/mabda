@@ -78,7 +78,7 @@ try {
     assert.equal((await state()).objects.length, 0, 'a thought is never knowledge');
 
     step(`[${width}] ب: the thinking space → the question to knowledge (a prefilled form) → suggested → approved → it is in the truth`);
-    await palette('فضای فکر', 'رفتن به فضای فکر');
+    await palette('فضای فکر', 'رفتن به فکر');
     const space = page.getByTestId('thinking-space');
     await space.waitFor();
     await space.getByText('قیمت اشتراک سه‌ماهه چقدر باشد؟').first().waitFor();
@@ -123,7 +123,7 @@ try {
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('۱٫۱ میلیون') && !t.value.includes('۱٫۴ میلیون')), null, { timeout: 15000 });
     await shot('5-request-approved-price');
     await page.keyboard.press('Escape');
-    await palette('فضای فکر', 'رفتن به فضای فکر');
+    await palette('فضای فکر', 'رفتن به فکر');
     await page.getByTestId('thinking-space').getByText('۱ تغییر در انتظار تأیید').waitFor();
     await page.getByTestId('thinking-space').getByRole('button', { name: 'تأیید و جایگزین کن' }).click();
     await page.waitForTimeout(700);

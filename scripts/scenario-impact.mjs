@@ -112,7 +112,7 @@ async function scenario(width, tag) {
   await page.keyboard.press('Escape');
 
   step('workstream: generate an asset (records the exact context versions)');
-  await goTab('جریان‌های کار', 'جریان‌ها');
+  await goTab('خروجی‌ها', 'خروجی‌ها'); await page.getByTestId('build-main_positioning').click();
   await page.getByRole('button', { name: 'ساخت دارایی' }).waitFor();
   await page.getByText(/بدون کسر اعتبار/).first().waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: 'ساخت دارایی' }).click();
@@ -134,7 +134,7 @@ async function scenario(width, tag) {
   await shot('5-impact-toast');
 
   step('assets: «به‌روز نیست» badge + reason + half-price rebuild');
-  await goTab('دارایی‌ها', 'دارایی‌ها');
+  await goTab('خروجی‌ها', 'خروجی‌ها');
   await page.getByRole('tab', { name: /^به‌روز نیست/ }).click();
   await page.getByText('این خروجی به‌روز نیست').first().waitFor();
   await page.getByText(/از نسخهٔ ۱ به ۲ تغییر کرد/).first().waitFor();
@@ -146,7 +146,7 @@ async function scenario(width, tag) {
   await shot('7-rebuilt');
 
   step('assets again: one fewer stale asset, rebuilt one is fresh and replays version 2');
-  await goTab('دارایی‌ها', 'دارایی‌ها');
+  await goTab('خروجی‌ها', 'خروجی‌ها');
   await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
   const staleAfter = await page.getByText('این خروجی به‌روز نیست').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);

@@ -61,7 +61,10 @@ type Pending = { kind: 'accept'; payload: MovePayload; title: string } | { kind:
 const PREF_KEY = 'mabda.canvas.prefs';
 const TIPS_KEY = 'mabda.canvas.tips';
 const TIPS = [
-  'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود؛ روی فضای خالی دابل‌کلیک کن تا یادداشت تازه بسازی. بقیهٔ امکان‌ها زیر «⋯» است.',
+  'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
+];
+const TIPS_THINKING = [
+  'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا فکر تازه بنویسی؛ کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور. خط‌چین یعنی رابطه‌ای که با تأیید واقعی می‌شود.',
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
@@ -193,6 +196,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [pending, setPending] = useState<Pending>(null);
   const [reason, setReason] = useState('');
   const [connect, setConnect] = useState<{ fromId: string; toId: string; type: 'depends_on' | 'supersedes'; reason: string } | null>(null);
+  const [anchorOpen, setAnchorOpen] = useState(false);
+  const [anchorId, setAnchorId] = useState('');
   const [newNote, setNewNote] = useState<{ content: string; nodeId: string; x: number; y: number } | null>(null);
   const [toKnowledge, setToKnowledge] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
@@ -366,8 +371,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof Error ? e.message : 'ورود فایل ناموفق بود.' }); }
   };
 
-  const tip = tipsDone.length >= TIPS.length ? undefined : TIPS.findIndex((_, i) => !tipsDone.includes(i));
-  const dismissTip = (i: number) => { const next = [...tipsDone, i]; setTipsDone(next); try { localStorage.setItem(TIPS_KEY, JSON.stringify(next)); } catch { /* optional */ } };
+  const tips = mode === 'thinking' ? TIPS_THINKING : TIPS;
+  const tipBase = mode === 'thinking' ? 10 : 0; // thinking tips are remembered on their own
+  const tip = tips.findIndex((_, i) => !tipsDone.includes(tipBase + i)) < 0 ? undefined : tips.findIndex((_, i) => !tipsDone.includes(tipBase + i));
+  const dismissTip = (i: number) => { const next = [...tipsDone, tipBase + i]; setTipsDone(next); try { localStorage.setItem(TIPS_KEY, JSON.stringify(next)); } catch { /* optional */ } };
 
   const itemObj = (id: string) => byId.get(id)?.objectId;
   const activeObj = actions ? objectById.get(actions) : undefined;
@@ -421,7 +428,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           { label: 'برگرداندن (Ctrl+Z)', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
           { label: 'از نو (Ctrl+Shift+Z)', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
           { divider: true },
-          ...(mode === 'thinking' ? [{ label: 'یادداشت تازه', icon: 'Plus' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }] : []),
+          ...(mode === 'thinking' ? [{ label: 'یادداشت تازه', icon: 'Plus' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: inspectorOpen ? 'بستن بازرس' : 'باز کردن بازرس', icon: 'PanelRight', onSelect: () => setInspectorOpen((v) => !v) },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -464,7 +471,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       )}
       {tip !== undefined && !stageEmpty && (
         <div role="note" data-testid="canvas-tip" className="flex items-center justify-between gap-inline-sm rounded-control border border-border-info-subtle bg-bg-info-subtle px-inset-md py-inset-xs">
-          <p className="body-sm text-text-default"><b>نکته:</b> {TIPS[tip]}</p>
+          <p className="body-sm text-text-default"><b>نکته:</b> {tips[tip]}</p>
           <Button size="sm" variant="ghost" onClick={() => dismissTip(tip)}>فهمیدم</Button>
         </div>
       )}
@@ -521,7 +528,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
-                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا «کارت از منبع» را بگذار.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
+                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا از «⋯» یک کارت حقیقت را کنار فکرها بیاور.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
                   <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
                 </div>
               </div>
@@ -547,6 +554,14 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {sheet && toolbar}
 
       <input ref={fileInput} type="file" accept=".canvas,application/json" className="sr-only" aria-label="انتخاب فایل بوم" tabIndex={-1} onChange={(e) => void importCanvas(e.target.files?.[0])} />
+
+      {mode === 'thinking' && (
+        <Dialog open={anchorOpen} onClose={() => setAnchorOpen(false)} size="sm" title="کارت حقیقت را کنار فکرها بیاور"
+          description="همان کارتِ منبع حقیقت است، نه کپی؛ اینجا فقط جایش را عوض می‌کنی و متنش از اینجا ویرایش نمی‌شود."
+          footer={<><Button variant="ghost" onClick={() => setAnchorOpen(false)}>انصراف</Button><Button variant="primary" disabled={!anchorId} onClick={() => { void p.onPlaceObject(anchorId, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); setAnchorOpen(false); }}>بگذار روی بوم فکر</Button></>}>
+          <Select label="کدام کارت؟" value={anchorId} onChange={(e) => setAnchorId(e.target.value)} options={[{ value: '', label: 'یکی را انتخاب کن' }, ...placeable(p.objects.filter((o) => o.status === 'Confirmed' && !o.sample), p.canvas.free).map((o) => ({ value: o.id, label: o.title }))]} />
+        </Dialog>
+      )}
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} size="sm" title="میان‌برهای بوم">
         <dl className="flex flex-col gap-stack-sm">{SHORTCUTS.map(([k, v]) => <div key={k} className="flex items-start justify-between gap-inline-md"><dt className="label-md text-text-default"><kbd>{k}</kbd></dt><dd className="body-sm text-text-subtle">{v}</dd></div>)}</dl>

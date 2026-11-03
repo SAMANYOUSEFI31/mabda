@@ -15,8 +15,9 @@ const SIZES = [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
-  { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'جریان‌های کار' },
-  { id: 'assets', label: 'دارایی‌ها' },
+  { id: 'workstreams', label: 'خروجی‌ها', then: 'build' },
+  { id: 'assets', label: 'خروجی‌ها' },
+  { id: 'thinking', label: 'فکر' },
 ];
 
 const audit = () => {
@@ -134,6 +135,7 @@ for (const size of SIZES) {
     const mobile = size.width < 768;
     const sel = mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${t.label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${t.desktopLabel || t.label}")`;
     await page.locator(sel).first().click();
+    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
 
@@ -191,12 +193,16 @@ for (const size of SIZES) {
   await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
-  await layoutTab('رابطه‌ها'); await shoot('canvas-relations');
+  await page.waitForTimeout(500); await shoot('canvas-relations');
   await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(350); await shoot('canvas-relations-selected');
   await page.getByTestId('canvas-inspector').getByRole('button', { name: /^به چه چیزی وابسته است/ }).click({ timeout: 2000 }).catch(() => {}); await page.getByTestId('canvas-inspector').getByRole('button', { name: /^چه چیزی روی آن سوار است/ }).click({ timeout: 2000 }).catch(() => {}); await shoot('canvas-inspector-open');
+  // the thinking canvas: «آزاد» (with the tray) and «تابلو»
+  await goTab(TABS[4]); await shoot('thinking-list');
+  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+  await page.getByTestId('canvas-stage').waitFor();
+  await shoot('canvas-free');
   await layoutTab('تابلو'); await shoot('canvas-board');
-  await layoutTab('آزاد'); await shoot('canvas-free');
-  await layoutTab('رابطه‌ها');
+  await goTab(TABS[1]);
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   // the showcase's outputs (two are «به‌روز نیست») and the workflow page with its questions

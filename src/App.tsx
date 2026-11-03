@@ -964,9 +964,7 @@ export default function App() {
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
     activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
-    : activeTab === 'thinking' ? { label: 'فکر تازه', icon: 'Plus', onClick: () => setThoughtDialog({ nodeId: spaceNode }) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
-    : activeTab === 'assets' ? { label: 'ساخت خروجی تازه', icon: 'Sparkles', onClick: () => setActiveTab('workstreams') }
     : undefined;
 
   const openContext = (obj: ContextObject | null, nodeId = defaultNodeId(nodes)) => {
@@ -1370,7 +1368,7 @@ export default function App() {
                           <span className="label-md text-text-default">{sp.title}</span>
                           <p className="body-sm text-text-subtle">{sp.description}</p>
                         </div>
-                        <div><Button size="sm" variant="secondary" iconStart="Sparkles" aria-label={`بساز: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>بساز</Button></div>
+                        <div><Button size="sm" variant="secondary" iconStart="Sparkles" data-testid={`build-${sp.id}`} aria-label={`بساز: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>بساز</Button></div>
                       </Card>
                     </li>
                   ))}
