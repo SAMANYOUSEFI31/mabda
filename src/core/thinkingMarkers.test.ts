@@ -60,7 +60,7 @@ test('headingSections: two or more ## headings = a note that has grown; ### is n
 });
 
 // ── no syntax needed: a line that ends with ؟ / ? is a question by itself ──
-import { isQuestionLine, kindOfLine, markLine, MARKER_OF } from './thinkingMarkers';
+import { displayLine, isQuestionLine, kindOfLine, markLine, MARKER_OF } from './thinkingMarkers';
 
 test('a line ending with ؟ or ? is a question — Persian, Latin, ZWNJ, closing quotes and invisible marks after it', () => {
   const t = parseThinking([
@@ -120,4 +120,10 @@ test('markLine: the user picks from a menu, the marker is written for her; only 
   assert.equal(before.hash, after.hash);
   assert.equal(MARKER_OF.question, '[سؤال]');
   assert.equal(markLine('a\r\nb', 1, 'idea'), 'a\r\n[ایده] b');
+});
+
+test('displayLine hides only the bracket marker', () => {
+  assert.equal(displayLine('- [سؤال]: چرا؟'), '- چرا؟');
+  assert.equal(displayLine('[Open Decision] روز'), 'روز');
+  assert.equal(displayLine('چرا [فرض] وسط؟'), 'چرا [فرض] وسط؟');
 });

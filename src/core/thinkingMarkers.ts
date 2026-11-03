@@ -148,6 +148,14 @@ export function markLine(content: string, line: number, kind: ThinkingKind | nul
   return lines.join('\n');
 }
 
+/** a line as it is SHOWN: the bracket marker is not displayed (the badge says it); bullet and text stay */
+export function displayLine(line: string): string {
+  const lead = LEAD.exec(line)?.[0] ?? '';
+  const rest = line.slice(lead.length);
+  const m = MARKER.exec(rest);
+  return m ? `${lead}${rest.slice(m[0].length)}` : line;
+}
+
 /** the kind a line currently has (explicit marker, or a question by its ending) — for the checked entry of the menu */
 export function kindOfLine(line: string): ThinkingKind | null {
   const rest = line.replace(LEAD, '');

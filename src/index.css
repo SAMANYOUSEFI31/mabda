@@ -110,3 +110,9 @@
 
 /* a menu with many items (the tree's sections) scrolls instead of running off the screen */
 .scroll-menu .bsh-menu { max-block-size: 50dvh; overflow-y: auto; }
+
+/* a note line: its «علامت بزن» button shows on hover / focus (and stays reachable by long-press on touch) */
+.note-line .note-mark { opacity: 0; transition: opacity 120ms; }
+.note-line:hover .note-mark, .note-line:focus-within .note-mark, .note-line .note-mark[aria-expanded='true'] { opacity: 1; }
+@media (hover: none) { .note-line .note-mark { position: absolute; inset-inline-end: 0; inset-block-start: 0; pointer-events: none; } }
+@media (prefers-reduced-motion: reduce) { .note-line .note-mark { transition: none; } }
