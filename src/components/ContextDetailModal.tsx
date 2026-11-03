@@ -288,8 +288,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           label="عنوان"
           value={title}
           onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
-          placeholder={guessTitle(content)}
-          hint={titleTouched ? undefined : 'خودکار از متن ساخته شد.'}
+          placeholder={content.trim() ? guessTitle(content) : 'با نوشتن متن، عنوان خودکار ساخته می‌شود'}
+          hint={titleTouched || !content.trim() ? undefined : 'خودکار از متن ساخته شد.'}
         />
         <div className="flex flex-wrap items-center gap-inline-sm">
           <div role="radiogroup" aria-label="نوع" className="flex flex-wrap gap-inline-xs">

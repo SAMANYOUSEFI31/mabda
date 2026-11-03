@@ -16,7 +16,6 @@ const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
   { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'جریان‌های کار' },
-  { id: 'chat', label: 'گفتگو' },
   { id: 'assets', label: 'دارایی‌ها' },
 ];
 
@@ -113,12 +112,12 @@ for (const size of SIZES) {
 
   await goTab(TABS[0]); await shoot('home');
   // weekly review: three sections one after another, then the summary
-  await page.getByRole('button', { name: /بازبینی هفتگی/ }).first().click(); await page.waitForTimeout(200); await shoot('weekly-1');
+  await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بازبینی هفتگی' }).click(); await page.waitForTimeout(200); await shoot('weekly-1');
   for (const n of [2, 3, 4]) { await page.getByRole('dialog').getByRole('button', { name: /دیدم؛ بعدی|جمع‌بندی/ }).click(); await page.waitForTimeout(150); await shoot(`weekly-${n}`); }
   await closeDialog();
   await goTab(TABS[1]); await shoot('context-doc');
   // table view
-  await page.locator('[role=radio][aria-label], [role=radio]').filter({ hasText: /^جدول$/ }).first().click(); await shoot('context-table');
+  await page.getByRole('button', { name: 'نماهای بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'جدول' }).click(); await shoot('context-table');
   await page.locator('[role=radio]').filter({ hasText: /^سند$/ }).first().click(); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
@@ -129,10 +128,7 @@ for (const size of SIZES) {
   await page.getByRole("tab", { name: /چه چیزی کم است/ }).click(); await shoot('workstreams-gap');
   await page.getByRole("tab", { name: /^خروجی‌ها/ }).click(); await shoot('workstreams-history');
 
-  await goTab(TABS[3]); await shoot('chat');
-  await page.getByRole('button', { name: 'نشست‌های گفتگو' }).first().click(); await shoot('chat-sessions');
-
-  await goTab(TABS[4]); await shoot('assets');
+  await goTab(TABS[3]); await shoot('assets');
 
   // everything that is not daily work lives in the account menu (desktop) / account drawer (mobile)
   const mobile = size.width < 768;
@@ -176,6 +172,9 @@ for (const size of SIZES) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
   await goTab(TABS[0]);
+  await shoot('home-demo');
+  await page.locator('button[aria-controls="home-all"]').click(); await page.waitForTimeout(250); await shoot('home-all');
+  await page.locator('button[aria-controls="home-all"]').click();
   await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
   await page.getByRole('dialog').getByRole('radio', { name: 'ممیزی' }).click();
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');

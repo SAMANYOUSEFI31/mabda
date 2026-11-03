@@ -10,28 +10,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface Banned { re: RegExp; word: string; say: string }
-/** the banned words and what to say instead (the same table is in docs/design-principles.md) */
-export const BANNED: Banned[] = [
-  { re: /\bObjects?\b/, word: 'Object', say: 'دانش / مورد' },
-  { re: /شیء/, word: 'شیء', say: 'دانش / مورد' },
-  { re: /\bProposed\b/, word: 'Proposed', say: 'پیشنهادی' },
-  { re: /\bConfirmed\b/, word: 'Confirmed', say: 'تأییدشده' },
-  { re: /\bNeeds Review\b/, word: 'Needs Review', say: 'نیاز به بازبینی' },
-  { re: /\bSuperseded\b/, word: 'Superseded', say: 'جایگزین‌شده' },
-  { re: /\bArchived\b/, word: 'Archived', say: 'بایگانی‌شده' },
-  { re: /\bslots?\b/i, word: 'slot', say: 'جایگاه (یا اصلاً نگو)' },
-  { re: /\breach\b/i, word: 'reach', say: 'کجا اعمال شود' },
-  { re: /\boverrid(e|es|den|ing)\b/i, word: 'override', say: 'اینجا اعمال نشود' },
-  { re: /دامنهٔ اثر/, word: 'دامنهٔ اثر', say: 'کجا اعمال شود' },
-  { re: /استثنا/, word: 'استثنا', say: 'اینجا اعمال نشود' },
-  { re: /ارث‌رسیده|ارث رسیده/, word: 'ارث‌رسیده', say: 'از بخش بالاتر آمده' },
-  { re: /فهرست مؤثر/, word: 'فهرست مؤثر', say: 'آنچه اینجا اثر دارد' },
-  { re: /\blineage\b/i, word: 'lineage', say: 'از چه ساخته شده' },
-  { re: /\bGaps?\b/, word: 'Gap', say: 'چه چیزی کم است' },
-  { re: /\bReadiness\b/i, word: 'Readiness', say: 'آمادگی' },
-  { re: /\bIDs?\b/, word: 'ID', say: 'شناسه (یا اصلاً نگو)' },
-  { re: /id@v/i, word: 'id@version', say: 'نسخهٔ N' },
-];
+/** the banned words and what to say instead (src/ui/bannedWords.json: shared with scripts/scenario-first3.mjs; the same table is in docs/design-principles.md) */
+export const BANNED: Banned[] = (JSON.parse(readFileSync('src/ui/bannedWords.json', 'utf8')) as Array<{ pattern: string; flags: string; word: string; say: string }>).map((b) => ({ re: new RegExp(b.pattern, b.flags), word: b.word, say: b.say }));
 
 /** where a banned word may stay, and why. Keep it short. */
 export const EXCEPTIONS: Array<{ file: string; includes: string; why: string }> = [];

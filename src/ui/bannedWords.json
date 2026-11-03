@@ -1,0 +1,116 @@
+[
+ {
+  "pattern": "\\bObjects?\\b",
+  "flags": "",
+  "word": "Object",
+  "say": "دانش / مورد"
+ },
+ {
+  "pattern": "شیء",
+  "flags": "",
+  "word": "شیء",
+  "say": "دانش / مورد"
+ },
+ {
+  "pattern": "\\bProposed\\b",
+  "flags": "",
+  "word": "Proposed",
+  "say": "پیشنهادی"
+ },
+ {
+  "pattern": "\\bConfirmed\\b",
+  "flags": "",
+  "word": "Confirmed",
+  "say": "تأییدشده"
+ },
+ {
+  "pattern": "\\bNeeds Review\\b",
+  "flags": "",
+  "word": "Needs Review",
+  "say": "نیاز به بازبینی"
+ },
+ {
+  "pattern": "\\bSuperseded\\b",
+  "flags": "",
+  "word": "Superseded",
+  "say": "جایگزین‌شده"
+ },
+ {
+  "pattern": "\\bArchived\\b",
+  "flags": "",
+  "word": "Archived",
+  "say": "بایگانی‌شده"
+ },
+ {
+  "pattern": "\\bslots?\\b",
+  "flags": "i",
+  "word": "slot",
+  "say": "جایگاه (یا اصلاً نگو)"
+ },
+ {
+  "pattern": "\\breach\\b",
+  "flags": "i",
+  "word": "reach",
+  "say": "کجا اعمال شود"
+ },
+ {
+  "pattern": "\\boverrid(e|es|den|ing)\\b",
+  "flags": "i",
+  "word": "override",
+  "say": "اینجا اعمال نشود"
+ },
+ {
+  "pattern": "دامنهٔ اثر",
+  "flags": "",
+  "word": "دامنهٔ اثر",
+  "say": "کجا اعمال شود"
+ },
+ {
+  "pattern": "استثنا",
+  "flags": "",
+  "word": "استثنا",
+  "say": "اینجا اعمال نشود"
+ },
+ {
+  "pattern": "ارث‌رسیده|ارث رسیده",
+  "flags": "",
+  "word": "ارث‌رسیده",
+  "say": "از بخش بالاتر آمده"
+ },
+ {
+  "pattern": "فهرست مؤثر",
+  "flags": "",
+  "word": "فهرست مؤثر",
+  "say": "آنچه اینجا اثر دارد"
+ },
+ {
+  "pattern": "\\blineage\\b",
+  "flags": "i",
+  "word": "lineage",
+  "say": "از چه ساخته شده"
+ },
+ {
+  "pattern": "\\bGaps?\\b",
+  "flags": "",
+  "word": "Gap",
+  "say": "چه چیزی کم است"
+ },
+ {
+  "pattern": "\\bReadiness\\b",
+  "flags": "i",
+  "word": "Readiness",
+  "say": "آمادگی"
+ },
+ {
+  "pattern": "\\bIDs?\\b",
+  "flags": "",
+  "word": "ID",
+  "say": "شناسه (یا اصلاً نگو)"
+ },
+ {
+  "pattern": "id@v",
+  "flags": "i",
+  "word": "id@version",
+  "say": "نسخهٔ N"
+ }
+]

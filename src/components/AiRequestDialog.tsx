@@ -63,7 +63,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
   const [copied, setCopied] = useState(false);
   const packId = useMemo(newPackId, []);
   const meta = REQUEST_KINDS.find((k) => k.kind === kind)!;
-  const options = useMemo(() => [{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))], [nodes]);
+  const options = useMemo(() => [{ value: '', label: 'کل کسب‌وکار' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))], [nodes]);
 
   // the preview follows the choices; typing waits a moment so every key does not ask the server
   useEffect(() => {
@@ -154,7 +154,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
           placeholder={`مثلاً: ${meta.example}`} maxLength={500}
           hint={request ? undefined : <Button size="sm" variant="ghost" onClick={() => setRequest(meta.example)}>استفاده از نمونه</Button>}
         />
-        <Select label="دامنه" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="فقط دانشی که در این گره و بالاتر از آن اثر دارد می‌آید؛ قیدها همیشه."/>
+        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="فقط دانشی که به همین بخش مربوط است می‌آید؛ خط قرمزها همیشه."/>
 
         {answerError && <AiErrorNotice error={answerError} onRetry={answerError.kind === 'no_key' ? undefined : answerHere} retrying={busy === 'answer'} onOpenSettings={onOpenAiSettings} />}
         {answer && (
