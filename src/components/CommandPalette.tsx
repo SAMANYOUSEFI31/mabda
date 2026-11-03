@@ -32,7 +32,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
   const listRef = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   // the dialog places focus on its own after mounting; the search box takes it right after
-  useEffect(() => { const t = setTimeout(() => input.current?.focus(), 30); return () => clearTimeout(t); }, []);
+  useEffect(() => { input.current?.focus(); const t = setTimeout(() => input.current?.focus(), 60); return () => clearTimeout(t); }, []);
   const groups = useMemo(() => searchIndex(index, query), [index, query]);
   const flat = useMemo(() => flattenGroups(groups), [groups]);
   const optionId = (i: number) => `${uid}-o${i}`;

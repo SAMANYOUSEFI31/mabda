@@ -128,7 +128,7 @@ export const INCLUDE_REASON_FA: Record<IncludeReason, string> = {
 export const EXCLUDE_REASON_FA: Record<ExcludeReason, string> = {
   scope: 'خارج از دامنه',
   expired: 'منقضی شده',
-  overridden: 'با استثنا کنار گذاشته شده',
+  overridden: 'در این بخش اعمال نمی‌شود',
   unconfirmed: 'تأییدنشده (واقعیت نیست)',
   sample: 'نمونه است',
   kind: 'برای این نوع کار نمی‌آید',

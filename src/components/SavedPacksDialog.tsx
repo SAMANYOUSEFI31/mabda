@@ -26,7 +26,7 @@ export function printPack(name: string, markdown: string) {
   return true;
 }
 
-/** «بسته‌های Context»: a named selection, built once and pasted into any AI in one click. The AI only gets Confirmed knowledge as fact; assumptions travel apart. */
+/** «بسته‌های دانش»: a named selection, built once and pasted into any AI in one click. The AI only gets Confirmed knowledge as fact; assumptions travel apart. */
 export const SavedPacksDialog: React.FC<Props> = (props) => (props.open ? <Packs {...props} /> : null);
 
 const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
@@ -64,7 +64,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
 
   return (
     <Dialog
-      open onClose={onClose} size="lg" title="بسته‌های Context"
+      open onClose={onClose} size="lg" title="بسته‌های دانش"
       description="یک‌بار بساز، با یک کلیک در هر AI بچسبان. فقط دانش تأییدشده «واقعیت» است؛ فرض‌ها و گزینه‌های ردشده جدا و با دستور صریح می‌روند."
       footer={editing
         ? <><Button variant="ghost" onClick={() => setEditing(null)}>انصراف</Button><Button variant="primary" loading={busy === 'save'} disabled={!editing.name.trim()} onClick={save}>ذخیرهٔ بسته</Button></>

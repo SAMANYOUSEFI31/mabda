@@ -38,7 +38,8 @@ test('migrations apply in order, are idempotent, and keep existing rows (v1 → 
 
 test('every table carries user_id and workspace_id', () => {
   const { db } = fresh();
-  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','kv','sqlite_sequence')").all() as Array<{ name: string }>).map((t) => t.name);
+  // usage_events is per install and holds only a feature key, a number and a time: it has no workspace (and no data of one)
+  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','kv','sqlite_sequence','usage_events')").all() as Array<{ name: string }>).map((t) => t.name);
   for (const t of tables) {
     const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name);
     assert.ok(cols.includes('user_id') && cols.includes('workspace_id'), `${t} lacks user_id/workspace_id`);
@@ -468,13 +469,27 @@ test('migration 15: a saved pack may be a saved «درخواست برای AI» (
   migrate(db, 14);
   db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
   db.prepare("INSERT INTO saved_packs (id,user_id,workspace_id,name,selection,instruction,created_at,updated_at) VALUES ('pk_old',?,?,?,?,?,?,?)").run(U, 'w1', 'قدیمی', JSON.stringify({ nodeIds: [], facets: [], statuses: [], includeAssumptions: true }), '', 'x', 'x');
-  assert.deepEqual(migrate(db), [15]);
+  assert.deepEqual(migrate(db, 15), [15]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   assert.equal(repo.getSavedPack(s, 'pk_old')!.kind, undefined);
   const q = repo.saveSavedPack(s, { name: 'ممیزی', kind: 'audit', template: ' طرح را بسنج ', selection: {} });
   assert.deepEqual([q.kind, q.template], ['audit', 'طرح را بسنج']);
   assert.equal(repo.saveSavedPack(s, { id: q.id, name: 'ممیزی', kind: 'zzz', template: 'x', selection: {} }).kind, undefined, 'an unknown kind makes it a plain pack');
+});
+
+test('migration 16 + usage counters: a catalog key is counted, anything else is refused, and nothing but key / number / time is stored', () => {
+  const db = new Database(':memory:');
+  migrate(db, 15);
+  assert.deepEqual(migrate(db), [16]);
+  const repo = new Repo(db);
+  repo.bumpUsage(U, 'view.home'); repo.bumpUsage(U, 'view.home'); repo.bumpUsage(U, 'dialog.record');
+  const rows = repo.listUsage(U);
+  assert.deepEqual(rows.map((r) => [r.feature, r.count]), [['view.home', 2], ['dialog.record', 1]]);
+  for (const bad of ['قیمت اشتراک', 'dm_price2', 'view.nope', '', undefined, { a: 1 }]) assert.throws(() => repo.bumpUsage(U, bad), RepoError, String(bad));
+  const cols = (db.prepare('PRAGMA table_info(usage_events)').all() as Array<{ name: string }>).map((c) => c.name);
+  assert.deepEqual(cols.sort(), ['count', 'feature', 'last_at', 'user_id'], 'no column could hold user text');
+  assert.deepEqual(repo.listUsage('someone-else'), []);
 });
 
 test('a metric and its numbers: every write leaves a Change; metric changes stay out of the Context change list', () => {

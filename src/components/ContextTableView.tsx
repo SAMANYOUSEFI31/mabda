@@ -63,7 +63,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
             مشاهده، فیلتر چندبعدی و جستجو در ردیف‌های Context با ساختار و منشأ شفاف
           </p>
         </div>
-        <Button variant="primary" iconStart="Plus" onClick={onAddNew}>تعریف شیء جدید</Button>
+        <Button variant="primary" iconStart="Plus" onClick={onAddNew}>دانش جدید</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2 lg:grid-cols-4">
@@ -75,7 +75,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           onChange={(e) => setSearch(e.target.value)}
         />
         <Select
-          label="نوع شیء"
+          label="نوع"
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
           options={[{ value: 'all', label: 'تمام انواع' }, ...CONTEXT_TYPE_OPTIONS]}

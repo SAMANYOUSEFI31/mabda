@@ -24,7 +24,7 @@ export interface EffectiveItem {
   overriddenBy?: string;
 }
 
-export const ORIGIN_FA: Record<Origin, string> = { own: 'مال این گره', inherited: 'ارث رسیده', global: 'همه‌جا', overridden: 'کنار گذاشته‌شده', expired: 'منقضی' };
+export const ORIGIN_FA: Record<Origin, string> = { own: 'مال این گره', inherited: 'از بخش بالاتر', global: 'همه‌جا', overridden: 'کنار گذاشته‌شده', expired: 'منقضی' };
 /** origins that are in force */
 export const IN_FORCE: ReadonlySet<Origin> = new Set<Origin>(['own', 'inherited', 'global']);
 

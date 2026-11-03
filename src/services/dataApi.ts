@@ -180,6 +180,7 @@ export const dataApi = {
   parseImport: (id: string, input: { text: string; packId?: string }) => call<ImportParseResult>('POST', `${ws(id)}/imports/parse`, input),
 
   usage: (id: string) => call<UsageInfo>('GET', `${ws(id)}/usage`),
+  featureUsage: () => call<{ rows: Array<{ feature: string; count: number; lastAt: string }> }>('GET', '/admin/usage'),
   costReport: (month?: string) => call<{ month: string; rows: CostReportRowInfo[] }>('GET', `/admin/cost-report${month ? `?month=${month}` : ''}`),
 
   fileQuota: (id: string) => call<FileQuotaInfo>('GET', `${ws(id)}/files/quota`),

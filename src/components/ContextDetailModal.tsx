@@ -11,6 +11,7 @@ import { flatten } from '../core/nodeTree';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { MentionTextarea } from './MentionTextarea';
+import { TYPE_CHIP_FA, guessTitle, guessType } from '../core/knowledgeGuess';
 import { suggestLinks } from '../core/mentions';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../core/versionHistory';
@@ -18,7 +19,7 @@ import type { ContextChange } from '../types';
 import { MX } from '../core/metricsText';
 import { parseNumber } from '../core/metrics';
 import { dataApi } from '../services/dataApi';
-import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
+import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -100,8 +101,12 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const [title, setTitle] = useState(object?.title || '');
   const [content, setContent] = useState(object?.content || '');
-  const [contentView, setContentView] = useState<'edit' | 'preview'>('edit');
-  const [type, setType] = useState<ContextType>(object?.type || 'Decision');
+  const [moreOpen, setMoreOpen] = useState(false);
+  // the kind and the title are guessed from the text until the user picks / writes her own (src/core/knowledgeGuess.ts)
+  const keepsOwn = !!object; // editing, or a prefilled draft that already has them
+  const [typeTouched, setTypeTouched] = useState(keepsOwn);
+  const [titleTouched, setTitleTouched] = useState(keepsOwn && !!object?.title);
+  const [type, setType] = useState<ContextType>(object?.type || 'Fact');
   const [status, setStatus] = useState<ContextStatus>(object?.status || 'Confirmed');
   const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeId);
   const [provenance, setProvenance] = useState<ContextProvenance>(
@@ -140,6 +145,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [supersedeReason, setSupersedeReason] = useState('');
   const [changes, setChanges] = useState<ContextChange[]>([]);
   const [editReason, setEditReason] = useState('');
+  useEffect(() => { if (!typeTouched) setType(guessType(content)); }, [content, typeTouched]);
+  useEffect(() => { if (!titleTouched) setTitle(content.trim() ? guessTitle(content) : ''); }, [content, titleTouched]);
   // «@» references only SUGGEST a link: nothing is linked until she says yes; «نه» is remembered per pair
   const noKey = (targetId: string) => `${object?.id ?? 'new'}>${targetId}`;
   const readNo = (): string[] => { try { return JSON.parse(localStorage.getItem('mabda.mentions.no') ?? '[]') as string[]; } catch { return []; } };
@@ -165,7 +172,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    const finalTitle = title.trim() || guessTitle(content);
+    if (!content.trim()) return;
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
 
     if (isSupersedingMode && object) {
@@ -174,7 +182,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         type,
         status: 'Confirmed',
         provenance: 'User Input',
-        title,
+        title: finalTitle,
         content: content.trim(),
         nodeId,
       }, supersedeReason.trim() || 'به‌روزرسانی تصمیم');
@@ -188,7 +196,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       type,
       status,
       provenance,
-      title: title.trim(),
+      title: finalTitle,
       content: content.trim(),
       nodeId,
       supersededById: object?.supersededById,
@@ -215,8 +223,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const title_ = isSupersedingMode
     ? 'جایگزینی تصمیم — حفظ تاریخچه'
     : isEditing
-    ? 'ویرایش شیء در منبع حقیقت'
-    : 'ثبت شیء جدید در منبع حقیقت';
+    ? 'ویرایش دانش'
+    : 'ثبت دانش';
 
   return (
     <Dialog
@@ -224,7 +232,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       onClose={onClose}
       size="lg"
       title={title_}
-      description="هر مورد منشأ و نوع دارد؛ هیچ تصمیمی بدون پشتوانه رها نمی‌شود."
+      description={isEditing ? undefined : 'هر چه دربارهٔ کسب‌وکارت درست است بنویس. بقیه‌اش را خودمان حدس می‌زنیم.'}
       footer={
         <>
           {isEditing && !isSupersedingMode && (
@@ -248,7 +256,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           )}
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
           <Button variant="primary" type="submit" form="context-detail-form">
-            {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ثبت در منبع حقیقت'}
+            {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ذخیره'}
           </Button>
         </>
       }
@@ -263,24 +271,83 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       {tab === 'history' && isEditing && (
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
-      <form id="context-detail-form" onSubmit={handleSubmit} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
-        <TextField
-          label="عنوان شیء (کوتاه و گویا)"
+      <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+        {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
+        <MentionTextarea
+          label="چه چیزی دربارهٔ کسب‌وکارت درست است؟"
           required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="مثلاً: مخاطب هدف اصلی، مرز عدم تخفیف، لحن برند…"
+          rows={isEditing ? 5 : 6}
+          value={content}
+          onValueChange={setContent}
+          objects={allObjects}
+          selfId={object?.id}
+          placeholder="مثلاً: مخاطب اصلی ما فریلنسرهای طراح‌اند. / تخفیف نداریم. / تصمیم گرفتیم اینستاگرام کانال اصلی باشد."
         />
-
-        <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
-          <Select label="نوع شیء" value={type} onChange={(e) => setType(e.target.value as ContextType)} options={TYPE_OPTIONS} />
-          <Select label="وضعیت" value={status} onChange={(e) => setStatus(e.target.value as ContextStatus)} options={STATUS_OPTIONS} />
+        <TextField
+          label="عنوان"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+          placeholder={content.trim() ? guessTitle(content) : 'با نوشتن متن، عنوان خودکار ساخته می‌شود'}
+          hint={titleTouched || !content.trim() ? undefined : 'خودکار از متن ساخته شد.'}
+        />
+        <div className="flex flex-wrap items-center gap-inline-sm">
+          <div role="radiogroup" aria-label="نوع" className="flex flex-wrap gap-inline-xs">
+            {(['Fact', 'Decision', 'Constraint'] as ContextType[]).map((t) => (
+              <Button key={t} type="button" size="sm" role="radio" aria-checked={type === t} variant={type === t ? 'secondary' : 'ghost'} iconStart={type === t ? 'Check' : undefined} onClick={() => { setType(t); setTypeTouched(true); }}>{TYPE_CHIP_FA[t]}</Button>
+            ))}
+          </div>
+          <Menu
+            label="این دانش در کدام بخش باشد؟"
+            className="scroll-menu"
+            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? 'کسب‌وکار'}</Button>}
+            items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => setNodeId(node.id) }))}
+          />
         </div>
+        {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ هر کدام درست نیست، عوضش کن.</p>}
+        {linkSuggestions.length > 0 && (
+          <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه از ارجاع‌ها">
+            {linkSuggestions.map((sg) => (
+              <li key={sg.targetId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default bg-surface-sunken p-inset-md">
+                <span className="body-sm text-text-default">این متن به «{sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟ <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
+                <span className="flex items-center gap-inline-xs">
+                  <Button type="button" size="sm" variant="secondary" iconStart="Link2" disabled={deps.length >= 20} onClick={() => setDeps((cur) => [...cur, sg.targetId])}>بساز</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => turnDown(sg.targetId)}>نه</Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-        <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
-          <Select label="شاخه در درخت دانش" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))} />
-          <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
+        {isEditing && object && reviewNeed && onAcceptReview && (
+          <Alert
+            intent="warning"
+            title="نیاز به بازبینی"
+            action={<Button size="sm" variant="secondary" onClick={() => { onAcceptReview(object.id); onClose(); }}>بدون تغییر بپذیر</Button>}
+          >
+            این مورد به {reviewNeed.changedDependencies.map((d) => `«${titleOf?.(d.id) ?? d.id}»`).join('، ')} وابسته است و آن تغییر کرده. اگر هنوز درست است، بدون تغییر بپذیر؛ وگرنه آن را ویرایش یا جایگزین کن.
+          </Alert>
+        )}
+
+        {isSupersedingMode && (
+          <Card padding="md" className="flex flex-col gap-stack-sm">
+            <TextField
+              label="دلیل جایگزینی تصمیم قبلی"
+              value={supersedeReason}
+              onChange={(e) => setSupersedeReason(e.target.value)}
+              placeholder="مثلاً: تغییر رویکرد استراتژیک پس از بازخورد مشتریان"
+              hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
+            />
+          </Card>
+        )}
+        <div>
+          <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>بیشتر</Button>
         </div>
+        {moreOpen && (
+          <div id="context-more" className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
+            <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
+              <Select label="وضعیت" value={status} onChange={(e) => setStatus(e.target.value as ContextStatus)} options={STATUS_OPTIONS} />
+              <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
+            </div>
         {type === 'Constraint' && (
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
@@ -352,55 +419,6 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col gap-stack-xs">
-          <SegmentedControl
-            label="نمای محتوا"
-            value={contentView}
-            onChange={(id) => setContentView(id as 'edit' | 'preview')}
-            items={[{ id: 'edit', label: 'ویرایش', icon: 'Pencil' }, { id: 'preview', label: 'پیش‌نمایش', icon: 'Eye' }]}
-          />
-          {contentView === 'edit' ? (
-            <MentionTextarea
-              label="محتوای دقیق دانش"
-              required
-              rows={5}
-              value={content}
-              onValueChange={setContent}
-              objects={allObjects}
-              selfId={object?.id}
-              placeholder="توضیح کامل واقعیت، تصمیم یا خط قرمز به زبان صریح… (Markdown پشتیبانی می‌شود)"
-            />
-          ) : (
-            <div className="min-h-touch-comfortable rounded-control border border-border-default bg-surface-sunken p-inset-lg">
-              {content.trim() ? <Markdown>{content}</Markdown> : <p className="body-sm text-text-subtle">هنوز چیزی ننوشته‌ای.</p>}
-            </div>
-          )}
-        </div>
-
-        {linkSuggestions.length > 0 && (
-          <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه از ارجاع‌ها">
-            {linkSuggestions.map((sg) => (
-              <li key={sg.targetId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default bg-surface-sunken p-inset-md">
-                <span className="body-sm text-text-default">این متن به «{sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟ <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
-                <span className="flex items-center gap-inline-xs">
-                  <Button type="button" size="sm" variant="secondary" iconStart="Link2" disabled={deps.length >= 20} onClick={() => setDeps((cur) => [...cur, sg.targetId])}>بساز</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => turnDown(sg.targetId)}>نه</Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {isEditing && object && reviewNeed && onAcceptReview && (
-          <Alert
-            intent="warning"
-            title="نیاز به بازبینی"
-            action={<Button size="sm" variant="secondary" onClick={() => { onAcceptReview(object.id); onClose(); }}>بدون تغییر بپذیر</Button>}
-          >
-            این مورد به {reviewNeed.changedDependencies.map((d) => `«${titleOf?.(d.id) ?? d.id}»`).join('، ')} وابسته است و آن تغییر کرده. اگر هنوز درست است، بدون تغییر بپذیر؛ وگرنه آن را ویرایش یا جایگزین کن.
-          </Alert>
-        )}
-
         {onSetDependencies && candidates.length > 0 && (
           <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -435,16 +453,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
 
-        {isSupersedingMode && (
-          <Card padding="md" className="flex flex-col gap-stack-sm">
-            <TextField
-              label="دلیل جایگزینی تصمیم قبلی"
-              value={supersedeReason}
-              onChange={(e) => setSupersedeReason(e.target.value)}
-              placeholder="مثلاً: تغییر رویکرد استراتژیک پس از بازخورد مشتریان"
-              hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
-            />
-          </Card>
+            {content.trim() && (
+              <div className="flex flex-col gap-stack-xs">
+                <span className="label-md text-text-default">پیش‌نمایش متن</span>
+                <div className="rounded-control border border-border-default bg-surface-sunken p-inset-lg"><Markdown>{content}</Markdown></div>
+              </div>
+            )}
+          </div>
         )}
       </form>
     </Dialog>

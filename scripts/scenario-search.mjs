@@ -49,6 +49,7 @@ try {
 
     step(`[${width}] Ctrl/⌘+K opens it with the input focused; a few letters find things, grouped`);
     await openPalette();
+    await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('role')), 'combobox', 'the focus is in the input');
     await type('لحن');
     await options().first().waitFor();
@@ -82,10 +83,10 @@ try {
     await openPalette(); await type('ثبت');
     assert.equal(await options().first().getAttribute('data-kind'), 'command');
     await page.keyboard.press('Enter');
-    await page.getByRole('dialog').getByLabel('عنوان شیء (کوتاه و گویا)').waitFor();
+    await page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').waitFor();
 
     step(`[${width}] «@» offers names and writes a reference — it makes no relationship`);
-    const ta = page.getByRole('dialog').getByLabel('محتوای دقیق دانش');
+    const ta = page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟');
     await ta.fill('زمان پاسخ طبق @ساع');
     await page.locator('[role=dialog] [role=listbox][aria-label="دانش‌هایی که می‌شود نام برد"] [role=option]').first().waitFor();
     await shot('2-mention');

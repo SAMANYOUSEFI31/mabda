@@ -36,6 +36,8 @@ import { DueItems } from './components/DueItems';
 import { SavedPacksDialog } from './components/SavedPacksDialog';
 import { AiRequestDialog } from './components/AiRequestDialog';
 import { CommandPalette } from './components/CommandPalette';
+import { UsageDialog } from './components/UsageDialog';
+import { track } from './services/usage';
 import { buildSearchIndex } from './core/globalSearch';
 import type { SearchHit } from './core/globalSearch';
 import { StarterDialog } from './components/StarterDialog';
@@ -73,12 +75,17 @@ import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
-import { Alert, Button, Card, Dialog, EmptyState, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
+import { Alert, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
+import { HomeTodo } from './components/HomeTodo';
+import { homeActions } from './core/homeActions';
+import type { HomeAction } from './core/homeActions';
+import { visibleFeatures } from './core/visibleFeatures';
 import { AiSettingsModal } from './components/AiSettingsModal';
 import { AiStatusBanner } from './components/AiNotices';
 import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
-import { chatCredits } from './core/creditEngine';
+import { chatCredits, effectiveCredits } from './core/creditEngine';
+import { contextDraftFromBlock } from './core/blocks';
 import { DataApiError, dataApi } from './services/dataApi';
 import type { MetricsBundle } from './services/dataApi';
 import type { CanvasBundle } from './services/dataApi';
@@ -193,8 +200,13 @@ export default function App() {
 
   const nodes = data?.nodes ?? [];
   const workspaceContexts = data?.objects ?? [];
+  // the old «گفتگو» destination: it left the navigation; anything that still points to it lands in «درخواست برای AI»
+  useEffect(() => { if (activeTab === 'chat') { setActiveTab('home'); setAiRequest({ scopeNodeId: chatScope ?? '' }); } }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── global search (Ctrl/⌘+K): the index is built once per data change; notes are for DISPLAY here, never for an AI ──
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [homeAllOpen, setHomeAllOpen] = useState(false);
+  const [savedPackCount, setSavedPackCount] = useState(0);
   const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
   const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: data?.deliverables ?? [], notes: data?.notes ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes]);
@@ -218,6 +230,19 @@ export default function App() {
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
+  // ── local usage counters (a feature KEY only, never data; src/core/usage.ts) ──
+  useEffect(() => { track(`view.${activeTab}`); }, [activeTab]);
+  useEffect(() => { if (activeTab === 'context') track(`context.${contextViewMode}`); }, [activeTab, contextViewMode]);
+  useEffect(() => { if (paletteOpen) track('dialog.search'); }, [paletteOpen]);
+  useEffect(() => { if (aiRequest) track('dialog.ai-request'); }, [aiRequest]);
+  useEffect(() => { if (isPacksOpen) track('dialog.packs'); }, [isPacksOpen]);
+  useEffect(() => { if (isImportOpen) track('dialog.import'); }, [isImportOpen]);
+  useEffect(() => { if (metricsOpen) track('dialog.metrics'); }, [metricsOpen]);
+  useEffect(() => { if (weeklyOpen) track('dialog.weekly'); }, [weeklyOpen]);
+  useEffect(() => { if (isOnboardingOpen) track('dialog.quickstart'); }, [isOnboardingOpen]);
+  useEffect(() => { if (isConnectOpen) track('dialog.connect'); }, [isConnectOpen]);
+  useEffect(() => { if (isMemoryOpen) track('dialog.memory'); }, [isMemoryOpen]);
+  useEffect(() => { if (isContextModalOpen) track('dialog.record'); }, [isContextModalOpen]);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
   useEffect(() => {
     if (!data) return;
@@ -284,6 +309,8 @@ export default function App() {
     const r = await attempt(() => dataApi.createObject(wid, { type: draft.type, status: draft.status, provenance: draft.provenance, title: draft.title, content: draft.content, nodeId: draft.nodeId, source: draft.source, slotKey: draft.slotKey, reach: draft.reach, validUntil: draft.validUntil, assumption: draft.assumption, reviewBy: draft.reviewBy, record: draft.record, facets: draft.facets }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    track('action.record');
+    toast.show({ intent: 'success', message: 'ذخیره شد.', duration: 7000, action: { label: 'یکی دیگر', onClick: () => openContext(null, draft.nodeId) } });
     return r.object;
   };
 
@@ -313,6 +340,40 @@ export default function App() {
   // due: assumptions to look at again, decisions that ask «نتیجه چه شد؟»
   const dueAssumptions = useMemo(() => assumptionsDue(data?.objects ?? [], new Date()), [data?.objects]);
   const dueDecisions = useMemo(() => decisionsDue(data?.objects ?? [], data?.changes ?? [], new Date()), [data?.objects, data?.changes]);
+
+  // ── home: what is worth doing now (three things) and which level-2 features have something in them ──
+  const savedPacksWid = currentWorkspace?.id;
+  useEffect(() => {
+    if (!savedPacksWid) return;
+    dataApi.listSavedPacks(savedPacksWid).then((r) => setSavedPackCount(r.packs.length)).catch(() => setSavedPackCount(0));
+  }, [savedPacksWid, isPacksOpen, aiRequest]);
+  const vf = visibleFeatures({
+    now: new Date(), changes: data?.changes ?? [], relationships: data?.relationships ?? [], contradictions: contradictions.length,
+    metrics: (data?.metrics ?? []).filter((m) => !m.archived).length, savedPacks: savedPackCount, proposed: workspaceContexts.filter((o) => o.status === 'Proposed').length,
+  });
+  const homePlan = useMemo(() => homeActions({
+    now: new Date(),
+    stale: stale.map((x) => ({ deliverableId: x.deliverableId, reasons: x.reasons })),
+    deliverables: (data?.deliverables ?? []).map((d) => ({ id: d.id, title: d.title, createdAt: d.createdAt })),
+    contradictions: contradictions.map((c) => ({ id: c.id, titleA: c.itemA.title, titleB: c.itemB.title, idA: c.itemA.id })),
+    reviews: [...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, because: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) })),
+    ready: waiting.ready.map((u) => ({ id: u.ids[0], title: workspaceContexts.find((o) => o.id === u.ids[0])?.title ?? u.ids[0] })),
+    proposedCount: workspaceContexts.filter((o) => o.status === 'Proposed').length,
+    weekly: { due: weeklyDue, changes: weekly.digest.total },
+    dueCount: dueAssumptions.length + dueDecisions.length,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts]);
+  const handleHomeAct = (a: HomeAction) => {
+    track('action.home-todo');
+    const reveal = (id: string) => { setHomeAllOpen(true); revealWhenThere(id); };
+    const t = a.target;
+    if (t.type === 'asset') { setActiveTab('assets'); setFocusAsset({ id: t.id, n: Date.now() }); }
+    else if (t.type === 'object') { const o = workspaceContexts.find((x) => x.id === t.id); if (o) openContext(o); }
+    else if (t.type === 'weekly') setWeeklyOpen(true);
+    else if (t.type === 'contradictions') reveal('contradictions');
+    else if (t.type === 'proposals') reveal('proposal-inbox');
+    else reveal('open-thinking');
+  };
   const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const metrics = data?.metrics ?? [];
   const measurements = data?.measurements ?? [];
@@ -779,6 +840,7 @@ export default function App() {
   };
   /** inbox: confirm / reject a suggestion (confirming is the ONLY way an AI suggestion becomes a fact) */
   const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
+    track('action.accept-proposal');
     const impact = await setStatus(o.id, 'Confirmed', reason);
     if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
   };
@@ -839,6 +901,7 @@ export default function App() {
         onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
         onOpenSearch={() => setPaletteOpen(true)}
+        onOpenUsage={() => setUsageOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
@@ -881,29 +944,45 @@ export default function App() {
             <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
-                <p className="text-body-sm text-text-subtle mt-stack-xs">اینجا از همین‌جا شروع کن: چه چیزی به تو نیاز دارد، این هفته چه شد و چه چیزی منتظر تصمیم توست.</p>
+                <p className="text-body-sm text-text-subtle mt-stack-xs">فقط آنچه الان ارزش دارد؛ بقیه یک کلیک پایین‌تر است.</p>
               </div>
-              <div className="flex flex-wrap gap-inline-sm">
-                <Button variant="secondary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای AI</Button>
-                <Button variant="secondary" iconStart="TrendingUp" onClick={() => setMetricsOpen(true)}>{MX.navTitle}</Button>
-                <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
+              <div className="flex flex-wrap items-center gap-inline-sm">
+                {workspaceContexts.length > 0 && <Button variant="primary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای AI</Button>}
+                {/* on phones the page action of the top bar does not exist: recording knowledge must still be one tap away */}
+                {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>}
+                {workspaceContexts.length > 0 && <Menu
+                  label="بیشتر"
+                  align="end"
+                  trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
+                  items={[
+                    { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
+                    { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+                    { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+                    { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
+                    { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
+                  ]}
+                />}
               </div>
             </div>
             {workspaceContexts.length === 0 && (
               <EmptyState
                 icon="House"
-                title="از اینجا شروع کن"
-                description="مبدأ با دانشی که خودت می‌دهی کار می‌کند. هر کدام از این‌ها یک شروع است؛ بعد از اولین دانش، همین صفحه می‌گوید چه چیزی کم است."
+                title="از همین‌جا شروع کن"
+                description="یک جمله دربارهٔ کسب‌وکارت بنویس یا یک متن بچسبان؛ بقیه‌اش را مبدأ مرتب می‌کند. بعد از اولین دانش، می‌توانی از AI خودت کاری بخواهی که کسب‌وکارت را می‌شناسد."
                 action={(
                   <div className="flex flex-wrap justify-center gap-inline-md">
                     <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-                    <Button variant="secondary" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظهٔ AI دیگر</Button>
-                    <Button variant="secondary" iconStart="Layers" onClick={() => setIsStarterOpen(true)}>اسکلت شروع</Button>
                     <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
+                    <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظهٔ AI دیگر</Button>
                   </div>
                 )}
               />
             )}
+            {workspaceContexts.length > 0 && (
+              <HomeTodo top={homePlan.top} total={homePlan.total} onAct={handleHomeAct} allOpen={homeAllOpen} onToggleAll={() => setHomeAllOpen((v) => !v)} />
+            )}
+            {homeAllOpen && workspaceContexts.length > 0 && (
+              <div id="home-all" className="flex flex-col gap-stack-lg">
             <AttentionPanel
               specTitle={attentionSpec?.title ?? ''}
               gaps={attentionGaps}
@@ -914,6 +993,8 @@ export default function App() {
               flips={flips}
               titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
               weeklyDue={weeklyDue}
+              showWeekly={vf.weeklyReview}
+              showWaiting={vf.waitingDecisions}
               onOpenWeekly={() => setWeeklyOpen(true)}
               onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
               onAcceptReview={handleAcceptReview}
@@ -929,7 +1010,7 @@ export default function App() {
               onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
             />
 
-            {(metrics.some((m) => !m.archived) || expRows.length > 0) && (
+            {vf.metrics && (
               <Card padding="xl" id="expectations" className="flex flex-col gap-stack-md" aria-label={MX.homeTitle}>
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h2 className="heading-sm text-text-default">{MX.homeTitle}</h2>
@@ -961,9 +1042,9 @@ export default function App() {
 
             {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
-            <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />
+            {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />}
 
-            <ProposalInbox
+            {vf.proposals && <ProposalInbox
               objects={workspaceContexts}
               nodes={nodes}
               onAccept={handleAcceptProposal}
@@ -974,8 +1055,10 @@ export default function App() {
               onOpenPack={() => setPackTarget({ title: currentWorkspace.name })}
               onOpenConnect={() => setIsConnectOpen(true)}
               onOpenMemory={() => setIsMemoryOpen(true)}
-            />
+            />}
 
+              </div>
+            )}
           </div>
         )}
 
@@ -992,18 +1075,27 @@ export default function App() {
                 </p>
               </div>
 
-              <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های Context</Button>
-              <SegmentedControl
-                label="نمای منبع حقیقت"
-                value={contextViewMode}
-                onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
-                items={[
-                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                  { id: 'read', label: 'سند', icon: 'BookOpen' },
-                  { id: 'table', label: 'جدول', icon: 'Table2' },
-                  { id: 'canvas', label: 'بوم', icon: 'Workflow' },
-                ]}
-              />
+              <div className="flex flex-wrap items-center gap-inline-sm">
+                {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
+                <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>
+                <SegmentedControl
+                  label="نمای منبع حقیقت"
+                  value={contextViewMode}
+                  onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
+                  items={[
+                    { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                    { id: 'read', label: 'سند', icon: 'BookOpen' },
+                    { id: 'canvas', label: 'بوم', icon: 'Workflow' },
+                    ...(contextViewMode === 'table' ? [{ id: 'table', label: 'جدول', icon: 'Table2' as const }] : []),
+                  ]}
+                />
+                <Menu
+                  label="نماهای بیشتر"
+                  align="end"
+                  trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
+                  items={[{ label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') }]}
+                />
+              </div>
             </div>
 
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
@@ -1026,7 +1118,7 @@ export default function App() {
                 onSelectObject={(obj) => openContext(obj)}
                 onAddNewToNode={(nodeId) => openContext(null, nodeId)}
                 onNodeAction={setNodeDialog}
-                onChatWithNode={(nodeId) => { setChatScope(nodeId); setActiveTab('chat'); }}
+                onChatWithNode={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
                 onReadNode={setReadNodeId}
                 onShowEffect={setEffectNodeId}
                 thinking={thinking}
@@ -1129,26 +1221,6 @@ export default function App() {
         )}
 
         {/* TAB 3: Smart Chat */}
-        {activeTab === 'chat' && (
-          <div className="space-y-stack-sm">
-            <SmartChat
-              key={`${currentWorkspace.id}:${chatScope ?? ''}`}
-              currentWorkspace={currentWorkspace}
-              allContextObjects={workspaceContexts}
-              nodes={nodes}
-              initialSessions={data.sessions}
-              initialScopeNodeId={chatScope}
-              onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
-              onDeleteSession={(id) => { void attempt(() => dataApi.deleteSession(wid, id)).then(() => patch((d) => ({ ...d, sessions: d.sessions.filter((x) => x.id !== id) }))); }}
-              onAddContextObject={handleSaveContextObject}
-              onIncrementChatCount={handleIncrementChatCount}
-              onOpenContextModal={(obj) => openContext(obj)}
-              onSaveBlockAsAsset={handleSaveBlockAsAsset}
-              onRecordChatUsage={handleRecordChatUsage}
-              onOpenAiSettings={() => setIsAiSettingsOpen(true)}
-            />
-          </div>
-        )}
 
         {/* TAB 4: Asset Library */}
         {activeTab === 'assets' && (
@@ -1324,8 +1396,16 @@ export default function App() {
           <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
         </div>
       </Dialog>
+      <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
-      <AiRequestDialog open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)} />
+      <AiRequestDialog
+        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
+        sessions={data?.sessions ?? []}
+        onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
+        onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? effectiveCredits(chatCredits(false), res.usage.byok) : 0, false); }}
+        onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+      />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />

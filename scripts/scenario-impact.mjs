@@ -97,14 +97,17 @@ async function scenario(width, tag) {
   await page.getByText(/قطعه/).first().waitFor();
   await shot('2-files', true);
 
-  step('node chat: scoped to the node, context & proposals stay in its sub-tree');
-  await campaign.getByRole('button', { name: 'گفتگو با این گره' }).click();
-  await page.getByLabel('محدودهٔ گفتگو').waitFor();
-  assert.equal(await page.getByLabel('محدودهٔ گفتگو').inputValue() !== '', true, 'scope preselected');
-  await page.getByLabel('پیام شما').fill('بودجه کمپین چقدر است؟');
-  await page.getByRole('button', { name: 'ارسال', exact: true }).click();
+  step('«درخواست برای AI» from the node: scope preselected, «همین‌جا جواب بده» answers through the chat route; the block goes to knowledge on a click');
+  await campaign.getByRole('button', { name: 'درخواست برای AI' }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('درباره کجا؟').waitFor();
+  assert.equal(await dlg.getByLabel('درباره کجا؟').inputValue() !== '', true, 'scope preselected');
+  await dlg.getByLabel('درخواستت را در یک خط بنویس').fill('بودجه کمپین چقدر است؟');
+  await dlg.getByRole('button', { name: 'همین‌جا جواب بده' }).click();
   await page.getByText('تصمیم نمونه').waitFor({ timeout: 20000 });
+  await dlg.getByRole('button', { name: 'به دانش اضافه کن' }).first().waitFor();
   await shot('3-node-chat');
+  await page.keyboard.press('Escape');
 
   step('workstream: generate an asset (records the exact context versions)');
   await goTab('جریان‌های کار', 'جریان‌ها');
@@ -119,7 +122,7 @@ async function scenario(width, tag) {
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع');
   await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
-  await page.getByRole('dialog').getByLabel('محتوای دقیق دانش').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
+  await page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('button', { name: 'ذخیرهٔ تغییرات' }).click();
   const toastEl = page.getByText(/این تغییر روی .* دارایی اثر دارد/);
   await toastEl.waitFor();

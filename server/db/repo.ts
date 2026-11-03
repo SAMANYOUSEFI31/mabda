@@ -13,6 +13,7 @@ import type { StaleAsset } from '../../src/core/impactEngine.ts';
 import { DEFAULT_TREE_NODES, LIBRARY } from '../../src/core/specs.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../src/core/metrics.ts';
 import { reasonAllowed } from '../../src/core/versionHistory.ts';
+import { isFeatureKey } from '../../src/core/usage.ts';
 import { isRequestKind, REQUEST_MAX_CHARS } from '../../src/core/aiRequest.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
@@ -1094,6 +1095,16 @@ export class Repo {
   }
   deleteSavedPack(s: Scope, id: string) {
     this.db.prepare('DELETE FROM saved_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
+  }
+
+  // ── usage counters: a KEY from the catalog, a number and a time — never any user data ──
+  bumpUsage(userId: string, feature: unknown): void {
+    if (!isFeatureKey(feature)) throw new RepoError('invalid', 'امکان ناشناخته.');
+    const t = now();
+    this.db.prepare('INSERT INTO usage_events (user_id, feature, count, last_at) VALUES (?,?,1,?) ON CONFLICT(user_id, feature) DO UPDATE SET count = count + 1, last_at = excluded.last_at').run(userId, feature, t);
+  }
+  listUsage(userId: string): Array<{ feature: string; count: number; lastAt: string }> {
+    return (this.db.prepare('SELECT feature, count, last_at FROM usage_events WHERE user_id = ? ORDER BY count DESC, feature').all(userId) as Array<Record<string, unknown>>).map((r) => ({ feature: r.feature as string, count: r.count as number, lastAt: r.last_at as string }));
   }
 
   // ── whole-workspace state + one-time legacy import ───────────────────────

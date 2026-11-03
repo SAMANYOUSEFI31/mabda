@@ -57,7 +57,7 @@ try {
     step(`[${width}] a real fact with a facet, then build a pack and copy it in one click`);
     await api(`/workspaces/${wid}/objects`, 'POST', { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: FACT, content: `${FACT}: ۵۰ سفارش`, nodeId: 'offer', facets: ['مشتری ماهانه'] });
     await page.reload({ waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'بسته‌های Context' }).first().click();
+    await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click(); // level 3 until one is saved
     await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
     await page.getByLabel('نام بسته').fill('برای متن تبلیغ');
     await page.getByLabel('دستور کوتاه برای AI (اختیاری)').fill('فقط از همین بسته کار کن.');

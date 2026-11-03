@@ -358,6 +358,18 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 16,
+    name: 'usage_events: a counter per feature KEY (catalog in src/core/usage.ts), this install only — no text, title or id is ever stored',
+    up(db) {
+      db.exec(`
+        CREATE TABLE usage_events (
+          user_id TEXT NOT NULL, feature TEXT NOT NULL, count INTEGER NOT NULL, last_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, feature)
+        );
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
