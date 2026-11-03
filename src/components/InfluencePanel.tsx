@@ -45,21 +45,21 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
         <Group title="قیدهای مؤثر در این گره" empty="قیدی در این گره اثر ندارد." count={shapedBy.constraints.length}>
           {shapedBy.constraints.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}
         </Group>
-        <Group title="استثناها" empty="استثنایی ندارد." count={shapedBy.exceptions.length}>
+        <Group title="جاهایی که اعمال نمی‌شود" empty="جایی نیست که اعمال نشود." count={shapedBy.exceptions.length}>
           {shapedBy.exceptions.map((e) => (
             <li key={`${e.by.id}>${e.target.id}`} className="body-md text-text-default">
               {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای گرهٔ خودش و زیرشاخه‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای گره‌ای پایین‌تر کنار گذاشته است.</>}
             </li>
           ))}
         </Group>
-        <Group title="ورودی‌های اصلی (ارث‌رسیده)" empty="چیزی از گره‌های بالاتر نرسیده." count={shapedBy.inputs.length}>
+        <Group title="ورودی‌های اصلی (از بخش بالاتر آمده)" empty="چیزی از گره‌های بالاتر نرسیده." count={shapedBy.inputs.length}>
           {shapedBy.inputs.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}
         </Group>
       </section>
 
       <section className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg" aria-label="اثرپذیران">
         <h3 className="heading-xs text-text-default">چه چیزی از این اثر می‌گیرد؟</h3>
-        <p className="body-sm text-text-subtle"><Badge intent="neutral" icon={false}>محدوده</Badge> {scopeText}.{shapes.scope.exceptNodeIds.length > 0 ? ` (به‌جز ${shapes.scope.exceptNodeIds.slice(0, 3).map(label).join('، ')}${shapes.scope.exceptNodeIds.length > 3 ? '…' : ''} که استثنا دارد)` : ''}</p>
+        <p className="body-sm text-text-subtle"><Badge intent="neutral" icon={false}>محدوده</Badge> {scopeText}.{shapes.scope.exceptNodeIds.length > 0 ? ` (به‌جز ${shapes.scope.exceptNodeIds.slice(0, 3).map(label).join('، ')}${shapes.scope.exceptNodeIds.length > 3 ? '…' : ''} که این‌جا اعمال نمی‌شود)` : ''}</p>
         <Group title="تصمیم‌هایی که روی آن سوارند" empty="چیزی روی آن سوار نیست." count={shapes.dependents.length}>
           {shapes.dependents.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}
         </Group>
