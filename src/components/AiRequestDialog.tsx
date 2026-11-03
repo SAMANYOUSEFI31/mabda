@@ -137,15 +137,16 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
               { label: 'پاسخ AI را وارد کن', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
             ]}
           />
-          <Button variant="secondary" iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>
-          <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای AI خودم'}</Button>
+          {/* two outputs, ONE main: with a key «همین‌جا جواب بده» is the main one; without a key the copy is */}
+          <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>
+          <Button variant={ai.available ? 'secondary' : 'primary'} iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای AI خودم'}</Button>
         </>
       }
     >
       <div className="flex flex-col gap-stack-md">
-        <div role="radiogroup" aria-label="نوع کار" className="flex flex-wrap gap-inline-xs">
+        <div role="radiogroup" aria-label="نوع کار" className="grid grid-cols-2 gap-inline-sm sm:grid-cols-3">
           {REQUEST_KINDS.map((k) => (
-            <Button key={k.kind} size="sm" variant={k.kind === kind ? 'secondary' : 'ghost'} iconStart={k.kind === kind ? 'Check' : undefined} role="radio" aria-checked={k.kind === kind} onClick={() => { setKind(k.kind); setExtraIds([]); }}>{k.label}</Button>
+            <Button key={k.kind} size="md" className="w-full" variant={k.kind === kind ? 'secondary' : 'ghost'} iconStart={k.kind === kind ? 'Check' : undefined} role="radio" aria-checked={k.kind === kind} onClick={() => { setKind(k.kind); setExtraIds([]); }}>{k.label}</Button>
           ))}
         </div>
         <p className="body-sm text-text-subtle">{meta.hint}</p>
@@ -169,7 +170,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
         {!result && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت" /><span className="body-md">در حال ساخت…</span></div>}
         {result && (
           <details className="rounded-control border border-border-default p-inset-md">
-            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">ببین چه چیزی می‌رود ({formatNumber(result.included.length)} مورد · حدود {formatNumber(result.tokens)} توکن)</summary>
+            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن<span className="ms-inline-sm underline">جزئیات</span></summary>
           <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
               <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>
