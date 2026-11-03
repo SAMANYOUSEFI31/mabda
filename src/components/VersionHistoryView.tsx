@@ -30,7 +30,6 @@ export const VersionHistoryView: React.FC<{ changes: ContextChange[] } & Lookups
   if (!entries.length) return <p className="body-md text-text-subtle">هنوز تغییری ثبت نشده است.</p>;
   return (
     <div className="flex flex-col gap-stack-sm">
-      <ApprovalBadge history={history} />
       <ol className="flex flex-col gap-stack-sm" aria-label="مسیر نسخه‌ها (جدیدترین اول)">
         {entries.map((e) => {
           if (e.type === 'event') return <ChangeEntry key={e.id} change={e.change} {...l} />;

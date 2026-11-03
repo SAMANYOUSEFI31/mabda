@@ -66,17 +66,28 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
     return undefined;
   }, [items, goTo]);
 
-  // scroll-spy: the heading nearest the top of the screen is «where you are»
+  // scroll-spy: «where you are» = the last heading that has passed the reading line (a third of the way down the screen);
+  // at the very end of the page it is the last heading, even if that one never reaches the line
   useEffect(() => {
-    if (view !== 'read' || items.length === 0 || typeof IntersectionObserver === 'undefined') return undefined;
-    const seen = new Set<string>();
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) { if (e.isIntersecting) seen.add(e.target.id); else seen.delete(e.target.id); }
-      const first = items.find((i) => seen.has(i.id));
-      if (first) setActive(first.id);
-    }, { rootMargin: '0px 0px -65% 0px', threshold: 0 });
-    for (const i of items) { const el = document.getElementById(i.id); if (el) io.observe(el); }
-    return () => io.disconnect();
+    if (view !== 'read' || items.length === 0) return undefined;
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const line = window.innerHeight * 0.33;
+      let cur = items[0].id;
+      for (const i of items) {
+        const el = document.getElementById(i.id);
+        if (el && el.getBoundingClientRect().top <= line) cur = i.id;
+      }
+      const el = document.scrollingElement ?? document.documentElement;
+      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
+      setActive(cur);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', onScroll);
+    measure();
+    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf); };
   }, [items, view, markdown]);
 
   const activeItem = items.find((i) => i.id === active);
@@ -102,22 +113,22 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
         />
         <div className="flex flex-wrap items-center gap-inline-xs">
           {refs && <Switch label="با ارجاع‌ها" checked={refs.checked} onChange={(e) => refs.onChange(e.target.checked)} />}
-          {withOutline && (
-            <span className="lg:hidden">
-              <Menu
-                label="فهرست سند"
-                align="end"
-                trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
-                items={items.map((i) => ({ label: `${i.level > 1 ? '— '.repeat(i.level - 1) : ''}${i.text}`, onSelect: () => goTo(i.id) }))}
-              />
-            </span>
-          )}
           {withOutline && <Button size="sm" variant="ghost" iconStart="Link2" onClick={copyLink} disabled={!active}>پیوند این بخش</Button>}
           <Button size="sm" variant="ghost" iconStart="Copy" onClick={copy}>کپی</Button>
           <Button size="sm" variant="ghost" iconStart="Download" onClick={download}>دانلود .md</Button>
         </div>
       </div>
-      {withOutline && activeItem && <p className="body-sm text-text-subtle lg:hidden" aria-live="polite">اکنون: {activeItem.text}</p>}
+      {withOutline && (
+        <div className="doc-bar flex items-center gap-inline-sm lg:hidden">
+          <Menu
+            label="فهرست سند"
+            align="start"
+            trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
+            items={items.map((i) => ({ label: `${i.level > 1 ? '— '.repeat(i.level - 1) : ''}${i.text}`, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
+          />
+          {activeItem && <p className="body-sm min-w-space-0 flex-1 truncate text-text-subtle" aria-live="polite">اکنون: {activeItem.text}</p>}
+        </div>
+      )}
       {withOutline && markdown.trim().length > 0 ? (
         <div className="flex flex-col gap-stack-md lg:flex-row lg:items-start lg:gap-inline-xl">
           <nav className="doc-outline hidden shrink-0 lg:block lg:w-overlay-xs" aria-label="فهرست سند">
