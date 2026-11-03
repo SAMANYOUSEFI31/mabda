@@ -560,3 +560,23 @@ test('the verdict on an expectation is a Change with the metric and the last num
   const bad = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'بد', content: 'x', nodeId: 'business', record: { metricExpectation: { metricId: m.id, direction: 'left' as never, by: '2026-13-40' } } });
   assert.equal(repo.getObject(s, bad.id)!.record, undefined);
 });
+
+test('migration 18: nodes that were locked (is_system = 1) are ordinary now — and nothing else changes', () => {
+  const db = new Database(':memory:');
+  migrate(db, 17);
+  db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
+  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('business', U, 'w1', null, 'کسب‌وکار', '', 1, 0);
+  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('mine', U, 'w1', 'business', 'گرهٔ من', '', 0, 1);
+  db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('c1', U, 'w1', 'Fact', 'Confirmed', 'User Input', 'عنوان', 'متن', 'business', 't', 't');
+  assert.deepEqual(migrate(db), [18]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  assert.deepEqual(repo.listNodes(s).map((n) => [n.id, n.label]), [['business', 'کسب‌وکار'], ['mine', 'گرهٔ من']], 'the nodes are intact');
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM tree_nodes WHERE is_system = 1').get() as { n: number }).n, 0);
+  assert.equal(repo.listObjects(s)[0].nodeId, 'business', 'the knowledge is untouched');
+  // the node that used to be locked now deletes like any other once another root exists
+  const root = repo.createNode(s, { label: 'خدمات' });
+  repo.deleteNode(s, 'business', root.id);
+  assert.equal(repo.listObjects(s)[0].nodeId, root.id);
+  assert.ok(!repo.listNodes(s).some((n) => n.id === 'business'));
+});
