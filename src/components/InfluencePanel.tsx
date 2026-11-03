@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React from 'react';
+import { ClosedSection } from './ClosedSection';
 import type { ContextObject, GeneratedDeliverable, TreeNode } from '../types';
 import type { Influence } from '../core/influence';
-import { Badge, Icon, OriginBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, OriginBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 
 interface Props {
   influence: Influence;
@@ -31,20 +32,7 @@ const Group: React.FC<{ title: string; empty: string; count: number; children: R
 );
 
 /** «اثرگذاران و اثرپذیران»: above = what shapes this object, below = what it shapes. Built from effectiveFor + decisionGraph only. */
-/** a closed-by-default section: a quiet button with a count, the content only when asked for */
-export const Closed: React.FC<{ title: string; count: number; children: React.ReactNode }> = ({ title, count, children }) => {
-  const [open, setOpen] = useState(false);
-  const id = React.useId();
-  return (
-    <div className="flex flex-col gap-stack-xs">
-      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)} className="label-md flex min-h-touch w-full items-center justify-between gap-inline-sm rounded-control-sm px-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle">
-        <span>{title}{count ? ` (${formatNumber(count)})` : ''}</span>
-        <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size="sm" className="shrink-0 text-icon-subtle" />
-      </button>
-      {open && <div id={id} className="flex flex-col gap-stack-xs ps-inset-md">{children}</div>}
-    </div>
-  );
-};
+export const Closed = ClosedSection;
 
 export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject, onOpenAssets, compact }) => {
   const { shapedBy, shapes } = influence;

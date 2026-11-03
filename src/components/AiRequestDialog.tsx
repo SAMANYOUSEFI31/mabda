@@ -14,6 +14,7 @@ import { asAiError, streamChat } from '../services/apiClient';
 import type { AiErrorInfo } from '../types';
 import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice } from './AiNotices';
+import { ClosedSection } from './ClosedSection';
 import { BlockView } from './BlockView';
 import { Alert, Badge, Button, Dialog, IconButton, Menu, Select, Spinner, TextField, Textarea, formatJalaliDate, formatNumber, useToast } from '../ui';
 
@@ -169,8 +170,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
         {error && <Alert intent="danger">{error}</Alert>}
         {!result && !error && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت" /><span className="body-md">در حال ساخت…</span></div>}
         {result && (
-          <details className="rounded-control border border-border-default p-inset-md">
-            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن<span className="ms-inline-sm underline">جزئیات</span></summary>
+          <ClosedSection title={<>با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن — جزئیات</>}>
           <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
               <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>
@@ -183,8 +183,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
             {result.longText && <p className="body-sm text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
             <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code bidi-plain" />
 
-            <details className="rounded-control border border-border-default p-inset-md">
-              <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">شامل شد ({formatNumber(result.included.length)})</summary>
+            <ClosedSection title="شامل شد" count={result.included.length}>
               <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="شامل‌شده‌ها">
                 {result.included.map((i) => (
                   <li key={i.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -196,10 +195,9 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                   </li>
                 ))}
               </ul>
-            </details>
+            </ClosedSection>
             {left.length > 0 && (
-              <details className="rounded-control border border-border-default p-inset-md">
-                <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">خارج شد ({formatNumber(result.excluded.length)}) — با دلیل و امکان افزودن</summary>
+              <ClosedSection title="خارج شد — با دلیل و امکان افزودن" count={result.excluded.length}>
                 <div className="mt-stack-sm flex flex-col gap-stack-md">
                   {left.map(([reason, items]) => (
                     <section key={reason} aria-label={EXCLUDE_REASON_FA[reason]}>
@@ -216,14 +214,13 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                     </section>
                   ))}
                 </div>
-              </details>
+              </ClosedSection>
             )}
           </div>
-          </details>
+          </ClosedSection>
         )}
         {sessions.length > 0 && (
-          <details className="rounded-control border border-border-default p-inset-md">
-            <summary className="label-md flex min-h-touch cursor-pointer items-center text-text-default">پاسخ‌های قبلی ({formatNumber(sessions.length)})</summary>
+          <ClosedSection title="پاسخ‌های قبلی" count={sessions.length}>
             <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="پاسخ‌های قبلی">
               {[...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((sess) => (
                 <li key={sess.id} className="flex flex-col gap-stack-xs">
@@ -242,7 +239,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                 </li>
               ))}
             </ul>
-          </details>
+          </ClosedSection>
         )}
         <p className="body-sm text-text-subtle">«کپی» هیچ AI‌ای را صدا نمی‌زند. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
       </div>
