@@ -1,0 +1,40 @@
+/**
+ * Writing a thought down without knowing any syntax. A thought is a LINE of a note with a marker (`[ایده]` …): the marker is
+ * written FOR the user from a chip; the brackets stay a professional shortcut. The kind is decided by rules, never guessed by an
+ * AI: a text that ends with «؟» / «?» is a question. Converting a thought to knowledge only PREFILLS the knowledge form — the
+ * user looks, edits and saves; the line stays where it was and the new knowledge remembers it (`source`). Pure.
+ */
+
+import type { ContextDraft, ObjectSource } from '../types';
+import { guessTitle } from './knowledgeGuess';
+import { MARKER_OF, THINKING_FA, isQuestionLine } from './thinkingMarkers';
+import type { NoteThinkingItem, ThinkingKind } from './thinkingMarkers';
+
+export const THOUGHT_KINDS: ThinkingKind[] = ['idea', 'question', 'assumption', 'open_decision'];
+export { THINKING_FA };
+
+/** idea by default; a text that ends with a question mark is a question (the user can change the chip) */
+export const guessThoughtKind = (text: string): ThinkingKind => (isQuestionLine(text.trim().split('\n').pop() ?? '') ? 'question' : 'idea');
+
+/** the note text to save: the marker of the chosen kind on the first line, the rest of the lines as typed */
+export function composeThought(text: string, kind: ThinkingKind): string {
+  const lines = text.replace(/\r/g, '').split('\n');
+  const first = lines.findIndex((l) => l.trim());
+  if (first < 0) return '';
+  const out = lines.map((l, i) => (i === first ? `${MARKER_OF[kind]} ${l.replace(/^\s*\[[^\]]*\]\s*/, '').trim()}` : l));
+  return out.slice(first).join('\n').trim();
+}
+
+/**
+ * The knowledge form, prefilled from a thought: question and open decision and idea → a Decision (a question to decide),
+ * assumption → a Fact flagged as an assumption. Always PROPOSED (it waits in the thinking space for a yes), with the line as its quote.
+ */
+export function thoughtToDraft(item: NoteThinkingItem, workspaceId: string, now: string): ContextDraft {
+  const assumption = item.kind === 'assumption';
+  const source: ObjectSource = { kind: 'note', noteId: item.noteId, lineKey: item.hash, quote: item.text, at: now };
+  return {
+    workspaceId, type: assumption ? 'Fact' : 'Decision', status: 'Proposed', provenance: 'User Input',
+    title: guessTitle(item.text), content: item.text, nodeId: item.nodeId, source,
+    ...(assumption ? { assumption: true } : {}),
+  };
+}
