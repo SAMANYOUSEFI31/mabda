@@ -301,6 +301,7 @@ export default function App() {
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     track('action.record');
+    toast.show({ intent: 'success', message: 'ذخیره شد.', duration: 7000, action: { label: 'یکی دیگر', onClick: () => openContext(null, draft.nodeId) } });
     return r.object;
   };
 

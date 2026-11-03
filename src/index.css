@@ -107,3 +107,6 @@
 
 /* the command palette: the result list scrolls inside the dialog, the input stays put */
 .palette-list { max-block-size: 55dvh; overflow-y: auto; }
+
+/* a menu with many items (the tree's sections) scrolls instead of running off the screen */
+.scroll-menu .bsh-menu { max-block-size: 50dvh; overflow-y: auto; }
