@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import type { ContextObject, Note, TreeNode } from '../types';
+import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
+import { STRUCTURE_REASON } from '../core/decisionOrder';
 import { thinkingSpace } from '../core/thinkingSpace';
 import type { SpaceKind } from '../core/thinkingSpace';
 import { flatten } from '../core/nodeTree';
@@ -23,6 +24,7 @@ interface Props {
   objects: ContextObject[];
   notes: Note[];
   nodes: TreeNode[];
+  relationships?: ContextRelationship[];
   /** open from a node's counter: only that node (and below) */
   nodeId?: string;
   onNodeChange: (nodeId: string | undefined) => void;
@@ -34,7 +36,7 @@ interface Props {
   onOpenObject: (o: ContextObject) => void;
   onApproveDraft: (id: string) => Promise<void>;
   onRejectDraft: (id: string) => Promise<void>;
-  proposals: Omit<ProposalProps, 'objects' | 'nodes'>;
+  proposals: Omit<ProposalProps, 'objects' | 'nodes' | 'keepOrder' | 'hints'>;
 }
 
 const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
@@ -47,11 +49,14 @@ const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
  */
 export const ThinkingSpace: React.FC<Props> = (p) => {
   const [kind, setKind] = useState<SpaceKind | 'all'>('all');
-  const view = useMemo(() => thinkingSpace({ objects: p.objects, notes: p.notes, nodes: p.nodes }, { kind: kind === 'all' ? undefined : kind, nodeId: p.nodeId }), [p.objects, p.notes, p.nodes, kind, p.nodeId]);
+  const view = useMemo(() => thinkingSpace({ objects: p.objects, notes: p.notes, nodes: p.nodes, relationships: p.relationships }, { kind: kind === 'all' ? undefined : kind, nodeId: p.nodeId }), [p.objects, p.notes, p.nodes, p.relationships, kind, p.nodeId]);
   const nodeLabel = (id: string) => p.nodes.find((n) => n.id === id)?.label ?? '';
   const proposalsHere = view.waiting.filter((w) => w.type === 'proposal').map((w) => w.object);
   const reviews = view.waiting.filter((w) => w.type === 'review').map((w) => w.object);
   const drafts = view.waiting.filter((w) => w.type === 'draft').map((w) => w.object);
+  /** one line under an item whose sub-sections have waiting items too: a hint about the ORDER, never a lock */
+  const reasonOf = (id: string) => (view.structure[id] ? `${STRUCTURE_REASON} (${formatNumber(view.structure[id])} مورد در زیربخش‌ها هم منتظر است)` : undefined);
+  const proposalHints = Object.fromEntries(proposalsHere.map((o) => [o.id, reasonOf(o.id)]).filter(([, r]) => r)) as Record<string, string>;
   const empty = view.waiting.length + view.thoughts.length + view.assumptions.length === 0;
   const count = (k: SpaceKind | 'all') => (k === 'all' ? Object.values(view.counts).reduce((a, b) => a + b, 0) : view.counts[k]);
 
@@ -88,6 +93,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><Badge intent="warning" icon={false}>۱ تغییر در انتظار تأیید</Badge><span className="caption text-text-subtle">{nodeLabel(o.nodeId)}</span></span>
               </div>
+              {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
               {o.draft!.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{o.draft!.reason}</p>}
               <p className="body-sm text-text-subtle">تا تأیید نشود، AI و خروجی‌ها همان متن تأییدشده را می‌بینند.</p>
@@ -98,12 +104,12 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               </div>
             </Card>
           ))}
-          {proposalsHere.length > 0 && <ProposalInbox {...p.proposals} objects={proposalsHere} nodes={p.nodes} />}
+          {proposalsHere.length > 0 && <ProposalInbox {...p.proposals} objects={proposalsHere} nodes={p.nodes} keepOrder hints={proposalHints} />}
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
                 <li key={o.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-                  <span className="flex flex-wrap items-center gap-inline-xs"><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>
+                  <span className="flex flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs"><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>{reasonOf(o.id) && <span className="body-sm text-text-subtle">{reasonOf(o.id)}</span>}</span>
                   <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
                 </li>
               ))}

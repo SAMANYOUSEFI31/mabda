@@ -21,6 +21,7 @@ import { BeforeAfter } from './BeforeAfter';
 import { affectPlan, affectedBy } from '../core/relationPlan';
 import { TYPE_CHIP_FA, guessTitle, guessType } from '../core/knowledgeGuess';
 import { suggestLinks } from '../core/mentions';
+import { suggestUpstreamLinks } from '../core/upstreamLinks';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../core/versionHistory';
 import type { ContextChange } from '../types';
@@ -177,11 +178,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const noKey = (targetId: string) => `${object?.id ?? 'new'}>${targetId}`;
   const readNo = (): string[] => { try { return JSON.parse(localStorage.getItem('mabda.mentions.no') ?? '[]') as string[]; } catch { return []; } };
   const [turnedDown, setTurnedDown] = useState<string[]>(readNo);
-  const linkSuggestions = useMemo(
-    () => suggestLinks({ text: content, title, selfId: object?.id, objects: allObjects, relationships, dismissed: [...deps, ...allObjects.map((o) => o.id).filter((id) => turnedDown.includes(noKey(id)))] }),
+  const linkSuggestions = useMemo(() => {
+    const dismissed = [...deps, ...allObjects.map((o) => o.id).filter((id) => turnedDown.includes(noKey(id)))];
+    const named = suggestLinks({ text: content, title, selfId: object?.id, objects: allObjects, relationships, dismissed });
+    // …and what reaches this section from ABOVE and talks about the same thing (a hint with its reason; one tap accepts)
+    const above = suggestUpstreamLinks({ title: title.trim() || guessTitle(content), type, nodeId, selfId: object?.id, objects: allObjects, nodes, relationships, dismissed: [...dismissed, ...named.map((s) => s.targetId)] });
+    return [...named, ...above];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [content, object?.id, allObjects, relationships, deps, turnedDown],
-  );
+  }, [content, title, type, nodeId, nodes, object?.id, allObjects, relationships, deps, turnedDown]);
   const turnDown = (targetId: string) => { const next = [...turnedDown, noKey(targetId)].slice(-200); setTurnedDown(next); try { localStorage.setItem('mabda.mentions.no', JSON.stringify(next)); } catch { /* optional */ } };
   const history = useMemo(() => versionHistory(changes), [changes]);
   const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
@@ -343,7 +347,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
             {linkSuggestions.map((sg) => (
               <li key={sg.targetId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default bg-surface-sunken p-inset-md">
-                <span className="body-sm text-text-default">{sg.because ? `عنوان‌هایتان واژهٔ مشترک دارد (${sg.because}). به «${sg.title}» وابسته است؟` : `این متن به «${sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟`} <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
+                <span className="body-sm text-text-default">{sg.fromNode ? `از بخش «${sg.fromNode}» به اینجا می‌رسد و از «${sg.because}» حرف می‌زند. به «${sg.title}» وابسته است؟` : sg.because ? `عنوان‌هایتان واژهٔ مشترک دارد (${sg.because}). به «${sg.title}» وابسته است؟` : `این متن به «${sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟`} <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
                 <span className="flex items-center gap-inline-xs">
                   <Button type="button" size="sm" variant="secondary" iconStart="Link2" disabled={deps.length >= 20} onClick={() => setDeps((cur) => [...cur, sg.targetId])}>بساز</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => turnDown(sg.targetId)}>نه</Button>

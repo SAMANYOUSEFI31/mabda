@@ -29,7 +29,20 @@ export function extractMentions(text: string, objects: ContextObject[]): Mention
   return out;
 }
 
-export interface LinkSuggestion { targetId: string; title: string; /** why it was suggested when it was NOT named with @: the shared words of the two titles */ because?: string }
+export interface LinkSuggestion { targetId: string; title: string; /** why it was suggested when it was NOT named with @: the shared words of the two titles */ because?: string; /** a suggestion from ABOVE: the section the target lives in («از بخش "X" به اینجا می‌رسد») */ fromNode?: string }
+
+/**
+ * The one deterministic «same topic» rule for two titles: at least two shared words and a Jaccard of 0.4 or more.
+ * `loose` accepts ONE shared word («قیمت اشتراک» / «قیمت بستهٔ هدیه»): used only where the structure already says the two are
+ * close (a section's knowledge reaching its sub-section), never for two unrelated pieces of knowledge. Returns the shared words, or null.
+ */
+export function sharedTopic(a: string, b: string, opts: { loose?: boolean } = {}): string[] | null {
+  const x = titleTokens(a), y = titleTokens(b);
+  const shared = [...x].filter((w) => y.has(w));
+  if (shared.length >= 2 && jaccard(x, y) >= 0.4) return shared;
+  if (opts.loose && shared.length >= 1) return shared;
+  return null;
+}
 
 /**
  * Which «وابسته به» links the text suggests: named objects that are not the object itself, not archived / superseded / still

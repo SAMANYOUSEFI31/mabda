@@ -612,3 +612,21 @@ test('moving a node: to the top level, between levels and within its siblings �
   repo.moveNode(s, second.id, 'brand', 1);
   assert.equal(repo.listChanges(s, { includeNodes: true }).length, before, 'a pure reorder is not a «moved» record');
 });
+
+test('moving a section builds and removes NO relation; the structure is a hint, not a ruling', () => {
+  const { repo, s } = fresh();
+  const parent = repo.createNode(s, { parentId: 'business', label: 'اشتراک' });
+  const child = repo.createNode(s, { parentId: parent.id, label: 'بستهٔ هدیه' });
+  const up = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'قیمت اشتراک', content: 'الف', nodeId: parent.id });
+  const low = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'قیمت بستهٔ هدیه', content: 'ب', nodeId: child.id });
+  const other = repo.createObject(s, { type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'لحن', content: 'ج', nodeId: 'business' });
+  repo.setDependencies(s, low.id, [other.id]); // one relation the user said out loud
+  const key = () => repo.listRelationships(s).map((r) => `${r.type}:${r.sourceId}>${r.targetId}`).sort().join('|');
+  const before = key();
+  assert.ok(before.includes(`depends_on:${low.id}>${other.id}`));
+  repo.moveNode(s, child.id, 'business'); // out of «اشتراک»: its inheritance changes, its relations must not
+  repo.moveNode(s, parent.id, 'offer');
+  repo.moveNode(s, child.id, parent.id);
+  assert.equal(key(), before, 'no relation was created, changed or removed by any of the moves');
+  assert.ok(!key().includes(up.id), 'the section above got no relation just for being above');
+});

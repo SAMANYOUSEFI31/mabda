@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { STRUCTURE_REASON } from '../core/decisionOrder';
 import React, { useState } from 'react';
 import type { GapItem } from '../types';
 import type { FlipFlop, WaitingDecisions } from '../core/decisionGraph';
@@ -19,6 +20,8 @@ interface Props {
   reviews: Array<{ id: string; title: string; dependencyTitles: string[] }>;
   /** the order of decisions (decisionGraph) */
   waiting: WaitingDecisions;
+  /** decision id → waiting decisions of its sub-sections (the order hint) */
+  structure?: Record<string, number>;
   flips: FlipFlop[];
   titleOf: (id: string) => string;
   onOpenObject: (id: string) => void;
@@ -42,7 +45,7 @@ interface Props {
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
@@ -100,7 +103,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
               <ul className="flex flex-col gap-stack-xs">
                 {waiting.ready.map((u) => (
                   <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
-                    <span className="body-md text-text-default">{names(u.ids)} — هرچه به آن تکیه دارد تأیید شده است.</span>
+                    <span className="flex flex-col gap-stack-xs"><span className="body-md text-text-default">{names(u.ids)} — هرچه به آن تکیه دارد تأیید شده است.</span>{structure[u.ids[0]] ? <span className="body-sm text-text-subtle">{STRUCTURE_REASON}</span> : null}</span>
                     <Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کن</Button>
                   </li>
                 ))}

@@ -25,11 +25,15 @@ interface Props {
   onOpenPack: () => void;
   onOpenConnect: () => void;
   onOpenMemory: () => void;
+  /** the caller already ordered them (upper section first): keep that order instead of newest-first */
+  keepOrder?: boolean;
+  /** id → one line about the order («زیربخش‌ها از این ارث می‌برند…») */
+  hints?: Record<string, string>;
 }
 
 /** Everything an AI suggested (MCP client, chat, coach, a file, a note, a pasted answer) waits here. Nothing is a fact until the user confirms it. */
-export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory }) => {
-  const pending = objects.filter((o) => o.status === 'Proposed').sort((a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
+export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory, keepOrder, hints }) => {
+  const pending = objects.filter((o) => o.status === 'Proposed').sort(keepOrder ? () => 0 : (a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
@@ -75,6 +79,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
               </div>
               <span className="body-sm text-text-subtle">{label(o.nodeId)}</span>
             </div>
+            {hints?.[o.id] && <p className="body-sm text-text-subtle">{hints[o.id]}</p>}
             {(() => {
               const ctx = proposalContext(o, objects);
               return (
