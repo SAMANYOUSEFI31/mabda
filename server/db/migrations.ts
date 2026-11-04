@@ -391,6 +391,19 @@ export const MIGRATIONS: Migration[] = [
       db.exec('ALTER TABLE context_objects ADD COLUMN draft TEXT;');
     },
   },
+  {
+    version: 20,
+    name: 'removal_batches: a node removal that can be undone (the rows and the moves it made, as JSON) — «حذف‌های اخیر» and the «برگرداندن» toast read it; kept until it is undone or purged',
+    up(db) {
+      db.exec(`
+        CREATE TABLE removal_batches (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          kind TEXT NOT NULL, label TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL, undone_at TEXT
+        );
+        CREATE INDEX idx_removals_ws ON removal_batches(workspace_id, created_at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

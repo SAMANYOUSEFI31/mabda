@@ -132,7 +132,7 @@ export interface ContextRelationship {
 
 export type ContextChangeKind =
   | 'created' | 'edited' | 'status_changed' | 'superseded' | 'archived'
-  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note' | 'node_deleted' | 'node_moved'
+  | 'proposal_accepted' | 'proposal_rejected' | 'contradiction_resolved' | 'imported' | 'review_accepted' | 'outcome_noted' | 'node_from_note' | 'node_deleted' | 'node_restored' | 'node_moved' | 'purged'
   | 'metric_created' | 'metric_edited' | 'metric_archived' | 'measurement_added' | 'measurement_proposed' | 'measurement_removed';
 export type ContextChangeActor = 'user' | 'mcp' | 'chat' | 'coach' | 'import' | 'system';
 
@@ -291,6 +291,8 @@ export type ExecutionMode = 'fast' | 'auto' | 'critique' | 'sensitive';
 
 export interface GeneratedDeliverable {
   id: string;
+  /** archived: out of the list (and of the stale count), still replayable; set only by the server */
+  archivedAt?: string;
   workspaceId: string;
   workstreamId: string;
   deliverableId: string;
@@ -300,6 +302,8 @@ export interface GeneratedDeliverable {
   creditCost: number;
   /** the exact objects (id + version) injected into the model — Context Replay and the impact engine read this */
   usedContext: UsedContextRef[];
+  /** knowledge this output was built from that was later erased for good (permanent delete): the output keeps its text; Replay says «N منبع حذف‌شده» */
+  removedSources?: number;
   usedFileChunks?: UsedFileChunk[];
   /** staleness signature for which the one-time half-price rebuild was already used */
   halfPriceUsedFor?: string;
@@ -428,6 +432,8 @@ export interface SavedPack {
 }
 
 export interface Workspace {
+  /** the workspace is archived: hidden from the menu, nothing deleted; set only by the server («بایگانی») */
+  archivedAt?: string;
   id: string;
   name: string;
   slug: string;

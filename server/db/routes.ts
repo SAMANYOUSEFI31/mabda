@@ -24,6 +24,7 @@ import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts'
 import { parseByHeadings } from '../../src/core/answerParser.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { renderSavedPack } from './packs.ts';
+import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverable, deleteWorkspace, listRemovals, planNodeRemoval, purgeImpact, purgeObject, removeNode, restoreDeliverable, restoreObject, undoRemoval, wipeUser } from './removal.ts';
 import { renderAiRequest } from './aiRequests.ts';
 import { isRequestKind, KIND_LABEL } from '../../src/core/aiRequest.ts';
 import { STARTERS } from '../../src/core/starters.ts';
@@ -44,6 +45,8 @@ import type { ChatSession, GeneratedDeliverable, LedgerEntry, Workspace, Workstr
 
 /** One local user until real accounts exist. Every table already carries user_id + workspace_id. */
 export const LOCAL_USER = 'local';
+/** the words that must be typed to delete every piece of data (nothing is half-confirmed) */
+export const ACCOUNT_WIPE_WORDS = 'حذف همهٔ داده‌ها';
 
 const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) => async (req: Request, res: Response, next: NextFunction) => {
   try { await fn(req, res); } catch (e) { next(e); }
@@ -99,10 +102,51 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.post('/workspaces/:wid/nodes', wrap((req, res) => { res.json({ node: repo.createNode(scopeOf(req), body(req) as never), nodes: repo.listNodes(scopeOf(req)) }); }));
   router.patch('/workspaces/:wid/nodes/:id', wrap((req, res) => { const s = scopeOf(req); repo.updateNode(s, req.params.id, body(req)); res.json({ nodes: repo.listNodes(s) }); }));
   router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined) }); }));
+  // a node delete is planned (the plan is the dialog's preview), done in one transaction and recorded so it can be undone
+  const modeOf = (v: unknown): 'move' | 'archive' => (v === 'archive' ? 'archive' : 'move');
+  router.get('/workspaces/:wid/nodes/:id/removal-plan', wrap((req, res) => {
+    res.json({ plan: planNodeRemoval(repo, scopeOf(req), req.params.id, { mode: modeOf(req.query.mode), transferTo: typeof req.query.transferTo === 'string' && req.query.transferTo ? req.query.transferTo : undefined }) });
+  }));
   router.delete('/workspaces/:wid/nodes/:id', wrap((req, res) => {
     const s = scopeOf(req);
-    const nodes = repo.deleteNode(s, req.params.id, typeof req.query.transferTo === 'string' ? req.query.transferTo : undefined);
-    res.json({ nodes, objects: repo.listObjects(s), notes: repo.listNotes(s), files: repo.listFiles(s) });
+    const r = removeNode(repo, s, req.params.id, { mode: modeOf(req.query.mode), transferTo: typeof req.query.transferTo === 'string' && req.query.transferTo ? req.query.transferTo : undefined });
+    res.json({ nodes: r.nodes, removal: r.removal, objects: repo.listObjects(s), notes: repo.listNotes(s), files: repo.listFiles(s), stale: stale(s) });
+  }));
+  router.post('/workspaces/:wid/removals/:id/undo', wrap((req, res) => {
+    const s = scopeOf(req);
+    const r = undoRemoval(repo, s, req.params.id);
+    res.json({ nodes: r.nodes, objects: repo.listObjects(s), notes: repo.listNotes(s), files: repo.listFiles(s), samples: repo.listSampleObjects(s), changes: repo.listChanges(s), stale: stale(s) });
+  }));
+
+  // ── the archive: knowledge that is out of the way, outputs, recent removals; «برگردان» and «حذف دائمی» ──
+  router.get('/workspaces/:wid/archive', wrap((req, res) => { const s = scopeOf(req); res.json({ objects: archivedObjects(repo, s), removals: listRemovals(repo, s), deliverables: repo.listDeliverables(s).filter((d) => d.archivedAt) }); }));
+  router.post('/workspaces/:wid/objects/:id/restore', wrap((req, res) => { const s = scopeOf(req); const r = restoreObject(repo, s, req.params.id, typeof body(req).nodeId === 'string' ? body(req).nodeId : undefined); res.json({ object: r.object, impact: r.impact, stale: stale(s) }); }));
+  router.get('/workspaces/:wid/objects/:id/purge-impact', wrap((req, res) => { res.json({ impact: purgeImpact(repo, scopeOf(req), req.params.id) }); }));
+  router.delete('/workspaces/:wid/objects/:id/permanent', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    if (b.confirm !== true) throw new RepoError('invalid', 'حذف دائمی باید صریحاً تأیید شود.');
+    const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 200) : []);
+    const r = purgeObject(repo, s, req.params.id, { notes: ids(b.copies?.notes), sessions: ids(b.copies?.sessions), deliverables: ids(b.copies?.deliverables) });
+    res.json({ ...r, objects: repo.listObjects(s), notes: repo.listNotes(s), sessions: repo.listSessions(s), deliverables: repo.listDeliverables(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), stale: stale(s) });
+  }));
+  router.post('/workspaces/:wid/deliverables/:id/archive', wrap((req, res) => { const s = scopeOf(req); archiveDeliverable(repo, s, req.params.id); res.json({ deliverables: repo.listDeliverables(s), stale: stale(s) }); }));
+  router.post('/workspaces/:wid/deliverables/:id/restore', wrap((req, res) => { const s = scopeOf(req); restoreDeliverable(repo, s, req.params.id); res.json({ deliverables: repo.listDeliverables(s), stale: stale(s) }); }));
+  router.delete('/workspaces/:wid/deliverables/:id', wrap((req, res) => { const s = scopeOf(req); deleteDeliverable(repo, s, req.params.id); res.json({ deliverables: repo.listDeliverables(s), stale: stale(s) }); }));
+
+  // ── workspaces and the account: archive, delete (typed name), delete everything (typed words) ──
+  router.post('/workspaces/:wid/archive', wrap((req, res) => { archiveWorkspace(repo, LOCAL_USER, req.params.wid, body(req).archive !== false); res.json({ workspaces: repo.listWorkspaces(LOCAL_USER) }); }));
+  router.delete('/workspaces/:wid', wrap((req, res) => {
+    const ws = repo.getWorkspace(LOCAL_USER, req.params.wid);
+    if (!ws) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+    // the showcase is a sample: one clear yes is enough; a real workspace needs its name typed
+    if (!ws.isDemo && body(req).confirmName !== ws.name) throw new RepoError('invalid', 'برای حذف، نام فضای کاری را دقیقاً بنویس.');
+    const r = deleteWorkspace(repo, LOCAL_USER, req.params.wid);
+    res.json({ ...r, workspaces: repo.listWorkspaces(LOCAL_USER) });
+  }));
+  router.post('/account/delete-all', wrap((req, res) => {
+    if (body(req).confirm !== ACCOUNT_WIPE_WORDS) throw new RepoError('invalid', `برای حذف همهٔ داده‌ها عبارت «${ACCOUNT_WIPE_WORDS}» را بنویس.`);
+    res.json({ ...wipeUser(repo, LOCAL_USER), workspaces: repo.listWorkspaces(LOCAL_USER) });
   }));
 
   // ── context objects ──────────────────────────────────────────────────
@@ -271,7 +315,9 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   // ── notes (never injected into the model) ────────────────────────────
   router.post('/workspaces/:wid/notes', wrap((req, res) => { res.json({ note: repo.createNote(scopeOf(req), String(body(req).nodeId), String(body(req).content ?? '')) }); }));
   router.patch('/workspaces/:wid/notes/:id', wrap((req, res) => { res.json({ note: repo.updateNote(scopeOf(req), req.params.id, String(body(req).content ?? '')) }); }));
-  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { repo.deleteNote(scopeOf(req), req.params.id); res.json({ ok: true }); }));
+  // a deleted note is handed back (with its place) so «برگرداندن» can put it exactly where it was
+  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { const s = scopeOf(req); const note = repo.getNote(s, req.params.id); const position = note ? repo.notePosition(s, note.id) : undefined; repo.deleteNote(s, req.params.id); res.json({ ok: true, note, position }); }));
+  router.post('/workspaces/:wid/notes/restore', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ note: repo.restoreNote(s, b.note as never, b.position as never) }); }));
 
   /** «استخراج»: the note becomes Proposed objects (provenance AI Suggested) — the user confirms them later. */
   /**
@@ -598,7 +644,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ removed: repo.deleteSamples(s, ids), samples: repo.listSampleObjects(s) });
   }));
   router.get('/templates', wrap((_req, res) => { res.json({ templates: repo.listTemplates(LOCAL_USER) }); }));
-  router.delete('/templates/:id', wrap((req, res) => { repo.deleteTemplate(LOCAL_USER, req.params.id); res.json({ ok: true }); }));
+  router.delete('/templates/:id', wrap((req, res) => { const template = repo.listTemplates(LOCAL_USER).find((t) => t.id === req.params.id); repo.deleteTemplate(LOCAL_USER, req.params.id); res.json({ ok: true, template }); }));
+  router.post('/workspaces/:wid/templates/restore', wrap((req, res) => { const s = scopeOf(req); const t = body(req).template as { id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }; if (!t?.id) throw new RepoError('invalid', 'قالب نامعتبر است.'); repo.saveTemplate(s, t.kind, t.name, t.payload, t.createdAt, t.id); res.json({ templates: repo.listTemplates(LOCAL_USER) }); }));
   /** save a node (with its sub-tree and knowledge) or a custom workstream as the user's own template */
   router.post('/workspaces/:wid/templates', wrap((req, res) => {
     const s = scopeOf(req);
@@ -644,7 +691,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.get('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); res.json({ packs: repo.listSavedPacks(s).map((p) => packSummary(s, p)) }); }));
   router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template })) }); }));
   router.put('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { id: req.params.id, name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template })) }); }));
-  router.delete('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { repo.deleteSavedPack(scopeOf(req), req.params.id); res.json({ ok: true }); }));
+  router.delete('/workspaces/:wid/saved-packs/:id', wrap((req, res) => { const s = scopeOf(req); const pack = repo.getSavedPack(s, req.params.id); repo.deleteSavedPack(s, req.params.id); res.json({ ok: true, pack }); }));
+  router.post('/workspaces/:wid/saved-packs/restore', wrap((req, res) => { const s = scopeOf(req); const p = body(req).pack as SavedPack; if (!p?.id || !p.name) throw new RepoError('invalid', 'بسته نامعتبر است.'); repo.importSavedPack(s, { ...p, workspaceId: s.workspaceId }); res.json({ pack: packSummary(s, repo.getSavedPack(s, p.id)!) }); }));
   router.get('/workspaces/:wid/saved-packs/:id/render', wrap((req, res) => {
     const s = scopeOf(req);
     const p = repo.getSavedPack(s, req.params.id);
