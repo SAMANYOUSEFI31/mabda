@@ -9,6 +9,7 @@
  * Nothing is stored here: a layout and its options are a changeable view.
  */
 
+import { redundantLinks } from './dependencyReduction';
 import type { ContextObject, ContextRelationship, GeneratedDeliverable, Note, TreeNode } from '../types';
 import type { CanvasItem } from '../types/state';
 import { buildCanvasModel, CARD_H as BOARD_CARD_H, CARD_W as BOARD_CARD_W } from './canvasModel';
@@ -60,7 +61,7 @@ export interface SceneItem {
   lane?: 'thinking' | 'confirmed';
 }
 export interface SceneBox { id: string; kind: 'group' | 'column' | 'row' | 'zone'; label: string; depth: number; x: number; y: number; w: number; h: number; nodeId?: string; count?: number; expanded?: boolean; hint?: string }
-export interface SceneEdge { id: string; kind: MapEdgeKind; label: string; /** one end is not approved yet: a suggested relation — it becomes real by itself when that end is approved */ pending?: boolean; /** the one that acts */ influencer: string; /** the one that is acted on */ influenced: string; count: number }
+export interface SceneEdge { id: string; kind: MapEdgeKind; label: string; /** one end is not approved yet: a suggested relation — it becomes real by itself when that end is approved */ pending?: boolean; /** the one that acts */ influencer: string; /** the one that is acted on */ influenced: string; count: number; /** a direct link that adds nothing: the same reach goes through another card — drawn quieter, never hidden */ redundant?: boolean }
 export interface Scene { /** board: the ordered object ids of every cell (`column|row`) — what an undo of a move restores */ cells?: Record<string, string[]>; layout: CanvasLayout; items: SceneItem[]; boxes: SceneBox[]; edges: SceneEdge[]; width: number; height: number; summary: { objects: number; assets: number; notes: number }; /** the board's column / row kinds (display only unless columns = status) */ board?: { columns: BoardColumns; rows: BoardRows } }
 
 export interface SceneInput {
@@ -118,7 +119,9 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
     });
     const boxes: SceneBox[] = m.groups.map((g) => ({ id: g.id, kind: 'group', label: g.label, depth: g.depth, x: g.x, y: g.y, w: g.w, h: g.h, nodeId: g.nodeId, count: g.count, expanded: g.expanded, hint: 'گرهٔ درخت (دامنه)؛ ترتیب ندارد.' }));
     const idOf = (v: string) => (v.startsWith('o:') ? v.slice(2) : v);
-    const edges: SceneEdge[] = m.edges.map((e) => ({ id: e.id, kind: e.kind, label: e.label, influencer: e.influencer, influenced: e.influenced, count: e.count, ...(isPendingRelation({ sourceId: idOf(e.influencer), targetId: idOf(e.influenced) }, byId) ? { pending: true } : {}) }));
+    // dependency links that another path already implies (A→B→C and A→C): the direct one is quieter on the canvas
+    const redundant = new Set(redundantLinks(input.objects, input.relationships).map((l) => `${l.to}>${l.from}`)); // influencer (the depended-on) > influenced
+    const edges: SceneEdge[] = m.edges.map((e) => ({ id: e.id, kind: e.kind, label: e.label, influencer: e.influencer, influenced: e.influenced, count: e.count, ...(e.kind === 'dependency' && redundant.has(`${idOf(e.influencer)}>${idOf(e.influenced)}`) ? { redundant: true } : {}), ...(isPendingRelation({ sourceId: idOf(e.influencer), targetId: idOf(e.influenced) }, byId) ? { pending: true } : {}) }));
     return { layout, items, boxes, edges, width: m.width, height: m.height, summary: { objects: m.summary.objects, assets: m.summary.assets, notes: 0 } };
   }
 

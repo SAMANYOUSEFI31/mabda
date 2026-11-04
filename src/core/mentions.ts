@@ -6,7 +6,7 @@
  */
 
 import type { ContextObject, ContextRelationship } from '../types';
-import { normalizeFa } from './contextEngine';
+import { jaccard, normalizeFa, titleTokens } from './contextEngine';
 import { buildSearchIndex, searchIndex } from './globalSearch';
 
 const RE = /@«([^»\n]{1,120})»/g;
@@ -29,13 +29,13 @@ export function extractMentions(text: string, objects: ContextObject[]): Mention
   return out;
 }
 
-export interface LinkSuggestion { targetId: string; title: string }
+export interface LinkSuggestion { targetId: string; title: string; /** why it was suggested when it was NOT named with @: the shared words of the two titles */ because?: string }
 
 /**
  * Which «وابسته به» links the text suggests: named objects that are not the object itself, not archived / superseded / still
  * only proposed (a dependency is on knowledge), not linked yet and not turned down before. Never creates anything.
  */
-export function suggestLinks(input: { text: string; selfId?: string; objects: ContextObject[]; relationships: ContextRelationship[]; dismissed?: Iterable<string> }): LinkSuggestion[] {
+export function suggestLinks(input: { text: string; title?: string; selfId?: string; objects: ContextObject[]; relationships: ContextRelationship[]; dismissed?: Iterable<string> }): LinkSuggestion[] {
   const have = new Set(input.relationships.filter((r) => r.type === 'depends_on' && r.sourceId === input.selfId).map((r) => r.targetId));
   const no = new Set(input.dismissed ?? []);
   const byId = new Map(input.objects.map((o) => [o.id, o]));
@@ -48,6 +48,21 @@ export function suggestLinks(input: { text: string; selfId?: string; objects: Co
     if (t.status === 'Proposed') continue;
     seen.add(id);
     out.push({ targetId: id, title: t.title });
+  }
+  // not named, but the TITLES share words: a deterministic, explainable hint (at most two; never an AI guess; same section alone is not a reason)
+  if (input.title && input.selfId) {
+    const mine = titleTokens(input.title);
+    const reach = new Set<string>(); // what already depends on me (the reverse link would be a cycle)
+    const into = new Map<string, string[]>();
+    for (const r of input.relationships) if (r.type === 'depends_on') into.set(r.targetId, [...(into.get(r.targetId) ?? []), r.sourceId]);
+    for (const stack = [input.selfId]; stack.length;) { const c = stack.pop()!; for (const n of into.get(c) ?? []) if (!reach.has(n)) { reach.add(n); stack.push(n); } }
+    const topic = input.objects
+      .filter((o) => o.id !== input.selfId && o.status === 'Confirmed' && !have.has(o.id) && !no.has(o.id) && !seen.has(o.id) && !reach.has(o.id))
+      .map((o) => { const t = titleTokens(o.title); const shared = [...mine].filter((w) => t.has(w)); return { o, shared, score: jaccard(mine, t) }; })
+      .filter((x) => x.shared.length >= 2 && x.score >= 0.4)
+      .sort((a, b) => b.score - a.score || a.o.title.localeCompare(b.o.title))
+      .slice(0, 2);
+    for (const x of topic) out.push({ targetId: x.o.id, title: x.o.title, because: x.shared.join('، ') });
   }
   return out;
 }

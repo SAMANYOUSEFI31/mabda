@@ -59,6 +59,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         <h3 className="heading-xs text-text-default">{e.label}</h3>
         <p className="body-md text-text-default">«{titleOf(e.influencer)}» ← «{titleOf(e.influenced)}»</p>
         <p className="body-sm text-text-subtle">پیکان همیشه از اثرگذار به اثرپذیر می‌رود. {EDGE_ABOUT[e.kind]}</p>
+        {e.redundant && <p className="body-sm text-text-default" data-testid="edge-redundant">این خط لازم نیست؛ همین اثر از راه کارت‌های دیگر هم می‌رسد. می‌توانی آن را از «جزئیات» همان دانش برداری.</p>}
         {e.count > 1 && <p className="body-sm text-text-subtle">{formatNumber(e.count)} رابطه در این خط جمع شده‌اند.</p>}
         <div className="flex gap-inline-xs"><Button size="sm" variant="ghost" onClick={p.onClear}>بستن</Button></div>
       </div>
