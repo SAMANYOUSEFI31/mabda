@@ -20,6 +20,9 @@ interface AppNavigationProps {
   onOpenOnboarding: () => void;
   /** builds (or rebuilds from nothing) the showcase workspace */
   onResetDemo: () => void;
+  /** the showcase can be wiped with one confirm (absent when there is none) */
+  onDeleteDemo?: () => void;
+  onOpenArchive: () => void;
   onOpenPlanModal: () => void;
   onOpenAccountModal: () => void;
   /** Ctrl/⌘+K: the global search and commands */
@@ -68,6 +71,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
+    ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
     // grouped by what you are doing: connect AI · plan and usage · the account (a divider between groups)
     { section: 'connect', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
     { section: 'connect', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
@@ -76,7 +80,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
-    { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
+    { section: 'account', label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
+    { section: 'account', label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];
   const withDividers = (): MenuItem[] => {
     const out: MenuItem[] = [];

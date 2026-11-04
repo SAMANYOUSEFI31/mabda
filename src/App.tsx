@@ -74,7 +74,10 @@ import { LedgerPanel } from './components/LedgerPanel';
 import { QuickStartDialog } from './components/QuickStartDialog';
 import { SpecLibraryDialog } from './components/SpecLibraryDialog';
 import { PlanSelectionModal } from './components/PlanSelectionModal';
-import { AccountModal } from './components/AccountModal';
+import { AccountModal, WIPE_WORDS } from './components/AccountModal';
+import { ArchiveDialog } from './components/ArchiveDialog';
+import { DangerDialog } from './components/Removal';
+import { deleteByokKey } from './services/apiClient';
 import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
@@ -123,7 +126,7 @@ export default function App() {
     try {
       const list = await dataApi.bootstrap();
       setWs(list);
-      setCurrentWorkspaceId((cur) => (list.some((w) => w.id === cur) ? cur : list[0]?.id ?? ''));
+      setCurrentWorkspaceId((cur) => (list.some((w) => w.id === cur && !w.archivedAt) ? cur : list.find((w) => !w.archivedAt)?.id ?? ''));
       setBoot({ status: 'ready' });
     } catch (e) {
       setBoot({ status: 'error', message: errText(e) });
@@ -144,7 +147,11 @@ export default function App() {
   }, [setWs]);
   useEffect(() => { if (currentWorkspaceId) { setData(null); void reload(currentWorkspaceId); } }, [currentWorkspaceId, reload]);
 
-  const currentWorkspace = (data?.workspace.id === currentWorkspaceId ? data.workspace : undefined) ?? workspaces.find((w) => w.id === currentWorkspaceId) ?? workspaces[0];
+  /** archived workspaces are out of the menu (nothing is deleted); the list the app works with is the live one */
+  const liveWorkspaces = workspaces.filter((w) => !w.archivedAt);
+  const currentWorkspace = (data?.workspace.id === currentWorkspaceId ? data.workspace : undefined) ?? liveWorkspaces.find((w) => w.id === currentWorkspaceId) ?? liveWorkspaces[0];
+  // the workspace she was in was archived or deleted: go to another one (or to the empty start)
+  useEffect(() => { if (boot.status === 'ready' && currentWorkspaceId && !liveWorkspaces.some((w) => w.id === currentWorkspaceId)) { setData(null); setCurrentWorkspaceId(liveWorkspaces[0]?.id ?? ''); } }, [workspaces, currentWorkspaceId, boot.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const patch = (fn: (d: WorkspaceState) => WorkspaceState) => setData((d) => (d ? fn(d) : d));
   const wid = currentWorkspaceId;
 
@@ -230,7 +237,7 @@ export default function App() {
   }, []);
   /** scroll to an element that appears after a tab / view change (it may take a moment to mount) */
   const revealWhenThere = (id: string) => { let tries = 0; const t = setInterval(() => { const el = document.getElementById(id); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); } }, 60); };
-  const deliverables = data?.deliverables ?? [];
+  const deliverables = (data?.deliverables ?? []).filter((d) => !d.archivedAt); // archived outputs are out of every list and count (the archive shows them)
   const ledgerEntries = data?.ledger ?? [];
   const stale = data?.stale ?? [];
   // derived, never stored: dependents whose dependency changed after they were last written or reviewed
@@ -298,6 +305,7 @@ export default function App() {
       case 'record': openContext(null); break;
       case 'thought': setThoughtDialog({}); break;
       case 'go-thinking': openThinkingSpace(); break;
+      case 'go-archive': setArchiveOpen(true); break;
       case 'go-thinking-canvas': setThinkingView('canvas'); setActiveTab('thinking'); break;
       case 'ai-request': setAiRequest({ scopeNodeId: '' }); break;
       case 'go-home': setActiveTab('home'); break;
@@ -558,9 +566,12 @@ export default function App() {
     return r.impact;
   };
 
+  /** «بایگانی» is the default way to take knowledge away: history, versions and sources stay; «برگرداندن» puts it back as it was */
   const handleArchiveContext = async (id: string) => {
+    const o0 = workspaceContexts.find((x) => x.id === id);
     const impact = await setStatus(id, 'Archived');
     if (impact) showImpact(impact);
+    if (o0) toast.show({ intent: 'success', message: `«${o0.title}» بایگانی شد؛ تاریخچه‌اش می‌ماند.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreObject(wid, id)).then((r) => { if (r) patch((d) => ({ ...d, objects: d.objects.map((x) => (x.id === id ? r.object : x)), stale: r.stale })); }); } } });
   };
 
   /** conflict: keep one (the other becomes Superseded) */
@@ -660,9 +671,14 @@ export default function App() {
     const r = await attempt(() => dataApi.updateNote(wid, id, content));
     if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)) }));
   };
+  /** a small, throwaway removal: it happens at once and offers «برگرداندن» (the note comes back with its text, its section and its place) */
   const handleDeleteNote = async (id: string) => {
     const r = await attempt(() => dataApi.deleteNote(wid, id));
-    if (r) patch((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
+    if (!r) return;
+    patch((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
+    const note = r.note;
+    if (!note) return;
+    toast.show({ intent: 'success', message: 'یادداشت حذف شد.', duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreNote(wid, note, r.position)).then((x) => { if (x) patch((d) => ({ ...d, notes: [x.note, ...d.notes], canvas: r.position ? { ...d.canvas, free: [...d.canvas.free.filter((i) => i.itemRef !== `note:${note.id}`), { itemRef: `note:${note.id}`, ...r.position }] } : d.canvas })); }); } } });
   };
   const handleExtractNote = async (id: string) => {
     setExtractingNoteId(id);
@@ -806,10 +822,10 @@ export default function App() {
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWsName.trim() || !currentWorkspace) return;
+    if (!newWsName.trim()) return;
 
-    const currentPlan = PLANS[currentWorkspace.planId] || PLANS.pro;
-    if (workspaces.filter((w) => !w.isDemo).length >= currentPlan.workspaceLimit) {
+    const currentPlan = PLANS[currentWorkspace?.planId ?? 'pro'] || PLANS.pro;
+    if (liveWorkspaces.filter((w) => !w.isDemo).length >= currentPlan.workspaceLimit) {
       toast.show({
         intent: 'warning',
         message: `سقف فضای کاری در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
@@ -822,7 +838,7 @@ export default function App() {
       name: newWsName.trim(),
       slug: newWsName.trim().toLowerCase().replace(/\s+/g, '-'),
       description: 'فضای کاری جدید در مبدأ',
-      planId: currentWorkspace.planId,
+      planId: currentWorkspace?.planId ?? 'pro',
       creditsRemaining: 150,
       todayChatCount: 0,
       enabledSpecIds: [], // a new workspace starts with no library workstreams: «شروع سریع» or «افزودن از کتابخانه» brings them in
@@ -852,7 +868,7 @@ export default function App() {
     if (!data || !currentWorkspace) return;
     const backupData = {
       workspace: currentWorkspace,
-      allWorkspaces: workspaces,
+      allWorkspaces: liveWorkspaces,
       nodes: data.nodes,
       contextObjects: data.objects,
       notes: data.notes,
@@ -873,9 +889,53 @@ export default function App() {
     downloadAnchor.remove();
   };
 
-  const handleDeleteAccount = () => {
-    setIsAccountModalOpen(false);
-    toast.show({ intent: 'info', message: 'درخواست حذف حساب ثبت شد. تمام نشست‌ها پایان یافت و اطلاعات طی مهلت ۳۰ روزه از سیستم پاک می‌شود (F1).', duration: 8000 });
+  // ── removal (docs/removal.md): archive comes back, delete for good does not ──
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [demoDelete, setDemoDelete] = useState(false);
+  const handleArchiveWorkspace = async () => {
+    const ws0 = currentWorkspace;
+    const r = await attempt(() => dataApi.archiveWorkspace(wid, true));
+    if (!r || !ws0) return;
+    setWs(r.workspaces);
+    toast.show({ intent: 'success', message: `فضای «${ws0.name}» بایگانی شد؛ همهٔ داده‌اش مانده است.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void dataApi.archiveWorkspace(ws0.id, false).then((x) => { setWs(x.workspaces); setCurrentWorkspaceId(ws0.id); }); } } });
+  };
+  const handleDeleteWorkspace = async () => {
+    const ws0 = currentWorkspace;
+    if (!ws0) return;
+    const r = await attempt(() => dataApi.deleteWorkspace(ws0.id, ws0.name));
+    if (!r) return;
+    setWs(r.workspaces);
+    toast.show({ intent: 'success', message: `فضای «${ws0.name}» برای همیشه حذف شد.` });
+  };
+  /** «حذف همهٔ داده‌ها»: the server empties every table of this user; the browser forgets its own preferences and the AI key goes too */
+  const handleDeleteEverything = async () => {
+    const r = await attempt(() => dataApi.deleteAccountData(WIPE_WORDS));
+    if (!r) return;
+    try { await deleteByokKey(); } catch { /* no key was saved, or the vault is already empty */ }
+    try { Object.keys(localStorage).filter((k) => k.startsWith('mabda')).forEach((k) => localStorage.removeItem(k)); } catch { /* optional */ }
+    setData(null); setWs(r.workspaces); setCurrentWorkspaceId('');
+    toast.show({ intent: 'success', message: 'همهٔ داده‌ها برای همیشه پاک شد. برنامه خالی است.' });
+  };
+  /** an output: «بایگانی» comes back; «حذف» is for the throwaway — the page keeps a copy and offers «برگرداندن» */
+  const handleArchiveDeliverable = async (d: GeneratedDeliverable) => {
+    const r = await attempt(() => dataApi.archiveDeliverable(wid, d.id));
+    if (!r) return;
+    patch((x) => ({ ...x, deliverables: r.deliverables, stale: r.stale }));
+    toast.show({ intent: 'success', message: `«${d.title}» بایگانی شد؛ از فهرست و از شمار «قدیمی» بیرون رفت.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreDeliverable(wid, d.id)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: u.deliverables, stale: u.stale })); }); } } });
+  };
+  const handleDeleteDeliverable = async (d: GeneratedDeliverable) => {
+    const r = await attempt(() => dataApi.deleteDeliverable(wid, d.id));
+    if (!r) return;
+    patch((x) => ({ ...x, deliverables: r.deliverables, stale: r.stale }));
+    toast.show({ intent: 'success', message: `«${d.title}» حذف شد.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.saveDeliverable(wid, d)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: [u.deliverable, ...x.deliverables.filter((y) => y.id !== d.id)], stale: u.stale })); }); } } });
+  };
+  const handleDeleteDemo = async () => {
+    const demo = workspaces.find((w) => w.isDemo);
+    if (!demo) return;
+    const r = await attempt(() => dataApi.deleteWorkspace(demo.id));
+    if (!r) return;
+    setWs(r.workspaces); setDemoDelete(false);
+    toast.show({ intent: 'success', message: 'فضای نمونه پاک شد. هر وقت خواستی از منوی حساب دوباره ساخته می‌شود.' });
   };
 
   /** create or replace a custom spec (the server enforces Pro+ and refuses dependency cycles) */
@@ -976,6 +1036,27 @@ export default function App() {
     setIsContextModalOpen(true);
   };
 
+  // nothing left (a fresh install after «حذف همهٔ داده‌ها», or every workspace archived / deleted): an honest empty start, not an error
+  if (boot.status === 'ready' && liveWorkspaces.length === 0) {
+    const archived = workspaces.filter((w) => w.archivedAt);
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page p-inset-lg" data-testid="first-run">
+        <div className="flex w-full max-w-overlay-xs flex-col gap-stack-lg text-center">
+          <EmptyState icon="House" title="هنوز فضای کاری نداری" description="یک فضای کاری بساز تا دانش کسب‌وکارت جایی بنشیند. هرچه کنار گذاشته بودی هم در بایگانی مانده است." />
+          <form onSubmit={handleCreateWorkspace} className="flex flex-col gap-stack-sm text-start">
+            <TextField label="نام فضای کاری یا نام برند" value={newWsName} onChange={(e) => setNewWsName(e.target.value)} />
+            <Button variant="primary" type="submit" disabled={!newWsName.trim()}>ایجاد فضای کاری</Button>
+          </form>
+          {archived.length > 0 && (
+            <div className="flex flex-col gap-stack-xs text-start" aria-label="فضاهای بایگانی‌شده">
+              <span className="label-md text-text-default">بایگانی‌شده‌ها</span>
+              {archived.map((w) => <div key={w.id} className="flex items-center justify-between gap-inline-sm"><span className="body-md">{w.name}</span><Button size="sm" variant="secondary" iconStart="Undo2" onClick={() => { void attempt(() => dataApi.archiveWorkspace(w.id, false)).then((r) => { if (r) { setWs(r.workspaces); setCurrentWorkspaceId(w.id); } }); }}>برگردان</Button></div>)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
   if (boot.status !== 'ready' || !currentWorkspace || !data) {
     const failed = boot.status === 'error' || loadError;
     return (
@@ -999,12 +1080,14 @@ export default function App() {
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
       <AppNavigation
         currentWorkspace={currentWorkspace}
-        allWorkspaces={workspaces}
+        allWorkspaces={liveWorkspaces}
         onSelectWorkspace={(ws) => { setChatScope(undefined); setCurrentWorkspaceId(ws.id); }}
         onOpenNewWorkspace={() => setIsNewWorkspaceModalOpen(true)}
         onOpenSearch={() => setPaletteOpen(true)}
         onOpenUsage={() => setUsageOpen(true)}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenArchive={() => setArchiveOpen(true)}
+        onDeleteDemo={workspaces.some((w) => w.isDemo && !w.archivedAt) ? () => setDemoDelete(true) : undefined}
         onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
@@ -1198,6 +1281,7 @@ export default function App() {
                   trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
                   items={[
                     { label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') },
+                    { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
                   ]}
                 />
               </div>
@@ -1390,6 +1474,9 @@ export default function App() {
             stale={stale}
             changes={data.changes}
             onGoToWorkstreams={() => setActiveTab('workstreams')}
+            onArchive={handleArchiveDeliverable}
+            onDelete={handleDeleteDeliverable}
+            onOpenArchive={() => setArchiveOpen(true)}
             workstreams={specs}
             onOpenContextModal={(obj) => openContext(obj)}
             onExtractKnowledge={handleExtractFromAsset}
@@ -1417,6 +1504,8 @@ export default function App() {
       </div>
 
       {/* Context Object Add/Edit Modal */}
+      <ArchiveDialog open={archiveOpen} workspaceId={wid} nodes={nodes} workspaces={workspaces} currentWorkspaceId={wid} onClose={() => setArchiveOpen(false)} onChanged={() => void reload(wid)} onWorkspacesChange={setWs} />
+      <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />
       <AiRequestDialog
         open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
@@ -1473,7 +1562,13 @@ export default function App() {
         onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
         relationships={data.relationships}
         onMove={(nodeId, parentId, reason) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId, undefined, reason))}
-        onDelete={(nodeId, transferTo) => nodeOp(() => dataApi.deleteNode(wid, nodeId, transferTo))}
+        onDelete={async (nodeId, transferTo, mode) => {
+          const r = await attempt(() => dataApi.deleteNode(wid, nodeId, transferTo, mode));
+          if (!r) throw new Error('node delete failed');
+          patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, files: r.files, stale: r.stale }));
+          void reload(wid);
+          toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
+        }}
         onThoughtSectioned={handleThoughtSectioned}
       />
 
@@ -1518,7 +1613,10 @@ export default function App() {
         onClose={() => setIsAccountModalOpen(false)}
         currentWorkspace={currentWorkspace}
         onExportAllData={handleExportAllData}
-        onDeleteAccount={handleDeleteAccount}
+        onOpenArchive={() => setArchiveOpen(true)}
+        onArchiveWorkspace={handleArchiveWorkspace}
+        onDeleteWorkspace={handleDeleteWorkspace}
+        onDeleteEverything={handleDeleteEverything}
         onOpenAiSettings={() => {
           setIsAccountModalOpen(false);
           setIsAiSettingsOpen(true);

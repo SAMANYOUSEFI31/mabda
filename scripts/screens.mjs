@@ -181,7 +181,7 @@ for (const size of SIZES) {
 
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
-  await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
+  await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect');
   await page.getByRole('dialog').getByRole('button', { name: 'ساخت کلید' }).click({ timeout: 2500 }).catch(() => {}); await page.waitForTimeout(400); await shoot('dialog-connect-2'); await closeDialog();
   // the canvas on the showcase workspace: its four states (relations, board, free, full screen)
@@ -208,6 +208,14 @@ for (const size of SIZES) {
   // the showcase's outputs (two are «به‌روز نیست») and the workflow page with its questions
   await goTab(TABS[3]); await shoot('assets-demo');
   await goTab(TABS[2]); await shoot('workstreams-demo');
+  // the removal model: the node delete dialog (plan, tree after, what stops reaching whom) and the archive
+  await goTab(TABS[1]);
+  await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
+  await page.getByRole('button', { name: 'عملیات گرهٔ کارگاه برشته‌کاری' }).first().click();
+  await page.getByRole('menuitem', { name: 'حذف' }).click();
+  await page.getByTestId('node-delete').waitFor(); await page.waitForTimeout(300);
+  await shoot('dialog-node-delete'); await closeDialog();
+  await accountItem('بایگانی و حذف‌های اخیر'); await page.waitForTimeout(500); await shoot('dialog-archive'); await closeDialog();
   // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
   await goTab(TABS[0]);
   await shoot('home-demo');
