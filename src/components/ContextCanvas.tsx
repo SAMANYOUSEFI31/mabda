@@ -100,7 +100,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(() => !(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches));
+  // «docked» takes its own column; «floating» hovers over the canvas so the canvas does not resize; «closed» hides it
+  const [inspectorMode, setInspectorMode] = useState<'docked' | 'floating' | 'closed'>(() => (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches ? 'closed' : 'docked'));
+  const inspectorOpen = inspectorMode !== 'closed';
+  const setInspectorOpen = (v: boolean | ((cur: boolean) => boolean)) => setInspectorMode((cur) => {
+    const open = typeof v === 'function' ? v(cur !== 'closed') : v;
+    return open ? (cur === 'closed' ? 'docked' : cur) : 'closed';
+  });
   const [helpOpen, setHelpOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -426,10 +432,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <Popover label="گزینه‌های نما" align={isMobile ? 'end' : 'start'} trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
         <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />
-        <IconButton icon="Maximize" label="متناسب‌سازی" onClick={fit} />
+        <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fit} />
         <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />
       </span>
-      <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Fullscreen'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
+      <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
       <span className="ms-auto" data-toolbar-overflow="">
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
           { label: 'برگرداندن (Ctrl+Z)', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
@@ -454,8 +460,16 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   }
 
   const stageEmpty = scene.items.length === 0;
+  const floating = inspectorMode === 'floating' && !sheet;
   const inspector = (
-    <aside data-testid="canvas-inspector" className={`flex flex-col gap-stack-sm overflow-auto rounded-control border border-border-default bg-surface-raised p-inset-lg ${sheet ? 'order-last' : fullscreen ? 'w-overlay-xs shrink-0' : 'lg:w-overlay-xs lg:shrink-0'}`} style={sheet ? { maxBlockSize: '42vh' } : undefined} aria-label="بازرس: جزئیات مورد انتخاب‌شده" aria-live="polite">
+    <aside data-testid="canvas-inspector" data-mode={sheet ? 'sheet' : inspectorMode} className={`flex flex-col gap-stack-sm overflow-auto rounded-control border border-border-default p-inset-lg ${floating ? 'absolute end-space-2 top-space-2 z-dropdown w-overlay-xs max-w-full bg-surface-overlay shadow-raised' : `bg-surface-raised ${sheet ? 'order-last' : fullscreen ? 'w-overlay-xs shrink-0' : 'lg:w-overlay-xs lg:shrink-0'}`}`} style={sheet ? { maxBlockSize: '42vh' } : floating ? { maxBlockSize: 'calc(100% - 16px)' } : undefined} aria-label="بازرس: جزئیات مورد انتخاب‌شده" aria-live="polite">
+      <div className="flex items-center justify-between gap-inline-sm">
+        <span className="label-sm text-text-subtle">جزئیات</span>
+        <span className="flex items-center gap-inline-xs">
+          {!sheet && <IconButton icon={floating ? 'PanelRight' : 'PictureInPicture2'} label={floating ? 'جا دادن کنار بوم' : 'شناور کردن روی بوم'} aria-pressed={floating} onClick={() => setInspectorMode(floating ? 'docked' : 'floating')} />}
+          <IconButton icon="X" label="بستن جزئیات (I)" onClick={() => setInspectorMode('closed')} />
+        </span>
+      </div>
       <CanvasInspector
         scene={scene} selection={selection} selectedEdge={edge(selectedEdge)} objects={p.objects} nodes={p.nodes} relationships={p.relationships} deliverables={p.deliverables} lod={lod} now={now}
         canMoveStatus={boardStatus} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} onActions={setActions} onAcceptReview={p.onAcceptReview}
@@ -554,8 +568,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               ] as Array<[string, () => void]>).map(([label, fn]) => <button key={label} type="button" role="menuitem" autoFocus={label.startsWith('انتخاب')} className="body-sm rounded-control-sm px-inset-sm py-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { setCtx(null); fn(); }}>{label}</button>)}
             </div>
           )}
+          {inspectorOpen && floating && inspector}
         </div>
-        {inspectorOpen && !sheet && inspector}
+        {inspectorOpen && !sheet && !floating && inspector}
       </div>
       {sheet && inspectorOpen && inspector}
       {sheet && toolbar}

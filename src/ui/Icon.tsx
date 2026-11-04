@@ -8,7 +8,7 @@ import {
   CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Sparkles, Eye, Lock, Layers, Table2,
   Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive, CircleDot,
   ZoomIn, ZoomOut, Maximize, Workflow,
-  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map as MapIcon, Filter, Fullscreen,
+  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map as MapIcon, Filter, Fullscreen, PictureInPicture2,
 } from 'lucide-react';
 import { cx } from './cx.ts';
 
@@ -20,7 +20,7 @@ const ICONS = {
   Shield, BookOpen, CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Sparkles, Eye, Lock,
   Layers, Table2, Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive,
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
-  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map: MapIcon, Filter, Fullscreen,
+  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map: MapIcon, Filter, Fullscreen, PictureInPicture2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

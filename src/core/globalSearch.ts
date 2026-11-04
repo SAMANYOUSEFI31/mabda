@@ -37,6 +37,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'thought', title: 'فکر تازه', keywords: ['ایده', 'سؤال', 'فرض', 'تصمیم باز', 'یادداشت', 'فکر خام'] },
   { id: 'go-thinking', title: 'رفتن به فکر', keywords: ['فضای فکر', 'فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
+  { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },
   { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'قید'] },
   { id: 'ai-request', title: 'درخواست برای AI', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
