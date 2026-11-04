@@ -86,7 +86,7 @@ import { WorkstreamSpec } from './types';
 import { Alert, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { HomeTodo } from './components/HomeTodo';
 import { effectiveObjects } from './core/effectiveContext';
-import { defaultNodeId, resolveNodeId } from './core/nodeTree';
+import { defaultNodeId, resolveNodeId, subtreeIds } from './core/nodeTree';
 import { homeActions } from './core/homeActions';
 import type { HomeAction } from './core/homeActions';
 import { visibleFeatures } from './core/visibleFeatures';
@@ -247,6 +247,11 @@ export default function App() {
     window.scrollTo({ top: 0 });
   };
   useEffect(() => { const on = () => setFocusNodeId(nodeFromUrl()); window.addEventListener('popstate', on); return () => window.removeEventListener('popstate', on); }, []);
+  // while we are INSIDE a section, the thinking space and the canvases show only that section and what is under it (one tap on the chip shows all again)
+  const focusSection = focusNodeId ? nodes.find((n) => n.id === focusNodeId) : undefined;
+  const focusScope = useMemo(() => (focusSection ? new Set(subtreeIds(nodes, focusSection.id)) : null), [focusSection, nodes]);
+  const [spaceNodeSeen, setSpaceNodeSeen] = useState<string | null>(null);
+  useEffect(() => { if (focusNodeId !== spaceNodeSeen) { setSpaceNodeSeen(focusNodeId); setSpaceNode(focusNodeId ?? undefined); } }, [focusNodeId, spaceNodeSeen]);
   const revealWhenThere = (id: string) => { let tries = 0; const t = setInterval(() => { const el = document.getElementById(id); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); } }, 60); };
   const deliverables = (data?.deliverables ?? []).filter((d) => !d.archivedAt); // archived outputs are out of every list and count (the archive shows them)
   const ledgerEntries = data?.ledger ?? [];
@@ -1016,17 +1021,29 @@ export default function App() {
     return v.waiting.length + v.thoughts.length;
   }, [data, workspaceContexts, nodes]);
 
+  const scopedObjects = focusScope ? workspaceContexts.filter((o) => focusScope.has(o.nodeId)) : workspaceContexts;
+  const scopedIds = new Set(scopedObjects.map((o) => o.id));
+  const scopedNotes = focusScope ? (data?.notes ?? []).filter((n) => focusScope.has(n.nodeId)) : (data?.notes ?? []);
+  const scopedDeliverables = focusScope ? deliverables.filter((d) => d.usedContext.some((u) => scopedIds.has(u.id))) : deliverables;
+  const scopeChip = focusSection && (
+    <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="focus-scope-chip">
+      <span className="body-sm text-text-default">فقط «{focusSection.label}» و زیربخش‌هایش را می‌بینی.</span>
+      <Button size="sm" variant="ghost" onClick={() => goFocus(null)}>نمایش همه</Button>
+    </div>
+  );
   const renderCanvas = (mode: 'truth' | 'thinking') => (
+    <div className="flex flex-col gap-stack-sm">
+    {scopeChip}
     <ContextCanvas
       mode={mode}
       previewNonce={mode === 'truth' ? previewNonce : undefined}
       onPreviewTruth={mode === 'thinking' ? previewTruth : undefined}
       onNoteToSection={mode === 'thinking' ? startSectionFromNote : undefined}
               nodes={nodes}
-              objects={workspaceContexts}
+              objects={scopedObjects}
               relationships={data?.relationships ?? []}
-              deliverables={deliverables}
-              notes={data?.notes ?? []}
+              deliverables={scopedDeliverables}
+              notes={scopedNotes}
               canvas={data?.canvas ?? { decisions: [], free: [] }}
               reviewIds={reviewIdSet}
               staleAssetIds={staleIdSet}
@@ -1046,6 +1063,7 @@ export default function App() {
               onOpenAssets={() => setActiveTab('assets')}
               onAddKnowledge={() => openContext(null)}
   />
+    </div>
   );
 
   /** the one action in the top bar that fits the current page */
@@ -1403,6 +1421,8 @@ export default function App() {
             </div>
             <div id="thinking-view" />
             {thinkingView === 'canvas' ? renderCanvas('thinking') : (
+              <div className="flex flex-col gap-stack-sm">
+              {spaceNode === focusNodeId && scopeChip}
               <ThinkingSpace
           objects={workspaceContexts}
           notes={data.notes}
@@ -1420,6 +1440,7 @@ export default function App() {
                 onPreviewTruth={previewTruth}
                 onToSection={(item) => startSectionFromThought(item)}
               />
+              </div>
             )}
           </div>
         )}

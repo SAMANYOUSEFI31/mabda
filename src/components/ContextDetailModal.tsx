@@ -9,7 +9,7 @@ import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { defaultNodeId, flatten } from '../core/nodeTree';
 import { scopeEffect } from '../core/scopeMove';
-import { redundantLinks } from '../core/dependencyReduction';
+import { indirectReach, redundantLinks } from '../core/dependencyReduction';
 import { reachSentence } from '../core/packScope';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
@@ -168,7 +168,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const readNo = (): string[] => { try { return JSON.parse(localStorage.getItem('mabda.mentions.no') ?? '[]') as string[]; } catch { return []; } };
   const [turnedDown, setTurnedDown] = useState<string[]>(readNo);
   const linkSuggestions = useMemo(
-    () => suggestLinks({ text: content, selfId: object?.id, objects: allObjects, relationships, dismissed: [...deps, ...allObjects.map((o) => o.id).filter((id) => turnedDown.includes(noKey(id)))] }),
+    () => suggestLinks({ text: content, title, selfId: object?.id, objects: allObjects, relationships, dismissed: [...deps, ...allObjects.map((o) => o.id).filter((id) => turnedDown.includes(noKey(id)))] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [content, object?.id, allObjects, relationships, deps, turnedDown],
   );
@@ -329,10 +329,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ هر کدام درست نیست، عوضش کن.</p>}
         {linkSuggestions.length > 0 && (
-          <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه از ارجاع‌ها">
+          <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
             {linkSuggestions.map((sg) => (
               <li key={sg.targetId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default bg-surface-sunken p-inset-md">
-                <span className="body-sm text-text-default">این متن به «{sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟ <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
+                <span className="body-sm text-text-default">{sg.because ? `عنوان‌هایتان واژهٔ مشترک دارد (${sg.because}). به «${sg.title}» وابسته است؟` : `این متن به «${sg.title}» اشاره می‌کند؛ رابطهٔ «وابسته به» بسازم؟`} <span className="text-text-subtle">با ذخیره ثبت می‌شود و در تاریخچه می‌آید.</span></span>
                 <span className="flex items-center gap-inline-xs">
                   <Button type="button" size="sm" variant="secondary" iconStart="Link2" disabled={deps.length >= 20} onClick={() => setDeps((cur) => [...cur, sg.targetId])}>بساز</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => turnDown(sg.targetId)}>نه</Button>
@@ -500,6 +500,17 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 <Button type="button" size="sm" variant="ghost" onClick={() => setDeps(deps.filter((d) => d !== l.to))}>برش دار</Button>
               </div>
             ))}
+            {isEditing && object && (() => {
+              const r = indirectReach(object.id, allObjects, relationships);
+              if (!r.upstream.length && !r.downstream.length) return null;
+              const names = (ids: string[]) => `${ids.slice(0, 3).map((x) => `«${titleOf?.(x) ?? x}»`).join('، ')}${ids.length > 3 ? ` و ${formatNumber(ids.length - 3)} مورد دیگر` : ''}`;
+              return (
+                <p className="body-sm text-text-subtle" data-testid="indirect-reach">
+                  {r.upstream.length ? `از راه‌های غیرمستقیم هم از ${names(r.upstream)} اثر می‌پذیرد. ` : ''}
+                  {r.downstream.length ? `از راه‌های غیرمستقیم روی ${names(r.downstream)} هم اثر می‌گذارد.` : ''}
+                </p>
+              );
+            })()}
             {isEditing && (dependents.length > 0 || unit?.concurrent) && (
               <p className="body-sm text-text-subtle">
                 {dependents.length > 0 ? `${formatNumber(dependents.length)} مورد (مستقیم یا غیرمستقیم) روی این مورد سوارند. ` : ''}

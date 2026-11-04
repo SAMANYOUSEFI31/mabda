@@ -62,6 +62,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
+  // entering / leaving a section moves focus to its heading: keyboard and screen-reader users land IN the new place (Alt+↑ and the arrows keep working)
+  useEffect(() => { if (!props.focusId) return; const t = requestAnimationFrame(() => document.getElementById(`node-${props.focusId}`)?.focus({ preventScroll: true })); return () => cancelAnimationFrame(t); }, [props.focusId]);
   const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
   const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const quick = (id: string) => quickMoves(nodes, id);
@@ -320,7 +322,16 @@ const FromAbove: React.FC<{ items: ReturnType<typeof fromAbove>; onOpen: (o: Con
 const SubSections: React.FC<{ summaries: ReturnType<typeof childSummaries>; onOpen: (id: string) => void }> = ({ summaries, onOpen }) => (
   <section className="flex flex-col gap-stack-sm" aria-label="زیربخش‌ها">
     <h4 className="label-md text-text-default">زیربخش‌ها ({formatNumber(summaries.length)})</h4>
-    <ul className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-inline-lg md:grid-cols-2" onKeyDown={(e) => {
+      // ↑ ↓ (and Home / End) move between sub-sections without Tab; Enter / Space goes in (it is a button)
+      const keys = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+      if (!keys.includes(e.key) || e.nativeEvent.isComposing) return;
+      const list = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-testid="sub-section"]'));
+      const i = list.indexOf(document.activeElement as HTMLButtonElement);
+      if (i < 0) return;
+      e.preventDefault();
+      list[e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : Math.max(0, Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
+    }}>
       {summaries.map((s) => (
         <li key={s.node.id}>
           <button type="button" data-testid="sub-section" onClick={() => onOpen(s.node.id)} className="flex min-h-touch-comfortable w-full items-center justify-between gap-inline-md rounded-control border border-border-default bg-surface-raised p-inset-lg text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">

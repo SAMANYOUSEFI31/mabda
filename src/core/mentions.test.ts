@@ -71,3 +71,14 @@ test('applyMention writes @«title» and moves the caret after it; a » inside a
   const weird = o('w', 'الف» ب');
   assert.equal(extractMentions(mentionText(weird), [weird])[0].objectId, 'w', 'what is written can be read back');
 });
+
+test('suggestLinks by topic: shared title words with a reason; never a cycle, a linked one, or a Proposed one', async () => {
+  const { suggestLinks } = await import('./mentions.ts');
+  const ob = (id: string, title: string, status = 'Confirmed') => ({ id, title, status, type: 'Decision', nodeId: 'n', content: '', version: 1 }) as never;
+  const objs = [ob('a', 'قیمت اشتراک ماهانه'), ob('b', 'تخفیف قیمت اشتراک سالانه'), ob('c', 'لحن برند'), ob('d', 'قیمت اشتراک ویژه', 'Proposed')];
+  const r = suggestLinks({ text: '', title: 'قیمت اشتراک ماهانه', selfId: 'a', objects: objs, relationships: [] });
+  assert.deepEqual(r.map((x) => x.targetId), ['b']);
+  assert.ok(r[0].because && r[0].because.includes('قیمت'));
+  const dep = { id: 'r', type: 'depends_on', sourceId: 'b', targetId: 'a' } as never;
+  assert.equal(suggestLinks({ text: '', title: 'قیمت اشتراک ماهانه', selfId: 'a', objects: objs, relationships: [dep] }).length, 0, 'b already depends on a: the reverse would be a cycle');
+});

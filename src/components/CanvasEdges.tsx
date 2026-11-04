@@ -58,7 +58,7 @@ export const CanvasEdges = React.memo(function CanvasEdges({ width, height, rout
       {(() => {
         const info = (edge: SceneEdge) => {
           const strong = emphasized.has(edge.id) || hovered === edge.id || selectedEdge === edge.id;
-          return { strong, dim: hasFocus && !showAll && !strong, w: EDGE_STYLE[edge.kind].width + (strong ? EMPHASIS_EXTRA : 0) };
+          return { strong, dim: (hasFocus && !showAll && !strong) || (!!edge.redundant && !strong && !showAll), w: EDGE_STYLE[edge.kind].width + (strong ? EMPHASIS_EXTRA : 0) };
         };
         const ordered = [...routed].sort((x, y) => Number(info(x.edge).strong) - Number(info(y.edge).strong));
         return (
