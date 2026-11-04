@@ -85,7 +85,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs"><SampleBadge /><TypeBadge value={obj.type} /></div>
       </div>
       <p className="body-md line-clamp-3 text-text-subtle">{obj.content}</p>
-      <p className="caption text-text-subtle">با نوشتن متن خودت روی این مثال، مال خودت می‌شود.</p>
+      <p className="body-sm text-text-subtle">با نوشتن متن خودت روی این مثال، مال خودت می‌شود.</p>
     </Card>
   );
 
@@ -208,7 +208,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
                 <h4 className="label-md text-text-default">از کجا آمده</h4>
                 {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>}
-                {sources.length > 0 && <p className="caption text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
+                {sources.length > 0 && <p className="body-sm text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
               </section>
             )}
           </>

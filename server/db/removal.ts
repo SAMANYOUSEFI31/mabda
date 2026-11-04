@@ -14,6 +14,8 @@ import type { Repo, Scope } from './repo.ts';
  */
 
 const now = () => new Date().toISOString();
+/** after an erase for good: the write-ahead log is folded into the file and emptied, so the old pages do not linger in it */
+const flushErased = (repo: Repo) => { try { repo.db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* an in-memory database has no log */ } };
 const rows = <T = Record<string, unknown>>(repo: Repo, sql: string, ...args: unknown[]) => repo.db.prepare(sql).all(...args) as T[];
 
 // ───────────────────────────── permanent delete of one piece of knowledge ─────────────────────────────
@@ -107,6 +109,7 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
     // the only thing left: a record that says nothing about the content
     repo.recordChange(s, { objectId: id, fromVersion: 0, toVersion: 0, kind: 'purged', meta: { actor: 'user', reason: 'یک مورد حذف دائمی شد' } });
   })();
+  flushErased(repo);
   return { purged: id, scrubbed: out };
 }
 
@@ -270,6 +273,7 @@ export function deleteWorkspace(repo: Repo, userId: string, id: string): { remov
       if (t === 'file_chunks') repo.db.prepare('DELETE FROM file_chunks WHERE file_id NOT IN (SELECT id FROM files)').run();
     }
   })();
+  flushErased(repo);
   return { removed };
 }
 
@@ -282,5 +286,6 @@ export function wipeUser(repo: Repo, userId: string): { removed: number } {
     // an empty install must stay empty: no seed workspace comes back by itself
     repo.markImported(userId, 'wiped');
   })();
+  flushErased(repo);
   return { removed };
 }

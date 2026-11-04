@@ -213,3 +213,27 @@ test('the whole account: every row of the user in every table is gone, the insta
   assert.equal(repo.isImported(U), true, 'marked as done: the next start does not seed a sample workspace behind her back');
   assert.deepEqual(repo.listUsage(U), [], 'even the usage counters of this user are gone');
 });
+
+test('on disk too: after an erase for good the words are not in the database file nor in its log (secure_delete + checkpoint)', async () => {
+  const { mkdtempSync, readFileSync, existsSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { openDatabase } = await import('./database.ts');
+  const dir = mkdtempSync(join(tmpdir(), 'mabda-erase-'));
+  const file = join(dir, 'm.sqlite');
+  try {
+    const db = openDatabase(file);
+    const repo = new Repo(db);
+    repo.saveWorkspace(U, ws('w1'));
+    const s = { userId: U, workspaceId: 'w1' };
+    const o = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'شماره', content: `${SECRET} ${'متن-بلند '.repeat(40)}`, nodeId: repo.listNodes(s)[0].id });
+    repo.updateObject(s, o.id, { content: `${SECRET} نسخهٔ دوم` });
+    const bytes = () => Buffer.concat([readFileSync(file), existsSync(`${file}-wal`) ? readFileSync(`${file}-wal`) : Buffer.alloc(0)]);
+    assert.ok(bytes().includes(Buffer.from('6037-9971-2345-6789')), 'sanity: it is in the file before');
+    repo.updateObject(s, o.id, { status: 'Archived' });
+    purgeObject(repo, s, o.id);
+    assert.ok(!bytes().includes(Buffer.from('6037-9971-2345-6789')), 'not in the database file or its log');
+    assert.ok(!bytes().includes(Buffer.from('نشانهٔ-یکتا')), 'not the Persian words either');
+    db.close();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
