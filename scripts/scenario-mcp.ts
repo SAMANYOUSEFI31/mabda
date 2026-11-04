@@ -42,7 +42,7 @@ step(1, 'نمای کلی و Gap (پیش از ساخت خروجی)');
 const ov = await call('get_workspace_overview');
 block('خلاصه', ov.text.split('\n').slice(0, 6).join('\n'));
 const gaps = await call('get_gaps', { specId: 'main_positioning', deliverableId: 'del_positioning_statement' });
-block('Gap + معیارها + گاردریل', gaps.text);
+block('Gap + معیارها + خط قرمز', gaps.text);
 
 step(2, 'خواندن Context (فقط Confirmed واقعیت است)');
 const ctx = await call('get_context', { nodeId: 'business' });

@@ -395,7 +395,7 @@ export class Repo {
     this.assertWorkspace(s);
     input = { ...input, nodeId: this.placeNode(s, input.nodeId) };
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
-    if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد؛ خروجی‌ها Context نیستند.');
+    if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
@@ -470,7 +470,7 @@ export class Repo {
     // writing the text directly replaces it AND whatever draft was waiting (a draft never survives a direct replace)
     if (cur.draft && ('content' in patch || 'title' in patch)) this.setDraft(s, id, null);
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
-    if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا قید باشد.');
+    if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const next: ContextObject = { ...cur, ...(patch as Partial<ContextObject>), title: (patch.title ?? cur.title).trim() || cur.title, updatedAt: now() };
       if (!next.slotKey?.trim()) delete next.slotKey; else next.slotKey = next.slotKey.trim();
@@ -676,7 +676,7 @@ export class Repo {
     const problem = overrideProblem(by, target, this.listNodes(s));
     if (problem) throw new RepoError('invalid', problem);
     if (by!.status === 'Superseded' || by!.status === 'Archived' || target!.status === 'Superseded' || target!.status === 'Archived') throw new RepoError('invalid', 'مورد جایگزین‌شده یا بایگانی‌شده را نمی‌شود کنار گذاشت یا جایگزین کرد.');
-    if (!meta?.reason?.trim()) throw new RepoError('invalid', 'برای کنار گذاشتن یک قید یا تصمیم، دلیل لازم است.');
+    if (!meta?.reason?.trim()) throw new RepoError('invalid', 'برای کنار گذاشتن یک خط قرمز یا تصمیم، دلیل لازم است.');
     const have = this.overridesOf(s, byId).sort();
     if (have.includes(targetId)) return { relationships: this.listRelationships(s) };
     const want = [...have, targetId].sort();

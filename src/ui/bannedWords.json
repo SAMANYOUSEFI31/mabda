@@ -112,5 +112,23 @@
   "flags": "i",
   "word": "id@version",
   "say": "نسخهٔ N"
+ },
+ {
+  "pattern": "گاردریل",
+  "flags": "",
+  "word": "گاردریل",
+  "say": "خط قرمز"
+ },
+ {
+  "pattern": "(?<![؀-ۿ‌])قید(?:ها|های|ی)?(?![؀-ۿ‌])",
+  "flags": "",
+  "word": "قید",
+  "say": "خط قرمز"
+ },
+ {
+  "pattern": "\bConstraints?\b",
+  "flags": "",
+  "word": "Constraint",
+  "say": "خط قرمز"
  }
 ]

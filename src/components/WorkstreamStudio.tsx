@@ -428,11 +428,11 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     </ul>
                     {(currentSpec.guardrails?.length ?? 0) > 0 && (
                       <>
-                        <span className="label-md mt-stack-sm text-text-default">گاردریل‌های این جریان کار</span>
+                        <span className="label-md mt-stack-sm text-text-default">خط قرمزهای این جریان کار</span>
                         <ul className="body-sm list-inside list-disc text-text-subtle">{currentSpec.guardrails!.map((g, idx) => <li key={idx}>{g}</li>)}</ul>
                       </>
                     )}
-                    <span className="body-sm text-text-subtle">محدودیت‌های تأییدشدهٔ فضای کار هم خودکار به‌عنوان گاردریل بررسی می‌شوند.</span>
+                    <span className="body-sm text-text-subtle">خط قرمزهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان خط قرمز بررسی می‌شوند.</span>
                   </div>
                   <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
                     <Switch

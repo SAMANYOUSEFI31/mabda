@@ -101,7 +101,7 @@ try {
     const sub1 = (await call('POST', `/workspaces/${wid}/nodes`, { parentId: ws1.id, label: 'برنامهٔ جلسه‌ها' })).node;
     const sub2 = (await call('POST', `/workspaces/${wid}/nodes`, { parentId: ws1.id, label: 'قیمت کارگاه' })).node;
     await call('POST', `/workspaces/${wid}/objects`, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'سرفصل جلسه', content: 'سه جلسه', nodeId: sub1.id });
-    await call('POST', `/workspaces/${wid}/objects`, { type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: 'قید فقط کارگاه', content: 'تخفیف گروهی نداریم', nodeId: ws1.id, reach: 'position' });
+    await call('POST', `/workspaces/${wid}/objects`, { type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: 'خط قرمز فقط کارگاه', content: 'تخفیف گروهی نداریم', nodeId: ws1.id, reach: 'position' });
     await reselect();
     await nav('منبع حقیقت', 'منبع');
     await radio('ساختار');
@@ -112,7 +112,7 @@ try {
     await dd.getByRole('button', { name: 'ساختار بعد از حذف' }).click();
     await dd.getByTestId('node-delete-tree').waitFor();
     assert.match(await dd.getByTestId('node-delete-tree').innerText(), /می‌رود زیر «محصول و خدمت»/, 'the sub-sections come up under the parent — said before it happens');
-    assert.match(await dd.getByTestId('node-delete-effect').innerText(), /قید فقط کارگاه/, 'what no longer reaches whom is said');
+    assert.match(await dd.getByTestId('node-delete-effect').innerText(), /خط قرمز فقط کارگاه/, 'what no longer reaches whom is said');
     await shot('3-node-delete');
     await dd.getByRole('button', { name: 'حذف و بردن محتوا' }).click();
     await page.getByText(/«کارگاه» حذف شد/).first().waitFor();
@@ -123,7 +123,7 @@ try {
     const after = await state();
     assert.equal(after.nodes.find((n) => n.id === ws1.id)?.parentId, product.id, 'the section is back where it was');
     assert.equal(after.nodes.find((n) => n.id === sub1.id).parentId, ws1.id, 'and so are its sub-sections');
-    assert.equal(after.objects.find((o) => o.title === 'قید فقط کارگاه').nodeId, ws1.id, 'and its rule');
+    assert.equal(after.objects.find((o) => o.title === 'خط قرمز فقط کارگاه').nodeId, ws1.id, 'and its rule');
     await shot('4-node-undone');
 
     step(`[${width}] ج: the showcase is wiped with one confirm`);

@@ -160,7 +160,7 @@ export const REASON_FA: Record<CandidateReason, string> = {
   same_node_same_type: 'هم‌نوع در یک گره و با متن نزدیک',
   inherits_conflict: 'یکی در گرهٔ والدِ دیگری است و موضوعشان یکی است',
   number_differs: 'عددهای متفاوت',
-  qualifier_differs: 'قیدهای متفاوت',
+  qualifier_differs: 'خط قرمزهای متفاوت',
 };
 
 /**

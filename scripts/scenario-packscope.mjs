@@ -79,7 +79,7 @@ try {
     const noDiscount = guard.locator('li', { hasText: 'بدون تخفیف' });
     assert.ok((await noDiscount.count()) >= 1, 'the global rule is a guardrail of this pack');
     assert.match(await noDiscount.first().getByTestId('explain-from').innerText(), /همه‌جا/);
-    assert.match(await guard.innerText(), /قید را نمی‌شود از بسته برداشت/, 'a rule cannot be removed from a pack — and the page says why');
+    assert.match(await guard.innerText(), /خط قرمز را نمی‌شود از بسته برداشت/, 'a rule cannot be removed from a pack — and the page says why');
     assert.equal(await guard.getByRole('button', { name: /^حذف|برداشتن/ }).count(), 0, 'no remove button for a rule');
     await shot('2-guardrails');
 
@@ -97,7 +97,7 @@ try {
     assert.equal(await prev.getByTestId('explain-skipped').getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).count(), 0);
 
     step(`[${width}] «ببین و ویرایش»: the rule opens where its reach («محدودهٔ اثر») is decided, with a sentence of where it will come`);
-    await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش قید/ }).click();
+    await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش خط قرمز/ }).click();
     const detail = page.getByRole('dialog').last();
     await detail.getByRole('button', { name: 'بیشتر' }).click(); // the reach of a rule is a detail: under «بیشتر»
     await detail.getByTestId('reach-sentence').waitFor();

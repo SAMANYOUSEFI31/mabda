@@ -21,7 +21,7 @@ test('افزودن و برداشتن گزینه فقط همان خط را عوض
   assert.equal(removeOption(added, 1).includes('اینستاگرام'), false);
 });
 
-test('تناقض با قید در حاکم همان بخش، قطعی و بدون حدس', () => {
+test('تناقض با خط قرمز در حاکم همان بخش، قطعی و بدون حدس', () => {
   const guard = ob('g', { type: 'Constraint', title: 'مرز قیمت کارگاه', content: 'تخفیف نداریم' });
   const hit = optionConflicts({ title: 'تخفیف ۲۰ درصد برای ثبت‌نام زودهنگام', text: 'تخفیف ۲۰ درصد برای ثبت‌نام زودهنگام' }, 'ws', [guard], nodes, [], '2026-01-01');
   const none = optionConflicts({ title: 'فروش حضوری', text: 'فروش حضوری' }, 'ws', [guard], nodes, [], '2026-01-01');

@@ -7,7 +7,7 @@ import { DEFAULT_TREE_NODES } from './specs';
 import type { ContextObject } from '../types';
 
 const o = (id: string, p: Partial<ContextObject> = {}): ContextObject => ({
-  id, workspaceId: 'w', type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: `قید ${id}`, content: `متن ${id}`, nodeId: 'business', version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01', ...p,
+  id, workspaceId: 'w', type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: `خط قرمز ${id}`, content: `متن ${id}`, nodeId: 'business', version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01', ...p,
 });
 const EX = [{ kind: 'good' as const, text: 'خرید سه‌ماههٔ شما ۱۰٪ تخفیف دارد' }, { kind: 'bad' as const, text: 'فقط امروز نصف قیمت!' }];
 
@@ -33,8 +33,8 @@ test('who can carry examples: a Constraint, a Decision that reaches everywhere �
 test('a sample never carries examples; the text is labelled right / wrong', () => {
   assert.deepEqual(examplesOf({ ...o('s', { examples: EX }), sample: true }), []);
   assert.deepEqual(exampleLines(o('a', { examples: EX })), ['مثال درست: خرید سه‌ماههٔ شما ۱۰٪ تخفیف دارد', 'مثال نادرست: فقط امروز نصف قیمت!']);
-  assert.equal(guardrailText(o('a', { examples: EX })), 'قید a: متن a (مثال درست: خرید سه‌ماههٔ شما ۱۰٪ تخفیف دارد؛ مثال نادرست: فقط امروز نصف قیمت!)');
-  assert.equal(guardrailText(o('a')), 'قید a: متن a');
+  assert.equal(guardrailText(o('a', { examples: EX })), 'خط قرمز a: متن a (مثال درست: خرید سه‌ماههٔ شما ۱۰٪ تخفیف دارد؛ مثال نادرست: فقط امروز نصف قیمت!)');
+  assert.equal(guardrailText(o('a')), 'خط قرمز a: متن a');
   assert.equal(exampleSuffix(undefined), '');
 });
 
@@ -43,7 +43,7 @@ test('AI request: the examples sit inside the red line, in the user order, cappe
   const objects = [
     o('c1', { examples: many }),
     o('f1', { type: 'Fact', title: 'واقعیت', content: 'x', examples: EX }),
-    { ...o('s1', { title: 'قید نمونه', examples: [{ kind: 'bad', text: 'راز-نمونه' }] }), sample: true },
+    { ...o('s1', { title: 'خط قرمز نمونه', examples: [{ kind: 'bad', text: 'راز-نمونه' }] }), sample: true },
     o('d1', { type: 'Decision', reach: 'global', title: 'تصمیم همه‌جا', examples: [{ kind: 'good', text: 'مثال-تصمیم' }] }),
   ];
   const md = buildAiRequest({ kind: 'question', request: 'سؤال', workspaceName: 'x', nodes: DEFAULT_TREE_NODES, objects, now: new Date('2026-06-01') }).markdown;
@@ -57,6 +57,6 @@ test('AI request: the examples sit inside the red line, in the user order, cappe
 
 test('Context pack: the guardrail line has the examples next to the rule', () => {
   const pack = buildContextPack({ packId: 'p', workspaceName: 'x', nodes: DEFAULT_TREE_NODES, objects: [o('c1', { examples: EX }), { ...o('s1', { title: 'نمونه', examples: [{ kind: 'bad', text: 'راز-نمونه' }] }), sample: true }] });
-  assert.match(pack.markdown, /- قید c1: متن c1 \(مثال درست: .*؛ مثال نادرست: فقط امروز نصف قیمت!\)/);
+  assert.match(pack.markdown, /- خط قرمز c1: متن c1 \(مثال درست: .*؛ مثال نادرست: فقط امروز نصف قیمت!\)/);
   assert.ok(!pack.markdown.includes('راز-نمونه'));
 });

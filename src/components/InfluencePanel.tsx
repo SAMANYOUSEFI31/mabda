@@ -80,7 +80,7 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
         <Group title="وابستگی‌ها" empty="به مورد دیگری وابسته نیست." count={shapedBy.dependencies.length}>
           {shapedBy.dependencies.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}
         </Group>
-        <Group title="قیدهای مؤثر در این گره" empty="قیدی در این گره اثر ندارد." count={shapedBy.constraints.length}>
+        <Group title="خط قرمزهای مؤثر در این گره" empty="خط قرمزی در این گره اثر ندارد." count={shapedBy.constraints.length}>
           {shapedBy.constraints.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}
         </Group>
         <Group title="جاهایی که اعمال نمی‌شود" empty="جایی نیست که اعمال نشود." count={shapedBy.exceptions.length}>

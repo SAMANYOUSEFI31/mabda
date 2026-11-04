@@ -52,9 +52,9 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
     { title: 'اینجا اثر ندارند', list: items.filter((i) => i.origin === 'overridden' || i.origin === 'expired') },
   ];
   return (
-    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که AI برای ساخت خروجی و گفتگوی این گره می‌بیند. قید هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}>
+    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که AI برای ساخت خروجی و گفتگوی این گره می‌بیند. خط قرمز هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-lg">
-        {items.length === 0 && <EmptyState icon="Inbox" title="هیچ قید یا دانشی روی این گره اثر ندارد" />}
+        {items.length === 0 && <EmptyState icon="Inbox" title="هیچ خط قرمز یا دانشی روی این گره اثر ندارد" />}
         {sections.filter((s) => s.list.length > 0).map((sec) => (
           <section key={sec.title} className="flex flex-col gap-stack-sm" aria-label={sec.title}>
             <h3 className="heading-xs text-text-default">{sec.title}</h3>
@@ -65,7 +65,7 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
                   <span className="flex flex-wrap items-center gap-inline-xs"><OriginBadge value={i.origin} /><TypeBadge value={i.object.type} /><ReachBadge object={i.object} /><StatusBadge value={i.object.status} /></span>
                 </div>
                 <p className="body-sm text-text-subtle">
-                  {i.origin === 'own' ? 'ثبت‌شده در همین گره.' : `از «${label(i.fromNodeId)}»${i.origin === 'global' ? ' (قید سراسری)' : ''}.`}
+                  {i.origin === 'own' ? 'ثبت‌شده در همین گره.' : `از «${label(i.fromNodeId)}»${i.origin === 'global' ? ' (خط قرمز سراسری)' : ''}.`}
                   {i.origin === 'overridden' && i.overriddenBy ? ` کنار گذاشته شد با «${title(i.overriddenBy)}».` : ''}
                   {i.origin === 'expired' && i.object.validUntil ? ` تا ${formatJalaliDate(i.object.validUntil)} معتبر بود.` : ''}
                   {i.origin !== 'expired' && i.object.validUntil ? ` معتبر تا ${formatJalaliDate(i.object.validUntil)}.` : ''}

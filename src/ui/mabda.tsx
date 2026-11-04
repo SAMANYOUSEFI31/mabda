@@ -24,7 +24,7 @@ function MabdaBadge({ entry, className, iconOnly = false }: { entry: Entry; clas
 export const TYPE_META: Record<ContextType, Entry> = {
   Fact: { label: 'واقعیت', icon: 'FileText', cls: 'bg-mabda-type-fact-bg text-mabda-type-fact-fg border-mabda-type-fact-border' },
   Decision: { label: 'تصمیم', icon: 'Target', cls: 'bg-mabda-type-decision-bg text-mabda-type-decision-fg border-mabda-type-decision-border' },
-  Constraint: { label: 'محدودیت', icon: 'Lock', cls: 'bg-mabda-type-constraint-bg text-mabda-type-constraint-fg border-mabda-type-constraint-border' },
+  Constraint: { label: 'خط قرمز', icon: 'Lock', cls: 'bg-mabda-type-constraint-bg text-mabda-type-constraint-fg border-mabda-type-constraint-border' },
 };
 export function TypeBadge({ value, className, iconOnly }: { value: ContextType; className?: string; iconOnly?: boolean }) {
   return <MabdaBadge entry={TYPE_META[value]} className={className} iconOnly={iconOnly} />;

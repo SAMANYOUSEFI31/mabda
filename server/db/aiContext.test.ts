@@ -82,7 +82,7 @@ test('notes and their derived thinking items never reach a model; a converted on
 test('SAMPLES never enter an AI context (chat, scoped chat, generation, whole-workspace generation, the validator\'s guardrails); writing over an example makes it hers and only then it is seen', () => {
   const t = setup();
   const SECRET = 'نمونهٔ-ممنوع';
-  const rule = t.repo.createSample(t.s, { type: 'Constraint', title: `قید ${SECRET}`, content: SECRET, nodeId: t.n22 })!;
+  const rule = t.repo.createSample(t.s, { type: 'Constraint', title: `خط قرمز ${SECRET}`, content: SECRET, nodeId: t.n22 })!;
   t.repo.createSample(t.s, { type: 'Fact', title: `واقعیت ${SECRET}`, content: SECRET, nodeId: t.n2 });
   const all = () => JSON.stringify([
     t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] }), t.source.forGenerate('w1', { targetNodeId: '*', title: 't', criteria: [] }),
@@ -91,9 +91,9 @@ test('SAMPLES never enter an AI context (chat, scoped chat, generation, whole-wo
   assert.ok(!all().includes(SECRET));
   assert.deepEqual(t.rulesAt(t.n22), [], 'the validator\'s guardrails come from this list: a sample rule is no guardrail');
   // editing the example = the user's own: it is a real object from then on
-  const mine = t.repo.updateObject(t.s, rule.id, { content: 'قید واقعی من' }).object;
+  const mine = t.repo.updateObject(t.s, rule.id, { content: 'خط قرمز واقعی من' }).object;
   assert.equal(mine.sample, undefined);
-  assert.deepEqual(t.rulesAt(t.n22), [`قید ${SECRET}`]);
+  assert.deepEqual(t.rulesAt(t.n22), [`خط قرمز ${SECRET}`]);
   // examples can be removed without a trace in the knowledge
   assert.equal(t.repo.deleteSamples(t.s), 1);
   assert.equal(t.repo.listSampleObjects(t.s).length, 0);

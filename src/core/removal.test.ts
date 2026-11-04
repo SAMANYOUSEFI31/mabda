@@ -40,16 +40,16 @@ test('move: the last main section cannot go; with a second main section the defa
 });
 
 test('move: a rule «only for this section» in the deleted section now sits in the target — it reaches the target\'s other sub-sections (said in words)', () => {
-  const rule = o('rule', 'A', { type: 'Constraint', reach: 'position', title: 'قید فقط-این-بخش' });
+  const rule = o('rule', 'A', { type: 'Constraint', reach: 'position', title: 'خط قرمز فقط-این-بخش' });
   const pl = plan('A', { objects: [rule], transferTo: 'R' });
   assert.ok(pl.effect.gained.some((g) => g.object.id === 'rule' && g.nodes.includes('گره-S')), 'it now reaches S, a sibling it never reached');
-  assert.match(pl.effect.sentences.join(' '), /«قید فقط-این-بخش» حالا به .*«گره-S».* هم می‌رسد/);
+  assert.match(pl.effect.sentences.join(' '), /«خط قرمز فقط-این-بخش» حالا به .*«گره-S».* هم می‌رسد/);
   const tight = plan('A', { objects: [rule], transferTo: 'R' });
   assert.ok(!tight.effect.lost.some((l) => l.object.id === 'rule'), 'nothing is lost for the sections below it');
 });
 
 test('move: an exception (overrides) whose two ends were in the SAME deleted section stops being an exception — the rule it switched off comes back, and it says so', () => {
-  const rule = o('base', 'B', { type: 'Constraint', reach: 'position', title: 'قید پایه' });
+  const rule = o('base', 'B', { type: 'Constraint', reach: 'position', title: 'خط قرمز پایه' });
   const by = o('exc', 'C', { type: 'Decision', title: 'استثنای ج' });
   const rels: ContextRelationship[] = [{ id: 'r', sourceId: 'exc', targetId: 'base', type: 'overrides', createdAt: '' }];
   // delete C → exc moves to B (same node as base): no longer a strict descendant, so the exception is void
@@ -57,13 +57,13 @@ test('move: an exception (overrides) whose two ends were in the SAME deleted sec
   assert.equal(pl.ok, true);
   assert.ok(pl.effect.gained.some((g) => g.object.id === 'base') || pl.effect.lost.length === 0, 'the report is computed with the exception gone');
   // and the plain case where the parent of the exception changes: deleting B moves C up under A — the exception still holds
-  const pl2 = plan('B', { objects: [o('base2', 'A', { type: 'Constraint', reach: 'position', title: 'قید والد' }), o('exc2', 'C', { type: 'Decision', title: 'استثنا' })], relationships: [{ id: 'r2', sourceId: 'exc2', targetId: 'base2', type: 'overrides', createdAt: '' }] });
+  const pl2 = plan('B', { objects: [o('base2', 'A', { type: 'Constraint', reach: 'position', title: 'خط قرمز والد' }), o('exc2', 'C', { type: 'Decision', title: 'استثنا' })], relationships: [{ id: 'r2', sourceId: 'exc2', targetId: 'base2', type: 'overrides', createdAt: '' }] });
   assert.equal(pl2.ok, true);
-  assert.ok(!pl2.effect.sentences.some((s) => s.includes('قید والد')), 'C is still below A, so the exception still switches «قید والد» off there: nothing to report');
+  assert.ok(!pl2.effect.sentences.some((s) => s.includes('خط قرمز والد')), 'C is still below A, so the exception still switches «خط قرمز والد» off there: nothing to report');
 });
 
 test('archive: the whole branch goes, its knowledge is ARCHIVED (counted), a global rule in it stops reaching everyone and the plan says so; notes and files need a target only if there are some', () => {
-  const rule = o('g', 'C', { type: 'Constraint', title: 'قید سراسری' }); // global by default
+  const rule = o('g', 'C', { type: 'Constraint', title: 'خط قرمز سراسری' }); // global by default
   const fact = o('f', 'D', { title: 'دانش عمیق' });
   const keep = o('k', 'S', { title: 'در شاخهٔ دیگر' });
   const pl = plan('B', { mode: 'archive', objects: [rule, fact, keep] });
@@ -72,7 +72,7 @@ test('archive: the whole branch goes, its knowledge is ARCHIVED (counted), a glo
   assert.equal(pl.counts.archived, 2);
   assert.equal(pl.counts.branchNodes, 3);
   assert.ok(pl.effect.lost.some((l) => l.object.id === 'g'), 'the global rule no longer reaches the rest of the tree');
-  assert.match(pl.effect.sentences.join(' '), /«قید سراسری» دیگر به .* نمی‌رسد \(بایگانی می‌شود\)/);
+  assert.match(pl.effect.sentences.join(' '), /«خط قرمز سراسری» دیگر به .* نمی‌رسد \(بایگانی می‌شود\)/);
   assert.ok(pl.tree.filter((r) => r.state === 'removed').map((r) => r.id).sort().join() === 'B,C,D');
   const withNotes = plan('B', { mode: 'archive', objects: [fact], notes: [{ nodeId: 'D' }] as Note[], transferTo: 'S' });
   assert.equal(withNotes.ok, true);

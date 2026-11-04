@@ -15,7 +15,7 @@ import { flatten } from '../core/nodeTree';
 import { dataApi, DataApiError } from '../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber } from '../ui';
 
-const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'محدودیت', asset: 'دارایی', question: 'سؤال AI', paragraph: 'متن' };
+const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال AI', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
 const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'AI نوشته', similar: 'شباهت', none: 'بدون سرنخ' };
 

@@ -103,7 +103,7 @@ export const LEFT_REASON_FA: Record<LeftReason, string> = {
 export function leftWhy(reason: LeftReason, o: Pick<ContextObject, 'nodeId' | 'type' | 'reach' | 'validUntil'>, nodes: TreeNode[], extra?: { overriddenByTitle?: string }): string {
   const name = label(nodes, o.nodeId);
   switch (reason) {
-    case 'scope': return o.type === 'Constraint' ? `قید فقط برای «${name}» است (محدودهٔ اثر: فقط این بخش)` : `مال «${name}» است و به بخش‌های انتخاب‌شده نمی‌رسد`;
+    case 'scope': return o.type === 'Constraint' ? `خط قرمز فقط برای «${name}» است (محدودهٔ اثر: فقط این بخش)` : `مال «${name}» است و به بخش‌های انتخاب‌شده نمی‌رسد`;
     case 'child': return `در زیربخش «${name}» است؛ «با زیربخش‌ها» را روشن کن یا همان را تیک بزن`;
     case 'expired': return `تا ${o.validUntil ?? 'تاریخی که گذشته'} معتبر بود`;
     case 'overridden': return extra?.overriddenByTitle ? `«${extra.overriddenByTitle}» آن را در این بخش کنار گذاشته` : 'در این بخش کنار گذاشته شده';
@@ -116,6 +116,6 @@ export function reachSentence(o: Pick<ContextObject, 'nodeId' | 'type' | 'reach'
   const name = label(nodes, o.nodeId);
   const subs = nodes.some((n) => n.parentId === o.nodeId);
   return reachOf(o) === 'global'
-    ? 'این قید در همهٔ بسته‌ها و درخواست‌های AI می‌آید، هر بخشی که باشند.'
-    : `این قید فقط در بسته‌ها و درخواست‌هایی می‌آید که دامنه‌شان «${name}»${subs ? ' یا یکی از زیربخش‌هایش' : ''} را بخواند (انتخاب مستقیم، یا بخش بالاترش با «با زیربخش‌ها»).`;
+    ? 'این خط قرمز در همهٔ بسته‌ها و درخواست‌های AI می‌آید، هر بخشی که باشند.'
+    : `این خط قرمز فقط در بسته‌ها و درخواست‌هایی می‌آید که دامنه‌شان «${name}»${subs ? ' یا یکی از زیربخش‌هایش' : ''} را بخواند (انتخاب مستقیم، یا بخش بالاترش با «با زیربخش‌ها»).`;
 }

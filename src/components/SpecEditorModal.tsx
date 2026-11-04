@@ -118,7 +118,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
     return (
       <Dialog open onClose={onClose} size="sm" title="جریان کار سفارشی از پلن Pro" description={`پلن فعلی این فضای کاری ${PLANS[planId].title} است.`}
         footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" onClick={() => { onClose(); onUpgrade(); }}>ارتقای پلن</Button></>}>
-        <p className="body-md text-text-default">ساخت و ویرایش جریان کار با خروجی‌های وابسته، معیار پذیرش و گاردریل در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
+        <p className="body-md text-text-default">ساخت و ویرایش جریان کار با خروجی‌های وابسته، معیار پذیرش و خط قرمز در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
       </Dialog>
     );
   }
@@ -161,7 +161,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
       onClose={onClose}
       size="xl"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
-      description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و گاردریل. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان گاردریل اعمال می‌شوند."
+      description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -238,9 +238,9 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         </Card>
 
         <Card padding="lg" className="flex flex-col gap-stack-md">
-          <div><h4 className="title text-text-default">گاردریل‌ها</h4><p className="caption text-text-subtle">قوانینی که هیچ خروجی نباید نقض کند. نقض هر کدام، خروجی را «تأییدنشده» می‌کند.</p></div>
-          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن گاردریل" add={() => ({ uid: uid(), text: '' })} empty="گاردریلی تعریف نشده؛ فقط محدودیت‌های تأییدشدهٔ فضای کار اعمال می‌شوند."
-            render={(g, p) => <TextField label="گاردریل" value={g.text} onChange={(e) => p({ text: e.target.value })} />} />
+          <div><h4 className="title text-text-default">خط قرمزها</h4><p className="caption text-text-subtle">قوانینی که هیچ خروجی نباید نقض کند. نقض هر کدام، خروجی را «تأییدنشده» می‌کند.</p></div>
+          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن خط قرمز" add={() => ({ uid: uid(), text: '' })} empty="خط قرمزی تعریف نشده؛ فقط محدودیت‌های تأییدشدهٔ فضای کار اعمال می‌شوند."
+            render={(g, p) => <TextField label="خط قرمز" value={g.text} onChange={(e) => p({ text: e.target.value })} />} />
         </Card>
 
         {errors.length > 0 && (

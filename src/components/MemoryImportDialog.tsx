@@ -11,7 +11,7 @@ import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber
 const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'AI دیگر'];
 
 /** Ask the other AI for what it remembers about you — the user copies this prompt there and pastes the answer back here. */
-const EXPORT_PROMPT = 'هر چیزی که تا حالا دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس: کسب‌وکار، مخاطب، محصول و قیمت، لحن، تصمیم‌ها و محدودیت‌ها. فقط چیزهایی که واقعاً می‌دانی؛ حدس نزن.';
+const EXPORT_PROMPT = 'هر چیزی که تا حالا دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس: کسب‌وکار، مخاطب، محصول و قیمت، لحن، تصمیم‌ها و خط قرمزها. فقط چیزهایی که واقعاً می‌دانی؛ حدس نزن.';
 
 interface Props {
   open: boolean;

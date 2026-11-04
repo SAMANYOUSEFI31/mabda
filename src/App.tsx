@@ -87,10 +87,11 @@ import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
-import { Alert, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
+import { Alert, Button, Card, Dialog, EmptyState, Icon, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { HomeTodo } from './components/HomeTodo';
 import { effectiveObjects } from './core/effectiveContext';
 import { defaultNodeId, resolveNodeId, subtreeIds } from './core/nodeTree';
+import { pathTo } from './core/nodeFocus';
 import { homeActions } from './core/homeActions';
 import type { HomeAction } from './core/homeActions';
 import { visibleFeatures } from './core/visibleFeatures';
@@ -245,11 +246,38 @@ export default function App() {
   // «واردِ یک بخش شدن»: the focused section lives in history (#node=…), so the browser / phone back button, a direct link and reload all work
   const nodeFromUrl = () => { try { const m = /#node=([^&]+)/.exec(window.location.hash); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
   const [focusNodeId, setFocusNodeId] = useState<string | null>(nodeFromUrl);
+  const urlOf = (id: string | null) => (id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search);
+  /** every state remembers where it came FROM, so «برگشت» (the arrow, the phone's back, the browser's back) climbs one level instead of leaving */
+  const pushFocus = (id: string | null, prev: string | null) => { try { window.history.pushState({ node: id, prev }, '', urlOf(id)); } catch { /* optional */ } };
   const goFocus = (id: string | null) => {
+    const cur = focusNodeId;
+    if (id === cur) return;
+    const st = window.history.state as { node?: string | null; prev?: string | null } | null;
+    // «برگشت» to the place we just came from IS the browser's back (so the history stays a clean path, no loop)
+    if (st && st.node === cur && (st.prev ?? null) === id) { try { window.history.back(); return; } catch { /* fall through */ } }
     setFocusNodeId(id);
-    try { window.history.pushState({ node: id }, '', id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search); } catch { /* optional */ }
+    if (!id) pushFocus(null, cur);
+    else if ((nodes.find((n) => n.id === id)?.parentId ?? null) === (cur ?? null)) pushFocus(id, cur); // one level in
+    else {
+      // a jump (search, a link, a far breadcrumb): the levels in between go into the history, so back climbs one level at a time
+      const path = pathTo(nodes, id).map((c) => c.id);
+      let prev: string | null = cur && path.includes(cur) ? cur : null;
+      for (const step of path.slice(prev ? path.indexOf(prev) + 1 : 0)) { pushFocus(step, prev); prev = step; }
+    }
     window.scrollTo({ top: 0 });
   };
+  // a direct link to a deep section: rebuild the path under it once the tree is known, so «back» climbs instead of leaving the app
+  const climbedRef = React.useRef(false);
+  useEffect(() => {
+    if (climbedRef.current || !nodes.length || !focusNodeId) return;
+    const path = pathTo(nodes, focusNodeId).map((c) => c.id);
+    if (!path.length) return; // the section is not in this workspace's tree (yet): wait
+    climbedRef.current = true;
+    if (path.length < 2) return;
+    try { window.history.replaceState({ node: null, prev: null }, '', window.location.pathname + window.location.search); } catch { return; }
+    let prev: string | null = null;
+    for (const step of path) { pushFocus(step, prev); prev = step; }
+  }, [nodes, focusNodeId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const on = () => setFocusNodeId(nodeFromUrl()); window.addEventListener('popstate', on); return () => window.removeEventListener('popstate', on); }, []);
   // while we are INSIDE a section, the thinking space and the canvases show only that section and what is under it (one tap on the chip shows all again)
   const focusSection = focusNodeId ? nodes.find((n) => n.id === focusNodeId) : undefined;
@@ -902,7 +930,7 @@ export default function App() {
       const r = await attempt(() => dataApi.extractDeliverable(wid, del.id));
       if (!r) return;
       patch((d) => ({ ...d, objects: [...r.created.slice().reverse(), ...d.objects], ledger: r.ledger }));
-      toast.show({ intent: r.created.length ? 'success' : 'info', message: r.created.length ? `${formatNumber(r.created.length)} مورد پیشنهادی از این خروجی ساخته شد؛ در صندوق پیشنهادها منتظر تأیید توست.` : 'در متن این خروجی واقعیت، تصمیم یا قید مشخصی پیدا نشد.' });
+      toast.show({ intent: r.created.length ? 'success' : 'info', message: r.created.length ? `${formatNumber(r.created.length)} مورد پیشنهادی از این خروجی ساخته شد؛ در صندوق پیشنهادها منتظر تأیید توست.` : 'در متن این خروجی واقعیت، تصمیم یا خط قرمز مشخصی پیدا نشد.' });
     } finally { setExtractingAssetId(null); }
   };
 
@@ -1053,10 +1081,11 @@ export default function App() {
   const scopedIds = new Set(scopedObjects.map((o) => o.id));
   const scopedNotes = focusScope ? (data?.notes ?? []).filter((n) => focusScope.has(n.nodeId)) : (data?.notes ?? []);
   const scopedDeliverables = focusScope ? deliverables.filter((d) => d.usedContext.some((u) => scopedIds.has(u.id))) : deliverables;
+  /** shown by EVERY view that is limited to the section we are inside (thinking list, both canvases): where we are, and a one-tap way out */
   const scopeChip = focusSection && (
-    <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="focus-scope-chip">
-      <span className="body-sm text-text-default">فقط «{focusSection.label}» و زیربخش‌هایش را می‌بینی.</span>
-      <Button size="sm" variant="ghost" onClick={() => goFocus(null)}>نمایش همه</Button>
+    <div role="status" className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="focus-scope-chip">
+      <span className="body-sm flex min-w-space-0 items-center gap-inline-xs text-text-default"><Icon name="FolderTree" size="md" className="shrink-0 text-icon-subtle" /><span>داخل بخش «{pathTo(nodes, focusSection.id).map((c) => c.label).join(' › ')}»؛ فقط همین بخش و زیربخش‌هایش دیده می‌شود.</span></span>
+      <Button size="sm" variant="secondary" iconStart="ArrowRight" onClick={() => goFocus(null)}>بیرون بیا</Button>
     </div>
   );
   const renderCanvas = (mode: 'truth' | 'thinking') => (

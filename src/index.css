@@ -122,3 +122,7 @@
 @keyframes focus-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
 .focus-enter { animation: focus-in 180ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .focus-enter { animation: none; } }
+
+/* the path bar of a section we are inside stays at the top while the section scrolls; on a phone it sits under the sticky top bar */
+.focus-bar { position: sticky; top: 0; z-index: var(--layer-sticky, 10); background: var(--surface-raised); padding-block: var(--inset-xs, 4px); }
+@media (max-width: 767px) { .focus-bar { top: 61px; } }

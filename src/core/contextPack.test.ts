@@ -73,7 +73,7 @@ test('context pack: Confirmed as fact, Proposed labelled unconfirmed, Archived/S
   assert.match(md, /## واقعیت‌های تأییدشده \(Confirmed\)[\s\S]*مخاطب اصلی/);
   assert.match(md, /## پیشنهادی — تأییدنشده \(واقعیت نیست\)[\s\S]*پیشنهاد ستون/);
   assert.ok(!md.includes('بایگانی') && !md.includes('جایگزین‌شده'));
-  assert.match(md, /گاردریل‌ها[\s\S]*بدون تخفیف: تخفیف نداریم/, 'Confirmed Constraints become guardrails automatically');
+  assert.match(md, /خط قرمزها[\s\S]*بدون تخفیف: تخفیف نداریم/, 'Confirmed Constraints become guardrails automatically');
   assert.match(md, /معیارهای پذیرش[\s\S]*عدم وجود ادعاهای عمومی/);
   assert.match(md, /## شکاف‌ها \(Gap\)/);
   assert.match(md, /## Asset: عنوان خروجی/);

@@ -90,7 +90,7 @@ export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'accept
   input.onStage?.('validate', 'cheap');
   const questions: DecisionQuestion[] = [
     ...criteria.map((c, i): DecisionQuestion => ({ id: `c${i}`, question: `آیا خروجی این معیار پذیرش را برآورده می‌کند؟ «${c}»`, options: ['pass', 'fail'], reason: true })),
-    ...guardrails.map((g, i): DecisionQuestion => ({ id: `g${i}`, question: `آیا خروجی این گاردریل را رعایت می‌کند؟ «${g}»`, options: ['ok', 'violated'], reason: true })),
+    ...guardrails.map((g, i): DecisionQuestion => ({ id: `g${i}`, question: `آیا خروجی این خط قرمز را رعایت می‌کند؟ «${g}»`, options: ['ok', 'violated'], reason: true })),
     ...(hasKnowledge ? [{ id: 'k0', question: 'آیا خروجی با «دانش تأییدشدهٔ کسب‌وکار» بالا سازگار است؟ فقط اگر ادعایی صریحاً با آن دانش نمی‌خواند یا چیزی در تضاد با آن می‌سازد، conflict بده؛ ادعاهای تازه‌ای که دانش دربارهٔ آن‌ها ساکت است تناقض نیستند.', options: ['consistent', 'conflict'], reason: true } satisfies DecisionQuestion] : []),
   ];
   const res = await input.decisions.decide({ text: `${hasKnowledge ? `## دانش تأییدشدهٔ کسب‌وکار\n${knowledge}\n\n` : ''}## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
@@ -184,7 +184,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineOutput>
       user: [
         input.specTarget ? `## هدف جریان کار\n${input.specTarget}` : '',
         `## ${criteriaBlock(input.acceptanceCriteria)}`,
-        gr.length ? `## گاردریل‌ها\n${gr.map((g) => `- ${g}`).join('\n')}` : '',
+        gr.length ? `## خط قرمزها\n${gr.map((g) => `- ${g}`).join('\n')}` : '',
         `## دانش تأییدشده\n${input.prompt.prefix ?? ''}`,
         `## پیش‌نویس\n${blocksToMarkdown(blocks)}`,
       ].filter(Boolean).join('\n\n'),

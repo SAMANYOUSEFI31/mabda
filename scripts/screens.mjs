@@ -232,7 +232,7 @@ for (const size of SIZES) {
   await page.locator('button[aria-controls="home-all"]').click();
   await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
   await page.getByRole('dialog').getByRole('radio', { name: 'ممیزی' }).click();
-  await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');
+  await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با خط قرمزهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));
   await shoot('dialog-request'); await closeDialog();
   // «بسته‌های دانش»: a pack being built, with the live preview (what comes, from where, what did not and why)

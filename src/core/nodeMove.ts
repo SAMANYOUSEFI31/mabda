@@ -17,7 +17,7 @@ export interface MoveEffect {
   sentences: string[];
 }
 
-const TYPE_WORD = { Constraint: 'قید', Decision: 'تصمیم', Fact: 'دانش' } as const;
+const TYPE_WORD = { Constraint: 'خط قرمز', Decision: 'تصمیم', Fact: 'دانش' } as const;
 
 export function moveEffect(nodes: TreeNode[], objects: ContextObject[], relationships: ContextRelationship[], id: string, newParentId: string, now: Date | string | number): MoveEffect {
   const moved = nodes.map((n) => (n.id === id ? (newParentId ? { ...n, parentId: newParentId } : { ...n, parentId: undefined }) : n));

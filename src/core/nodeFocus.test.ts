@@ -24,7 +24,7 @@ test('خلاصهٔ زیربخش‌ها روی کل زیردرخت شمرده م�
   assert.deepEqual([s.node.id, s.knowledge, s.openThoughts, s.stale, s.subSections], ['b', 3, 2, 1, 2]);
 });
 
-test('از بالا: قید والد و «همه‌جا» با منشأ؛ همتا و پایین نمی‌آیند', () => {
+test('از بالا: خط قرمز والد و «همه‌جا» با منشأ؛ همتا و پایین نمی‌آیند', () => {
   const objs = [ob('c1', 'a', { type: 'Constraint', reach: 'position', title: 'لحن' }), ob('g1', 'z', { type: 'Constraint', title: 'ممنوع' }), ob('own', 'd'), ob('below', 'd')];
   const r = fromAbove(nodes, objs, [], 'c', '2026-01-01');
   assert.ok(r.some((x) => x.item.object.id === 'c1' && x.fromLabel === 'آفر'));
