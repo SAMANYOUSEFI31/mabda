@@ -218,6 +218,14 @@ for (const size of SIZES) {
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));
   await shoot('dialog-request'); await closeDialog();
+  // «بسته‌های دانش»: a pack being built, with the live preview (what comes, from where, what did not and why)
+  await goTab(TABS[0]);
+  await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
+  await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
+  await page.getByRole('dialog').getByLabel('نام بسته').fill('پاسخ به مشتری');
+  await page.getByRole('dialog').getByRole('checkbox', { name: /^(— )*پشتیبانی و پس از فروش$/ }).evaluate((n) => n.click());
+  await page.getByTestId('explain-group-guardrail').waitFor(); await page.waitForTimeout(500);
+  await shoot('dialog-pack-edit'); await closeDialog();
   // the global search: a few letters, grouped results (the keyboard shortcut on desktop, the header button on phones)
   if (mobile) await page.getByRole('button', { name: 'جستجو' }).first().click(); else await page.keyboard.press('Control+KeyK');
   await page.getByRole('combobox', { name: 'جستجو' }).fill('قیم');

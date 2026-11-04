@@ -16,7 +16,7 @@ import { useAiStatus } from '../services/aiStatus';
 import { AiErrorNotice } from './AiNotices';
 import { ClosedSection } from './ClosedSection';
 import { BlockView } from './BlockView';
-import { Alert, Badge, Button, Dialog, IconButton, Menu, Select, Spinner, TextField, Textarea, formatJalaliDate, formatNumber, useToast } from '../ui';
+import { Alert, Badge, Button, Checkbox, Dialog, IconButton, Menu, Select, Spinner, TextField, Textarea, formatJalaliDate, formatNumber, useToast } from '../ui';
 
 type Result = AiRequestResult & { packId: string; recorded: boolean };
 interface Props {
@@ -35,6 +35,8 @@ interface Props {
   /** «به دانش اضافه کن»: opens the knowledge dialog with a draft made from the block */
   onAddKnowledge: (block: ContentBlock) => void;
   onOpenAiSettings: () => void;
+  /** «این قید را ببین / ویرایش کن»: the rule opens where its reach is decided */
+  onOpenObject?: (id: string) => void;
 }
 
 const SHOWN = 40;
@@ -48,7 +50,7 @@ export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner 
 
 const MODE_OF: Record<RequestKind, 'discovery' | 'audit' | 'advisor'> = { question: 'discovery', audit: 'audit', draft: 'discovery', decision: 'advisor', change_review: 'audit', free: 'discovery' };
 
-const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onOpenAiSettings }) => {
+const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onOpenAiSettings, onOpenObject }) => {
   const toast = useToast();
   const ai = useAiStatus();
   const [answer, setAnswer] = useState<{ blocks: ContentBlock[]; text: string; streaming: boolean } | null>(null);
@@ -57,6 +59,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
   const [kind, setKind] = useState<RequestKind>('question');
   const [request, setRequest] = useState('');
   const [scope, setScope] = useState(scopeNodeId ?? '');
+  /** the same switch as a saved pack's: the sub-sections of the section are read too (src/core/packScope.ts) */
+  const [withChildren, setWithChildren] = useState(true);
   const [extraIds, setExtraIds] = useState<string[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +68,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
   const [copied, setCopied] = useState(false);
   const packId = useMemo(newPackId, []);
   const meta = REQUEST_KINDS.find((k) => k.kind === kind)!;
+  const hasKids = !!scope && nodes.some((n) => n.parentId === scope);
   const options = useMemo(() => [{ value: '', label: 'کل کسب‌وکار' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))], [nodes]);
 
   // the preview follows the choices; typing waits a moment so every key does not ask the server
@@ -71,19 +76,19 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
     let live = true;
     setCopied(false);
     const t = setTimeout(() => {
-      dataApi.aiRequest(workspaceId, { kind, request, scopeNodeId: scope || undefined, extraIds, packId })
+      dataApi.aiRequest(workspaceId, { kind, request, scopeNodeId: scope || undefined, withChildren, extraIds, packId })
         .then((r) => { if (live) { setResult(r); setError(null); } })
         .catch((e) => { if (live) setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); });
     }, result ? 300 : 0);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, kind, request, scope, extraIds, packId]);
+  }, [workspaceId, kind, request, scope, withChildren, extraIds, packId]);
 
   const ready = request.trim().length > 0;
   const copy = async () => {
     setBusy('copy');
     try {
-      const r = await dataApi.aiRequest(workspaceId, { kind, request, scopeNodeId: scope || undefined, extraIds, packId, record: true });
+      const r = await dataApi.aiRequest(workspaceId, { kind, request, scopeNodeId: scope || undefined, withChildren, extraIds, packId, record: true });
       try { await navigator.clipboard.writeText(r.markdown); } catch { const ta = document.createElement('textarea'); ta.value = r.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
       setResult(r); setCopied(true); track('action.ai-copy');
       toast.show({ intent: 'success', message: 'کپی شد. در Claude یا ChatGPT بچسبان؛ پاسخ را که گرفتی، «پاسخ AI را وارد کن».' });
@@ -111,7 +116,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
   const save = async () => {
     setBusy('save');
     try {
-      await dataApi.createSavedPack(workspaceId, { name: `${KIND_LABEL[kind]} — ${request.trim().slice(0, 40)}`, instruction: '', selection: { nodeIds: scope ? [scope] : [], facets: [], statuses: [], includeAssumptions: true }, kind, template: request.trim() });
+      await dataApi.createSavedPack(workspaceId, { name: `${KIND_LABEL[kind]} — ${request.trim().slice(0, 40)}`, instruction: '', selection: { nodeIds: scope ? [scope] : [], facets: [], statuses: [], includeAssumptions: true, withChildren }, kind, template: request.trim() });
       toast.show({ intent: 'success', message: 'درخواست ذخیره شد؛ در «بسته‌های دانش» هر بار با دانش روز ساخته می‌شود.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'ذخیره نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
@@ -156,7 +161,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
           placeholder={`مثلاً: ${meta.example}`} maxLength={500}
           hint={request ? undefined : <Button size="sm" variant="ghost" onClick={() => setRequest(meta.example)}>استفاده از نمونه</Button>}
         />
-        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="فقط دانشی که به همین بخش مربوط است می‌آید؛ خط قرمزها همیشه."/>
+        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="دانش خود این بخش + آنچه از بالا به ارث می‌برد + قیدهای «همه‌جا». بخش‌های هم‌سطح نمی‌آیند."/>
+        {hasKids && <Checkbox label="زیربخش‌هایش هم بیایند" checked={withChildren} onChange={(e) => { setWithChildren(e.target.checked); setExtraIds([]); }} hint="همان قاعدهٔ «بسته‌های دانش». بودجهٔ توکن نگه‌دار است: اگر جا نشد، مرتبط‌ترین‌ها می‌آیند و بقیه با دلیل کنار می‌مانند." />}
 
         {answerError && <AiErrorNotice error={answerError} onRetry={answerError.kind === 'no_key' ? undefined : answerHere} retrying={busy === 'answer'} onOpenSettings={onOpenAiSettings} />}
         {answer && (
@@ -189,7 +195,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                   <li key={i.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="body-sm text-text-default">{i.title} <span className="caption text-text-subtle">· {i.nodeLabel}</span></span>
                     <span className="flex items-center gap-inline-xs">
-                      <span className="caption text-text-subtle">{INCLUDE_REASON_FA[i.reason]}</span>
+                      <span className="caption text-text-subtle" data-testid="included-from">{i.from} · {INCLUDE_REASON_FA[i.reason]}</span>
+                      {i.type === 'Constraint' && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش قید «${i.title}»`} onClick={() => onOpenObject(i.id)}>ببین و ویرایش</Button>}
                       {i.reason === 'manual' && <Button size="sm" variant="ghost" onClick={() => setExtraIds((x) => x.filter((id) => id !== i.id))}>برداشتن</Button>}
                     </span>
                   </li>
@@ -205,7 +212,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOp
                       <ul className="flex flex-col gap-stack-xs">
                         {items.slice(0, SHOWN).map((e) => (
                           <li key={e.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
-                            <span className="body-sm text-text-default">{e.title} <span className="caption text-text-subtle">· {e.nodeLabel}</span></span>
+                            <span className="flex min-w-space-0 flex-1 flex-col"><span className="body-sm text-text-default">{e.title} <span className="caption text-text-subtle">· {e.nodeLabel}</span></span><span className="caption text-text-subtle">{e.why}</span></span>
                             {e.canAdd && <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => setExtraIds((x) => [...new Set([...x, e.id])])}>افزودن</Button>}
                           </li>
                         ))}

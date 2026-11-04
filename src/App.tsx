@@ -1417,6 +1417,16 @@ export default function App() {
       </div>
 
       {/* Context Object Add/Edit Modal */}
+      <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />
+      <AiRequestDialog
+        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
+        sessions={data?.sessions ?? []}
+        onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
+        onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? effectiveCredits(chatCredits(false), res.usage.byok) : 0, false); }}
+        onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
+        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+        onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
+      />
       <ContextDetailModal
         isOpen={isContextModalOpen}
         object={selectedContextObject}
@@ -1567,15 +1577,6 @@ export default function App() {
       </Dialog>
       <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
-      <AiRequestDialog
-        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
-        sessions={data?.sessions ?? []}
-        onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
-        onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? effectiveCredits(chatCredits(false), res.usage.byok) : 0, false); }}
-        onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
-        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
-      />
-      <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
       <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />

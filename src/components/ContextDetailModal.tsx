@@ -8,6 +8,7 @@ import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, G
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { defaultNodeId, flatten } from '../core/nodeTree';
+import { reachSentence } from '../core/packScope';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
 import { MentionTextarea } from './MentionTextarea';
@@ -391,6 +392,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
             <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، گاردریل است.' : 'فقط برای این گره و زیرگره‌هایش گاردریل است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+            <p className="body-sm text-text-default" data-testid="reach-sentence">{reachSentence({ nodeId, type, reach }, nodes)}</p>
           </div>
         )}
         {canHaveExamples({ type, reach: type === 'Constraint' ? reach : object?.reach }) && (

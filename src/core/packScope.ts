@@ -90,7 +90,7 @@ export const LEFT_REASON_FA: Record<LeftReason, string> = {
   scope: 'مال بخش دیگری است',
   child: 'زیربخشی که انتخاب نشده',
   expired: 'منقضی شده',
-  overridden: 'در این بخش اعمال نمی‌شود (استثنا)',
+  overridden: 'در این بخش اعمال نمی‌شود (کنار گذاشته شده)',
   facet: 'بُعد دیگری دارد',
   status: 'تأییدنشده؛ تیکش نخورده',
   assumption: 'فرض است؛ تیکش نخورده',
@@ -117,5 +117,5 @@ export function reachSentence(o: Pick<ContextObject, 'nodeId' | 'type' | 'reach'
   const subs = nodes.some((n) => n.parentId === o.nodeId);
   return reachOf(o) === 'global'
     ? 'این قید در همهٔ بسته‌ها و درخواست‌های AI می‌آید، هر بخشی که باشند.'
-    : `این قید فقط در بسته‌ها و درخواست‌هایی می‌آید که «${name}»${subs ? ' یا یکی از زیربخش‌هایش' : ''} در دامنه‌شان باشد.`;
+    : `این قید فقط در بسته‌ها و درخواست‌هایی می‌آید که دامنه‌شان «${name}»${subs ? ' یا یکی از زیربخش‌هایش' : ''} را بخواند (انتخاب مستقیم، یا بخش بالاترش با «با زیربخش‌ها»).`;
 }
