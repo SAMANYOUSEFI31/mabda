@@ -43,14 +43,14 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
   useEffect(() => { if (p.open) { setDraft(''); setChosen(null); setReasons({}); setError(null); } }, [p.open, p.item?.key]);
 
   const item = p.item;
-  const options = useMemo(() => (item ? optionsOf(p.noteContent, item.line, p.objects, p.nodes) : []), [item, p.noteContent, p.objects, p.nodes]);
+  const options = useMemo(() => (item ? optionsOf(p.noteContent, item.endLine ?? item.line, p.objects, p.nodes) : []), [item, p.noteContent, p.objects, p.nodes]);
   const conflicts = useMemo(() => (item ? options.map((o) => optionConflicts(o, item.nodeId, p.objects, p.nodes, p.relationships, new Date())) : []), [item, options, p.objects, p.nodes, p.relationships]);
   if (!item) return null;
   const question = stripAbout(item.text) || item.text;
   const title = (id: string) => p.objects.find((o) => o.id === id)?.title ?? id;
 
   const run = async (fn: () => Promise<void>) => { setBusy(true); setError(null); try { await fn(); } catch { setError('این کار انجام نشد. دوباره تلاش کن.'); } finally { setBusy(false); } };
-  const add = () => run(async () => { await p.onChangeNote(addOption(p.noteContent, item.line, draft, p.objects, p.nodes)); setDraft(''); });
+  const add = () => run(async () => { await p.onChangeNote(addOption(p.noteContent, item.endLine ?? item.line, draft, p.objects, p.nodes)); setDraft(''); });
   const others = chosen ? options.filter((o) => o.line !== chosen.line) : [];
   const ready = !!chosen && others.every((o) => (reasons[o.line] ?? '').trim());
   const confirm = () => chosen && run(async () => { await p.onChoose({ question, chosen, others: others.map((o) => ({ title: o.title, reason: reasons[o.line] ?? '' })) }); p.onClose(); });

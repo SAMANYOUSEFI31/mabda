@@ -47,7 +47,9 @@ test('guessThoughtKind / composeThought: the marker is written for the user; a q
   assert.equal(guessThoughtKind('یک جعبهٔ هدیه'), 'idea');
   assert.equal(composeThought('  جعبهٔ هدیه ', 'idea'), '[ایده] جعبهٔ هدیه');
   assert.equal(composeThought('[ایده] قیمت؟', 'question'), '[سؤال] قیمت؟');
-  assert.equal(composeThought('خط اول\nخط دوم', 'open_decision'), '[تصمیم باز] خط اول\nخط دوم');
+  // a thought of several lines keeps its lines together with a trailing hard break (the old output left line 2 as a separate, unmarked line)
+  assert.equal(composeThought('خط اول\nخط دوم', 'open_decision'), '[تصمیم باز] خط اول\\\nخط دوم');
+  assert.deepEqual(parseThinking(composeThought('خط اول\nخط دوم', 'open_decision')).map((b) => b.text), ['خط اول\nخط دوم']);
   assert.equal(composeThought('   ', 'idea'), '');
   // the composed note is read back as exactly that thought
   const back = parseThinking(composeThought('قیمت اشتراک سه‌ماهه؟', 'open_decision'));

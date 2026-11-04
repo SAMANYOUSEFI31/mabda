@@ -7,6 +7,9 @@
  *    an explicit marker on the same line wins. `markLine` writes a marker for the user from a small menu
  *  • derived, never stored: the note text is the only thing that exists, and it is never rewritten
  *  • tied to its note by note id + a hash of the line, so a soft re-match survives a small edit
+ *  • a thought of SEVERAL lines: every line but the last ends with `\` (the Markdown hard line break), so `- [ایده] الف\` /
+ *    `ب\` / `ج` is ONE thought whose text is «الف⏎ب⏎ج». Only a thought with an explicit marker can continue; a note that never
+ *    used a trailing backslash reads exactly as before
  *  • notes are never injected into a model, so neither are their items; an item only becomes knowledge when the user
  *    converts it (always PROPOSED, with the line as its quote)
  */
@@ -24,8 +27,10 @@ export interface ThinkingItem {
   inferred?: boolean;
   /** the text after the marker (as the user wrote it, trimmed) */
   text: string;
-  /** 0-based line of the note */
+  /** 0-based line of the note (the first one) */
   line: number;
+  /** the last line of a thought that continues over several lines (absent = the same as `line`) */
+  endLine?: number;
   /** hash of the normalised text (stable across whitespace / ZWNJ / digit-style changes) */
   hash: string;
 }
@@ -61,9 +66,19 @@ export function isQuestionLine(line: string): boolean {
   return !body.startsWith('#') && /[\p{L}\p{N}]/u.test(t.slice(0, -1));
 }
 
+const HARD_BREAK = /\\[ \t]*$/;
+
 export function parseThinking(content: string): ThinkingItem[] {
   const out: ThinkingItem[] = [];
+  let open: ThinkingItem | undefined; // a marked thought whose previous line ended with `\`
   content.split(/\r?\n/).forEach((raw, line) => {
+    if (open) {
+      open.text = `${open.text}\n${raw.replace(HARD_BREAK, '').trim()}`;
+      open.endLine = line;
+      open.hash = lineHash(open.text);
+      if (!HARD_BREAK.test(raw)) open = undefined;
+      return;
+    }
     const rest = raw.replace(LEAD, '');
     const m = MARKER.exec(rest);
     if (!m) {
@@ -71,11 +86,21 @@ export function parseThinking(content: string): ThinkingItem[] {
       if (isQuestionLine(rest)) out.push({ kind: 'question', inferred: true, text: rest.trim(), line, hash: lineHash(rest) });
       return;
     }
-    const text = rest.slice(m[0].length).trim();
+    const more = HARD_BREAK.test(rest);
+    const text = rest.slice(m[0].length).replace(HARD_BREAK, '').trim();
     if (!text) return;
-    out.push({ kind: KIND_OF(m[1]), text, line, hash: lineHash(text) });
+    const item: ThinkingItem = { kind: KIND_OF(m[1]), text, line, hash: lineHash(text) };
+    out.push(item);
+    if (more) open = item;
   });
   return out;
+}
+
+/** the 0-based lines that only CONTINUE the thought above them (not the first line of it): no badge, no marker menu */
+export function continuationLines(content: string): Set<number> {
+  const s = new Set<number>();
+  for (const it of parseThinking(content)) if (it.endLine !== undefined) for (let l = it.line + 1; l <= it.endLine; l++) s.add(l);
+  return s;
 }
 
 /** every thinking item of the notes, each with a unique key (note id + hash, `#n` for a repeated line) */

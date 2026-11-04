@@ -7,7 +7,7 @@
 
 import type { ContextDraft, ObjectSource } from '../types';
 import { guessTitle } from './knowledgeGuess';
-import { MARKER_OF, THINKING_FA, isQuestionLine } from './thinkingMarkers';
+import { MARKER_OF, THINKING_FA, isQuestionLine, parseThinking } from './thinkingMarkers';
 import type { NoteThinkingItem, ThinkingKind } from './thinkingMarkers';
 
 export const THOUGHT_KINDS: ThinkingKind[] = ['idea', 'question', 'assumption', 'open_decision'];
@@ -18,11 +18,12 @@ export const guessThoughtKind = (text: string): ThinkingKind => (isQuestionLine(
 
 /** the note text to save: the marker of the chosen kind on the first line, the rest of the lines as typed */
 export function composeThought(text: string, kind: ThinkingKind): string {
-  const lines = text.replace(/\r/g, '').split('\n');
+  const lines = text.replace(/\r/g, '').split('\n').map((l, i) => (i === 0 ? l : l.trim()));
   const first = lines.findIndex((l) => l.trim());
   if (first < 0) return '';
-  const out = lines.map((l, i) => (i === first ? `${MARKER_OF[kind]} ${l.replace(/^\s*\[[^\]]*\]\s*/, '').trim()}` : l));
-  return out.slice(first).join('\n').trim();
+  const body = lines.slice(first).filter((l, i) => i === 0 || l.trim()).map((l, i) => (i === 0 ? `${MARKER_OF[kind]} ${l.replace(/^\s*\[[^\]]*\]\s*/, '').trim()}` : l.trim()));
+  // one thought over several lines: every line but the last ends with a hard break, so the note keeps them together
+  return body.map((l, i) => (i < body.length - 1 ? `${l.replace(/\\\s*$/, '')}\\` : l)).join('\n');
 }
 
 /**
@@ -43,10 +44,12 @@ export function thoughtToDraft(item: NoteThinkingItem, workspaceId: string, now:
  * A thought that became a SECTION (a tree node) is done: its line stays in the note as a plain record — no marker and not a
  * question any more — so the open-thought lists stop counting it. Only that line changes; every other line is as she typed it.
  */
-export function resolveThoughtLine(content: string, item: Pick<NoteThinkingItem, 'line' | 'text'>, sectionLabel: string): string {
+export function resolveThoughtLine(content: string, item: Pick<NoteThinkingItem, 'line' | 'text'> & { endLine?: number }, sectionLabel: string): string {
   const lines = content.split(/\r?\n/);
   if (item.line < 0 || item.line >= lines.length) return content;
-  lines[item.line] = `${item.text} ✓ (بخش «${sectionLabel.replace(/[»\n]+/g, ' ').trim()}» از همین ساخته شد)`;
+  // a thought of several lines becomes ONE plain record line (its lines are joined with a space)
+  const end = parseThinking(content).find((i) => i.line === item.line)?.endLine ?? item.endLine ?? item.line;
+  lines.splice(item.line, end - item.line + 1, `${item.text.replace(/\s*\n\s*/g, ' ')} ✓ (بخش «${sectionLabel.replace(/[»\n]+/g, ' ').trim()}» از همین ساخته شد)`);
   return lines.join('\n');
 }
 
