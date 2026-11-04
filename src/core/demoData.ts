@@ -219,7 +219,7 @@ export function buildDemo(now: Date): DemoData {
   // ── effective context: an exception for a sub-tree, and a rule that ended ────────────────────────
   add({ id: 'dm_ws_group', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه گروهی', first: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد و با قیمت اشتراک ماهانه یکی نیست.', status: 'Confirmed', provenance: 'User Input', created: [9, 15],
     draft: { content: 'کارگاه گروهی (۴ نفر به بالا) قیمت جداگانه دارد؛ برای ۸ نفر به بالا ۱۰٪ کمتر از قیمت هر نفر.', reason: 'برای گروه‌های بزرگ‌تر قیمت پلکانی را امتحان می‌کنیم.', daysAgo: 1 },
-    record: { question: 'کارگاه گروهی چطور قیمت‌گذاری شود؟', options: [{ title: 'تخفیف ۱۵ درصد روی قیمت کارگاه', rejectedReason: 'با قید «تخفیف نداریم» نمی‌خواند' }, { title: 'قیمت جداگانهٔ گروهی' }], expectation: 'دست‌کم سه ثبت‌نام گروهی تا دو ماه دیگر', reviewOnDaysAgo: 3 } });
+    record: { question: 'کارگاه گروهی چطور قیمت‌گذاری شود؟', options: [{ title: 'تخفیف ۱۵ درصد روی قیمت کارگاه', rejectedReason: 'با خط قرمز «تخفیف نداریم» نمی‌خواند' }, { title: 'قیمت جداگانهٔ گروهی' }], expectation: 'دست‌کم سه ثبت‌نام گروهی تا دو ماه دیگر', reviewOnDaysAgo: 3 } });
   add({ id: 'dm_old_promo', type: 'Constraint', node: 'dn_social', title: 'جشنوارهٔ پاییز', first: 'تا پایان جشنوارهٔ پاییز بستهٔ هدیه ارسال نکنیم.', status: 'Confirmed', provenance: 'User Input', created: [40, 12], reach: 'position', expiredDaysAgo: 12 });
 
   // ── more suggestions from different ways in ─────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export function buildDemo(now: Date): DemoData {
   dep('dm_discount', 'dm_price', 2);
   // exception (overrides): the group workshop sets «no discount» aside for the workshop branch only — with a reason, in the Change log
   rel('overrides', 'dm_ws_group', 'dm_nodiscount', at(9, 15));
-  chg({ objectId: 'dm_ws_group', fromVersion: 1, toVersion: 1, kind: 'edited', actor: 'user', reason: 'قیمت کارگاه گروهی جدا از اشتراک تعیین می‌شود؛ قید «تخفیف نداریم» برای اشتراک می‌ماند.', before: { overrides: [] }, after: { overrides: ['dm_nodiscount'] }, at: at(9, 15, 5) });
+  chg({ objectId: 'dm_ws_group', fromVersion: 1, toVersion: 1, kind: 'edited', actor: 'user', reason: 'قیمت کارگاه گروهی جدا از اشتراک تعیین می‌شود؛ خط قرمز «تخفیف نداریم» برای اشتراک می‌ماند.', before: { overrides: [] }, after: { overrides: ['dm_nodiscount'] }, at: at(9, 15, 5) });
 
   // ── notes: raw thoughts (never fed to a model) ────────────────────────────────────────────────
   const notes: Note[] = [
@@ -358,7 +358,7 @@ export function buildDemo(now: Date): DemoData {
     { id: 'pk_demo_support', workspaceId: W, name: 'پاسخ به مشتری', instruction: 'لحن صمیمی و محترم؛ هیچ تخفیفی وعده نده.', selection: { nodeIds: ['dn_support'], facets: [], statuses: [], includeAssumptions: false }, createdAt: at(5, 10), updatedAt: at(4, 15) },
     { id: 'pk_demo_ws', workspaceId: W, name: 'کارگاه پاییز (با پیشنهادی‌ها)', instruction: 'پیشنهادی‌ها واقعیت نیستند؛ فقط برای ایده گرفتن‌اند.', selection: { nodeIds: ['dn_ws', 'dn_ws_prog'], facets: ['کارگاه'], statuses: ['Proposed'], includeAssumptions: false }, createdAt: at(3, 10), updatedAt: at(3, 10) },
     // two saved «درخواست برای AI»: the kind of work + one line, resolved afresh from the current knowledge each time
-    { id: 'pk_demo_req_audit', workspaceId: W, name: 'ممیزی — طرح تخفیف پاییز', instruction: '', kind: 'audit', template: 'طرح تخفیف پاییز با قیدهای ما جور است؟', selection: { nodeIds: ['dn_sub'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(2, 10), updatedAt: at(2, 10) },
+    { id: 'pk_demo_req_audit', workspaceId: W, name: 'ممیزی — طرح تخفیف پاییز', instruction: '', kind: 'audit', template: 'طرح تخفیف پاییز با خط قرمزهای ما جور است؟', selection: { nodeIds: ['dn_sub'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(2, 10), updatedAt: at(2, 10) },
     { id: 'pk_demo_req_decision', workspaceId: W, name: 'تصمیم — کانال فروش کارگاه', instruction: '', kind: 'decision', template: 'کانال اصلی فروش کارگاه کدام باشد؟', selection: { nodeIds: ['dn_ws'], facets: [], statuses: [], includeAssumptions: true }, createdAt: at(1, 10), updatedAt: at(1, 10) },
   ];
   // ── a template of the user's own: the workshop branch ──

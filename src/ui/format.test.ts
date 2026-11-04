@@ -40,3 +40,14 @@ test('Jalali dates use Intl fa-IR-u-ca-persian (Tehran time)', () => {
   assert.match(formatJalaliDateTime('2026-03-21T12:00:00Z'), /۱۴۰۵.*،/);
   assert.equal(formatJalaliDate('not a date'), '');
 });
+
+test('Jalali dates at the Tehran midnight and at a month change (the machine\'s own time zone must not matter)', () => {
+  // Tehran is UTC+3:30 (no daylight saving since 2022): 00:00 there is 20:30 UTC the evening before
+  assert.equal(formatJalaliShort('2026-03-20T20:29:59Z'), '۱۴۰۴/۱۲/۲۹');
+  assert.equal(formatJalaliShort('2026-03-20T20:30:00Z'), '۱۴۰۵/۰۱/۰۱');
+  // 31 Shahrivar → 1 Mehr
+  assert.equal(formatJalaliShort('2026-09-22T20:29:59Z'), '۱۴۰۵/۰۶/۳۱');
+  assert.equal(formatJalaliShort('2026-09-22T20:30:00Z'), '۱۴۰۵/۰۷/۰۱');
+  // a plain date (no time) is that Tehran day, not the previous one in a western time zone
+  assert.match(formatJalaliDate('2026-03-21'), /^۱ فروردین ۱۴۰۵$/);
+});

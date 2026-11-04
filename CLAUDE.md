@@ -8,6 +8,7 @@
 - بازار اول: ایران، فارسی، راست‌به‌چپ. اقتصاد: اشتراک + اعتبار برای خروجی‌ها.
 
 ## مراجع
+- `docs/later.md` — ایده‌های «بعداً»، تصمیم‌های باز و ردشده‌ها؛ **پیش از ساختن هر قابلیت تازه بخوان**
 - `docs/PRD.md` — PRD (نسخهٔ قدیمی‌تر)
 - `docs/decisions-v3.1.md` — تصمیم‌های v3.1؛ در تناقض، **این سند مقدم است**
 
@@ -33,6 +34,7 @@
 - رنگ‌های دامنه (نوع Object، وضعیت، …) فقط aliasهای `src/ui/mabda-tokens.css` که به intentهای بوشیدو ارجاع می‌دهند؛ نشان‌دهنده‌های دامنه در `src/ui/mabda.tsx`.
 - در هر نما فقط یک `Button variant="primary"`. رنگ برند برای خطا/هشدار/انتخاب/لینک نیست (`check:design` خارج از `src/ui` اجازه نمی‌دهد).
 - `public/ds/bundle.js` لود نمی‌شود (React 18 سراسری)؛ `bundle.css` از طریق `src/index.css` داخل لایهٔ `ds` می‌آید تا utilityها بتوانند روی آن override کنند.
+- نوع Constraint در رابط فقط «خط قرمز» است (نه «قید»، «گاردریل»، «محدودیت»)؛ `src/ui/bannedWords.json` اجبارش می‌کند.
 - اعداد/تاریخ: `formatNumber`، `formatJalaliDate`، `toLatinDigits` از `src/ui/format.ts`.
 
 ## دستورها

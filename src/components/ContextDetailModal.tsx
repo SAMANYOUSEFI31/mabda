@@ -77,7 +77,7 @@ export const ContextDetailModal: React.FC<ContextDetailModalProps> = (props) =>
 const TYPE_OPTIONS = [
   { value: 'Fact', label: 'واقعیت اثبات‌شده' },
   { value: 'Decision', label: 'تصمیم آگاهانه' },
-  { value: 'Constraint', label: 'مرز و خط قرمز' },
+  { value: 'Constraint', label: 'خط قرمز' },
 ];
 const STATUS_OPTIONS = [
   { value: 'Confirmed', label: 'تأییدشده و فعال' },
@@ -403,8 +403,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             </div>
         {type === 'Constraint' && (
           <div className="flex flex-col gap-stack-xs">
-            <SegmentedControl label="محدودهٔ اثر این قید" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
-            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، گاردریل است.' : 'فقط برای این گره و زیرگره‌هایش گاردریل است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+            <SegmentedControl label="محدودهٔ اثر این خط قرمز" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
+            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، خط قرمز است.' : 'فقط برای این گره و زیرگره‌هایش خط قرمز است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
             <p className="body-sm text-text-default" data-testid="reach-sentence">{reachSentence({ nodeId, type, reach }, nodes)}</p>
           </div>
         )}

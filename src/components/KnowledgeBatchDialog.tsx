@@ -53,7 +53,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => { if (e.key === 'Enter' && e.shiftKey && !e.nativeEvent.isComposing && box.current?.contains(e.target as Node)) { e.preventDefault(); softBreak(); } }}>
         <div ref={box} className="flex flex-col gap-stack-xs">
-        <Textarea label="دانش‌ها را بنویس یا بچسبان" rows={5} value={text} onChange={(e) => { setText(e.target.value); setDropped(new Set()); }} placeholder={'لحن ما گرم و محترمانه است\nهرگز تخفیف بیش از ۲۰٪ نمی‌دهیم'} hint="Enter: دانش بعدی · Shift+Enter: خط تازه در همین دانش. نوع هر مورد را خودمان حدس می‌زنیم و می‌توانی عوضش کنی؛ یا اول خط [واقعیت]، [تصمیم] یا [قید] بنویس." />
+        <Textarea label="دانش‌ها را بنویس یا بچسبان" rows={5} value={text} onChange={(e) => { setText(e.target.value); setDropped(new Set()); }} placeholder={'لحن ما گرم و محترمانه است\nهرگز تخفیف بیش از ۲۰٪ نمی‌دهیم'} hint="Enter: دانش بعدی · Shift+Enter: خط تازه در همین دانش. نوع هر مورد را خودمان حدس می‌زنیم و می‌توانی عوضش کنی؛ یا اول خط [واقعیت]، [تصمیم] یا [خط قرمز] بنویس." />
         <div><Button type="button" size="sm" variant="ghost" iconStart="CornerDownLeft" onClick={softBreak}>خط تازه در همین دانش</Button></div>
         </div>
         <Select label="بخش همه (اختیاری)" value={node} onChange={(e) => setNode(e.target.value)} options={sections} />

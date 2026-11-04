@@ -8,7 +8,7 @@ import type { LeftReason } from './packScope';
 
 export type ExplainGroup = 'guardrail' | 'fact' | 'decision' | 'assumption' | 'unconfirmed';
 export const GROUP_FA: Record<ExplainGroup, string> = {
-  guardrail: 'قیدها (گاردریل؛ نباید نقض شوند)',
+  guardrail: 'خط قرمزها (خط قرمز؛ نباید نقض شوند)',
   fact: 'دانش تأییدشده',
   decision: 'تصمیم‌های تأییدشده',
   assumption: 'فرض‌ها (واقعیت نیست)',
@@ -25,7 +25,7 @@ export interface ExplainItem {
   group: ExplainGroup;
   /** «از "برند"، همه‌جا» — where it was written and why it reaches here */
   from: string;
-  /** the object's own rule is editable (a Constraint): the link «این قید را ببین» uses it */
+  /** the object's own rule is editable (a Constraint): the link «این خط قرمز را ببین» uses it */
   editable?: boolean;
   /** a short note: «منقضی می‌شود …»، «بودجه: همیشه می‌آید» */
   note?: string;

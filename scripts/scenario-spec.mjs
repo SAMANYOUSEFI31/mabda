@@ -89,9 +89,9 @@ try {
   assert.ok(await aOnE.isDisabled(), 'a dependency that closes a cycle is disabled');
   await dlg.getByText(/این انتخاب چرخه می‌سازد/).first().waitFor();
   await shot('2-editor-cycle-blocked', true);
-  await dlg.getByRole('button', { name: 'افزودن گاردریل' }).click();
-  await dlg.getByRole('button', { name: 'افزودن گاردریل' }).click();
-  for (let i = 0; i < 2; i++) await dlg.getByLabel('گاردریل', { exact: true }).nth(i).fill(GUARDRAILS[i]);
+  await dlg.getByRole('button', { name: 'افزودن خط قرمز' }).click();
+  await dlg.getByRole('button', { name: 'افزودن خط قرمز' }).click();
+  for (let i = 0; i < 2; i++) await dlg.getByLabel('خط قرمز', { exact: true }).nth(i).fill(GUARDRAILS[i]);
   await dlg.getByRole('button', { name: 'ذخیره و فعال‌سازی' }).click();
   await page.getByRole('button', { name: 'ساخت دارایی' }).waitFor({ timeout: 15000 });
 
@@ -124,10 +124,10 @@ try {
   }
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).click();
   for (const b of await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).all()) await b.click();
-  const cards = await page.getByText('معیارهای پذیرش و گاردریل‌ها').count();
+  const cards = await page.getByText('معیارهای پذیرش و خط قرمزها').count();
   assert.equal(cards, 5, 'every output shows its checks');
-  assert.ok(await page.getByText(/گاردریل: از واژهٔ «ارزان»/).count() >= 5, 'spec guardrail checked on every output');
-  assert.ok(await page.getByText(/گاردریل: .*تخفیف/).count() >= 5 || (await page.getByText(/گاردریل: /).count()) >= 10, 'guardrails listed');
+  assert.ok(await page.getByText(/خط قرمز: از واژهٔ «ارزان»/).count() >= 5, 'spec guardrail checked on every output');
+  assert.ok(await page.getByText(/خط قرمز: .*تخفیف/).count() >= 5 || (await page.getByText(/خط قرمز: /).count()) >= 10, 'guardrails listed');
   await shot('5-all-outputs', true);
 
   step('Pro and above only: the Starter workspace gets the upgrade notice');

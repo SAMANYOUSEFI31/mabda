@@ -10,7 +10,7 @@ const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: ''
 const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
 const EX = [{ kind: 'good', text: 'درست ۱' }, { kind: 'bad', text: 'نادرست ۱' }];
 const mk = (repo: Repo, s: { userId: string; workspaceId: string }, p: Record<string, unknown> = {}) =>
-  repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'قید', content: 'متن', nodeId: 'business', ...p } as never);
+  repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'خط قرمز', content: 'متن', nodeId: 'business', ...p } as never);
 
 test('migration 17 adds examples (NULL for old rows)', () => {
   assert.ok(LATEST_VERSION >= 17);
@@ -27,7 +27,7 @@ test('a Constraint keeps up to three cleaned examples across create / read / upd
   const upd = repo.updateObject(s, o.id, { examples: [{ kind: 'bad', text: 'فقط این' }] }).object;
   assert.deepEqual(upd.examples, [{ kind: 'bad', text: 'فقط این' }]);
   assert.equal(upd.version, v1 + 1, 'examples change what outputs see → a new version (outputs go stale)');
-  const same = repo.updateObject(s, o.id, { title: 'قید' }).object;
+  const same = repo.updateObject(s, o.id, { title: 'خط قرمز' }).object;
   assert.deepEqual(same.examples, upd.examples, 'a patch that does not mention them keeps them');
   assert.equal(repo.updateObject(s, o.id, { examples: null }).object.examples, undefined);
 });

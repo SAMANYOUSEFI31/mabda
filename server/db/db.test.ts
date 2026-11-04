@@ -352,14 +352,14 @@ test('reach / validUntil: migration 11 leaves old rows untouched (type default),
   const db = new Database(':memory:');
   migrate(db, 10);
   new Repo(db).saveWorkspace(U, ws('w1'));
-  db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('c_old',?,?,'Constraint','Confirmed','User Input','قید قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
+  db.prepare("INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES ('c_old',?,?,'Constraint','Confirmed','User Input','خط قرمز قدیمی','x','business','2026-01-01','2026-01-01',1)").run(U, 'w1');
   assert.deepEqual(migrate(db).filter((v) => v === 11), [11]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const old = repo.getObject(s, 'c_old')!;
   assert.equal(old.reach, undefined, 'old data has no stored reach → the type default (global for a Constraint)');
   assert.equal(old.validUntil, undefined);
-  const c = repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'قید بخش', content: 'y', nodeId: 'brand', reach: 'position', validUntil: '2026-12-01' });
+  const c = repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'خط قرمز بخش', content: 'y', nodeId: 'brand', reach: 'position', validUntil: '2026-12-01' });
   assert.deepEqual([c.reach, c.validUntil], ['position', '2026-12-01']);
   assert.equal(repo.createObject(s, { type: 'Fact', provenance: 'User Input', title: 'ت', content: 'z', nodeId: 'brand', reach: 'nonsense' as never, validUntil: 'tomorrow' }).reach, undefined, 'invalid values are dropped');
   const e = repo.updateObject(s, c.id, { reach: 'global' }, { reason: 'برای همه' }).object;

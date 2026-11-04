@@ -132,7 +132,7 @@ test('a small workspace brings everything (reason «small»); the budget never c
   const r = buildAiRequest(base({ request: 'چیز بی‌ربط' }));
   assert.equal(r.excluded.length, 0);
   assert.equal(r.included.find((i) => i.id === 'f_price')?.reason, 'small');
-  const tiny = buildAiRequest(base({ tokenBudget: 500, objects: [o('c_big', { type: 'Constraint', content: 'قید '.repeat(900) }), ...base().objects] }));
+  const tiny = buildAiRequest(base({ tokenBudget: 500, objects: [o('c_big', { type: 'Constraint', content: 'خط قرمز '.repeat(900) }), ...base().objects] }));
   assert.ok(tiny.included.some((i) => i.id === 'c_big'), 'a constraint is never dropped for the budget');
   assert.ok(tiny.overBudget, 'and the result says the budget was exceeded');
 });

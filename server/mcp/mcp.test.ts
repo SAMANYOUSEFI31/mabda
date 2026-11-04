@@ -308,7 +308,7 @@ test('SAMPLES: a sample object is invisible to every path — repo lists, caps, 
     const s = { userId: 'local', workspaceId: 'ws_studio' };
     const SECRET = 'نمونهٔ-ممنوع-برای-AI';
     const before = t.repo.countActiveObjects(s);
-    const sample = t.repo.createSample(s, { type: 'Constraint', title: `قید ${SECRET}`, content: `هرگز ${SECRET}`, nodeId: 'business' })!;
+    const sample = t.repo.createSample(s, { type: 'Constraint', title: `خط قرمز ${SECRET}`, content: `هرگز ${SECRET}`, nodeId: 'business' })!;
     const sample2 = t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: `سازمان‌ها ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' })!;
     t.repo.createSample(s, { type: 'Decision', title: `مخاطب فرعی ${SECRET}`, content: `دیگر ${SECRET}`, nodeId: 'business', slotKey: 'target_audience' }); // a second one in the same slot: a contradiction candidate if it were seen
     assert.equal(t.repo.createSample(s, { type: 'Decision', title: `مخاطب اصلی ${SECRET}`, content: 'x', nodeId: 'business' }), undefined, 'applying twice does not duplicate');
@@ -370,7 +370,7 @@ test('saved packs: built once, resolved through the effective context (a section
     const n2 = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش دو' })).json.node.id;
     await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش یک', content: 'واقعیت-یک', nodeId: n1, facets: ['مخاطب سازمانی'] });
     await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت بخش دو', content: 'واقعیت-دو', nodeId: n2, facets: ['فصل پاییز'] });
-    await mk({ type: 'Constraint', status: 'Confirmed', title: 'قید فقط بخش دو', content: 'قید-دو', nodeId: n2, reach: 'position' });
+    await mk({ type: 'Constraint', status: 'Confirmed', title: 'خط قرمز فقط بخش دو', content: 'خط قرمز-دو', nodeId: n2, reach: 'position' });
     await mk({ type: 'Fact', status: 'Confirmed', title: 'فرض من', content: 'فرض-یک', nodeId: n1, assumption: true });
     await mk({ type: 'Fact', status: 'Proposed', title: 'پیشنهاد معلق', content: 'پیشنهاد-معلق', nodeId: n1 });
     t.repo.createSample(s, { type: 'Fact', title: `نمونه ${SECRET}`, content: SECRET, nodeId: n1, facets: ['مخاطب سازمانی'] });
@@ -383,7 +383,7 @@ test('saved packs: built once, resolved through the effective context (a section
     assert.match(md, /^<!-- mabda-pack:/);
     assert.match(md, /## دستور\nفقط از همین بسته کار کن\./);
     assert.ok(md.includes('واقعیت-یک') && !md.includes('واقعیت-دو'), 'a pack for section 1 holds section 1');
-    assert.ok(!md.includes('قید-دو'), 'a rule of section 2 (position) does not reach section 1');
+    assert.ok(!md.includes('خط قرمز-دو'), 'a rule of section 2 (position) does not reach section 1');
     const facts = md.slice(md.indexOf('## واقعیت‌های تأییدشده'), md.indexOf('## فرض‌های فعال'));
     assert.ok(!facts.includes('فرض-یک') && !facts.includes('پیشنهاد-معلق'), 'only Confirmed is fact');
     assert.match(md, /## فرض‌های فعال، تأییدنشده[\s\S]*فرض-یک/);
@@ -394,7 +394,7 @@ test('saved packs: built once, resolved through the effective context (a section
     const other = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'دو بخش و بُعد', selection: { nodeIds: [n1, n2], facets: ['فصل پاییز'], statuses: ['Proposed'], includeAssumptions: false } })).json.pack;
     const md2 = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${other.id}/render`)).json.markdown as string;
     assert.ok(md2.includes('واقعیت-دو') && !md2.includes('واقعیت-یک'), 'facet filter');
-    assert.ok(md2.includes('قید-دو'), 'the section rule applies at its own section (guardrails are not facet-filtered)');
+    assert.ok(md2.includes('خط قرمز-دو'), 'the section rule applies at its own section (guardrails are not facet-filtered)');
     assert.ok(!md2.includes('فرض-یک') && !md2.includes(SECRET));
     // edit + delete
     const edited = (await t.api('PUT', `/workspaces/ws_studio/saved-packs/${made.id}`, { name: 'نام تازه', instruction: '', selection: made.selection })).json.pack;
@@ -431,7 +431,7 @@ test('«درخواست برای AI»: kind + one line + scope → the assembled 
     const SECRET = 'نمونهٔ-ممنوع-در-درخواست';
     const mk = (b: Record<string, unknown>) => t.api('POST', '/workspaces/ws_studio/objects', { provenance: 'User Input', ...b }).then((r) => r.json.object);
     await mk({ type: 'Fact', status: 'Confirmed', title: 'مخاطب اصلی', content: 'فریلنسرهای طراح-تأییدشده', nodeId: 'business' });
-    await mk({ type: 'Constraint', status: 'Confirmed', title: 'قید فارسی', content: 'فقط-فارسی', nodeId: 'business' });
+    await mk({ type: 'Constraint', status: 'Confirmed', title: 'خط قرمز فارسی', content: 'فقط-فارسی', nodeId: 'business' });
     await mk({ type: 'Fact', status: 'Proposed', title: 'پیشنهاد معلق', content: 'پیشنهاد-معلق', nodeId: 'business' });
     t.repo.createSample(s, { type: 'Fact', title: `نمونه ${SECRET}`, content: SECRET, nodeId: 'business' });
 
@@ -450,10 +450,10 @@ test('«درخواست برای AI»: kind + one line + scope → the assembled 
     assert.equal(again.markdown, pv.markdown);
 
     // record: stored with the used objects, once; an empty line cannot be recorded; a bad kind is refused
-    const rec = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با قیدها جور است؟', packId: 'rq_record01', record: true })).json;
+    const rec = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با خط قرمزها جور است؟', packId: 'rq_record01', record: true })).json;
     assert.equal(rec.recorded, true);
     assert.deepEqual(t.repo.getPack(s, 'rq_record01')!.refs.map((r) => r.id).sort(), rec.refs.map((r: any) => r.id).sort());
-    await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با قیدها جور است؟', packId: 'rq_record01', record: true });
+    await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: 'این طرح با خط قرمزها جور است؟', packId: 'rq_record01', record: true });
     assert.equal(t.repo.listPacks(s).filter((p) => p.id === 'rq_record01').length, 1);
     assert.equal((await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'audit', request: ' ', record: true })).status, 400);
     assert.equal((await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'nope', request: 'x' })).status, 400);
@@ -638,15 +638,15 @@ test('a saved pack carries the metrics section too, separate from the facts', as
 test('red-line examples travel with the rule over MCP (get_context, get_gaps guardrails, the request prompt) and over the pack route', async () => {
   const t = await boot();
   try {
-    const made = await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Constraint', provenance: 'User Input', title: 'قید-مثال-یکتا', content: 'هرگز وعدهٔ سود قطعی نده', nodeId: 'business', examples: [{ kind: 'good', text: 'ممکن است سود کنید' }, { kind: 'bad', text: 'سود تضمینی ۳۰٪' }] });
+    const made = await t.api('POST', '/workspaces/ws_studio/objects', { type: 'Constraint', provenance: 'User Input', title: 'خط قرمز-مثال-یکتا', content: 'هرگز وعدهٔ سود قطعی نده', nodeId: 'business', examples: [{ kind: 'good', text: 'ممکن است سود کنید' }, { kind: 'bad', text: 'سود تضمینی ۳۰٪' }] });
     assert.equal(made.status, 200);
     const c = await t.connect((await t.token()).token);
     const ctx = await t.call(c, 'get_context', { types: ['Constraint'] });
-    const row = ctx.data.facts.find((f: any) => f.title === 'قید-مثال-یکتا');
+    const row = ctx.data.facts.find((f: any) => f.title === 'خط قرمز-مثال-یکتا');
     assert.deepEqual(row.examples.map((e: any) => e.kind), ['good', 'bad']);
-    assert.match(ctx.text, /قید-مثال-یکتا.*مثال درست: ممکن است سود کنید؛ مثال نادرست: سود تضمینی ۳۰٪/);
+    assert.match(ctx.text, /خط قرمز-مثال-یکتا.*مثال درست: ممکن است سود کنید؛ مثال نادرست: سود تضمینی ۳۰٪/);
     const gaps = await t.call(c, 'get_gaps', { specId: 'main_positioning' });
-    assert.ok((gaps.data.guardrails as string[]).some((g) => g.includes('قید-مثال-یکتا') && g.includes('مثال نادرست: سود تضمینی ۳۰٪')));
+    assert.ok((gaps.data.guardrails as string[]).some((g) => g.includes('خط قرمز-مثال-یکتا') && g.includes('مثال نادرست: سود تضمینی ۳۰٪')));
     const prompt = await c.getPrompt({ name: 'request_question', arguments: { request: 'سؤال' } });
     assert.match(String((prompt.messages[0].content as { text: string }).text), /مثال درست: ممکن است سود کنید/);
     const pack = await t.api('POST', '/workspaces/ws_studio/packs', {});

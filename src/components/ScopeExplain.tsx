@@ -12,7 +12,7 @@ import { ClosedSection } from './ClosedSection';
 
 interface Props {
   explain: Explain;
-  /** «این قید را ببین / ویرایش کن»: opens the rule where its reach («محدودهٔ اثر») is decided */
+  /** «این خط قرمز را ببین / ویرایش کن»: opens the rule where its reach («محدودهٔ اثر») is decided */
   onOpenObject?: (id: string) => void;
   /** a request lets her add a skipped thing by hand */
   onAdd?: (id: string) => void;
@@ -23,7 +23,7 @@ interface Props {
 /** the sentence that says what was read */
 export const scopeLine = (s: Explain['scope']): string => (s.whole
   ? 'از همهٔ درخت خوانده می‌شود.'
-  : `از ${s.pickedLabels.map((l) => `«${l}»`).join('، ')}${s.withChildren ? ' و زیربخش‌هایش' : ''} خوانده می‌شود (${formatNumber(s.sections)} بخش)؛ به‌اضافهٔ آنچه از بخش‌های بالاتر به ارث می‌رسد و قیدهای «همه‌جا».`);
+  : `از ${s.pickedLabels.map((l) => `«${l}»`).join('، ')}${s.withChildren ? ' و زیربخش‌هایش' : ''} خوانده می‌شود (${formatNumber(s.sections)} بخش)؛ به‌اضافهٔ آنچه از بخش‌های بالاتر به ارث می‌رسد و خط قرمزهای «همه‌جا».`);
 
 /**
  * «چه آمد و چرا / چه نیامد و چرا» — one component for a saved pack and for a request. Built from the same data as the text that
@@ -39,7 +39,7 @@ export const ScopeExplain: React.FC<Props> = ({ explain, onOpenObject, onAdd, sh
       {groups.map(([g, items]) => (
         <div key={g} data-testid={`explain-group-${g}`}>
           <ClosedSection defaultOpen={g === 'guardrail'} title={GROUP_FA[g]} count={items.length}>
-            {g === 'guardrail' && <p className="body-sm text-text-subtle">قید را نمی‌شود از بسته برداشت (برداشتنش یعنی قیدی نیست). برای عوض‌کردن اینکه کجا بیاید، خود قید را باز کن و «محدودهٔ اثر» را عوض کن.</p>}
+            {g === 'guardrail' && <p className="body-sm text-text-subtle">خط قرمز را نمی‌شود از بسته برداشت (برداشتنش یعنی خط قرمزی نیست). برای عوض‌کردن اینکه کجا بیاید، خود خط قرمز را باز کن و «محدودهٔ اثر» را عوض کن.</p>}
             <ul className="flex flex-col gap-stack-xs" aria-label={GROUP_FA[g]}>
               {items.map((i, n) => (
                 <li key={`${i.id ?? 'spec'}-${n}`} className="flex flex-wrap items-start justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-sm">
@@ -47,7 +47,7 @@ export const ScopeExplain: React.FC<Props> = ({ explain, onOpenObject, onAdd, sh
                     <span className="body-sm text-text-default">{i.title}</span>
                     <span className="caption text-text-subtle" data-testid="explain-from">{i.from}{i.note ? ` · ${i.note}` : ''}</span>
                   </span>
-                  {i.editable && i.id && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش قید «${i.title}»`} onClick={() => onOpenObject(i.id!)}>ببین و ویرایش</Button>}
+                  {i.editable && i.id && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id!)}>ببین و ویرایش</Button>}
                 </li>
               ))}
             </ul>

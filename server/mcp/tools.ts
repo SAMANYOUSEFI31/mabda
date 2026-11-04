@@ -26,12 +26,12 @@ Mabda is the user's business source of truth. Work from it with these rules:
 ۱. شروع: get_workspace_overview را صدا بزن تا درخت دانش، specها و وضعیت را ببینی.
 ۲. پیش از ساخت هر خروجی: get_gaps (یا get_readiness) را برای spec/خروجی بگیر. شکاف‌های الزامی را اول از کاربر بپرس؛ اگر کاربر ادامه داد، صریح بگو کدام بخش‌ها فرض‌اند.
 ۳. Context را از Mabda بخوان (get_context). فقط موارد Confirmed «واقعیت»اند؛ موارد Proposed/Needs Review تأییدنشده‌اند و نباید به‌عنوان واقعیت استفاده شوند. چیزی از خودت به‌عنوان واقعیت کسب‌وکار اختراع نکن.
-۴. هر تصمیم، واقعیت یا محدودیت تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده؛ اگر پیشنهاد یکی از شکاف‌های get_gaps را پر می‌کند، slotKey را برابر key همان شکاف بگذار. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
+۴. هر تصمیم، واقعیت یا خط قرمز تازه‌ای که از کاربر شنیدی را فقط با propose_context_updates پیشنهاد بده؛ اگر پیشنهاد یکی از شکاف‌های get_gaps را پر می‌کند، slotKey را برابر key همان شکاف بگذار. این ابزار هرگز مستقیم Confirmed نمی‌سازد؛ کاربر در صندوق پیشنهادهای Mabda تأیید می‌کند.
 ۵. وقتی خروجی ساختی، با save_asset ذخیره‌اش کن و در usedContext دقیقاً شناسه و نسخهٔ Contextهایی را بده که خواندی (اصالت و تشخیص «قدیمی‌شدن» به همین بسته است).
 ۶. وقتی کاربر Context را تغییر داد، check_impact را بزن و بگو کدام دارایی‌ها قدیمی شده‌اند.
 ۷. get_changes (فقط‌خواندنی): ببین از فلان زمان چه کسی چه چیزی را عوض کرده؛ دلیل‌های ثبت‌شده برای کاربر است و در خروجی نمی‌آید.
 ۸. get_metrics (فقط‌خواندنی): اعداد ثبت‌شدهٔ کاربر و انتظارهای تصمیم‌ها. این‌ها دانش تأییدشده نیستند و از کنار هم بودن یک عدد و یک تصمیم نتیجهٔ علت‌ومعلولی نگیر. عدد تازه را فقط با propose_measurement پیشنهاد بده؛ تا کاربر تأیید نکند ثبت نمی‌شود.
-گاردریل‌ها (Constraintهای Confirmed و گاردریل‌های spec) را رعایت کن.`;
+خط قرمزها (Constraintهای Confirmed و خط قرمزهای spec) را رعایت کن.`;
 
 type Json = Record<string, unknown>;
 const reply = (md: string, data: Json) => ({ content: [{ type: 'text' as const, text: md }], structuredContent: data });
@@ -197,7 +197,7 @@ export function buildMcpServer(c: McpContext): McpServer {
     const md = [
       `## شکاف‌ها — ${spec.title}`, data.gaps.length ? data.gaps.map((g) => `- (${g.importance === 'required' ? 'الزامی' : 'پیشنهادی'}, ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}) **${g.label}**: ${g.question}`).join('\n') : 'شکافی نیست.',
       ...(del ? [`## ${del.title}`, ...(lock!.locked ? [`قفل: ${lockReason(lock!)}`] : []), '### معیارهای پذیرش', ...del.acceptanceCriteria.map((x) => `- ${x}`)] : []),
-      '## گاردریل‌ها', data.guardrails.length ? data.guardrails.map((g) => `- ${g}`).join('\n') : 'نیست.',
+      '## خط قرمزها', data.guardrails.length ? data.guardrails.map((g) => `- ${g}`).join('\n') : 'نیست.',
     ].join('\n');
     return reply(md, data);
   });

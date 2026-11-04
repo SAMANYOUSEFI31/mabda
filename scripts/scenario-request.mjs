@@ -82,7 +82,7 @@ try {
     await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'پاسخ AI را وارد کن' }).click();
     const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن پاسخ AI بیرونی' });
     await imp.waitFor();
-    await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با قید «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);
+    await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با خط قرمز «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);
     await imp.getByRole('button', { name: 'تبدیل به بلوک' }).click();
     await imp.getByText('گزارش ممیزی').first().waitFor();
     assert.ok((await imp.innerText()).includes('اصالت'), 'the lineage of the pack is attached');

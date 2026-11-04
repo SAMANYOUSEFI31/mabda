@@ -51,8 +51,14 @@ test('8000 objects: contradictions and candidate pairs stay fast (they were N²:
 test('8000 objects spread over a 4-level tree: parent/child pairing (inherits_conflict) stays bounded and fast', () => {
   const nodes = [{ id: 'r', label: 'r', description: '' }, ...Array.from({ length: 10 }, (_, i) => ({ id: `a${i}`, label: 'a', description: '', parentId: 'r' })), ...Array.from({ length: 40 }, (_, i) => ({ id: `b${i}`, label: 'b', description: '', parentId: `a${i % 10}` })), ...Array.from({ length: 80 }, (_, i) => ({ id: `c${i}`, label: 'c', description: '', parentId: `b${i % 40}` }))];
   const objs = Array.from({ length: 8000 }, (_, i) => ({ ...obj(i, `مورد ${i} در حوزهٔ ${i % 40}`, `متن مورد ${i}`), nodeId: i % 3 === 0 ? 'r' : i % 3 === 1 ? `b${i % 40}` : `c${i % 80}` }));
-  const t = Date.now();
+  // a wall-clock limit alone fails whenever the machine is busy (the whole suite runs in parallel): the tree run is measured AGAINST the flat
+  // run on the same data in the same moment, so a loaded machine slows both and only a real blow-up (the old N² cost: minutes) fails
+  let t = Date.now();
+  candidatePairs(objs, 10);
+  const flat = Date.now() - t;
+  t = Date.now();
   const r = candidatePairs(objs, 10, [], nodes);
-  assert.ok(Date.now() - t < 4000, `candidatePairs with a tree took ${Date.now() - t}ms`);
+  const tree = Date.now() - t;
+  assert.ok(tree <= Math.max(4000, flat * 12), `candidatePairs with a tree took ${tree}ms (flat: ${flat}ms)`);
   assert.ok(r.length <= 10);
 });

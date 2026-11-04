@@ -139,7 +139,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     }
     parts.push(task.join('\n'));
   }
-  if (guardrails.length) parts.push(['## گاردریل‌ها (نباید نقض شوند)', ...guardrails.map((g) => `- ${g}`)].join('\n'));
+  if (guardrails.length) parts.push(['## خط قرمزها (نباید نقض شوند)', ...guardrails.map((g) => `- ${g}`)].join('\n'));
   parts.push(`## واقعیت‌های تأییدشده (Confirmed)\n${confirmed.length ? group(confirmed) : 'هنوز دانش تأییدشده‌ای ثبت نشده است.'}`);
   if (proposed.length) parts.push(`## پیشنهادی — تأییدنشده (واقعیت نیست)\n${group(proposed)}`);
   if (assumptions.length) parts.push([`## فرض‌های فعال، تأییدنشده (واقعیت نیست)`, ASSUMPTION_RULE, '', group(assumptions)].join('\n'));

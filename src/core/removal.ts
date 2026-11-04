@@ -33,7 +33,7 @@ export interface NodeRemovalPlan {
   effect: RemovalEffect;
 }
 
-const TYPE_WORD = { Constraint: 'قید', Decision: 'تصمیم', Fact: 'دانش' } as const;
+const TYPE_WORD = { Constraint: 'خط قرمز', Decision: 'تصمیم', Fact: 'دانش' } as const;
 const isLive = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded' && !o.sample;
 
 export function nodeRemovalPlan(input: {

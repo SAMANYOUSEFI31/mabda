@@ -39,7 +39,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-thinking', title: 'رفتن به فکر', keywords: ['فضای فکر', 'فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
   { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },
-  { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'قید'] },
+  { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'خط قرمز', 'قید'] },
   { id: 'ai-request', title: 'درخواست برای AI', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
@@ -60,7 +60,7 @@ export interface SearchIndex { docs: Doc[]; vocab: string[]; df: Map<string, num
 const K1 = 1.5, B = 0.75;
 
 const STATUS_FA: Partial<Record<ContextObject['status'], string>> = { Proposed: 'پیشنهادی', 'Needs Review': 'نیازمند بازبینی' };
-const TYPE_FA: Record<ContextObject['type'], string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'قید' };
+const TYPE_FA: Record<ContextObject['type'], string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'خط قرمز' };
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const firstLine = (s: string) => s.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
 

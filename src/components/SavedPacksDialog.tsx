@@ -15,7 +15,7 @@ import { ClosedSection } from './ClosedSection';
 import { ScopeExplain } from './ScopeExplain';
 
 type PackRow = SavedPack & { tokens: number; counts: { confirmed: number; proposed: number; assumptions: number; rejected: number } };
-interface Props { open: boolean; workspaceId: string; nodes: TreeNode[]; objects: ContextObject[]; onClose: () => void; /** «این قید را ببین / ویرایش کن» from the preview */ onOpenObject?: (o: ContextObject) => void }
+interface Props { open: boolean; workspaceId: string; nodes: TreeNode[]; objects: ContextObject[]; onClose: () => void; /** «این خط قرمز را ببین / ویرایش کن» from the preview */ onOpenObject?: (o: ContextObject) => void }
 
 /** a new pack reads the sub-sections of what is picked (the rule of the node chat and of the audit's gaps); an old one keeps what it had */
 const EMPTY: PackSelection = { nodeIds: [], facets: [], statuses: [], includeAssumptions: true, withChildren: true };
@@ -112,7 +112,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
             <Checkbox label="نیازمند بررسی (برچسب «تأییدنشده»)" checked={editing.selection.statuses.includes('Needs Review')} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, statuses: e.target.checked ? [...new Set([...editing.selection.statuses, 'Needs Review' as const])] : editing.selection.statuses.filter((x) => x !== 'Needs Review') } })} />
           </fieldset>
           <Checkbox label="زیربخش‌های بخش‌های انتخاب‌شده هم بیایند" checked={editing.selection.withChildren === true} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, withChildren: e.target.checked } })} hint="اگر «محصول» را تیک بزنی، «آفر و قیمت‌گذاری» و بقیهٔ زیربخش‌هایش هم می‌آیند. بدون تیک فقط خود بخش (و آنچه از بالا به ارث می‌برد). بخش‌های هم‌سطح هیچ‌وقت نمی‌آیند." />
-          <p className="body-sm text-text-subtle">هر بخش می‌آورد: دانش خودش + آنچه از بخش‌های بالاتر به ارث می‌برد + قیدهای «همه‌جا». آنچه در یک بخش کنار گذاشته شده، منقضی‌شده‌ها، نمونه‌ها و یادداشت‌ها هرگز نمی‌آیند؛ فرض و پیشنهادی فقط با تیک و با برچسب «تأییدنشده».</p>
+          <p className="body-sm text-text-subtle">هر بخش می‌آورد: دانش خودش + آنچه از بخش‌های بالاتر به ارث می‌برد + خط قرمزهای «همه‌جا». آنچه در یک بخش کنار گذاشته شده، منقضی‌شده‌ها، نمونه‌ها و یادداشت‌ها هرگز نمی‌آیند؛ فرض و پیشنهادی فقط با تیک و با برچسب «تأییدنشده».</p>
 
           </div>
 

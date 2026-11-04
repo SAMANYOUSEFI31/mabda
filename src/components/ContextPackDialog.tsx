@@ -49,7 +49,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       onClose={onClose}
       size="lg"
       title={`کپی برای هوش مصنوعی — ${target?.title ?? ''}`}
-      description="Markdown فشرده با دانش تأییدشده، شکاف‌ها، معیارها و گاردریل‌ها و قالب پاسخی که AI باید رعایت کند."
+      description="Markdown فشرده با دانش تأییدشده، شکاف‌ها، معیارها و خط قرمزها و قالب پاسخی که AI باید رعایت کند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -68,7 +68,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
             <Badge intent="success" icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
             {pack.counts.proposed > 0 && <Badge intent="warning" icon={false}>{formatNumber(pack.counts.proposed)} پیشنهادی (تأییدنشده)</Badge>}
             {pack.counts.gaps > 0 && <Badge intent="warning" icon={false}>{formatNumber(pack.counts.gaps)} شکاف</Badge>}
-            {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} گاردریل</Badge>}
+            {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} خط قرمز</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />
           <p className="caption text-text-subtle">وقتی پاسخ AI را برگرداندی، بخش‌های پاسخ به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>

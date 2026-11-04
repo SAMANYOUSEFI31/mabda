@@ -26,9 +26,9 @@ const objects: ContextObject[] = [
   o('f_brand', { nodeId: 'brand' }),
   o('f_voice', { nodeId: 'voice' }),
   o('f_root', { nodeId: 'r' }),
-  o('c_global', { type: 'Constraint', nodeId: 'brand', title: 'قید برند' }),                       // reach default for a Constraint: global
-  o('c_here', { type: 'Constraint', nodeId: 'offer', reach: 'position', title: 'قید آفر' }),
-  o('c_prod', { type: 'Constraint', nodeId: 'prod', reach: 'position', title: 'قید محصول' }),
+  o('c_global', { type: 'Constraint', nodeId: 'brand', title: 'خط قرمز برند' }),                       // reach default for a Constraint: global
+  o('c_here', { type: 'Constraint', nodeId: 'offer', reach: 'position', title: 'خط قرمز آفر' }),
+  o('c_prod', { type: 'Constraint', nodeId: 'prod', reach: 'position', title: 'خط قرمز محصول' }),
   o('a_one', { nodeId: 'prod', assumption: true, title: 'فرض محصول' }),
   o('p_one', { nodeId: 'prod', status: 'Proposed', title: 'پیشنهاد محصول' }),
   o('x_old', { nodeId: 'prod', validUntil: '2026-01-01', title: 'منقضی' }),
@@ -64,7 +64,7 @@ test('the rule, in one table: own + inherited from above + global; never a sibli
 test('an exception (overrides) switches the rule off for the picked section only; expired is never; both are said in «چه نیامد»', () => {
   const rels: ContextRelationship[] = [{ id: 'r1', sourceId: 'c_here', targetId: 'c_prod', type: 'overrides', createdAt: '' }];
   const at = pack({ targetNodeIds: ['offer'], relationships: rels });
-  assert.ok(!at.markdown.includes('c_prod@v'), 'the exception at «آفر» turns «قید محصول» off there');
+  assert.ok(!at.markdown.includes('c_prod@v'), 'the exception at «آفر» turns «خط قرمز محصول» off there');
   const left = at.explain.skipped.find((l) => l.id === 'c_prod')!;
   assert.equal(left.reason, 'overridden');
   assert.match(left.why, /کنار گذاشته/);

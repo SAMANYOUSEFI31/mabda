@@ -117,7 +117,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
 
       {deliverable.validationFailed && (
         <Alert intent="warning" title="اعتبارسنج این خروجی را کامل تأیید نکرد">
-          بعد از تلاش و ارتقای مدل هم بعضی معیارهای پذیرش یا گاردریل‌ها برقرار نبود. پیش از استفاده خودت بازبینی کن یا دوباره بساز.
+          بعد از تلاش و ارتقای مدل هم بعضی معیارهای پذیرش یا خط قرمزها برقرار نبود. پیش از استفاده خودت بازبینی کن یا دوباره بساز.
         </Alert>
       )}
 
@@ -190,14 +190,14 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             )}
 
             {deliverable.checks && deliverable.checks.length > 0 && (
-              <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md" aria-label="نتیجهٔ بررسی معیارها و گاردریل‌ها">
-                <span className="label-md text-text-default">معیارهای پذیرش و گاردریل‌ها</span>
+              <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md" aria-label="نتیجهٔ بررسی معیارها و خط قرمزها">
+                <span className="label-md text-text-default">معیارهای پذیرش و خط قرمزها</span>
                 <ul className="flex flex-col gap-stack-xs">
                   {deliverable.checks.map((c, i) => (
                     <li key={i} className="flex items-start gap-inline-sm">
                       <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
                       <div className="flex min-w-space-0 flex-col">
-                        <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'گاردریل: ' : ''}{c.text}</span>
+                        <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'خط قرمز: ' : ''}{c.text}</span>
                         <span className="caption text-text-subtle">{c.reason}</span>
                       </div>
                     </li>

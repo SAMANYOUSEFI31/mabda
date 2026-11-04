@@ -38,12 +38,13 @@ test('tier ladder and config sanity', () => {
 
 test('model ids live only in config/models.json', async () => {
   const { readdirSync, readFileSync, statSync } = await import('node:fs');
-  const { join } = await import('node:path');
+  const { join, sep } = await import('node:path');
   const roots = ['server', 'src', 'server.ts'];
   const hits: string[] = [];
   const visit = (p: string) => {
     if (statSync(p).isDirectory()) { for (const n of readdirSync(p)) visit(join(p, n)); return; }
-    if (!/\.(ts|tsx|json)$/.test(p) || p.endsWith('models.json') || /\.test\.ts$/.test(p) || p.includes('/testing/')) return;
+    const unix = p.split(sep).join('/'); // Windows joins paths with a backslash: compare in one spelling
+    if (!/\.(ts|tsx|json)$/.test(unix) || unix.endsWith('models.json') || /\.test\.ts$/.test(unix) || unix.includes('/testing/')) return;
     if (/gemini-(\d|flash|pro)/i.test(readFileSync(p, 'utf8'))) hits.push(p);
   };
   roots.forEach(visit);

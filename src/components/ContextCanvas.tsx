@@ -650,7 +650,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {toKnowledge && (
           <div className="flex flex-col gap-stack-md">
             <p className="body-md text-text-default">یک قلم «پیشنهادی» ساخته می‌شود؛ تا تأیید نکنی واقعیت نیست. یادداشت سر جایش می‌ماند.</p>
-            <div className="flex flex-wrap gap-inline-xs">{([['Fact', 'واقعیت'], ['Decision', 'تصمیم'], ['Constraint', 'محدودیت']] as const).map(([t, label]) => <Button key={t} size="sm" variant="secondary" onClick={async () => { const id = toKnowledge; setToKnowledge(null); await p.onNoteToKnowledge(id, t); }}>{label}</Button>)}</div>
+            <div className="flex flex-wrap gap-inline-xs">{([['Fact', 'واقعیت'], ['Decision', 'تصمیم'], ['Constraint', 'خط قرمز']] as const).map(([t, label]) => <Button key={t} size="sm" variant="secondary" onClick={async () => { const id = toKnowledge; setToKnowledge(null); await p.onNoteToKnowledge(id, t); }}>{label}</Button>)}</div>
           </div>
         )}
       </Dialog>

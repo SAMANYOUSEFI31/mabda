@@ -3,7 +3,7 @@
  * The audit scenarios on the showcase workspace (REAL server + temp SQLite), the four cognitive walkthroughs:
  *   الف «قیمت اشتراک چه تغییری کرد و چرا؟»  — the diff, its one-line summary, the newest drafts open, compare two versions
  *   ب «یک فکر خام دربارهٔ گرهٔ ارسال بنویس» — in the structure view, no other view needed
- *   ج «دانشی ثبت کن که به قید تخفیف تکیه دارد» — in the record dialog («بیشتر»), both directions, with search
+ *   ج «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — in the record dialog («بیشتر»), both directions, with search
  *   د «در بوم ببین چه چیزی به لحن پاسخ وابسته است» — the inspector says it; lines: halos in their own layer, below every line
  * Screenshots → docs/screens/explore-*.png (1280) and explore-m-*.png (390)
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-explore.mjs
@@ -83,7 +83,7 @@ try {
     await shot('3-raw-thought');
     await nav('منبع حقیقت', 'منبع');
 
-    step(`[${width}] ج: «دانشی ثبت کن که به قید تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
+    step(`[${width}] ج: «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
     await page.getByRole('button', { name: /^(ثبت دانش|افزودن دانش)$/ }).first().click();
     const rec = page.getByRole('dialog');
     await rec.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');

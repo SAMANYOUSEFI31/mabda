@@ -38,7 +38,7 @@ interface Props {
   /** «به دانش اضافه کن»: opens the knowledge dialog with a draft made from the block */
   onAddKnowledge: (block: ContentBlock) => void;
   onOpenAiSettings: () => void;
-  /** «این قید را ببین / ویرایش کن»: the rule opens where its reach is decided */
+  /** «این خط قرمز را ببین / ویرایش کن»: the rule opens where its reach is decided */
   onOpenObject?: (id: string) => void;
 }
 
@@ -164,7 +164,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           placeholder={`مثلاً: ${meta.example}`} maxLength={500}
           hint={request ? undefined : <Button size="sm" variant="ghost" onClick={() => setRequest(meta.example)}>استفاده از نمونه</Button>}
         />
-        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="دانش خود این بخش + آنچه از بالا به ارث می‌برد + قیدهای «همه‌جا». بخش‌های هم‌سطح نمی‌آیند."/>
+        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint="دانش خود این بخش + آنچه از بالا به ارث می‌برد + خط قرمزهای «همه‌جا». بخش‌های هم‌سطح نمی‌آیند."/>
         {hasKids && <Checkbox label="زیربخش‌هایش هم بیایند" checked={withChildren} onChange={(e) => { setWithChildren(e.target.checked); setExtraIds([]); }} hint="همان قاعدهٔ «بسته‌های دانش». بودجهٔ توکن نگه‌دار است: اگر جا نشد، مرتبط‌ترین‌ها می‌آیند و بقیه با دلیل کنار می‌مانند." />}
 
         {answerError && <AiErrorNotice error={answerError} onRetry={answerError.kind === 'no_key' ? undefined : answerHere} retrying={busy === 'answer'} onOpenSettings={onOpenAiSettings} />}
@@ -188,7 +188,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
               {result.counts.assumptions > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.assumptions)} فرض (جدا)</Badge>}
               {result.counts.rejected > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.rejected)} گزینهٔ ردشده</Badge>}
             </div>
-            {result.overBudget && <Alert intent="warning">قیدها و تصمیم‌های سراسری از بودجه بیشترند؛ همیشه می‌آیند. دامنه را کوچک‌تر کن.</Alert>}
+            {result.overBudget && <Alert intent="warning">خط قرمزها و تصمیم‌های سراسری از بودجه بیشترند؛ همیشه می‌آیند. دامنه را کوچک‌تر کن.</Alert>}
             {result.longText && <p className="body-sm text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
             <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code bidi-plain" />
 
@@ -199,7 +199,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
                     <span className="body-sm text-text-default">{i.title} <span className="caption text-text-subtle">· {i.nodeLabel}</span></span>
                     <span className="flex items-center gap-inline-xs">
                       <span className="caption text-text-subtle" data-testid="included-from">{i.from} · {INCLUDE_REASON_FA[i.reason]}</span>
-                      {i.type === 'Constraint' && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش قید «${i.title}»`} onClick={() => onOpenObject(i.id)}>ببین و ویرایش</Button>}
+                      {i.type === 'Constraint' && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id)}>ببین و ویرایش</Button>}
                       {i.reason === 'manual' && <Button size="sm" variant="ghost" onClick={() => setExtraIds((x) => x.filter((id) => id !== i.id))}>برداشتن</Button>}
                     </span>
                   </li>

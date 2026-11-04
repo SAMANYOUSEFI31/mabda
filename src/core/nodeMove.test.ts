@@ -6,7 +6,7 @@ import type { ContextObject, TreeNode } from '../types';
 
 const n = (id: string, label: string, parentId?: string, order = 0): TreeNode => ({ id, label, description: '', order, ...(parentId ? { parentId } : {}) });
 const nodes = [n('r', 'ریشه'), n('a', 'الف', 'r', 0), n('b', 'ب', 'r', 1), n('w', 'کارگاه', 'a', 0), n('w1', 'جلسه‌ها', 'w', 0)];
-const o = (id: string, nodeId: string, p: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'x', type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: `قید ${id}`, content: 'c', nodeId, version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01', reach: 'position', ...p });
+const o = (id: string, nodeId: string, p: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'x', type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: `خط قرمز ${id}`, content: 'c', nodeId, version: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01', reach: 'position', ...p });
 const NOW = new Date('2026-06-01');
 
 test('canMove: to the top level (\'\'), under any node that is not itself or inside itself', () => {
@@ -33,7 +33,7 @@ test('moveEffect: knowledge in the moved nodes goes with them; what reaches them
   assert.deepEqual(e.lost.map((l) => l.object.id).sort(), ['fromA', 'fromR']);
   assert.deepEqual(e.gained, []);
   assert.ok(!e.lost.some((l) => l.object.id === 'own' || l.object.id === 'global'));
-  assert.match(e.sentences.join(' '), /قید «قید fromA» \(از «الف»\) دیگر به «کارگاه» و «جلسه‌ها» نمی‌رسد/);
+  assert.match(e.sentences.join(' '), /خط قرمز «خط قرمز fromA» \(از «الف»\) دیگر به «کارگاه» و «جلسه‌ها» نمی‌رسد/);
   assert.deepEqual([...e.lost[0].nodes].sort(), ['جلسه‌ها', 'کارگاه']);
   // moving it under «ب»: loses «الف»'s rule, gains «ب»'s
   const e2 = moveEffect(nodes, objects, [], 'w', 'b', NOW);
