@@ -19,10 +19,12 @@ interface Props {
   deliverables: GeneratedDeliverable[];
   nodes: TreeNode[];
   onOpenAssets: () => void;
+  /** «مقایسهٔ دو لحظه»: opens the truth comparison (the same place, not a new menu) */
+  onCompare?: () => void;
 }
 
 /** «چه چیزی عوض شد» — the Change log of the last 7 days, grouped by who did it, with the outputs that now need a review. */
-export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects, relationships, deliverables, nodes, onOpenAssets }) => {
+export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects, relationships, deliverables, nodes, onOpenAssets, onCompare }) => {
   const digest = useMemo(() => (open ? buildChangeDigest({ changes, objects, relationships, deliverables }) : null), [open, changes, objects, relationships, deliverables]);
   const titleOf = (id: string) => objects.find((o) => o.id === id)?.title ?? id;
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
@@ -34,6 +36,7 @@ export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects
           <h2 className="heading-sm text-text-default">چه چیزی عوض شد؟</h2>
           <p className="body-sm text-text-subtle">تغییرهای دانش در {formatNumber(DEFAULT_DAYS)} روز اخیر به تفکیک عامل، و خروجی‌هایی که با هر تغییر نیاز به بازبینی پیدا کرده‌اند.</p>
         </div>
+        {onCompare && <Button variant="secondary" size="sm" iconStart="Layers" onClick={onCompare}>مقایسهٔ دو لحظه</Button>}
         <Button variant="secondary" size="sm" aria-expanded={open} iconEnd={open ? 'ChevronUp' : 'ChevronDown'} onClick={onToggle}>{open ? 'بستن' : 'نمایش'}</Button>
       </div>
 
