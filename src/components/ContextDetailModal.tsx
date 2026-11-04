@@ -10,6 +10,8 @@ import type { ReviewNeed } from '../core/decisionGraph';
 import { defaultNodeId, flatten } from '../core/nodeTree';
 import { scopeEffect } from '../core/scopeMove';
 import { indirectReach, redundantLinks } from '../core/dependencyReduction';
+import { thoughtsAbout, stripAbout } from '../core/thoughtAbout';
+import type { NoteThinkingItem } from '../core/thinkingMarkers';
 import { reachSentence } from '../core/packScope';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
@@ -49,6 +51,9 @@ interface ContextDetailModalProps {
   allObjects?: ContextObject[];
   relationships?: ContextRelationship[];
   onSetDependencies?: (objectId: string, dependsOn: string[]) => Promise<void> | void;
+  /** the open thoughts (derived from notes): the ones that name this knowledge are listed as «فکرهای باز دربارهٔ این» */
+  thoughts?: NoteThinkingItem[];
+  onOpenThinking?: () => void;
   /** derived «needs review»: a dependency changed and nobody reviewed this object since */
   reviewNeed?: ReviewNeed;
   titleOf?: (id: string) => string;
@@ -102,6 +107,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   metrics = [],
   relationships = [],
   onSetDependencies,
+  thoughts = [],
+  onOpenThinking,
   reviewNeed,
   titleOf,
   onAcceptReview,
@@ -482,6 +489,17 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
 
+        {isEditing && object && (() => {
+          const about = thoughtsAbout(thoughts, object.id, allObjects, nodes);
+          if (!about.length) return null;
+          return (
+            <section className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md" aria-label="فکرهای باز دربارهٔ این" data-testid="thoughts-about">
+              <h4 className="label-md text-text-default">فکرهای باز دربارهٔ این ({formatNumber(about.length)})</h4>
+              <ul className="flex flex-col gap-stack-xs">{about.slice(0, 5).map((t) => <li key={t.key} className="body-sm text-text-default">{stripAbout(t.text) || t.text}</li>)}</ul>
+              {onOpenThinking && <div><Button type="button" size="sm" variant="ghost" iconStart="Lightbulb" onClick={onOpenThinking}>دیدن در فضای فکر</Button></div>}
+            </section>
+          );
+        })()}
         {onSetDependencies && candidates.length > 0 && (
           <div className="flex flex-col gap-stack-md rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md" role="group" aria-label="ارتباط با دانش دیگر" data-testid="relations">
             <RelationPicker

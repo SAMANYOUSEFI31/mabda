@@ -57,6 +57,8 @@ import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { ThinkingSpace } from './components/ThinkingSpace';
 import { ThoughtDialog } from './components/ThoughtDialog';
+import { DecisionOptionsDialog } from './components/DecisionOptionsDialog';
+import { optionsOf, recordOfChoice } from './core/decisionOptions';
 import { resolveThoughtLine, sectionNameFromThought, thoughtToDraft } from './core/thoughts';
 import { thinkingSpace } from './core/thinkingSpace';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
@@ -196,7 +198,7 @@ export default function App() {
   const [isPacksOpen, setIsPacksOpen] = useState(false);
   const approvals = useMemo(() => approvalsOf(data?.changes ?? []), [data?.changes]);
   /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
-  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string } | null>(null);
+  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string; kind?: import('./core/aiRequest').RequestKind; request?: string } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
   const [templateDraft, setTemplateDraft] = useState<{ kind: 'node' | 'workstream'; sourceId: string; name: string } | null>(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -683,6 +685,21 @@ export default function App() {
   const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number) => {
     for (const n of notes) await handleAddNote(n.nodeId, n.content);
     toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان. به AI نمی‌رسند.` });
+  };
+  // «گزینه‌های تصمیم باز»: the options are lines under the decision in its note; choosing makes a PROPOSED decision, the others stay in its record
+  const [optionsItemKey, setOptionsItemKey] = useState<string | null>(null);
+  const optionsItem = optionsItemKey ? thinking.find((t) => t.key === optionsItemKey) ?? null : null;
+  const optionsNote = optionsItem ? (data?.notes ?? []).find((n) => n.id === optionsItem.noteId) : undefined;
+  const handleChooseOption = async (p: { question: string; chosen: { title: string; text: string }; others: Array<{ title: string; reason: string }> }) => {
+    if (!optionsItem) return;
+    const r = await attempt(() => dataApi.createObject(wid, {
+      type: 'Decision', status: 'Proposed', provenance: 'User Input', title: p.chosen.title.slice(0, 80), content: p.chosen.text, nodeId: optionsItem.nodeId,
+      record: recordOfChoice(p.question, p.chosen.title, p.others),
+      source: { kind: 'note', noteId: optionsItem.noteId, lineKey: optionsItem.hash, quote: optionsItem.text, at: new Date().toISOString() },
+    }));
+    if (!r) throw new Error('create failed');
+    patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    toast.show({ intent: 'success', message: `تصمیم ثبت شد؛ ${formatNumber(p.others.length)} گزینهٔ دیگر با دلیل ماندند. در «فکر» منتظر تأیید توست.` });
   };
   const handleAddNote = async (nodeId: string, content: string) => {
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
@@ -1429,6 +1446,8 @@ export default function App() {
           nodes={nodes}
           nodeId={spaceNode}
           onNodeChange={setSpaceNode}
+          onOptions={(item) => setOptionsItemKey(item.key)}
+          optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.line, workspaceContexts, nodes).length}
           onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
           onOpenObject={(o) => openContext(o)}
           onApproveDraft={handleApproveDraft}
@@ -1559,7 +1578,7 @@ export default function App() {
       <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />
       <AiRequestDialog
-        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
+        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
         sessions={data?.sessions ?? []}
         onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
         onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? effectiveCredits(chatCredits(false), res.usage.byok) : 0, false); }}
@@ -1580,6 +1599,8 @@ export default function App() {
         workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
         allObjects={workspaceContexts}
+        thoughts={thinking.filter((t) => !convertedTo(t, workspaceContexts))}
+        onOpenThinking={() => { setIsContextModalOpen(false); openThinkingSpace(); }}
         metrics={metrics}
         relationships={data?.relationships ?? []}
         onSetDependencies={handleSetDependencies}
@@ -1591,6 +1612,13 @@ export default function App() {
         onPatchObject={handlePatchObject}
       />
 
+      <DecisionOptionsDialog
+        open={!!optionsItem} onClose={() => setOptionsItemKey(null)} item={optionsItem} noteContent={optionsNote?.content ?? ''}
+        objects={workspaceContexts} nodes={nodes} relationships={data?.relationships ?? []}
+        onChangeNote={async (content) => { if (optionsNote) await handleUpdateNote(optionsNote.id, content); }}
+        onChoose={handleChooseOption}
+        onAskAi={(text) => { setOptionsItemKey(null); setAiRequest({ scopeNodeId: optionsItem?.nodeId ?? '', kind: 'decision', request: text }); }}
+      />
       <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} />
       <NodeDialogs
         state={nodeDialog}

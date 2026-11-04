@@ -12,6 +12,9 @@ import { Button, Dialog, IconButton, SegmentedControl, Select, formatNumber } fr
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../core/thoughtBatch';
 import type { NotePayload } from '../core/thoughtBatch';
 import { MentionTextarea } from './MentionTextarea';
+import { AboutPicker } from './AboutPicker';
+import { aboutToken } from '../core/thoughtAbout';
+import type { AboutTarget } from '../core/thoughtAbout';
 
 interface Props {
   open: boolean;
@@ -35,12 +38,14 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   const [touched, setTouched] = useState(false);
   const [node, setNode] = useState(nodeId);
   const [busy, setBusy] = useState(false);
+  const [about, setAbout] = useState<AboutTarget[]>([]);
+  const tokens = about.map((t) => aboutToken(t.label)).join(' ');
   // batch preview: the default kind for lines no rule decided, and per-line changes (kept by the line's position in the text)
   const [defKind, setDefKind] = useState<ThinkingKind>('idea');
   const [lineKind, setLineKind] = useState<Record<number, ThinkingKind>>({});
   const [lineNode, setLineNode] = useState<Record<number, string>>({});
   const [dropped, setDropped] = useState<Set<number>>(new Set());
-  useEffect(() => { if (open) { setText(''); setKind('idea'); setTouched(false); setNode(nodeId); setDefKind('idea'); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId]);
+  useEffect(() => { if (open) { setText(''); setKind('idea'); setTouched(false); setNode(nodeId); setDefKind('idea'); setAbout([]); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId]);
   const batch = !!onSaveMany && isBatch(text);
   const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
   const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
@@ -48,13 +53,13 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
 
   const save = async () => {
     if (batch && onSaveMany) {
-      const notes = composeThoughtBatch(lines.map((l) => ({ text: l.text, kind: lineKind[l.id] ?? l.kind, nodeId: lineNode[l.id] ?? node })));
+      const notes = composeThoughtBatch(lines.map((l) => ({ text: `${l.text} ${tokens}`.trim(), kind: lineKind[l.id] ?? l.kind, nodeId: lineNode[l.id] ?? node })));
       if (!notes.length) return;
       setBusy(true);
       try { await onSaveMany(notes, lines.length); onClose(); } finally { setBusy(false); }
       return;
     }
-    const content = composeThought(text, kind);
+    const content = composeThought(tokens ? `${text.trim()} ${tokens}` : text, kind);
     if (!content) return;
     setBusy(true);
     try { await onSave(node, content); onClose(); } finally { setBusy(false); }
@@ -69,6 +74,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
         {!batch && <SegmentedControl label="این یک…" value={kind} onChange={(v) => { setKind(v as ThinkingKind); setTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
         {batch && <SegmentedControl label="نوع خط‌هایی که نوعشان معلوم نیست" value={defKind} onChange={(v) => setDefKind(v as ThinkingKind)} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
         <Select label={batch ? 'بخش همهٔ فکرها (اختیاری)' : 'دربارهٔ کدام بخش؟ (اختیاری)'} value={node} onChange={(e) => setNode(e.target.value)} options={sectionOptions} />
+        <AboutPicker objects={objects} nodes={nodes} value={about} onChange={setAbout} />
         {batch && (
           <div className="flex flex-col gap-stack-sm" data-testid="thought-batch-preview">
             <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} فکر پیدا شد. نوع هر خط را می‌توانی عوض کنی یا خطی را برداری؛ چیزی ذخیره نشده است.</p>
