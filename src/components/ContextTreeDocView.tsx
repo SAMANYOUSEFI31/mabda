@@ -4,15 +4,23 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ContextObject, Note, StoredFile, TreeNode } from '../types';
+import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../types';
+import { abbreviate, childSummaries, fromAbove, pathTo } from '../core/nodeFocus';
+import { ORIGIN_FA } from '../core/effectiveContext';
 import { childrenOf, quickMoves } from '../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import type { NodeDialogState } from './NodeDialogs';
 import { NodeNotes } from './NodeNotes';
 
 interface ContextTreeDocViewProps {
   objects: ContextObject[];
+  relationships?: ContextRelationship[];
+  /** objects whose dependency changed (the «قدیمی» counter of a sub-section) */
+  staleIds?: Set<string>;
   nodes: TreeNode[];
+  /** the section we are «inside» (null = the whole tree); the parent keeps it in history so the back button works */
+  focusId?: string | null;
+  onFocus?: (id: string | null) => void;
   notes: Note[];
   files: StoredFile[];
   extractingNoteId: string | null;
@@ -21,6 +29,7 @@ interface ContextTreeDocViewProps {
   onNodeAction: (state: NonNullable<NodeDialogState>) => void;
   onChatWithNode: (nodeId: string) => void;
   onReadNode: (nodeId: string) => void;
+  openCounts?: Map<string, number>;
   onShowEffect: (nodeId: string) => void;
   /** how many things are in force at a node (own, from above, everywhere) — the summary sentence */
   effectCount: (nodeId: string) => number;
@@ -89,7 +98,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     </Card>
   );
 
-  const renderNode = (node: TreeNode, path: string, depth: number): React.ReactNode => {
+  const renderNode = (node: TreeNode, path: string, depth: number, focused = false): React.ReactNode => {
     const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
     const nodeNotes = props.notes.filter((n) => n.nodeId === node.id);
     const nodeFiles = props.files.filter((f) => f.nodeId === node.id);
@@ -111,6 +120,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <div className="flex flex-wrap items-center gap-inline-xs">
             {/* one main action; everything else is under «⋯» */}
             <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
+            {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>باز کردن</Button>}
             <Menu
               label={`عملیات گرهٔ ${node.label}`}
               align="end"
@@ -214,12 +224,28 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </>
         )}
 
-        {kids.length > 0 && <div className="flex flex-col gap-stack-xl">{kids.map((k, i) => renderNode(k, `${path}${formatNumber(i + 1)}.`, depth + 1))}</div>}
+        {focused
+          ? (kids.length > 0 && <SubSections summaries={childSummaries(nodes, activeObjects, props.openCounts ?? new Map(), props.staleIds ?? new Set(), node.id)} onOpen={(id) => props.onFocus?.(id)} />)
+          : (kids.length > 0 && <div className="flex flex-col gap-stack-xl">{kids.map((k, i) => renderNode(k, `${path}${formatNumber(i + 1)}.`, depth + 1))}</div>)}
       </section>
     );
   };
 
   const roots = childrenOf(nodes, undefined);
+  const focusNode = props.focusId ? nodes.find((n) => n.id === props.focusId) : undefined;
+  if (focusNode && props.onFocus) {
+    const path = pathTo(nodes, focusNode.id);
+    const above = fromAbove(nodes, objects, props.relationships ?? [], focusNode.id, new Date());
+    return (
+      <Card padding="xl" className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
+        <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
+        <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
+          {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
+          {renderNode(focusNode, '', 0, true)}
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card padding="xl" className="flex flex-col gap-stack-xl">
       <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
@@ -238,3 +264,74 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     </Card>
   );
 };
+
+/** the path, always one tap from any level up; on a narrow screen a long path shows «…» and the hidden levels are in a menu */
+const FocusBar: React.FC<{ path: Array<{ id: string; label: string }>; onGo: (id: string | null) => void }> = ({ path, onGo }) => {
+  const { shown, hidden } = abbreviate(path);
+  const parent = path.length > 1 ? path[path.length - 2].id : null;
+  const crumb = 'body-sm inline-flex min-h-touch min-w-touch items-center justify-center rounded-control-sm px-inset-xs text-text-subtle hover:bg-interaction-hover';
+  return (
+    <div className="flex items-center gap-inline-sm" data-testid="focus-bar">
+      <IconButton icon="ArrowRight" label={parent ? 'برگشت به بخش بالاتر' : 'برگشت به همهٔ بخش‌ها'} variant="secondary" onClick={() => onGo(parent)} />
+      <nav aria-label="مسیر بخش" className="min-w-space-0 flex-1">
+        <ol className="flex flex-wrap items-center gap-inline-xs">
+          <li><button type="button" className={crumb} onClick={() => onGo(null)}>همه</button></li>
+          {shown.map((c, i) => (
+            <React.Fragment key={c.id}>
+              {i === 1 && hidden.length > 0 && (
+                <li className="flex items-center gap-inline-xs"><Icon name="ChevronLeft" size="sm" className="text-icon-subtle" />
+                  <Menu label="بخش‌های میانی" trigger={<IconButton icon="Ellipsis" label="بخش‌های میانی مسیر" size="sm" />} items={hidden.map((h) => ({ label: h.label, onSelect: () => onGo(h.id) }))} />
+                </li>
+              )}
+              <li className="flex items-center gap-inline-xs"><Icon name="ChevronLeft" size="sm" className="text-icon-subtle" />
+                {i === shown.length - 1
+                  ? <span aria-current="page" className="label-md px-inset-xs text-text-default">{c.label}</span>
+                  : <button type="button" className={crumb} onClick={() => onGo(c.id)}>{c.label}</button>}
+              </li>
+            </React.Fragment>
+          ))}
+        </ol>
+      </nav>
+    </div>
+  );
+};
+
+/** unlike a folder, a section inherits from above: shown calmly, closed by default, each with where it comes from */
+const FromAbove: React.FC<{ items: ReturnType<typeof fromAbove>; onOpen: (o: ContextObject) => void }> = ({ items, onOpen }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="flex flex-col gap-stack-sm rounded-control border border-border-subtle bg-surface-sunken p-inset-md" aria-label="از بالا به اینجا می‌رسد" data-testid="from-above">
+      <Button size="sm" variant="ghost" iconStart={open ? 'ChevronUp' : 'ChevronDown'} aria-expanded={open} onClick={() => setOpen((v) => !v)} className="self-start">از بالا به اینجا می‌رسد ({formatNumber(items.length)})</Button>
+      {open && (
+        <ul className="flex flex-col gap-stack-xs">
+          {items.map(({ item, fromLabel }) => (
+            <li key={item.object.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
+              <button type="button" className="body-md inline-flex min-h-touch items-center text-start text-text-default underline-offset-2 hover:underline" onClick={() => onOpen(item.object)}>{item.object.title}</button>
+              <span className="caption text-text-subtle">{item.origin === 'global' ? ORIGIN_FA.global : `از «${fromLabel}»`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+/** sub-sections as cards with calm counters; one tap goes in */
+const SubSections: React.FC<{ summaries: ReturnType<typeof childSummaries>; onOpen: (id: string) => void }> = ({ summaries, onOpen }) => (
+  <section className="flex flex-col gap-stack-sm" aria-label="زیربخش‌ها">
+    <h4 className="label-md text-text-default">زیربخش‌ها ({formatNumber(summaries.length)})</h4>
+    <ul className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
+      {summaries.map((s) => (
+        <li key={s.node.id}>
+          <button type="button" data-testid="sub-section" onClick={() => onOpen(s.node.id)} className="flex min-h-touch-comfortable w-full items-center justify-between gap-inline-md rounded-control border border-border-default bg-surface-raised p-inset-lg text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+            <span className="flex min-w-space-0 flex-col gap-stack-xs">
+              <span className="title text-text-default">{s.node.label}</span>
+              <span className="caption text-text-subtle">{formatNumber(s.knowledge)} دانش{s.openThoughts ? ` · ${formatNumber(s.openThoughts)} فکر باز` : ''}{s.stale ? ` · ${formatNumber(s.stale)} قدیمی` : ''}{s.subSections ? ` · ${formatNumber(s.subSections)} زیربخش` : ''}</span>
+            </span>
+            <Icon name="ChevronLeft" size="md" className="shrink-0 text-icon-subtle" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  </section>
+);

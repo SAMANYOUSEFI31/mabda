@@ -238,6 +238,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', on);
   }, []);
   /** scroll to an element that appears after a tab / view change (it may take a moment to mount) */
+  // «واردِ یک بخش شدن»: the focused section lives in history (#node=…), so the browser / phone back button, a direct link and reload all work
+  const nodeFromUrl = () => { try { const m = /#node=([^&]+)/.exec(window.location.hash); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(nodeFromUrl);
+  const goFocus = (id: string | null) => {
+    setFocusNodeId(id);
+    try { window.history.pushState({ node: id }, '', id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search); } catch { /* optional */ }
+    window.scrollTo({ top: 0 });
+  };
+  useEffect(() => { const on = () => setFocusNodeId(nodeFromUrl()); window.addEventListener('popstate', on); return () => window.removeEventListener('popstate', on); }, []);
   const revealWhenThere = (id: string) => { let tries = 0; const t = setInterval(() => { const el = document.getElementById(id); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); } }, 60); };
   const deliverables = (data?.deliverables ?? []).filter((d) => !d.archivedAt); // archived outputs are out of every list and count (the archive shows them)
   const ledgerEntries = data?.ledger ?? [];
@@ -295,7 +304,7 @@ export default function App() {
   const handlePick = (hit: SearchHit) => {
     const n = Date.now();
     if (hit.kind === 'object') { const o = workspaceContexts.find((x) => x.id === hit.id); if (o) openContext(o); return; }
-    if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${hit.id}`); return; }
+    if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); goFocus(hit.id); return; }
     if (hit.kind === 'note') {
       const nodeId = (data?.notes ?? []).find((x) => x.id === hit.id)?.nodeId;
       if (!nodeId) return;
@@ -1316,6 +1325,11 @@ export default function App() {
             ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
+                relationships={data.relationships ?? []}
+                staleIds={reviewIdSet}
+                openCounts={openCounts}
+                focusId={focusNodeId}
+                onFocus={goFocus}
                 nodes={nodes}
                 notes={data.notes}
                 files={data.files}

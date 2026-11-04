@@ -195,6 +195,10 @@ for (const size of SIZES) {
   await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
   await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
   await goTab(TABS[1]);
+  // «واردِ یک بخش شدن»: a section alone, a sub-section deeper, then back out with the on-screen button
+  await page.getByRole('button', { name: /^رفتن به بخش/ }).first().click(); await shoot('context-focus');
+  await page.getByTestId('sub-section').first().click(); await shoot('context-focus-deep');
+  await page.getByRole('button', { name: /^برگشت به/ }).first().click(); await page.getByRole('button', { name: /^برگشت به/ }).first().click({ timeout: 1500 }).catch(() => {});
   await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
