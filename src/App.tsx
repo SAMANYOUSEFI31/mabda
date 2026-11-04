@@ -58,6 +58,8 @@ import { ChangesPanel } from './components/ChangesPanel';
 import { ThinkingSpace } from './components/ThinkingSpace';
 import { ThoughtDialog } from './components/ThoughtDialog';
 import { DecisionOptionsDialog } from './components/DecisionOptionsDialog';
+import { TruthCompareDialog } from './components/TruthCompareDialog';
+import type { CompareMode } from './components/TruthCompareDialog';
 import { optionsOf, recordOfChoice } from './core/decisionOptions';
 import { resolveThoughtLine, sectionNameFromThought, thoughtToDraft } from './core/thoughts';
 import { thinkingSpace } from './core/thinkingSpace';
@@ -267,6 +269,7 @@ export default function App() {
   const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [] }), [data?.objects, data?.relationships, data?.changes, data?.deliverables]);
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [compare, setCompare] = useState<{ mode: CompareMode; scopeNodeId?: string } | null>(null);
   const [metricsOpen, setMetricsOpen] = useState(false);
   // ── local usage counters (a feature KEY only, never data; src/core/usage.ts) ──
   useEffect(() => { track(`view.${activeTab}`); }, [activeTab]);
@@ -322,6 +325,7 @@ export default function App() {
     switch (hit.id) {
       case 'record': openContext(null); break;
       case 'thought': setThoughtDialog({}); break;
+      case 'compare': setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }); break;
       case 'batch-knowledge': setIsBatchOpen(true); break;
       case 'go-thinking': openThinkingSpace(); break;
       case 'go-archive': setArchiveOpen(true); break;
@@ -1204,6 +1208,7 @@ export default function App() {
                     { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
                     { label: 'چند دانش با هم', icon: 'ListChecks', onSelect: () => setIsBatchOpen(true) },
                     { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+                    { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                     { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
                     { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
                   ]}
@@ -1286,7 +1291,7 @@ export default function App() {
               </Card>
             )}
 
-            {changesOpen && <ChangesPanel open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
+            {changesOpen && <ChangesPanel onCompare={() => setCompare({ mode: 'week' })} open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
             {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />}
 
@@ -1446,6 +1451,7 @@ export default function App() {
           nodes={nodes}
           nodeId={spaceNode}
           onNodeChange={setSpaceNode}
+          onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
           onOptions={(item) => setOptionsItemKey(item.key)}
           optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.line, workspaceContexts, nodes).length}
           onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
@@ -1612,6 +1618,11 @@ export default function App() {
         onPatchObject={handlePatchObject}
       />
 
+      <TruthCompareDialog
+        open={!!compare} onClose={() => setCompare(null)} mode={compare?.mode} scopeNodeId={compare?.scopeNodeId}
+        objects={data?.objects ?? []} changes={data?.changes ?? []} nodes={nodes} deliverables={deliverables}
+        onOpenObject={(o) => openContext(o)} onOpenAssets={() => setActiveTab('assets')}
+      />
       <DecisionOptionsDialog
         open={!!optionsItem} onClose={() => setOptionsItemKey(null)} item={optionsItem} noteContent={optionsNote?.content ?? ''}
         objects={workspaceContexts} nodes={nodes} relationships={data?.relationships ?? []}

@@ -16,6 +16,8 @@ import { ThinkingList } from './ThinkingList';
 
 type ProposalProps = React.ComponentProps<typeof ProposalInbox>;
 interface Props {
+  /** «ببین چه عوض می‌شود»: the list of changes if everything waiting is approved (the same engine as the comparison) */
+  onCompareIfApproved?: () => void;
   onOptions?: (item: NoteThinkingItem) => void;
   optionCount?: (item: NoteThinkingItem) => number;
   objects: ContextObject[];
@@ -71,7 +73,8 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {view.waiting.length > 0 && p.onPreviewTruth && (
         <div className="flex flex-wrap items-center gap-inline-sm">
           <Button size="sm" variant="secondary" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>
-          <span className="body-sm text-text-subtle">نقشه را با «نشان بده چه در راه است» باز می‌کند؛ چیزی تأیید نمی‌شود.</span>
+          {p.onCompareIfApproved && <Button size="sm" variant="secondary" iconStart="Layers" onClick={p.onCompareIfApproved}>فهرست تغییرها</Button>}
+          <span className="body-sm text-text-subtle">نقشه یا فهرست؛ چیزی تأیید نمی‌شود.</span>
         </div>
       )}
 
