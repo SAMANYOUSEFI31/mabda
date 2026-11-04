@@ -1033,6 +1033,13 @@ export default function App() {
     }
     if (done) toast.show({ intent: 'success', message: `${formatNumber(done)} پیشنهاد در «فکر» منتظر تأیید توست.` });
   };
+  /** an AI answer that UPDATES existing knowledge: a draft on it (asDraft) — the text she approved stays until she approves this */
+  const handleDraftFromImport = async (objectId: string, p: { title: string; content: string; reason: string }) => {
+    const r = await attempt(() => dataApi.updateObject(wid, objectId, { title: p.title, content: p.content, reason: p.reason, asDraft: true }));
+    if (!r) return false;
+    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === objectId ? r.object : o)), stale: r.stale }));
+    return true;
+  };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
   /** what is waiting for her in the thinking space: suggestions, drafts, open thoughts (the badge of «فکر») */
@@ -1206,7 +1213,6 @@ export default function App() {
                   items={[
                     { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
                     { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
-                    { label: 'چند دانش با هم', icon: 'ListChecks', onSelect: () => setIsBatchOpen(true) },
                     { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
                     { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                     { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
@@ -1453,7 +1459,7 @@ export default function App() {
           onNodeChange={setSpaceNode}
           onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
           onOptions={(item) => setOptionsItemKey(item.key)}
-          optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.line, workspaceContexts, nodes).length}
+          optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).length}
           onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
           onOpenObject={(o) => openContext(o)}
           onApproveDraft={handleApproveDraft}
@@ -1605,6 +1611,7 @@ export default function App() {
         workspaceId={currentWorkspace.id}
         defaultNodeId={modalDefaultNodeId}
         allObjects={workspaceContexts}
+        onOpenBatch={() => setIsBatchOpen(true)}
         thoughts={thinking.filter((t) => !convertedTo(t, workspaceContexts))}
         onOpenThinking={() => { setIsContextModalOpen(false); openThinkingSpace(); }}
         metrics={metrics}
@@ -1766,7 +1773,7 @@ export default function App() {
       <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
-      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} nodes={nodes} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onUpdateDraft={handleDraftFromImport} onSaveAsset={persistDeliverable} />
       <KnowledgeBatchDialog open={isBatchOpen} onClose={() => setIsBatchOpen(false)} nodes={nodes} onPropose={handleProposeBatch} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
       <Dialog

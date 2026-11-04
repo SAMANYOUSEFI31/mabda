@@ -4,7 +4,7 @@
  */
 
 import React, { useRef } from 'react';
-import { THINKING_FA, displayLine, kindOfLine, markLine, parseThinking } from '../core/thinkingMarkers';
+import { THINKING_FA, displayLine, kindOfLine, markLine, parseThinking, continuationLines } from '../core/thinkingMarkers';
 import type { ThinkingKind } from '../core/thinkingMarkers';
 import { IconButton, Menu, ThinkingBadge } from '../ui';
 
@@ -25,13 +25,16 @@ export const NoteLines: React.FC<Props> = ({ content, onChange }) => {
   const press = useRef<number | undefined>(undefined);
   const lines = content.split('\n');
   const items = new Map(parseThinking(content).map((i) => [i.line, i]));
+  const continued = continuationLines(content);
   return (
     <div className="flex flex-col" data-testid="note-lines">
       {lines.map((raw, i) => {
         if (!raw.trim()) return <div key={i} className="h-stack-sm" aria-hidden="true" />;
+        // the 2nd, 3rd… line of ONE thought: it is part of the thought above, so no badge and no marker menu of its own
+        if (continued.has(i)) return <p key={i} data-line={i} className="body-md ps-inset-lg whitespace-pre-wrap text-text-default">{raw.replace(/\\\s*$/, '')}</p>;
         const kind = kindOfLine(raw);
         const explicit = !!items.get(i) && !items.get(i)!.inferred;
-        const shown = explicit ? displayLine(raw) : raw;
+        const shown = (explicit ? displayLine(raw) : raw).replace(/\\\s*$/, '');
         return (
           <div
             key={i}

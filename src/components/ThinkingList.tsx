@@ -44,7 +44,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, onConvert
           <li key={it.key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
             <span className="flex min-w-space-0 flex-1 flex-wrap items-center gap-inline-sm">
               <ThinkingBadge kind={it.kind} />
-              <span className="body-md text-text-default">{stripAbout(it.text) || it.text}</span>
+              <span className="body-md whitespace-pre-wrap text-text-default">{stripAbout(it.text) || it.text}</span>
               {nodes && <span className="caption text-text-subtle">· {label(it.nodeId)}</span>}
               {nodes && (() => { const t = aboutTargets(it.text, objects, nodes); return t.length ? <span className="caption text-text-subtle">· دربارهٔ {t.map((x) => x.label).join('، ')}</span> : null; })()}
               {done && <Badge intent="success" icon="Check">تبدیل شد ✓</Badge>}

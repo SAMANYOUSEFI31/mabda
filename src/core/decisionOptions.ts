@@ -18,6 +18,8 @@ const OPTION = /^[\s‌‏]*(?:[-*•–—]|گزینه\s*[\d۰-۹]*\s*[:：])\s
 export function optionsOf(content: string, line: number, objects: ContextObject[], nodes: TreeNode[]): DecisionOption[] {
   const lines = content.split(/\r?\n/);
   const out: DecisionOption[] = [];
+  // a question written over several lines (each ending with `\`) has its options after the LAST of them
+  while (line < lines.length - 1 && /\\[ \t]*$/.test(lines[line])) line++;
   for (let i = line + 1; i < lines.length; i++) {
     const m = OPTION.exec(lines[i]);
     if (!m) break;

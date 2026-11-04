@@ -51,6 +51,8 @@ interface ContextDetailModalProps {
   allObjects?: ContextObject[];
   relationships?: ContextRelationship[];
   onSetDependencies?: (objectId: string, dependsOn: string[]) => Promise<void> | void;
+  /** a NEW piece of knowledge: «چند دانش داری؟» opens the batch entry from the moment the person starts writing one */
+  onOpenBatch?: () => void;
   /** the open thoughts (derived from notes): the ones that name this knowledge are listed as «فکرهای باز دربارهٔ این» */
   thoughts?: NoteThinkingItem[];
   onOpenThinking?: () => void;
@@ -107,6 +109,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   metrics = [],
   relationships = [],
   onSetDependencies,
+  onOpenBatch,
   thoughts = [],
   onOpenThinking,
   reviewNeed,
@@ -334,6 +337,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => setNodeId(node.id) }))}
           />
         </div>
+        {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ هر کدام درست نیست، عوضش کن.</p>}
         {linkSuggestions.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
