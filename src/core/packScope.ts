@@ -99,7 +99,7 @@ export const LEFT_REASON_FA: Record<LeftReason, string> = {
   kind: 'برای این نوع کار نمی‌آید',
 };
 
-/** the sentence for one left-out object (it names the node, the exception or the way to bring it in) */
+/** the sentence for one skipped object (it names the node, the exception or the way to bring it in) */
 export function leftWhy(reason: LeftReason, o: Pick<ContextObject, 'nodeId' | 'type' | 'reach' | 'validUntil'>, nodes: TreeNode[], extra?: { overriddenByTitle?: string }): string {
   const name = label(nodes, o.nodeId);
   switch (reason) {

@@ -65,15 +65,15 @@ test('an exception (overrides) switches the rule off for the picked section only
   const rels: ContextRelationship[] = [{ id: 'r1', sourceId: 'c_here', targetId: 'c_prod', type: 'overrides', createdAt: '' }];
   const at = pack({ targetNodeIds: ['offer'], relationships: rels });
   assert.ok(!at.markdown.includes('c_prod@v'), 'the exception at «آفر» turns «قید محصول» off there');
-  const left = at.explain.left.find((l) => l.id === 'c_prod')!;
+  const left = at.explain.skipped.find((l) => l.id === 'c_prod')!;
   assert.equal(left.reason, 'overridden');
   assert.match(left.why, /کنار گذاشته/);
   const parent = pack({ targetNodeIds: ['prod'], relationships: rels });
   assert.ok(parent.markdown.includes('c_prod@v'), 'at the parent the rule still holds');
-  assert.equal(parent.explain.left.find((l) => l.id === 'x_old')?.reason, 'expired');
+  assert.equal(parent.explain.skipped.find((l) => l.id === 'x_old')?.reason, 'expired');
 });
 
-test('explain: every included thing says where it came from; guardrails are their own group; left-out things say why', () => {
+test('explain: every included thing says where it came from; guardrails are their own group; skipped things say why', () => {
   const p = pack({ targetNodeIds: ['offer'], includeAssumptions: true, statuses: [] });
   const byId = new Map(p.explain.items.filter((i) => i.id).map((i) => [i.id!, i]));
   assert.equal(byId.get('c_global')!.group, 'guardrail');
@@ -83,25 +83,25 @@ test('explain: every included thing says where it came from; guardrails are thei
   assert.equal(byId.get('f_offer')!.group, 'fact');
   assert.equal(byId.get('a_one')!.group, 'assumption');
   assert.ok(![...byId.values()].some((i) => i.group === 'unconfirmed'), 'statuses off: no suggestion');
-  const left = new Map(p.explain.left.map((l) => [l.id, l]));
+  const left = new Map(p.explain.skipped.map((l) => [l.id, l]));
   assert.equal(left.get('f_work')!.reason, 'scope');
   assert.equal(left.get('p_one')!.reason, 'status', 'a suggestion in force at the scope but not ticked says «تأییدنشده؛ تیکش نخورده»');
 });
 
-test('explain: left-out reasons are specific (sub-section, status, assumption, facet, expired)', () => {
+test('explain: skipped reasons are specific (sub-section, status, assumption, facet, expired)', () => {
   const p = pack({ targetNodeIds: ['prod'], statuses: [], includeAssumptions: false, facets: ['x'] });
-  const why = (id: string) => p.explain.left.find((l) => l.id === id)?.reason;
+  const why = (id: string) => p.explain.skipped.find((l) => l.id === id)?.reason;
   assert.equal(why('f_offer'), 'child', 'a sub-section that was not picked says so');
   assert.equal(why('f_brand'), 'scope');
   assert.equal(why('f_prod'), 'facet');
   assert.equal(why('p_one'), 'facet');
   const q = pack({ targetNodeIds: ['prod'], statuses: [], includeAssumptions: false });
-  assert.equal(q.explain.left.find((l) => l.id === 'p_one')?.reason, 'status');
-  assert.equal(q.explain.left.find((l) => l.id === 'a_one')?.reason, 'assumption');
+  assert.equal(q.explain.skipped.find((l) => l.id === 'p_one')?.reason, 'status');
+  assert.equal(q.explain.skipped.find((l) => l.id === 'a_one')?.reason, 'assumption');
   const withKids = pack({ targetNodeIds: ['prod'], withChildren: true });
-  assert.ok(!withKids.explain.left.some((l) => l.reason === 'child'), 'with sub-sections there is no «child» left');
+  assert.ok(!withKids.explain.skipped.some((l) => l.reason === 'child'), 'with sub-sections there is no «child» left');
   assert.deepEqual(groupItems(withKids.explain.items).map(([g]) => g).slice(0, 2), ['guardrail', 'fact']);
-  assert.ok(groupLeft(p.explain.left).length >= 3);
+  assert.ok(groupLeft(p.explain.skipped).length >= 3);
 });
 
 test('a suggestion / an assumption comes only when ticked, under their own label, and never as a fact (the same data feeds the explanation)', () => {

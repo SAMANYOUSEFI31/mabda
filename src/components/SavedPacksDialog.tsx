@@ -125,7 +125,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
                 <div className="flex flex-wrap items-center gap-inline-xs" aria-live="polite">
                   <Badge intent="neutral" icon="FileText">حدود {formatNumber(preview.tokens)} توکن</Badge>
                   <Badge intent="success" icon={false}>{formatNumber(preview.explain.items.length)} مورد می‌آید</Badge>
-                  <Badge intent="neutral" icon={false}>{formatNumber(preview.explain.left.length)} نمی‌آید</Badge>
+                  <Badge intent="neutral" icon={false}>{formatNumber(preview.explain.skipped.length)} نمی‌آید</Badge>
                 </div>
                 {preview.tokens > 6000 && <Alert intent="warning">بسته بلند است (حدود {formatNumber(preview.tokens)} توکن). بخش‌ها را کمتر کن یا «زیربخش‌ها» را بردار.</Alert>}
                 <ScopeExplain explain={preview.explain} onOpenObject={onOpenObject ? openObject : undefined} />

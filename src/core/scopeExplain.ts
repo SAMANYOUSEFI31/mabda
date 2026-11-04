@@ -30,7 +30,7 @@ export interface ExplainItem {
   /** a short note: «منقضی می‌شود …»، «بودجه: همیشه می‌آید» */
   note?: string;
 }
-export interface ExplainLeft {
+export interface ExplainSkipped {
   id: string;
   title: string;
   type: ContextObject['type'];
@@ -43,15 +43,15 @@ export interface ExplainLeft {
 export interface Explain {
   scope: { whole: boolean; pickedLabels: string[]; withChildren: boolean; sections: number };
   items: ExplainItem[];
-  left: ExplainLeft[];
+  skipped: ExplainSkipped[];
 }
 
-/** left-out lists are grouped by reason in this order (what she can fix first) */
+/** skipped lists are grouped by reason in this order (what she can fix first) */
 export const LEFT_ORDER: LeftReason[] = ['child', 'status', 'assumption', 'facet', 'budget', 'unranked', 'kind', 'overridden', 'expired', 'scope'];
 
 export function groupItems(items: ExplainItem[]): Array<[ExplainGroup, ExplainItem[]]> {
   return GROUP_ORDER.map((g): [ExplainGroup, ExplainItem[]] => [g, items.filter((i) => i.group === g)]).filter(([, l]) => l.length > 0);
 }
-export function groupLeft(left: ExplainLeft[]): Array<[LeftReason, ExplainLeft[]]> {
-  return LEFT_ORDER.map((r): [LeftReason, ExplainLeft[]] => [r, left.filter((l) => l.reason === r)]).filter(([, l]) => l.length > 0);
+export function groupLeft(skipped: ExplainSkipped[]): Array<[LeftReason, ExplainSkipped[]]> {
+  return LEFT_ORDER.map((r): [LeftReason, ExplainSkipped[]] => [r, skipped.filter((l) => l.reason === r)]).filter(([, l]) => l.length > 0);
 }

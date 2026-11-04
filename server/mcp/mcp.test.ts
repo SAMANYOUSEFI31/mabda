@@ -485,7 +485,7 @@ test('«درخواست برای AI»: kind + one line + scope → the assembled 
     const r2 = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${two.id}/render`)).json;
     assert.ok(r2.markdown.includes('واقعیت-الفِ-یکتا') && r2.markdown.includes('واقعیت-بِ-یکتا'), 'BOTH picked sections are in the request, not only the first');
     assert.ok(!r2.markdown.includes('واقعیت-زیرِ-الفِ-یکتا'), 'a sub-section is not read unless asked');
-    assert.equal(r2.explain.left.find((l: any) => l.title === 'واقعیت زیر الف')?.reason, 'child', 'and the left-out list says why');
+    assert.equal(r2.explain.skipped.find((l: any) => l.title === 'واقعیت زیر الف')?.reason, 'child', 'and the skipped list says why');
     const withKids = (await t.api('PUT', `/workspaces/ws_studio/saved-packs/${two.id}`, { name: 'درخواست دوبخشی', instruction: '', kind: 'question', template: 'چه می‌دانیم؟', selection: { ...two.selection, withChildren: true } })).json.pack;
     assert.equal(withKids.selection.withChildren, true);
     assert.ok(((await t.api('GET', `/workspaces/ws_studio/saved-packs/${two.id}/render`)).json.markdown as string).includes('واقعیت-زیرِ-الفِ-یکتا'), 'with «با زیربخش‌ها» the sub-section comes');

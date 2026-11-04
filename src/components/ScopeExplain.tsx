@@ -14,9 +14,9 @@ interface Props {
   explain: Explain;
   /** «این قید را ببین / ویرایش کن»: opens the rule where its reach («محدودهٔ اثر») is decided */
   onOpenObject?: (id: string) => void;
-  /** a request lets her add a left-out thing by hand */
+  /** a request lets her add a skipped thing by hand */
   onAdd?: (id: string) => void;
-  /** items shown per left-out reason before «و N مورد دیگر» */
+  /** items shown per skipped reason before «و N مورد دیگر» */
   shown?: number;
 }
 
@@ -31,7 +31,7 @@ export const scopeLine = (s: Explain['scope']): string => (s.whole
  */
 export const ScopeExplain: React.FC<Props> = ({ explain, onOpenObject, onAdd, shown = 40 }) => {
   const groups = groupItems(explain.items);
-  const left = groupLeft(explain.left);
+  const left = groupLeft(explain.skipped);
   return (
     <div className="flex flex-col gap-stack-sm" data-testid="scope-explain">
       <p className="body-sm text-text-default" data-testid="scope-line">{scopeLine(explain.scope)}</p>
@@ -55,8 +55,8 @@ export const ScopeExplain: React.FC<Props> = ({ explain, onOpenObject, onAdd, sh
         </div>
       ))}
       {left.length > 0 && (
-        <div data-testid="explain-left">
-          <ClosedSection title="چه نیامد و چرا" count={explain.left.length}>
+        <div data-testid="explain-skipped">
+          <ClosedSection title="چه نیامد و چرا" count={explain.skipped.length}>
             <div className="flex flex-col gap-stack-md">
               {left.map(([reason, list]) => (
                 <section key={reason} aria-label={LEFT_REASON_FA[reason]} className="flex flex-col gap-stack-xs">

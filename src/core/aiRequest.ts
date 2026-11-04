@@ -22,7 +22,7 @@ import { IN_FORCE, reachOf } from './effectiveContext';
 import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
 import { metricsPackSection } from './metrics';
 import { ancestorIds, subtreeIds } from './nodeTree';
-import type { Explain, ExplainItem, ExplainLeft } from './scopeExplain';
+import type { Explain, ExplainItem, ExplainSkipped } from './scopeExplain';
 import { bm25Rank } from './retrieval';
 import { estimateTokens } from './tokens';
 
@@ -403,17 +403,17 @@ function changesSection(changes: NonNullable<AiRequestInput['changes']>, find: (
   return ['## تغییرهای اخیر (قبل ← بعد)', ...lines].join('\n');
 }
 
-/** the request's included / left-out lists in the SAME shape the pack explains itself with (one component shows both) */
+/** the request's included / skipped lists in the SAME shape the pack explains itself with (one component shows both) */
 export function explainOfRequest(r: Pick<AiRequestResult, 'included' | 'excluded' | 'scope'>): Explain {
   const items: ExplainItem[] = r.included.map((i) => ({
     id: i.id, title: i.title, type: i.type, nodeLabel: i.nodeLabel, from: i.from,
     group: i.assumption ? 'assumption' : i.type === 'Constraint' ? 'guardrail' : i.type === 'Decision' ? 'decision' : 'fact',
     ...(i.type === 'Constraint' ? { editable: true } : {}), note: INCLUDE_REASON_FA[i.reason],
   }));
-  const left: ExplainLeft[] = [];
+  const skipped: ExplainSkipped[] = [];
   for (const e of r.excluded) {
     if (e.reason === 'sample') continue;
-    left.push({ id: e.id, title: e.title, type: e.type, nodeLabel: e.nodeLabel, reason: e.reason === 'unconfirmed' ? 'status' : e.reason, why: e.why, canAdd: e.canAdd });
+    skipped.push({ id: e.id, title: e.title, type: e.type, nodeLabel: e.nodeLabel, reason: e.reason === 'unconfirmed' ? 'status' : e.reason, why: e.why, canAdd: e.canAdd });
   }
-  return { scope: r.scope, items, left };
+  return { scope: r.scope, items, skipped };
 }

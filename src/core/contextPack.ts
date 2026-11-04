@@ -10,7 +10,7 @@ import { ancestorIds, resolveNodeId, subtreeIds } from './nodeTree';
 import { estimateTokens } from './tokens';
 import { IN_FORCE } from './effectiveContext';
 import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
-import type { Explain, ExplainItem, ExplainLeft } from './scopeExplain';
+import type { Explain, ExplainItem, ExplainSkipped } from './scopeExplain';
 import { guardrailText } from './redlineExamples';
 import { metricsPackSection } from './metrics';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
@@ -163,17 +163,17 @@ export function buildContextPack(input: PackInput): ContextPack {
   ];
   const included = new Set([...relevant.map((o) => o.id), ...guardObjects.map((o) => o.id)]);
   const inPickedSub = (o: ContextObject) => scope.picked.some((p) => p !== o.nodeId && subtreeIds(nodes, p).includes(o.nodeId));
-  const left: ExplainLeft[] = [];
+  const skipped: ExplainSkipped[] = [];
   for (const o of input.objects) {
     if (included.has(o.id) || o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
     const st = standing.get(o.id);
-    const reason: ExplainLeft['reason'] = !st ? (!scope.withChildren && inPickedSub(o) ? 'child' : 'scope')
+    const reason: ExplainSkipped['reason'] = !st ? (!scope.withChildren && inPickedSub(o) ? 'child' : 'scope')
       : st.origin === 'expired' ? 'expired' : st.origin === 'overridden' ? 'overridden'
       : !facetOk(o) ? 'facet' : !assumptionOk(o) ? 'assumption' : 'status';
-    left.push({ id: o.id, title: o.title, type: o.type, nodeLabel: nodeLabel(o.nodeId), reason, why: leftWhy(reason, o, nodes, { overriddenByTitle: st?.overriddenBy ? input.objects.find((x) => x.id === st.overriddenBy)?.title : undefined }) });
+    skipped.push({ id: o.id, title: o.title, type: o.type, nodeLabel: nodeLabel(o.nodeId), reason, why: leftWhy(reason, o, nodes, { overriddenByTitle: st?.overriddenBy ? input.objects.find((x) => x.id === st.overriddenBy)?.title : undefined }) });
   }
-  left.sort((a, b) => a.reason.localeCompare(b.reason) || a.nodeLabel.localeCompare(b.nodeLabel) || a.id.localeCompare(b.id));
-  const explain: Explain = { scope: { whole: scope.whole, pickedLabels: scope.picked.map((id) => nodes.find((n) => n.id === id)?.label ?? id), withChildren: scope.withChildren, sections: scope.seeds.length }, items, left };
+  skipped.sort((a, b) => a.reason.localeCompare(b.reason) || a.nodeLabel.localeCompare(b.nodeLabel) || a.id.localeCompare(b.id));
+  const explain: Explain = { scope: { whole: scope.whole, pickedLabels: scope.picked.map((id) => nodes.find((n) => n.id === id)?.label ?? id), withChildren: scope.withChildren, sections: scope.seeds.length }, items, skipped };
 
   const markdown = `${parts.join('\n\n')}\n`;
   return {

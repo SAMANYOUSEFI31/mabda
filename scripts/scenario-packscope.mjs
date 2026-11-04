@@ -71,7 +71,7 @@ try {
     assert.equal(await dlg.getByRole('checkbox', { name: 'زیربخش‌های بخش‌های انتخاب‌شده هم بیایند' }).isChecked(), true, 'a new pack reads the sub-sections');
     assert.match(await prev.getByTestId('scope-line').innerText(), /و زیربخش‌هایش/);
     assert.match(await prev.getByTestId('scope-line').innerText(), /«پشتیبانی و پس از فروش»/);
-    assert.equal(await prev.getByTestId('explain-left').getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).count(), 0, 'nothing is left out for being a sub-section');
+    assert.equal(await prev.getByTestId('explain-skipped').getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).count(), 0, 'nothing is left out for being a sub-section');
 
     step(`[${width}] every rule says where it comes from; «بدون تخفیف» comes from another section and reaches everywhere`);
     const guard = prev.getByTestId('explain-group-guardrail');
@@ -87,14 +87,14 @@ try {
     const kids = dlg.getByRole('checkbox', { name: 'زیربخش‌های بخش‌های انتخاب‌شده هم بیایند' });
     await kids.evaluate((n) => n.click());
     await page.waitForTimeout(900);
-    const left = prev.getByTestId('explain-left');
+    const left = prev.getByTestId('explain-skipped');
     await left.getByRole('button', { name: /چه نیامد و چرا/ }).click();
     await left.getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).waitFor();
     assert.match(await left.innerText(), /«ارسال و بسته‌بندی»|زیربخش «ارسال/, 'it names the sub-section that was left out');
-    await shot('3-left-out');
+    await shot('3-skipped');
     await kids.evaluate((n) => n.click());
     await page.waitForTimeout(900);
-    assert.equal(await prev.getByTestId('explain-left').getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).count(), 0);
+    assert.equal(await prev.getByTestId('explain-skipped').getByRole('heading', { name: /زیربخشی که انتخاب نشده/ }).count(), 0);
 
     step(`[${width}] «ببین و ویرایش»: the rule opens where its reach («محدودهٔ اثر») is decided, with a sentence of where it will come`);
     await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش قید/ }).click();
