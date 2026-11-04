@@ -417,6 +417,8 @@ export interface PackSelection {
   statuses: Array<'Proposed' | 'Needs Review'>;
   /** assumptions go in their own labelled section, with the rule */
   includeAssumptions: boolean;
+  /** the sub-sections of the picked sections are read too (src/core/packScope.ts). Absent = no: a pack saved before this switch keeps what it had */
+  withChildren?: boolean;
 }
 export interface SavedPack {
   id: string; workspaceId: string; name: string; selection: PackSelection; /** a short instruction for the AI that opens the pack */ instruction: string; createdAt: string; updatedAt: string;

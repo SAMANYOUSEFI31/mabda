@@ -473,6 +473,40 @@ test('«درخواست برای AI»: kind + one line + scope → the assembled 
     const plain = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'ساده', kind: 'bogus', template: 'x' })).json.pack;
     assert.equal(plain.kind, undefined, 'an unknown kind is a plain pack');
 
+    // a saved REQUEST reads every picked section (it used to read only the first), with or without the sub-sections; the live preview is the same function
+    const sa = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش الف' })).json.node.id;
+    const sb = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: 'business', label: 'بخش ب' })).json.node.id;
+    const sc = (await t.api('POST', '/workspaces/ws_studio/nodes', { parentId: sa, label: 'زیربخش الف' })).json.node.id;
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت الف', content: 'واقعیت-الفِ-یکتا', nodeId: sa });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت ب', content: 'واقعیت-بِ-یکتا', nodeId: sb });
+    await mk({ type: 'Fact', status: 'Confirmed', title: 'واقعیت زیر الف', content: 'واقعیت-زیرِ-الفِ-یکتا', nodeId: sc });
+    const two = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'درخواست دوبخشی', kind: 'question', template: 'چه می‌دانیم؟', selection: { nodeIds: [sa, sb], facets: [], statuses: [], includeAssumptions: true } })).json.pack;
+    assert.equal(two.selection.withChildren, false, 'a pack without the switch keeps no sub-sections');
+    const r2 = (await t.api('GET', `/workspaces/ws_studio/saved-packs/${two.id}/render`)).json;
+    assert.ok(r2.markdown.includes('واقعیت-الفِ-یکتا') && r2.markdown.includes('واقعیت-بِ-یکتا'), 'BOTH picked sections are in the request, not only the first');
+    assert.ok(!r2.markdown.includes('واقعیت-زیرِ-الفِ-یکتا'), 'a sub-section is not read unless asked');
+    assert.equal(r2.explain.left.find((l: any) => l.title === 'واقعیت زیر الف')?.reason, 'child', 'and the left-out list says why');
+    const withKids = (await t.api('PUT', `/workspaces/ws_studio/saved-packs/${two.id}`, { name: 'درخواست دوبخشی', instruction: '', kind: 'question', template: 'چه می‌دانیم؟', selection: { ...two.selection, withChildren: true } })).json.pack;
+    assert.equal(withKids.selection.withChildren, true);
+    assert.ok(((await t.api('GET', `/workspaces/ws_studio/saved-packs/${two.id}/render`)).json.markdown as string).includes('واقعیت-زیرِ-الفِ-یکتا'), 'with «با زیربخش‌ها» the sub-section comes');
+    // a plain pack: the same switch, the same rule
+    const plainKids = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'ساده با زیربخش', selection: { nodeIds: [sa], facets: [], statuses: [], includeAssumptions: true, withChildren: true } })).json.pack;
+    const plainNo = (await t.api('POST', '/workspaces/ws_studio/saved-packs', { name: 'ساده بدون زیربخش', selection: { nodeIds: [sa], facets: [], statuses: [], includeAssumptions: true } })).json.pack;
+    assert.ok(((await t.api('GET', `/workspaces/ws_studio/saved-packs/${plainKids.id}/render`)).json.markdown as string).includes('واقعیت-زیرِ-الفِ-یکتا'));
+    assert.ok(!((await t.api('GET', `/workspaces/ws_studio/saved-packs/${plainNo.id}/render`)).json.markdown as string).includes('واقعیت-زیرِ-الفِ-یکتا'));
+    // the live preview: not stored, and exactly the text a saved pack would give
+    const before = t.repo.listSavedPacks(s).length;
+    const pv2 = (await t.api('POST', '/workspaces/ws_studio/saved-packs/preview', { instruction: '', selection: { nodeIds: [sa], facets: [], statuses: [], includeAssumptions: true, withChildren: true } })).json;
+    assert.equal(t.repo.listSavedPacks(s).length, before, 'a preview stores nothing');
+    assert.equal(pv2.markdown.replace(/<!-- mabda-pack:[^>]+ -->/, ''), ((await t.api('GET', `/workspaces/ws_studio/saved-packs/${plainKids.id}/render`)).json.markdown as string).replace(/<!-- mabda-pack:[^>]+ -->/, ''));
+    assert.ok(pv2.explain.items.length > 0 && pv2.explain.scope.withChildren === true);
+    assert.ok(!JSON.stringify(pv2).includes(SECRET), 'a sample is never in a pack, nor in its explanation');
+    // the request dialog's route reads several sections too, with the sub-sections by default
+    const rq2 = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'question', request: 'چه می‌دانیم؟', scopeNodeIds: [sa, sb] })).json;
+    assert.ok(rq2.markdown.includes('واقعیت-الفِ-یکتا') && rq2.markdown.includes('واقعیت-بِ-یکتا') && rq2.markdown.includes('واقعیت-زیرِ-الفِ-یکتا'), 'default: with sub-sections');
+    const rq3 = (await t.api('POST', '/workspaces/ws_studio/ai-requests', { kind: 'question', request: 'چه می‌دانیم؟', scopeNodeIds: [sa], withChildren: false })).json;
+    assert.ok(!rq3.markdown.includes('واقعیت-زیرِ-الفِ-یکتا') && rq3.excluded.some((e: any) => e.reason === 'child'));
+
     // MCP: a prompt per kind
     const c = await t.connect((await t.token()).token);
     const prompts = (await c.listPrompts()).prompts.map((p) => p.name);

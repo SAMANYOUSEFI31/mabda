@@ -650,7 +650,16 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const p = repo.getSavedPack(s, req.params.id);
     if (!p) throw new RepoError('not_found', 'بسته پیدا نشد.');
     const r = renderSavedPack(repo, s, p, clock());
-    res.json({ pack: p, markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts });
+    res.json({ pack: p, markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts, explain: r.explain });
+  }));
+  // a LIVE preview while a pack is being built or edited: the draft is resolved exactly as a saved one (same function, same text), nothing is stored
+  router.post('/workspaces/:wid/saved-packs/preview', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    const t = new Date().toISOString();
+    const draft = repo.draftSavedPack(s, { selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template });
+    const r = renderSavedPack(repo, s, { ...draft, id: 'preview', workspaceId: s.workspaceId, name: 'preview', createdAt: t, updatedAt: t }, clock());
+    res.json({ markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts, explain: r.explain });
   }));
 
   // ── Context pack (copy for any AI) + pasted-answer import ────────────
@@ -682,6 +691,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const wanted = typeof b.packId === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(b.packId) ? b.packId : newId('rq');
     const r = renderAiRequest(repo, s, {
       kind: b.kind, request, scopeNodeId: typeof b.scopeNodeId === 'string' && b.scopeNodeId ? b.scopeNodeId : undefined,
+      scopeNodeIds: Array.isArray(b.scopeNodeIds) ? b.scopeNodeIds.filter((x): x is string => typeof x === 'string').slice(0, 40) : undefined, withChildren: typeof b.withChildren === 'boolean' ? b.withChildren : undefined,
       tokenBudget: typeof b.tokenBudget === 'number' ? b.tokenBudget : undefined,
       extraIds: Array.isArray(b.extraIds) ? b.extraIds.filter((x): x is string => typeof x === 'string').slice(0, 200) : undefined, packId: wanted,
     }, clock());

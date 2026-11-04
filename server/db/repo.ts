@@ -1122,6 +1122,7 @@ export class Repo {
       facets: cleanFacets(sel?.facets) ?? [],
       statuses: (['Proposed', 'Needs Review'] as const).filter((st) => Array.isArray(sel?.statuses) && (sel!.statuses as string[]).includes(st)),
       includeAssumptions: sel?.includeAssumptions !== false,
+      withChildren: sel?.withChildren === true,
     };
   }
   private rowToPack(r: Record<string, unknown>): SavedPack {
@@ -1151,6 +1152,11 @@ export class Repo {
     const id = newId('pk');
     this.db.prepare('INSERT INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, name, selection, instruction, kind, template, t, t);
     return this.getSavedPack(s, id)!;
+  }
+  /** a pack that is still being built: cleaned the way a saved one is, never stored (the live preview) */
+  draftSavedPack(s: Scope, input: { selection?: Partial<PackSelection>; instruction?: string; kind?: unknown; template?: unknown }): Pick<SavedPack, 'selection' | 'instruction' | 'kind' | 'template'> {
+    const kind = isRequestKind(input.kind) ? input.kind : undefined;
+    return { selection: this.cleanSelection(s, input.selection), instruction: (input.instruction ?? '').trim().slice(0, 1000), ...(kind ? { kind, template: String(input.template ?? '').trim().slice(0, REQUEST_MAX_CHARS) } : {}) };
   }
   /** the demo builder: raw insert with explicit timestamps */
   importSavedPack(s: Scope, p: SavedPack) {

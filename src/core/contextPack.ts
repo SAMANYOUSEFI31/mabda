@@ -6,9 +6,11 @@
 import type { ContextChange, ContextObject, Measurement, Metric, ContextRelationship, DeliverableSpec, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { AmbiguityMap } from './contextEngine';
-import { ancestorIds } from './nodeTree';
+import { ancestorIds, resolveNodeId, subtreeIds } from './nodeTree';
 import { estimateTokens } from './tokens';
-import { effectiveObjects, guardrailsFor } from './effectiveContext';
+import { IN_FORCE } from './effectiveContext';
+import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
+import type { Explain, ExplainItem, ExplainLeft } from './scopeExplain';
 import { guardrailText } from './redlineExamples';
 import { metricsPackSection } from './metrics';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
@@ -32,6 +34,8 @@ export interface PackInput {
   facets?: string[];
   statuses?: Array<'Proposed' | 'Needs Review'>;
   includeAssumptions?: boolean;
+  /** a saved pack: the sub-sections of the picked sections are read too (src/core/packScope.ts) */
+  withChildren?: boolean;
   instruction?: string;
   /** recorded results: a SEPARATE section (confirmed numbers only, never knowledge). Absent = no section */
   metrics?: { metrics: Metric[]; measurements: Measurement[]; changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] };
@@ -44,6 +48,8 @@ export interface ContextPack {
   /** exactly the objects (id + version) that appear in the pack: Confirmed and Proposed */
   refs: UsedContextRef[];
   counts: { confirmed: number; proposed: number; assumptions: number; rejected: number; gaps: number; guardrails: number; metrics: number };
+  /** what came and why, what did not and why — from the same data as the text (docs/spine.md → «دامنهٔ بسته») */
+  explain: Explain;
 }
 
 export const PACK_MARKER = (id: string) => `<!-- mabda-pack:${id} -->`;
@@ -77,21 +83,25 @@ export function buildContextPack(input: PackInput): ContextPack {
   const { nodes, spec, deliverable } = input;
   const rels = input.relationships ?? [];
   const now = input.now ?? new Date();
-  // relevant = what is IN FORCE at the seed nodes (src/core/effectiveContext.ts): the spec's Context nodes, or the target node, or the whole tree
-  const seeds = spec ? [...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => c.nodeId) : input.targetNodeIds?.length ? input.targetNodeIds : input.targetNodeId ? [input.targetNodeId] : nodes.map((n) => n.id);
-  if (spec) seeds.push('content');
-  const inForceIds = new Set<string>();
-  for (const n of [...new Set(seeds)]) for (const o of effectiveObjects(n, input.objects, nodes, rels, now)) inForceIds.add(o.id);
+  // the scope: a workstream's own sections (hints, resolved against THIS tree — never a fixed id), or the picked sections of a
+  // saved pack (+ their sub-sections when asked), or the whole tree. One rule for packs and requests: src/core/packScope.ts
+  const wanted = spec
+    ? [...new Set([...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => resolveNodeId(nodes, c.nodeId)))]
+    : input.targetNodeIds?.length ? input.targetNodeIds : input.targetNodeId ? [input.targetNodeId] : [];
+  const scope = scopeSeeds(nodes, wanted, spec ? true : !!input.withChildren); // a workstream reads its sections WITH their sub-sections (what generation reads: the sections it names and everything beneath)
+  const standing = standingOver(scope, input.objects, nodes, rels, now);
+  const inForce = (o: ContextObject) => { const st = standing.get(o.id); return !!st && IN_FORCE.has(st.origin); };
   const facetSet = new Set(input.facets ?? []);
   const extra = new Set<string>(input.statuses ?? ['Proposed', 'Needs Review']);
-  const relevant = input.objects.filter((o) => inForceIds.has(o.id)
-    && (!facetSet.size || (o.facets ?? []).some((f) => facetSet.has(f)))
-    && (o.status === 'Confirmed' || extra.has(o.status) || (!!o.assumption && input.includeAssumptions !== false)) // active assumptions come with their own switch, whatever their status
-    && (input.includeAssumptions !== false || !o.assumption));
-  // guardrails: Constraints in force at the target (spec / node); for the whole-tree pack only the ones that hold from the top
-  const guardSeeds = spec || input.targetNodeId || input.targetNodeIds?.length ? [...new Set(seeds)] : nodes.filter((n) => !n.parentId).map((n) => n.id);
-  const guardIds = new Set<string>();
-  for (const n of guardSeeds) for (const o of guardrailsFor(n, input.objects, nodes, rels, now)) guardIds.add(o.id);
+  const facetOk = (o: ContextObject) => !facetSet.size || (o.facets ?? []).some((f) => facetSet.has(f));
+  const statusOk = (o: ContextObject) => o.status === 'Confirmed' || extra.has(o.status) || (!!o.assumption && input.includeAssumptions !== false); // active assumptions come with their own switch, whatever their status
+  const assumptionOk = (o: ContextObject) => input.includeAssumptions !== false || !o.assumption;
+  const relevant = input.objects.filter((o) => inForce(o) && facetOk(o) && statusOk(o) && assumptionOk(o));
+  // guardrails: Constraints in force at the target (spec / picked sections); for the whole-tree pack only the ones that hold from the top
+  const guardScope = scope.whole ? scopeSeeds(nodes, nodes.filter((n) => !n.parentId).map((n) => n.id), false) : scope;
+  const guardStanding = scope.whole ? standingOver(guardScope, input.objects, nodes, rels, now) : standing;
+  const guardObjects = input.objects.filter((o) => { const st = guardStanding.get(o.id); return !!st && IN_FORCE.has(st.origin) && o.type === 'Constraint' && o.status === 'Confirmed'; });
+  const guardIds = new Set(guardObjects.map((o) => o.id));
 
   // an assumption is neither knowledge nor merely «proposed»: it has its own section and rule
   const assumptions = relevant.filter((o) => isAssumption(o));
@@ -140,8 +150,34 @@ export function buildContextPack(input: PackInput): ContextPack {
   }
   parts.push(RESPONSE_FORMAT);
 
+  // — what came and why, what did not and why: the same data as the text above —
+  const nodeLabel = (id: string) => path(id);
+  const items: ExplainItem[] = [
+    ...(spec?.guardrails ?? []).filter(Boolean).map((g): ExplainItem => ({ title: g, nodeLabel: spec!.title, group: 'guardrail', from: `از جریان کار «${spec!.title}»` })),
+    ...guardObjects.map((o): ExplainItem => ({ id: o.id, title: o.title, type: o.type, nodeLabel: nodeLabel(o.nodeId), group: 'guardrail', from: fromText(o, scope, nodes), editable: true, ...(o.validUntil ? { note: `معتبر تا ${o.validUntil}` } : {}) })),
+    ...relevant.filter((o) => !guardIds.has(o.id)).map((o): ExplainItem => ({
+      id: o.id, title: o.title, type: o.type, nodeLabel: nodeLabel(o.nodeId),
+      group: isAssumption(o) ? 'assumption' : o.status !== 'Confirmed' ? 'unconfirmed' : o.type === 'Decision' ? 'decision' : 'fact',
+      from: fromText(o, scope, nodes), ...(o.status !== 'Confirmed' && !isAssumption(o) ? { note: o.status === 'Proposed' ? 'پیشنهادی' : 'نیازمند بررسی' } : {}),
+    })),
+  ];
+  const included = new Set([...relevant.map((o) => o.id), ...guardObjects.map((o) => o.id)]);
+  const inPickedSub = (o: ContextObject) => scope.picked.some((p) => p !== o.nodeId && subtreeIds(nodes, p).includes(o.nodeId));
+  const left: ExplainLeft[] = [];
+  for (const o of input.objects) {
+    if (included.has(o.id) || o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
+    const st = standing.get(o.id);
+    const reason: ExplainLeft['reason'] = !st ? (!scope.withChildren && inPickedSub(o) ? 'child' : 'scope')
+      : st.origin === 'expired' ? 'expired' : st.origin === 'overridden' ? 'overridden'
+      : !facetOk(o) ? 'facet' : !assumptionOk(o) ? 'assumption' : 'status';
+    left.push({ id: o.id, title: o.title, type: o.type, nodeLabel: nodeLabel(o.nodeId), reason, why: leftWhy(reason, o, nodes, { overriddenByTitle: st?.overriddenBy ? input.objects.find((x) => x.id === st.overriddenBy)?.title : undefined }) });
+  }
+  left.sort((a, b) => a.reason.localeCompare(b.reason) || a.nodeLabel.localeCompare(b.nodeLabel) || a.id.localeCompare(b.id));
+  const explain: Explain = { scope: { whole: scope.whole, pickedLabels: scope.picked.map((id) => nodes.find((n) => n.id === id)?.label ?? id), withChildren: scope.withChildren, sections: scope.seeds.length }, items, left };
+
   const markdown = `${parts.join('\n\n')}\n`;
   return {
+    explain,
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
     refs: relevant.map((o) => ({ id: o.id, version: o.version })),
     counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? input.metrics!.metrics.filter((m) => !m.archived).length : 0 },
