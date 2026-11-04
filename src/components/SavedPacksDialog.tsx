@@ -10,11 +10,15 @@ import { flatten } from '../core/nodeTree';
 import { KIND_LABEL } from '../core/aiRequest';
 import type { RequestKind } from '../core/aiRequest';
 import { Alert, Badge, Button, Checkbox, Dialog, EmptyState, Spinner, TextField, Textarea, formatNumber, useToast } from '../ui';
+import type { Explain } from '../core/scopeExplain';
+import { ClosedSection } from './ClosedSection';
+import { ScopeExplain } from './ScopeExplain';
 
 type PackRow = SavedPack & { tokens: number; counts: { confirmed: number; proposed: number; assumptions: number; rejected: number } };
-interface Props { open: boolean; workspaceId: string; nodes: TreeNode[]; objects: ContextObject[]; onClose: () => void }
+interface Props { open: boolean; workspaceId: string; nodes: TreeNode[]; objects: ContextObject[]; onClose: () => void; /** «این قید را ببین / ویرایش کن» from the preview */ onOpenObject?: (o: ContextObject) => void }
 
-const EMPTY: PackSelection = { nodeIds: [], facets: [], statuses: [], includeAssumptions: true };
+/** a new pack reads the sub-sections of what is picked (the rule of the node chat and of the audit's gaps); an old one keeps what it had */
+const EMPTY: PackSelection = { nodeIds: [], facets: [], statuses: [], includeAssumptions: true, withChildren: true };
 
 /** print-friendly copy: a new window with the Markdown as plain RTL text */
 export function printPack(name: string, markdown: string) {
@@ -29,18 +33,34 @@ export function printPack(name: string, markdown: string) {
 /** «بسته‌های دانش»: a named selection, built once and pasted into any AI in one click. The AI only gets Confirmed knowledge as fact; assumptions travel apart. */
 export const SavedPacksDialog: React.FC<Props> = (props) => (props.open ? <Packs {...props} /> : null);
 
-const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
+const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenObject }) => {
   const toast = useToast();
   const [packs, setPacks] = useState<PackRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id?: string; name: string; instruction: string; selection: PackSelection; kind?: RequestKind; template?: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ markdown: string; tokens: number; counts: Record<string, number>; explain: Explain } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const facetNames = useMemo(() => [...new Set(objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [objects]);
 
   const load = useCallback(async () => {
     try { setPacks((await dataApi.listSavedPacks(workspaceId)).packs as PackRow[]); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); }
   }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
+
+  // the live preview follows the choices (typing waits a moment); it is the same function that renders a saved pack — nothing is stored
+  useEffect(() => {
+    if (!editing) { setPreview(null); return undefined; }
+    let live = true;
+    const t = setTimeout(() => {
+      dataApi.previewSavedPack(workspaceId, { instruction: editing.instruction, selection: editing.selection, kind: editing.kind, template: editing.template })
+        .then((r) => { if (live) { setPreview(r); setPreviewError(null); } })
+        .catch((e) => { if (live) setPreviewError(e instanceof DataApiError ? e.message : 'پیش‌نمایش ساخته نشد؛ دوباره.'); });
+    }, preview ? 300 : 0);
+    return () => { live = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, editing?.instruction, editing?.selection, editing?.kind, editing?.template, !!editing]);
+  const openObject = (id: string) => { const o = objects.find((x) => x.id === id); if (o && onOpenObject) onOpenObject(o); };
 
   const render = async (p: PackRow) => (await dataApi.renderSavedPack(workspaceId, p.id)).markdown;
   const copy = async (p: PackRow) => {
@@ -64,7 +84,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
 
   return (
     <Dialog
-      open onClose={onClose} size="lg" title="بسته‌های دانش"
+      open onClose={onClose} size="xl" title="بسته‌های دانش"
       description="یک‌بار بساز، با یک کلیک در هر AI بچسبان. فقط دانش تأییدشده «واقعیت» است؛ فرض‌ها و گزینه‌های ردشده جدا و با دستور صریح می‌روند."
       footer={editing
         ? <><Button variant="ghost" onClick={() => setEditing(null)}>انصراف</Button><Button variant="primary" loading={busy === 'save'} disabled={!editing.name.trim()} onClick={save}>ذخیرهٔ بسته</Button></>
@@ -72,13 +92,14 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
     >
       {error && <Alert intent="danger">{error}</Alert>}
       {editing ? (
-        <div className="flex flex-col gap-stack-md" role="group" aria-label="ویرایش بسته">
+        <div className="grid grid-cols-1 gap-stack-lg md:grid-cols-2 md:items-start" role="group" aria-label="ویرایش بسته">
+          <div className="flex flex-col gap-stack-md">
           <TextField label="نام بسته" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: برای نوشتن متن تبلیغ" />
           {editing.kind
             ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ گرهٔ اول دامنه است." />
             : <Textarea label="دستور کوتاه برای AI (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
           <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام گره‌ها؟ (هیچ‌کدام = کل درخت)</legend>
-            <div className="grid grid-cols-1 gap-inline-xs sm:grid-cols-2">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
+            <div className="grid grid-cols-1 gap-inline-xs">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
           </fieldset>
           {facetNames.length > 0 && (
             <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">فقط این بُعدها (هیچ‌کدام = همه)</legend>
@@ -90,7 +111,30 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
             <Checkbox label="پیشنهادی‌ها (برچسب «تأییدنشده»)" checked={editing.selection.statuses.includes('Proposed')} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, statuses: e.target.checked ? [...new Set([...editing.selection.statuses, 'Proposed' as const])] : editing.selection.statuses.filter((x) => x !== 'Proposed') } })} />
             <Checkbox label="نیازمند بررسی (برچسب «تأییدنشده»)" checked={editing.selection.statuses.includes('Needs Review')} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, statuses: e.target.checked ? [...new Set([...editing.selection.statuses, 'Needs Review' as const])] : editing.selection.statuses.filter((x) => x !== 'Needs Review') } })} />
           </fieldset>
-          <p className="body-sm text-text-subtle">دامنه رعایت می‌شود: قیدِ یک بخش فقط در بستهٔ همان بخش و زیرشاخه‌هایش می‌آید. نمونه‌ها هرگز نمی‌آیند.</p>
+          <Checkbox label="زیربخش‌های بخش‌های انتخاب‌شده هم بیایند" checked={editing.selection.withChildren === true} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, withChildren: e.target.checked } })} hint="اگر «محصول» را تیک بزنی، «آفر و قیمت‌گذاری» و بقیهٔ زیربخش‌هایش هم می‌آیند. بدون تیک فقط خود بخش (و آنچه از بالا به ارث می‌برد). بخش‌های هم‌سطح هیچ‌وقت نمی‌آیند." />
+          <p className="body-sm text-text-subtle">هر بخش می‌آورد: دانش خودش + آنچه از بخش‌های بالاتر به ارث می‌برد + قیدهای «همه‌جا». آنچه در یک بخش کنار گذاشته شده، منقضی‌شده‌ها، نمونه‌ها و یادداشت‌ها هرگز نمی‌آیند؛ فرض و پیشنهادی فقط با تیک و با برچسب «تأییدنشده».</p>
+
+          </div>
+
+          <section className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg" aria-label="پیش‌نمایش بسته" data-testid="pack-preview">
+            <h3 className="title text-text-default">این بسته چه می‌آورد؟</h3>
+            {previewError && <Alert intent="danger">{previewError}</Alert>}
+            {!preview && !previewError && <div className="flex items-center gap-inline-sm text-text-subtle"><Spinner label="در حال ساخت" /><span className="body-sm">در حال ساخت…</span></div>}
+            {preview && (
+              <>
+                <div className="flex flex-wrap items-center gap-inline-xs" aria-live="polite">
+                  <Badge intent="neutral" icon="FileText">حدود {formatNumber(preview.tokens)} توکن</Badge>
+                  <Badge intent="success" icon={false}>{formatNumber(preview.explain.items.length)} مورد می‌آید</Badge>
+                  <Badge intent="neutral" icon={false}>{formatNumber(preview.explain.skipped.length)} نمی‌آید</Badge>
+                </div>
+                {preview.tokens > 6000 && <Alert intent="warning">بسته بلند است (حدود {formatNumber(preview.tokens)} توکن). بخش‌ها را کمتر کن یا «زیربخش‌ها» را بردار.</Alert>}
+                <ScopeExplain explain={preview.explain} onOpenObject={onOpenObject ? openObject : undefined} />
+                <ClosedSection title="متن دقیقی که کپی می‌شود">
+                  <Textarea label="متن بسته (فقط‌خواندنی)" rows={10} readOnly value={preview.markdown} className="code bidi-plain" />
+                </ClosedSection>
+              </>
+            )}
+          </section>
         </div>
       ) : packs === null ? (
         <div className="flex justify-center p-inset-xl"><Spinner /></div>
@@ -110,12 +154,12 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose }) => {
               </div>
               {p.kind && <p className="body-sm text-text-subtle"><Badge intent="neutral" icon="Sparkles">درخواست: {KIND_LABEL[p.kind]}</Badge> {p.template}</p>}
               {p.instruction && <p className="body-sm text-text-subtle">{p.instruction}</p>}
-              <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} گره` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
+              <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} گره${p.selection.withChildren ? ' + زیربخش‌ها' : ''}` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
               <div className="flex flex-wrap gap-inline-xs">
                 <Button size="sm" variant="secondary" iconStart="Copy" loading={busy === `c${p.id}`} onClick={() => copy(p)}>کپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, kind: p.kind, template: p.template })}>ویرایش</Button>
                 <Button size="sm" variant="ghost" iconStart="FileText" loading={busy === `p${p.id}`} onClick={() => print(p)}>نسخهٔ چاپی</Button>
-                <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { await dataApi.deleteSavedPack(workspaceId, p.id); await load(); }}>حذف</Button>
+                <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { try { const r = await dataApi.deleteSavedPack(workspaceId, p.id); await load(); const gone = r.pack; toast.show({ intent: 'success', message: `بستهٔ «${p.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'برگرداندن', onClick: () => { void dataApi.restoreSavedPack(workspaceId, gone).then(load); } } } : {}) }); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'حذف نشد؛ دوباره.' }); } }}>حذف</Button>
               </div>
             </li>
           ))}

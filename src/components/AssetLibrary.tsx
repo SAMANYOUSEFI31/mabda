@@ -21,6 +21,11 @@ interface AssetLibraryProps {
   stale: StaleAsset[];
   changes?: ContextChange[];
   onGoToWorkstreams: () => void;
+  /** «بایگانی» and «حذف» of one output (the page offers «برگرداندن») */
+  onArchive?: (d: GeneratedDeliverable) => void;
+  onDelete?: (d: GeneratedDeliverable) => void;
+  /** opens the archive on its outputs */
+  onOpenArchive?: () => void;
   /** this workspace's own workstreams (the filter tabs); only those that already have an output are listed */
   workstreams: Array<{ id: string; title: string }>;
   /** the global search points at one asset: show it among all and scroll to it */
@@ -40,6 +45,9 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   changes,
   onGoToWorkstreams,
   focus,
+  onArchive,
+  onDelete,
+  onOpenArchive,
 }) => {
   const [filter, setFilter] = useState<string>('all');
   const toast = useToast();
@@ -51,7 +59,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   }, [focus]);
 
   const filtered = deliverables.filter((d) => {
-    if (d.workspaceId !== currentWorkspace.id) return false;
+    if (d.workspaceId !== currentWorkspace.id || d.archivedAt) return false;
     if (filter === 'all') return true;
     if (filter === 'stale') return stale.some((x) => x.deliverableId === d.id);
     return d.workstreamId === filter;
@@ -70,14 +78,14 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     <div className="flex flex-col gap-stack-lg">
       <div className="flex items-start justify-between gap-inline-md">
         <div>
-          <h2 className="heading-sm text-text-default">کتابخانهٔ دارایی‌ها</h2>
+          <h2 className="heading-sm text-text-default">خروجی‌های تو</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.</p>
         </div>
         <Menu
           label="بیشتر دربارهٔ کتابخانه"
           align="end"
           trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ کتابخانه" variant="secondary" />}
-          items={[{ label: 'خروجی گرفتن JSON', icon: 'Download', onSelect: handleExportJson }]}
+          items={[{ label: 'خروجی گرفتن JSON', icon: 'Download', onSelect: handleExportJson }, ...(onOpenArchive ? [{ label: 'خروجی‌های بایگانی‌شده', icon: 'Archive' as const, onSelect: onOpenArchive }] : [])]}
         />
       </div>
 
@@ -110,6 +118,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 changes={changes}
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
+                onArchive={onArchive}
+                onDelete={onDelete}
               />
               <div className="flex flex-wrap items-center justify-end">
                 <Button variant="secondary" size="sm" iconStart="Wand2" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>

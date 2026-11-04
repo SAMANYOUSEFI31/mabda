@@ -9,6 +9,7 @@ import type { StoredFile, TreeNode } from '../types';
 import type { FileChargeInfo, FileQuotaInfo } from '../types/state';
 import { flatten } from '../core/nodeTree';
 import { useAiStatus } from '../services/aiStatus';
+import { DangerDialog } from './Removal';
 import { Alert, Badge, Button, Card, Dialog, EmptyState, IconButton, Progress, Select, formatNumber } from '../ui';
 
 interface Props {
@@ -37,6 +38,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
   const managed = ai.managedEnabled;
   const [blocked, setBlocked] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [pendingDelete, setPendingDelete] = useState<StoredFile | null>(null);
   const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ file: StoredFile; charge: FileChargeInfo } | null>(null);
@@ -109,7 +111,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
                       {f.status === 'failed' ? 'دوباره' : 'پردازش'}
                     </Button>
                   )}
-                  <IconButton icon="Trash2" label={`حذف ${f.name}`} size="sm" onClick={() => run(f.id, () => onDelete(f.id))} />
+                  <IconButton icon="Trash2" label={`حذف ${f.name}`} size="sm" onClick={() => setPendingDelete(f)} />
                 </div>
               </div>
               {f.summary && <p className="body-sm whitespace-pre-wrap text-text-default">{f.summary}</p>}
@@ -147,6 +149,12 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
           </div>
         )}
       </Dialog>
+      <DangerDialog
+        open={!!pendingDelete} onClose={() => setPendingDelete(null)} title={`حذف «${pendingDelete?.name ?? ''}»`}
+        description="فایل و متن پردازش‌شده‌اش پاک می‌شود. دانشی که از آن ساخته شده می‌ماند و منبعش را نگه می‌دارد. این کار برنمی‌گردد؛ اگر لازم شد دوباره بارگذاری کن."
+        confirmLabel="حذف فایل"
+        onConfirm={async () => { const f = pendingDelete; if (!f) return; setPendingDelete(null); await run(f.id, () => onDelete(f.id)); }}
+      />
     </Card>
   );
 };

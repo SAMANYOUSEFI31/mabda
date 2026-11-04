@@ -127,11 +127,13 @@ export class Repo {
       const stored = exists ? this.getWorkspace(userId, ws.id) : undefined;
       ws = { ...ws, ...((opts.demo || stored?.isDemo) ? { isDemo: true } : { isDemo: undefined }) };
       if (!ws.isDemo) delete ws.isDemo;
+      // archived is decided by the server only (a client save must not un-archive, nor archive)
+      if (stored?.archivedAt) ws.archivedAt = stored.archivedAt; else delete ws.archivedAt;
       // only ids of the library survive, once, in library order
       if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = LIBRARY.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
       if (!exists) {
         // the showcase workspace is not counted: it never uses up a plan's workspace allowance
-        if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
+        if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
         this.seedStartNodes({ userId, workspaceId: ws.id });
       } else {
@@ -382,7 +384,7 @@ export class Repo {
 
   /** stale assets with every reason: changed versions AND decisions they rest on (depends_on) that changed unreviewed */
   computeStale(s: Scope, dels: GeneratedDeliverable[] = this.listDeliverables(s)): StaleAsset[] {
-    return computeStaleAssets(dels, this.listObjects(s), { relationships: this.listRelationships(s), changes: this.listChanges(s) });
+    return computeStaleAssets(dels.filter((d) => !d.archivedAt), this.listObjects(s), { relationships: this.listRelationships(s), changes: this.listChanges(s) });
   }
 
   private describeImpact(list: StaleAsset[], dels: GeneratedDeliverable[]): ImpactResult {
@@ -532,7 +534,7 @@ export class Repo {
   }
 
   // ── Change log (append-only; `reason` is for people and is never injected into a model) ──
-  private recordChange(s: Scope, c: { objectId: string; fromVersion: number; toVersion: number; kind: ContextChangeKind; meta?: ChangeMeta; before?: Record<string, unknown>; after?: Record<string, unknown>; source?: ObjectSource; at?: string }) {
+  recordChange(s: Scope, c: { objectId: string; fromVersion: number; toVersion: number; kind: ContextChangeKind; meta?: ChangeMeta; before?: Record<string, unknown>; after?: Record<string, unknown>; source?: ObjectSource; at?: string }) {
     const inferred = actorOfSource(c.source);
     const actor = c.meta?.actor ?? inferred.actor;
     const label = c.meta?.label ?? (c.meta?.actor ? undefined : inferred.label);
@@ -745,6 +747,21 @@ export class Repo {
     return { ...cur, content, updatedAt: t };
   }
 
+  /** «برگرداندن»: the note comes back with its own id, text, dates and (if it had one) its place on the free canvas */
+  restoreNote(s: Scope, n: Note, pos?: { x?: number; y?: number }): Note {
+    this.assertWorkspace(s);
+    if (this.getNote(s, n.id)) return this.getNote(s, n.id)!;
+    const nodeId = this.placeNode(s, n.nodeId);
+    this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, String(n.content ?? ''), n.createdAt, n.updatedAt);
+    if (pos && (pos.x !== undefined || pos.y !== undefined)) this.saveCanvasItem(s, 'free', `note:${n.id}`, pos);
+    return { ...n, nodeId, workspaceId: s.workspaceId };
+  }
+  /** where a note sits on the free canvas (so a delete can be undone completely) */
+  notePosition(s: Scope, id: string): { x?: number; y?: number } | undefined {
+    const r = this.db.prepare("SELECT x, y FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = 'free' AND item_ref = ?").get(s.workspaceId, s.userId, `note:${id}`) as { x: number | null; y: number | null } | undefined;
+    return r ? { ...(r.x !== null ? { x: r.x } : {}), ...(r.y !== null ? { y: r.y } : {}) } : undefined;
+  }
+
   deleteNote(s: Scope, id: string) {
     this.db.prepare("DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = 'free' AND item_ref = ?").run(s.workspaceId, s.userId, `note:${id}`);
     this.db.prepare('DELETE FROM notes WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
@@ -764,8 +781,11 @@ export class Repo {
     this.assertWorkspace(s);
     const own = this.db.prepare('SELECT user_id, workspace_id FROM deliverables WHERE id = ?').get(d.id) as { user_id: string; workspace_id: string } | undefined;
     if (own && (own.user_id !== s.userId || own.workspace_id !== s.workspaceId)) throw new RepoError('forbidden', 'دسترسی ندارید.');
+    const archivedAt = (this.getDeliverable(s, d.id) as GeneratedDeliverable | undefined)?.archivedAt;
+    const keep = { ...d, workspaceId: s.workspaceId, ...(archivedAt ? { archivedAt } : {}) };
+    if (!archivedAt) delete keep.archivedAt;
     this.db.prepare('INSERT INTO deliverables (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET data = excluded.data')
-      .run(d.id, s.userId, s.workspaceId, JSON.stringify({ ...d, workspaceId: s.workspaceId }), d.createdAt);
+      .run(d.id, s.userId, s.workspaceId, JSON.stringify(keep), d.createdAt);
     return d;
   }
 
@@ -1122,6 +1142,7 @@ export class Repo {
       facets: cleanFacets(sel?.facets) ?? [],
       statuses: (['Proposed', 'Needs Review'] as const).filter((st) => Array.isArray(sel?.statuses) && (sel!.statuses as string[]).includes(st)),
       includeAssumptions: sel?.includeAssumptions !== false,
+      withChildren: sel?.withChildren === true,
     };
   }
   private rowToPack(r: Record<string, unknown>): SavedPack {
@@ -1152,6 +1173,11 @@ export class Repo {
     this.db.prepare('INSERT INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, name, selection, instruction, kind, template, t, t);
     return this.getSavedPack(s, id)!;
   }
+  /** a pack that is still being built: cleaned the way a saved one is, never stored (the live preview) */
+  draftSavedPack(s: Scope, input: { selection?: Partial<PackSelection>; instruction?: string; kind?: unknown; template?: unknown }): Pick<SavedPack, 'selection' | 'instruction' | 'kind' | 'template'> {
+    const kind = isRequestKind(input.kind) ? input.kind : undefined;
+    return { selection: this.cleanSelection(s, input.selection), instruction: (input.instruction ?? '').trim().slice(0, 1000), ...(kind ? { kind, template: String(input.template ?? '').trim().slice(0, REQUEST_MAX_CHARS) } : {}) };
+  }
   /** the demo builder: raw insert with explicit timestamps */
   importSavedPack(s: Scope, p: SavedPack) {
     this.db.prepare('INSERT OR REPLACE INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(p.id, s.userId, s.workspaceId, p.name, JSON.stringify(this.cleanSelection(s, p.selection)), p.instruction, p.kind ?? null, p.kind ? (p.template ?? '') : null, p.createdAt, p.updatedAt);
@@ -1179,7 +1205,7 @@ export class Repo {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
       nodes: this.listNodes(s), objects, samples: this.listSampleObjects(s), relationships: this.listRelationships(s), notes: this.listNotes(s),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
-      stale: this.impactEnabled(s) ? this.computeStale(s, deliverables) : [],
+      stale: this.impactEnabled(s) ? this.computeStale(s, deliverables.filter((d) => !d.archivedAt)) : [],
       judgments: this.listJudgments(s),
       pairJudgments: this.listPairJudgments(s),
       changes: this.listChanges(s),

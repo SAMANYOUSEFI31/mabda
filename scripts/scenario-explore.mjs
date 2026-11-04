@@ -81,6 +81,7 @@ try {
     await page.waitForTimeout(600);
     assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => n.content.includes('پنجشنبه')), 'the note is saved');
     await shot('3-raw-thought');
+    await nav('منبع حقیقت', 'منبع');
 
     step(`[${width}] ج: «دانشی ثبت کن که به قید تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
     await page.getByRole('button', { name: /^(ثبت دانش|افزودن دانش)$/ }).first().click();

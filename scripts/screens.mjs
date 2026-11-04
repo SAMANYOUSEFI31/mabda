@@ -15,8 +15,9 @@ const SIZES = [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
-  { id: 'workstreams', label: 'جریان‌ها', desktopLabel: 'جریان‌های کار' },
-  { id: 'assets', label: 'دارایی‌ها' },
+  { id: 'workstreams', label: 'خروجی‌ها', then: 'build' },
+  { id: 'assets', label: 'خروجی‌ها' },
+  { id: 'thinking', label: 'فکر' },
 ];
 
 const audit = () => {
@@ -134,6 +135,7 @@ for (const size of SIZES) {
     const mobile = size.width < 768;
     const sel = mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${t.label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${t.desktopLabel || t.label}")`;
     await page.locator(sel).first().click();
+    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
 
@@ -179,7 +181,7 @@ for (const size of SIZES) {
 
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
-  await accountItem('حساب کاربری و داده‌ها'); await shoot('dialog-account'); await closeDialog();
+  await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect');
   await page.getByRole('dialog').getByRole('button', { name: 'ساخت کلید' }).click({ timeout: 2500 }).catch(() => {}); await page.waitForTimeout(400); await shoot('dialog-connect-2'); await closeDialog();
   // the canvas on the showcase workspace: its four states (relations, board, free, full screen)
@@ -191,17 +193,29 @@ for (const size of SIZES) {
   await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
-  await layoutTab('رابطه‌ها'); await shoot('canvas-relations');
+  await page.waitForTimeout(500); await shoot('canvas-relations');
   await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(350); await shoot('canvas-relations-selected');
   await page.getByTestId('canvas-inspector').getByRole('button', { name: /^به چه چیزی وابسته است/ }).click({ timeout: 2000 }).catch(() => {}); await page.getByTestId('canvas-inspector').getByRole('button', { name: /^چه چیزی روی آن سوار است/ }).click({ timeout: 2000 }).catch(() => {}); await shoot('canvas-inspector-open');
+  // the thinking canvas: «آزاد» (with the tray) and «تابلو»
+  await goTab(TABS[4]); await shoot('thinking-list');
+  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+  await page.getByTestId('canvas-stage').waitFor();
+  await shoot('canvas-free');
   await layoutTab('تابلو'); await shoot('canvas-board');
-  await layoutTab('آزاد'); await shoot('canvas-free');
-  await layoutTab('رابطه‌ها');
+  await goTab(TABS[1]);
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   // the showcase's outputs (two are «به‌روز نیست») and the workflow page with its questions
   await goTab(TABS[3]); await shoot('assets-demo');
   await goTab(TABS[2]); await shoot('workstreams-demo');
+  // the removal model: the node delete dialog (plan, tree after, what stops reaching whom) and the archive
+  await goTab(TABS[1]);
+  await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
+  await page.getByRole('button', { name: 'عملیات گرهٔ کارگاه برشته‌کاری' }).first().click();
+  await page.getByRole('menuitem', { name: 'حذف' }).click();
+  await page.getByTestId('node-delete').waitFor(); await page.waitForTimeout(300);
+  await shoot('dialog-node-delete'); await closeDialog();
+  await accountItem('بایگانی و حذف‌های اخیر'); await page.waitForTimeout(500); await shoot('dialog-archive'); await closeDialog();
   // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
   await goTab(TABS[0]);
   await shoot('home-demo');
@@ -212,6 +226,14 @@ for (const size of SIZES) {
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با قیدهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));
   await shoot('dialog-request'); await closeDialog();
+  // «بسته‌های دانش»: a pack being built, with the live preview (what comes, from where, what did not and why)
+  await goTab(TABS[0]);
+  await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
+  await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
+  await page.getByRole('dialog').getByLabel('نام بسته').fill('پاسخ به مشتری');
+  await page.getByRole('dialog').getByRole('checkbox', { name: /^(— )*پشتیبانی و پس از فروش$/ }).evaluate((n) => n.click());
+  await page.getByTestId('explain-group-guardrail').waitFor(); await page.waitForTimeout(500);
+  await shoot('dialog-pack-edit'); await closeDialog();
   // the global search: a few letters, grouped results (the keyboard shortcut on desktop, the header button on phones)
   if (mobile) await page.getByRole('button', { name: 'جستجو' }).first().click(); else await page.keyboard.press('Control+KeyK');
   await page.getByRole('combobox', { name: 'جستجو' }).fill('قیم');

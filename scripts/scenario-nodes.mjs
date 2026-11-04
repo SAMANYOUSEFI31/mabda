@@ -106,7 +106,7 @@ try {
     await page.getByRole('dialog').getByText('مربی دانش').first().waitFor();
     await page.keyboard.press('Escape');
     await nodeOp('کسب‌وکار و بنیان', 'حذف');
-    await page.getByRole('dialog').getByText(/در این بخش هست/).waitFor();
+    await page.getByRole('dialog').getByText(/با محتوای این بخش چه کنیم/).waitFor();
     await shot('5-delete-with-content');
     await page.getByRole('dialog').getByRole('button', { name: 'حذف و بردن محتوا' }).click();
     await page.screenshot({ path: '/tmp/nodes-after-click.png' });

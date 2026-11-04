@@ -22,7 +22,10 @@ interface Props {
   /** open from a node's counter: only that node (and below) */
   nodeId?: string;
   onNodeChange: (nodeId: string | undefined) => void;
-  onNewThought: () => void;
+  /** the truth map with the suggestions shown: «اگر همه را تأیید کنم؟» */
+  onPreviewTruth?: () => void;
+  /** a thought becomes a SECTION of the tree */
+  onToSection?: (item: NoteThinkingItem) => void;
   onToKnowledge: (item: NoteThinkingItem) => void;
   onOpenObject: (o: ContextObject) => void;
   onApproveDraft: (id: string) => Promise<void>;
@@ -50,14 +53,6 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
   return (
     <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
-      <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-stack-xs">
-          <h2 className="heading-sm text-text-default">فضای فکر</h2>
-          <p className="body-sm text-text-subtle">هرچه هنوز حقیقت نیست اینجاست و منبع حقیقت را شلوغ نمی‌کند: فکر ← پیشنهادی ← تأییدشده. به AI نمی‌رسد تا تأیید نشود.</p>
-        </div>
-        <Button variant="primary" iconStart="Plus" onClick={p.onNewThought}>فکر تازه</Button>
-      </div>
-
       <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
         <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
           {CHIPS.map((c) => (
@@ -71,7 +66,14 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         </div>
       </div>
 
-      {empty && <EmptyState icon="Lightbulb" title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={<Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>فکر تازه</Button>} />}
+      {view.waiting.length > 0 && p.onPreviewTruth && (
+        <div className="flex flex-wrap items-center gap-inline-sm">
+          <Button size="sm" variant="secondary" iconStart="Workflow" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>
+          <span className="body-sm text-text-subtle">نقشه را با «نشان بده چه در راه است» باز می‌کند؛ چیزی تأیید نمی‌شود.</span>
+        </div>
+      )}
+
+      {empty && <EmptyState icon="Lightbulb" title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." />}
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
@@ -108,7 +110,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {view.thoughts.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
           <h3 className="title text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h3>
-          <ThinkingList items={view.thoughts} objects={p.objects} nodes={p.nodes} onConvert={async () => undefined} onPrefill={p.onToKnowledge} />
+          <ThinkingList items={view.thoughts} objects={p.objects} nodes={p.nodes} onConvert={async () => undefined} onPrefill={p.onToKnowledge} onToSection={p.onToSection} />
         </section>
       )}
 

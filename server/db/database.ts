@@ -10,6 +10,8 @@ export function openDatabase(file: string = DEFAULT_DB_PATH): Database.Database 
   const db = new Database(file);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  // an erased row is overwritten with zeros (not just unlinked): «حذف دائمی» must not leave the words in the file
+  db.pragma('secure_delete = ON');
   migrate(db);
   return db;
 }

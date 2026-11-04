@@ -40,7 +40,7 @@ try {
   page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   const shot = (n, full = false) => page.screenshot({ path: `docs/screens/spec-${n}.png`, fullPage: full });
   const step = (m) => console.log('•', m);
-  const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).click();
+  const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).first().click();
   const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
@@ -68,7 +68,7 @@ try {
   await page.keyboard.press('Escape');
 
   step('spec editor: 5 outputs, dependencies, 2 guardrails; a cycle is blocked');
-  await nav('جریان‌های کار');
+  await nav('خروجی‌ها');
   await page.getByRole('button', { name: 'جریان کار تازه' }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('عنوان جریان کار').fill('کمپین عرضهٔ محصول');
@@ -133,7 +133,7 @@ try {
   step('Pro and above only: the Starter workspace gets the upgrade notice');
   await account('آکادمی رشد فریلنسرها');
   await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
-  await nav('جریان‌های کار');
+  await nav('خروجی‌ها'); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
   await page.getByRole('button', { name: 'بیشتر دربارهٔ جریان کار' }).click(); // the editor / library are under «⋯»
   await page.getByRole('menuitem', { name: 'تعریف جریان کار سفارشی' }).click();
   await page.getByText('جریان کار سفارشی از پلن Pro').waitFor();

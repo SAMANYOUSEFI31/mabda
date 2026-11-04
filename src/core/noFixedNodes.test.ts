@@ -11,6 +11,7 @@ import { buildMapModel } from './mapModel';
 import { buildScene } from './canvasScene';
 import { buildChangeDigest } from './changeDigest';
 import { defaultNodeId, flatten, treeOrder } from './nodeTree';
+import { DEFAULT_TREE_NODES } from './specs';
 import type { ContextObject, TreeNode } from '../types';
 
 const NOW = new Date('2026-03-10T08:00:00Z');
@@ -72,4 +73,43 @@ test('the order of the knowledge in a request follows the tree: the node that is
   const r = buildAiRequest({ kind: 'question', request: 'x', workspaceName: 'x', nodes: tree, objects, relationships: d.relationships, now: NOW });
   assert.ok(r.markdown.includes('خدمات'), 'the new root is named by the workspace\'s own tree, not by a table in the code');
   assert.ok(!r.markdown.includes('کسب‌وکار و بنیان'), 'the deleted root is nowhere');
+});
+
+test('no source file reads a node by a fixed id: «business / brand / product / offer / content» appear only in data (the starting tree, hints, the demo), never in logic', async () => {
+  const { readdirSync, readFileSync, statSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const DATA = /(^|\/)(seedData|demoData|specs|specLibrary|starters?|templates?|legacy|demo|QuickStartDialog|migrations)\./;
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? (f === 'node_modules' || f === 'testing' ? [] : walk(p)) : /\.(ts|tsx)$/.test(f) && !/\.test\./.test(f) && !DATA.test(p) ? [p] : []; });
+  const ID = "['\"](?:business|brand|product|offer|content|audience)['\"]";
+  // a node id used as a node id: pushed into a seed list, passed to a tree / effective-context function, compared with a nodeId, or an object's node
+  const BAD = [
+    new RegExp(`(?:seeds|nodeIds|ids)\\.push\\(${ID}\\)`),
+    new RegExp(`(?:ancestorIds|subtreeIds|effectiveFor|effectiveObjects|guardrailsFor|resolveNodeId|childrenOf)\\([^)]*${ID}`),
+    new RegExp(`nodeId\\s*(?:===|!==|==)\\s*${ID}`),
+    new RegExp(`${ID}\\s*(?:===|!==)\\s*[A-Za-z_.]*nodeId`),
+    new RegExp(`parentId\\s*(?:===|!==)\\s*${ID}`),
+  ];
+  const hits: string[] = [];
+  for (const dir of ['src/core', 'src/components', 'src/services', 'server/db', 'server/ai', 'server/mcp']) {
+    for (const f of walk(dir)) {
+      readFileSync(f, 'utf8').split('\n').forEach((line, i) => { if (!/check:design-ignore/.test(line) && BAD.some((re) => re.test(line))) hits.push(`${f}:${i + 1}: ${line.trim().slice(0, 120)}`); });
+    }
+  }
+  assert.deepEqual(hits, [], `a fixed node id in logic:\n${hits.join('\n')}`);
+});
+
+test('a workstream\'s pack is computed from THIS tree: every node id is different and the hints of the workstream still land on real sections', () => {
+  const d = buildDemo(NOW);
+  const spec = d.specs[0];
+  const all: TreeNode[] = [...DEFAULT_TREE_NODES, ...d.nodes.filter((n) => !DEFAULT_TREE_NODES.some((m) => m.id === n.id))];
+  const rename = new Map(all.map((n, i) => [n.id, `n${i}`]));
+  const nodes2 = all.map((n) => ({ ...n, id: rename.get(n.id)!, ...(n.parentId ? { parentId: rename.get(n.parentId) ?? n.parentId } : {}) }));
+  const objs2 = d.objects.map((o) => ({ ...o, nodeId: rename.get(o.nodeId) ?? nodes2[0].id }));
+  const before = buildContextPack({ packId: 'p', workspaceName: 'x', nodes: all, objects: d.objects, relationships: d.relationships, spec, now: NOW });
+  const after = buildContextPack({ packId: 'p', workspaceName: 'x', nodes: nodes2, objects: objs2, relationships: d.relationships, spec, now: NOW });
+  assert.ok(after.explain.scope.sections > 0, 'the hints resolved to real sections');
+  assert.ok(after.refs.length > 0 && after.markdown.includes('بستهٔ Context'));
+  // nothing is read through a fixed id: the same knowledge is in the pack whatever the node ids are
+  assert.deepEqual(after.refs.map((r) => r.id).sort(), before.refs.map((r) => r.id).sort());
+  assert.equal(after.counts.guardrails, before.counts.guardrails);
 });

@@ -55,7 +55,7 @@ await shot('4-add-to-context-draft');
 await page.keyboard.press('Escape');
 
 step('workstream: credit preview comes from the router plan; generate shows real stages');
-await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("جریان‌های کار")').click();
+await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("خروجی‌ها")').click(); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
 await page.getByText(/بدون کسر اعتبار/).first().waitFor({ timeout: 15000 });
 await shot('5-credit-preview');
 await page.getByRole('button', { name: 'ساخت دارایی' }).click();

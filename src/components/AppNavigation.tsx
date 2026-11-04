@@ -10,7 +10,7 @@ import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, 
 import type { IconName, MenuItem } from '../ui';
 import { useAiStatus } from '../services/aiStatus';
 
-type ContextView = 'doc' | 'read' | 'table' | 'canvas' | 'thinking';
+type ContextView = 'doc' | 'read' | 'table' | 'canvas';
 
 interface AppNavigationProps {
   currentWorkspace: Workspace;
@@ -20,6 +20,9 @@ interface AppNavigationProps {
   onOpenOnboarding: () => void;
   /** builds (or rebuilds from nothing) the showcase workspace */
   onResetDemo: () => void;
+  /** the showcase can be wiped with one confirm (absent when there is none) */
+  onDeleteDemo?: () => void;
+  onOpenArchive: () => void;
   onOpenPlanModal: () => void;
   onOpenAccountModal: () => void;
   /** Ctrl/⌘+K: the global search and commands */
@@ -41,23 +44,25 @@ interface AppNavigationProps {
   onChangeContextViewMode: (mode: ContextView) => void;
   contextCount: number;
   deliverablesCount: number;
+  /** what waits in «فکر»: suggestions, drafts, open thoughts */
+  thinkingCount: number;
 }
 
 const VIEWS: Array<{ id: ContextView; label: string }> = [
   { id: 'doc', label: 'ساختار' },
   { id: 'read', label: 'سند خوانا' },
   { id: 'canvas', label: 'بوم' },
-  { id: 'thinking', label: 'فضای فکر' },
 ];
 
 /**
- * Shell navigation: four destinations (خانه، منبع حقیقت، جریان‌های کار، دارایی‌ها). Each has a sub-menu that is open ONLY while
+ * Shell navigation: four destinations (خانه، فکر، منبع حقیقت، خروجی‌ها). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). Each has a sub-menu that is open ONLY while
  * its section is active (accordion, aria-expanded). Everything that is not daily work lives in the one «حساب کاربری» menu,
  * which is also the only place the plan is shown.
  */
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const { currentWorkspace, allWorkspaces, activeTab, onTabChange } = p;
   const [drawer, setDrawer] = useState(false);
+  const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
   const planName = plan.title.split(' ')[0];
 
@@ -66,6 +71,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
+    ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
     // grouped by what you are doing: connect AI · plan and usage · the account (a divider between groups)
     { section: 'connect', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
     { section: 'connect', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
@@ -74,7 +80,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
-    { section: 'account', label: 'حساب کاربری و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
+    { section: 'account', label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
+    { section: 'account', label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
   ];
   const withDividers = (): MenuItem[] => {
     const out: MenuItem[] = [];
@@ -100,6 +107,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
 
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
+          <NavItem icon="Lightbulb" label="فکر" trailing={p.thinkingCount ? formatNumber(p.thinkingCount) : undefined} selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
           <NavItem icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(p.contextCount)} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
@@ -107,16 +115,15 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             </div>
           )}
 
-          <NavItem icon="Layers" label="جریان‌های کار" trailing={formatNumber(p.specs.length)} selected={activeTab === 'workstreams'} expanded={activeTab === 'workstreams'} onClick={() => onTabChange('workstreams')} />
-          {activeTab === 'workstreams' && (
+          <NavItem icon="Package" label="خروجی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
+          {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
-              {p.specs.map((s) => <NavItem nested key={s.id} label={s.title} selected={p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
+              <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
+              {p.specs.map((s) => <NavItem nested key={s.id} label={`بساز: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
               <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
             </div>
           )}
-
-          <NavItem icon="Package" label="دارایی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
         </nav>
       </div>
 
@@ -180,13 +187,13 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         fixed
         className="md:hidden"
         label="منوی پایینی موبایل"
-        value={activeTab}
+        value={activeTab === 'workstreams' ? 'assets' : activeTab}
         onChange={onTabChange}
         items={[
           { id: 'home', label: 'خانه', icon: 'House' },
+          { id: 'thinking', label: 'فکر', icon: 'Lightbulb', badge: p.thinkingCount || undefined, badgeLabel: 'مورد باز' },
           { id: 'context', label: 'منبع', icon: 'BookOpen' },
-          { id: 'workstreams', label: 'جریان‌ها', icon: 'Layers' },
-          { id: 'assets', label: 'دارایی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'دارایی' },
+          { id: 'assets', label: 'خروجی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'خروجی' },
         ]}
       />
     </>

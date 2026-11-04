@@ -25,6 +25,9 @@ interface ContextReplayCardProps {
   stale?: StaleAsset;
   /** the change log: with it, a piece of knowledge that moved on since this output was built shows WHAT changed */
   changes?: ContextChange[];
+  /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «برگرداندن») */
+  onArchive?: (deliverable: GeneratedDeliverable) => void;
+  onDelete?: (deliverable: GeneratedDeliverable) => void;
 }
 
 
@@ -36,6 +39,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   isRebuilding = false,
   stale,
   changes,
+  onArchive,
+  onDelete,
 }) => {
   const [showCritique, setShowCritique] = useState(false);
   const [showRawContext, setShowRawContext] = useState(false);
@@ -91,6 +96,9 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
               ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'Eye' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
               ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
               { label: traceOpen ? 'بستن ردپای دانش' : 'ردپای دانش و معیارها', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
+              ...(onArchive || onDelete ? [{ divider: true } as const] : []),
+              ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
+              ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),
             ]}
           />
         </div>
@@ -131,7 +139,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
             ردپای دانش و معیارها
           </Button>
-          <span className="body-sm ms-inline-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.</span>
+          <span className="body-sm ms-inline-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
         </div>
         {traceOpen && (
           <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

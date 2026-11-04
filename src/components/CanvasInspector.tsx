@@ -119,7 +119,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
           <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}</div>
           <div className="flex flex-wrap gap-inline-xs">
             {item.review && moveBtn}
-            {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از فضای آزاد بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در فضای آزاد</Button> : null}
+            {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از بوم فکر بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در بوم فکر</Button> : null}
           </div>
         </DetailSection>
       </div>

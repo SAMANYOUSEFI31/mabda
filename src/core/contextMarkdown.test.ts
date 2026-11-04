@@ -104,3 +104,11 @@ test('permalinks: an anchor finds its tab (objects through their node, nested no
   assert.equal(tabOfAnchor('o-nope', tabs, nodes, objs), undefined);
   assert.equal(tabOfAnchor('weird', tabs, nodes, objs), undefined);
 });
+
+test('a relation to a suggestion is not written into the export (a suggestion is not truth); approved, it is', () => {
+  const objs = [o({ id: 'a', nodeId: 'brand', title: 'لحن' }), o({ id: 'b', nodeId: 'brand', title: 'پیشنهاد قیمت', status: 'Proposed' })];
+  const relationships = [REL('r1', 'depends_on', 'a', 'b')];
+  assert.ok(!contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: objs, nodeId: 'brand', relationships, refs: true }).includes('وابسته به'));
+  const okObjs = [objs[0], { ...objs[1], status: 'Confirmed' as const }];
+  assert.match(contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: okObjs, nodeId: 'brand', relationships, refs: true }), /وابسته به: «پیشنهاد قیمت»/);
+});

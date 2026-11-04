@@ -66,9 +66,9 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   if (lod === 'far') {
     return (
       <div
-        data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={aria(item)} aria-pressed={p.selected}
+        data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-pending={item.pending || undefined} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={aria(item)} aria-pressed={p.selected}
         onClick={(e) => p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)}
-        className={`${common} ${item.kind === 'note' ? 'bg-bg-warning-subtle' : ''}`} style={style}
+        className={`${common} ${item.kind === 'note' ? 'bg-bg-warning-subtle' : ''} ${item.pending ? 'border-dashed' : ''}`} style={style}
       />
     );
   }

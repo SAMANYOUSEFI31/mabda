@@ -18,10 +18,11 @@ import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from '.
 import { exampleLines } from './redlineExamples';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { AmbiguityMap } from './contextEngine';
-import { effectiveFor, IN_FORCE, reachOf } from './effectiveContext';
-import type { Origin } from './effectiveContext';
+import { IN_FORCE, reachOf } from './effectiveContext';
+import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
 import { metricsPackSection } from './metrics';
 import { ancestorIds, subtreeIds } from './nodeTree';
+import type { Explain, ExplainItem, ExplainSkipped } from './scopeExplain';
 import { bm25Rank } from './retrieval';
 import { estimateTokens } from './tokens';
 
@@ -116,7 +117,7 @@ export const AI_RESPONSE_FORMAT = [
 ].join('\n');
 
 export type IncludeReason = 'constraint' | 'global_decision' | 'rank' | 'small' | 'manual' | 'changed';
-export type ExcludeReason = 'scope' | 'expired' | 'overridden' | 'unconfirmed' | 'sample' | 'kind' | 'budget' | 'unranked';
+export type ExcludeReason = 'scope' | 'child' | 'expired' | 'overridden' | 'unconfirmed' | 'sample' | 'kind' | 'budget' | 'unranked';
 
 export const INCLUDE_REASON_FA: Record<IncludeReason, string> = {
   constraint: 'قید مؤثر؛ همیشه می‌آید',
@@ -128,6 +129,7 @@ export const INCLUDE_REASON_FA: Record<IncludeReason, string> = {
 };
 export const EXCLUDE_REASON_FA: Record<ExcludeReason, string> = {
   scope: 'خارج از دامنه',
+  child: 'زیربخش انتخاب‌نشده',
   expired: 'منقضی شده',
   overridden: 'در این بخش اعمال نمی‌شود',
   unconfirmed: 'تأییدنشده (واقعیت نیست)',
@@ -137,10 +139,10 @@ export const EXCLUDE_REASON_FA: Record<ExcludeReason, string> = {
   unranked: 'به درخواست ربطی پیدا نشد',
 };
 /** a skipped object the user may still add by hand */
-const ADDABLE: ReadonlySet<ExcludeReason> = new Set<ExcludeReason>(['scope', 'budget', 'unranked']);
+const ADDABLE: ReadonlySet<ExcludeReason> = new Set<ExcludeReason>(['scope', 'child', 'budget', 'unranked']);
 
-export interface IncludedItem { id: string; version: number; type: ContextObject['type']; title: string; nodeLabel: string; reason: IncludeReason; tokens: number; assumption: boolean }
-export interface ExcludedItem { id: string; type: ContextObject['type']; title: string; nodeLabel: string; reason: ExcludeReason; tokens: number; canAdd: boolean }
+export interface IncludedItem { id: string; version: number; type: ContextObject['type']; title: string; nodeLabel: string; reason: IncludeReason; tokens: number; assumption: boolean; /** «از "برند"، همه‌جا» — where it was written and why it reaches this scope */ from: string }
+export interface ExcludedItem { id: string; type: ContextObject['type']; title: string; nodeLabel: string; reason: ExcludeReason; tokens: number; canAdd: boolean; /** the reason as a sentence that names the node / the exception */ why: string }
 
 export interface AiRequestInput {
   kind: RequestKind;
@@ -148,6 +150,10 @@ export interface AiRequestInput {
   request: string;
   /** the node the work is about (default: the whole tree) */
   scopeNodeId?: string;
+  /** several sections (src/core/packScope.ts); `scopeNodeId` is the same thing for one */
+  scopeNodeIds?: string[];
+  /** the sub-sections of the picked sections are read too (default: no) */
+  withChildren?: boolean;
   /** tokens for the data blocks (always-included items may exceed it; `overBudget` says so) */
   tokenBudget?: number;
   workspaceName: string;
@@ -181,6 +187,8 @@ export interface AiRequestResult {
   longText: boolean;
   included: IncludedItem[];
   excluded: ExcludedItem[];
+  /** the scope that was read (the sections picked, with or without their sub-sections) */
+  scope: Explain['scope'];
   refs: UsedContextRef[];
   counts: { facts: number; assumptions: number; constraints: number; decisions: number; rejected: number; changes: number; gaps: number; metrics: number };
 }
@@ -199,8 +207,9 @@ export function clampBudget(n: number | undefined): number {
 }
 
 /** the gaps of the enabled workstreams that fall inside a node's sub-tree (or anywhere when no node) — for the audit */
-export function gapsInScope(specs: WorkstreamSpec[], objects: ContextObject[], nodes: TreeNode[], scopeNodeId: string | undefined, judgments: AmbiguityMap = {}): Array<Pick<GapItem, 'label' | 'status' | 'question' | 'importance'>> {
-  const inside = scopeNodeId ? new Set(subtreeIds(nodes, scopeNodeId)) : null;
+export function gapsInScope(specs: WorkstreamSpec[], objects: ContextObject[], nodes: TreeNode[], scopeNodeId: string | string[] | undefined, judgments: AmbiguityMap = {}): Array<Pick<GapItem, 'label' | 'status' | 'question' | 'importance'>> {
+  const picked = Array.isArray(scopeNodeId) ? scopeNodeId : scopeNodeId ? [scopeNodeId] : [];
+  const inside = picked.length ? new Set(picked.flatMap((id) => subtreeIds(nodes, id))) : null;
   const seen = new Set<string>();
   const out: Array<Pick<GapItem, 'label' | 'status' | 'question' | 'importance'>> = [];
   for (const spec of specs) {
@@ -218,40 +227,36 @@ export function gapsInScope(specs: WorkstreamSpec[], objects: ContextObject[], n
     .slice(0, GAP_LIMIT);
 }
 
-type Where = { origin: Origin; own: boolean };
-
 export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const { kind, nodes } = input;
   const now = input.now ?? new Date();
   const request = input.request.trim().slice(0, REQUEST_MAX_CHARS);
   const budget = clampBudget(input.tokenBudget);
   const rels = input.relationships ?? [];
-  const scopeNode = input.scopeNodeId ? nodes.find((n) => n.id === input.scopeNodeId) : undefined;
   const labelOf = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const path = (id: string) => ancestorIds(nodes, id).reverse().map(labelOf).join(' ‹ ');
 
-  // 1) where does each live object stand at the scope? (whole tree = the best standing over every node)
-  const seeds = scopeNode ? [scopeNode.id] : nodes.map((n) => n.id);
-  const standing = new Map<string, Where>();
-  const rank: Record<Origin, number> = { own: 0, inherited: 1, global: 2, expired: 3, overridden: 4 };
-  for (const seed of seeds) {
-    for (const it of effectiveFor(seed, input.objects, nodes, rels, now)) {
-      const cur = standing.get(it.object.id);
-      const own = !!scopeNode && it.origin === 'own';
-      if (!cur || rank[it.origin] < rank[cur.origin]) standing.set(it.object.id, { origin: it.origin, own });
-    }
-  }
+  // 1) where does each live object stand at the scope? (whole tree = the best standing over every node) — src/core/packScope.ts
+  const scope = scopeSeeds(nodes, [...(input.scopeNodeIds ?? []), ...(input.scopeNodeId ? [input.scopeNodeId] : [])], !!input.withChildren);
+  const scopeNode = scope.picked.length === 1 ? nodes.find((n) => n.id === scope.picked[0]) : undefined;
+  const scopeName = scope.whole ? 'کل درخت' : scope.picked.map(path).join(' + ');
+  const standing = standingOver(scope, input.objects, nodes, rels, now);
 
   const live = input.objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   const excluded: ExcludedItem[] = [];
   const itemTokens = (o: ContextObject) => estimateTokens(renderDoc(o, path(o.nodeId)));
-  const leave = (o: ContextObject, reason: ExcludeReason) => excluded.push({ id: o.id, type: o.type, title: o.title, nodeLabel: path(o.nodeId), reason, tokens: itemTokens(o), canAdd: ADDABLE.has(reason) });
+  const inPickedSub = (o: ContextObject) => scope.picked.some((p) => p !== o.nodeId && subtreeIds(nodes, p).includes(o.nodeId));
+  const whyOf = (o: ContextObject, reason: ExcludeReason): string => {
+    if (reason === 'scope' || reason === 'child' || reason === 'expired' || reason === 'overridden') return leftWhy(reason, o, nodes, { overriddenByTitle: input.objects.find((x) => x.id === standing.get(o.id)?.overriddenBy)?.title });
+    return reason === 'unconfirmed' ? 'تأییدنشده؛ در درخواست هیچ‌وقت واقعیت نیست' : EXCLUDE_REASON_FA[reason];
+  };
+  const leave = (o: ContextObject, reason: ExcludeReason) => excluded.push({ id: o.id, type: o.type, title: o.title, nodeLabel: path(o.nodeId), reason, tokens: itemTokens(o), canAdd: ADDABLE.has(reason), why: whyOf(o, reason) });
 
   const candidates: ContextObject[] = [];
   for (const o of live) {
     const st = standing.get(o.id);
     if (o.sample) leave(o, 'sample');
-    else if (!st) leave(o, 'scope');
+    else if (!st) leave(o, !scope.withChildren && inPickedSub(o) ? 'child' : 'scope');
     else if (st.origin === 'expired') leave(o, 'expired');
     else if (st.origin === 'overridden') leave(o, 'overridden');
     else if (!IN_FORCE.has(st.origin)) leave(o, 'scope');
@@ -305,7 +310,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
 
   const rest = candidates.filter((o) => !takenIds.has(o.id));
   const docText = (o: ContextObject) => `${o.title}\n${o.content}\n${(o.facets ?? []).join(' ')}\n${path(o.nodeId)}\n${o.record?.question ?? ''}`;
-  const query = `${request} ${scopeNode?.label ?? ''}`;
+  const query = `${request} ${scope.picked.map(labelOf).join(' ')}`;
   const ranked = bm25Rank(query, rest.map((o) => ({ o, text: docText(o) })));
   // an object of the scope node itself wins a tie; then a stable order
   const ownOf = (o: ContextObject) => (standing.get(o.id)?.own ? 0 : 1);
@@ -331,7 +336,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const docs = (list: ContextObject[]) => order(list).map((o) => renderDoc(o, path(o.nodeId))).join('\n');
 
   const data: string[] = [];
-  data.push(`<documents workspace="${safe(input.workspaceName)}" scope="${safe(scopeNode ? path(scopeNode.id) : 'کل درخت')}">`);
+  data.push(`<documents workspace="${safe(input.workspaceName)}" scope="${safe(scopeName)}">`);
   data.push(`## واقعیت‌های تأییدشده\n${facts.length ? docs(facts) : 'هنوز واقعیت تأییدشده‌ای در این دامنه نیست.'}`);
   if (constraints.length) data.push(`## قیدها (نباید نقض شوند)\n${docs(constraints)}`);
   if (decisions.length) data.push(`## تصمیم‌ها\n${docs(decisions)}`);
@@ -358,13 +363,14 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const markdown = `${parts.join('\n\n')}\n`;
 
   const withReason = new Map(included.map((x) => [x.o.id, x.reason]));
-  const includedItems: IncludedItem[] = order(inc).map((o) => ({ id: o.id, version: o.version, type: o.type, title: o.title, nodeLabel: path(o.nodeId), reason: withReason.get(o.id)!, tokens: itemTokens(o), assumption: isAssumption(o) }));
+  const includedItems: IncludedItem[] = order(inc).map((o) => ({ id: o.id, version: o.version, type: o.type, title: o.title, nodeLabel: path(o.nodeId), reason: withReason.get(o.id)!, tokens: itemTokens(o), assumption: isAssumption(o), from: fromText(o, scope, nodes) }));
   excluded.sort((a, b) => a.reason.localeCompare(b.reason) || a.nodeLabel.localeCompare(b.nodeLabel) || a.id.localeCompare(b.id));
 
   return {
     kind, markdown, tokens: estimateTokens(markdown), chars: markdown.length, dataTokens, tokenBudget: budget,
     overBudget: used > budget, longText,
     included: includedItems, excluded,
+    scope: { whole: scope.whole, pickedLabels: scope.picked.map(labelOf), withChildren: scope.withChildren, sections: scope.seeds.length },
     refs: inc.map((o) => ({ id: o.id, version: o.version })).sort((a, b) => a.id.localeCompare(b.id)),
     counts: { facts: facts.length, assumptions: assumptions.length, constraints: constraints.length, decisions: decisions.length, rejected: rejected.length, changes: changes.length, gaps: gaps.length, metrics: metricsSection ? (input.metrics?.metrics.filter((m) => !m.archived).length ?? 0) : 0 },
   };
@@ -395,4 +401,19 @@ function changesSection(changes: NonNullable<AiRequestInput['changes']>, find: (
     return [`- \`${c.objectId}\` «${safe(o?.title ?? '')}» — نسخهٔ ${c.fromVersion} به ${c.toVersion}، ${KIND(c)}، ${c.at.slice(0, 10)}`, ...diff].join('\n');
   });
   return ['## تغییرهای اخیر (قبل ← بعد)', ...lines].join('\n');
+}
+
+/** the request's included / skipped lists in the SAME shape the pack explains itself with (one component shows both) */
+export function explainOfRequest(r: Pick<AiRequestResult, 'included' | 'excluded' | 'scope'>): Explain {
+  const items: ExplainItem[] = r.included.map((i) => ({
+    id: i.id, title: i.title, type: i.type, nodeLabel: i.nodeLabel, from: i.from,
+    group: i.assumption ? 'assumption' : i.type === 'Constraint' ? 'guardrail' : i.type === 'Decision' ? 'decision' : 'fact',
+    ...(i.type === 'Constraint' ? { editable: true } : {}), note: INCLUDE_REASON_FA[i.reason],
+  }));
+  const skipped: ExplainSkipped[] = [];
+  for (const e of r.excluded) {
+    if (e.reason === 'sample') continue;
+    skipped.push({ id: e.id, title: e.title, type: e.type, nodeLabel: e.nodeLabel, reason: e.reason === 'unconfirmed' ? 'status' : e.reason, why: e.why, canAdd: e.canAdd });
+  }
+  return { scope: r.scope, items, skipped };
 }

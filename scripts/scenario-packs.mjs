@@ -76,7 +76,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] map: grouped by dependency by default; «بُعد» makes swimlanes; colouring by facet shows the name`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('فکر', 'فکر');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
     await page.locator('[role=radio]').filter({ hasText: /^تابلو$/ }).first().evaluate((n) => n.click());
     await page.getByRole('application', { name: /بوم/ }).waitFor();
