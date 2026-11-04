@@ -204,18 +204,22 @@ export interface NavItemProps {
   /** accordion parent: true while its sub-menu is open */
   expanded?: boolean;
   onClick?: () => void;
+  /** icon-only (the collapsed sidebar): the label stays as aria-label and tooltip */
+  compact?: boolean;
   className?: string;
 }
 
-export function NavItem({ label, icon, trailing, selected, expanded, nested = false, onClick, className }: NavItemProps) {
+export function NavItem({ label, icon, trailing, selected, expanded, nested = false, compact = false, onClick, className }: NavItemProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={selected ? 'page' : undefined}
       aria-expanded={expanded}
+      {...(compact ? { 'aria-label': trailing != null ? `${label}، ${trailing}` : String(label), title: String(label) } : {})}
       className={cx(
-        'flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md py-inset-xs text-start transition-colors',
+        'relative flex w-full min-h-touch items-center gap-inline-md rounded-control px-inset-md py-inset-xs text-start transition-colors',
+        compact && 'justify-center px-inset-xs',
         nested ? 'body-sm' : 'label-md',
         selected
           ? 'bg-bg-selected text-text-default'
@@ -224,8 +228,10 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
       )}
     >
       {icon && <Icon name={icon} size="lg" className="text-icon-subtle" />}
-      <span className="min-w-space-0 flex-1 break-words">{label}</span>
-      {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtlest">{trailing}</span>}
+      {compact ? (trailing != null && <span aria-hidden="true" className="absolute end-space-2 top-space-2 rounded-pill bg-bg-neutral-bold" style={{ inlineSize: 8, blockSize: 8 }} />) : (<>
+        <span className="min-w-space-0 flex-1 break-words">{label}</span>
+        {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtlest">{trailing}</span>}
+      </>)}
     </button>
   );
 }

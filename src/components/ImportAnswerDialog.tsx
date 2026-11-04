@@ -9,6 +9,8 @@ import type { ImportParseResult } from '../types/state';
 import type { ParsedBlock } from '../core/answerParser';
 import { contextTypeOf, isContextKind } from '../core/answerParser';
 import { dataApi, DataApiError } from '../services/dataApi';
+import type { TreeNode } from '../types';
+import { flatten } from '../core/nodeTree';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber } from '../ui';
 
 const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'محدودیت', asset: 'دارایی', question: 'سؤال AI', paragraph: 'متن' };
@@ -18,6 +20,7 @@ interface Props {
   open: boolean;
   workspaceId: string;
   onClose: () => void;
+  nodes?: TreeNode[];
   onProposeContext: (p: { type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string; source: ObjectSource }) => Promise<boolean>;
   onSaveAsset: (asset: GeneratedDeliverable) => Promise<boolean>;
 }
@@ -25,7 +28,8 @@ interface Props {
 /** Paste the answer of an outside AI → blocks → take each block to Context (as Proposed) or to the asset library, with the pack's lineage. */
 export const ImportAnswerDialog: React.FC<Props> = (props) => (props.open ? <Importer {...props} /> : null);
 
-const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onSaveAsset }) => {
+const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], onProposeContext, onSaveAsset }) => {
+  const [nodeId, setNodeId] = useState('');
   const [text, setText] = useState('');
   const [packs, setPacks] = useState<Array<{ id: string; title: string }>>([]);
   const [packId, setPackId] = useState('');
@@ -49,7 +53,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
 
   const toContext = async (b: ParsedBlock) => {
     if (!isContextKind(b.kind)) return;
-    const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: b.markdown, nodeId: '', source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
+    const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: b.markdown, nodeId, source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
     if (ok) mark(b.id, 'به صندوق پیشنهادها رفت');
   };
 
@@ -92,6 +96,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onProposeContext, onS
               {res.packId ? <Badge intent="success" icon="Link2">اصالت: {formatNumber(res.usedContext.length)} قلم دانش از «{res.packTitle}»</Badge> : <Badge intent="warning" icon={false}>بدون بستهٔ مبدأ</Badge>}
             </div>
             {res.warning && <Alert intent="warning">{res.warning}</Alert>}
+            {nodes.length > 0 && <Select label="بخش دانش‌هایی که می‌بری (اختیاری)" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={[{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />}
             {blocks.map((b) => (
               <div key={b.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">

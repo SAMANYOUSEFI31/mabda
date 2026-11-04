@@ -118,3 +118,14 @@ test('changing the PARENT makes its pairs with every sub-tree object due again (
   assert.deepEqual(edited.map((x) => x.key).sort(), ['k1|p', 'k2|p'].sort());
   assert.ok(edited.every((x) => x.reasons.includes('inherits_conflict')));
 });
+
+test('scope: sibling sections never govern the same place, so they do not warn; a global constraint is compared with everything', () => {
+  const nodes = [{ id: 'brand', label: 'برند' }, { id: 'support', label: 'پشتیبانی', parentId: 'brand' }, { id: 'sales', label: 'فروش', parentId: 'brand' }] as unknown as TreeNode[];
+  const slot = { slotKey: 'price', title: 'قیمت اشتراک', type: 'Fact' as const };
+  const sib = candidatePairs([o('a', { ...slot, nodeId: 'support', content: 'قیمت ۴ میلیون تومان است' }), o('b', { ...slot, nodeId: 'sales', content: 'قیمت ۶ میلیون تومان است' })], 10, [], nodes);
+  assert.equal(sib.length, 0, 'siblings');
+  const parent = candidatePairs([o('a', { ...slot, nodeId: 'brand', content: 'قیمت ۴ میلیون تومان است' }), o('b', { ...slot, nodeId: 'sales', content: 'قیمت ۶ میلیون تومان است' })], 10, [], nodes);
+  assert.equal(parent.length, 1, 'ancestor and descendant');
+  const global = candidatePairs([o('a', { ...slot, type: 'Constraint', nodeId: 'support', content: 'قیمت ۴ میلیون تومان است' }), o('b', { ...slot, nodeId: 'sales', content: 'قیمت ۶ میلیون تومان است' })], 10, [], nodes);
+  assert.equal(global.length, 1, 'a global constraint reaches every section');
+});

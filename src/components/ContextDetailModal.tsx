@@ -8,6 +8,8 @@ import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, G
 import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { defaultNodeId, flatten } from '../core/nodeTree';
+import { scopeEffect } from '../core/scopeMove';
+import { redundantLinks } from '../core/dependencyReduction';
 import { reachSentence } from '../core/packScope';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
@@ -143,7 +145,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [expBy, setExpBy] = useState(me0?.by ?? '');
   const expTargetNum = expTarget.trim() ? parseNumber(expTarget) : null;
   const expectationOk = !expMetric || (!!expBy && (!expTarget.trim() || expTargetNum !== null));
-  const [promote, setPromote] = useState<null | { to: 'parent' | 'global'; reason: string }>(null);
+  const [promote, setPromote] = useState<null | { to: string; reason: string }>(null);
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
   const currentDeps = object && isEditing ? relationships.filter((r) => r.type === 'depends_on' && r.sourceId === object.id).map((r) => r.targetId) : [];
   const [deps, setDeps] = useState<string[]>(currentDeps);
@@ -464,14 +466,19 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         )}
         {isEditing && object && onPatchObject && (
           <div className="flex flex-col gap-stack-xs">
-            <div><Button type="button" size="sm" variant="ghost" iconStart="ArrowRight" onClick={() => setPromote((p) => (p ? null : { to: parentNodeId ? 'parent' : 'global', reason: '' }))}>ببر بالاتر</Button></div>
-            {promote && (
-              <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="ببر بالاتر">
-                <SegmentedControl label="کجا ببرم؟" value={promote.to} onChange={(v) => setPromote({ ...promote, to: v as 'parent' | 'global' })} items={[...(parentNodeId ? [{ id: 'parent', label: `گرهٔ والد: ${nodes.find((n) => n.id === parentNodeId)?.label ?? ''}` }] : []), { id: 'global', label: 'همه‌جا' }]} />
-                <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
-                <div><Button type="button" size="sm" variant="secondary" disabled={!promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'parent' && parentNodeId ? { nodeId: parentNodeId, reason: promote.reason.trim() } : { reach: 'global', reason: promote.reason.trim() }); onClose(); }}>{promote.to === 'parent' ? 'ببر به گرهٔ والد' : 'همه‌جا اثر بدهد'}</Button></div>
-              </div>
-            )}
+            <div><Button type="button" size="sm" variant="ghost" iconStart="ArrowRight" onClick={() => setPromote((p) => (p ? null : { to: parentNodeId ?? 'global', reason: '' }))}>کجا اعمال شود</Button></div>
+            {promote && (() => {
+              const eff = scopeEffect(nodes, relationships ?? [], object, promote.to === 'global' ? { kind: 'global' } : { kind: 'node', nodeId: promote.to }, new Date());
+              const unchanged = promote.to === 'global' ? object.reach === 'global' : promote.to === object.nodeId && object.reach !== 'global';
+              return (
+                <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="کجا اعمال شود">
+                  <Select label="این دانش در کدام بخش خانه دارد؟" value={promote.to} onChange={(e) => setPromote({ ...promote, to: e.target.value })} options={[{ value: 'global', label: 'همه‌جا' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === object.nodeId && object.reach !== 'global' ? ' (الان)' : ''}` }))]} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
+                  <p className="body-sm text-text-default" aria-live="polite" data-testid="scope-effect">{unchanged ? 'همین‌جاست؛ چیزی عوض نمی‌شود.' : eff.sentence}</p>
+                  <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
+                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>ثبت جای تازه</Button></div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -487,6 +494,12 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               hint="مواردی که به این تکیه دارند. با تغییرِ این مورد آن‌ها نیاز به بازبینی پیدا می‌کنند."
               options={candidates} selected={effects} onChange={setEffects} titleOf={(id) => titleOf?.(id) ?? id}
             />
+            {isEditing && object && redundantLinks(allObjects, [...relationships.filter((r) => !(r.type === 'depends_on' && r.sourceId === object.id)), ...deps.map((d) => ({ id: `tmp_${d}`, type: 'depends_on', sourceId: object.id, targetId: d }) as ContextRelationship)]).filter((l) => l.from === object.id && deps.includes(l.to)).map((l) => (
+              <div key={l.to} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm" data-testid="redundant-link">
+                <p className="body-sm text-text-default">«{titleOf?.(l.to) ?? l.to}» لازم نیست؛ از راه «{l.via.map((v) => titleOf?.(v) ?? v).join('» و «')}» به آن می‌رسد.</p>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setDeps(deps.filter((d) => d !== l.to))}>برش دار</Button>
+              </div>
+            ))}
             {isEditing && (dependents.length > 0 || unit?.concurrent) && (
               <p className="body-sm text-text-subtle">
                 {dependents.length > 0 ? `${formatNumber(dependents.length)} مورد (مستقیم یا غیرمستقیم) روی این مورد سوارند. ` : ''}

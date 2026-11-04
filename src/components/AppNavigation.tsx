@@ -62,6 +62,17 @@ const VIEWS: Array<{ id: ContextView; label: string }> = [
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const { currentWorkspace, allWorkspaces, activeTab, onTabChange } = p;
   const [drawer, setDrawer] = useState(false);
+  // desktop sidebar: «docked» takes a column; «hidden» leaves only the toggle, and hovering it slides the bar OVER the page (the page never moves);
+  // pressing the toggle docks it again. Where there is no hover (touch / keyboard) the toggle alone switches between the two. Remembered.
+  const [docked, setDocked] = useState(() => { try { return localStorage.getItem('mabda.sidebar') !== 'hidden'; } catch { return true; } });
+  const [peek, setPeek] = useState(false);
+  const peekTimer = React.useRef<number | undefined>(undefined);
+  const showPeek = () => { window.clearTimeout(peekTimer.current); setPeek(true); };
+  const hidePeek = () => { window.clearTimeout(peekTimer.current); peekTimer.current = window.setTimeout(() => setPeek(false), 220); };
+  const toggleDock = () => setDocked((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } setPeek(false); return n; });
+  const toggleButton = (
+    <IconButton icon="PanelRight" label={docked ? 'پنهان کردن نوار کناری' : 'جا دادن نوار کناری'} aria-expanded={docked} variant="ghost" onClick={toggleDock} />
+  );
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
   const planName = plan.title.split(' ')[0];
@@ -95,15 +106,19 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const sidebar = (
     <div className="flex h-full flex-col justify-between gap-stack-lg select-none">
       <div className="flex flex-col gap-stack-lg">
-        <div className="flex items-center gap-inline-md px-inset-sm">
-          <BrandMark />
-          <div>
+        <div className="flex items-center justify-between gap-inline-md px-inset-sm">
+          <span className="flex min-w-space-0 items-center gap-inline-md">
+            <BrandMark />
             <span className="text-heading-xs text-text-default">مبدأ</span>
-            <span className="body-sm block text-text-subtle">منبع حقیقت کسب‌وکار</span>
-          </div>
+          </span>
+          {toggleButton}
         </div>
 
-        <Button variant="secondary" iconStart="Search" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K">جستجو <span className="caption text-text-subtle" dir="ltr">Ctrl K</span></Button>
+        <button type="button" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K" className="label-md flex min-h-touch w-full items-center gap-inline-md rounded-control border border-border-default bg-surface-raised px-inset-md text-start text-text-subtle transition-colors hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed">
+          <Icon name="Search" size="lg" className="text-icon-subtle" />
+          <span className="flex-1">جستجو</span>
+          <span className="caption text-text-subtlest" dir="ltr">Ctrl K</span>
+        </button>
 
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
@@ -133,7 +148,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           side="top"
           className="w-full"
           trigger={(
-            <button type="button" className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+            <button type="button" aria-label={`حساب کاربری، ${currentWorkspace.name}، پلن ${planName}`} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
               <span className="grid size-control-sm shrink-0 place-items-center rounded-control-sm bg-bg-neutral-subtle text-icon-subtle"><Icon name="User" size="lg" /></span>
               <span className="min-w-space-0 flex-1">
                 <span className="label-md block truncate text-text-default">{currentWorkspace.name}</span>
@@ -160,9 +175,20 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   return (
     <>
       {/* Desktop persistent sidebar (inline-start edge) */}
-      <aside className="sticky top-space-0 z-dropdown hidden h-screen w-overlay-xs shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
-        {sidebar}
-      </aside>
+      {docked ? (
+        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-overlay-xs shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
+          {sidebar}
+        </aside>
+      ) : (
+        <div className="sticky top-space-0 z-dropdown hidden h-screen shrink-0 md:block" style={{ inlineSize: 64 }} onMouseEnter={showPeek} onMouseLeave={hidePeek} onFocus={showPeek} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hidePeek(); }}>
+          <div className="flex justify-center p-inset-lg" style={{ paddingInline: 0 }}>{toggleButton}</div>
+          {peek && (
+            <aside data-testid="sidebar-peek" className="fixed bottom-space-0 top-space-0 start-space-0 z-overlay flex w-overlay-xs flex-col overflow-y-auto border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
+              {sidebar}
+            </aside>
+          )}
+        </div>
+      )}
 
       {/* Mobile top bar: brand + current workspace. The plan is NOT repeated here. */}
       <header className="sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default bg-surface-sunken px-inset-lg py-inset-sm md:hidden">

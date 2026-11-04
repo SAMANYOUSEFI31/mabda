@@ -68,7 +68,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.waiting.length > 0 && p.onPreviewTruth && (
         <div className="flex flex-wrap items-center gap-inline-sm">
-          <Button size="sm" variant="secondary" iconStart="Workflow" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>
+          <Button size="sm" variant="secondary" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>
           <span className="body-sm text-text-subtle">نقشه را با «نشان بده چه در راه است» باز می‌کند؛ چیزی تأیید نمی‌شود.</span>
         </div>
       )}

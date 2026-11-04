@@ -8,7 +8,9 @@ import type { ContextObject, TreeNode } from '../types';
 import { composeThought, guessThoughtKind, THINKING_FA, THOUGHT_KINDS } from '../core/thoughts';
 import type { ThinkingKind } from '../core/thinkingMarkers';
 import { flatten } from '../core/nodeTree';
-import { Button, Dialog, SegmentedControl, Select } from '../ui';
+import { Button, Dialog, IconButton, SegmentedControl, Select, formatNumber } from '../ui';
+import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../core/thoughtBatch';
+import type { NotePayload } from '../core/thoughtBatch';
 import { MentionTextarea } from './MentionTextarea';
 
 interface Props {
@@ -19,22 +21,39 @@ interface Props {
   /** the node it is opened from (a node page): chosen for her; empty = no particular place */
   nodeId?: string;
   onSave: (nodeId: string, content: string) => Promise<void>;
+  /** several thoughts at once: one note per section */
+  onSaveMany?: (notes: NotePayload[], count: number) => Promise<void>;
 }
 
 /**
  * «فکر تازه»: one box, four chips (ایده by default; a text that ends with «؟» becomes a سؤال by itself, and she can change it).
  * No bracket to learn: the marker is written FOR her. A thought is never knowledge and never goes to an AI.
  */
-export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', onSave }) => {
+export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', onSave, onSaveMany }) => {
   const [text, setText] = useState('');
   const [kind, setKind] = useState<ThinkingKind>('idea');
   const [touched, setTouched] = useState(false);
   const [node, setNode] = useState(nodeId);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setText(''); setKind('idea'); setTouched(false); setNode(nodeId); } }, [open, nodeId]);
+  // batch preview: the default kind for lines no rule decided, and per-line changes (kept by the line's position in the text)
+  const [defKind, setDefKind] = useState<ThinkingKind>('idea');
+  const [lineKind, setLineKind] = useState<Record<number, ThinkingKind>>({});
+  const [lineNode, setLineNode] = useState<Record<number, string>>({});
+  const [dropped, setDropped] = useState<Set<number>>(new Set());
+  useEffect(() => { if (open) { setText(''); setKind('idea'); setTouched(false); setNode(nodeId); setDefKind('idea'); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId]);
+  const batch = !!onSaveMany && isBatch(text);
+  const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
+  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
   useEffect(() => { if (!touched) setKind(guessThoughtKind(text)); }, [text, touched]);
 
   const save = async () => {
+    if (batch && onSaveMany) {
+      const notes = composeThoughtBatch(lines.map((l) => ({ text: l.text, kind: lineKind[l.id] ?? l.kind, nodeId: lineNode[l.id] ?? node })));
+      if (!notes.length) return;
+      setBusy(true);
+      try { await onSaveMany(notes, lines.length); onClose(); } finally { setBusy(false); }
+      return;
+    }
     const content = composeThought(text, kind);
     if (!content) return;
     setBusy(true);
@@ -43,12 +62,30 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   return (
     <Dialog
       open={open} onClose={onClose} size="md" title="فکر تازه" description="هرچه هنوز حقیقت نیست: یک ایده، سؤال، فرض یا تصمیمی که باز مانده. جدا از دانش می‌ماند و به AI نمی‌رسد."
-      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!text.trim()} onClick={save}>ذخیره</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (batch && lines.length === 0)} onClick={save}>{batch ? `ذخیرهٔ ${formatNumber(lines.length)} فکر` : 'ذخیره'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); void save(); } }}>
-        <MentionTextarea label="فکرت را بنویس" rows={3} value={text} onValueChange={setText} objects={objects} placeholder="مثلاً: قیمت اشتراک سه‌ماهه چقدر باشد؟" hint="با @ نام یک دانش را بیاور. Ctrl/⌘+Enter ذخیره می‌کند؛ نشانگر را خودمان می‌نویسیم." />
-        <SegmentedControl label="این یک…" value={kind} onChange={(v) => { setKind(v as ThinkingKind); setTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
-        <Select label="دربارهٔ کدام بخش؟ (اختیاری)" value={node} onChange={(e) => setNode(e.target.value)} options={[{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />
+        <MentionTextarea label="فکرت را بنویس" rows={batch ? 4 : 3} value={text} onValueChange={(v) => { setText(v); setDropped(new Set()); }} objects={objects} placeholder="مثلاً: قیمت اشتراک سه‌ماهه چقدر باشد؟" hint={onSaveMany ? 'چند فکر داری؟ هر خط را یک فکر بنویس یا بچسبان. متنی که با ؟ تمام شود «سؤال» انتخاب می‌شود؛ می‌توانی عوضش کنی.' : 'متنی که با ؟ تمام شود «سؤال» انتخاب می‌شود؛ می‌توانی عوضش کنی. با @ نام یک دانش را بیاور.'} />
+        {!batch && <SegmentedControl label="این یک…" value={kind} onChange={(v) => { setKind(v as ThinkingKind); setTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
+        {batch && <SegmentedControl label="نوع خط‌هایی که نوعشان معلوم نیست" value={defKind} onChange={(v) => setDefKind(v as ThinkingKind)} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
+        <Select label={batch ? 'بخش همهٔ فکرها (اختیاری)' : 'دربارهٔ کدام بخش؟ (اختیاری)'} value={node} onChange={(e) => setNode(e.target.value)} options={sectionOptions} />
+        {batch && (
+          <div className="flex flex-col gap-stack-sm" data-testid="thought-batch-preview">
+            <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} فکر پیدا شد. نوع هر خط را می‌توانی عوض کنی یا خطی را برداری؛ چیزی ذخیره نشده است.</p>
+            <ul className="flex flex-col gap-stack-sm overflow-auto" style={{ maxBlockSize: '40vh' }}>
+              {lines.map((l) => (
+                <li key={l.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-sm">
+                  <div className="flex items-start justify-between gap-inline-sm">
+                    <p className="body-md min-w-space-0 flex-1 text-text-default">{l.text}</p>
+                    <IconButton icon="X" label={`برداشتن «${l.text.slice(0, 30)}»`} onClick={() => setDropped((d) => new Set(d).add(l.id))} />
+                  </div>
+                  <SegmentedControl label="نوع" value={lineKind[l.id] ?? l.kind} onChange={(v) => setLineKind((m) => ({ ...m, [l.id]: v as ThinkingKind }))} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
+                  <Select label="بخش این خط" value={lineNode[l.id] ?? node} onChange={(e) => setLineNode((m) => ({ ...m, [l.id]: e.target.value }))} options={sectionOptions} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Dialog>
   );

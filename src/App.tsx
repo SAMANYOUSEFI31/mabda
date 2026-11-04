@@ -66,6 +66,7 @@ import { expectationRows, expectationsDue, metricsWithoutRecentNumber, verdictTa
 import { MX } from './core/metricsText';
 import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue } from './core/weeklyReview';
 import { NodeThreadPanel } from './components/NodeThreadPanel';
+import { KnowledgeBatchDialog } from './components/KnowledgeBatchDialog';
 import { MemoryImportDialog } from './components/MemoryImportDialog';
 import { WorkstreamStudio } from './components/WorkstreamStudio';
 import { SmartChat } from './components/SmartChat';
@@ -212,6 +213,7 @@ export default function App() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [readNodeId, setReadNodeId] = useState<string | null>(null);
   const [effectNodeId, setEffectNodeId] = useState<string | null>(null);
@@ -236,6 +238,15 @@ export default function App() {
     return () => window.removeEventListener('keydown', on);
   }, []);
   /** scroll to an element that appears after a tab / view change (it may take a moment to mount) */
+  // «واردِ یک بخش شدن»: the focused section lives in history (#node=…), so the browser / phone back button, a direct link and reload all work
+  const nodeFromUrl = () => { try { const m = /#node=([^&]+)/.exec(window.location.hash); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(nodeFromUrl);
+  const goFocus = (id: string | null) => {
+    setFocusNodeId(id);
+    try { window.history.pushState({ node: id }, '', id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search); } catch { /* optional */ }
+    window.scrollTo({ top: 0 });
+  };
+  useEffect(() => { const on = () => setFocusNodeId(nodeFromUrl()); window.addEventListener('popstate', on); return () => window.removeEventListener('popstate', on); }, []);
   const revealWhenThere = (id: string) => { let tries = 0; const t = setInterval(() => { const el = document.getElementById(id); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); } }, 60); };
   const deliverables = (data?.deliverables ?? []).filter((d) => !d.archivedAt); // archived outputs are out of every list and count (the archive shows them)
   const ledgerEntries = data?.ledger ?? [];
@@ -293,7 +304,7 @@ export default function App() {
   const handlePick = (hit: SearchHit) => {
     const n = Date.now();
     if (hit.kind === 'object') { const o = workspaceContexts.find((x) => x.id === hit.id); if (o) openContext(o); return; }
-    if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${hit.id}`); return; }
+    if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); goFocus(hit.id); return; }
     if (hit.kind === 'note') {
       const nodeId = (data?.notes ?? []).find((x) => x.id === hit.id)?.nodeId;
       if (!nodeId) return;
@@ -304,6 +315,7 @@ export default function App() {
     switch (hit.id) {
       case 'record': openContext(null); break;
       case 'thought': setThoughtDialog({}); break;
+      case 'batch-knowledge': setIsBatchOpen(true); break;
       case 'go-thinking': openThinkingSpace(); break;
       case 'go-archive': setArchiveOpen(true); break;
       case 'go-thinking-canvas': setThinkingView('canvas'); setActiveTab('thinking'); break;
@@ -663,6 +675,10 @@ export default function App() {
     await handleAddNote(nodeId, content);
     toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش. به AI نمی‌رسد.' });
   };
+  const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number) => {
+    for (const n of notes) await handleAddNote(n.nodeId, n.content);
+    toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان. به AI نمی‌رسند.` });
+  };
   const handleAddNote = async (nodeId: string, content: string) => {
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
     if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes] }));
@@ -983,6 +999,14 @@ export default function App() {
     if (r) patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
     return !!r;
   };
+  const handleProposeBatch = async (items: Array<{ type: ContextObject['type']; title: string; content: string; nodeId: string }>) => {
+    let done = 0;
+    for (const it of items) {
+      const r = await attempt(() => dataApi.createObject(wid, { type: it.type, status: 'Proposed', provenance: 'User Input', title: it.title, content: it.content, nodeId: it.nodeId, source: { kind: 'paste', at: new Date().toISOString() } }));
+      if (r) { patch((d) => ({ ...d, objects: [r.object, ...d.objects] })); done += 1; }
+    }
+    if (done) toast.show({ intent: 'success', message: `${formatNumber(done)} پیشنهاد در «فکر» منتظر تأیید توست.` });
+  };
   const setLedger = (ledger: LedgerEntry[]) => patch((d) => ({ ...d, ledger }));
 
   /** what is waiting for her in the thinking space: suggestions, drafts, open thoughts (the badge of «فکر») */
@@ -1143,6 +1167,7 @@ export default function App() {
                   items={[
                     { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
                     { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+                    { label: 'چند دانش با هم', icon: 'ListChecks', onSelect: () => setIsBatchOpen(true) },
                     { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
                     { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
                     { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
@@ -1300,6 +1325,11 @@ export default function App() {
             ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
+                relationships={data.relationships ?? []}
+                staleIds={reviewIdSet}
+                openCounts={openCounts}
+                focusId={focusNodeId}
+                onFocus={goFocus}
                 nodes={nodes}
                 notes={data.notes}
                 files={data.files}
@@ -1540,7 +1570,7 @@ export default function App() {
         onPatchObject={handlePatchObject}
       />
 
-      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} onSave={handleSaveThought} />
+      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} />
       <NodeDialogs
         state={nodeDialog}
         nodes={nodes}
@@ -1676,7 +1706,8 @@ export default function App() {
       <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
       <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
-      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} nodes={nodes} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onSaveAsset={persistDeliverable} />
+      <KnowledgeBatchDialog open={isBatchOpen} onClose={() => setIsBatchOpen(false)} nodes={nodes} onPropose={handleProposeBatch} />
       <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
       <Dialog
         open={demoConfirm}
