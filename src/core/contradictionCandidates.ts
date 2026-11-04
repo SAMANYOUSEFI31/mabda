@@ -13,6 +13,7 @@
 
 import type { Contradiction, ContextObject, ContextRelationship, TreeNode } from '../types';
 import { ancestorIds } from './nodeTree';
+import { reachOf } from './effectiveContext';
 import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, extractQuantities, jaccard, normalizeFa, titleTokens } from './contextEngine';
 
@@ -76,6 +77,12 @@ function inheritedPairs(active: ContextObject[], nodes: TreeNode[]): Array<[numb
   return out;
 }
 
+/** is there a place where both are in force at once? (same section · one is the other's ancestor · either reaches everywhere) */
+export function coGoverning(a: ContextObject, b: ContextObject, ancestors: (nodeId: string) => string[]): boolean {
+  if (reachOf(a) === 'global' || reachOf(b) === 'global') return true;
+  return a.nodeId === b.nodeId || ancestors(a.nodeId).includes(b.nodeId) || ancestors(b.nodeId).includes(a.nodeId);
+}
+
 export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
   const active = live(objects).filter((o) => o.content.trim().length > 0);
   const linked = linkedPairs(active, relationships);
@@ -98,6 +105,9 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES,
       const a = active[i];
       const b = active[j];
       if (normalizeFa(a.content) === normalizeFa(b.content)) continue; // identical claims agree
+      // two pieces of knowledge can only contradict where BOTH are in force: the same section, a section and its ancestor,
+      // or a «همه‌جا» item (compared with everything). Two sibling sections never govern the same place — unless a person linked them.
+      if (nodes.length && !linkedSet.has(`${index.get(a.id)}|${index.get(b.id)}`) && !coGoverning(a, b, ancestors)) continue;
       const sim = jaccard(tokens.get(a.id)!, tokens.get(b.id)!);
       const reasons: CandidateReason[] = [];
 

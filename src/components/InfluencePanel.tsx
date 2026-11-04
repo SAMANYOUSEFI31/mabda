@@ -20,7 +20,7 @@ interface Props {
 
 const Row: React.FC<{ o: ContextObject; extra?: React.ReactNode; onOpen?: (o: ContextObject) => void }> = ({ o, extra, onOpen }) => (
   <li className="flex flex-wrap items-center justify-between gap-inline-sm">
-    {onOpen ? <button type="button" className="body-md text-start text-text-default underline-offset-2 hover:underline" onClick={() => onOpen(o)}>{o.title}</button> : <span className="body-md text-text-default">{o.title}</span>}
+    {onOpen ? <button type="button" className="body-md inline-flex min-h-touch-comfortable items-center text-start text-text-default underline-offset-2 hover:underline" onClick={() => onOpen(o)}>{o.title}</button> : <span className="body-md text-text-default">{o.title}</span>}
     <span className="flex flex-wrap items-center gap-inline-xs">{extra}<TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>
   </li>
 );
@@ -63,7 +63,7 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
           {shapes.assets.length ? <ul className="flex flex-col gap-stack-xs">{shapes.assets.map((d: GeneratedDeliverable) => (
             <li key={d.id} className="flex items-center justify-between gap-inline-sm">
               <span className="body-md text-text-default">{d.title}</span>
-              {onOpenAssets && <button type="button" className="caption text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>خروجی‌ها</button>}
+              {onOpenAssets && <button type="button" className="caption inline-flex min-h-touch-comfortable items-center text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>خروجی‌ها</button>}
             </li>
           ))}</ul> : <p className="body-sm text-text-subtle">خروجی‌ای از آن ساخته نشده.</p>}
         </Closed>
@@ -105,7 +105,7 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
           {shapes.assets.map((d: GeneratedDeliverable) => (
             <li key={d.id} className="flex items-center justify-between gap-inline-sm">
               <span className="body-md text-text-default">{d.title}</span>
-              {onOpenAssets && <button type="button" className="caption text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>دارایی‌ها</button>}
+              {onOpenAssets && <button type="button" className="caption inline-flex min-h-touch-comfortable items-center text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>دارایی‌ها</button>}
             </li>
           ))}
         </Group>

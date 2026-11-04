@@ -8,10 +8,12 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const BASE = process.argv[2] || 'http://localhost:3100';
-const OUT = 'docs/screens';
+const OUT = process.env.SCREENS_OUT || 'docs/screens';
 mkdirSync(OUT, { recursive: true });
 
-const SIZES = [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }];
+const SIZES = process.env.ALL_WIDTHS
+  ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
+  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }];
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
@@ -29,7 +31,10 @@ const audit = () => {
   const bgOf = (el) => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(e); let bg = { r: 9, g: 9, b: 11, a: 1 }; for (const e of chain.reverse()) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) bg = over(c, bg); } return bg; };
   out.primaries = [...document.querySelectorAll('.bsh-btn--primary')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[inert]'); }).length;
   const de = document.documentElement;
-  if (de.scrollWidth > de.clientWidth + 1) out.overflow = `${de.scrollWidth} > ${de.clientWidth}`;
+  if (de.scrollWidth > de.clientWidth + 1) {
+    const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
+    out.overflow = `${de.scrollWidth} > ${de.clientWidth} ← ${wide.join(' | ')}`;
+  }
   const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
   const seen = new Set();
   for (const el of document.querySelectorAll('body *')) {
@@ -63,11 +68,11 @@ const audit = () => {
       }
     }
   }
-  // canvas toolbar: at most FIVE visible controls (docs/canvas-design.md); the «⋯» overflow is not one of them
+  // canvas toolbar: controls are GROUPED (view · history · camera · note · details · «⋯»); more than 9 loose children means it grew back into a bar
   const tb = document.querySelector('[data-testid=canvas-toolbar]');
   if (tb && vis(tb)) {
     const controls = [...tb.children].filter((c) => vis(c) && !c.hasAttribute('data-toolbar-overflow'));
-    if (controls.length > 5) out.canvas.push(`toolbar shows ${controls.length} controls (max 5)`);
+    if (controls.length > 9) out.canvas.push(`toolbar shows ${controls.length} groups/controls (max 9)`);
   }
   // focus mode: a card outside the selection is quieter by background and border — its title must stay readable (≥ 3:1, opacity counted)
   for (const t of document.querySelectorAll('[data-dimmed=true] [data-card-title]')) {

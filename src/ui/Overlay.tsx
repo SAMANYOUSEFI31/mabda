@@ -245,7 +245,7 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
         onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } },
       })}
       {open && (
-        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey}
+        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} style={{ maxBlockSize: 'min(70dvh, 32rem)', overflowY: 'auto' }}
           className={cx('bsh-popover__panel', 'bsh-menu', `is-${align}`, side === 'top' && 'is-top')}>
           {items.map((it, i) => it.divider ? <div key={i} role="separator" className="bsh-menu__sep" /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}

@@ -114,5 +114,6 @@
 /* a note line: its «علامت بزن» button shows on hover / focus (and stays reachable by long-press on touch) */
 .note-line .note-mark { opacity: 0; transition: opacity 120ms; }
 .note-line:hover .note-mark, .note-line:focus-within .note-mark, .note-line .note-mark[aria-expanded='true'] { opacity: 1; }
-@media (hover: none) { .note-line .note-mark { position: absolute; inset-inline-end: 0; inset-block-start: 0; pointer-events: none; } }
+/* touch: nothing is hover-only — the «علامت بزن» button is always visible and tappable (long-press stays as a shortcut) */
+@media (hover: none) { .note-line .note-mark { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .note-line .note-mark { transition: none; } }

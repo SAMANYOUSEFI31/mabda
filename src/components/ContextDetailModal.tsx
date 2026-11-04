@@ -9,6 +9,7 @@ import { dependentsOf, planDecisions } from '../core/decisionGraph';
 import type { ReviewNeed } from '../core/decisionGraph';
 import { defaultNodeId, flatten } from '../core/nodeTree';
 import { scopeEffect } from '../core/scopeMove';
+import { redundantLinks } from '../core/dependencyReduction';
 import { reachSentence } from '../core/packScope';
 import { influenceOf } from '../core/influence';
 import { InfluencePanel } from './InfluencePanel';
@@ -493,6 +494,12 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               hint="مواردی که به این تکیه دارند. با تغییرِ این مورد آن‌ها نیاز به بازبینی پیدا می‌کنند."
               options={candidates} selected={effects} onChange={setEffects} titleOf={(id) => titleOf?.(id) ?? id}
             />
+            {isEditing && object && redundantLinks(allObjects, [...relationships.filter((r) => !(r.type === 'depends_on' && r.sourceId === object.id)), ...deps.map((d) => ({ id: `tmp_${d}`, type: 'depends_on', sourceId: object.id, targetId: d }) as ContextRelationship)]).filter((l) => l.from === object.id && deps.includes(l.to)).map((l) => (
+              <div key={l.to} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm" data-testid="redundant-link">
+                <p className="body-sm text-text-default">«{titleOf?.(l.to) ?? l.to}» لازم نیست؛ از راه «{l.via.map((v) => titleOf?.(v) ?? v).join('» و «')}» به آن می‌رسد.</p>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setDeps(deps.filter((d) => d !== l.to))}>برش دار</Button>
+              </div>
+            ))}
             {isEditing && (dependents.length > 0 || unit?.concurrent) && (
               <p className="body-sm text-text-subtle">
                 {dependents.length > 0 ? `${formatNumber(dependents.length)} مورد (مستقیم یا غیرمستقیم) روی این مورد سوارند. ` : ''}

@@ -62,6 +62,9 @@ const VIEWS: Array<{ id: ContextView; label: string }> = [
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const { currentWorkspace, allWorkspaces, activeTab, onTabChange } = p;
   const [drawer, setDrawer] = useState(false);
+  // the desktop sidebar can fold into an icon rail (more room for the canvas); the choice is remembered
+  const [rail, setRail] = useState(() => { try { return localStorage.getItem('mabda.sidebar') === 'rail'; } catch { return false; } });
+  const toggleRail = () => setRail((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'rail' : 'full'); } catch { /* optional */ } return n; });
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
   const planName = plan.title.split(' ')[0];
@@ -95,28 +98,29 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const sidebar = (
     <div className="flex h-full flex-col justify-between gap-stack-lg select-none">
       <div className="flex flex-col gap-stack-lg">
-        <div className="flex items-center gap-inline-md px-inset-sm">
-          <BrandMark />
-          <div>
-            <span className="text-heading-xs text-text-default">مبدأ</span>
-            <span className="body-sm block text-text-subtle">منبع حقیقت کسب‌وکار</span>
-          </div>
+        <div className={`flex items-center gap-inline-md ${rail ? 'justify-center' : 'justify-between px-inset-sm'}`}>
+          <span className="flex min-w-space-0 items-center gap-inline-md">
+            <BrandMark />
+            {!rail && <span className="min-w-space-0"><span className="text-heading-xs block text-text-default">مبدأ</span><span className="body-sm block truncate text-text-subtle">منبع حقیقت کسب‌وکار</span></span>}
+          </span>
         </div>
 
-        <Button variant="secondary" iconStart="Search" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K">جستجو <span className="caption text-text-subtle" dir="ltr">Ctrl K</span></Button>
+        {rail
+          ? <IconButton icon="Search" label="جستجو (Ctrl K)" variant="secondary" onClick={p.onOpenSearch} />
+          : <Button variant="secondary" iconStart="Search" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K">جستجو <span className="caption text-text-subtle" dir="ltr">Ctrl K</span></Button>}
 
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
-          <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
-          <NavItem icon="Lightbulb" label="فکر" trailing={p.thinkingCount ? formatNumber(p.thinkingCount) : undefined} selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(p.contextCount)} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
-          {activeTab === 'context' && (
+          <NavItem compact={rail} icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
+          <NavItem compact={rail} icon="Lightbulb" label="فکر" trailing={p.thinkingCount ? formatNumber(p.thinkingCount) : undefined} selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
+          <NavItem compact={rail} icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(p.contextCount)} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
+          {activeTab === 'context' && !rail && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               {VIEWS.map((v) => <NavItem nested key={v.id} label={v.label} selected={p.contextViewMode === v.id} onClick={() => p.onChangeContextViewMode(v.id)} />)}
             </div>
           )}
 
-          <NavItem icon="Package" label="خروجی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
-          {inOutputs && (
+          <NavItem compact={rail} icon="Package" label="خروجی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
+          {inOutputs && !rail && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
               {p.specs.map((s) => <NavItem nested key={s.id} label={`بساز: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
@@ -127,19 +131,20 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         </nav>
       </div>
 
-      <div className="border-t border-border-default pt-inset-lg">
+      <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
+        <IconButton icon={rail ? 'PanelRight' : 'ChevronRight'} label={rail ? 'باز کردن نوار کناری' : 'جمع کردن نوار کناری'} aria-expanded={!rail} variant="ghost" onClick={toggleRail} className="self-center" />
         <Menu
           label="حساب کاربری"
           side="top"
           className="w-full"
           trigger={(
-            <button type="button" className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+            <button type="button" aria-label={`حساب کاربری، ${currentWorkspace.name}، پلن ${planName}`} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
               <span className="grid size-control-sm shrink-0 place-items-center rounded-control-sm bg-bg-neutral-subtle text-icon-subtle"><Icon name="User" size="lg" /></span>
-              <span className="min-w-space-0 flex-1">
+              {!rail && <span className="min-w-space-0 flex-1">
                 <span className="label-md block truncate text-text-default">{currentWorkspace.name}</span>
                 <span className="body-sm block whitespace-nowrap text-text-subtle">{currentWorkspace.isDemo ? 'نمونه · ' : ''}پلن {planName}</span>
-              </span>
-              <Icon name="ChevronUp" size="md" className="text-icon-subtle" />
+              </span>}
+              {!rail && <Icon name="ChevronUp" size="md" className="text-icon-subtle" />}
             </button>
           )}
           items={withDividers()}
@@ -160,7 +165,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   return (
     <>
       {/* Desktop persistent sidebar (inline-start edge) */}
-      <aside className="sticky top-space-0 z-dropdown hidden h-screen w-overlay-xs shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
+      <aside style={rail ? { inlineSize: 80 } : undefined} className={`sticky top-space-0 z-dropdown hidden h-screen shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken md:flex md:flex-col ${rail ? 'p-inset-sm' : 'w-overlay-xs p-inset-lg'}`}>
         {sidebar}
       </aside>
 
