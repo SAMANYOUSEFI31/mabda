@@ -25,6 +25,9 @@ interface Props {
   nodes: TreeNode[];
   /** the node the work is about: the current node on a node page, empty on Home (the whole tree) */
   scopeNodeId?: string;
+  /** opened with a kind and a text already written (e.g. «از AI نظر بخواه» on a decision's options): the person reads and edits it first */
+  initialKind?: RequestKind;
+  initialRequest?: string;
   onClose: () => void;
   onOpenImport: () => void;
   /** earlier answers (the old chat sessions): they stay reachable here, nothing is lost */
@@ -50,14 +53,14 @@ export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner 
 
 const MODE_OF: Record<RequestKind, 'discovery' | 'audit' | 'advisor'> = { question: 'discovery', audit: 'audit', draft: 'discovery', decision: 'advisor', change_review: 'audit', free: 'discovery' };
 
-const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onOpenAiSettings, onOpenObject }) => {
+const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, initialRequest, onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onOpenAiSettings, onOpenObject }) => {
   const toast = useToast();
   const ai = useAiStatus();
   const [answer, setAnswer] = useState<{ blocks: ContentBlock[]; text: string; streaming: boolean } | null>(null);
   const [answerError, setAnswerError] = useState<AiErrorInfo | null>(null);
   const [past, setPast] = useState<string | null>(null);
-  const [kind, setKind] = useState<RequestKind>('question');
-  const [request, setRequest] = useState('');
+  const [kind, setKind] = useState<RequestKind>(initialKind ?? 'question');
+  const [request, setRequest] = useState(initialRequest ?? '');
   const [scope, setScope] = useState(scopeNodeId ?? '');
   /** the same switch as a saved pack's: the sub-sections of the section are read too (src/core/packScope.ts) */
   const [withChildren, setWithChildren] = useState(true);

@@ -16,6 +16,8 @@ import { ThinkingList } from './ThinkingList';
 
 type ProposalProps = React.ComponentProps<typeof ProposalInbox>;
 interface Props {
+  onOptions?: (item: NoteThinkingItem) => void;
+  optionCount?: (item: NoteThinkingItem) => number;
   objects: ContextObject[];
   notes: Note[];
   nodes: TreeNode[];
@@ -110,7 +112,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {view.thoughts.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
           <h3 className="title text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h3>
-          <ThinkingList items={view.thoughts} objects={p.objects} nodes={p.nodes} onConvert={async () => undefined} onPrefill={p.onToKnowledge} onToSection={p.onToSection} />
+          <ThinkingList items={view.thoughts} objects={p.objects} nodes={p.nodes} onConvert={async () => undefined} onPrefill={p.onToKnowledge} onToSection={p.onToSection} onOptions={p.onOptions} optionCount={p.optionCount} />
         </section>
       )}
 

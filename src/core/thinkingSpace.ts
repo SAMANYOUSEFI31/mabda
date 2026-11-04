@@ -10,6 +10,7 @@
 
 import type { ContextObject, Note, TreeNode } from '../types';
 import { subtreeIds } from './nodeTree';
+import { thoughtInScope } from './thoughtAbout';
 import { convertedTo, thinkingOf } from './thinkingMarkers';
 import type { NoteThinkingItem, ThinkingKind } from './thinkingMarkers';
 
@@ -38,10 +39,12 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
   const assumptionsAll = objects.filter((o) => live(o) && o.status === 'Confirmed' && o.assumption);
   const ids = filter.nodeId ? new Set(subtreeIds(nodes, filter.nodeId)) : null;
   const inNode = (id: string) => !ids || ids.has(id);
+  // a thought is also in the view of every section / knowledge it names with @«…» (its «دربارهٔ»), not only its home
+  const inScope = (t: NoteThinkingItem) => !ids || thoughtInScope(t, ids, objects, nodes);
   const k = filter.kind;
   return {
     waiting: !k || k === 'waiting' ? waitingAll.filter((w) => inNode(w.object.nodeId)) : [],
-    thoughts: !k || (k !== 'waiting' && k !== 'assumption') ? thoughtsAll.filter((t) => inNode(t.nodeId) && (!k || t.kind === k)) : k === 'assumption' ? thoughtsAll.filter((t) => inNode(t.nodeId) && t.kind === 'assumption') : [],
+    thoughts: !k || (k !== 'waiting' && k !== 'assumption') ? thoughtsAll.filter((t) => inScope(t) && (!k || t.kind === k)) : k === 'assumption' ? thoughtsAll.filter((t) => inScope(t) && t.kind === 'assumption') : [],
     assumptions: !k || k === 'assumption' ? assumptionsAll.filter((o) => inNode(o.nodeId)) : [],
     counts: {
       waiting: waitingAll.length,
