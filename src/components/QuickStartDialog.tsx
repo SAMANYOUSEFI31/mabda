@@ -21,7 +21,6 @@ interface Props {
   onCreateObjects: (drafts: ContextDraft[]) => Promise<ContextObject[]>;
   onConfirmMany: (ids: string[]) => Promise<void>;
   onSampleDone: (d: GeneratedDeliverable) => void;
-  onOpenAiSettings: () => void;
   /** the workspace's nodes: the summary names where things went */
   nodes: Array<{ id: string; label: string }>;
   /** «ببین»: close and open that node in the structure */
@@ -47,7 +46,7 @@ const QUESTIONS: Array<{ key: string; label: string; type: ContextDraft['type'];
  */
 export const QuickStartDialog: React.FC<Props> = (props) => (props.open ? <Wizard {...props} /> : null);
 
-const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, onOpenAiSettings, nodes, onGoToNode, onOpenThinking }) => {
+const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, nodes, onGoToNode, onOpenThinking }) => {
   const ai = useAiStatus();
   const toast = useToast();
   const [step, setStep] = useState<'choose' | 'input' | 'review' | 'pack'>('choose');
@@ -239,8 +238,8 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
             )}
             <section className="flex flex-col gap-stack-sm" aria-label="خروجی نمونه">
               <h3 className="title text-text-default">یک خروجی نمونه از همین دانش</h3>
-              {!ai.available && <AiErrorNotice error={{ kind: 'no_key', message: 'برای ساخت خروجی نمونه کلید API لازم است. بستهٔ بالا بدون کلید هم کار می‌کند.', retryable: false }} onOpenSettings={onOpenAiSettings} />}
-              {sampleError && <AiErrorNotice error={sampleError} onRetry={makeSample} retrying={sampling} onOpenSettings={onOpenAiSettings} />}
+              {!ai.available && <AiErrorNotice error={{ kind: 'disabled', message: 'هوش مصنوعی فعلاً در دسترس نیست؛ بستهٔ بالا همچنان آماده است.', retryable: false }} />}
+              {sampleError && <AiErrorNotice error={sampleError} onRetry={makeSample} retrying={sampling} />}
               {sample ? (
                 <div className="flex flex-col gap-stack-sm">
                   <div className="rounded-control border border-border-default bg-surface-sunken p-inset-lg"><Markdown>{sample.content}</Markdown></div>

@@ -1,6 +1,6 @@
 /**
  * Examples of a red line: up to three short «right» / «wrong» texts that sit next to a Constraint (or a Decision that
- * reaches everywhere) and travel WITH it into the AI request, the Context pack, MCP and the validator prompt — so a model
+ * reaches everywhere) and travel WITH it into the AI request, the Context pack and the validator prompt — so a model
  * sees what «following» and «breaking» the rule look like. Pure.
  *
  *  • order = the order the user wrote them (stable), never more than {@link EXAMPLE_LIMIT}
@@ -46,7 +46,7 @@ export const exampleLines = (o: Parameters<typeof examplesOf>[0]): string[] => e
 export const exampleSuffix = (list: readonly RedlineExample[] | undefined): string =>
   list?.length ? ` (${list.map((e) => `مثال ${EXAMPLE_FA[e.kind]}: ${e.text}`).join('؛ ')})` : '';
 
-/** the guardrail string used by the pack, MCP and the validator: «عنوان: متن» followed by its examples */
+/** the guardrail string used by the pack and the validator: «عنوان: متن» followed by its examples */
 export const guardrailText = (o: Pick<ContextObject, 'title' | 'content' | 'type' | 'reach' | 'examples'> & { sample?: boolean }): string => {
   const ex = exampleLines(o);
   return `${o.title}: ${o.content}${ex.length ? ` (${ex.join('؛ ')})` : ''}`;

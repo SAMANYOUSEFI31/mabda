@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { migrate } from './migrations.ts';
 import { Repo } from './repo.ts';
 import { createContextSource } from './aiContext.ts';
+import { renderAiRequest } from './aiRequests.ts';
 import type { FileService } from '../files/service.ts';
 import type { Workspace } from '../../src/types/index.ts';
 
@@ -66,8 +67,12 @@ test('notes and their derived thinking items never reach a model; a converted on
   const everything = () => JSON.stringify([t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] }), t.source.forGenerate('w1', { targetNodeId: '*', title: 't', criteria: [] }), t.source.forChat('w1', { scopeNodeId: t.n22, message: 'x' }), t.source.forChat('w1', { message: 'x' })]);
   for (const text of ['پیام‌رسان را بیشتر', 'قیمت گروهی', 'بدون-براکت', 'روز ارسال', 'جعبهٔ هدیه']) assert.ok(!everything().includes(text), `derived item «${text}» stays out of every context`);
   assert.equal(t.repo.listObjects(t.s).length, 0, 'deriving items stores nothing');
-  // convert the assumption → Proposed Fact with the flag; the note is untouched
-  const o = t.repo.createObject(t.s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'پیام‌رسان', content: 'مشتری‌ها پیام‌رسان را بیشتر می‌خوانند', nodeId: t.n22, assumption: true, source: { kind: 'note', noteId: note.id, lineKey: 'x', at: '' } });
+  // promote the persisted Thought → Proposed Fact with provenance; the Note stays raw and unchanged
+  const assumption = t.repo.listThoughts(t.s).find((x) => x.kind === 'assumption')!;
+  const o = t.repo.createObject(t.s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'پیام‌رسان', content: assumption.text, nodeId: t.n22, source: { kind: 'note', thoughtId: assumption.id, at: '' } });
+  assert.equal(t.repo.getNote(t.s, note.id)?.content.includes('[فرض]'), true, 'promotion does not edit Material');
+  assert.equal(t.repo.getThought(t.s, assumption.id)?.status, 'resolved');
+  assert.deepEqual([o.source?.thoughtId, o.source?.noteId, o.source?.quote], [assumption.id, note.id, assumption.text]);
   const ctx = t.source.forGenerate('w1', { targetNodeId: t.n22, title: 't', criteria: [] });
   const lite = ctx.contextList!.find((c) => c.id === o.id)!;
   assert.deepEqual([lite.status, lite.assumption], ['Proposed', true]);
@@ -97,4 +102,53 @@ test('SAMPLES never enter an AI context (chat, scoped chat, generation, whole-wo
   // examples can be removed without a trace in the knowledge
   assert.equal(t.repo.deleteSamples(t.s), 1);
   assert.equal(t.repo.listSampleObjects(t.s).length, 0);
+});
+
+test('explicit Thought chat resolves only selected open Thoughts and keeps them outside confirmed Truth', () => {
+  const t = setup();
+  t.add(t.n22, 'حقیقت منتخب', { type: 'Fact', status: 'Confirmed' });
+  t.add(t.n22, 'دانش پیشنهادی خارج از زمینه', { type: 'Fact', status: 'Proposed' });
+  t.add(t.n22, 'نیازمند بازبینی خارج از زمینه', { type: 'Fact', status: 'Needs Review' });
+  t.repo.createNote(t.s, t.n22, '[فرض] فکر انتخاب‌شدهٔ یکتا\n[ایده] فکر انتخاب‌نشدهٔ یکتا');
+  const selected = t.repo.listThoughts(t.s).find((thought) => thought.text === 'فکر انتخاب‌شدهٔ یکتا');
+  assert.ok(selected);
+  const result = t.source.forChat('w1', { scopeNodeId: t.n22, message: 'درخواست یکتا', thoughtIds: [selected.id] });
+  const serialized = JSON.stringify(result);
+  assert.deepEqual(result.contextList?.map((o) => o.title), ['حقیقت منتخب']);
+  assert.deepEqual(result.thoughts?.map((x) => x.id), [selected.id]);
+  assert.ok(serialized.includes('فکر انتخاب‌شدهٔ یکتا'));
+  assert.ok(!serialized.includes('فکر انتخاب‌نشدهٔ یکتا'));
+  assert.ok(!serialized.includes('دانش پیشنهادی خارج از زمینه'));
+  assert.ok(!serialized.includes('نیازمند بازبینی خارج از زمینه'));
+  assert.deepEqual(result.excerpts, [], 'file excerpts are not silently included in explicit Thought work');
+  assert.throws(() => t.source.forChat('w1', { message: 'درخواست یکتا', thoughtIds: ['missing_thought'] }), /فکرهای انتخاب‌شده/);
+  const prompt = renderAiRequest(t.repo, t.s, { kind: 'audit', request: 'درخواست یکتا', scopeNodeId: t.n22, thoughtIds: [selected.id] }, NOW);
+  assert.ok(prompt.markdown.includes('فکرهای انتخاب‌شده (تأییدنشده؛ حقیقت نیستند)'));
+  assert.ok(!prompt.refs.some((x) => x.id === selected.id), 'Thoughts are not Truth/context refs');
+  assert.equal(prompt.counts.thoughts, 1);
+  assert.throws(() => renderAiRequest(t.repo, t.s, { kind: 'audit', request: 'درخواست یکتا', thoughtIds: ['missing_thought'] }, NOW), /فکرهای انتخاب‌شده/);
+});
+
+test('explicit Thought chat joins confirmed context from selected sections without widening to the workspace', () => {
+  const t = setup();
+  const addFact = (nodeId: string, title: string) => t.repo.createObject(t.s, {
+    type: 'Fact', status: 'Confirmed', provenance: 'User Input', title, content: `${title} متن`, nodeId,
+  });
+  addFact(t.n21, 'حقیقت بخش اول');
+  addFact(t.n22, 'حقیقت بخش دوم');
+  addFact(t.n3, 'حقیقت بخش انتخاب‌نشده');
+  t.repo.createNote(t.s, t.n21, '[سؤال] فکر اول');
+  t.repo.createNote(t.s, t.n22, '[فرض] فکر دوم');
+  const thoughts = t.repo.listThoughts(t.s).filter((thought) => ['فکر اول', 'فکر دوم'].includes(thought.text));
+  assert.equal(thoughts.length, 2);
+
+  const result = t.source.forChat('w1', {
+    scopeNodeIds: [t.n21, t.n22], message: 'بررسی فکرها', thoughtIds: thoughts.map((thought) => thought.id),
+  });
+  assert.deepEqual(result.focusNodeIds, [t.n21, t.n22]);
+  assert.deepEqual(result.contextList?.map((item) => item.title).sort(), ['حقیقت بخش اول', 'حقیقت بخش دوم']);
+  assert.deepEqual(result.thoughts?.map((thought) => thought.text).sort(), ['فکر اول', 'فکر دوم']);
+  assert.throws(() => t.source.forChat('w1', {
+    scopeNodeIds: ['missing-section'], message: 'بررسی فکرها', thoughtIds: thoughts.map((thought) => thought.id),
+  }), /یکی از بخش‌های فکرهای انتخاب‌شده/);
 });

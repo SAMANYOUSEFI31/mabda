@@ -67,10 +67,11 @@ test('needsReview: a changed dependency flags the dependent (and the chain behin
   assert.equal(needsReview(objects, rels, rewritten).has('B'), false, 'editing B itself counts as having looked at it');
 });
 
-test('needsReview: a move or a status change of the dependency does not count; multiple changed dependencies are all listed; superseded dependency counts', () => {
+test('needsReview: moving a dependency between sections or moving a Node does not count; multiple changes are listed', () => {
   const objects = [obj('A'), obj('P'), obj('Y')];
   const rels = [dep('Y', 'A'), dep('Y', 'P')];
   assert.equal(needsReview(objects, rels, [chg('A', 'edited', '2026-02-01T00:00:00Z', { nodeId: 'offer' }), chg('A', 'status_changed', '2026-02-02T00:00:00Z', { status: 'Needs Review' })]).size, 0);
+  assert.equal(needsReview(objects, rels, [chg('node:offer', 'node_moved', '2026-02-03T00:00:00Z')]).size, 0, 'structural moves are not content changes of a dependency');
   const r = needsReview([obj('A'), obj('P', { status: 'Superseded' }), obj('Y')], rels, [chg('A', 'edited', '2026-02-01T00:00:00Z', { title: 't' }), chg('P', 'superseded', '2026-02-05T00:00:00Z')]);
   assert.deepEqual(r.get('Y')!.changedDependencies.map((d) => d.id), ['A', 'P']);
   assert.equal(r.get('Y')!.since, '2026-02-05T00:00:00Z');

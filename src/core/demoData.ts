@@ -55,7 +55,7 @@ export interface DemoData {
 
 interface Who { actor: ContextChangeActor; label?: string }
 const USER: Who = { actor: 'user' };
-const CLAUDE: Who = { actor: 'mcp', label: 'Claude' };
+const EXTERNAL: Who = { actor: 'import', label: 'پاسخ بیرونی' };
 const CHAT: Who = { actor: 'chat' };
 const COACH: Who = { actor: 'coach' };
 const IMPORT = (label: string): Who => ({ actor: 'import', label });
@@ -139,7 +139,6 @@ export function buildDemo(now: Date): DemoData {
     });
   };
   function sourceActor(kind: ObjectSource['kind'], label?: string): Who {
-    if (kind === 'mcp') return { actor: 'mcp', ...(label ? { label } : {}) };
     if (kind === 'chat') return CHAT;
     if (kind === 'coach') return COACH;
     if (kind === 'file' || kind === 'paste' || kind === 'note' || kind === 'asset') return IMPORT(label ?? 'ورود');
@@ -156,13 +155,13 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30], reach: 'global',
     examples: [{ kind: 'good', text: 'اشتراک سه‌ماهه را با یک دانهٔ هدیه همراه می‌کنیم.' }, { kind: 'bad', text: 'فقط تا آخر هفته ۲۰٪ تخفیف!' }] });
   add({ id: 'dm_discount', type: 'Decision', node: 'offer', title: 'کمپین ماه اول', first: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 15],
-    source: { kind: 'mcp', label: 'Claude', reason: 'در گفتگو گفتی می‌خواهی ماه اول جذاب باشد.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'در گفت‌وگو گفتی می‌خواهی ماه اول جذاب باشد.', quote: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.' } });
 
   // ── subscription ───────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_price', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۴۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_price', created: [33],
     edits: [{ d: 9, content: '۴۵۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', reason: 'قیمت دانهٔ خام بالا رفت.' }] });
-  // one object with a path: Claude drafted it, the user rewrote it three times (drafts), then approved it (one milestone, version 4)
-  add({ id: 'dm_tone', type: 'Decision', node: 'dn_support', title: 'لحن پاسخ به مشتری', first: 'لحن رسمی و فنی برای پاسخ به مشتری.', status: 'Confirmed', provenance: 'AI Suggested', by: CLAUDE, source: { kind: 'mcp', label: 'Claude', reason: 'پیشنهاد لحن بر پایهٔ پیام‌های پشتیبانی', daysAgo: 11 }, created: [11],
+  // one object with a path: an external suggestion was rewritten three times, then approved
+  add({ id: 'dm_tone', type: 'Decision', node: 'dn_support', title: 'لحن پاسخ به مشتری', first: 'لحن رسمی و فنی برای پاسخ به مشتری.', status: 'Confirmed', provenance: 'AI Suggested', by: EXTERNAL, source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'پیشنهاد لحن بر پایهٔ پیام‌های پشتیبانی', daysAgo: 11 }, created: [11],
     edits: [
       { d: 10, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی.' },
       { d: 9, content: 'لحن صمیمی ولی محترم؛ بدون اصطلاح فنی و با جمله‌های کوتاه.' },
@@ -173,7 +172,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_pack', type: 'Decision', node: 'dn_sub', title: 'بستهٔ اشتراک', first: 'هر ماه چهار بستهٔ ۲۵۰ گرمی: دو تک‌خاستگاه و دو ترکیب خانگی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_package', created: [33, 11],
     log: [{ d: 33, h: 11, kind: 'proposal_accepted', to: 'Confirmed' }, { d: 8, kind: 'review_accepted', to: 'Confirmed', reason: 'قیمت عوض شد ولی بسته همان است.' }] });
   add({ id: 'dm_ship_policy', type: 'Decision', node: 'dn_ship', title: 'سیاست ارسال', first: 'ارسال برای همهٔ اشتراک‌ها رایگان است.', status: 'Proposed', provenance: 'AI Suggested', slot: 'shipping_policy', created: [2, 9],
-    source: { kind: 'mcp', label: 'Claude', reason: 'گفتی مشتری‌ها از هزینهٔ ارسال ناراضی‌اند.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'گفتی مشتری‌ها از هزینهٔ ارسال ناراضی‌اند.', quote: 'ارسال برای همهٔ اشتراک‌ها رایگان است.' } });
   add({ id: 'dm_ship_cost', type: 'Decision', node: 'dn_ship', title: 'هزینهٔ ارسال', first: 'ارسال با هزینهٔ ۶۰ هزار تومان برای همهٔ سفارش‌ها.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 16],
     source: { kind: 'chat', reason: 'در گفتگوی گرهٔ ارسال گفتی هزینهٔ پست را مشتری بدهد.' } });
   // «روز ارسال» was replaced three times: Monday → Tuesday → Thursday → Saturday
@@ -293,7 +292,7 @@ export function buildDemo(now: Date): DemoData {
   ];
 
   // ── three sample assets, written by hand (NOT AI output); lineage = the exact object versions they were made from ─────────
-  const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده. با «ساخت با AI» خودت یک نسخهٔ واقعی با کلید خودت بساز.';
+  const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده. با «ساخت با هوش مصنوعی» خودت یک نسخهٔ واقعی بساز.';
   const made = (id: string, specId: string, delId: string, title: string, body: string, used: Array<[string, number]>, d: number): GeneratedDeliverable => ({
     id, workspaceId: W, workstreamId: specId, deliverableId: delId, title, content: `${label}\n\n${body}`, executionMode: 'auto', creditCost: 0,
     usedContext: used.map(([i, v]) => ({ id: i, version: v })), rebuildCount: 0, createdAt: at(d, 15), source: { kind: 'user', label: 'نمونهٔ دستی', at: at(d, 15) },

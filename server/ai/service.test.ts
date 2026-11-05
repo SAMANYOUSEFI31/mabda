@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { AiService } from './service.ts';
 import { SessionResolver, verifyModels } from './session.ts';
-import { ByokVault } from './byok.ts';
 import { BlockStreamParser, parseBlocks } from './blocks.ts';
 import { buildPrompt } from './context.ts';
 import { AiError, toAiError } from './errors.ts';
@@ -15,12 +11,11 @@ import { MockProvider, block, answerChecks, isCheckCall } from './testing/mockPr
 import type { AiStreamEvent } from '../../src/types/ai.ts';
 
 const cfg = loadModelsConfig();
-const vault = () => new ByokVault(mkdtempSync(join(tmpdir(), 'mabda-')), 'test-secret');
 const KEY = 'AIzaSy' + 'x'.repeat(30);
 
-function serviceWith(p: MockProvider, opts: { managed?: boolean; v?: ByokVault } = {}) {
+function serviceWith(p: MockProvider, opts: { managed?: boolean } = {}) {
   p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
-  const sessions = new SessionResolver({ vault: opts.v ?? vault(), managedEnabled: opts.managed ?? true, managedKey: KEY, cfg, factory: () => p });
+  const sessions = new SessionResolver({ managedEnabled: opts.managed ?? true, managedKey: KEY, cfg, factory: () => p });
   return { sessions, service: new AiService({ sessions, cfg }) };
 }
 const collect = async (run: (emit: (e: AiStreamEvent) => void) => Promise<void>) => {
@@ -41,7 +36,6 @@ test('chat streams blocks as they complete, then a final result with ledger stag
   const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
   assert.equal(done.result.blocks[1].proposal?.nodeId, 'offer');
   assert.deepEqual(done.result.usage.stages.map((s) => s.stage), ['decision', 'chat']);
-  assert.equal(done.result.usage.byok, false);
   assert.ok(done.result.usage.totals.costUsd > 0);
   assert.equal(done.result.plan.tier, 'cheap');
 });
@@ -57,31 +51,15 @@ test('a provider failure becomes a structured error event — never a canned rep
   assert.ok(!ev.some((e) => e.type === 'done'));
 });
 
-test('no key: managed flag off and no BYOK → no_key error, nothing is generated', async () => {
+test('managed AI disabled: no user credential path exists and no generation occurs', async () => {
   const p = new MockProvider(() => ({ blocks: [block('b1', 'x')] }));
   const { service, sessions } = serviceWith(p, { managed: false });
   const ev = await collect((emit) => service.chat('user-12345678', { message: 'سلام', contextList: [], mode: 'auto' }, emit));
-  assert.equal((ev[0] as Extract<AiStreamEvent, { type: 'error' }>).error.kind, 'no_key');
+  assert.equal((ev[0] as Extract<AiStreamEvent, { type: 'error' }>).error.kind, 'disabled');
   assert.equal(p.calls.length, 0);
   const st = await sessions.status('user-12345678');
   assert.equal(st.available, false);
-  assert.equal(st.unavailable?.kind, 'no_key');
-});
-
-test('BYOK: the user key wins, is marked byok in usage, and is encrypted at rest', async () => {
-  const v = vault();
-  v.set('user-12345678', KEY);
-  const p = new MockProvider((c) => (c.kind === 'stream' ? { blocks: [block('b1', 'پاسخ')] } : decisions));
-  const { service, sessions } = serviceWith(p, { managed: false, v });
-  const ev = await collect((emit) => service.chat('user-12345678', { message: 'سلام', contextList: [], mode: 'auto' }, emit));
-  assert.equal((ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>).result.usage.byok, true);
-  assert.equal((await sessions.status('user-12345678')).source, 'byok');
-  const { readFileSync } = await import('node:fs');
-  const raw = readFileSync(join((v as unknown as { dir: string }).dir, 'byok.json'), 'utf8');
-  assert.ok(!raw.includes(KEY));
-  assert.equal(v.get('user-12345678'), KEY);
-  assert.equal(v.last4('user-12345678'), KEY.slice(-4));
-  assert.equal(new ByokVault((v as unknown as { dir: string }).dir, 'another-secret').get('user-12345678'), null);
+  assert.equal(st.unavailable?.kind, 'disabled');
 });
 
 test('generate: previewed plan is honoured (credits shown = credits charged) and its decision tokens are in the ledger', async () => {
@@ -153,7 +131,7 @@ test('stream parser extracts complete blocks from arbitrary chunking, even with 
 });
 
 test('error mapping and decision-answer validation', () => {
-  assert.equal(toAiError({ status: 403, message: 'x' }).kind, 'invalid_key');
+  assert.equal(toAiError({ status: 403, message: 'x' }).kind, 'provider');
   assert.equal(toAiError({ status: 429, message: 'RESOURCE_EXHAUSTED quota' }).kind, 'quota');
   assert.equal(toAiError({ status: 503 }).retryable, true);
   assert.equal(toAiError({ name: 'AbortError' }).kind, 'aborted');
@@ -286,7 +264,7 @@ test('contradictions: ONE closed question per candidate pair, both claims quoted
   } };
   const p = new MockProvider(() => null);
   p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
-  const sessions = new SessionResolver({ vault: vault(), managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
+  const sessions = new SessionResolver({ managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
   const service = new AiService({ sessions, cfg, decisionFactory: () => fake as never });
   const r = await service.judgeContradictions('user-12345678', [
     { key: 'a|b', a: { title: 'قیمت اشتراک', content: '۴ میلیون تومان' }, b: { title: 'قیمت', content: '۶ میلیون تومان' } },

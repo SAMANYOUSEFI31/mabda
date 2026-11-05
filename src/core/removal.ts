@@ -2,15 +2,16 @@
  * Removal, said BEFORE it is done (docs/removal.md). Pure.
  *
  *  · nodeRemovalPlan — what a node delete does to the tree and to what reaches whom, for BOTH modes:
- *      «move»    the node goes; its knowledge, notes and files and its direct sub-sections go to a target (default: its parent)
- *      «archive» the node and its whole branch go; the branch's knowledge is ARCHIVED; notes and files go to the target
+ *      «move»    the node goes; its knowledge, notes, Thoughts and files and its direct sub-sections go to a target (default: its parent)
+ *      «archive» the node and its whole branch go; the branch's knowledge is ARCHIVED; notes, Thoughts and files go to the target
  *  · permanent delete — the words to look for (so «also found in …» can be listed) and how to scrub a line out of a note
  */
 
-import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
+import type { ContextObject, ContextRelationship, Note, Thought, TreeNode } from '../types';
 import { effectiveFor, inForce } from './effectiveContext';
 import { canDelete, defaultTransferTarget, flatten, subtreeIds } from './nodeTree';
 import type { NodeContent } from './nodeTree';
+import { isActiveContext } from './contextStatus';
 
 export type RemovalMode = 'move' | 'archive';
 
@@ -34,15 +35,17 @@ export interface NodeRemovalPlan {
 }
 
 const TYPE_WORD = { Constraint: 'خط قرمز', Decision: 'تصمیم', Fact: 'دانش' } as const;
-const isLive = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded' && !o.sample;
+const isLive = (o: ContextObject) => isActiveContext(o) && !o.sample;
 
 export function nodeRemovalPlan(input: {
   nodes: TreeNode[]; objects: ContextObject[]; notes: Pick<Note, 'nodeId'>[]; files?: Array<{ nodeId?: string }>; relationships?: ContextRelationship[];
+  thoughts?: Pick<Thought, 'nodeId'>[];
   id: string; mode?: RemovalMode; transferTo?: string; now?: Date;
 }): NodeRemovalPlan {
   const { nodes, objects, id } = input;
   const mode = input.mode ?? 'move';
   const files = input.files ?? [];
+  const thoughts = input.thoughts ?? [];
   const rels = input.relationships ?? [];
   const now = input.now ?? new Date();
   const label = (nid: string) => nodes.find((n) => n.id === nid)?.label ?? nid;
@@ -50,23 +53,23 @@ export function nodeRemovalPlan(input: {
   const removed = mode === 'archive' ? branch : [id];
   const inBranch = new Set(branch);
   const here = nodes.find((n) => n.id === id);
-  const direct = { objects: objects.filter((o) => o.nodeId === id && !o.sample).length, notes: input.notes.filter((n) => n.nodeId === id).length, files: files.filter((f) => f.nodeId === id).length, children: nodes.filter((n) => n.parentId === id).length };
+  const direct = { objects: objects.filter((o) => o.nodeId === id && !o.sample).length, notes: input.notes.filter((n) => n.nodeId === id).length, thoughts: thoughts.filter((t) => t.nodeId === id).length, files: files.filter((f) => f.nodeId === id).length, children: nodes.filter((n) => n.parentId === id).length };
   const branchObjects = objects.filter((o) => inBranch.has(o.nodeId) && isLive(o));
-  const empty0 = { objects: 0, notes: 0, files: 0, children: 0, archived: 0, branchNodes: branch.length };
+  const empty0 = { objects: 0, notes: 0, thoughts: 0, files: 0, children: 0, archived: 0, branchNodes: branch.length };
   const fail = (reason: string): NodeRemovalPlan => ({ ok: false, reason, mode, removed, tree: [], counts: { ...empty0 }, effect: { lost: [], gained: [], sentences: [] } });
   if (!here) return fail('این گره وجود ندارد.');
   const target = input.transferTo ?? defaultTransferTarget(nodes, id);
-  // a branch with content needs somewhere to put notes/files/knowledge (move) or notes/files (archive); the check is the same one the server uses
+  // a branch with content needs somewhere to put notes, Thoughts, files, and knowledge (move), or raw material and files (archive).
   const archivedCount = mode === 'archive' ? branchObjects.length : 0;
   const notesFiles = (mode === 'archive'
-    ? { notes: input.notes.filter((n) => inBranch.has(n.nodeId)).length, files: files.filter((f) => f.nodeId && inBranch.has(f.nodeId)).length }
-    : { notes: direct.notes, files: direct.files });
-  const needsPlace = mode === 'archive' ? notesFiles.notes + notesFiles.files > 0 : direct.objects + direct.notes + direct.files + direct.children > 0;
+    ? { notes: input.notes.filter((n) => inBranch.has(n.nodeId)).length, thoughts: thoughts.filter((t) => inBranch.has(t.nodeId)).length, files: files.filter((f) => f.nodeId && inBranch.has(f.nodeId)).length }
+    : { notes: direct.notes, thoughts: direct.thoughts, files: direct.files });
+  const needsPlace = mode === 'archive' ? notesFiles.notes + notesFiles.thoughts + notesFiles.files > 0 : direct.objects + direct.notes + direct.thoughts + direct.files + direct.children > 0;
   if (mode === 'move') {
-    const check = canDelete(nodes, id, objects.filter((o) => !o.sample), input.notes, needsPlace ? target : undefined, files);
+    const check = canDelete(nodes, id, objects.filter((o) => !o.sample), input.notes, needsPlace ? target : undefined, files, thoughts);
     if (!check.ok) return fail(check.reason);
   } else {
-    // the whole branch goes: only notes and files need a home; the last main section can never go
+    // The branch's knowledge stays archived; its raw material, Thoughts and files need a home.
     if (!here.parentId && nodes.filter((n) => !n.parentId).length <= 1) return fail('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
     if (target && (!nodes.some((n) => n.id === target) || inBranch.has(target))) return fail(inBranch.has(target) ? 'مقصد نمی‌تواند خودِ گره یا زیرشاخه‌اش باشد.' : 'گرهٔ مقصد وجود ندارد.');
   }
@@ -104,7 +107,7 @@ export function nodeRemovalPlan(input: {
   ];
   return {
     ok: true, mode, ...(target ? { target } : {}), removed, tree: preview,
-    counts: { ...direct, archived: archivedCount, branchNodes: branch.length, ...(mode === 'archive' ? { objects: branchObjects.length, notes: notesFiles.notes, files: notesFiles.files } : {}) },
+    counts: { ...direct, archived: archivedCount, branchNodes: branch.length, ...(mode === 'archive' ? { objects: branchObjects.length, notes: notesFiles.notes, thoughts: notesFiles.thoughts, files: notesFiles.files } : {}) },
     effect: { lost, gained, sentences },
   };
 }

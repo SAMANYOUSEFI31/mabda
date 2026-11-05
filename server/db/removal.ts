@@ -138,6 +138,8 @@ interface NodeBatch {
   /** content that moved out of the branch: id → the node it was in */
   objects: Record<string, string>;
   notes: Record<string, string>;
+  /** Thoughts moved with their node; undo tolerates this field being absent in older batches. */
+  thoughts: Record<string, string>;
   files: Record<string, string>;
   /** archived knowledge: id → the status it had */
   archived: Record<string, string>;
@@ -147,7 +149,7 @@ interface NodeBatch {
 }
 
 export function planNodeRemoval(repo: Repo, s: Scope, id: string, o: { mode?: RemovalMode; transferTo?: string }): NodeRemovalPlan {
-  return nodeRemovalPlan({ nodes: repo.listNodes(s), objects: [...repo.listObjects(s), ...repo.listSampleObjects(s)], notes: repo.listNotes(s), files: repo.listFiles(s), relationships: repo.listRelationships(s), id, mode: o.mode, transferTo: o.transferTo });
+  return nodeRemovalPlan({ nodes: repo.listNodes(s), objects: [...repo.listObjects(s), ...repo.listSampleObjects(s)], notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), files: repo.listFiles(s), relationships: repo.listRelationships(s), id, mode: o.mode, transferTo: o.transferTo });
 }
 
 export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: RemovalMode; transferTo?: string }): { nodes: TreeNode[]; removal: { id: string; label: string }; plan: NodeRemovalPlan } {
@@ -155,7 +157,7 @@ export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: Removal
   const plan = planNodeRemoval(repo, s, id, o);
   if (!plan.ok) throw new RepoError('invalid', plan.reason ?? 'حذف ممکن نیست.');
   // the plan may SUGGEST a target (its default is the parent — what the dialog preselects); doing it still needs one to be named
-  const needsPlace = mode === 'move' ? plan.counts.objects + plan.counts.notes + plan.counts.files + plan.counts.children > 0 : plan.counts.notes + plan.counts.files > 0;
+  const needsPlace = mode === 'move' ? plan.counts.objects + plan.counts.notes + plan.counts.thoughts + plan.counts.files + plan.counts.children > 0 : plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0;
   if (needsPlace && !o.transferTo) throw new RepoError('invalid', 'این بخش خالی نیست؛ محتوایش را به بخش دیگری ببر.');
   const allNodes = repo.listNodes(s);
   const here = allNodes.find((n) => n.id === id)!;
@@ -163,24 +165,26 @@ export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: Removal
   const batch: NodeBatch = {
     mode, rootId: id, ...(plan.target ? { target: plan.target } : {}),
     nodes: allNodes.filter((n) => branch.has(n.id)).map((n) => ({ id: n.id, ...(n.parentId ? { parentId: n.parentId } : {}), label: n.label, description: n.description, order: n.order ?? 0 })),
-    objects: {}, notes: {}, files: {}, archived: {}, children: [], samples: [],
+    objects: {}, notes: {}, thoughts: {}, files: {}, archived: {}, children: [], samples: [],
   };
-  const objects = repo.listObjects(s), notes = repo.listNotes(s), files = repo.listFiles(s);
+  const objects = repo.listObjects(s), notes = repo.listNotes(s), thoughts = repo.listThoughts(s, { includeResolved: true }), files = repo.listFiles(s);
   const ownNodes = mode === 'archive' ? branch : new Set([id]);
   return repo.db.transaction(() => {
     if (mode === 'move') {
       for (const x of objects.filter((x) => x.nodeId === id)) batch.objects[x.id] = id;
       for (const x of notes.filter((x) => x.nodeId === id)) batch.notes[x.id] = id;
+      for (const x of thoughts.filter((x) => x.nodeId === id)) batch.thoughts[x.id] = id;
       for (const x of files.filter((x) => x.nodeId === id)) batch.files[x.id] = id;
       batch.children = allNodes.filter((n) => n.parentId === id).map((n) => ({ id: n.id, ...(n.parentId ? { parentId: n.parentId } : {}), order: n.order ?? 0 }));
       // the existing safe delete does the moving and the Changes (knowledge moved, node deleted)
-      repo.deleteNode(s, id, plan.target && (Object.keys(batch.objects).length + Object.keys(batch.notes).length + Object.keys(batch.files).length + batch.children.length > 0) ? plan.target : undefined);
+      repo.deleteNode(s, id, plan.target && (Object.keys(batch.objects).length + Object.keys(batch.notes).length + Object.keys(batch.thoughts).length + Object.keys(batch.files).length + batch.children.length > 0) ? plan.target : undefined);
     } else {
       for (const x of objects.filter((x) => ownNodes.has(x.nodeId) && x.status !== 'Archived' && x.status !== 'Superseded')) {
         batch.archived[x.id] = x.status;
         repo.updateObject(s, x.id, { status: 'Archived' }, { actor: 'user', reason: `گرهٔ «${here.label}» با شاخه‌اش بایگانی شد` });
       }
       for (const x of notes.filter((x) => ownNodes.has(x.nodeId))) { batch.notes[x.id] = x.nodeId; repo.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(plan.target, x.id, s.workspaceId); }
+      for (const x of thoughts.filter((x) => ownNodes.has(x.nodeId))) { batch.thoughts[x.id] = x.nodeId; repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(plan.target, x.id, s.workspaceId, s.userId); }
       for (const x of files.filter((x) => x.nodeId && ownNodes.has(x.nodeId))) { batch.files[x.id] = x.nodeId!; repo.db.prepare('UPDATE files SET node_id = ? WHERE id = ? AND workspace_id = ?').run(plan.target, x.id, s.workspaceId); }
       for (const smp of repo.listSampleObjects(s).filter((x) => ownNodes.has(x.nodeId))) { batch.samples.push(smp as unknown as Record<string, unknown>); }
       repo.deleteSamples(s, [...ownNodes]);
@@ -200,7 +204,7 @@ export function listRemovals(repo: Repo, s: Scope): Array<{ id: string; kind: st
     .map((r) => ({ id: r.id, kind: r.kind, label: r.label, createdAt: r.created_at }));
 }
 
-/** «برگرداندن»: the sections, what moved out of them and the archived knowledge come back exactly as they were */
+/** «برگرداندن»: the sections, moved Material/Thoughts and archived knowledge come back exactly as they were */
 export function undoRemoval(repo: Repo, s: Scope, batchId: string): { nodes: TreeNode[] } {
   const row = repo.db.prepare('SELECT * FROM removal_batches WHERE id = ? AND workspace_id = ? AND user_id = ?').get(batchId, s.workspaceId, s.userId) as { payload: string; undone_at: string | null; label: string } | undefined;
   if (!row) throw new RepoError('not_found', 'این حذف پیدا نشد.');
@@ -217,6 +221,7 @@ export function undoRemoval(repo: Repo, s: Scope, batchId: string): { nodes: Tre
     };
     back('context_objects', 'node_id', b.mode === 'move' ? b.objects : {});
     back('notes', 'node_id', b.notes);
+    for (const [id, nodeId] of Object.entries(b.thoughts ?? {})) repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
     back('files', 'node_id', b.files);
     for (const c of b.children) repo.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(c.parentId ?? null, c.order, s.workspaceId, c.id);
     for (const [oid, status] of Object.entries(b.archived)) {

@@ -1,11 +1,12 @@
 /**
  * One Markdown representation of the Context tree. The reading view, the "Markdown" tab, copy and download
- * all come from here (the Context pack and MCP use their own compact format on top of the same objects).
+ * all come from here (the Context pack uses its own compact format on top of the same objects).
  * Pure: no UI, no I/O.
  */
 
 import type { ContextObject, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { byOrder, childrenOf, subtreeIds } from './nodeTree';
+import { isActiveContext } from './contextStatus';
 
 const TYPE_FA: Record<ContextType, string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'خط قرمز' };
 const STATUS_FA: Record<ContextStatus, string> = {
@@ -13,7 +14,6 @@ const STATUS_FA: Record<ContextStatus, string> = {
 };
 const FA = '۰۱۲۳۴۵۶۷۸۹';
 const fa = (n: number) => String(n).replace(/\d/g, (d) => FA[Number(d)]);
-const isActive = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded';
 const heading = (level: number, text: string) => `${'#'.repeat(Math.min(6, Math.max(1, level)))} ${text}`;
 
 /** one heading of the document, with an id that survives edits (the node or object id, never the text) */
@@ -37,7 +37,7 @@ function refLines(o: ContextObject, ctx: Ctx): string[] {
   if (!ctx.refs) return [];
   const byId = new Map(ctx.all.map((x) => [x.id, x]));
   // a relation to a suggestion (Proposed) is not truth yet: it only appears after that end is approved
-  const live = (id: string) => { const x = byId.get(id); return x && isActive(x) && x.status !== 'Proposed' ? x.title : undefined; };
+  const live = (id: string) => { const x = byId.get(id); return x && isActiveContext(x) && x.status !== 'Proposed' ? x.title : undefined; };
   const rels = ctx.relationships ?? [];
   const deps = [...new Set(rels.filter((r) => r.type === 'depends_on' && r.sourceId === o.id).map((r) => live(r.targetId)).filter((t): t is string => !!t))];
   const from = [
@@ -104,7 +104,7 @@ export function docTabs(nodes: TreeNode[], objects: ContextObject[]): DocTab[] {
   const root = roots[0];
   const kids = childrenOf(nodes, root.id).sort(byOrder).map((k) => ({ id: k.id, nodeId: k.id, label: k.label }));
   if (!kids.length) return [{ id: root.id, nodeId: root.id, label: root.label }];
-  const hasOwn = objects.some((o) => o.nodeId === root.id && isActive(o));
+  const hasOwn = objects.some((o) => o.nodeId === root.id && isActiveContext(o));
   return hasOwn ? [{ id: root.id, nodeId: root.id, label: 'کلیات', own: true }, ...kids] : kids;
 }
 

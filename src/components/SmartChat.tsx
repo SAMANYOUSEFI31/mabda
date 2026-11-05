@@ -16,7 +16,7 @@ import {
   ContextSuggestion,
   Workspace,
 } from '../types';
-import { checkChatFairUse, chatCountToday, chatCredits, effectiveCredits, tehranDay } from '../core/creditEngine';
+import { checkChatFairUse, chatCountToday, chatCredits, tehranDay } from '../core/creditEngine';
 import { contextDraftFromBlock } from '../core/blocks';
 import { asAiError, streamChat } from '../services/apiClient';
 import { useAiStatus } from '../services/aiStatus';
@@ -46,7 +46,6 @@ interface SmartChatProps {
   onSaveBlockAsAsset: (block: import('../types').ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary; usedContext?: UsedContextRef[] }) => void;
   /** ledger + credits for a finished chat turn */
   onRecordChatUsage: (result: GenerationResult, creditCost: number, deep: boolean) => void;
-  onOpenAiSettings: () => void;
 }
 
 export const SmartChat: React.FC<SmartChatProps> = ({
@@ -62,7 +61,6 @@ export const SmartChat: React.FC<SmartChatProps> = ({
   onOpenContextModal,
   onSaveBlockAsAsset,
   onRecordChatUsage,
-  onOpenAiSettings,
 }) => {
   const ai = useAiStatus();
   const createInitialSession = (): ChatSession => ({
@@ -264,7 +262,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         },
         ctl.signal,
       );
-      const credits = ai.managedEnabled ? effectiveCredits(chatCredits(deep), result.usage.byok) : 0;
+      const credits = ai.managedEnabled ? chatCredits(deep) : 0;
       patchMessage(sessionId, placeholder.id, {
         streaming: false,
         content: result.markdown,
@@ -296,7 +294,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     const messageContent = (customText || input).trim();
     if (!messageContent || isLoading) return;
 
-    if (ai.managedEnabled && isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true) && !ai.byok) {
+    if (ai.managedEnabled && isDeepMode && currentWorkspace.creditsRemaining < chatCredits(true)) {
       toast.show({ intent: 'warning', message: 'اعتبار برای گفتگوی عمیق کافی نیست.' });
       return;
     }
@@ -544,7 +542,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                   <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-prose">{m.content}</div>
                 ) : m.error ? (
                   <div className="w-full sm:max-w-prose">
-                    <AiErrorNotice error={m.error} onRetry={() => void handleRetry(m.id)} retrying={isLoading} onOpenSettings={onOpenAiSettings} />
+                    <AiErrorNotice error={m.error} onRetry={() => void handleRetry(m.id)} retrying={isLoading} />
                   </div>
                 ) : (
                   <div
@@ -623,7 +621,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               aria-label="پیام شما"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={ai.available ? 'دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…' : 'برای شروع، کلید هوش مصنوعی را تنظیم کن'}
+              placeholder={ai.available ? 'دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…' : 'هوش مصنوعی فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.'}
               disabled={isLoading || !ai.available}
               size="lg"
             />

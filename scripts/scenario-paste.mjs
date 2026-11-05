@@ -2,7 +2,7 @@
 /**
  * Copy/paste scenario on a REAL server + temp SQLite (AI parsing is not needed: the pasted answer uses the headings):
  *   «کپی برای هوش مصنوعی» (size shown) → an outside AI's answer (scripted here) → «وارد کردن پاسخ» → blocks →
- *   Context (Proposed) + asset with the pack's lineage → the proposals inbox (also fed by a real MCP client) → confirm.
+ *   Context (Proposed) + asset with the pack's lineage → the proposals inbox → confirm.
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-paste.mjs   → docs/screens/paste-*.png
  */
 import { chromium } from 'playwright';
@@ -11,12 +11,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-paste-'));
-const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: '3105', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_SECRET: 's' }, stdio: 'ignore', detached: true });
+const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: '3105', MABDA_DB_PATH: join(dir, 'm.sqlite') }, stdio: 'ignore', detached: true });
 const BASE = 'http://127.0.0.1:3105';
 async function up() { for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* retry */ } await wait(250); } throw new Error('server not reachable'); }
 
@@ -83,17 +81,10 @@ try {
   await shot('3-imported');
   await page.keyboard.press('Escape');
 
-  step('a real MCP client suggests something too → the inbox shows both, with their source');
-  const tok = await (await fetch(`${BASE}/api/workspaces/ws_studio/mcp/tokens`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ label: 'Claude' }) })).json();
-  const mcp = new Client({ name: 'scenario', version: '1.0.0' });
-  await mcp.connect(new StreamableHTTPClientTransport(new URL(`${BASE}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${tok.token}` } } }));
-  await mcp.callTool({ name: 'propose_context_updates', arguments: { updates: [{ type: 'Constraint', title: 'بدون وعدهٔ درآمد', content: 'هیچ وعدهٔ درآمد تضمینی نمی‌دهیم.', reason: 'کاربر گفت' }] } });
-  await mcp.close();
   await nav('منبع حقیقت');
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByText(/[3۳] پیشنهاد منتظر تأیید توست/).first().waitFor(); // the home says it in one line…
+  await page.getByText(/[2۲] پیشنهاد منتظر تأیید توست/).first().waitFor(); // the home says it in one line…
   await page.locator('button[aria-controls="home-all"]').click(); // …and the inbox itself is under «همه»
-  await page.getByText(/AI بیرونی \(MCP\) \(«Claude»\)/).waitFor();
   await page.getByText(/پاسخ چسبانده‌شده/).first().waitFor();
   await shot('4-inbox', true);
 
@@ -102,7 +93,7 @@ try {
   await item('بدون وعدهٔ درآمد').getByRole('button', { name: 'تأیید' }).click();
   await page.getByText(/تأیید شد و حالا واقعیت است/).waitFor();
   await item('بودجهٔ ماهانه').getByRole('button', { name: 'رد' }).click();
-  await page.getByText(/[1۱] پیشنهاد منتظر تأیید توست/).first().waitFor();
+  assert.equal(await page.getByText(/پیشنهاد منتظر تأیید توست/).count(), 0, 'both pasted proposals were resolved');
 
   step('the pasted asset is in the library with the pack lineage');
   await nav('خروجی‌ها');

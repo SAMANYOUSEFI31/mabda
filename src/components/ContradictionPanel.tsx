@@ -14,7 +14,7 @@ interface Props {
   onKeep: (c: Contradiction, keepId: string) => Promise<void>;
   onSeparate: (c: Contradiction, moveId: string, nodeId: string) => Promise<void>;
   /** semantic check (needs an AI key and a plan with it): the button and the quiet daily meter. Absent = not available. */
-  check?: { busy: boolean; onCheck: () => void; used: number | null; cap: number; unlimited: boolean };
+  check?: { busy: boolean; onCheck: () => void; used: number | null; cap: number };
 }
 
 /**
@@ -25,7 +25,7 @@ interface Props {
 const CheckBar: React.FC<{ check: NonNullable<Props['check']> }> = ({ check }) => (
   <div className="flex flex-wrap items-center justify-between gap-inline-md">
     <span className="body-sm text-text-subtle">
-      {check.used === null ? '' : check.unlimited ? `${formatNumber(check.used)} قضاوت امروز · با کلید خودت سقفی نیست` : `${formatNumber(check.used)} قضاوت امروز از سقف ${formatNumber(check.cap)}`}
+      {check.used === null ? '' : `${formatNumber(check.used)} قضاوت امروز از سقف ${formatNumber(check.cap)}`}
     </span>
     <Button variant="secondary" size="sm" iconStart="Search" loading={check.busy} onClick={check.onCheck}>بررسی تناقض</Button>
   </div>

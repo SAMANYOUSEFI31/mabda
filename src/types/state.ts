@@ -1,5 +1,5 @@
 import type {
-  ChatSession, ContextObject, Measurement, Metric, ContextRelationship, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
+  ChatSession, ContextObject, Measurement, Metric, ContextRelationship, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode, Workspace, WorkstreamSpec, Thought,
 } from './index';
 import type { StaleAsset } from '../core/impactEngine';
 import type { UsageSummary } from './ai';
@@ -13,6 +13,7 @@ export interface WorkspaceState {
   samples: ContextObject[];
   relationships: ContextRelationship[];
   notes: Note[];
+  thoughts: Thought[];
   deliverables: GeneratedDeliverable[];
   ledger: LedgerEntry[];
   sessions: ChatSession[];
@@ -78,10 +79,6 @@ export interface CoachQuota { used: number; limit: number; remaining: number }
 export interface UsageInfo {
   planId: import('./index').PlanId;
   month: string;
-  /** who pays for subscription-included judgements: the platform ('us') or the user's own key */
-  payer: 'us' | 'user';
-  /** the user's own token spend this month on their key, USD at list price (approximate) */
-  byokCostUsd: number;
   objects: number;
   fileTokens: number;
   judgmentsToday: number;
@@ -97,11 +94,8 @@ export interface CostReportRowInfo {
   ourCostUsd: number;
   ratio: number;
   warn: boolean;
-  byokCostUsd: number;
   lines: Array<{ category: 'judgments' | 'fileProcessing' | 'coach' | 'generation'; costUsd: number; calls: number }>;
 }
-
-export interface McpTokenInfo { id: string; label: string; last4: string; createdAt: string; lastUsedAt?: string; revokedAt?: string }
 
 export interface PackInfo {
   id: string;

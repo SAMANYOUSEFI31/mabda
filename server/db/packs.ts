@@ -8,7 +8,7 @@ import { renderAiRequest } from './aiRequests.ts';
 /**
  * A saved pack, resolved NOW: the objects come from `repo.listObjects` (samples are not there), scope from the effective
  * context at the chosen nodes (docs/spine.md), assumptions and rejected options in their own sections, the user's short
- * instruction on top. The same function feeds the UI preview, the copy button and the MCP tools — one truth.
+ * instruction on top. The same function feeds the UI preview and the copy button — one truth.
  */
 export function renderSavedPack(repo: Repo, s: Scope, pack: SavedPack, now: Date): ContextPack {
   // a saved «درخواست برای AI»: the kind and the one line are resolved afresh, on the first selected node

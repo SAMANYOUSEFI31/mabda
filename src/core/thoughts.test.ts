@@ -24,7 +24,7 @@ test('a mention in a thought comes back as a suggested relation when it becomes 
   const { thoughtToDraft } = await import('./thoughts.ts');
   const { suggestLinks } = await import('./mentions.ts');
   const target = { id: 'k1', title: 'تخفیف نداریم', status: 'Confirmed', type: 'Constraint', content: 'x', nodeId: 'offer' } as never;
-  const item = { kind: 'idea' as const, text: 'برای @«تخفیف نداریم» یک جایگزین پیدا کنیم', line: 0, hash: 'h', noteId: 'n', nodeId: 'offer', key: 'n:h' };
-  const draft = thoughtToDraft(item, 'w', '2026-03-01T00:00:00Z');
+  const item = { id: 'thought-1', kind: 'idea' as const, text: 'برای @«تخفیف نداریم» یک جایگزین پیدا کنیم', line: 0, hash: 'h', noteId: 'n', nodeId: 'offer', key: 'thought-1' };
+  const draft = thoughtToDraft(item, 'w', '2026-03-01T00:00:00Z', 'Fact');
   assert.deepEqual(suggestLinks({ text: draft.content ?? '', objects: [target], relationships: [] }).map((s) => s.targetId), ['k1']);
 });

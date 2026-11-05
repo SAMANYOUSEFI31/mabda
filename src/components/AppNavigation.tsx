@@ -30,8 +30,6 @@ interface AppNavigationProps {
   /** admin only: how often each feature is used on this install */
   onOpenUsage?: () => void;
   onOpenLedger: () => void;
-  onOpenAiSettings: () => void;
-  onOpenConnect: () => void;
   onOpenMemory: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -51,7 +49,7 @@ interface AppNavigationProps {
 const VIEWS: Array<{ id: ContextView; label: string }> = [
   { id: 'doc', label: 'ساختار' },
   { id: 'read', label: 'سند خوانا' },
-  { id: 'canvas', label: 'بوم' },
+  { id: 'canvas', label: 'نمای کلی' },
 ];
 
 /**
@@ -78,15 +76,13 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const planName = plan.title.split(' ')[0];
 
   const ai = useAiStatus();
-  const accountItems: Array<MenuItem & { section: 'workspace' | 'connect' | 'plan' | 'account' }> = [
+  const accountItems: Array<MenuItem & { section: 'workspace' | 'import' | 'plan' | 'account' }> = [
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
     ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
-    // grouped by what you are doing: connect AI · plan and usage · the account (a divider between groups)
-    { section: 'connect', label: 'کلید هوش مصنوعی', icon: 'Settings', onSelect: p.onOpenAiSettings },
-    { section: 'connect', label: 'اتصال به هوش مصنوعی (MCP)', icon: 'Link2', onSelect: p.onOpenConnect },
-    { section: 'connect', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
+    // grouped by what you are doing: plan and usage · the account (a divider between groups)
+    { section: 'import', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
     { section: 'plan', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),

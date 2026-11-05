@@ -16,7 +16,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-packs-'));
 const PORT = 3112;
 const BASE = `http://127.0.0.1:${PORT}`;
-const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true });
+const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), NODE_ENV: 'development' }, stdio: 'ignore', detached: true });
 const api = async (path, method = 'GET', body) => (await fetch(`${BASE}/api${path}`, { method, headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) })).json();
 const step = (m) => console.log('•', m);
 
@@ -77,8 +77,8 @@ try {
 
     step(`[${width}] map: the overview has rows = sections; «بُعد» makes the rows facets; colouring by facet shows the name`);
     await nav('منبع حقیقت', 'منبع');
-    await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
-    await page.getByRole('application', { name: /بوم/ }).waitFor();
+    await page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first().evaluate((n) => n.click());
+    await page.getByRole('application', { name: /نمای کلی حقیقت/ }).waitFor();
     await page.getByRole('button', { name: /^گزینه‌ها/ }).click();
     await page.getByRole('radio', { name: /^بُعد/ }).check({ force: true });
     await page.keyboard.press('Escape');

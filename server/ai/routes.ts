@@ -1,14 +1,13 @@
 import express from 'express';
 import type { Request, Response, Router } from 'express';
-import { ByokVault } from './byok.ts';
 import { AiError, toAiError } from './errors.ts';
 import { AiService } from './service.ts';
 import type { ChatRequest, GenerateRequest } from './service.ts';
-import { defaultProviderFactory, SessionResolver, isValidGeminiKey } from './session.ts';
+import { SessionResolver } from './session.ts';
 import type { AiStreamEvent, UserMode } from '../../src/types/ai.ts';
 import type { ContextObjectLite } from './context.ts';
 
-/** Feature flag: managed AI (server-side key paid by the product). OFF by default — users bring their own key. */
+/** Operator-controlled switch for platform AI and its credit accounting. */
 export const managedAiEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABDA_MANAGED_AI ?? '');
 
 /**
@@ -17,7 +16,7 @@ export const managedAiEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABD
  */
 export interface ContextSource {
   /** `threadOnly`: focused thread — context is the node and its PARENTS only (no descendants) and proposals may target only the node */
-  forChat(workspaceId: string, o: { scopeNodeId?: string; message: string; threadOnly?: boolean }): Partial<ChatRequest>;
+  forChat(workspaceId: string, o: { scopeNodeId?: string; scopeNodeIds?: string[]; message: string; threadOnly?: boolean; thoughtIds?: string[] }): Partial<ChatRequest>;
   forGenerate(workspaceId: string, o: { targetNodeId?: string; title: string; criteria: string[]; dependencyAssetIds?: string[] }): Partial<GenerateRequest>;
 }
 
@@ -34,7 +33,7 @@ export function userOf(req: Request): string {
 
 const fail = (res: Response, e: unknown) => {
   const err = toAiError(e);
-  res.status(err.kind === 'bad_request' ? 400 : err.kind === 'no_key' || err.kind === 'invalid_key' || err.kind === 'disabled' ? 401 : 502).json({ error: err.toInfo() });
+  res.status(err.kind === 'bad_request' ? 400 : err.kind === 'disabled' ? 503 : 502).json({ error: err.toInfo() });
 };
 
 /** NDJSON writer: one JSON event per line, flushed immediately; aborts the upstream when the client goes away. */
@@ -52,9 +51,8 @@ function ndjson(req: Request, res: Response) {
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionResolver; service?: AiService; source?: ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
-  const vault = opts.vault ?? new ByokVault();
-  const sessions = opts.sessions ?? new SessionResolver({ vault, managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY, admin: adminEnabled() });
+export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiService; source?: ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
+  const sessions = opts.sessions ?? new SessionResolver({ managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY, admin: adminEnabled() });
   const service = opts.service ?? new AiService({ sessions });
   const router = express.Router();
 
@@ -82,13 +80,31 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     } catch (e) { return fail(res, e); }
     const out = ndjson(req, res);
     const b = req.body;
+    if (b.thoughtIds !== undefined && (!Array.isArray(b.thoughtIds) || b.thoughtIds.some((id: unknown) => typeof id !== 'string'))) {
+      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'فهرست فکرهای انتخاب‌شده معتبر نیست.', retryable: false }).toInfo() });
+      return out.end();
+    }
+    if (b.scopeNodeIds !== undefined && (!Array.isArray(b.scopeNodeIds) || b.scopeNodeIds.some((id: unknown) => typeof id !== 'string'))) {
+      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'فهرست بخش‌های انتخاب‌شده معتبر نیست.', retryable: false }).toInfo() });
+      return out.end();
+    }
+    const thoughtIds = Array.isArray(b.thoughtIds) ? [...new Set((b.thoughtIds as string[]).filter(Boolean))] : undefined;
+    const scopeNodeIds = Array.isArray(b.scopeNodeIds) ? [...new Set((b.scopeNodeIds as string[]).filter(Boolean))] : undefined;
+    if (thoughtIds && thoughtIds.length > 12) {
+      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'حداکثر ۱۲ فکر را می‌توان برای یک درخواست انتخاب کرد.', retryable: false }).toInfo() });
+      return out.end();
+    }
+    if (thoughtIds?.length && (!opts.source || typeof b.workspaceId !== 'string')) {
+      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'برای استفاده از فکرها، فضای کاری باید از منبع معتبر بارگذاری شود.', retryable: false }).toInfo() });
+      return out.end();
+    }
     let chat: ChatRequest = {
       message: b.message, contextList: asArray(b.contextList), focusNodeIds: asArray(b.focusNodeIds),
       chatMode: b.chatMode, mode: b.mode === 'deep' ? 'deep' : b.mode === 'fast' ? 'fast' : 'auto', history: asArray(b.history), plan: b.plan, decisionUsage: b.decisionUsage,
     };
     try {
       if (opts.source && typeof b.workspaceId === 'string') {
-        chat = { ...chat, ...opts.source.forChat(b.workspaceId, { scopeNodeId: typeof b.scopeNodeId === 'string' ? b.scopeNodeId : undefined, message: b.message }) };
+        chat = { ...chat, ...opts.source.forChat(b.workspaceId, { scopeNodeId: typeof b.scopeNodeId === 'string' ? b.scopeNodeId : undefined, scopeNodeIds, message: b.message, thoughtIds }) };
         if (asArray<string>(b.focusNodeIds).length && !chat.scopeNodeId) chat.focusNodeIds = asArray(b.focusNodeIds);
       }
     } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
@@ -122,28 +138,6 @@ export function createAiRouter(opts: { vault?: ByokVault; sessions?: SessionReso
     } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
     await service.generate(userId, gen, out.emit, out.signal);
     out.end();
-  });
-
-  router.put('/byok', async (req, res) => {
-    try {
-      const userId = userOf(req);
-      const key = String(req.body?.apiKey ?? '').trim();
-      if (!isValidGeminiKey(key)) throw new AiError('invalid_key', { message: 'قالب کلید Gemini درست نیست (باید با AIzaSy شروع شود).' });
-      // prove the key works before storing it
-      await defaultProviderFactory('gemini', key).listModels();
-      const { last4 } = vault.set(userId, key);
-      sessions.invalidate(userId);
-      res.json({ ok: true, last4 });
-    } catch (e) { fail(res, e); }
-  });
-
-  router.delete('/byok', (req, res) => {
-    try {
-      const userId = userOf(req);
-      vault.delete(userId);
-      sessions.invalidate(userId);
-      res.json({ ok: true });
-    } catch (e) { fail(res, e); }
   });
 
   return { router, sessions, service };

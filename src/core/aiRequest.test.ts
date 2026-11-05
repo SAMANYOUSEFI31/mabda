@@ -104,6 +104,22 @@ test('expired objects are left out with their own reason', () => {
   assert.equal(buildAiRequest(base({ objects })).excluded.find((e) => e.id === 'f_old')?.reason, 'expired');
 });
 
+test('selected Thoughts stay outside Truth documents and precede rules and the user request', () => {
+  const r = buildAiRequest(base({
+    request: 'درخواست-فکری-یکتا',
+    thoughts: [{ id: 'thought_1', kind: 'assumption', text: 'فرض-تأییدنشده-یکتا', nodeId: 'audience' }],
+  }));
+  const md = r.markdown;
+  const at = (s: string) => md.indexOf(s);
+  assert.ok(at('</documents>') < at('## فکرهای انتخاب‌شده'));
+  assert.ok(at('## فکرهای انتخاب‌شده') < at('## قواعد این کار'));
+  assert.ok(at('## قواعد این کار') < at('## درخواست من'));
+  assert.ok(at('## درخواست من') < at('## قالب پاسخ'));
+  assert.ok(!r.markdown.slice(0, at('</documents>')).includes('فرض-تأییدنشده-یکتا'));
+  assert.ok(md.includes('تأییدنشده؛ حقیقت نیستند'));
+  assert.equal(r.counts.thoughts, 1);
+});
+
 function bigWorkspace(): ContextObject[] {
   const list = base().objects.slice(0, 4);
   for (let i = 0; i < 60; i++) {

@@ -1,7 +1,7 @@
 /**
  * «از کجا آمده / به چه تبدیل شد»: the chain around one piece of knowledge, from data that already exists —
  *   thought     the note line it was made from (`source.kind = 'note'` + `noteId` + `lineKey`, the same tie as «✓ converted»)
- *   source      the AI answer / file / chat / MCP client it came from (`source`)
+ *   source      the AI answer / file / chat / imported external source it came from (`source`)
  *   replaced    the versions it replaced (`supersedes` relations: new → old)
  *   replacedBy  what replaced it
  *   output      the outputs built from it (`usedContext`), with the version they used

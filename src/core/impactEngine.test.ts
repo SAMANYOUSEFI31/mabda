@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computeStaleAssets, halfPriceRebuildAvailable, impactMessage, newlyStale } from './impactEngine';
-import type { ContextObject } from '../types';
+import type { ContextChange, ContextObject } from '../types';
 
 const obj = (o: Partial<ContextObject> & { id: string }): ContextObject => ({
   workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'مخاطب اصلی', content: 'x', nodeId: 'business', version: 1, createdAt: '', updatedAt: '', ...o,
@@ -34,6 +34,11 @@ test('archived head and removed objects are reasons too; assets without lineage 
 
 test('status-only change (Proposed → Confirmed) does not make an asset stale', () => {
   assert.deepEqual(computeStaleAssets([asset('a', [['c1', 1]])], [obj({ id: 'c1', version: 1, status: 'Confirmed' })]), []);
+});
+
+test('moving a Node does not stale an asset when its used Context and dependency graph are unchanged', () => {
+  const movement: ContextChange = { id: 'move', workspaceId: 'w', objectId: 'node:offer', fromVersion: 0, toVersion: 0, kind: 'node_moved', actor: 'user', at: '2026-06-01T00:00:00Z' };
+  assert.deepEqual(computeStaleAssets([asset('a', [['c1', 1]])], [obj({ id: 'c1', version: 1 })], { relationships: [], changes: [movement] }), []);
 });
 
 test('newlyStale counts only assets that became stale because of this change', () => {

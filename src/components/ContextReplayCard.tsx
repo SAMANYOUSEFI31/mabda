@@ -55,7 +55,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const halfPrice = ai.managedEnabled && halfPriceRebuildAvailable(deliverable, stale);
   // chat-made assets have no workstream spec, so there is nothing to rebuild automatically
   const canRebuild = deliverable.workstreamId !== 'chat';
-  /** a hand-written example in the showcase workspace: clearly NOT an AI output; «ساخت با AI» replaces it with a real one made with the user's own key */
+  /** a hand-written example in the showcase workspace: clearly NOT an AI output; «ساخت با AI» replaces it with a real platform-generated one */
   const sample = deliverable.source?.label === 'نمونهٔ دستی';
 
   const handleCopy = () => {
@@ -221,7 +221,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                 </div>
               </div>
             )}
-            {sample && <p className="body-sm text-text-subtle">این متن را دستی نوشته‌ایم و خروجی هوش مصنوعی نیست. با «ساخت با AI» از همین دانش و با کلید خودت یک خروجی واقعی می‌سازی.</p>}
+            {sample && <p className="body-sm text-text-subtle">این متن را دستی نوشته‌ایم و خروجی هوش مصنوعی نیست. با «ساخت با هوش مصنوعی» از همین دانش یک خروجی واقعی می‌سازی.</p>}
           </div>
         )}
       </div>

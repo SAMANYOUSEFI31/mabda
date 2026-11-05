@@ -16,7 +16,7 @@ const plan = (o: Partial<AiPlan> = {}): AiPlan => ({
   confidence: 1, reason: '', upgraded: false, userMode: 'auto', jobKind: 'deliverable', decisions: [], ...o,
 });
 const session = (p: MockProvider): AiSession => ({
-  source: 'managed', providerFor: () => p, modelFor: (t) => `model-${t}`,
+  providerFor: () => p, modelFor: (t) => `model-${t}`,
   verification: { resolved: { cheap: 'model-cheap', balanced: 'model-balanced', frontier: 'model-frontier' }, verified: { cheap: true, balanced: true, frontier: true }, warnings: [], listed: true },
 });
 const prompt = buildPrompt({ contexts: [], task: 'نوشتن' });

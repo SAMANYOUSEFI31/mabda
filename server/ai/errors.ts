@@ -1,10 +1,8 @@
 import type { AiErrorInfo, AiErrorKind, StageName } from '../../src/types/ai.ts';
 
 const MESSAGES: Record<AiErrorKind, { message: string; retryable: boolean }> = {
-  no_key: { message: 'کلید API تنظیم نشده است. کلید خودت را در تنظیمات هوش مصنوعی وارد کن یا کلید سرور را تنظیم کن.', retryable: false },
-  invalid_key: { message: 'کلید API معتبر نیست یا دسترسی ندارد. کلید را بررسی کن.', retryable: false },
-  disabled: { message: 'هوش مصنوعی مدیریت‌شده در این نسخه خاموش است. کلید API خودت را وارد کن.', retryable: false },
-  quota: { message: 'سهمیهٔ کلید API تمام شده است. بعداً دوباره تلاش کن یا کلید دیگری وارد کن.', retryable: true },
+  disabled: { message: 'هوش مصنوعی فعلاً در دسترس نیست. بعداً دوباره تلاش کن.', retryable: false },
+  quota: { message: 'سهمیهٔ هوش مصنوعی فعلاً در دسترس نیست. بعداً دوباره تلاش کن.', retryable: true },
   rate_limit: { message: 'تعداد درخواست‌ها زیاد است. چند ثانیه صبر کن و دوباره تلاش کن.', retryable: true },
   timeout: { message: 'پاسخ مدل به‌موقع نرسید. دوباره تلاش کن.', retryable: true },
   aborted: { message: 'درخواست لغو شد.', retryable: true },
@@ -48,9 +46,7 @@ export function toAiError(err: unknown, stage?: StageName): AiError {
   const status = typeof e?.status === 'number' ? e.status : typeof e?.code === 'number' ? e.code : undefined;
   const msg = String(e?.message ?? '');
   if (e?.name === 'AbortError' || /aborted|abort/i.test(msg)) return new AiError('aborted', { stage, detail: msg });
-  if (status === 401 || status === 403 || /API key not valid|API_KEY_INVALID|permission denied/i.test(msg)) {
-    return new AiError('invalid_key', { stage, status, detail: msg });
-  }
+  if (status === 401 || status === 403 || /API key not valid|API_KEY_INVALID|permission denied/i.test(msg)) return new AiError('provider', { stage, status, detail: msg });
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) {
     const quota = /quota|RESOURCE_EXHAUSTED/i.test(msg) && !/rate/i.test(msg);
     return new AiError(quota ? 'quota' : 'rate_limit', { stage, status, detail: msg });

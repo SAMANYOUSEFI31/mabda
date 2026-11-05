@@ -13,11 +13,10 @@
     "clean": "rm -rf dist server.js",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/mcp/*.test.ts server/*.test.ts"
+    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@modelcontextprotocol/sdk": "^1.32.2",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "better-sqlite3": "^13.0.3",

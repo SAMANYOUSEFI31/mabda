@@ -24,6 +24,8 @@ interface Props {
   objects: ContextObject[];
   /** the node it is opened from (a node page): chosen for her; empty = no particular place */
   nodeId?: string;
+  initialKind?: ThinkingKind;
+  initialAbout?: AboutTarget[];
   onSave: (nodeId: string, content: string) => Promise<void>;
   /** several thoughts at once: one note per section */
   onSaveMany?: (notes: NotePayload[], count: number) => Promise<void>;
@@ -31,9 +33,9 @@ interface Props {
 
 /**
  * «فکر تازه»: one box, four chips (ایده by default; a text that ends with «؟» becomes a سؤال by itself, and she can change it).
- * No bracket to learn: the marker is written FOR her. A thought is never knowledge and never goes to an AI.
+ * No bracket to learn: the marker is written FOR her. A Thought is never Knowledge; it reaches AI only when explicitly selected for a request.
  */
-export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', onSave, onSaveMany }) => {
+export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', initialKind, initialAbout, onSave, onSaveMany }) => {
   const [text, setText] = useState('');
   const [kind, setKind] = useState<ThinkingKind>('idea');
   const [touched, setTouched] = useState(false);
@@ -55,7 +57,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   const [lineKind, setLineKind] = useState<Record<number, ThinkingKind>>({});
   const [lineNode, setLineNode] = useState<Record<number, string>>({});
   const [dropped, setDropped] = useState<Set<number>>(new Set());
-  useEffect(() => { if (open) { setText(''); setKind('idea'); setTouched(false); setNode(nodeId); setDefKind('idea'); setAbout([]); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId]);
+  useEffect(() => { if (open) { setText(''); setKind(initialKind ?? 'idea'); setTouched(!!initialKind); setNode(nodeId); setDefKind('idea'); setAbout(initialAbout ?? []); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId, initialKind, initialAbout]);
   const batch = !!onSaveMany && isBatch(text);
   const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
   const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
@@ -76,7 +78,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   };
   return (
     <Dialog
-      open={open} onClose={onClose} size="md" title="فکر تازه" description="یک فکر یا چند فکر؛ هر خط یک فکر. هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز. جدا از دانش می‌ماند و به AI نمی‌رسد."
+      open={open} onClose={onClose} size="md" title="فکر تازه" description="یک فکر یا چند فکر؛ هر خط یک فکر. هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز. جدا از دانش می‌ماند و فقط با انتخاب صریح تو به درخواست AI می‌رسد."
       footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (batch && lines.length === 0)} onClick={save}>{batch ? `ذخیرهٔ ${formatNumber(lines.length)} فکر` : 'ذخیره'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {

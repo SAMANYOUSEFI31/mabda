@@ -45,7 +45,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
   { id: 'go-context', title: 'رفتن به منبع حقیقت', keywords: ['دانش', 'درخت', 'ساختار'] },
   { id: 'go-doc', title: 'رفتن به سند', keywords: ['خواندن', 'متن'] },
-  { id: 'go-canvas', title: 'رفتن به بوم حقیقت', keywords: ['نقشه', 'رابطه', 'بوم'] },
+  { id: 'go-canvas', title: 'رفتن به نمای کلی حقیقت', keywords: ['نمای کلی', 'نقشه', 'رابطه', 'وابستگی', 'بوم'] },
   { id: 'go-assets', title: 'رفتن به خروجی‌ها', keywords: ['دارایی', 'خروجی', 'قدیمی'] },
   { id: 'go-workstreams', title: 'ساخت خروجی (جریان‌های کار)', keywords: ['جریان', 'ساخت', 'بساز'] },
   { id: 'metrics', title: 'شاخص‌ها و اعداد', keywords: ['نتیجه', 'عدد', 'نمودار'] },

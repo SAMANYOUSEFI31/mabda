@@ -1,6 +1,7 @@
 import type { ContextSource } from '../ai/routes.ts';
 import { AiError } from '../ai/errors.ts';
 import type { ContextObjectLite } from '../ai/context.ts';
+import type { ChatRequest } from '../ai/service.ts';
 import { subtreeIds, treeOrder } from '../../src/core/nodeTree.ts';
 import { effectiveObjects, isExpired, reachOf } from '../../src/core/effectiveContext.ts';
 import { examplesOf } from '../../src/core/redlineExamples.ts';
@@ -54,16 +55,40 @@ export function createContextSource(repo: Repo, files: FileService, userId: stri
   };
 
   return {
-    forChat(workspaceId, { scopeNodeId, message, threadOnly }) {
+    forChat(workspaceId, { scopeNodeId, scopeNodeIds, message, threadOnly, thoughtIds }) {
       const s = scopeOf(workspaceId);
       const nodes = repo.listNodes(s);
       const nodeLabels = Object.fromEntries(nodes.map((n) => [n.id, n.label]));
       const excerpts = files.excerpts(s, message);
-      if (scopeNodeId && nodes.some((n) => n.id === scopeNodeId)) {
+      let context: Partial<ChatRequest>;
+      if (scopeNodeIds !== undefined) {
+        const ids = [...new Set(scopeNodeIds)];
+        if (!ids.length || ids.some((id) => !nodes.some((n) => n.id === id))) {
+          throw new AiError('bad_request', { message: 'یکی از بخش‌های فکرهای انتخاب‌شده پیدا نشد؛ فهرست را تازه کن.', retryable: false });
+        }
+        const contextList = new Map<string, ContextObjectLite>();
+        for (const id of ids) for (const item of effective(s, id)) contextList.set(item.id, item);
+        context = { contextList: [...contextList.values()], nodeLabels, focusNodeIds: ids, excerpts };
+      } else if (scopeNodeId && nodes.some((n) => n.id === scopeNodeId)) {
         const sub = threadOnly ? [scopeNodeId] : subtreeIds(nodes, scopeNodeId);
-        return { contextList: effective(s, scopeNodeId, !threadOnly), nodeLabels, scopeNodeId, allowedNodeIds: sub, focusNodeIds: [scopeNodeId], excerpts };
+        context = { contextList: effective(s, scopeNodeId, !threadOnly), nodeLabels, scopeNodeId, allowedNodeIds: sub, focusNodeIds: [scopeNodeId], excerpts };
+      } else {
+        context = { contextList: whole(s), nodeLabels, excerpts };
       }
-      return { contextList: whole(s), nodeLabels, excerpts };
+      if (!thoughtIds?.length) return context;
+      const ids = [...new Set(thoughtIds)];
+      if (ids.length > 12) throw new AiError('bad_request', { message: 'حداکثر ۱۲ فکر را می‌توان برای یک درخواست انتخاب کرد.', retryable: false });
+      const selected = ids.map((id) => repo.getThought(s, id));
+      const open = selected.filter((t): t is NonNullable<typeof t> => !!t && t.status === 'open');
+      if (open.length !== ids.length) {
+        throw new AiError('bad_request', { message: 'یکی از فکرهای انتخاب‌شده دیگر باز نیست یا پیدا نشد؛ فهرست را تازه کن.', retryable: false });
+      }
+      return {
+        ...context,
+        contextList: (context.contextList ?? []).filter((o) => o.status === 'Confirmed'),
+        excerpts: [],
+        thoughts: open.map(({ id, kind, text, nodeId }) => ({ id, kind, text, nodeId })),
+      };
     },
 
     forGenerate(workspaceId, { targetNodeId, title, criteria, dependencyAssetIds }) {

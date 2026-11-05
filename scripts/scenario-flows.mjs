@@ -21,7 +21,7 @@ let BASE = '';
 const children = [];
 const startServer = async (port, tag) => {
   BASE = `http://127.0.0.1:${port}`;
-  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(port), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true }));
+  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(port), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), NODE_ENV: 'development' }, stdio: 'ignore', detached: true }));
   for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* retry */ } await wait(250); }
 };
 const call = async (method, path, body) => { const r = await fetch(`${BASE}/api${path}`, { method, headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }); return r.json(); };
@@ -126,7 +126,7 @@ try {
       assert.ok(free.some((i) => i.itemRef.startsWith('note:')), 'the dragged thought now has a place of its own');
     }
     await shot('2-thinking-canvas');
-    await page.getByRole('button', { name: /اگر همه را تأیید کنم، نقشهٔ حقیقت/ }).click();
+    await page.getByRole('button', { name: /اگر همه را تأیید کنم، نمای کلی حقیقت/ }).click();
     await page.getByTestId('canvas-stage').waitFor();
     await page.waitForTimeout(600);
     await page.getByRole('button', { name: 'متناسب‌سازی' }).click(); await page.waitForTimeout(500);

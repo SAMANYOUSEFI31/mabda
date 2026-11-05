@@ -1,14 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 import { createApp } from './app.ts';
 import { migrate } from './db/migrations.ts';
 import { SessionResolver } from './ai/session.ts';
-import { ByokVault } from './ai/byok.ts';
 import { loadModelsConfig } from './ai/config.ts';
 import { AiService } from './ai/service.ts';
 import { MockProvider, block, answerChecks, isCheckCall } from './ai/testing/mockProvider.ts';
@@ -21,7 +17,7 @@ async function boot(script: (c: { kind: string; schema?: unknown; prompt: { user
   const db = new Database(':memory:'); migrate(db);
   const p = new MockProvider((c) => script(c as never));
   p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
-  const sessions = new SessionResolver({ vault: new ByokVault(mkdtempSync(join(tmpdir(), 'mabda-')), 't'), managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
+  const sessions = new SessionResolver({ managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
   const service = new AiService({ sessions, cfg });
   const { app } = createApp(db, { sessions, service, admin: opts.admin });
   const server = app.listen(0);
@@ -137,6 +133,36 @@ test('notes: extract creates Proposed objects (AI Suggested) from the note; unau
   } finally { t.close(); }
 });
 
+test('Thought API: stable revision/reclassification, explicit derivation, and Proposed-only promotion', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const created = await t.call('POST', '/workspaces/ws_studio/notes', { nodeId: 'offer', content: '[ایده] قیمت اشتراک ۴۰۰ باشد' });
+    assert.equal(created.status, 200);
+    const thought = created.json.thoughts[0];
+    const revised = await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/revise`, { text: 'قیمت اشتراک ۴۹۰ باشد' });
+    assert.equal(revised.json.thought.id, thought.id);
+    assert.deepEqual(revised.json.revisions.map((r: any) => [r.beforeText, r.afterText]), [['قیمت اشتراک ۴۰۰ باشد', 'قیمت اشتراک ۴۹۰ باشد']]);
+    const reclassified = await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/reclassify`, { kind: 'question' });
+    assert.deepEqual([reclassified.json.thought.id, reclassified.json.thought.kind], [thought.id, 'question']);
+    const derived = await t.call('POST', '/workspaces/ws_studio/thoughts/derive', { parentIds: [thought.id], nodeId: 'offer', kind: 'idea', text: 'قیمت گروهی را هم بررسی کنیم' });
+    assert.equal(derived.json.derivedFrom[0], thought.id);
+    assert.notEqual(derived.json.thought.id, thought.id);
+
+    const promoted = await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/promote`, { type: 'Decision' });
+    assert.equal(promoted.json.object.status, 'Proposed');
+    assert.equal(promoted.json.object.source.thoughtId, thought.id);
+    assert.equal(promoted.json.thoughts.find((x: any) => x.id === thought.id).status, 'resolved');
+    const forbidden = await t.call('POST', '/workspaces/ws_studio/objects', {
+      type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: 'مستقیم', content: 'نباید حقیقت شود', nodeId: 'offer',
+      source: { kind: 'note', thoughtId: derived.json.thought.id, at: '2026-03-01T00:00:00Z' },
+    });
+    assert.equal(forbidden.status, 403, 'Thought-linked knowledge cannot be created as confirmed Truth');
+    const confirmed = await t.call('PATCH', `/workspaces/ws_studio/objects/${promoted.json.object.id}`, { status: 'Confirmed' });
+    assert.equal(confirmed.json.object.status, 'Confirmed', 'the existing user confirmation path remains authoritative');
+  } finally { t.close(); }
+});
+
 test('files over the API: 25MB cap and type check', async () => {
   const t = await boot(() => decide);
   try {
@@ -228,8 +254,8 @@ test('judgements we pay for are capped per plan per day; the usage endpoint show
     assert.equal(Object.keys(r.json.judgments).length, 2, 'only the 2 judgements the plan allows today were made');
     const u = (await t.call('GET', '/workspaces/ws_studio/usage')).json;
     assert.equal(u.judgmentsToday, 2);
-    assert.equal(u.payer, 'us');
-    assert.deepEqual([u.planId, u.objects > 0, u.coachToday, u.fileTokens, typeof u.byokCostUsd], ['pro', true, 0, 0, 'number']);
+    assert.deepEqual([u.planId, u.objects > 0, u.coachToday, u.fileTokens], ['pro', true, 0, 0]);
+    assert.equal('byokCostUsd' in u, false);
     const again = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_problem'] });
     assert.equal(again.json.limited, true);
     assert.equal(Object.keys(again.json.judgments).length, 2, 'nothing more today');
@@ -288,7 +314,7 @@ test('manager ledger: real cost per workspace vs plan price; off unless MABDA_AD
     const row = r.rows.find((x: any) => x.workspaceId === 'ws_studio');
     assert.equal(row.priceUsd, 24);
     assert.ok(row.ourCostUsd > 0 && row.ourCostUsd < 1, 'only the coach call is ours');
-    assert.equal(row.byokCostUsd >= 5, true, 'the BYOK spend is reported separately, not charged to us');
+    assert.equal('byokCostUsd' in row, false, 'legacy user-paid cost is not exposed as a current product metric');
     assert.deepEqual(row.lines.map((l: any) => l.category).includes('coach'), true);
     assert.equal(row.warn, false);
   } finally { t.close(); }
@@ -529,7 +555,7 @@ test('proposal inbox: accept / reject / replace each write a Change with the opt
     await t.call('POST', '/bootstrap', {});
     const mk = async (body: object) => (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', provenance: 'AI Suggested', nodeId: 'offer', ...body })).json.object;
     const base = await mk({ status: 'Confirmed', provenance: 'User Input', title: 'قیمت پایه', content: 'پنج میلیون' });
-    const p1 = await mk({ status: 'Proposed', title: 'قیمت پایه', content: 'هفت میلیون', source: { kind: 'mcp', label: 'Claude', at: new Date().toISOString() } });
+    const p1 = await mk({ status: 'Proposed', provenance: 'Imported', title: 'قیمت پایه', content: 'هفت میلیون', source: { kind: 'paste', label: 'پاسخ چسبانده‌شده', at: new Date().toISOString() } });
     const r = await t.call('POST', `/workspaces/ws_studio/objects/${p1.id}/replace`, { replacesId: base.id, reason: 'بودجهٔ جدید' });
     assert.equal(r.status, 200);
     const byId = (id: string) => r.json.objects.find((o: any) => o.id === id);
@@ -559,7 +585,7 @@ test('decision board: dropping a card = declared meaning (accept / backward need
     const mk = async (b: object) => (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', provenance: 'User Input', nodeId: 'offer', ...b })).json.object;
     const c1 = await mk({ status: 'Confirmed', title: 'الف', content: 'الف' });
     const c2 = await mk({ status: 'Confirmed', title: 'ب', content: 'ب' });
-    const p = await mk({ status: 'Proposed', title: 'پ', content: 'پ', source: { kind: 'mcp', label: 'Claude', at: new Date().toISOString() } });
+    const p = await mk({ status: 'Proposed', provenance: 'Imported', title: 'پ', content: 'پ', source: { kind: 'paste', label: 'پاسخ چسبانده‌شده', at: new Date().toISOString() } });
     const move = (b: object) => t.call('POST', '/workspaces/ws_studio/canvas/decisions/move', b);
 
     // Proposed → «confirmed» column between c1 and c2 = the accept action, with the optional reason
@@ -730,5 +756,23 @@ test('showcase workspace: one click builds it; a second reset gives exactly the 
     assert.ok(!md.includes('آیا دانه را آسیاب‌شده هم بفرستیم؟'), 'a note line never reaches the pack');
     const usage = await t.call('GET', '/workspaces/ws_demo/usage');
     assert.equal(usage.status, 200);
+  } finally { t.close(); }
+});
+
+test('retired integration APIs are absent and generic object creation cannot write a legacy MCP source', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const [tokens, key] = await Promise.all([
+      fetch(`${t.base}/workspaces/ws_studio/mcp/tokens`),
+      fetch(`${t.base}/ai/byok`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: KEY }) }),
+    ]);
+    assert.equal(tokens.status, 404);
+    assert.equal(key.status, 404);
+    const object = await t.call('POST', '/workspaces/ws_studio/objects', {
+      type: 'Fact', status: 'Proposed', provenance: 'Imported', nodeId: 'business', title: 'legacy', content: 'legacy',
+      source: { kind: 'mcp', label: 'external', at: new Date().toISOString() },
+    });
+    assert.equal(object.status, 400);
   } finally { t.close(); }
 });

@@ -90,7 +90,7 @@ test('no source file reads a node by a fixed id: «business / brand / product / 
     new RegExp(`parentId\\s*(?:===|!==)\\s*${ID}`),
   ];
   const hits: string[] = [];
-  for (const dir of ['src/core', 'src/components', 'src/services', 'server/db', 'server/ai', 'server/mcp']) {
+  for (const dir of ['src/core', 'src/components', 'src/services', 'server/db', 'server/ai']) {
     for (const f of walk(dir)) {
       readFileSync(f, 'utf8').split('\n').forEach((line, i) => { if (!/check:design-ignore/.test(line) && BAD.some((re) => re.test(line))) hits.push(`${f}:${i + 1}: ${line.trim().slice(0, 120)}`); });
     }

@@ -1,7 +1,6 @@
 /**
- * Line markers inside a note — the reference-document thinking structure (idea, question, assumption, open decision)
- * WITHOUT a separate section: a line that STARTS with `[ایده]` `[سؤال]` `[فرض]` `[تصمیم باز]` (or `[Idea]` `[Question]`
- * `[Assumption]` `[Open Decision]`) is a derived «thinking item». Pure.
+ * Legacy Note-line syntax (idea, question, assumption, open decision). New user-created lines are backfilled into persisted
+ * Thoughts; the parser remains for migration, compatibility, and Note-to-Thought synchronization.
  *
  *  • NO SYNTAX NEEDED: a line that ENDS with `؟` or `?` is a «question» by itself (the user never has to learn a bracket);
  *    an explicit marker on the same line wins. `markLine` writes a marker for the user from a small menu
@@ -14,10 +13,10 @@
  *    converts it (always PROPOSED, with the line as its quote)
  */
 
-import type { ContextObject, Note } from '../types';
+import type { ContextObject, Note, ThoughtKind, ThoughtStatus } from '../types';
 import { jaccard, normalizeFa, titleTokens } from './contextEngine';
 
-export type ThinkingKind = 'idea' | 'question' | 'assumption' | 'open_decision';
+export type ThinkingKind = ThoughtKind;
 
 export const THINKING_FA: Record<ThinkingKind, string> = { idea: 'ایده', question: 'سؤال', assumption: 'فرض', open_decision: 'تصمیم باز' };
 
@@ -34,7 +33,27 @@ export interface ThinkingItem {
   /** hash of the normalised text (stable across whitespace / ZWNJ / digit-style changes) */
   hash: string;
 }
-export interface NoteThinkingItem extends ThinkingItem { noteId: string; nodeId: string; /** note id + hash (+ #n for a repeated line) */ key: string }
+export interface NoteThinkingItem extends ThinkingItem {
+  noteId: string;
+  nodeId: string;
+  /** Stable persisted identity; legacy parser results do not have one. */
+  id?: string;
+  status?: ThoughtStatus;
+  sourceLineKey?: string;
+  /** note id + hash (+ #n for a repeated line), only for legacy-derived results */
+  key: string;
+}
+
+/** Project a persisted Thought into the existing display shape without deriving identity from mutable text. */
+export function thoughtItem(thought: import('../types').Thought): NoteThinkingItem | undefined {
+  if (!thought.kind) return undefined;
+  const hash = thought.sourceLineKey ?? thought.id;
+  return {
+    id: thought.id, status: thought.status, sourceLineKey: thought.sourceLineKey, kind: thought.kind, text: thought.text,
+    line: thought.sourceLine ?? -1, hash, noteId: thought.sourceNoteId ?? '',
+    nodeId: thought.nodeId, key: thought.id,
+  };
+}
 
 const MARKS = '\\u200c\\u200d\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff';
 const LEAD = new RegExp(`^[\\s${MARKS}]*(?:[-*•–—]|[\\d۰-۹٠-٩]+[.)])?[\\s${MARKS}]*`);
@@ -121,7 +140,7 @@ export function thinkingOf(notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]): No
 const SOFT = 0.6;
 const sameLine = (a: string, b: string) => jaccard(titleTokens(a), titleTokens(b)) >= SOFT;
 
-/** the item of `items` that a stored (kind, hash, text) refers to: exact hash first, then a soft match of the same kind */
+/** Resolve a legacy line reference by hash/text; persisted Thoughts use their stable ID first. */
 export function findItem<T extends ThinkingItem>(items: T[], ref: { kind?: ThinkingKind; hash?: string; text?: string }): T | undefined {
   const exact = ref.hash ? items.find((i) => i.hash === ref.hash && (!ref.kind || i.kind === ref.kind)) : undefined;
   if (exact || !ref.text) return exact;
@@ -130,6 +149,7 @@ export function findItem<T extends ThinkingItem>(items: T[], ref: { kind?: Think
 
 /** has this item been turned into an object? (the object's `source` carries the note id and the line hash; an edited line still matches softly) */
 export function convertedTo(item: NoteThinkingItem, objects: Pick<ContextObject, 'id' | 'status' | 'source'>[]): string | undefined {
+  if (item.id) return item.status === 'resolved' ? item.id : objects.find((o) => o.source?.thoughtId === item.id && o.status !== 'Archived')?.id;
   return objects.find((o) => o.source?.kind === 'note' && o.source.noteId === item.noteId && o.status !== 'Archived'
     && (o.source.lineKey === item.hash || (!!o.source.quote && sameLine(o.source.quote, item.text))))?.id;
 }

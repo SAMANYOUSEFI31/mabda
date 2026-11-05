@@ -16,13 +16,19 @@ import assert from 'node:assert/strict';
 const KEY = 'AIzaSy' + 'A'.repeat(33);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const children = [];
-const start = (args, env) => { const c = spawn('npx', args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: true }); children.push(c); };
-const stopAll = () => { for (const c of children) { try { process.kill(-c.pid); } catch { /* gone */ } } };
+const start = (args, env) => { const c = spawn('bun', args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: process.platform !== 'win32' }); children.push(c); };
+const stopAll = async () => {
+  await Promise.all(children.map((c) => new Promise((resolve) => {
+    if (c.exitCode !== null || c.signalCode !== null) return resolve();
+    c.once('exit', resolve);
+    try { process.kill(process.platform === 'win32' ? c.pid : -c.pid); } catch { resolve(); }
+  })));
+};
 async function up(url) { for (let i = 0; i < 80; i++) { try { const r = await fetch(url); if (r.status < 500) return; } catch { /* retry */ } await wait(250); } throw new Error(`not reachable ${url}`); }
 
 const dir = mkdtempSync(join(tmpdir(), 'mabda-spec-'));
-start(['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: '4012' });
-start(['tsx', 'server.ts'], { PORT: '3102', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: 'http://127.0.0.1:4012', MABDA_SECRET: 'scenario-secret', GEMINI_API_KEY: KEY });
+start(['run', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: '4012' });
+start(['run', 'server.ts'], { PORT: '3102', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: 'http://127.0.0.1:4012', GEMINI_API_KEY: KEY, MABDA_MANAGED_AI: '1' });
 const BASE = 'http://127.0.0.1:3102';
 
 const TITLES = ['پژوهش مخاطب', 'جملهٔ موقعیت‌یابی', 'پیام‌های کلیدی', 'ستون‌های محتوا', 'تقویم هفتگی'];
@@ -45,12 +51,6 @@ try {
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
-  await account('کلید هوش مصنوعی');
-  await page.getByLabel('کلید Gemini API').fill(KEY);
-  await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
-  await page.getByText('کلید شخصی فعال').waitFor();
-  await page.keyboard.press('Escape');
-
   step('Context Coach right after creating a node');
   await nav('منبع حقیقت');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
@@ -102,7 +102,7 @@ try {
   assert.ok(await list.getByText(/ابتدا بساز: «پژوهش مخاطب»/).count() >= 1, 'locked item names its missing dependency');
   await shot('3-studio-locked');
 
-  assert.equal(await page.getByText(/موجودی اعتبار|اعتبار باقی‌مانده|هزینهٔ این اجرا|[۰-۹]+ اعتبار/).count(), 0, 'managed AI is off: no credit number anywhere');
+  assert.ok(await page.getByText(/موجودی اعتبار|اعتبار باقی‌مانده|[۰-۹]+ اعتبار|اعتبار ماهانه/).count() > 0, 'managed platform AI exposes credits when enabled');
 
   step('run all five in dependency order');
   const built = [];
@@ -146,6 +146,6 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  stopAll();
-  rmSync(dir, { recursive: true, force: true });
+  await stopAll();
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }

@@ -16,16 +16,22 @@ const KEY = 'AIzaSy' + 'A'.repeat(33);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-qs-'));
 const children = [];
-const start = (cmd, args, env) => { const c = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: true }); children.push(c); };
-const stopAll = () => { for (const c of children) { try { process.kill(-c.pid); } catch { /* gone */ } } };
+const start = (cmd, args, env) => { const c = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: process.platform !== 'win32' }); children.push(c); };
+const stopAll = async () => {
+  await Promise.all(children.map((c) => new Promise((resolve) => {
+    if (c.exitCode !== null || c.signalCode !== null) return resolve();
+    c.once('exit', resolve);
+    try { process.kill(process.platform === 'win32' ? c.pid : -c.pid); } catch { resolve(); }
+  })));
+};
 const PORT = 3108, FAKE = 4018, BASE = `http://127.0.0.1:${PORT}`;
 const step = (m) => console.log('•', m);
 const api = async (path) => (await fetch(`${BASE}/api${path}`)).json();
 
 let browser;
 try {
-  start('npx', ['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(FAKE) });
-  start('npx', ['tsx', 'server.ts'], { PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${FAKE}`, MABDA_SECRET: 's', NODE_ENV: 'development' });
+  start('bun', ['run', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(FAKE) });
+  start('bun', ['run', 'server.ts'], { PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${FAKE}`, GEMINI_API_KEY: KEY, MABDA_MANAGED_AI: '1', NODE_ENV: 'development' });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) break; } catch { /* retry */ } await wait(250); }
   browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'], });
   for (const width of [1280, 390]) {
@@ -40,13 +46,6 @@ try {
     };
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText('خانه: استودیو').waitFor();
-    {
-      await account('کلید هوش مصنوعی');
-      await page.getByLabel('کلید Gemini API').fill(KEY);
-      await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
-      await page.getByText('کلید شخصی فعال').waitFor();
-      await page.keyboard.press('Escape');
-    }
     step(`[${width}] start → paste text → what Mabda understood`);
     await account('شروع سریع');
     await page.screenshot({ path: `docs/screens/quickstart-1-${width}.png` });
@@ -97,6 +96,6 @@ try {
   process.exitCode = 1;
 } finally {
   await browser?.close();
-  stopAll();
-  rmSync(dir, { recursive: true, force: true });
+  await stopAll();
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }

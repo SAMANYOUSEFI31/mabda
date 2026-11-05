@@ -16,7 +16,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-case-'));
 const PORT = 3109;
 const BASE = `http://127.0.0.1:${PORT}`;
-const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true });
+const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, 'm.sqlite'), NODE_ENV: 'development' }, stdio: 'ignore', detached: true });
 const api = async (path) => (await fetch(`${BASE}/api${path}`)).json();
 const step = (m) => console.log('•', m);
 
@@ -68,7 +68,7 @@ try {
 
     step(`[${width}] proposals inbox with sources and reasons`);
     await page.getByText('پیشنهاد AI بیرونی').first().waitFor().catch(() => {});
-    await page.getByText(/AI بیرونی \(MCP\)/).first().waitFor();
+    await page.getByText(/پاسخ بیرونی/).first().waitFor();
     await page.getByText(/دلیل پیشنهاد/).first().waitFor();
     await page.getByText(/تغییر پیشنهادی/).first().waitFor();
 
@@ -85,9 +85,9 @@ try {
 
     step(`[${width}] map, board, history`);
     await nav('منبع حقیقت', 'منبع');
-    await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
+    await page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
     const layoutTab = async (n) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${n}$`) }).first().evaluate((x) => x.click()); await page.waitForTimeout(450); };
-    await page.getByRole('application', { name: /بوم/ }).waitFor();
+    await page.getByRole('application', { name: /نمای کلی حقیقت/ }).waitFor();
     await shot('3-map');
     await nav('فکر', 'فکر');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);

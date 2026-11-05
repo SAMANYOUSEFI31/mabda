@@ -16,8 +16,6 @@ interface AccountModalProps {
   onClose: () => void;
   currentWorkspace: Workspace;
   onExportAllData: () => void;
-  onOpenAiSettings: () => void;
-  onOpenConnect: () => void;
   /** «بایگانی»: everything that is out of the way, with «برگردان» and «حذف دائمی» */
   onOpenArchive: () => void;
   onArchiveWorkspace: () => Promise<void>;
@@ -29,28 +27,22 @@ interface AccountModalProps {
 
 /**
  * «حساب و داده‌ها». There is no sign-in, phone number or SMS in this product (one local user), so none is shown; what is here is
- * real: the keys, the export, and the three levels of removal — archive a workspace, delete it, delete everything.
+ * real: the export, and the three levels of removal — archive a workspace, delete it, delete everything.
  */
-export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, currentWorkspace, onExportAllData, onOpenAiSettings, onOpenConnect, onOpenArchive, onArchiveWorkspace, onDeleteWorkspace, onDeleteEverything }) => {
+export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, currentWorkspace, onExportAllData, onOpenArchive, onArchiveWorkspace, onDeleteWorkspace, onDeleteEverything }) => {
   const [confirm, setConfirm] = useState<null | 'workspace' | 'everything'>(null);
   const closeAll = () => { setConfirm(null); onClose(); };
 
   return (
     <>
-      <Dialog open={isOpen && !confirm} onClose={closeAll} title="حساب و داده‌ها" description="کلیدها، خروجی داده و هر سه سطح حذف؛ هرچه اینجا هست واقعاً کار می‌کند.">
+      <Dialog open={isOpen && !confirm} onClose={closeAll} title="حساب و داده‌ها" description="خروجی داده، بایگانی و حذف فضای کاری.">
         <div className="flex flex-col gap-stack-md">
           <Card padding="lg" className="flex flex-col gap-stack-xs">
             <span className="label-md text-text-default">داده‌های تو کجاست؟</span>
             <p className="body-sm text-text-subtle">
-              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند و فقط وقتی با کلید خودت از یک مدل چیزی بخواهی، همان بخشِ لازم برایش فرستاده می‌شود. کلید API رمزنگاری‌شده نگه داشته می‌شود. یادداشت‌ها هرگز به مدل نمی‌روند.
+              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند. برای کارهای هوش مصنوعی، فقط زمینهٔ لازم فرستاده می‌شود؛ یادداشت‌های آزاد هرگز خودکار به هوش مصنوعی نمی‌روند.
             </p>
           </Card>
-
-          <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
-            <span className="label-md text-text-default">هوش مصنوعی</span>
-            <Button variant="secondary" iconStart="Settings" fullWidth onClick={onOpenAiSettings}>کلید API شخصی من و وضعیت مدل‌ها</Button>
-            <Button variant="secondary" iconStart="Link2" fullWidth onClick={() => { onClose(); onOpenConnect(); }}>اتصال به Claude و AIهای دیگر (MCP)</Button>
-          </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
             <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>
@@ -83,7 +75,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
       />
       <DangerDialog
         open={isOpen && confirm === 'everything'} onClose={() => setConfirm(null)} title="حذف همهٔ داده‌ها"
-        description="همهٔ فضاهای کاری و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها، تاریخچه، توکن‌های اتصال) و کلید هوش مصنوعی از این نصب برای همیشه پاک می‌شود. بعدش برنامه خالی شروع می‌شود. اگر نسخهٔ پشتیبان می‌خواهی، اول «خروجی گرفتن» را بزن."
+        description="همهٔ فضاهای کاری و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها و تاریخچه) از این نصب برای همیشه پاک می‌شود. بعدش برنامه خالی شروع می‌شود. اگر نسخهٔ پشتیبان می‌خواهی، اول «خروجی گرفتن» را بزن."
         confirmLabel="حذف همهٔ داده‌ها" typed={{ phrase: WIPE_WORDS, label: 'عبارت تأیید' }}
         onConfirm={async () => { await onDeleteEverything(); closeAll(); }}
       />

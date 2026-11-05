@@ -1,5 +1,5 @@
 /**
- * Manager ledger maths: what a user really costs US (never the user's own BYOK spend) against what the plan earns.
+ * Manager ledger maths: platform AI cost against plan revenue. Legacy personal-key rows remain excluded.
  * Pure; used by the admin endpoint, the cost simulation and the tests.
  */
 
@@ -26,8 +26,8 @@ export function categoryOf(mode: LedgerEntry['mode']): CostCategory {
   }
 }
 
-/** an entry costs us only when the user's own key did NOT pay (`byok` true = user paid) */
-export const isOurCost = (e: Pick<LedgerEntry, 'byok'>) => !e.byok;
+/** Legacy ledger entries marked as user-paid are not platform cost. New entries omit this marker. */
+export const isOurCost = (e: Pick<LedgerEntry, 'byok'>) => e.byok !== true;
 
 export interface CostLine { category: CostCategory; costUsd: number; calls: number }
 
@@ -39,17 +39,14 @@ export interface CostReportRow {
   ratio: number;
   warn: boolean;
   lines: CostLine[];
-  /** the user's own spend on their key (not our cost) */
-  byokCostUsd: number;
 }
 
-export function costReport(planId: PlanId, entries: Array<Pick<LedgerEntry, 'mode' | 'byok' | 'estimatedAiCostUsd'>>, warnRatio = COST_WARN_RATIO): CostReportRow {
+export function costReport(planId: PlanId, entries: Array<Pick<LedgerEntry, 'mode' | 'estimatedAiCostUsd'> & Pick<LedgerEntry, 'byok'>>, warnRatio = COST_WARN_RATIO): CostReportRow {
   const priceUsd = entitlementsOf(planId).priceMonthlyUsd;
   const byCat = new Map<CostCategory, CostLine>();
   let ours = 0;
-  let byok = 0;
   for (const e of entries) {
-    if (!isOurCost(e)) { byok += e.estimatedAiCostUsd; continue; }
+    if (!isOurCost(e)) continue;
     const c = categoryOf(e.mode);
     const l = byCat.get(c) ?? { category: c, costUsd: 0, calls: 0 };
     l.costUsd += e.estimatedAiCostUsd;
@@ -59,7 +56,7 @@ export function costReport(planId: PlanId, entries: Array<Pick<LedgerEntry, 'mod
   }
   const ratio = priceUsd > 0 ? ours / priceUsd : 0;
   return {
-    planId, priceUsd, ourCostUsd: ours, ratio, warn: ratio > warnRatio, byokCostUsd: byok,
+    planId, priceUsd, ourCostUsd: ours, ratio, warn: ratio > warnRatio,
     lines: [...byCat.values()].sort((a, b) => b.costUsd - a.costUsd),
   };
 }

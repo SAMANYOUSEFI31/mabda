@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
+import type { ContextObject, ContextRelationship, Note, Thought, TreeNode } from '../types';
 import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, ROOT_TARGET, subtreeIds } from '../core/nodeTree';
 import { moveEffect } from '../core/nodeMove';
 import { Alert, Button, Dialog, RadioGroup, Select, TextField, Textarea, formatNumber } from '../ui';
@@ -15,7 +15,7 @@ import { CoachPanel } from './CoachPanel';
 import type { LedgerEntry } from '../types';
 
 export type NodeDialogState =
-  | { kind: 'create'; parentId: string; /** prefilled name (a thought turned into a section) */ label?: string; /** show the parent picker (with the top level) */ chooseParent?: boolean; thought?: { noteId: string; line: number; text: string } }
+  | { kind: 'create'; parentId: string; /** prefilled name (a thought turned into a section) */ label?: string; /** show the parent picker (with the top level) */ chooseParent?: boolean; thought?: { id: string; noteId: string; line: number; text: string } }
   | { kind: 'rename'; nodeId: string }
   | { kind: 'move'; nodeId: string; /** a destination chosen by a quick move («یک سطح بیرون بیاور»): '' = the top level */ preset?: string }
   | { kind: 'delete'; nodeId: string }
@@ -27,6 +27,7 @@ interface Props {
   nodes: TreeNode[];
   objects: ContextObject[];
   notes: Note[];
+  thoughts?: Thought[];
   files?: Array<{ nodeId?: string }>;
   onClose: () => void;
   workspaceId: string;
@@ -35,11 +36,10 @@ interface Props {
   onOpenCoach: (nodeId: string) => void;
   onSaveProposals: (proposals: Array<{ type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }>) => Promise<void>;
   onLedger: (ledger: LedgerEntry[]) => void;
-  onOpenAiSettings: () => void;
   onRename: (nodeId: string, label: string, description: string) => Promise<void>;
   onMove: (nodeId: string, parentId: string, reason?: string) => Promise<void>;
   /** a thought that became a section: its line in the note is done */
-  onThoughtSectioned?: (thought: { noteId: string; line: number; text: string }, label: string) => Promise<void>;
+  onThoughtSectioned?: (thought: { id: string; noteId: string; line: number; text: string }, label: string, nodeId: string) => Promise<void>;
   relationships?: ContextRelationship[];
   onDelete: (nodeId: string, transferTo?: string, mode?: RemovalMode) => Promise<void>;
 }
@@ -50,7 +50,7 @@ const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
 
-const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, files = [], relationships = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onOpenAiSettings, onRename, onMove, onDelete, onThoughtSectioned }) => {
+const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> = ({ state, nodes, objects, notes, thoughts = [], files = [], relationships = [], workspaceId, onClose, onCreate, onOpenCoach, onSaveProposals, onLedger, onRename, onMove, onDelete, onThoughtSectioned }) => {
   const node = 'nodeId' in state ? nodes.find((n) => n.id === state.nodeId) : undefined;
   const [label, setLabel] = useState(state.kind === 'rename' ? node?.label ?? '' : state.kind === 'create' ? state.label ?? '' : '');
   const [createParent, setCreateParent] = useState(state.kind === 'create' ? state.parentId : '');
@@ -70,7 +70,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
     if (!n) return null;
     return (
       <Dialog open onClose={onClose} size="lg" title={`مربی دانش برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد دانش؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
-        <CoachPanel workspaceId={workspaceId} scope="node" nodeId={n.id} nodes={nodes} seedText={[n.label, n.description].filter(Boolean).join(': ')} onSaveProposals={onSaveProposals} onLedger={onLedger} onOpenAiSettings={onOpenAiSettings} />
+        <CoachPanel workspaceId={workspaceId} scope="node" nodeId={n.id} nodes={nodes} seedText={[n.label, n.description].filter(Boolean).join(': ')} onSaveProposals={onSaveProposals} onLedger={onLedger} />
       </Dialog>
     );
   }
@@ -83,7 +83,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? (parent ? `گرهٔ جدید زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'create' ? (state.thought ? 'فکرت به یک بخش از ساختار تبدیل می‌شود؛ خط فکر در یادداشت با ✓ می‌ماند.' : 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.') : undefined}
+        description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.') : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -104,7 +104,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
               setBusy(true);
               if (state.thought) {
                 const th = state.thought;
-                onCreate(createParent, label.trim(), description.trim()).then(() => onThoughtSectioned?.(th, label.trim())).then(onClose).catch(() => undefined).finally(() => setBusy(false));
+                onCreate(createParent, label.trim(), description.trim()).then((nodeId) => onThoughtSectioned?.(th, label.trim(), nodeId)).then(onClose).catch(() => undefined).finally(() => setBusy(false));
               } else onCreate(createParent, label.trim(), description.trim()).then(onOpenCoach).catch(() => undefined).finally(() => setBusy(false));
             } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}
@@ -152,6 +152,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
             </div>
           )}
           {effect && effect.sentences.length === 0 && <p className="body-sm text-text-subtle" data-testid="move-effect">دانشی از بیرون روی این بخش‌ها عوض نمی‌شود.</p>}
+          {effect && check.ok && target && <p className="body-sm text-text-subtle" data-testid="move-effect-boundary">این جابه‌جایی رابطه‌های وابستگی را تغییر نمی‌دهد و به‌تنهایی موردی را برای بازبینی یا خروجی‌ای را برای به‌روزرسانی علامت نمی‌زند؛ اما دانش مؤثر بر این بخش‌ها ممکن است عوض شود.</p>}
           {check.ok && target && <TextField label="دلیل (اختیاری)" value={moveReason} onChange={(e) => setMoveReason(e.target.value)} hint="در تاریخچه می‌ماند." />}
         </div>
       </Dialog>
@@ -162,11 +163,11 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
   // is the old, safe one: the content goes to the parent. «archive the branch» archives its knowledge (it comes back with «برگردان»).
   const chosen = target || defaultTransferTarget(nodes, node.id) || '';
   const hasBranch = subtreeIds(nodes, node.id).length > 1;
-  const content = contentOf(nodes, node.id, objects, notes, files);
-  const empty = content.objects + content.notes + content.files + content.children === 0;
-  const plan = nodeRemovalPlan({ nodes, objects, notes, files, relationships, id: node.id, mode: delMode, transferTo: empty ? undefined : chosen || undefined });
+  const content = contentOf(nodes, node.id, objects, notes, files, thoughts);
+  const empty = content.objects + content.notes + content.thoughts + content.files + content.children === 0;
+  const plan = nodeRemovalPlan({ nodes, objects, notes, files, thoughts, relationships, id: node.id, mode: delMode, transferTo: empty ? undefined : chosen || undefined });
   const dest = nodes.find((n) => n.id === chosen)?.label ?? '';
-  const parts = [[content.objects, 'دانش'], [content.notes, 'یادداشت'], [content.files, 'فایل'], [content.children, 'زیربخش']].filter(([n]) => (n as number) > 0).map(([n, w]) => `${formatNumber(n as number)} ${w}`).join('، ');
+  const parts = [[content.objects, 'دانش'], [content.notes, 'یادداشت'], [content.thoughts, 'فکر'], [content.files, 'فایل'], [content.children, 'زیربخش']].filter(([n]) => (n as number) > 0).map(([n, w]) => `${formatNumber(n as number)} ${w}`).join('، ');
   const archiveMode = delMode === 'archive';
   return (
     <Dialog
@@ -189,7 +190,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
           <p className="body-md text-text-default">این بخش خالی است و بدون هیچ اثری حذف می‌شود.</p>
         ) : (
           <>
-            {hasBranch || content.objects > 0 ? (
+            {hasBranch || content.objects > 0 || content.thoughts > 0 ? (
               <RadioGroup
                 legend="با محتوای این بخش چه کنیم؟" name="node-delete-mode" value={delMode} onChange={(v) => setDelMode(v as RemovalMode)}
                 options={[
@@ -197,11 +198,11 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
                   { value: 'archive', label: 'همهٔ این شاخه بایگانی شود' },
                 ]}
                 hint={archiveMode
-                  ? `${formatNumber(plan.counts.archived || content.objects)} دانش بایگانی می‌شود (برمی‌گردد)؛ ${hasBranch ? `${formatNumber(plan.counts.branchNodes)} بخش برداشته می‌شود؛ ` : ''}یادداشت‌ها و فایل‌ها به «${dest || 'جای دیگر'}» می‌روند.`
+                  ? `${formatNumber(plan.counts.archived || content.objects)} دانش بایگانی می‌شود (برمی‌گردد)؛ ${hasBranch ? `${formatNumber(plan.counts.branchNodes)} بخش برداشته می‌شود؛ ` : ''}یادداشت‌ها، فکرها و فایل‌ها به «${dest || 'جای دیگر'}» می‌روند.`
                   : `${parts} می‌روند؛ چیزی پاک یا بایگانی نمی‌شود.`}
               />
             ) : <Alert intent="info" title={`${parts} در این بخش هست`}>همه به «{dest || 'جای دیگر'}» می‌روند و برای هر دانش در تاریخچه می‌ماند چرا و کجا رفت.</Alert>}
-            {(plan.counts.notes + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <Select label={archiveMode ? 'یادداشت‌ها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} value={chosen} onChange={(e) => setTarget(e.target.value)} options={options(nodes, new Set(subtreeIds(nodes, node.id)))} /> : null}
+            {(plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <Select label={archiveMode ? 'یادداشت‌ها، فکرها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} value={chosen} onChange={(e) => setTarget(e.target.value)} options={options(nodes, new Set(subtreeIds(nodes, node.id)))} /> : null}
           </>
         )}
         {plan.ok && plan.tree.length > 1 && (

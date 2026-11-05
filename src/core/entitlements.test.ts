@@ -7,7 +7,7 @@ import { categoryOf, costReport, heavyUseCost, isOurCost } from './costReport';
 import { ENTITLEMENTS_CONFIG as C } from './entitlements.config';
 
 test('every plan has every entitlement and plans only grow (Starter ≤ Pro ≤ Max)', () => {
-  const keys = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'engines', 'mcp', 'contextPack', 'byok', 'decisionJudgmentsPerDay', 'coachPerDay', 'customSpecs'];
+  const keys = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'engines', 'contextPack', 'decisionJudgmentsPerDay', 'coachPerDay', 'customSpecs'];
   for (const p of PLAN_IDS) for (const k of keys) assert.ok(k in entitlementsOf(p), `${p}.${k}`);
   const nums = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'decisionJudgmentsPerDay', 'coachPerDay'] as const;
   for (const k of nums) {
@@ -34,10 +34,7 @@ test('creditEngine reads the same numbers (one place to change them)', () => {
 test('feature checks and the «from plan X» helper', () => {
   assert.equal(can('starter', 'semanticContradiction'), false);
   assert.equal(can('pro', 'semanticContradiction'), true);
-  assert.equal(can('starter', 'mcp'), true);
-  assert.equal(cheapestPlanWith('mcp'), 'starter');
   assert.equal(cheapestPlanWith('customSpecs'), 'pro');
-  assert.equal(cheapestPlanWith('byok'), 'starter');
 });
 
 test('a changed config value changes every reader (no second copy of any number)', () => {
@@ -61,10 +58,9 @@ test('usage meters: ratio, near-limit and exceeded', () => {
 
 const e = (mode: string, cost: number, byok?: boolean) => ({ mode: mode as never, estimatedAiCostUsd: cost, byok });
 
-test('manager ledger: only OUR cost counts (BYOK is the user\'s), grouped by what it paid for, warn above 20% of the plan price', () => {
+test('manager ledger excludes legacy user-paid rows from platform cost and groups the rest by use', () => {
   const ok = costReport('pro', [e('gap_judge', 1), e('coach', 0.5), e('file_processing', 0.5), e('auto', 99, true)]);
   assert.equal(ok.ourCostUsd, 2);
-  assert.equal(ok.byokCostUsd, 99);
   assert.equal(ok.priceUsd, 24);
   assert.equal(ok.warn, false);
   assert.deepEqual(ok.lines.map((l) => l.category), ['judgments', 'coach', 'fileProcessing']);

@@ -10,39 +10,39 @@ UI ── generate(plan) ► /api/ai/generate (NDJSON) ─► pipeline: single |
 UI ── chat ─────────► /api/ai/chat     (NDJSON) ─► stream بلوک‌به‌بلوک ─► {blocks, markdown, usage, plan}
 ```
 - هیچ پاسخ ساختگی وجود ندارد. خطا = `{kind, message فارسی, retryable}`؛ UI پیام + «دوباره» نشان می‌دهد.
-- نبود کلید = بنر راهنمای تنظیم (`AiStatusBanner`) و غیرفعال شدن دکمه‌ها.
+- نبود پیکربندی AI پلتفرم = پیام روشنِ در دسترس نبودن و امکان تلاش دوباره؛ UI هیچ جریان ثبت کلید ندارد.
 
 ## فایل‌ها (`server/ai/`)
 | فایل | نقش |
 | --- | --- |
 | `config/models.json` | **تنها** جای شناسهٔ مدل، نگاشت effort→پارامتر provider، قیمت. کامنت انتخاب مدل‌ها آنجاست. |
 | `providers/provider.ts`, `providers/gemini.ts` | رابط provider (generate / generateStructured / stream) و adapter با `@google/genai` |
-| `session.ts` | کلید کاربر (BYOK) یا کلید مدیریت‌شده (پشت `MABDA_MANAGED_AI`)؛ `verifyModels` شناسه‌های config را با فهرست مدل‌های کلید می‌سنجد (حدس نمی‌زند) |
+| `session.ts` | فقط کلید پلتفرم؛ `MABDA_MANAGED_AI` قابلیت‌های مدیریت‌شده را کنترل می‌کند و `verifyModels` شناسه‌های config را با فهرست مدل‌های کلید پلتفرم می‌سنجد |
 | `decision.ts` | لایهٔ تصمیم: `decide(state, questions[]) → {choice, probability}[]`؛ پیاده‌سازی با سطح cheap؛ جایگزینی با پیاده‌کردن `DecisionLayer` |
 | `router.ts` | جدول قطعی + لایهٔ تصمیم. اطمینان < ۰٫۷ یا اهمیت زیاد = یک سطح بالاتر. sensitive و tierهای `requiresExplicitSelection` فقط با انتخاب صریح |
 | `pipeline.ts` | single / cascade (ارتقا یک‌بار) / critique؛ validator با معیارهای پذیرش + گاردریل (Constraintهای Confirmed) |
 | `context.ts` | پیشوند ثابت: system → Core → Confirmed (ترتیب = ترتیب واقعی درخت Workspace: `nodeRank` عمق‌اول و `order` هر سطح، بعد زمان و شناسه؛ هیچ شناسهٔ گره‌ای در کد نیست و گره‌های کاربر آخر نمی‌افتند؛ برچسب گره‌ها از خود Workspace می‌آید)؛ بخش متغیر: Proposed با برچسب «تأییدنشده» |
 | `runner.ts` | اجرای مرحله‌ها، timeout با AbortController، ثبت usage واقعی و هزینه |
 | `blocks.ts`, `schemas.ts` | JSON schema بلوک‌ها `{id,kind,markdown,proposal?}` و parser افزایشی برای streaming |
-| `byok.ts` | ذخیرهٔ کلید با AES-256-GCM (`MABDA_SECRET` یا `server/data/secret.key`) |
-| `routes.ts` | `/api/ai/{status,plan,chat,generate,byok}` |
+| `routes.ts` | `/api/ai/{status,plan,chat,generate}` |
+| `decommission.ts` | حذف محدود فایل‌های vault کلید شخصیِ نسخه‌های قدیمی هنگام شروع سرور |
 | `testing/` | **فقط تست**: `MockProvider` و `fakeGemini` (stand-in محلی برای e2e؛ خروجی‌اش خروجی مدل نیست) |
 
 ## Timeout
 گفتگو ۳۰ ثانیه، خروجی ۱۲۰ ثانیه (`models.json → timeoutsMs`)، با `AbortController`؛ کلاینت ۵ ثانیه حاشیه می‌دهد تا خطای ساختاریافتهٔ سرور برنده شود.
 
 ## Ledger
-هر مرحله (decision / draft / critique / revise / validate / upgrade / chat) جدا ثبت می‌شود: توکن ورودی/cache/خروجی/thinking از metadata پاسخ، هزینه از قیمت‌های config، و `plan` (سطح، effort، الگو، دلیل). BYOK: `creditCost = 0` ولی توکن و هزینه ثبت می‌شود.
+هر مرحله (decision / draft / critique / revise / validate / upgrade / chat) جدا ثبت می‌شود: توکن ورودی/cache/خروجی/thinking از metadata پاسخ، هزینه از قیمت‌های config، و `plan` (سطح، effort، الگو، دلیل). ردیف‌های تازه payer flag ندارند؛ marker قدیمی ledger فقط برای محاسبهٔ درست هزینهٔ پلتفرم خوانده می‌شود.
 
 ## متغیرهای محیطی
-`MABDA_MANAGED_AI` (پیش‌فرض خاموش) · `GEMINI_API_KEY` (فقط برای حالت مدیریت‌شده) · `MABDA_SECRET` · `MABDA_GEMINI_BASE_URL` (فقط آزمون محلی)
+`MABDA_MANAGED_AI` (پیش‌فرض خاموش) · `GEMINI_API_KEY` (کلید پلتفرم) · `MABDA_GEMINI_BASE_URL` (فقط آزمون محلی)
 
 ## آزمون
-`bun run test` (router، cascade با provider ماک، هزینه، BYOK، parser، creditEngine، ledger).
+`bun run test` (router، cascade با provider ماک، هزینه، parser، creditEngine، ledger).
 e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## هنوز نیست
-جایگزین (fallback) بین دو شرکت برای هر سطح (فقط Gemini)، ضریب ۱٫۵/۲ طول خروجی در UI، حساب کاربری سمت سرور (BYOK فعلاً با شناسهٔ مرورگر)، اندازه‌گیری واقعی ضریب effort (Alpha).
+جایگزین (fallback) بین دو شرکت برای هر سطح، ضریب ۱٫۵/۲ طول خروجی در UI، حساب کاربری سمت سرور، اندازه‌گیری واقعی ضریب effort (Alpha). انتخاب provider/model توسط کاربر و کلید شخصی عمداً خارج از MVP است.
 
 
 ## ذخیره‌سازی، نسخه و اصالت (v3.1)
@@ -56,18 +56,19 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 - **سناریوی کامل:** `node scripts/scenario-impact.mjs` (سرور واقعی + stand-in Gemini) → `docs/screens/impact-*.png`.
 
 
-## اتصال AI بیرونی: MCP و بستهٔ Context
+## محتوای بیرونی: بستهٔ Context و واردکردن پاسخ
 
-- **MCP** (`server/mcp/`): Streamable HTTP روی `/mcp`، stateless؛ هر درخواست یک `McpServer` به‌اندازهٔ scope توکن می‌سازد (توکن شخصی هر Workspace، فقط hash در `mcp_tokens`). نه ابزار (هشت ابزار اصلی + `get_changes` فقط‌خواندنی) در `tools.ts`؛ `propose_context_updates` وضعیت را در کد روی `Proposed` ثابت می‌کند (آنچه کلاینت بفرستد نادیده است) و `source` (کدام AI، چه وقت، چرا) را ثبت می‌کند.
+- اتصال مستقیم و مسیر MCP در MVP وجود ندارد. برای AI بیرونی، کاربر بستهٔ Context را کپی می‌کند و پاسخ را خودش وارد می‌کند.
 - **صندوق پیشنهادها** = همهٔ Objectهای `Proposed` با `source`؛ تأیید = تغییر وضعیت به Confirmed (تنها راه تبدیل پیشنهاد AI به واقعیت)، رد = Archived.
 - **بستهٔ Context** (`src/core/contextPack.ts`): Markdown فشرده؛ سرور می‌سازد و `context_packs` را با refs (id+version) ذخیره می‌کند تا پاسخ چسبانده‌شده اصالت داشته باشد. نشانگر `<!-- mabda-pack:ID -->` بالای بسته است.
-- **وارد کردن پاسخ** (`src/core/answerParser.ts`): اول سرتیترهای سطح دو (رایگان)، بعد `AiService.parseExternal` (cheap)، بعد یک بلوک خام؛ هرگز ساختار ساختگی.
-- سناریوها: `scripts/scenario-mcp.ts`، `scripts/scenario-paste.mjs`.
+- **وارد کردن پاسخ** (`src/core/answerParser.ts`): اول سرتیترهای سطح دو (رایگان)، بعد `AiService.parseExternal` (cheap)، بعد یک بلوک خام؛ هرگز ساختار ساختگی. محتوای بیرونی تا تأیید کاربر واقعیت نیست.
+- سناریوی قابل اجرا: `scripts/scenario-paste.mjs`.
+- **سازگاری تاریخی:** migration v22 همهٔ tokenهای قدیمی را باطل می‌کند و رکوردهایشان را نگه می‌دارد. منشأهای `mcp` ذخیره‌شده همچنان به‌عنوان منشأ تاریخی خوانده می‌شوند؛ هیچ route یا UI برای ساخت/مدیریت آن‌ها فعال نیست. فایل‌های vault کلید شخصی با شروع سرور پاک می‌شوند.
 
 
 ## Change، گراف تصمیم و Asset (spine)
 
-- **`context_changes`** (migration v9): هر مسیر تغییر Object در `server/db/repo.ts` در همان تراکنش یک Change می‌نویسد؛ actor از `source` استنباط می‌شود (MCP/گفتگو/مربی/ورود)، وگرنه کاربر. `reason` فقط در Change است و به هیچ prompt یا بستهٔ Context نمی‌رود؛ `get_changes` (MCP) فقط `hasReason` برمی‌گرداند. رکوردهای قدیمی از `context_object_versions` بازسازی و «[دلیل جایگزینی: …]» از متن‌ها جدا شد (migration مستقل از `src/core`).
+- **`context_changes`** (migration v9): هر مسیر تغییر Object در `server/db/repo.ts` در همان تراکنش یک Change می‌نویسد؛ actor از `source` استنباط می‌شود (گفتگو/مربی/ورود یا یک برچسب تاریخی)، وگرنه کاربر. `reason` فقط در Change است و به هیچ prompt یا بستهٔ Context نمی‌رود. رکوردهای قدیمی از `context_object_versions` بازسازی و «[دلیل جایگزینی: …]» از متن‌ها جدا شد (migration مستقل از `src/core`).
 - **`ContextType`** فقط Fact/Decision/Constraint است (migration v8: Asset قدیمی → Fact). «پیشنهاد دانش از این خروجی» از `AiService.extract` Proposed با `provenance: Asset Derived` و نقل تأییدشده می‌سازد.
 - **`src/core/decisionGraph.ts`**: لایه‌ها/دستهٔ همزمان (SCC)/وابسته‌های تراگذری/`needsReview` (مشتق از Changeها؛ مبنا = آخرین نوشتن یا بازبینی خود مورد). `impactEngine` با دلیل `dependency_changed` فقط تغییرهایی را می‌شمرد که **بعد از ساخت دارایی** رخ داده‌اند (بازسازی آن را تسویه می‌کند).
 - مسیر/اعتبارسنج/اعتبار AI در این تغییر دست نخورده است.
@@ -98,4 +99,4 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 | بازبینی تغییر | قبل/بعد هر تغییر (۳۰ روز، حداکثر ۱۰)، تناقض و چیزهای نیازمند بازبینی؛ بدون نتیجهٔ علّی؛ `reason` هرگز نمی‌آید |
 | آزاد | فقط قواعد مشترک |
 
-**انتخاب مرتبط** (بودجهٔ پیش‌فرض ۴۰۰۰ توکن برای دادهٔ اسناد): همیشه قیدها و تصمیم‌های سراسری (حتی بیش از بودجه؛ `overBudget`)، بعد موارد دستی و (برای بازبینی) موارد تغییرکرده، بعد BM25 (`retrieval.ts`) روی «درخواست + برچسب گرهٔ دامنه» با متن سند = عنوان + متن + بُعدها + مسیر گره؛ هم‌امتیاز: مال خود گره اول؛ بی‌امتیازها فقط اگر **همه** جا شوند (فضای کوچک)، وگرنه «بی‌ربط». نمونه، Proposed، Needs Review، منقضی و استثناشده هرگز نمی‌آیند. مسیر `POST /workspaces/:wid/ai-requests` (`record: true` فقط هنگام «کپی»، بسته را برای اصالت ذخیره می‌کند)؛ MCP: prompt‌های `request_question` … `request_free` با آرگومان `request` و `scope`.
+**انتخاب مرتبط** (بودجهٔ پیش‌فرض ۴۰۰۰ توکن برای دادهٔ اسناد): همیشه قیدها و تصمیم‌های سراسری (حتی بیش از بودجه؛ `overBudget`)، بعد موارد دستی و (برای بازبینی) موارد تغییرکرده، بعد BM25 (`retrieval.ts`) روی «درخواست + برچسب گرهٔ دامنه» با متن سند = عنوان + متن + بُعدها + مسیر گره؛ هم‌امتیاز: مال خود گره اول؛ بی‌امتیازها فقط اگر **همه** جا شوند (فضای کوچک)، وگرنه «بی‌ربط». نمونه، Proposed، Needs Review، منقضی و استثناشده هرگز نمی‌آیند. مسیر `POST /workspaces/:wid/ai-requests` (`record: true` فقط هنگام «کپی»، بسته را برای اصالت ذخیره می‌کند).

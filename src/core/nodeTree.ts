@@ -88,23 +88,25 @@ export function quickMoves(nodes: TreeNode[], id: string): { up?: number; down?:
 export interface NodeContent {
   objects: number;
   notes: number;
+  thoughts: number;
   /** files added to this node */
   files: number;
   children: number;
 }
 
-export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[], files: Array<{ nodeId?: string }> = []): NodeContent {
+export function contentOf(nodes: TreeNode[], id: string, objects: Pick<ContextObject, 'nodeId'>[], notes: Pick<Note, 'nodeId'>[], files: Array<{ nodeId?: string }> = [], thoughts: Array<{ nodeId: string }> = []): NodeContent {
   return {
     files: files.filter((f) => f.nodeId === id).length,
     objects: objects.filter((o) => o.nodeId === id).length,
     notes: notes.filter((n) => n.nodeId === id).length,
+    thoughts: thoughts.filter((t) => t.nodeId === id).length,
     children: nodes.filter((n) => n.parentId === id).length,
   };
 }
 
 export type DeleteCheck = Check | { ok: false; reason: string; needsTransfer: true; content: NodeContent };
 
-/** Delete only when empty; otherwise the caller must pass `transferTo` (the content moves there). */
+/** Delete only when empty; otherwise the caller must pass `transferTo` (all content, including Thoughts, moves there). */
 export function canDelete(
   nodes: TreeNode[],
   id: string,
@@ -112,12 +114,13 @@ export function canDelete(
   notes: Pick<Note, 'nodeId'>[],
   transferTo?: string,
   files: Array<{ nodeId?: string }> = [],
+  thoughts: Array<{ nodeId: string }> = [],
 ): DeleteCheck {
   const node = nodes.find((n) => n.id === id);
   if (!node) return no('این گره وجود ندارد.');
   if (!node.parentId && nodes.filter((n) => !n.parentId).length <= 1) return no('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
-  const content = contentOf(nodes, id, objects, notes, files);
-  const empty = content.objects + content.notes + content.files + content.children === 0;
+  const content = contentOf(nodes, id, objects, notes, files, thoughts);
+  const empty = content.objects + content.notes + content.thoughts + content.files + content.children === 0;
   if (empty) return { ok: true };
   if (!transferTo) return { ok: false, reason: 'این بخش خالی نیست؛ محتوایش را به بخش دیگری ببر.', needsTransfer: true, content };
   if (!nodes.some((n) => n.id === transferTo)) return no('گرهٔ مقصد وجود ندارد.');
@@ -134,6 +137,14 @@ export function reorderSiblings(nodes: TreeNode[], parentId: string | undefined,
   const at = Math.max(0, Math.min(index, sibs.length));
   const ids = [...sibs.slice(0, at).map((n) => n.id), id, ...sibs.slice(at).map((n) => n.id)];
   return ids.map((x, i) => ({ id: x, order: i }));
+}
+
+/** Build the same candidate tree used by a committed move; descendants stay attached through their parent links. */
+export function movedNodeTree(nodes: TreeNode[], id: string, parentId: string, index?: number): TreeNode[] {
+  const to = parentId || undefined;
+  const moved = nodes.map((n) => (n.id === id ? { ...n, parentId: to } : n));
+  const orders = new Map(reorderSiblings(moved, to, id, index ?? nextOrder(nodes, to)).map((item) => [item.id, item.order]));
+  return moved.map((n) => ({ ...n, ...(orders.has(n.id) ? { order: orders.get(n.id)! } : {}) }));
 }
 
 /** flattened for pickers: depth-first with depth */
