@@ -314,6 +314,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
 
   // ── notes (never injected into the model) ────────────────────────────
   router.post('/workspaces/:wid/notes', wrap((req, res) => { res.json({ note: repo.createNote(scopeOf(req), String(body(req).nodeId), String(body(req).content ?? '')) }); }));
+  router.post('/workspaces/:wid/notes/:id/move-node', wrap((req, res) => { res.json({ note: repo.moveNoteToNode(scopeOf(req), req.params.id, String(body(req).nodeId ?? '')) }); }));
   router.patch('/workspaces/:wid/notes/:id', wrap((req, res) => { res.json({ note: repo.updateNote(scopeOf(req), req.params.id, String(body(req).content ?? '')) }); }));
   // a deleted note is handed back (with its place) so «برگرداندن» can put it exactly where it was
   router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { const s = scopeOf(req); const note = repo.getNote(s, req.params.id); const position = note ? repo.notePosition(s, note.id) : undefined; repo.deleteNote(s, req.params.id); res.json({ ok: true, note, position }); }));

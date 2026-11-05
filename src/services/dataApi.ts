@@ -158,6 +158,7 @@ export const dataApi = {
   canvasReset: (id: string) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/reset`, {}),
   canvasConnect: (id: string, input: { fromId: string; toId: string; type: 'depends_on' | 'supersedes'; reason?: string; confirmed?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/connect`, input),
   freeNoteCreate: (id: string, input: { content: string; x: number; y: number; nodeId?: string }) => call<CanvasBundle & { note: Note }>('POST', `${ws(id)}/canvas/free/notes`, input),
+  noteMoveNode: (id: string, noteId: string, nodeId: string) => call<{ note: import('../types').Note }>('POST', `${ws(id)}/notes/${noteId}/move-node`, { nodeId }),
   freeNoteMove: (id: string, noteId: string, x: number, y: number) => call<{ canvas: CanvasBundle['canvas'] }>('PUT', `${ws(id)}/canvas/free/items/${noteId}`, { x, y }),
   freeObjectPlace: (id: string, objectId: string, x: number, y: number) => call<{ canvas: CanvasBundle['canvas'] }>('PUT', `${ws(id)}/canvas/free/objects/${objectId}`, { x, y }),
   freeObjectRemove: (id: string, objectId: string) => call<{ canvas: CanvasBundle['canvas'] }>('DELETE', `${ws(id)}/canvas/free/objects/${objectId}`),

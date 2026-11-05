@@ -12,6 +12,9 @@ import type { Lod } from '../core/canvasLod';
 import { aboutSentence, influenceOf, influenceSummary } from '../core/influence';
 import { Badge, Button, StatusBadge, TypeBadge, formatNumber } from '../ui';
 import { Closed as DetailSection, InfluencePanel } from './InfluencePanel';
+import { provenanceOf } from '../core/provenance';
+import type { Note } from '../types';
+import { ProvenanceList } from './ProvenanceList';
 import { EDGE_STYLE } from './CanvasEdges';
 
 interface Props {
@@ -35,6 +38,11 @@ interface Props {
   onClear: () => void;
   onSelect: (id: string) => void;
   placed: boolean;
+  /** for «منشأ» */
+  notes?: Note[];
+  /** «دور این مورد» (the truth canvas) */
+  onLineage?: (objectId: string) => void;
+  onOpenNote?: (noteId: string, nodeId: string) => void;
 }
 
 const LEGEND: Array<{ kind: SceneEdge['kind']; what: string }> = [
@@ -111,15 +119,22 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         {sum && <p className="body-sm text-text-subtle" data-testid="inspector-summary">{sum.sentence}</p>}
         {/* at most two actions in the first view; everything else is one click away under «بیشتر» */}
         <div className="flex flex-wrap gap-inline-xs" data-testid="inspector-actions">
-          {item.review ? <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button> : moveBtn}
+          {item.review ? <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button> : p.onLineage ? <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button> : moveBtn}
           <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
         </div>
         {inf && <InfluencePanel compact influence={inf} nodes={p.nodes} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} />}
+        <DetailSection title="منشأ" count={0}>
+          <ProvenanceList
+            provenance={provenanceOf({ objectId: o.id, objects: p.objects, relationships: p.relationships, notes: p.notes ?? [], deliverables: p.deliverables })}
+            onOpen={(l) => { const t = l.target; if (!t) return; if (t.type === 'object') { const it = scene.items.find((i) => i.objectId === t.objectId); if (it) p.onSelect(it.id); else { const ob = p.objects.find((x) => x.id === t.objectId); if (ob) p.onOpenObject(ob); } } else if (t.type === 'note') p.onOpenNote?.(t.noteId, t.nodeId); else p.onOpenAssets(); }}
+          />
+        </DetailSection>
         <DetailSection title="بیشتر" count={0}>
           <p className="body-md whitespace-pre-wrap text-text-default">{o.content.length > 400 ? `${o.content.slice(0, 400)}…` : o.content}</p>
           <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}</div>
           <div className="flex flex-wrap gap-inline-xs">
-            {item.review && moveBtn}
+            {(item.review || p.onLineage) && moveBtn}
+            {item.review && p.onLineage && <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button>}
             {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از بوم فکر بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در بوم فکر</Button> : null}
           </div>
         </DetailSection>

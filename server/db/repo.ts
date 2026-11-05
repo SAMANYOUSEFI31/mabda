@@ -747,6 +747,15 @@ export class Repo {
     return { ...cur, content, updatedAt: t };
   }
 
+  /** a thought changes its SECTION (dragged into another section's frame on the free canvas); the text and the place stay */
+  moveNoteToNode(s: Scope, id: string, nodeId: string): Note {
+    const cur = this.getNote(s, id);
+    if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    if (!this.listNodes(s).some((n) => n.id === nodeId)) throw new RepoError('not_found', 'بخش پیدا نشد.');
+    this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(nodeId, id, s.workspaceId);
+    return { ...cur, nodeId };
+  }
+
   /** «برگرداندن»: the note comes back with its own id, text, dates and (if it had one) its place on the free canvas */
   restoreNote(s: Scope, n: Note, pos?: { x?: number; y?: number }): Note {
     this.assertWorkspace(s);

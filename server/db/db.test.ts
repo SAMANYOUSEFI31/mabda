@@ -630,3 +630,15 @@ test('moving a section builds and removes NO relation; the structure is a hint, 
   assert.equal(key(), before, 'no relation was created, changed or removed by any of the moves');
   assert.ok(!key().includes(up.id), 'the section above got no relation just for being above');
 });
+
+test('a thought changes its section; the text stays; a missing section or note is refused', () => {
+  const { repo, s } = fresh();
+  const a = repo.createNode(s, { parentId: 'business', label: 'اشتراک' });
+  const note = repo.createNote(s, 'business', '[ایده] یک فکر');
+  const moved = repo.moveNoteToNode(s, note.id, a.id);
+  assert.equal(moved.nodeId, a.id);
+  assert.equal(moved.content, '[ایده] یک فکر');
+  assert.equal(repo.listNotes(s).find((n) => n.id === note.id)!.nodeId, a.id);
+  assert.throws(() => repo.moveNoteToNode(s, note.id, 'nope'), RepoError);
+  assert.throws(() => repo.moveNoteToNode(s, 'nope', a.id), RepoError);
+});
