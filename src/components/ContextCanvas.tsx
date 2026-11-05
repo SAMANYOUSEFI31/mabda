@@ -7,9 +7,9 @@ import { createPortal } from 'react-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, ContextRelationship, GeneratedDeliverable, Note, TreeNode } from '../types';
 import type { CanvasItem } from '../types/state';
-import { BOARD_COLUMNS_FA, BOARD_ROWS_FA, LANE_FA, LANES, moveEffect } from '../core/canvasModel';
-import type { BoardColumns, BoardRows, Lane } from '../core/canvasModel';
-import { buildScene, HEAD, LAYOUT_ABOUT, LAYOUT_FA, neighbourInDirection, NOTE_H, NOTE_W, placeable, sceneDrop, sceneNeighbours } from '../core/canvasScene';
+import { LANE_FA, LANES, moveEffect } from '../core/canvasModel';
+import type { Lane } from '../core/canvasModel';
+import { buildScene, HEAD, LAYOUT_ABOUT, LAYOUT_FA, neighbourInDirection, NOTE_H, NOTE_W, placeable } from '../core/canvasScene';
 import type { CanvasLayout, Scene, SceneItem } from '../core/canvasScene';
 import { canRedo, canUndo, createHistory, record, redo, undo } from '../core/canvasHistory';
 import type { CanvasAction, HistoryEntry } from '../core/canvasHistory';
@@ -66,6 +66,10 @@ export interface CanvasProps {
   previewNonce?: number;
   /** thinking canvas: go to the truth map with the suggestions shown */
   onPreviewTruth?: () => void;
+  /** Ctrl/⌘K picked an item while the truth canvas is open: show it here (a new `n` = a new request) */
+  revealObject?: { id: string; n: number };
+  /** «دور یک مورد» looks beyond the section we are inside: everything in the workspace */
+  lineageObjects?: ContextObject[];
   /** a free note (a thought) becomes a SECTION of the tree: she picks the name and the parent */
   onNoteToSection?: (noteId: string) => void;
 }
@@ -83,7 +87,7 @@ const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خر
 
 // three looks, one engine: the overview and «دور یک مورد» (the truth canvas), the free canvas (thinking). «تابلو» is gone: see docs/canvas-design.md
 const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['overview'], thinking: ['free'] };
-const readPrefs = (): Partial<{ layouts: Partial<Record<'truth' | 'thinking', CanvasLayout>>; boxes: boolean; columns: BoardColumns; rows: BoardRows; rowOrder: string[] }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
+const readPrefs = (): Partial<{ layouts: Partial<Record<'truth' | 'thinking', CanvasLayout>>; rowOrder: string[] }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
 const readTips = (): number[] => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]'); } catch { return []; } };
 function useMedia(q: string): boolean {
   const [m, setM] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(q).matches : false));
@@ -100,16 +104,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const layouts = MODE_LAYOUTS[mode];
   const [layout, setLayoutRaw] = useState<CanvasLayout>(() => { const l = prefs.layouts?.[mode]; return l && layouts.includes(l) ? l : layouts[0]; });
   const setLayout = (l: CanvasLayout) => setLayoutRaw(layouts.includes(l) ? l : layouts[0]);
-  const [boxes, setBoxes] = useState(prefs.boxes ?? true);
-  const [columns, setColumns] = useState<BoardColumns>(prefs.columns ?? 'status');
-  const [rows, setRows] = useState<BoardRows>(prefs.rows ?? 'domain');
-  const [showAssets, setShowAssets] = useState(true);
-  const [history, setHistory] = useState(false);
   const [onlyReview, setOnlyReview] = useState(false);
   const [showPending, setShowPending] = useState(false);
   const [showAllEdges, setShowAllEdges] = useState(false);
   const [colorFacet, setColorFacet] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string> | null>(null);
   // the overview: deeper sections opened into their own rows, one kind only, the user's row order (display only, remembered on this device)
   const [openedRows, setOpenedRows] = useState<Set<string>>(new Set());
   const [only, setOnly] = useState<'' | 'constraint' | 'pending'>('');
@@ -142,7 +140,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [ctx, setCtx] = useState<{ item: SceneItem; x: number; y: number } | null>(null);
   const [tipsDone, setTipsDone] = useState<number[]>(readTips);
   const [hist, setHist] = useState(() => createHistory());
-  useEffect(() => { try { const old = readPrefs(); localStorage.setItem(PREF_KEY, JSON.stringify({ layouts: { ...old.layouts, [mode]: layout }, boxes, columns, rows, rowOrder })); } catch { /* a per-viewer convenience only */ } }, [layout, boxes, columns, rows, mode, rowOrder]);
+  useEffect(() => { try { const old = readPrefs(); localStorage.setItem(PREF_KEY, JSON.stringify({ layouts: { ...old.layouts, [mode]: layout }, rowOrder })); } catch { /* a per-viewer convenience only */ } }, [layout, mode, rowOrder]);
   useEffect(() => { if (p.previewNonce) setShowPending(true); }, [p.previewNonce]);
 
   const root = useRef<HTMLDivElement>(null);
@@ -151,17 +149,17 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   const layoutEff: CanvasLayout = lineage ? 'lineage' : layout;
   const scene: Scene = useMemo(
-    () => buildScene(layoutEff, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, rowsBy, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
-    [layoutEff, lineage, only, rowsBy, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending, mode],
+    () => buildScene(layoutEff, { nodes: p.nodes, objects: lineage ? p.lineageObjects ?? p.objects : p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, rowsBy, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
+    [layoutEff, lineage, p.lineageObjects, only, rowsBy, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, onlyReview, showPending, mode],
   );
   const byId = useMemo(() => new Map(scene.items.map((i) => [i.id, i])), [scene]);
   const frames = useMemo(() => (layoutEff === 'free' ? freeFrames(scene.items, p.nodes) : []), [layoutEff, scene.items, p.nodes]);
-  const objectById = useMemo(() => new Map(p.objects.map((o) => [o.id, o])), [p.objects]);
+  const objectById = useMemo(() => new Map((p.lineageObjects ?? p.objects).map((o) => [o.id, o])), [p.lineageObjects, p.objects]);
   const facetNames = useMemo(() => [...new Set(p.objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [p.objects]);
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
-  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : layout === 'board' ? 1 : 0.85, fullscreen);
+  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
+  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : 0.85, fullscreen);
   const lod = lodOf(view.k);
   const overviewFar = layoutEff === 'overview' && lod === 'far';
 
@@ -226,6 +224,15 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     zoomToRect(0, top, scene.width, bottom - top);
   }, [scene.overview, scene.width, zoomToRect]);
 
+  // Ctrl/⌘K → «show it here»: leave «دور یک مورد», clear filters that would hide it, then go to the card
+  const revealSeen = useRef(0);
+  useEffect(() => {
+    const r = p.revealObject;
+    if (!r || r.n === revealSeen.current) return;
+    revealSeen.current = r.n;
+    setLineage(null); setOnly(''); setOnlyReview(false);
+    setTimeout(() => goTo(`o:${r.id}`), 150);
+  }, [p.revealObject]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── «دور یک مورد»: in and out. Going back puts the card in the middle of the overview again, so she sees where it sits in the whole ──
   const enterLineage = useCallback((objectId: string) => { setConnectMode(false); setConnectFrom(null); setLineage({ id: objectId, depth: 2 }); setSelection([`o:${objectId}`]); setSelectedEdge(null); }, []);
   const exitLineage = useCallback(() => {
@@ -250,7 +257,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     push({ label: `جابه‌جایی بخش «${f.label}»`, undo: was.map(toAction).filter(Boolean) as CanvasAction[], redo: next.map(toAction).filter(Boolean) as CanvasAction[] });
   };
   const startFrameDrag = (e: React.PointerEvent, f: ReturnType<typeof freeFrames>[number]) => {
-    if (e.pointerType === 'touch' || e.button !== 0 || (e.target as HTMLElement).closest('button')) return; // touch: the menu is the way
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return; // a finger or a mouse drags the header; the menu / dialog is the no-drag way
     e.stopPropagation();
     const origin = toStage(e.clientX, e.clientY);
     let moved = false;
@@ -321,8 +328,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const doUndo = useCallback(async () => { const r = undo(hist); if (!r.entry) return; setHist(r.history); setBusy(true); try { await exec(r.entry.undo); toast.show({ intent: 'success', message: `برگشت: ${r.entry.label}` }); } finally { setBusy(false); } }, [hist, exec, toast]);
   const doRedo = useCallback(async () => { const r = redo(hist); if (!r.entry) return; setHist(r.history); setBusy(true); try { await exec(r.entry.redo); } finally { setBusy(false); } }, [hist, exec]);
 
-  // ── moving a card on the board (status columns only) ──
-  const [drag, setDrag] = useState<{ id: string; x: number; y: number; target?: ReturnType<typeof sceneDrop> } | null>(null);
   const [linkDrag, setLinkDrag] = useState<{ fromId: string; x: number; y: number } | null>(null);
   const [actions, setActions] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending>(null);
@@ -342,8 +347,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     const first = scene.items.find((i) => i.unplaced);
     if (first && trayShape.current !== shapeKey && size.w > 0) { trayShape.current = shapeKey; setTimeout(() => reveal(first.x, first.y, first.w, first.h), 0); }
   }, [mode, layout, scene.items, size.w, reveal, shapeKey]);
-  const boardStatus = layout === 'board' && scene.board?.columns === 'status';
-  const dragEnabled = boardStatus || layout === 'free';
+  const dragEnabled = layout === 'free';
 
   const request = useCallback(async (payload: MovePayload) => {
     const o = objectById.get(payload.objectId);
@@ -355,11 +359,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectById, p.reviewIds, scene]);
   const run = async (payload: MovePayload) => {
-    const prev = sceneNeighbours(scene, payload.objectId);
     setBusy(true);
     try {
       await p.onMove(payload);
-      if (prev) push({ label: `انتقال «${objectById.get(payload.objectId)?.title ?? ''}»`, undo: [{ type: 'move', objectId: payload.objectId, lane: prev.lane, nodeId: scene.board?.rows === 'domain' ? prev.nodeId : undefined, beforeId: prev.beforeId, afterId: prev.afterId }], redo: [{ type: 'move', objectId: payload.objectId, lane: payload.lane, nodeId: payload.nodeId, beforeId: payload.beforeId, afterId: payload.afterId }] });
     } finally { setBusy(false); }
   };
   const confirmPending = async () => {
@@ -381,12 +383,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
       moved = true;
       const s = toStage(ev.clientX, ev.clientY);
-      if (isNote || layout === 'free') setNoteDrag({ id: item.id, x: s.x - grab.x, y: s.y - grab.y });
-      else setDrag({ id: item.id, x: s.x - grab.x, y: s.y - grab.y, target: sceneDrop(scene, s.x, s.y, item.objectId) });
+      setNoteDrag({ id: item.id, x: s.x - grab.x, y: s.y - grab.y });
     };
     const up = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
-      setDrag(null); setNoteDrag(null);
+      setNoteDrag(null);
       if (!moved) return;
       const s = toStage(ev.clientX, ev.clientY);
       const nx = Math.max(0, Math.round(s.x - grab.x)), ny = Math.max(0, Math.round(s.y - grab.y));
@@ -397,8 +398,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         else if (item.objectId) { const was = { x: item.x, y: item.y }; void p.onPlaceObject(item.objectId, nx, ny); push({ label: 'جابه‌جایی کارت', undo: [{ type: 'placeObject', objectId: item.objectId, ...was }], redo: [{ type: 'placeObject', objectId: item.objectId, x: nx, y: ny }] }); }
         return;
       }
-      const t = sceneDrop(scene, s.x, s.y, item.objectId);
-      if (t && item.objectId && (t.col === 'thinking' || t.col === 'confirmed')) void request({ objectId: item.objectId, lane: t.col, nodeId: scene.board?.rows === 'domain' ? t.row : undefined, beforeId: t.beforeId, afterId: t.afterId });
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   };
@@ -507,7 +506,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   };
   useEffect(() => { const clear = () => window.clearTimeout(press.current); window.addEventListener('pointerup', clear); window.addEventListener('pointermove', clear, { passive: true }); return () => { window.removeEventListener('pointerup', clear); window.removeEventListener('pointermove', clear); }; }, []);
 
-  const toggleNode = useCallback((nodeId: string) => setExpanded((cur) => { const base = cur ?? new Set(scene.boxes.filter((b) => b.kind === 'group' && b.expanded).map((b) => b.nodeId!)); const s = new Set(base); if (s.has(nodeId)) s.delete(nodeId); else s.add(nodeId); return s; }), [scene.boxes]);
 
   const exportCanvas = () => {
     const cards = scene.items.filter((i) => i.kind === 'object' || i.kind === 'note').map((i) => ({ id: i.id, text: `${i.label}\n${i.summary ?? ''}`, x: i.x, y: i.y, w: i.w, h: i.h }));
@@ -566,15 +564,17 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       )}
       </span>
       <Popover label="گزینه‌های نما" align={isMobile ? 'end' : 'start'} trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
-      {!lineage && <Button size="sm" variant={connectMode ? 'secondary' : 'ghost'} iconStart="Link2" aria-pressed={connectMode} onClick={toggleConnect}>وصل کن</Button>}
+      {!lineage && (isMobile
+        ? <IconButton icon="Link2" label="وصل کن (دو کارت را پشت‌سرهم بزن)" aria-pressed={connectMode} onClick={toggleConnect} />
+        : <Button size="sm" variant={connectMode ? 'secondary' : 'ghost'} iconStart="Link2" aria-pressed={connectMode} onClick={toggleConnect}>وصل کن</Button>)}
       <span className="flex items-center gap-inline-xs" role="group" aria-label="برگرداندن و از نو">
         <IconButton icon="Undo2" label="برگرداندن (Ctrl+Z)" disabled={!canUndo(hist) || busy} onClick={() => void doUndo()} />
         <IconButton icon="Redo2" label="از نو (Ctrl+Shift+Z)" disabled={!canRedo(hist) || busy} onClick={() => void doRedo()} />
       </span>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
-        <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />
+        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />}
         <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fit} />
-        <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />
+        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
       {mode === 'thinking' && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: '', x: 0, y: 0 })}>یادداشت</Button>}
@@ -583,6 +583,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           ...(mode === 'thinking' ? [{ label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
+          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, onSelect: () => zoomAt(1 / 1.25) }, { divider: true } as const] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
           { divider: true },
@@ -611,8 +612,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         </span>
       </div>
       <CanvasInspector
-        scene={scene} selection={selection} selectedEdge={edge(selectedEdge)} objects={p.objects} nodes={p.nodes} relationships={p.relationships} deliverables={p.deliverables} lod={lod} now={now}
-        canMoveStatus={boardStatus} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} onActions={setActions} onAcceptReview={p.onAcceptReview}
+        scene={scene} selection={selection} selectedEdge={edge(selectedEdge)} objects={p.lineageObjects ?? p.objects} nodes={p.nodes} relationships={p.relationships} deliverables={p.deliverables} lod={lod} now={now}
+        canMoveStatus={false} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} onActions={setActions} onAcceptReview={p.onAcceptReview}
         onPlace={mode === 'thinking' ? (id) => { void p.onPlaceObject(id, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); } : undefined}
         notes={p.notes} onLineage={mode === 'truth' && !lineage ? enterLineage : undefined} onOpenNote={p.onOpenNote}
         onUnplace={mode === 'thinking' ? (id) => void p.onUnplaceObject(id) : undefined} placed={!!sel1?.objectId && placedIds.has(sel1.objectId)} onClear={clearSelection} onSelect={(id) => select(id)}
@@ -673,11 +674,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 <div key={b.id} title={b.hint} className={`absolute top-space-0 start-space-0 rounded-control-sm border ${b.kind === 'group' ? `border-dashed ${b.depth === 0 ? 'border-border-bold' : 'border-border-default'}` : b.kind === 'column' ? 'border-border-default bg-surface-raised' : 'border-border-subtle bg-surface-raised/40'} ${selection.length && b.kind === 'group' ? 'opacity-70' : ''}`} style={{ transform: `translate(${b.x}px, ${b.y}px)`, inlineSize: b.w, blockSize: b.h, pointerEvents: b.kind === 'group' ? 'none' : undefined }}>
                   <div dir="rtl" className={`flex items-center justify-between gap-inline-sm px-inset-sm ${b.kind === 'column' ? 'h-full justify-center' : ''}`} style={b.kind === 'group' ? { blockSize: 56, pointerEvents: 'auto' } : undefined}>
                     <span className="flex min-w-space-0 items-center gap-inline-xs"><span className={`${b.kind === 'column' ? 'label-md text-text-default' : 'label-md truncate text-text-subtle'}`} style={b.kind === 'row' ? { paddingInlineEnd: b.depth * 12 } : undefined}>{layoutEff === 'overview' && b.kind === 'row' ? '' : b.label}</span>{b.kind === 'group' && (b.count ?? 0) > 0 && <Badge intent="neutral" icon={false}>{formatNumber(b.count!)} مورد</Badge>}</span>
-                    {b.kind === 'group' && (b.count ?? 0) > 0 && b.nodeId && (
-                      <button type="button" aria-expanded={b.expanded} aria-label={`${b.expanded ? 'جمع کردن' : 'باز کردن'} موردهای ${b.label}`} onClick={() => toggleNode(b.nodeId!)} className="flex min-h-touch-comfortable min-w-touch-comfortable items-center justify-center rounded-control-sm text-icon-default">{b.expanded ? '−' : '+'}</button>
-                    )}
                   </div>
-                  {drag?.target && b.kind === 'column' && drag.target.col === b.id.slice(4) && <div aria-hidden="true" className="absolute top-space-0 bottom-space-0 start-space-0 end-space-0 rounded-control-sm border-2 border-dashed border-border-selected" />}
                 </div>
               ))}
               {frames.map((f) => {
@@ -709,23 +706,23 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                       onEdit={(it) => setEditing({ id: it.id, text: it.summary ?? '' })} onEditText={(text) => setEditing((cur) => (cur ? { ...cur, text } : cur))}
                       onSave={async () => { if (editing && i.noteId) { await p.onUpdateNote(i.noteId, editing.text); setEditing(null); } }} onCancel={() => setEditing(null)} onConvert={(it) => setToKnowledge(it.noteId ?? null)} onDelete={(it) => it.noteId && void p.onDeleteNote(it.noteId)} />;
                   }
-                  return <CanvasItemCard key={i.id} item={at} {...common} neighbour={neighbours.has(i.id)} dragging={drag?.id === i.id || noteDrag?.id === i.id} tint={colorFacet && i.facet ? FACET_TINT[facetNames.indexOf(i.facet) % FACET_TINT.length] : undefined}
+                  return <CanvasItemCard key={i.id} item={at} {...common} neighbour={neighbours.has(i.id)} dragging={noteDrag?.id === i.id} tint={colorFacet && i.facet ? FACET_TINT[facetNames.indexOf(i.facet) % FACET_TINT.length] : undefined}
                     dimmed={selection.length > 0 && !showAllEdges && !selSet.has(i.id) && !neighbours.has(i.id)} onOpen={(it) => { const o = it.objectId ? objectById.get(it.objectId) : undefined; if (o) p.onOpenObject(o); else if (it.kind === 'asset' || it.kind === 'assets') p.onOpenAssets(); }}
-                    onContext={(it, x, y) => setCtx({ item: it, x, y })} onPointerDown={onCardDown} onLink={i.kind === 'object' ? startLink : undefined} onToggleNode={toggleNode} onActions={(it) => it.objectId && setActions(it.objectId)} />;
+                    onContext={(it, x, y) => setCtx({ item: it, x, y })} onPointerDown={onCardDown} onLink={i.kind === 'object' ? startLink : undefined} onActions={(it) => it.objectId && setActions(it.objectId)} />;
                 })}
-              {drag && (() => { const it = byId.get(drag.id); return it ? <div className="pointer-events-none absolute top-space-0 start-space-0 opacity-90" style={{ transform: `translate(${drag.x}px, ${drag.y}px)` }}><div className="canvas-card is-ghost rounded-control border border-border-selected bg-surface-raised p-inset-sm" style={{ inlineSize: it.w, blockSize: it.h }}><span dir="rtl" className="body-sm line-clamp-2 text-text-default">{it.label}</span></div></div> : null; })()}
             </div>
             {layoutEff === 'overview' && <RowRail scene={scene} view={view} size={size} opened={openedRows} onToggleRow={toggleRow} onMoveRow={moveRow} />}
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
-                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا از «⋯» یک کارت حقیقت را کنار فکرها بیاور.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : layout === 'board' ? 'هیچ کارتی روی تابلو نیست؛ دانشی ثبت کن تا اینجا بنشیند.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
+                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا از «⋯» یک کارت حقیقت را کنار فکرها بیاور.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
                   <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
                 </div>
               </div>
             )}
-            <div className="pointer-events-none absolute bottom-space-2 end-space-2 flex flex-col items-end gap-stack-xs">
-              {!isMobile && fullscreen && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
+            {/* the minimap: whenever the canvas is larger than the window (and the window is wide enough not to hide cards), at the START-bottom corner where nothing else lives */}
+            <div className="pointer-events-none absolute bottom-space-2 start-space-2 flex flex-col items-start gap-stack-xs">
+              {!isMobile && size.w >= 640 && scene.items.length > 0 && (fullscreen || scene.width * view.k > size.w * 1.15 || scene.height * view.k > size.h * 1.15) && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
             </div>
             {!inspectorOpen && !sheet && <div className="absolute end-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelRight" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
             <div className="pointer-events-none absolute start-space-2 top-space-2" data-no-pan=""><span className="label-sm rounded-pill border border-border-default bg-surface-raised px-inset-sm text-text-subtle">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span></div>
@@ -791,7 +788,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <Dialog open={!!activeObj && !!activeItem} onClose={() => setActions(null)} size="sm" title={`انتقال و اتصال: ${activeObj?.title ?? ''}`}>
         {activeObj && (
           <div className="flex flex-col gap-stack-md">
-            {(activeItem?.lane || layout !== 'board') && (
+            {(
               <div className="flex flex-col gap-stack-xs">
                 <span className="label-md text-text-default">وضعیت</span>
                 <div className="flex flex-wrap gap-inline-xs">{LANES.map((l) => <Button key={l} size="sm" variant="secondary" disabled={(activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking')) === l} onClick={() => { setActions(null); void request({ objectId: activeObj.id, lane: l }); }}>{LANE_FA[l]}</Button>)}</div>

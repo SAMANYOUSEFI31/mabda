@@ -59,7 +59,7 @@ test('the old root is gone and a node is renamed: no engine, request or view nee
   assert.ok(pack.markdown.includes('بستهٔ Context'));
   assert.ok(contextDoc({ nodes: tree, objects }).markdown.length > 0);
   buildMapModel({ nodes: tree, objects, relationships: d.relationships, deliverables: d.deliverables, reviewIds: new Set(), staleAssetIds: new Set(), now: NOW } as never);
-  for (const layout of ['relations', 'board', 'free'] as const) {
+  for (const layout of ['overview', 'free'] as const) {
     const sc = buildScene(layout, { nodes: tree, objects, relationships: d.relationships, deliverables: d.deliverables, notes: d.notes, canvas: d.canvas, reviewIds: new Set(), staleAssetIds: new Set(), now: NOW }, {});
     assert.ok(sc.items.length > 0, layout);
   }
