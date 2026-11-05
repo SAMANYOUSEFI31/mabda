@@ -98,7 +98,7 @@ export interface SceneOptions {
   /** lineage: the card in the middle and how many steps */
   centerId?: string; depth?: number;
   /** overview: keep one kind only; sections opened beyond the first two levels; the user's row order; «inside a section» */
-  only?: 'constraint' | 'pending'; opened?: Set<string>; rowOrder?: string[]; scopeNodeId?: string;
+  only?: 'constraint' | 'pending'; rowsBy?: 'domain' | 'facet'; opened?: Set<string>; rowOrder?: string[]; scopeNodeId?: string;
   /** free («بوم فکر»): also show what has no place yet — open thoughts and suggestions — in a «تازه‌ها» tray */
   tray?: boolean;
 }
@@ -119,7 +119,7 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
   const filterObjects = (list: ContextObject[]) => (opts.onlyReview ? list.filter((o) => input.reviewIds.has(o.id) || o.status === 'Needs Review') : list);
 
   if (layout === 'lineage') return buildLineageScene({ objects: input.objects, relationships: input.relationships, reviewIds: input.reviewIds, now }, { centerId: opts.centerId ?? '', depth: opts.depth, showPending: opts.showPending });
-  if (layout === 'overview') return buildOverviewScene(input, { showPending: opts.showPending, onlyReview: opts.onlyReview, only: opts.only, opened: opts.opened, rowOrder: opts.rowOrder, scopeNodeId: opts.scopeNodeId });
+  if (layout === 'overview') return buildOverviewScene(input, { showPending: opts.showPending, onlyReview: opts.onlyReview, only: opts.only, opened: opts.opened, rowOrder: opts.rowOrder, scopeNodeId: opts.scopeNodeId, rowsBy: opts.rowsBy });
 
   if (layout === 'relations') {
     const isPending = (o: ContextObject) => o.status === 'Proposed' || o.status === 'Needs Review';

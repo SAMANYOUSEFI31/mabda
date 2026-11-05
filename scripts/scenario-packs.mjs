@@ -75,15 +75,14 @@ try {
     assert.ok(!clip.includes('نمونه‌ها (به AI نمی‌رسند)'));
     await page.keyboard.press('Escape');
 
-    step(`[${width}] map: grouped by dependency by default; «بُعد» makes swimlanes; colouring by facet shows the name`);
-    await nav('فکر', 'فکر');
+    step(`[${width}] map: the overview has rows = sections; «بُعد» makes the rows facets; colouring by facet shows the name`);
+    await nav('منبع حقیقت', 'منبع');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
-    await page.locator('[role=radio]').filter({ hasText: /^تابلو$/ }).first().evaluate((n) => n.click());
     await page.getByRole('application', { name: /بوم/ }).waitFor();
     await page.getByRole('button', { name: /^گزینه‌ها/ }).click();
-    await page.locator('[role=group][aria-label] select').nth(1).selectOption('facet', { force: true });
+    await page.getByRole('radio', { name: /^بُعد/ }).check({ force: true });
     await page.keyboard.press('Escape');
-    await page.getByText('مشتری ماهانه').first().waitFor();
+    await page.getByTestId('row-rail').filter({ hasText: 'مشتری ماهانه' }).first().waitFor();
     await shot('3-map-facet');
     assert.deepEqual(errors, [], 'no page errors');
     await ctx.close();

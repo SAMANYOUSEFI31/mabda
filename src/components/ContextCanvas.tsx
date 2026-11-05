@@ -25,6 +25,7 @@ import { ConnectDialog } from './ConnectDialog';
 import { connectOptions, connectionUndo } from '../core/connectRules';
 import type { ConnectOption } from '../core/connectRules';
 import { lineageText } from '../core/lineage';
+import { beside, frameAt, freeFrames, shiftFrame } from '../core/canvasFrames';
 import { usePanZoom } from './usePanZoom';
 
 export interface MovePayload { objectId: string; lane: Lane; nodeId?: string; beforeId?: string; afterId?: string; reason?: string; confirmBackward?: boolean }
@@ -45,6 +46,8 @@ export interface CanvasProps {
   onRemoveOverride?: (byId: string, targetId: string) => Promise<void>;
   /** a provenance link to a thought: go to it */
   onOpenNote?: (noteId: string, nodeId: string) => void;
+  /** a thought dropped into another section's frame changes its section */
+  onMoveNoteNode?: (noteId: string, nodeId: string) => Promise<void>;
   onCreateNote: (n: { content: string; x: number; y: number; nodeId?: string }) => Promise<void>;
   onMoveNote: (id: string, x: number, y: number) => void;
   onUpdateNote: (id: string, content: string) => Promise<void>;
@@ -110,12 +113,18 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   // the overview: deeper sections opened into their own rows, one kind only, the user's row order (display only, remembered on this device)
   const [openedRows, setOpenedRows] = useState<Set<string>>(new Set());
   const [only, setOnly] = useState<'' | 'constraint' | 'pending'>('');
+  const [rowsBy, setRowsBy] = useState<'domain' | 'facet'>('domain');
   const [rowOrder, setRowOrder] = useState<string[]>(() => prefs.rowOrder ?? []);
   // «دور یک مورد»: the card in the middle and how many steps
   const [lineage, setLineage] = useState<{ id: string; depth: number } | null>(null);
   // «وصل کن»: tap a card, tap another (no dragging needed; works with a keyboard)
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
+  // the free canvas: a section's frame moves all its cards together (live offset while dragging)
+  const [groupDrag, setGroupDrag] = useState<{ nodeId: string; dx: number; dy: number } | null>(null);
+  const [frameDlg, setFrameDlg] = useState<string | null>(null);
+  const [frameMenuAt, setFrameMenuAt] = useState<{ nodeId: string; x: number; y: number } | null>(null);
+  const [moveTo, setMoveTo] = useState<{ noteId?: string; objectId?: string; itemId: string; nodeId: string } | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
@@ -142,15 +151,16 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   const layoutEff: CanvasLayout = lineage ? 'lineage' : layout;
   const scene: Scene = useMemo(
-    () => buildScene(layoutEff, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
-    [layoutEff, lineage, only, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending, mode],
+    () => buildScene(layoutEff, { nodes: p.nodes, objects: p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { showAssets, includeHistory: history, boxes, expanded: expanded ?? undefined, columns, rows, onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, rowsBy, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
+    [layoutEff, lineage, only, rowsBy, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, showAssets, history, boxes, expanded, columns, rows, onlyReview, showPending, mode],
   );
   const byId = useMemo(() => new Map(scene.items.map((i) => [i.id, i])), [scene]);
+  const frames = useMemo(() => (layoutEff === 'free' ? freeFrames(scene.items, p.nodes) : []), [layoutEff, scene.items, p.nodes]);
   const objectById = useMemo(() => new Map(p.objects.map((o) => [o.id, o])), [p.objects]);
   const facetNames = useMemo(() => [...new Set(p.objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [p.objects]);
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
-  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${openedRows.size}|${rowOrder.join(',')}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${showPending}|${scene.items.length}`;
+  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${boxes}|${columns}|${rows}|${showAssets}|${history}|${onlyReview}|${showPending}|${scene.items.length}`;
   const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : layout === 'board' ? 1 : 0.85, fullscreen);
   const lod = lodOf(view.k);
   const overviewFar = layoutEff === 'overview' && lod === 'far';
@@ -226,6 +236,60 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   // ── «وصل کن»: pick a source, then a target (a tap each); the dialog says what each sentence would do ──
   const toggleConnect = useCallback(() => { setConnectMode((v) => !v); setConnectFrom(null); }, []);
+  // ── the free canvas: section frames ──
+  const labelOfNode = (id: string) => p.nodes.find((n) => n.id === id)?.label ?? '';
+  const placeMany = (list: Array<{ id: string; x: number; y: number }>) => {
+    for (const m of list) { const it = byId.get(m.id); if (!it) continue; if (it.noteId) p.onMoveNote(it.noteId, m.x, m.y); else if (it.objectId) void p.onPlaceObject(it.objectId, m.x, m.y); }
+  };
+  const toAction = (m: { id: string; x: number; y: number }): CanvasAction | undefined => { const it = byId.get(m.id); return it?.noteId ? { type: 'moveNote', noteId: it.noteId, x: m.x, y: m.y } : it?.objectId ? { type: 'placeObject', objectId: it.objectId, x: m.x, y: m.y } : undefined; };
+  const moveFrame = (f: ReturnType<typeof freeFrames>[number], dx: number, dy: number) => {
+    const next = shiftFrame(f, scene.items, dx, dy);
+    const was = next.map((m) => ({ id: m.id, x: byId.get(m.id)!.x, y: byId.get(m.id)!.y }));
+    if (next.every((m, i) => m.x === was[i].x && m.y === was[i].y)) return;
+    placeMany(next);
+    push({ label: `جابه‌جایی بخش «${f.label}»`, undo: was.map(toAction).filter(Boolean) as CanvasAction[], redo: next.map(toAction).filter(Boolean) as CanvasAction[] });
+  };
+  const startFrameDrag = (e: React.PointerEvent, f: ReturnType<typeof freeFrames>[number]) => {
+    if (e.pointerType === 'touch' || e.button !== 0 || (e.target as HTMLElement).closest('button')) return; // touch: the menu is the way
+    e.stopPropagation();
+    const origin = toStage(e.clientX, e.clientY);
+    let moved = false;
+    const move = (ev: PointerEvent) => { const s2 = toStage(ev.clientX, ev.clientY); if (!moved && Math.hypot(s2.x - origin.x, s2.y - origin.y) < 6) return; moved = true; setGroupDrag({ nodeId: f.nodeId, dx: s2.x - origin.x, dy: s2.y - origin.y }); };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      setGroupDrag(null);
+      if (!moved) return;
+      const s2 = toStage(ev.clientX, ev.clientY);
+      moveFrame(f, s2.x - origin.x, s2.y - origin.y);
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  };
+  const frameMenu = (f: ReturnType<typeof freeFrames>[number]) => [
+    { label: 'ببر سمت راست', icon: 'ChevronUp' as const, onSelect: () => moveFrame(f, 160, 0) },
+    { label: 'ببر سمت چپ', icon: 'ChevronUp' as const, onSelect: () => moveFrame(f, -160, 0) },
+    { label: 'ببر بالاتر', icon: 'ChevronUp' as const, onSelect: () => moveFrame(f, 0, -120) },
+    { label: 'ببر پایین‌تر', icon: 'ChevronDown' as const, onSelect: () => moveFrame(f, 0, 120) },
+    ...(frames.length > 1 ? [{ divider: true } as const, ...frames.filter((o) => o.nodeId !== f.nodeId).slice(0, 8).map((o) => ({ label: `کنار «${o.label}» بگذار`, icon: 'ChevronDown' as const, onSelect: () => { const d = beside(f, o); moveFrame(f, d.dx, d.dy); } }))] : []),
+  ];
+  /** a card or thought dropped into another section's frame (or moved by the menu) changes ITS section; clear message, Undo */
+  const changeSection = async (item: SceneItem, nodeId: string, at?: { x: number; y: number }) => {
+    const from = item.nodeId ?? '';
+    if (!nodeId || nodeId === from) return;
+    setBusy(true);
+    try {
+      if (item.noteId && p.onMoveNoteNode) {
+        await p.onMoveNoteNode(item.noteId, nodeId);
+        if (at) p.onMoveNote(item.noteId, at.x, at.y);
+        push({ label: 'بخشِ یادداشت', undo: [{ type: 'moveNoteNode', noteId: item.noteId, nodeId: from }, ...(at ? [{ type: 'moveNote', noteId: item.noteId, x: item.x, y: item.y } as CanvasAction] : [])], redo: [{ type: 'moveNoteNode', noteId: item.noteId, nodeId }, ...(at ? [{ type: 'moveNote', noteId: item.noteId, x: at.x, y: at.y } as CanvasAction] : [])] });
+        toast.show({ intent: 'success', message: `این فکر حالا در بخش «${labelOfNode(nodeId)}» است. با «برگرداندن» برمی‌گردد.` });
+      } else if (item.objectId) {
+        const o = objectById.get(item.objectId);
+        if (!o) return;
+        if (at) void p.onPlaceObject(item.objectId, at.x, at.y);
+        await request({ objectId: o.id, lane: o.status === 'Confirmed' ? 'confirmed' : 'thinking', nodeId });
+      }
+    } finally { setBusy(false); }
+  };
   function pickForConnect(itemId: string) {
     const it = byId.get(itemId);
     if (!it?.objectId) return;
@@ -245,6 +309,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     for (const a of actions) {
       if (a.type === 'move') await p.onMove({ objectId: a.objectId, lane: a.lane, nodeId: a.nodeId, beforeId: a.beforeId, afterId: a.afterId, confirmBackward: true });
       else if (a.type === 'setDependencies') await p.onSetDependencies(a.objectId, a.targetIds);
+      else if (a.type === 'moveNoteNode') await p.onMoveNoteNode?.(a.noteId, a.nodeId);
       else if (a.type === 'removeOverride') await p.onRemoveOverride?.(a.objectId, a.targetId);
       else if (a.type === 'addOverride') await p.onOverride?.(a.objectId, a.targetId);
       else if (a.type === 'moveNote') p.onMoveNote(a.noteId, a.x, a.y);
@@ -326,6 +391,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       const s = toStage(ev.clientX, ev.clientY);
       const nx = Math.max(0, Math.round(s.x - grab.x)), ny = Math.max(0, Math.round(s.y - grab.y));
       if (layout === 'free') {
+        const target = frameAt(frames, s.x, s.y, item.nodeId);
+        if (target) { void changeSection(item, target.nodeId, { x: nx, y: ny }); return; }
         if (isNote && item.noteId) { const was = { x: item.x, y: item.y }; p.onMoveNote(item.noteId, nx, ny); push({ label: 'جابه‌جایی یادداشت', undo: [{ type: 'moveNote', noteId: item.noteId, ...was }], redo: [{ type: 'moveNote', noteId: item.noteId, x: nx, y: ny }] }); }
         else if (item.objectId) { const was = { x: item.x, y: item.y }; void p.onPlaceObject(item.objectId, nx, ny); push({ label: 'جابه‌جایی کارت', undo: [{ type: 'placeObject', objectId: item.objectId, ...was }], redo: [{ type: 'placeObject', objectId: item.objectId, x: nx, y: ny }] }); }
         return;
@@ -368,6 +435,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       }
       toast.show({ intent: 'success', message: opt.type === 'supersedes' ? 'جایگزین شد؛ مورد قبلی در تاریخچه می‌ماند.' : 'وصل شد. با «برگرداندن» برمی‌گردد.' });
       setConnect(null); setConnectFrom(null); setConnectMode(false);
+      setTimeout(() => box.current?.focus({ preventScroll: true }), 50); // so Ctrl+Z works right away
     } finally { setBusy(false); }
   };
 
@@ -392,7 +460,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     const tag = (e.target as HTMLElement).tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
     if (e.key === 'Escape') {
-      if (connect) setConnect(null); else if (connectMode) { setConnectMode(false); setConnectFrom(null); } else if (ctx) setCtx(null); else if (helpOpen) setHelpOpen(false); else if (query) setQuery(''); else if (fullscreen) setFullscreen(false); else clearSelection();
+      if (frameMenuAt) setFrameMenuAt(null); else if (connect) setConnect(null); else if (connectMode) { setConnectMode(false); setConnectFrom(null); } else if (ctx) setCtx(null); else if (helpOpen) setHelpOpen(false); else if (query) setQuery(''); else if (fullscreen) setFullscreen(false); else clearSelection();
       e.stopPropagation(); return;
     }
     if (fullscreen && e.key === 'Tab') { // focus trap: Tab stays inside the layer
@@ -472,11 +540,12 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const sheet = isMobile && fullscreen;
 
   const aboutText = LAYOUT_ABOUT[layoutEff];
-  const optionsCount = (onlyReview ? 1 : 0) + (showPending ? 1 : 0) + (showAllEdges ? 1 : 0) + (colorFacet ? 1 : 0) + (only ? 1 : 0);
+  const optionsCount = (onlyReview ? 1 : 0) + (showPending ? 1 : 0) + (showAllEdges ? 1 : 0) + (colorFacet ? 1 : 0) + (only ? 1 : 0) + (rowsBy !== 'domain' ? 1 : 0);
   const options = (
     <div className="flex min-w-overlay-xs flex-col gap-stack-sm p-inset-sm" role="group" aria-label="گزینه‌های نما">
       <p className="body-sm text-text-subtle">فقط نمایش را عوض می‌کنند؛ چیزی ذخیره نمی‌شود.</p>
       {(layoutEff === 'overview' || layoutEff === 'lineage') && <Switch label="نشان بده چه در راه است" checked={showPending} onChange={(e) => setShowPending(e.target.checked)} />}
+      {layoutEff === 'overview' && facetNames.length > 0 && <RadioGroup legend="ردیف‌ها" value={rowsBy} onChange={(v) => setRowsBy(v as 'domain' | 'facet')} options={[{ value: 'domain', label: 'بخش‌ها' }, { value: 'facet', label: 'بُعد (مثل مخاطب یا کانال)' }]} />}
       {layoutEff === 'overview' && <RadioGroup legend="نوع" value={only} onChange={(v) => setOnly(v as '' | 'constraint' | 'pending')} options={[{ value: '', label: 'همه' }, { value: 'constraint', label: 'فقط خط قرمزها' }, { value: 'pending', label: 'فقط پیشنهادها (با «در راه»)' }]} />}
       <Switch label="فقط نیاز به بازبینی" checked={onlyReview} onChange={(e) => setOnlyReview(e.target.checked)} />
       {scene.edges.length > 0 && <Switch label="نمایش همهٔ خط‌ها" checked={showAllEdges} onChange={(e) => setShowAllEdges(e.target.checked)} />}
@@ -512,6 +581,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
         {!sheet && <IconButton icon="PanelRight" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
+          ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           ...(mode === 'thinking' ? [{ label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Wand2', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -571,6 +641,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {!aboutOpen && (
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
+          {(only || onlyReview || showPending || rowsBy === 'facet') && !lineage && <span role="status" data-testid="filter-active" className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default">نما فیلتر دارد: {[only === 'constraint' ? 'فقط خط قرمزها' : only === 'pending' ? 'فقط پیشنهادها' : '', onlyReview ? 'فقط نیاز به بازبینی' : '', showPending ? 'با آنچه در راه است' : '', rowsBy === 'facet' ? 'ردیف‌ها: بُعد' : ''].filter(Boolean).join(' · ')}</span>}
           {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>}
         </div>
       )}
@@ -609,6 +680,17 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                   {drag?.target && b.kind === 'column' && drag.target.col === b.id.slice(4) && <div aria-hidden="true" className="absolute top-space-0 bottom-space-0 start-space-0 end-space-0 rounded-control-sm border-2 border-dashed border-border-selected" />}
                 </div>
               ))}
+              {frames.map((f) => {
+                const live = groupDrag?.nodeId === f.nodeId ? { dx: groupDrag.dx, dy: groupDrag.dy } : { dx: 0, dy: 0 };
+                return (
+                  <div key={`frame-${f.nodeId}`} data-testid="section-frame" data-frame={f.nodeId} className="pointer-events-none absolute top-space-0 start-space-0 rounded-container border border-dashed border-border-bold" style={{ transform: `translate(${f.x + live.dx}px, ${f.y + live.dy}px)`, inlineSize: f.w, blockSize: f.h }}>
+                    <div dir="rtl" data-no-pan="" className="pointer-events-auto flex cursor-grab items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: 44 }} onPointerDown={(e) => startFrameDrag(e, f)}>
+                      <span className="label-md truncate text-text-subtle">{f.label} · {formatNumber(f.ids.length)}</span>
+                      <IconButton icon="Ellipsis" label={`جابه‌جا کن: ${f.label}`} aria-haspopup="menu" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setFrameMenuAt({ nodeId: f.nodeId, x: r.left, y: r.bottom }); }} />
+                    </div>
+                  </div>
+                );
+              })}
               {overviewFar && <OverviewFar scene={scene} k={view.k} onZoomRow={zoomRow} onZoomRows={zoomRows} />}
               <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={selection.length > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
               {chipEdges.map(({ edge: e, route }) => (
@@ -618,7 +700,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               {clusters
                 ? clusters.map((c) => <button key={c.id} type="button" data-no-pan="" aria-label={`${formatNumber(c.count)} مورد؛ بزرگ‌نمایی کن`} onClick={() => { setView((cur) => { const k = 0.6; return { k, x: size.w / 2 - c.x * k, y: size.h / 2 - c.y * k }; }); }} className="absolute top-space-0 start-space-0 flex items-center justify-center rounded-pill border border-border-bold bg-surface-raised label-md text-text-default" style={{ transform: `translate(${c.x - 40}px, ${c.y - 40}px)`, inlineSize: 80, blockSize: 80 }}>{formatNumber(c.count)}</button>)
                 : overviewFar ? null : shown.map((i) => {
-                  const at = i.kind === 'note' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : layout === 'free' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : i;
+                  const inGroup = !!groupDrag && !!frames.find((f) => f.nodeId === groupDrag.nodeId)?.ids.includes(i.id);
+                  const at0 = i.kind === 'note' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : layout === 'free' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : i;
+                  const at = inGroup ? { ...at0, x: at0.x + groupDrag!.dx, y: at0.y + groupDrag!.dy } : at0;
                   const common = { lod, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => reveal(it.x, it.y, it.w, it.h), onKey: onCardKey };
                   if (i.kind === 'note') {
                     return <CanvasNoteCard key={i.id} item={at} {...common} editing={editing?.id === i.id ? { text: editing.text } : undefined} onPointerDown={startDrag}
@@ -646,6 +730,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             {!inspectorOpen && !sheet && <div className="absolute end-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelRight" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
             <div className="pointer-events-none absolute start-space-2 top-space-2" data-no-pan=""><span className="label-sm rounded-pill border border-border-default bg-surface-raised px-inset-sm text-text-subtle">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span></div>
           </div>
+          {layoutEff === 'overview' && scene.overview && (
+            <div className="sr-only" data-testid="overview-text">
+              <h3>خلاصهٔ ردیف‌ها</h3>
+              <ul aria-label="ردیف‌ها">{scene.overview.rows.map((r) => <li key={r.nodeId}>{r.label}: {formatNumber(r.counts.knowledge)} دانش، {formatNumber(r.counts.redLines)} خط قرمز، {formatNumber(r.counts.stale)} قدیمی، {formatNumber(r.counts.openThoughts)} فکر باز</li>)}</ul>
+              <ul aria-label="وابستگی‌های بین ردیف‌ها">{scene.overview.rowEdges.map((e) => <li key={e.id}>{formatNumber(e.count)} مورد از «{scene.overview!.rows.find((r) => r.nodeId === e.to)?.label}» به «{scene.overview!.rows.find((r) => r.nodeId === e.from)?.label}» وابسته است</li>)}</ul>
+            </div>
+          )}
           {lineage && scene.lineage && (() => {
             const t = lineageText(scene.lineage, (id) => objectById.get(id)?.title ?? id);
             return (
@@ -656,10 +747,20 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               </div>
             );
           })()}
+          {frameMenuAt && (() => {
+            const f = frames.find((x) => x.nodeId === frameMenuAt.nodeId);
+            if (!f) return null;
+            return (
+              <div role="menu" aria-label={`جابه‌جا کردن بخش ${f.label}`} data-testid="frame-menu" className="fixed z-dialog flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised" style={{ insetBlockStart: frameMenuAt.y, insetInlineStart: frameMenuAt.x }} onKeyDown={(e) => { if (e.key === 'Escape') setFrameMenuAt(null); }}>
+                {frameMenu(f).filter((m) => 'label' in m).map((m) => <button key={(m as { label: string }).label} type="button" role="menuitem" autoFocus={(m as { label: string }).label.startsWith('ببر سمت راست')} className="body-sm rounded-control-sm px-inset-sm py-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle" style={{ minBlockSize: 44 }} onClick={() => { setFrameMenuAt(null); (m as { onSelect: () => void }).onSelect(); box.current?.focus({ preventScroll: true }); }}>{(m as { label: string }).label}</button>)}
+              </div>
+            );
+          })()}
           {ctx && (
             <div role="menu" aria-label="منوی کارت" className="fixed z-dialog flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised" style={{ insetBlockStart: ctx.y, insetInlineStart: ctx.x }} onKeyDown={(e) => { if (e.key === 'Escape') setCtx(null); }}>
               {([
                 ['انتخاب و روشن کردن اثرگذارها', () => select(ctx.item.id)],
+                ...(layoutEff === 'free' && (ctx.item.noteId || ctx.item.objectId) ? [['جابه‌جا کن به بخش…', () => setMoveTo({ noteId: ctx.item.noteId, objectId: ctx.item.objectId, itemId: ctx.item.id, nodeId: ctx.item.nodeId ?? '' })]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId && mode === 'truth' ? [['دور این مورد', () => enterLineage(ctx.item.objectId!)]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], ...(mode === 'thinking' ? [[placedIds.has(ctx.item.objectId) ? 'از بوم فکر بردار' : 'بگذار در بوم فکر', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] : [])] as Array<[string, () => void]> : []),
                 ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['تبدیل به قلم دانش', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
@@ -718,6 +819,30 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       </Dialog>
 
       <ConnectDialog open={!!connect} from={connect ? objectById.get(connect.fromId)?.title : undefined} to={connect ? objectById.get(connect.toId)?.title : undefined} options={connectOpts} busy={busy} onClose={() => { setConnect(null); setConnectFrom(null); }} onConfirm={(o, why) => void confirmConnect(o, why)} />
+
+      <Dialog open={!!frameDlg} onClose={() => setFrameDlg(null)} size="sm" title="جابه‌جا کردن یک بخش" description="همهٔ کارت‌ها و فکرهای آن بخش با هم جابه‌جا می‌شوند؛ با «برگرداندن» برمی‌گردد.">
+        {frameDlg && (() => {
+          const f = frames.find((x) => x.nodeId === frameDlg);
+          if (!f) return null;
+          return (
+            <div className="flex flex-col gap-stack-md" data-testid="frame-dialog">
+              <Select label="کدام بخش؟" value={frameDlg} onChange={(e) => setFrameDlg(e.target.value)} options={frames.map((x) => ({ value: x.nodeId, label: x.label }))} />
+              <div className="grid grid-cols-2 gap-inline-sm">
+                <Button variant="secondary" onClick={() => moveFrame(f, 160, 0)}>سمت راست</Button>
+                <Button variant="secondary" onClick={() => moveFrame(f, -160, 0)}>سمت چپ</Button>
+                <Button variant="secondary" onClick={() => moveFrame(f, 0, -120)}>بالاتر</Button>
+                <Button variant="secondary" onClick={() => moveFrame(f, 0, 120)}>پایین‌تر</Button>
+              </div>
+              {frames.length > 1 && <Select label="کنار این بخش بگذار" value="" onChange={(e) => { const o = frames.find((x) => x.nodeId === e.target.value); if (o) { const d = beside(f, o); moveFrame(f, d.dx, d.dy); } }} options={[{ value: '', label: 'یکی را انتخاب کن' }, ...frames.filter((x) => x.nodeId !== f.nodeId).map((x) => ({ value: x.nodeId, label: x.label }))]} />}
+            </div>
+          );
+        })()}
+      </Dialog>
+
+      <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «برگرداندن» برمی‌گردد."
+        footer={<><Button variant="ghost" onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
+        {moveTo && <Select label="بخش" value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
+      </Dialog>
 
       <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="فکر تازه روی بوم فکر"
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>

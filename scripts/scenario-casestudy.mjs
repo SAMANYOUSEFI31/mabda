@@ -91,9 +91,7 @@ try {
     await shot('3-map');
     await nav('فکر', 'فکر');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
-    await layoutTab('تابلو');
-    await shot('4-board');
-    await layoutTab('آزاد');
+    await shot('4-free');
     assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => /شاید یک اشتراک هدیه/.test(n.content)), 'the free notes are in the showcase');
     await nav('منبع حقیقت', 'منبع');
     await radio('ساختار');

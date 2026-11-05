@@ -34,6 +34,8 @@ const startServer = async (port, tag) => {
 };
 const call = async (method, path, body) => { const r = await fetch(`${BASE}/api${path}`, { method, headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }); return r.json(); };
 const step = (m) => console.log('•', m);
+/** wait (up to 6s) until a condition holds — the app answers over the network */
+const until = async (fn) => { for (let i = 0; i < 30; i++) { if (await fn()) return true; await wait(200); } return false; };
 
 let browser;
 try {
@@ -180,13 +182,11 @@ try {
     await shot('6-connect');
     await dlg.getByRole('radio', { name: /روی «قیمت اشتراک» اثر دارد/ }).check({ force: true });
     await page.getByRole('dialog').getByRole('button', { name: 'وصل کن' }).click();
-    await page.waitForTimeout(700);
-    const rel = (await state()).relationships.find((r) => r.type === 'depends_on' && r.sourceId === price.id && r.targetId === student.id);
-    assert.ok(rel, 'affects = the price depends on the discount');
+    assert.ok(await until(async () => (await state()).relationships.some((r) => r.type === 'depends_on' && r.sourceId === price.id && r.targetId === student.id)), 'affects = the price depends on the discount');
     // undo
+    await stage.focus();
     await page.keyboard.press('Control+KeyZ');
-    await page.waitForTimeout(700);
-    assert.ok(!(await state()).relationships.some((r) => r.sourceId === price.id && r.targetId === student.id), 'Ctrl+Z took it back');
+    assert.ok(await until(async () => !(await state()).relationships.some((r) => r.sourceId === price.id && r.targetId === student.id)), 'Ctrl+Z took it back');
     // keyboard: C, Enter on a focused card, Enter on another
     await stage.focus();
     await page.keyboard.press('KeyC');
@@ -223,6 +223,65 @@ try {
     console.log(`   unchanged ${same} of ${both.length} cards drawn in both`);
     if (same < both.length) console.log('   e.g.', both.slice(0, 2).map((k) => `${before[k]} => ${after[k]}`).join(' || '));
     assert.ok(both.length >= 3 && same >= Math.floor(both.length * 0.8), 'most cards stayed');
+
+    // ── ج
+    step(`[${width}] ج: the thinking canvas — a section frame moves its cards; a thought dragged into another frame changes its section`);
+    const nA = (await call('POST', `/workspaces/${wid}/canvas/free/notes`, { content: 'فکر الف دربارهٔ ارسال', x: 80, y: 120, nodeId: ship })).note;
+    await call('POST', `/workspaces/${wid}/canvas/free/notes`, { content: 'فکر دوم دربارهٔ ارسال', x: 80, y: 280, nodeId: ship });
+    await call('POST', `/workspaces/${wid}/canvas/free/notes`, { content: 'فکر دربارهٔ اشتراک', x: 620, y: 120, nodeId: sub });
+    await enter();
+    await nav('فکر', 'فکر'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first()); await stage.waitFor(); await page.waitForTimeout(500);
+    await toolbar.getByRole('button', { name: 'متناسب‌سازی' }).click();
+    await zoomTo('mid');
+    const frameOf = (id) => page.locator(`[data-testid=section-frame][data-frame="${id}"]`);
+    await frameOf(ship).waitFor();
+    await frameOf(sub).waitFor();
+    assert.equal(await page.locator('[role=radio]').filter({ hasText: /^(تابلو|آزاد)$/ }).count(), 0, 'one free canvas: no layout switch');
+    await shot('9-frames');
+    // the menu alternative (no dragging): move the «ارسال» frame beside «اشتراک»
+    const pos = async (noteId) => (await call('GET', `/workspaces/${wid}/state`)).canvas.free.find((i) => i.itemRef === `note:${noteId}`);
+    const before0 = await pos(nA.id);
+    if (mobile) { // a phone: the same thing from the «⋯» menu, in 44px buttons (the in-stage header scales with the zoom)
+      await toolbar.getByRole('button', { name: 'بیشتر' }).click();
+      await page.getByRole('menuitem', { name: 'جابه‌جا کردن یک بخش…' }).click();
+      await page.getByTestId('frame-dialog').getByRole('combobox').first().selectOption(ship);
+      await page.getByTestId('frame-dialog').getByRole('button', { name: 'پایین‌تر' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'بستن' }).first().click();
+      await page.getByRole('dialog').waitFor({ state: 'detached' });
+    } else {
+      await click(frameOf(ship).getByRole('button', { name: /جابه‌جا کن: ارسال/ }));
+      await page.getByTestId('frame-menu').getByRole('menuitem', { name: /ببر پایین‌تر/ }).click();
+    }
+    assert.ok(await until(async () => (await pos(nA.id)).y > before0.y), 'the whole frame moved down by the menu');
+    await stage.focus();
+    await page.keyboard.press('Control+KeyZ');
+    assert.ok(await until(async () => (await pos(nA.id)).y === before0.y), 'Ctrl+Z put it back');
+    // drag a thought from «ارسال» into the «اشتراک» frame
+    const noteEl = stage.locator(`[data-item-id="note:${nA.id}"]`).first();
+    const nb = await noteEl.boundingBox(), fb = await frameOf(sub).boundingBox();
+    if (!mobile && nb && fb) {
+      await page.mouse.move(nb.x + nb.width / 2, nb.y + nb.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await page.waitForTimeout(700);
+      const n1 = (await state()).notes.find((n) => n.id === nA.id);
+      assert.equal(n1.nodeId, sub, 'the thought is now in «اشتراک»');
+      await stage.focus();
+      await page.keyboard.press('Control+KeyZ');
+      assert.ok(await until(async () => (await state()).notes.find((n) => n.id === nA.id).nodeId === ship), 'Ctrl+Z gave it back');
+    }
+    // the no-drag way: the card menu
+    await page.keyboard.press('Escape');
+    await goCard('فکر الف');
+    await noteEl.focus();
+    await page.keyboard.press('Shift+F10');
+    if (process.env.DEBUG_CTX) await shot('dbg-ctx');
+    await page.getByRole('menuitem', { name: 'جابه‌جا کن به بخش…' }).click();
+    await page.getByRole('dialog').getByRole('combobox').selectOption(sub);
+    await page.getByRole('dialog').getByRole('button', { name: 'جابه‌جا کن' }).click();
+    await page.waitForTimeout(700);
+    assert.equal((await state()).notes.find((n) => n.id === nA.id).nodeId, sub, 'the menu moved it too');
 
     // ── ز
     step(`[${width}] ز: 300 sample cards (a test script, not user data): speed and legibility`);

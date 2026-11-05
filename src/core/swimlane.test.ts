@@ -130,6 +130,14 @@ test('a crowded cell wraps into more columns instead of growing into a tower; sm
   assert.equal(new Set(few.items.map((i) => i.x)).size, 1, 'six or fewer stay in one column');
 });
 
+test('rows can be a facet («بُعد») instead of the tree: a cross-cutting axis; «بدون بُعد» last', () => {
+  const objs = [obj('a', 'ship', { facets: ['مخاطب'] }), obj('b', 'sub', { facets: ['مخاطب'] }), obj('c', 'brand', { facets: ['کانال'] }), obj('d', 'brand')];
+  const s = buildOverviewScene(input(objs), { rowsBy: 'facet' });
+  assert.deepEqual(s.overview!.rows.map((r) => r.label), ['کانال', 'مخاطب', 'بدون بُعد']);
+  assert.equal(s.overview!.rows.find((r) => r.label === 'مخاطب')!.counts.knowledge, 2, 'cards of two sections share the row');
+  assert.equal(s.items.length, 4);
+});
+
 test('it reads nothing but the objects, relations and notes it is given and changes none of them', () => {
   const objs = [obj('a', 'ship'), obj('b', 'sub')];
   const rels = [dep('b', 'a')];

@@ -42,6 +42,7 @@ export const MAX_STACK = 6;
 export const SUBGAP = 24;
 /** rows for the first two levels of the tree; deeper sections stay inside their parent until it is opened */
 export const MAX_ROW_DEPTH = 2;
+export const NO_FACET_ROW = 'بدون بُعد';
 
 export interface OverviewOptions {
   /** suggestions and things that need a look are drawn too (faint) */
@@ -54,6 +55,8 @@ export interface OverviewOptions {
   opened?: Set<string>;
   /** the user's order of rows (display only); sections not listed follow in tree order */
   rowOrder?: string[];
+  /** what the rows are: the tree (default) or the first facet («بُعد»: audience, channel, season…) — a cross-cutting axis the tree does not have */
+  rowsBy?: 'domain' | 'facet';
   /** a section the view is «inside»: only it and its sub-sections */
   scopeNodeId?: string;
 }
@@ -122,12 +125,14 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
   const layerCount = Math.max(1, ...ids.map((id) => (layer.get(id) ?? 0) + 1));
 
   // rows: tree order (or the user's), only first-level sections + opened ones; empty rows are left out
+  const byFacet = opts.rowsBy === 'facet';
   const rowKeyOf = (nid: string) => rowOfNode(input.nodes, nid, opened);
+  const rowKeyOfObject = (o: ContextObject) => (byFacet ? o.facets?.[0] ?? NO_FACET_ROW : rowKeyOf(o.nodeId));
   const rowObjects = new Map<string, ContextObject[]>();
-  for (const o of objects) rowObjects.set(rowKeyOf(o.nodeId), [...(rowObjects.get(rowKeyOf(o.nodeId)) ?? []), o]);
+  for (const o of objects) rowObjects.set(rowKeyOfObject(o), [...(rowObjects.get(rowKeyOfObject(o)) ?? []), o]);
   const rowThoughts = new Map<string, number>();
-  for (const t of thinkingOf(input.notes)) if (nodeById.has(t.nodeId) && inScope(t.nodeId) && !convertedTo(t, input.objects)) rowThoughts.set(rowKeyOf(t.nodeId), (rowThoughts.get(rowKeyOf(t.nodeId)) ?? 0) + 1);
-  for (const o of input.objects) if (isPendingObject(o) && !o.sample && nodeById.has(o.nodeId) && inScope(o.nodeId) && !shown.has(o.id)) rowThoughts.set(rowKeyOf(o.nodeId), (rowThoughts.get(rowKeyOf(o.nodeId)) ?? 0) + 1);
+  if (!byFacet) for (const t of thinkingOf(input.notes)) if (nodeById.has(t.nodeId) && inScope(t.nodeId) && !convertedTo(t, input.objects)) rowThoughts.set(rowKeyOf(t.nodeId), (rowThoughts.get(rowKeyOf(t.nodeId)) ?? 0) + 1);
+  if (!byFacet) for (const o of input.objects) if (isPendingObject(o) && !o.sample && nodeById.has(o.nodeId) && inScope(o.nodeId) && !shown.has(o.id)) rowThoughts.set(rowKeyOf(o.nodeId), (rowThoughts.get(rowKeyOf(o.nodeId)) ?? 0) + 1);
 
   const order: Array<{ node: TreeNode; depth: number }> = [];
   const walk = (n: TreeNode, depth: number) => {
@@ -135,6 +140,11 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
     for (const c of childrenOf(input.nodes, n.id)) walk(c, depth + 1);
   };
   for (const r of input.nodes.filter((n) => !n.parentId || !nodeById.has(n.parentId)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))) walk(r, 0);
+  if (byFacet) { // rows = facets, A–Z, «بدون بُعد» last; no tree, no depth
+    order.length = 0;
+    const names = [...rowObjects.keys()].sort((a, b) => (a === NO_FACET_ROW ? 1 : b === NO_FACET_ROW ? -1 : a.localeCompare(b)));
+    for (const nm of names) order.push({ node: { id: nm, label: nm, description: '' }, depth: 0 });
+  }
   const wanted = new Map((opts.rowOrder ?? []).map((id, i) => [id, i]));
   const ordered = [...order].sort((a, b) => (wanted.get(a.node.id) ?? 1e6) - (wanted.get(b.node.id) ?? 1e6) || order.indexOf(a) - order.indexOf(b));
 
@@ -174,7 +184,7 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
       items.push(it);
       rowOfObject.set(o.id, node.id);
     });
-    const below = input.nodes.filter((n) => n.id !== node.id && rowKeyOf(n.id) === node.id).length;
+    const below = byFacet ? 0 : input.nodes.filter((n) => n.id !== node.id && rowKeyOf(n.id) === node.id).length;
     rows.push({
       nodeId: node.id, label: node.label, depth, rolledUp: below,
       counts: { knowledge: list.filter((o) => !isPendingObject(o)).length, redLines: list.filter((o) => o.type === 'Constraint').length, stale: list.filter(stale).length, openThoughts: thoughts },

@@ -1129,6 +1129,10 @@ export default function App() {
                 if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
               }}
               onOpenNote={(_noteId, nodeId) => openThinkingSpace(nodeId)}
+              onMoveNoteNode={async (noteId, nodeId) => {
+                const r = await attempt(() => dataApi.noteMoveNode(wid, noteId, nodeId));
+                if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === noteId ? r.note : n)) }));
+              }}
               onSetDependencies={handleSetDependencies}
               onCreateNote={handleFreeNoteCreate}
               onMoveNote={handleFreeNoteMove}

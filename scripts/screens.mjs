@@ -205,12 +205,14 @@ for (const size of SIZES) {
   await page.waitForTimeout(500); await shoot('canvas-relations');
   await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(350); await shoot('canvas-relations-selected');
   await page.getByTestId('canvas-inspector').getByRole('button', { name: /^به چه چیزی وابسته است/ }).click({ timeout: 2000 }).catch(() => {}); await page.getByTestId('canvas-inspector').getByRole('button', { name: /^چه چیزی روی آن سوار است/ }).click({ timeout: 2000 }).catch(() => {}); await shoot('canvas-inspector-open');
-  // the thinking canvas: «آزاد» (with the tray) and «تابلو»
+  // «دور یک مورد» and back
+  await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(450); await shoot('canvas-lineage');
+  await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
+  // the thinking canvas: one free canvas (with the tray and section frames)
   await goTab(TABS[4]); await shoot('thinking-list');
   await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
   await page.getByTestId('canvas-stage').waitFor();
   await shoot('canvas-free');
-  await layoutTab('تابلو'); await shoot('canvas-board');
   await goTab(TABS[1]);
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);

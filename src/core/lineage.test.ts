@@ -27,7 +27,7 @@ test('lineage: what it rests on and what rests on it, by distance; the rest is c
 test('the scene puts what it rests on at the START side (right in RTL), what it affects at the end, the center between', () => {
   const s = buildScene('lineage', { nodes, objects: objs, relationships: rels, deliverables: [], notes: [], canvas: { decisions: [], free: [] }, reviewIds: new Set(), staleAssetIds: new Set() }, { centerId: 'price', depth: 2 });
   const x = (id: string) => s.items.find((i) => i.objectId === id)!.x;
-  assert.ok(x('cost') > x('price') && x('price') > x('offer') && x('offer') > x('gift'), 'right → left: rests on · center · affects · then');
+  assert.ok(x('cost') > x('price') && x('price') > x('offer') && x('offer') > x('gift'), 'start → end: rests on, the center, affects, then');
   assert.equal(s.items.find((i) => i.objectId === 'price')!.depthFrom, 0);
   assert.equal(s.items.find((i) => i.objectId === 'cost')!.depthFrom, -1);
   assert.equal(s.items.find((i) => i.objectId === 'gift')!.depthFrom, 2);
