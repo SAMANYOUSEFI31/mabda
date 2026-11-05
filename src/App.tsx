@@ -562,7 +562,7 @@ export default function App() {
   };
   const handleCanvasConnect = async (c: Parameters<typeof dataApi.canvasConnect>[1]) => {
     const r = await attempt(() => dataApi.canvasConnect(wid, c));
-    if (r) { applyBundle(r); toast.show({ intent: 'success', message: c.type === 'depends_on' ? 'اتصال «وابسته به» ساخته شد.' : 'مورد قبلی جایگزین شد و در تاریخچه می‌ماند.' }); }
+    if (r) applyBundle(r);
   };
   const handleFreeNoteCreate = async (n: { content: string; x: number; y: number; nodeId?: string }) => {
     const r = await attempt(() => dataApi.freeNoteCreate(wid, n));
@@ -1120,6 +1120,15 @@ export default function App() {
               staleAssetIds={staleIdSet}
               onMove={handleCanvasMove}
               onConnect={handleCanvasConnect}
+              onOverride={async (byId, targetId, reason) => {
+                const r = await attempt(() => dataApi.setOverride(wid, byId, targetId, reason ?? ''));
+                if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+              }}
+              onRemoveOverride={async (byId, targetId) => {
+                const r = await attempt(() => dataApi.removeOverride(wid, byId, targetId));
+                if (r) patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
+              }}
+              onOpenNote={(_noteId, nodeId) => openThinkingSpace(nodeId)}
               onSetDependencies={handleSetDependencies}
               onCreateNote={handleFreeNoteCreate}
               onMoveNote={handleFreeNoteMove}

@@ -8,6 +8,8 @@
 export type CanvasAction =
   | { type: 'move'; objectId: string; lane: 'thinking' | 'confirmed'; nodeId?: string; beforeId?: string; afterId?: string }
   | { type: 'setDependencies'; objectId: string; targetIds: string[] }
+  | { type: 'removeOverride'; objectId: string; targetId: string }
+  | { type: 'addOverride'; objectId: string; targetId: string }
   | { type: 'moveNote'; noteId: string; x: number; y: number }
   | { type: 'placeObject'; objectId: string; x: number; y: number }
   | { type: 'unplaceObject'; objectId: string };

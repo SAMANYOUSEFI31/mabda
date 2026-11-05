@@ -118,6 +118,18 @@ test('300 cards: built fast and every card has its own place', () => {
   for (const i of s.items) { const k = `${i.x},${i.y}`; assert.ok(!seen.has(k), `overlap at ${k}`); seen.add(k); }
 });
 
+test('a crowded cell wraps into more columns instead of growing into a tower; small cells are untouched', () => {
+  const crowd = Array.from({ length: 15 }, (_, i) => obj(`c${i}`, 'ship'));
+  const s = buildOverviewScene(input(crowd));
+  assert.equal(new Set(s.items.map((i) => i.x)).size, 3, 'fifteen cards = three columns of up to six');
+  const row = s.overview!.rows[0];
+  assert.ok(row.h <= 34 + 6 * 136 + 20 + 1, 'the row is at most six cards tall');
+  const seen = new Set(s.items.map((i) => `${i.x},${i.y}`));
+  assert.equal(seen.size, 15, 'no overlap');
+  const few = buildOverviewScene(input(crowd.slice(0, 6)));
+  assert.equal(new Set(few.items.map((i) => i.x)).size, 1, 'six or fewer stay in one column');
+});
+
 test('it reads nothing but the objects, relations and notes it is given and changes none of them', () => {
   const objs = [obj('a', 'ship'), obj('b', 'sub')];
   const rels = [dep('b', 'a')];

@@ -5,7 +5,7 @@
  *   «بر آن تکیه دارد»   A depends_on B                (source A, target B)
  *   «روی آن اثر دارد»   B depends_on A                (the same relation, the other direction)
  *   «جایگزینِ آن است»   A supersedes B
- *   «استثنای آن است»    A overrides B                  (only when A sits in a sub-section of B's section)
+ *   «اینجا اعمال نشود»  A overrides B   (the UI never says «استثنا»: forbidden-words list)                  (only when A sits in a sub-section of B's section)
  * «ساخته‌شده از» and «تبدیل‌شده به» are written by the system (a thought converted, an output built) — never by hand: a hand-drawn
  * one could claim an origin that never happened.
  *
@@ -69,7 +69,7 @@ export function connectOptions(a: ContextObject, b: ContextObject, nodes: TreeNo
   // «استثنای آن است» only means something when A lives BELOW B: otherwise it is not offered at all (no dead button)
   if (!same && !overrideProblem(a, b, nodes)) {
     const blocked = base() ?? (relationships.some((r) => r.type === 'overrides' && r.sourceId === a.id && r.targetId === b.id) ? 'لازم نیست؛ این استثنا از قبل هست.' : undefined);
-    options.push({ choice: 'exception', label: `${A} استثنای ${B} است`, type: 'overrides', fromId: a.id, toId: b.id, ...(blocked ? { blocked } : { note: `در بخش «${nodes.find((n) => n.id === a.nodeId)?.label ?? ''}» و زیربخش‌هایش «${short(b.title)}» کنار گذاشته می‌شود.` }) });
+    options.push({ choice: 'exception', label: `${B} در بخش «${nodes.find((n) => n.id === a.nodeId)?.label ?? ''}» اعمال نشود (به‌خاطر ${A})`, type: 'overrides', fromId: a.id, toId: b.id, ...(blocked ? { blocked } : { note: `در بخش «${nodes.find((n) => n.id === a.nodeId)?.label ?? ''}» و زیربخش‌هایش «${short(b.title)}» کنار گذاشته می‌شود.` }) });
   }
   return options;
 }

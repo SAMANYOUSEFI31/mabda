@@ -53,7 +53,7 @@ export function lineageOf(input: { centerId: string; objects: ContextObject[]; r
     let all = 0;
     for (let d = 1; frontier.length; d++) {
       const nxt: string[] = [];
-      for (const f of frontier) for (const t of (next.get(f) ?? []).slice().sort()) if (!seen.has(t)) { seen.add(t); nxt.push(t); }
+      for (const f of frontier) for (const t of (next.get(f) ?? []).slice().sort((x, y) => (byId.get(x)?.createdAt ?? '').localeCompare(byId.get(y)?.createdAt ?? '') || x.localeCompare(y))) if (!seen.has(t)) { seen.add(t); nxt.push(t); }
       if (!nxt.length) break;
       all += nxt.length;
       if (d <= max) levels.push(nxt);
@@ -108,7 +108,7 @@ export function buildLineageScene(input: { objects: ContextObject[]; relationshi
       });
       y += CARD_H + GAP_Y;
     }
-    boxes.push({ id: `col:${c.d}`, kind: 'column', label: c.d === 0 ? 'این مورد' : c.d < 0 ? (c.d === -1 ? 'بر این‌ها تکیه دارد' : 'پشت آن‌ها') : (c.d === 1 ? 'روی این‌ها اثر دارد' : 'و بعد از آن‌ها'), depth: 0, x: x - 8, y: 8, w: CARD_W + 16, h: height - 16, hint: c.d === 0 ? 'موردی که انتخاب کردی.' : c.d < 0 ? 'این مورد روی آن‌ها سوار است؛ اگر آن‌ها عوض شوند این مورد نیاز به بازبینی می‌گیرد.' : 'آن‌ها روی این مورد سوارند؛ اگر این عوض شود آن‌ها نیاز به بازبینی می‌گیرند.' });
+    boxes.push({ id: `col:${c.d}`, kind: 'column', label: c.d === 0 ? 'این مورد' : c.d < 0 ? (c.d === -1 ? 'بر این‌ها تکیه دارد' : 'پشت آن‌ها') : (c.d === 1 ? 'روی این‌ها اثر دارد' : 'و بعد از آن‌ها'), depth: 0, x: x - 8, y: 8, w: CARD_W + 16, h: 40, hint: c.d === 0 ? 'موردی که انتخاب کردی.' : c.d < 0 ? 'این مورد روی آن‌ها سوار است؛ اگر آن‌ها عوض شوند این مورد نیاز به بازبینی می‌گیرد.' : 'آن‌ها روی این مورد سوارند؛ اگر این عوض شود آن‌ها نیاز به بازبینی می‌گیرند.' });
   });
   const edges: SceneEdge[] = l.links.map((k) => ({
     id: `dependency|o:${k.to}|o:${k.from}`, kind: 'dependency', label: EDGE_LABEL.dependency, influencer: `o:${k.from}`, influenced: `o:${k.to}`, count: 1,

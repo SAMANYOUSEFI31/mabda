@@ -35,6 +35,11 @@ export const ROW_GAP = 18;
 /** a row's height grows in steps of this many card slots, so one more card rarely moves the rows below */
 export const QUANTUM = 2;
 export const PAD = 40;
+/** room at the START edge (the right in RTL) for the sticky row labels, so they never sit on top of the base column */
+export const GUTTER = 190;
+/** a crowded cell wraps into more columns after this many cards, so a row never grows into a tower */
+export const MAX_STACK = 6;
+export const SUBGAP = 24;
 /** rows for the first two levels of the tree; deeper sections stay inside their parent until it is opened */
 export const MAX_ROW_DEPTH = 2;
 
@@ -133,14 +138,23 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
   const wanted = new Map((opts.rowOrder ?? []).map((id, i) => [id, i]));
   const ordered = [...order].sort((a, b) => (wanted.get(a.node.id) ?? 1e6) - (wanted.get(b.node.id) ?? 1e6) || order.indexOf(a) - order.indexOf(b));
 
+  // how many columns each layer needs: the most crowded cell of any row decides (a cell of up to MAX_STACK cards is one column)
+  const subcols = Array.from({ length: layerCount }, () => 1);
+  for (const list of rowObjects.values()) {
+    const per = new Map<number, number>();
+    for (const o of list) per.set(layer.get(o.id) ?? 0, (per.get(layer.get(o.id) ?? 0) ?? 0) + 1);
+    for (const [l, n] of per) subcols[l] = Math.max(subcols[l], Math.ceil(n / MAX_STACK));
+  }
+  const layerW = (l: number) => subcols[l] * CARD_W + (subcols[l] - 1) * SUBGAP;
+  // RTL: the base layer is the rightmost; every later layer lies to its left (the gutter lies beyond the base)
+  const colX = (l: number) => { let x = PAD; for (let m = layerCount - 1; m > l; m--) x += layerW(m) + GAP_X; return x; };
+  const width = Math.max(960, PAD * 2 + GUTTER + Array.from({ length: layerCount }, (_, l) => layerW(l)).reduce((a, b) => a + b, 0) + (layerCount - 1) * GAP_X);
   const items: SceneItem[] = [];
   const boxes: SceneBox[] = [];
   const rows: OverviewRow[] = [];
   const rowOfObject = new Map<string, string>();
   let hiddenEmptyRows = 0;
   let y = PAD;
-  const colX = (l: number) => PAD + (layerCount - 1 - l) * (CARD_W + GAP_X); // RTL: the base layer is the rightmost column
-  const width = Math.max(960, PAD * 2 + layerCount * CARD_W + (layerCount - 1) * GAP_X);
   for (const { node, depth } of ordered) {
     const list = rowObjects.get(node.id) ?? [];
     const thoughts = rowThoughts.get(node.id) ?? 0;
@@ -148,12 +162,12 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
     const cells = new Map<number, ContextObject[]>();
     for (const o of list) cells.set(layer.get(o.id) ?? 0, [...(cells.get(layer.get(o.id) ?? 0) ?? []), o]);
     for (const c of cells.values()) c.sort((a, b) => (together.get(a.id) ?? '').localeCompare(together.get(b.id) ?? '') || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-    const most = Math.max(1, ...[...cells.values()].map((c) => c.length));
+    const most = Math.min(MAX_STACK, Math.max(1, ...[...cells.values()].map((c) => c.length)));
     const slots = Math.ceil(most / QUANTUM) * QUANTUM;
     const h = ROW_HEAD + slots * (CARD_H + GAP_Y) + ROW_PAD;
     for (const [l, c] of cells) c.forEach((o, j) => {
       const it: SceneItem = {
-        id: `o:${o.id}`, kind: 'object', label: o.title, summary: extract(o.content), x: colX(l), y: y + ROW_HEAD + j * (CARD_H + GAP_Y), w: CARD_W, h: CARD_H,
+        id: `o:${o.id}`, kind: 'object', label: o.title, summary: extract(o.content), x: colX(l) + (subcols[l] - 1 - Math.floor(j / MAX_STACK)) * (CARD_W + SUBGAP), y: y + ROW_HEAD + (j % MAX_STACK) * (CARD_H + GAP_Y), w: CARD_W, h: CARD_H,
         objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, ...badges(o, input.reviewIds.has(o.id), now),
         ...(isPendingObject(o) ? { pending: true } : {}), ...(together.has(o.id) ? { together: together.get(o.id) } : {}), rowId: node.id,
       };
@@ -169,7 +183,7 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
     boxes.push({ id: `row:${node.id}`, kind: 'row', label: node.label, depth, x: 0, y, w: width, h, nodeId: node.id, count: list.length, hint: 'بخش درخت؛ ستون‌ها لایهٔ وابستگی‌اند. ترتیب ردیف‌ها فقط نمایش است.' });
     y += h + ROW_GAP;
   }
-  for (let l = 0; l < layerCount; l++) boxes.push({ id: `col:${l}`, kind: 'column', label: l === 0 ? 'پایه' : `لایهٔ ${l}`, depth: 0, x: colX(l) - 8, y: 0, w: CARD_W + 16, h: Math.max(0, y - ROW_GAP + PAD / 2), hint: 'لایهٔ وابستگی: هرچه در ستون‌های سمت پایان است روی ستون‌های سمت شروع سوار است.' });
+  for (let l = 0; l < layerCount; l++) boxes.push({ id: `col:${l}`, kind: 'column', label: l === 0 ? 'پایه' : `لایهٔ ${l}`, depth: 0, x: colX(l) - 8, y: 4, w: layerW(l) + 16, h: PAD - 8, hint: 'لایهٔ وابستگی: هرچه در ستون‌های سمت پایان است روی ستون‌های سمت شروع سوار است.' });
 
   // lines: INFLUENCER → influenced; direct links another path already implies are quieter
   const redundant = new Set(redundantLinks(input.objects, input.relationships).map((l) => `${l.to}>${l.from}`));
