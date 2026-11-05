@@ -15,7 +15,7 @@
  * Usage: node scripts/check-design.mjs [--list-rules]
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, extname } from 'node:path';
+import { join, relative, extname, sep } from 'node:path';
 
 const ROOT = process.cwd();
 const TARGETS = ['src', 'index.html'];
@@ -71,7 +71,7 @@ for (const target of TARGETS) {
   const abs = join(ROOT, target);
   try { statSync(abs); } catch { continue; }
   for (const file of walk(abs)) {
-    const rel = relative(ROOT, file);
+    const rel = relative(ROOT, file).replaceAll(sep, '/'); // one path style on every OS (the rules match «src/ui/»)
     const lines = readFileSync(file, 'utf8').split('\n');
     lines.forEach((line, i) => {
       // `theme-color` meta cannot use var(); it is the one documented raw value (same as the DS brief).

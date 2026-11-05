@@ -22,9 +22,11 @@ import { affectPlan, affectedBy } from '../core/relationPlan';
 import { TYPE_CHIP_FA, guessTitle, guessType } from '../core/knowledgeGuess';
 import { suggestLinks } from '../core/mentions';
 import { suggestUpstreamLinks } from '../core/upstreamLinks';
+import { provenanceOf } from '../core/provenance';
+import { ProvenanceList } from './ProvenanceList';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../core/versionHistory';
-import type { ContextChange } from '../types';
+import type { ContextChange, Note } from '../types';
 import { MX } from '../core/metricsText';
 import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../core/redlineExamples';
 import { parseNumber } from '../core/metrics';
@@ -63,6 +65,12 @@ interface ContextDetailModalProps {
   onAcceptReview?: (objectId: string) => void;
   /** for «اثرگذاران و اثرپذیران»: the assets built from this object */
   deliverables?: GeneratedDeliverable[];
+  /** for «منشأ» (the thought a piece of knowledge came from) */
+  notes?: Note[];
+  /** a provenance link to a thought: go to it */
+  onOpenNote?: (noteId: string, nodeId: string) => void;
+  /** a provenance link to an output */
+  onOpenAssets?: () => void;
   onOpenRelated?: (o: ContextObject) => void;
   /** one targeted edit with a reason (a Change) — «ببر بالاتر» */
   onPatchObject?: (id: string, patch: { nodeId?: string; reach?: 'global' | 'position'; reason: string }) => Promise<unknown>;
@@ -117,6 +125,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   titleOf,
   onAcceptReview,
   deliverables = [],
+  notes = [],
+  onOpenNote,
+  onOpenAssets,
   onOpenRelated,
   onPatchObject,
 }) => {
@@ -306,6 +317,15 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
       )}
       {tab === 'influence' && isEditing && object && influence && <InfluencePanel influence={influence} nodes={nodes} onOpenObject={onOpenRelated} />}
+      {tab === 'influence' && isEditing && object && (
+        <section className="mt-stack-md flex flex-col gap-stack-sm" aria-label="منشأ">
+          <h3 className="title text-text-default">منشأ: از کجا آمده و به کجا رفته</h3>
+          <ProvenanceList
+            provenance={provenanceOf({ objectId: object.id, objects: allObjects, relationships, notes, deliverables })}
+            onOpen={(l) => { const t = l.target; if (!t) return; if (t.type === 'object') { const o = allObjects.find((x) => x.id === t.objectId); if (o) onOpenRelated?.(o); } else if (t.type === 'note') onOpenNote?.(t.noteId, t.nodeId); else onOpenAssets?.(); }}
+          />
+        </section>
+      )}
       {tab === 'history' && isEditing && (
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}

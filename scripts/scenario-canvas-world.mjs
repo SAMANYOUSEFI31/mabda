@@ -64,7 +64,11 @@ try {
     const toTruth = async () => { await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first()); await stage.waitFor(); await page.waitForTimeout(500); };
     const toolbar = page.getByTestId('canvas-toolbar');
     const lod = () => stage.getAttribute('data-lod');
-    const zoomTo = async (want) => { for (let i = 0; i < 14 && (await lod()) !== want; i++) { await toolbar.getByRole('button', { name: want === 'far' ? 'کوچک‌نمایی' : 'بزرگ‌نمایی' }).click(); await page.waitForTimeout(60); } };
+    const zoomOnce = async (name) => {
+      if (mobile) { await toolbar.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name, exact: true }).click(); }
+      else await toolbar.getByRole('button', { name }).click();
+    };
+    const zoomTo = async (want) => { for (let i = 0; i < 14 && (await lod()) !== want; i++) { await zoomOnce(want === 'far' ? 'کوچک‌نمایی' : 'بزرگ‌نمایی'); await page.waitForTimeout(60); } };
 
     /** bring a card into view through the canvas search (cards outside the viewport are not drawn) */
     const goCard = async (title) => { const q = page.locator('#canvas-search'); await q.fill(title); await q.press('Enter'); await page.waitForTimeout(450); };
@@ -164,7 +168,7 @@ try {
     // ── د
     step(`[${width}] د: «تخفیف دانشجویی» affects «قیمت اشتراک» (tap-tap)`);
     const relsBefore = (await state()).relationships.length;
-    await toolbar.getByRole('button', { name: 'وصل کن' }).click();
+    await toolbar.getByRole('button', { name: /^وصل کن/ }).click();
     await page.getByTestId('connect-bar').waitFor();
     await goCard('تخفیف دانشجویی');
     await click(card(student.id).first());
@@ -298,7 +302,7 @@ try {
     await stage.locator('[data-testid=row-rail], [data-testid=row-summary]').first().waitFor({ timeout: 20000 });
     const opened = Date.now() - t0;
     const t1 = Date.now();
-    for (let i = 0; i < 6; i++) await toolbar.getByRole('button', { name: i < 3 ? 'کوچک‌نمایی' : 'بزرگ‌نمایی' }).click();
+    for (let i = 0; i < 6; i++) await zoomOnce(i < 3 ? 'کوچک‌نمایی' : 'بزرگ‌نمایی');
     const zoomMs = (Date.now() - t1) / 6;
     await zoomTo('mid');
     const drawn = await stage.locator('[data-item-id]').count();

@@ -236,6 +236,7 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
   const [homeAllOpen, setHomeAllOpen] = useState(false);
+  const [canvasReveal, setCanvasReveal] = useState<{ id: string; n: number } | null>(null);
   const [savedPackCount, setSavedPackCount] = useState(0);
   const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
@@ -355,6 +356,8 @@ export default function App() {
   /** what Enter does on a palette row */
   const handlePick = (hit: SearchHit) => {
     const n = Date.now();
+    // looking at the truth canvas: Ctrl/⌘K to an item SHOWS it there (the inspector has «باز کردن»); anywhere else it opens
+    if (hit.kind === 'object' && activeTab === 'context' && contextViewMode === 'canvas') { setCanvasReveal({ id: hit.id, n }); return; }
     if (hit.kind === 'object') { const o = workspaceContexts.find((x) => x.id === hit.id); if (o) openContext(o); return; }
     if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); goFocus(hit.id); return; }
     if (hit.kind === 'note') {
@@ -1108,6 +1111,8 @@ export default function App() {
     <ContextCanvas
       mode={mode}
       previewNonce={mode === 'truth' ? previewNonce : undefined}
+      lineageObjects={workspaceContexts}
+      revealObject={mode === 'truth' ? canvasReveal ?? undefined : undefined}
       onPreviewTruth={mode === 'thinking' ? previewTruth : undefined}
       onNoteToSection={mode === 'thinking' ? startSectionFromNote : undefined}
               nodes={nodes}
@@ -1681,6 +1686,9 @@ export default function App() {
         titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
         onAcceptReview={handleAcceptReview}
         deliverables={deliverables}
+        notes={data?.notes ?? []}
+        onOpenNote={(_id, nodeId) => { setIsContextModalOpen(false); openThinkingSpace(nodeId); }}
+        onOpenAssets={() => { setIsContextModalOpen(false); setActiveTab('assets'); }}
         onOpenRelated={(o) => openContext(o)}
         onPatchObject={handlePatchObject}
       />
