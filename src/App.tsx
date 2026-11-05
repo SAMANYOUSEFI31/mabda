@@ -64,6 +64,9 @@ import { optionsOf, recordOfChoice } from './core/decisionOptions';
 import { resolveThoughtLine, sectionNameFromThought, thoughtToDraft } from './core/thoughts';
 import { thinkingSpace } from './core/thinkingSpace';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
+import { orderWaitingByStructure } from './core/decisionOrder';
+import { buildInheritNotices } from './core/inheritNotice';
+import { InheritNoticeList } from './components/InheritNoticeList';
 import { WeeklyReviewDialog } from './components/WeeklyReviewDialog';
 import { MetricsDialog } from './components/MetricsDialog';
 import { expectationRows, expectationsDue, metricsWithoutRecentNumber, verdictTally } from './core/metrics';
@@ -292,9 +295,20 @@ export default function App() {
   const reviewNeeds = useMemo(() => needsReview(data?.objects ?? [], data?.relationships ?? [], data?.changes ?? []), [data?.objects, data?.relationships, data?.changes]);
   const reviewIdSet = useMemo(() => new Set(reviewNeeds.keys()), [reviewNeeds]);
   const staleIdSet = useMemo(() => new Set((data?.stale ?? []).map((s) => s.deliverableId)), [data?.stale]);
-  const waiting = useMemo(() => waitingDecisions(planDecisions(data?.objects ?? [], data?.relationships ?? [])), [data?.objects, data?.relationships]);
+  // the order of waiting decisions: dependencies first (decisionGraph), then — only among equals — the upper section's item before its sub-sections'
+  const waitingOrdered = useMemo(() => {
+    const objs = data?.objects ?? [];
+    const plan = planDecisions(objs, data?.relationships ?? []);
+    const o = orderWaitingByStructure(waitingDecisions(plan), plan, objs, nodes);
+    return { waiting: o.waiting, structure: Object.fromEntries([...o.below].map(([id, b]) => [id, b.length])) as Record<string, number> };
+  }, [data?.objects, data?.relationships, nodes]);
+  const waiting = waitingOrdered.waiting;
+  // «دیدم» for the calm inheritance news is remembered on this device only
+  const [inheritSeen, setInheritSeen] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('mabda.inherit.seen') ?? '[]') as string[]; } catch { return []; } });
+  const markInheritSeen = (key: string) => setInheritSeen((cur) => { const next = [...cur, key].slice(-200); try { localStorage.setItem('mabda.inherit.seen', JSON.stringify(next)); } catch { /* optional */ } return next; });
+  const inheritNotices = useMemo(() => buildInheritNotices({ changes: data?.changes ?? [], objects: data?.objects ?? [], nodes, relationships: data?.relationships ?? [], seen: inheritSeen }), [data?.changes, data?.objects, data?.relationships, nodes, inheritSeen]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
-  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [] }), [data?.objects, data?.relationships, data?.changes, data?.deliverables]);
+  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [], nodes }), [data?.objects, data?.relationships, data?.changes, data?.deliverables, nodes]);
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [compare, setCompare] = useState<{ mode: CompareMode; scopeNodeId?: string } | null>(null);
@@ -1267,6 +1281,8 @@ export default function App() {
             {(workspaceContexts.length > 0 || homePlan.total > 0) && (
               <HomeTodo top={homePlan.top} total={homePlan.total} onAct={handleHomeAct} allOpen={homeAllOpen} onToggleAll={() => setHomeAllOpen((v) => !v)} />
             )}
+            {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
+            {inheritNotices.length > 0 && <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} />}
             {homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
               <div id="home-all" className="flex flex-col gap-stack-lg">
             <AttentionPanel
@@ -1276,6 +1292,7 @@ export default function App() {
               staleCount={stale.length}
               reviews={[...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, dependencyTitles: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) }))}
               waiting={waiting}
+              structure={waitingOrdered.structure}
               flips={flips}
               titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
               weeklyDue={weeklyDue}
@@ -1484,6 +1501,7 @@ export default function App() {
           objects={workspaceContexts}
           notes={data.notes}
           nodes={nodes}
+          relationships={data.relationships}
           nodeId={spaceNode}
           onNodeChange={setSpaceNode}
           onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
@@ -1829,6 +1847,9 @@ export default function App() {
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
         data={weekly}
+        inheritNotices={inheritNotices}
+        onSeenInherit={markInheritSeen}
+        onOpenSection={(id) => { setWeeklyOpen(false); setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }}
         readiness={readinessPerWorkstream([...(data?.specs ?? []), ...enabledLibrary.filter((s) => !(data?.specs ?? []).some((x) => x.id === s.id))], workspaceContexts, data?.relationships ?? [])}
         objects={workspaceContexts}
         deliverables={deliverables}

@@ -4,7 +4,8 @@
  * Nothing here notifies anyone; `reviewDue` only drives a quiet marker in the attention panel.
  */
 
-import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, WorkstreamSpec } from '../types';
+import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode, WorkstreamSpec } from '../types';
+import { orderWaitingByStructure } from './decisionOrder';
 import { buildChangeDigest, DEFAULT_DAYS } from './changeDigest';
 import type { Digest } from './changeDigest';
 import { calculateReadinessAndGaps } from './contextEngine';
@@ -19,23 +20,28 @@ export interface WeeklyReviewData {
   /** objects whose dependency changed after they were last written or reviewed */
   reviews: Array<{ object: ContextObject; need: ReviewNeed; dependencyTitles: string[] }>;
   waiting: WaitingDecisions;
+  /** decision id → how many waiting decisions of its sub-sections follow it (only when the tree is given; display order only) */
+  structure: Record<string, number>;
   /** assumptions whose review date has come, and decisions that ask «نتیجه چه شد؟» */
   due: { assumptions: ContextObject[]; decisions: ContextObject[] };
   /** how many items the three sections hold in total (what the review is about) */
   total: number;
 }
 
-export function buildWeeklyReview(input: { objects: ContextObject[]; relationships: ContextRelationship[]; changes: ContextChange[]; deliverables: GeneratedDeliverable[]; now?: Date }): WeeklyReviewData {
+export function buildWeeklyReview(input: { objects: ContextObject[]; relationships: ContextRelationship[]; changes: ContextChange[]; deliverables: GeneratedDeliverable[]; now?: Date; nodes?: TreeNode[] }): WeeklyReviewData {
   const digest = buildChangeDigest({ changes: input.changes, objects: input.objects, relationships: input.relationships, deliverables: input.deliverables, now: input.now, days: DEFAULT_DAYS });
   const byId = new Map(input.objects.map((o) => [o.id, o]));
   const reviews = [...needsReview(input.objects, input.relationships, input.changes)]
     .filter(([id]) => byId.has(id))
     .map(([id, need]) => ({ object: byId.get(id)!, need, dependencyTitles: need.changedDependencies.map((d) => byId.get(d.id)?.title ?? d.id) }))
     .sort((a, b) => b.need.since.localeCompare(a.need.since) || a.object.id.localeCompare(b.object.id));
-  const waiting = waitingDecisions(planDecisions(input.objects, input.relationships));
+  const plan = planDecisions(input.objects, input.relationships);
+  const ordered = input.nodes ? orderWaitingByStructure(waitingDecisions(plan), plan, input.objects, input.nodes) : undefined;
+  const waiting = ordered?.waiting ?? waitingDecisions(plan);
+  const structure = Object.fromEntries([...(ordered?.below ?? [])].map(([id, b]) => [id, b.length]));
   const now = input.now ?? new Date();
   const due = { assumptions: assumptionsDue(input.objects, now), decisions: decisionsDue(input.objects, input.changes, now) };
-  return { digest, reviews, waiting, due, total: digest.total + reviews.length + waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + due.assumptions.length + due.decisions.length };
+  return { digest, reviews, waiting, structure, due, total: digest.total + reviews.length + waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + due.assumptions.length + due.decisions.length };
 }
 
 /** a quiet «it is time» marker: a week since the last review (or never) AND something to look at */

@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { STRUCTURE_REASON } from '../core/decisionOrder';
+import type { InheritNotice } from '../core/inheritNotice';
+import { InheritNoticeList } from './InheritNoticeList';
 import { DueItems } from './DueItems';
 import React, { useMemo, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, Measurement, Metric } from '../types';
@@ -15,6 +18,9 @@ interface Props {
   open: boolean;
   onClose: () => void;
   data: WeeklyReviewData;
+  inheritNotices?: InheritNotice[];
+  onSeenInherit?: (key: string) => void;
+  onOpenSection?: (nodeId: string) => void;
   readiness: WorkstreamReadiness[];
   objects: ContextObject[];
   deliverables: GeneratedDeliverable[];
@@ -34,7 +40,7 @@ const BASE_STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمی�
 /** «این هفته» — five minutes, three sections one after another, every item with a one-click action. No timers, no pressure. */
 export const WeeklyReviewDialog: React.FC<Props> = (props) => (props.open ? <Review {...props} /> : null);
 
-const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps, metricsEntry }) => {
+const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInherit, onOpenSection, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps, metricsEntry }) => {
   const hasMetrics = !!metricsEntry && metricsEntry.metrics.some((m) => !m.archived);
   const STEPS = hasMetrics ? [...BASE_STEPS, 'اعداد این هفته'] : [...BASE_STEPS];
   const LAST = STEPS.length; // the summary
@@ -92,6 +98,7 @@ const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverabl
                 {g.entries.length > 6 && <p className="body-sm text-text-subtle">{formatNumber(g.entries.length - 6)} تغییر دیگر هم هست؛ در «چه چیزی عوض شد» دیده می‌شود.</p>}
               </section>
             ))}
+            {onSeenInherit && onOpenSection && <InheritNoticeList notices={inheritNotices} onSeen={onSeenInherit} onOpenSection={onOpenSection} onOpenObject={(id) => open(id)} />}
           </div>
         )
       )}
@@ -125,7 +132,7 @@ const Review: React.FC<Props> = ({ onClose, data, readiness, objects, deliverabl
                 <ul className="flex flex-col gap-stack-xs">
                   {data.waiting.ready.map((u) => (
                     <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
-                      <span className="body-md text-text-default">«{title(u.ids[0])}»</span>
+                      <span className="flex flex-col gap-stack-xs"><span className="body-md text-text-default">«{title(u.ids[0])}»</span>{data.structure[u.ids[0]] ? <span className="body-sm text-text-subtle">{STRUCTURE_REASON}</span> : null}</span>
                       <span className="flex gap-inline-xs">
                         <Button size="sm" variant="ghost" onClick={() => open(u.ids[0])}>باز کن</Button>
                         <Button size="sm" variant="secondary" disabled={!notDone(u.ids).length} loading={busy === u.ids[0]} onClick={() => run(u.ids[0], notDone(u.ids), onConfirm)}>تأیید</Button>
