@@ -19,10 +19,12 @@ import { thinkingOf, convertedTo } from './thinkingMarkers';
 import { buildMapModel, EDGE_LABEL } from './mapModel';
 import type { MapEdgeKind } from './mapModel';
 
-export type CanvasLayout = 'relations' | 'board' | 'free';
-export const LAYOUT_FA: Record<CanvasLayout, string> = { relations: 'رابطه‌ها', board: 'تابلو', free: 'آزاد' };
+export type CanvasLayout = 'relations' | 'board' | 'free' | 'overview' | 'lineage';
+export const LAYOUT_FA: Record<CanvasLayout, string> = { relations: 'رابطه‌ها', board: 'تابلو', free: 'آزاد', overview: 'نمای کلی', lineage: 'دور یک مورد' };
 /** the one-sentence answer each layout gives (shown as «این چیست؟») */
 export const LAYOUT_ABOUT: Record<CanvasLayout, { question: string; what: string }> = {
+  overview: { question: 'کسب‌وکارم چطور به هم وصل است؟', what: 'هر بخش یک ردیف است و هر ستون یک لایهٔ وابستگی: پایه‌ها سمت شروع‌اند و آنچه رویشان سوار است به‌دنبالشان. دور که بروی هر ردیف یک خلاصه می‌شود؛ نزدیک که بیایی کارت‌ها و خط‌ها پیدا می‌شوند.' },
+  lineage: { question: 'این مورد بر چه تکیه دارد و روی چه اثر می‌گذارد؟', what: 'مورد انتخاب‌شده وسط است؛ آنچه بر آن تکیه دارد سمت شروع و آنچه رویش اثر دارد سمت پایان. فقط چند قدم دورتر را نشان می‌دهد؛ عمق را خودت عوض کن.' },
   relations: { question: 'چه چیزی روی چه چیزی اثر می‌گذارد؟', what: 'کارت‌ها خودکار از وابستگی، تبار و جایگزینی چیده می‌شوند؛ پیکان از اثرگذار به اثرپذیر می‌رود. جعبه‌ها گره‌های درخت‌اند و ترتیب ندارند.' },
   board: { question: 'هر چیز در چه حالی است و در کدام دسته؟', what: 'ستون‌ها و ردیف‌ها را خودت انتخاب می‌کنی. با ستون «وضعیت» می‌شود کارت را کشید تا وضعیتش عوض شود؛ بقیهٔ ستون‌ها فقط نمایش‌اند.' },
   free: { question: 'می‌خواهم قبل از ساختار دادن فکر کنم.', what: 'یادداشت و کارت را هر جا خواستی بگذار. یادداشت‌ها هرگز دانش نیستند و به AI داده نمی‌شوند؛ هر وقت آماده شدی به دانش پیشنهادی تبدیلشان کن.' },
@@ -52,6 +54,14 @@ export interface SceneItem {
   review?: boolean; assumption?: boolean; expired?: boolean; global?: boolean; sample?: boolean;
   /** not approved yet (a suggestion or a «needs review»): only drawn when «نشان بده چه در راه است» is on */
   pending?: boolean;
+  /** a cycle of dependencies: these are decided together (the same id for every member) */
+  together?: string;
+  /** the overview row (a tree node id) the card sits in */
+  rowId?: string;
+  /** lineage: what the pending center would put in need of a review if it were approved (a what-if, not a state) */
+  ifApproved?: boolean;
+  /** lineage: how far from the center (0 = the center; negative = it rests on; positive = it affects) */
+  depthFrom?: number;
   /** thinking canvas: not placed yet — shown in the «تازه‌ها» tray until she drags it somewhere */
   unplaced?: boolean;
   facet?: string;
@@ -62,7 +72,7 @@ export interface SceneItem {
 }
 export interface SceneBox { id: string; kind: 'group' | 'column' | 'row' | 'zone'; label: string; depth: number; x: number; y: number; w: number; h: number; nodeId?: string; count?: number; expanded?: boolean; hint?: string }
 export interface SceneEdge { id: string; kind: MapEdgeKind; label: string; /** one end is not approved yet: a suggested relation — it becomes real by itself when that end is approved */ pending?: boolean; /** the one that acts */ influencer: string; /** the one that is acted on */ influenced: string; count: number; /** a direct link that adds nothing: the same reach goes through another card — drawn quieter, never hidden */ redundant?: boolean }
-export interface Scene { /** board: the ordered object ids of every cell (`column|row`) — what an undo of a move restores */ cells?: Record<string, string[]>; layout: CanvasLayout; items: SceneItem[]; boxes: SceneBox[]; edges: SceneEdge[]; width: number; height: number; summary: { objects: number; assets: number; notes: number }; /** the board's column / row kinds (display only unless columns = status) */ board?: { columns: BoardColumns; rows: BoardRows } }
+export interface Scene { /** lineage: the levels around the center and the what-if list */ lineage?: import('./lineage').Lineage; /** overview: the rows with their counters, the lines between rows and the layer count */ overview?: import('./swimlane').OverviewData; /** board: the ordered object ids of every cell (`column|row`) — what an undo of a move restores */ cells?: Record<string, string[]>; layout: CanvasLayout; items: SceneItem[]; boxes: SceneBox[]; edges: SceneEdge[]; width: number; height: number; summary: { objects: number; assets: number; notes: number }; /** the board's column / row kinds (display only unless columns = status) */ board?: { columns: BoardColumns; rows: BoardRows } }
 
 export interface SceneInput {
   nodes: TreeNode[];
@@ -85,6 +95,10 @@ export interface SceneOptions {
   onlyReview?: boolean;
   /** relations («بوم حقیقت»): the map shows only what is approved; with this on, suggestions and what needs a look appear too — drawn faint, so their effect is seen BEFORE a yes */
   showPending?: boolean;
+  /** lineage: the card in the middle and how many steps */
+  centerId?: string; depth?: number;
+  /** overview: keep one kind only; sections opened beyond the first two levels; the user's row order; «inside a section» */
+  only?: 'constraint' | 'pending'; opened?: Set<string>; rowOrder?: string[]; scopeNodeId?: string;
   /** free («بوم فکر»): also show what has no place yet — open thoughts and suggestions — in a «تازه‌ها» tray */
   tray?: boolean;
 }
@@ -95,15 +109,17 @@ export const isPendingRelation = (r: { sourceId: string; targetId: string }, byI
   return bad(r.sourceId) || bad(r.targetId);
 };
 
-const extract = (s: string, n = 140) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n)}…` : t; };
-const badges = (o: ContextObject, review: boolean, now: Date) => ({
-  ...(review ? { review: true } : {}), ...(o.assumption ? { assumption: true } : {}), ...(isExpired(o, now) ? { expired: true } : {}), ...(reachOf(o) === 'global' && o.reach === 'global' ? { global: true } : {}), ...(o.sample ? { sample: true } : {}),
-});
+import { badges, extract } from './sceneParts';
+import { buildOverviewScene } from './swimlane';
+import { buildLineageScene } from './lineage';
 
 export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneOptions = {}): Scene {
   const now = input.now ?? new Date();
   const byId = new Map(input.objects.map((o) => [o.id, o]));
   const filterObjects = (list: ContextObject[]) => (opts.onlyReview ? list.filter((o) => input.reviewIds.has(o.id) || o.status === 'Needs Review') : list);
+
+  if (layout === 'lineage') return buildLineageScene({ objects: input.objects, relationships: input.relationships, reviewIds: input.reviewIds, now }, { centerId: opts.centerId ?? '', depth: opts.depth, showPending: opts.showPending });
+  if (layout === 'overview') return buildOverviewScene(input, { showPending: opts.showPending, onlyReview: opts.onlyReview, only: opts.only, opened: opts.opened, rowOrder: opts.rowOrder, scopeNodeId: opts.scopeNodeId });
 
   if (layout === 'relations') {
     const isPending = (o: ContextObject) => o.status === 'Proposed' || o.status === 'Needs Review';
