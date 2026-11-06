@@ -1,8 +1,11 @@
 /**
- * «دربارهٔ»: what a thought is about. A thought lives in ONE section (its home) and may also name other targets — a piece of
- * knowledge or another section — with the structured mention `@«عنوان»` already used in text. Nothing extra is stored: the
- * line itself is the record (derived, like every thinking item). A thought never makes a relationship; when it becomes
- * knowledge, its mentions come back as SUGGESTED relations (src/core/mentions.ts → suggestLinks), nothing else. Pure.
+ * «دربارهٔ»: مشخص می‌کند یک Thought دربارهٔ کدام Knowledge یا Node است.
+ * یک فکر در یک بخش (خانهٔ اصلی خود) قرار دارد و ممکن است اهداف دیگری را نیز مشخص کند.
+ * ارتباط پایدار در جدول thought_about (مهاجرت ۲۳) ذخیره می‌شود.
+ * نشانهٔ متنی `@«عنوان»` برای مسیر ورودی متنی، Backfill قطعی و سازگاری داده‌های قبلی باقی می‌ماند.
+ * عنوان‌های مبهم (دارای چند تطابق هم‌نام) هرگز حدس زده نمی‌شوند.
+ * ارجاع About هیچ رابطهٔ Context یا depends_on ایجاد نمی‌کند؛ هنگام ارتقا/تبدیل (Promotion) فکر به دانش،
+ * این ارتباط‌ها فقط می‌توانند مبنای پیشنهاد رابطه باشند و شیء خروجی همواره با وضعیت پیشنهادی (Proposed) ساخته می‌شود.
  */
 
 import type { ContextObject, TreeNode } from '../types';
