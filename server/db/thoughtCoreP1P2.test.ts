@@ -153,6 +153,57 @@ test('P1-8 & P1-9: resolved legacy line preservation and converted legacy Though
   db.close();
 });
 
+test('Part 8: Migration 21/23 overlap ensures exactly one resolved Thought per receipt line across all paths', () => {
+  // Path A: Fresh database migrating from version 20 to latest (23)
+  const dbA = new Database(':memory:');
+  migrate(dbA, 20);
+  const insertNoteA = dbA.prepare('INSERT INTO notes (id,user_id,workspace_id,node_id,content,created_at,updated_at) VALUES (?,?,?,?,?,?,?)');
+  insertNoteA.run('note-mixed', U, 'w1', 'business', '[ایده] ایدهٔ قبل از تبدیل\nپشتیبانی آنلاین ✓ (بخش «پشتیبانی» از همین ساخته شد)', '2026-01-01', '2026-01-02');
+  migrate(dbA); // migrate 20 -> 23
+  const repoA = new Repo(dbA);
+  const sA = { userId: U, workspaceId: 'w1' };
+  const thoughtsA = repoA.listThoughts(sA, { includeResolved: true });
+
+  // Exactly one receipt thought, exactly one marked thought = 2 total
+  assert.equal(thoughtsA.length, 2, 'ordinary marked thought + receipt thought = exactly 2 thoughts');
+  const receiptsA = thoughtsA.filter((t) => t.text === 'پشتیبانی آنلاین');
+  assert.equal(receiptsA.length, 1, 'fresh 20->23 migration produces exactly one resolved Thought for receipt line');
+  assert.equal(receiptsA[0].status, 'resolved');
+  assert.equal(receiptsA[0].id, 'legacy_thought_note-mixed_receipt_1');
+
+  // Repeated migration run is idempotent
+  assert.deepEqual(migrate(dbA), []);
+  assert.equal(repoA.listThoughts(sA, { includeResolved: true }).length, 2, 'repeated migration run leaves count unchanged');
+
+  // Original note content remains 100% untouched
+  assert.equal(repoA.getNote(sA, 'note-mixed')?.content, '[ایده] ایدهٔ قبل از تبدیل\nپشتیبانی آنلاین ✓ (بخش «پشتیبانی» از همین ساخته شد)');
+  dbA.close();
+
+  // Path B: Database already at version 22, then migrating to 23
+  const dbB = new Database(':memory:');
+  migrate(dbB, 20);
+  const insertNoteB = dbB.prepare('INSERT INTO notes (id,user_id,workspace_id,node_id,content,created_at,updated_at) VALUES (?,?,?,?,?,?,?)');
+  insertNoteB.run('note-mig22', U, 'w1', 'business', '[ایده] فکر معمولی\nسامانهٔ پیامک ✓ (بخش «پیامک» از همین ساخته شد)', '2026-01-01', '2026-01-02');
+  migrate(dbB, 22); // simulates DB at version 22
+
+  // Now migrate 22 -> 23
+  const applied = migrate(dbB, 23);
+  assert.deepEqual(applied, [23]);
+  const repoB = new Repo(dbB);
+  const sB = { userId: U, workspaceId: 'w1' };
+  const thoughtsB = repoB.listThoughts(sB, { includeResolved: true });
+
+  assert.equal(thoughtsB.length, 2, 'note with 1 idea and 1 receipt produces exactly 2 thoughts');
+  const receiptsB = thoughtsB.filter((t) => t.text === 'سامانهٔ پیامک');
+  assert.equal(receiptsB.length, 1, '22->23 migration path ends with exactly one Thought per receipt');
+  assert.equal(receiptsB[0].status, 'resolved');
+
+  // Repeated startup
+  assert.deepEqual(migrate(dbB), []);
+  assert.equal(repoB.listThoughts(sB, { includeResolved: true }).length, 2);
+  dbB.close();
+});
+
 test('P1-10: Truth safety: Thought never appears in confirmed facts, never fills slot, never satisfies readiness', () => {
   const { db, repo, s } = freshDb();
 

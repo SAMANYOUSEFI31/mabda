@@ -508,7 +508,7 @@ export const MIGRATIONS: Migration[] = [
         const source = JSON.parse(o.source!) as LegacySource;
         return source.kind === 'note' && source.noteId ? [{ objectId: o.id, status: o.status, ...source }] : [];
       });
-      const insert = db.prepare(`INSERT INTO thoughts
+      const insert = db.prepare(`INSERT OR IGNORE INTO thoughts
         (id,user_id,workspace_id,node_id,kind,text,status,source_note_id,source_line,source_line_key,source_quote,inferred,resolved_object_id,created_at,updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
       for (const note of notes) {
@@ -537,13 +537,13 @@ export const MIGRATIONS: Migration[] = [
 
         // The legacy "made a section" action stripped the marker and wrote this receipt in-place.
         // It preserved the text and resolved state, but not the original kind; keep that kind unknown.
-        const lines = note.content.split(/\\r?\\n/);
+        const lines = note.content.split(/\r?\n/);
         for (let line = 0; line < lines.length; line++) {
-          const receipt = /^(.*?)\\s+✓\\s+\\(بخش «[^»\\n]+» از همین ساخته شد\\)\\s*$/.exec(lines[line]);
+          const receipt = /^(.*?)\s+✓\s+\(بخش «[^»\n]+» از همین ساخته شد\)\s*$/.exec(lines[line]);
           if (!receipt || !receipt[1].trim()) continue;
           const text = receipt[1].trim();
           const inferred = /[؟?]$/.test(text);
-          insert.run(`legacy_thought_${note.id}_${ordinal++}`, note.user_id, note.workspace_id, note.node_id,
+          insert.run(`legacy_thought_${note.id}_receipt_${line}`, note.user_id, note.workspace_id, note.node_id,
             inferred ? 'question' : null, text, 'resolved', note.id, line, legacyLineHash(text), text,
             inferred ? 1 : 0, null, note.created_at, note.updated_at);
         }
