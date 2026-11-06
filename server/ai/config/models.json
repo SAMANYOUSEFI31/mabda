@@ -6,7 +6,7 @@
     "  cheap    -> lightest Flash-Lite: classification, decisions, validation and Auto chat are short, structured and frequent.",
     "  balanced -> Flash: best free model for drafting/chat quality per latency; default for deliverables.",
     "  frontier -> strongest free-tier model (Pro) for escalations and explicit sensitive runs; Flash is the last candidate if Pro is not free for the key.",
-    "`candidates` is an ordered preference list. At server start (and when a BYOK key is saved) the key's model list is fetched",
+    "`candidates` is an ordered preference list. At server start the configured platform key's model list is fetched",
     "and the FIRST candidate that exists and supports generateContent is used; a warning is logged if it is not the first one.",
     "The ids below were NOT verifiable in the authoring sandbox (no outbound access to the Gemini API) — the startup check is what makes them trustworthy.",
     "Prices are public LIST prices per 1M tokens (USD), used only for the ledger. Free-tier calls cost the user nothing but are still recorded at list price",

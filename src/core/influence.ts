@@ -12,6 +12,7 @@ import { dependentsOf } from './decisionGraph';
 import { effectiveFor, inForce, isExpired, reachOf } from './effectiveContext';
 import type { EffectiveItem } from './effectiveContext';
 import { subtreeIds } from './nodeTree';
+import { isActiveContext } from './contextStatus';
 
 export interface ExceptionLink { by: ContextObject; target: ContextObject; /** this object is the one that sets aside (`overrides`) or the one set aside (`overridden`) */ role: 'overrides' | 'overridden' }
 
@@ -32,14 +33,13 @@ export interface Influence {
   };
 }
 
-const isLive = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded';
 const INPUT_CAP = 8;
 
 export function influenceOf(objectId: string, objects: ContextObject[], nodes: TreeNode[], relations: ContextRelationship[], deliverables: GeneratedDeliverable[], now: Date | string | number): Influence | undefined {
   const me = objects.find((o) => o.id === objectId);
   if (!me) return undefined;
   const byId = new Map(objects.map((o) => [o.id, o]));
-  const liveOf = (ids: string[]) => ids.map((id) => byId.get(id)).filter((o): o is ContextObject => !!o && isLive(o));
+  const liveOf = (ids: string[]) => ids.map((id) => byId.get(id)).filter((o): o is ContextObject => !!o && isActiveContext(o));
 
   // above
   const dependencies = liveOf(relations.filter((r) => r.type === 'depends_on' && r.sourceId === objectId).map((r) => r.targetId));

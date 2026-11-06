@@ -21,18 +21,25 @@ async function up(url, tries = 80) {
 }
 const children = [];
 const start = (cmd, args, env) => {
-  const c = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: true });
+  const c = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: 'ignore', detached: process.platform !== 'win32' });
   children.push(c);
   return c;
 };
-const stopAll = () => { for (const c of children) { try { process.kill(-c.pid); } catch { /* gone */ } } children.length = 0; };
+const stopAll = async () => {
+  await Promise.all(children.map((c) => new Promise((resolve) => {
+    if (c.exitCode !== null || c.signalCode !== null) return resolve();
+    c.once('exit', resolve);
+    try { process.kill(process.platform === 'win32' ? c.pid : -c.pid); } catch { resolve(); }
+  })));
+  children.length = 0;
+};
 
 async function scenario(width, tag) {
   const dir = mkdtempSync(join(tmpdir(), 'mabda-scn-'));
   const fakePort = 4010 + (width === 390 ? 1 : 0);
   const port = 3100 + (width === 390 ? 1 : 0);
-  start('npx', ['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(fakePort) });
-  start('npx', ['tsx', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, MABDA_SECRET: 'scenario-secret', NODE_ENV: 'development', MABDA_MANAGED_AI: '1' });
+  start('bun', ['run', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(fakePort) });
+  start('bun', ['run', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, GEMINI_API_KEY: KEY, NODE_ENV: 'development', MABDA_MANAGED_AI: '1' });
   await up(`http://127.0.0.1:${port}/api/health`);
   const BASE = `http://127.0.0.1:${port}`;
 
@@ -57,13 +64,6 @@ async function scenario(width, tag) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
   await goTab('منبع حقیقت', 'منبع');
-
-  step('BYOK key');
-  await account('کلید هوش مصنوعی');
-  await page.getByLabel('کلید Gemini API').fill(KEY);
-  await page.getByRole('button', { name: 'آزمودن و ذخیرهٔ کلید' }).click();
-  await page.getByText('کلید شخصی فعال').waitFor();
-  await page.keyboard.press('Escape');
 
   step('tree: user node under «محتوا», rename a node of the default start, a note and «استخراج»');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
@@ -114,7 +114,7 @@ async function scenario(width, tag) {
   step('workstream: generate an asset (records the exact context versions)');
   await goTab('خروجی‌ها', 'خروجی‌ها'); await page.getByTestId('build-main_positioning').click();
   await page.getByRole('button', { name: 'ساخت دارایی' }).waitFor();
-  await page.getByText(/بدون کسر اعتبار/).first().waitFor({ timeout: 15000 });
+  await page.getByText(/[۰-۹]+ اعتبار/).first().waitFor({ timeout: 15000 });
   await page.getByRole('button', { name: 'ساخت دارایی' }).click();
   await page.getByRole('tab', { name: /^خروجی‌ها/ }).waitFor();
   await page.getByText('ردپای دانش').first().waitFor({ timeout: 30000 });
@@ -164,9 +164,8 @@ async function scenario(width, tag) {
   assert.equal(staleAfter, staleBefore - 1, 'only the rebuilt asset became fresh');
   assert.deepEqual(errors, [], 'no page errors');
   await browser.close();
-  stopAll();
-  rmSync(dir, { recursive: true, force: true });
-  await wait(500);
+  await stopAll();
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
 try {
@@ -177,5 +176,5 @@ try {
   console.error(e);
   process.exitCode = 1;
 } finally {
-  stopAll();
+  await stopAll();
 }

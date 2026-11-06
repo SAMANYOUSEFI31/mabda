@@ -8,8 +8,7 @@ import type { PlanId } from '../types';
 import type { UsageInfo } from '../types/state';
 import { meters } from '../core/entitlements';
 import { dataApi, DataApiError } from '../services/dataApi';
-import { useAiStatus } from '../services/aiStatus';
-import { Alert, Badge, Button, Card, Progress, formatNumber, formatUsd } from '../ui';
+import { Alert, Badge, Button, Card, Progress, formatNumber } from '../ui';
 
 interface Props {
   workspaceId: string;
@@ -19,9 +18,8 @@ interface Props {
   onOpenPlans: () => void;
 }
 
-/** What this plan has used: objects, file quota, today's judgements and Coach — and, with your own key, the approximate token cost. */
+/** What this plan has used: objects, file quota, today's judgements and Coach. */
 export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, onOpenPlans }) => {
-  const ai = useAiStatus();
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,18 +49,6 @@ export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, o
           </Card>
         ))}
       </div>
-
-      {usage.payer === 'user' && (
-        <Alert intent="info" title="قضاوت‌ها با کلید خودت انجام می‌شوند">سرور کلید پلتفرم ندارد؛ قضاوت‌های لایهٔ تصمیم و مربی دانش روی کلید شخصی تو اجرا می‌شوند و سقف روزانه اعمال نمی‌شود.</Alert>
-      )}
-
-      {(ai.byok || usage.byokCostUsd > 0) && (
-        <Card padding="lg" className="flex flex-col gap-stack-xs">
-          <span className="label-md text-text-default">هزینهٔ تقریبی توکن روی کلید خودت (این ماه)</span>
-          <span className="text-numeric-md tabular-nums text-text-default">{formatUsd(usage.byokCostUsd, 4)}</span>
-          <span className="caption text-text-subtle">با قیمت لیست مدل‌ها محاسبه شده و از متادیتای واقعی توکن می‌آید؛ صورت‌حساب رسمی را شرکت ارائه‌دهندهٔ کلید می‌دهد. از اشتراک مبدأ چیزی کم نمی‌شود.</span>
-        </Card>
-      )}
 
       {anyNear && <Button variant="secondary" iconEnd="ArrowLeft" onClick={onOpenPlans}>مقایسهٔ پلن‌ها</Button>}
     </div>

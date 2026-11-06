@@ -149,11 +149,6 @@ export function previewCredits(params: Omit<CalculateCostParams, 'executionMode'
   return calculateCreditCost({ ...rest, executionMode: creditModeForPlan(plan) });
 }
 
-/** Bring-your-own-key requests never consume credits (tokens and cost are still written to the ledger). */
-export function effectiveCredits(cost: number, byok: boolean): number {
-  return byok ? 0 : cost;
-}
-
 /** Rebuilding after a context change costs half (once per change). */
 export function rebuildCredits(cost: number): number {
   return Math.ceil(cost * 0.5);

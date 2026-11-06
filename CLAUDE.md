@@ -17,7 +17,7 @@
 2. فقط توکن‌های معنایی `public/ds`؛ هیچ hex. فایل‌های `public/ds` هرگز ویرایش نشوند.
 3. هیچ پاسخ ساختگی/از پیش‌نوشتهٔ AI نمایش داده نشود؛ در خطا پیام روشن + تلاش دوباره.
 4. شناسهٔ مدل فقط در `server/ai/config/models.json`؛ هرگز در بقیهٔ کد (تست `cost.test.ts` این را اجبار می‌کند).
-5. منطق اعتبار فقط در `src/core/creditEngine.ts`. هر عدد «چه چیزی در کدام پلن هست» (Workspace، سقف Object، سهمیهٔ فایل، موتورها، MCP، BYOK، سقف روزانهٔ قضاوت/Coach، قیمت) فقط در `src/core/entitlements.config.ts`؛ کد و UI از `entitlements.ts` می‌خوانند.
+5. منطق اعتبار فقط در `src/core/creditEngine.ts`. هر عدد «چه چیزی در کدام پلن هست» (Workspace، سقف Object، سهمیهٔ فایل، موتورها، سقف روزانهٔ قضاوت/Coach، قیمت) فقط در `src/core/entitlements.config.ts`؛ کد و UI از `entitlements.ts` می‌خوانند.
 5b. هر UI و هر عدد «اعتبار» فقط وقتی `MABDA_MANAGED_AI` روشن است نمایش/کسر شود (`useAiStatus().managedEnabled`). بدون flag، مصرف با سهمیه و هزینهٔ توکن نشان داده می‌شود. قیمت تومانی هرگز در کد نیست.
 6. موتورهای `src/core` تست دارند.
 7. کامیت‌های کوچک با پیام توصیفی.
@@ -26,7 +26,7 @@
 - معماری و فایل‌ها: `docs/ai-architecture.md`. هر خروجی AI بلوک‌های JSON `{id,kind,markdown,proposal?}` است و Markdown ذخیره می‌شود.
 - هیچ fallback متنی نیست: خطا = `AiError` ساختاریافته + «دوباره». شمارش توکن/هزینهٔ ledger فقط از metadata واقعی provider.
 - `Proposed` هرگز به‌عنوان واقعیت به مدل داده نمی‌شود؛ «به Context اضافه کن» فقط پیش‌نویس Proposed می‌سازد.
-- کلید پیش‌فرض کاربر است (BYOK)؛ AI مدیریت‌شده پشت `MABDA_MANAGED_AI` و پیش‌فرض خاموش.
+- اجرای AI فقط با کلید پلتفرم انجام می‌شود؛ `MABDA_MANAGED_AI` پشت feature flag و پیش‌فرض خاموش است. کاربر کلید/provider/model اضافه نمی‌کند.
 
 ## سیستم طراحی (Bushido)
 - UI فقط از `src/ui` ساخته می‌شود (Button، Card، Dialog، Table، …)؛ کامپوننت جدید لازم شد، از توکن‌های معنایی همان‌جا بساز.

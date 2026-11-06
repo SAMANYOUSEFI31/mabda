@@ -23,7 +23,7 @@ export class AiClientError extends Error {
 }
 
 const USER_KEY = 'mabda_user_id';
-/** Opaque browser-generated id; the server keys the BYOK vault by it until real accounts exist. */
+/** Opaque browser-generated identifier used to scope current local data. */
 export function getUserId(): string {
   let id = localStorage.getItem(USER_KEY);
   if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
@@ -112,28 +112,6 @@ export async function getAiStatus(signal?: AbortSignal): Promise<AiStatus> {
   } finally { g.done(); }
 }
 
-export async function putByokKey(apiKey: string): Promise<{ last4: string }> {
-  const g = guard(CLIENT_TIMEOUT_MS.short);
-  try {
-    const res = await fetch('/api/ai/byok', { method: 'PUT', headers: headers(), body: JSON.stringify({ apiKey }), signal: g.signal });
-    if (!res.ok) throw await errorFromResponse(res);
-    return (await res.json()) as { last4: string };
-  } catch (e) {
-    if (e instanceof AiClientError) throw e;
-    throw networkError(g.signal.aborted, g.timedOut());
-  } finally { g.done(); }
-}
-export async function deleteByokKey(): Promise<void> {
-  const g = guard(CLIENT_TIMEOUT_MS.short);
-  try {
-    const res = await fetch('/api/ai/byok', { method: 'DELETE', headers: headers(), signal: g.signal });
-    if (!res.ok) throw await errorFromResponse(res);
-  } catch (e) {
-    if (e instanceof AiClientError) throw e;
-    throw networkError(g.signal.aborted, g.timedOut());
-  } finally { g.done(); }
-}
-
 /** UI "execution mode" → router user mode (critique is the router's "deep"). */
 export const toUserMode = (m: ExecutionMode): UserMode => (m === 'critique' ? 'deep' : m);
 
@@ -158,8 +136,10 @@ export async function streamChat(
     workspaceId: string;
     /** node chat: context = this node's sub-tree + ancestors; proposals only inside the sub-tree */
     scopeNodeId?: string;
+    scopeNodeIds?: string[];
     focusNodeIds?: string[];
     chatMode?: 'discovery' | 'audit' | 'advisor';
+    thoughtIds?: string[];
     deep: boolean;
     /** past the daily fair-use limit: run on the cheapest model instead of blocking */
     fast?: boolean;
@@ -173,8 +153,8 @@ export async function streamChat(
     const res = await fetch('/api/ai/chat', {
       method: 'POST', headers: headers(), signal: g.signal,
       body: JSON.stringify({
-        message: params.message, workspaceId: params.workspaceId, scopeNodeId: params.scopeNodeId, focusNodeIds: params.focusNodeIds ?? [],
-        chatMode: params.chatMode, mode: params.fast ? 'fast' : params.deep ? 'deep' : 'auto', history: params.history ?? [],
+        message: params.message, workspaceId: params.workspaceId, scopeNodeId: params.scopeNodeId, scopeNodeIds: params.scopeNodeIds, focusNodeIds: params.focusNodeIds ?? [],
+        chatMode: params.chatMode, thoughtIds: params.thoughtIds, mode: params.fast ? 'fast' : params.deep ? 'deep' : 'auto', history: params.history ?? [],
       }),
     });
     if (!res.ok) throw await errorFromResponse(res);

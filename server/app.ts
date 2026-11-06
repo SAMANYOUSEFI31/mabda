@@ -7,7 +7,6 @@ import type { SessionResolver } from './ai/session.ts';
 import { createDataRouter, LOCAL_USER } from './db/routes.ts';
 import { createContextSource } from './db/aiContext.ts';
 import { Repo } from './db/repo.ts';
-import { createMcpRouter } from './mcp/router.ts';
 import { FileService } from './files/service.ts';
 
 /** Wires storage + AI. `aiOptions` lets tests inject a mock-backed AiService / session resolver. */
@@ -18,15 +17,14 @@ export function createApp(db: Database.Database, aiOptions: { sessions?: Session
 
   let aiRef: AiService | undefined;
   let sessionsRef = (): SessionResolver => { throw new Error('sessions not ready'); };
-  const files = new FileService(repo, (aiUser, req) => aiRef!.extract(aiUser, req), aiOptions.clock, { managed: () => sessionsRef().managedEnabled, payer: () => sessionsRef().platformPayer() });
+  const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), aiOptions.clock, { managed: () => sessionsRef().managedEnabled });
   const source = createContextSource(repo, files, LOCAL_USER, aiOptions.clock ?? (() => new Date()));
   const ai = createAiRouter({ source, sessions: aiOptions.sessions, service: aiOptions.service });
   aiRef = ai.service;
   sessionsRef = () => ai.sessions;
 
-  app.use('/mcp', createMcpRouter({ repo }));
   app.use('/api/ai', ai.router);
-  app.use('/api', createDataRouter({ repo, ai: ai.service, files, source, payer: () => ai.sessions.platformPayer(), admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);
+  app.use('/api', createDataRouter({ repo, ai: ai.service, files, source, admin: adminEnabled() || aiOptions.admin, clock: aiOptions.clock }).router);
 
   /** Health check (does not call any model). */
   app.get('/api/health', (_req: Request, res: Response) => {

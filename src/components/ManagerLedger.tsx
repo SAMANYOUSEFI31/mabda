@@ -13,7 +13,7 @@ import { PLANS } from '../core/creditEngine';
 
 const pct = (r: number) => `${formatNumber(Math.round(r * 1000) / 10)}٪`;
 
-/** Manager view (MABDA_ADMIN): what each workspace REALLY costs us this month vs what its plan earns. Your own-key (BYOK) spend is not ours. */
+/** Manager view (MABDA_ADMIN): platform AI cost per workspace compared with plan revenue. */
 export const ManagerLedger: React.FC = () => {
   const [rows, setRows] = useState<CostReportRowInfo[] | null>(null);
   const [month, setMonth] = useState('');
@@ -56,10 +56,9 @@ export const ManagerLedger: React.FC = () => {
               </span>
             ),
           },
-          { key: 'byok', label: 'هزینهٔ کاربر روی کلید خودش', numeric: true, render: (r) => <span className="text-text-subtle">{formatUsd(r.byokCostUsd, 4)}</span> },
         ]}
       />
-      <Card padding="md"><p className="caption text-text-subtle">فقط مصرفی که کلید پلتفرم پرداخته (قضاوت‌ها، پردازش فایل، مربی دانش و در صورت روشن‌بودن AI مدیریت‌شده، خروجی‌ها) هزینهٔ ما حساب می‌شود. هزینه از متادیتای واقعی توکن و قیمت‌های ثبت‌شدهٔ مدل‌ها می‌آید.</p></Card>
+      <Card padding="md"><p className="caption text-text-subtle">هزینه از متادیتای واقعی توکن و قیمت‌های ثبت‌شدهٔ مدل‌ها به دست می‌آید.</p></Card>
     </div>
   );
 };

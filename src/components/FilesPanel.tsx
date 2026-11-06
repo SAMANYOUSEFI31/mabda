@@ -17,8 +17,7 @@ interface Props {
   nodes: TreeNode[];
   quota: FileQuotaInfo | null;
   credits: number;
-  byok: boolean;
-  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'credits' | 'own-key' | 'blocked' } | undefined>;
+  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'credits' | 'blocked' } | undefined>;
   onProcess: (fileId: string) => Promise<void>;
   onDelete: (fileId: string) => Promise<void>;
 }
@@ -33,7 +32,7 @@ const STATUS: Record<StoredFile['status'], { label: string; intent: 'neutral' | 
 const kb = (n: number) => (n >= 1024 * 1024 ? `${formatNumber(Math.round((n / 1024 / 1024) * 10) / 10)} مگابایت` : `${formatNumber(Math.max(1, Math.round(n / 1024)))} کیلوبایت`);
 
 /** Upload txt / md / pdf / docx (≤ 25MB). Processed once on the cheap tier: summary, Proposed objects, ~800-token chunks. */
-export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok, onUpload, onProcess, onDelete }) => {
+export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUpload, onProcess, onDelete }) => {
   const ai = useAiStatus();
   const managed = ai.managedEnabled;
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -56,7 +55,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
       if (!r) return;
       setBlocked(null);
       if (r.policy === 'blocked') setBlocked(`«${r.file.name}» از سهمیهٔ ماهانهٔ پردازش فایل بیشتر است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.`);
-      else if (r.policy === 'credits' && !byok) setConfirm(r);
+      else if (r.policy === 'credits') setConfirm(r);
       else await run(r.file.id, () => onProcess(r.file.id));
     });
   };
@@ -88,7 +87,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <Progress value={Math.min(used, total)} max={total} label="سهمیهٔ پردازش فایل این ماه" showValue={false} intent={used >= total ? 'warning' : 'neutral'} />
           <span className="body-sm text-text-subtle">
-            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. {managed ? 'بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار (با کلید شخصی بدون کسر اعتبار).' : 'سهمیه هر ماه تازه می‌شود.'}
+            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. {managed ? 'بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار.' : 'سهمیه هر ماه تازه می‌شود.'}
           </span>
         </div>
       )}
@@ -145,7 +144,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, byok
               «{confirm.file.name}» حدود {formatNumber(confirm.file.tokens)} توکن است و {formatNumber(confirm.charge.excessTokens)} توکنش از سهمیهٔ ماهانه بیشتر می‌شود.
             </p>
             <p className="body-md text-text-default">هزینه: {formatNumber(confirm.charge.credits)} اعتبار (موجودی: {formatNumber(credits)}).</p>
-            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از دفتر کل اعتبار بخر یا کلید شخصی بگذار.</Alert>}
+            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از دفتر کل اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
           </div>
         )}
       </Dialog>

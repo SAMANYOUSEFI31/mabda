@@ -152,7 +152,7 @@ for (const size of SIZES) {
   await goTab(TABS[1]); await shoot('context-doc');
   // table view
   await page.getByRole('button', { name: 'نماهای بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'جدول' }).click(); await shoot('context-table');
-  await page.locator('[role=radio]').filter({ hasText: /^سند$/ }).first().click(); await shoot('context-read');
+  await page.getByRole('button', { name: 'نماهای بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'خواندن به‌صورت سند' }).click(); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
@@ -187,19 +187,18 @@ for (const size of SIZES) {
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
-  await accountItem('اتصال به هوش مصنوعی (MCP)'); await shoot('dialog-connect');
-  await page.getByRole('dialog').getByRole('button', { name: 'ساخت کلید' }).click({ timeout: 2500 }).catch(() => {}); await page.waitForTimeout(400); await shoot('dialog-connect-2'); await closeDialog();
-  // the canvas on the showcase workspace: its four states (relations, board, free, full screen)
+  // the truth overview, its focused lineage view, and the free thinking canvas
   await accountItem('ساخت یا بازنشانی فضای نمونه');
   await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 2500 }).catch(() => {});
   await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
   await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
+  await page.getByRole('region', { name: 'اعلان‌ها' }).getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
   await goTab(TABS[1]);
   // «واردِ یک بخش شدن»: a section alone, a sub-section deeper, then back out with the on-screen button
   await page.getByRole('button', { name: /^رفتن به بخش/ }).first().click(); await shoot('context-focus');
   await page.getByTestId('sub-section').first().click(); await shoot('context-focus-deep');
   await page.getByRole('button', { name: /^برگشت به/ }).first().click(); await page.getByRole('button', { name: /^برگشت به/ }).first().click({ timeout: 1500 }).catch(() => {});
-  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+  await page.getByRole('radiogroup', { name: 'نمای منبع حقیقت' }).getByRole('radio', { name: 'نمای کلی' }).click();
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
   await page.waitForTimeout(500); await shoot('canvas-relations');
@@ -210,7 +209,7 @@ for (const size of SIZES) {
   await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
   // the thinking canvas: one free canvas (with the tray and section frames)
   await goTab(TABS[4]); await shoot('thinking-list');
-  await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
+  await page.getByRole('radiogroup', { name: 'نمای فکر' }).getByRole('radio', { name: 'بوم' }).click();
   await page.getByTestId('canvas-stage').waitFor();
   await shoot('canvas-free');
   await goTab(TABS[1]);

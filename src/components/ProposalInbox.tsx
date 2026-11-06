@@ -10,7 +10,7 @@ import type { ContextObject, ObjectSource, TreeNode } from '../types';
 import { Badge, Button, Card, TextField, TypeBadge, formatJalaliDate, formatNumber } from '../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
-  mcp: 'AI بیرونی (MCP)', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
+  mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
 };
 
 interface Props {
@@ -23,7 +23,6 @@ interface Props {
   onReject: (obj: ContextObject, reason?: string) => void;
   onOpenImport: () => void;
   onOpenPack: () => void;
-  onOpenConnect: () => void;
   onOpenMemory: () => void;
   /** the caller already ordered them (upper section first): keep that order instead of newest-first */
   keepOrder?: boolean;
@@ -31,8 +30,8 @@ interface Props {
   hints?: Record<string, string>;
 }
 
-/** Everything an AI suggested (MCP client, chat, coach, a file, a note, a pasted answer) waits here. Nothing is a fact until the user confirms it. */
-export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenConnect, onOpenMemory, keepOrder, hints }) => {
+/** Suggested, imported and pasted content waits here. Nothing is a fact until the user confirms it. */
+export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenMemory, keepOrder, hints }) => {
   const pending = objects.filter((o) => o.status === 'Proposed').sort(keepOrder ? () => 0 : (a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
@@ -42,7 +41,6 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
       <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای AI</Button>
       <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
       <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن حافظهٔ AI</Button>
-      <Button variant="secondary" size="sm" iconStart="Link2" onClick={onOpenConnect}>اتصال به Claude و AIهای دیگر</Button>
     </div>
   );
 
@@ -64,7 +62,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             <h2 className="heading-sm text-text-default">صندوق پیشنهادها</h2>
             <Badge intent="warning" icon={false}>{formatNumber(pending.length)} منتظر تأیید</Badge>
           </div>
-          <p className="body-sm text-text-subtle">پیشنهاد هر AI (Claude از طریق MCP، گفتگو، مربی دانش، فایل، پاسخ چسبانده‌شده) اینجا می‌ماند. تا تأیید نکنی واقعیت نیست و به‌عنوان واقعیت به هیچ AI داده نمی‌شود.</p>
+          <p className="body-sm text-text-subtle">پیشنهادهای هوش مصنوعی، فایل و پاسخ چسبانده‌شده اینجا می‌مانند. تا تأیید نکنی واقعیت نیستند و به‌عنوان واقعیت به هیچ هوش مصنوعی داده نمی‌شوند.</p>
         </div>
         {actions}
       </div>

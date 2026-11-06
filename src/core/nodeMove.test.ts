@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { moveEffect } from './nodeMove';
-import { canMove, quickMoves, reorderSiblings } from './nodeTree';
+import { canMove, movedNodeTree, quickMoves, reorderSiblings } from './nodeTree';
 import type { ContextObject, TreeNode } from '../types';
 
 const n = (id: string, label: string, parentId?: string, order = 0): TreeNode => ({ id, label, description: '', order, ...(parentId ? { parentId } : {}) });
@@ -26,6 +26,13 @@ test('quickMoves: up / down among siblings, indent under the previous sibling, o
   assert.deepEqual(reorderSiblings(nodes, 'r', 'b', 0).map((x) => x.id), ['b', 'a']);
 });
 
+test('the preview and committed move use one subtree-preserving tree transformation', () => {
+  const moved = movedNodeTree(nodes, 'w', 'b');
+  assert.equal(moved.find((x) => x.id === 'w')?.parentId, 'b');
+  assert.equal(moved.find((x) => x.id === 'w1')?.parentId, 'w');
+  assert.equal(moved.find((x) => x.id === 'w1')?.order, nodes.find((x) => x.id === 'w1')?.order);
+});
+
 test('moveEffect: knowledge in the moved nodes goes with them; what reaches them from OUTSIDE is reported in plain words', () => {
   const objects = [o('own', 'w'), o('fromA', 'a'), o('fromR', 'r'), o('global', 'r', { reach: 'global' }), o('other', 'b')];
   // «کارگاه» (under الف) moves to the top level: it no longer inherits «الف» and «ریشه»; a global rule still reaches it
@@ -44,4 +51,19 @@ test('moveEffect: knowledge in the moved nodes goes with them; what reaches them
   assert.deepEqual(moveEffect(nodes, objects, [], 'w', 'a', NOW).sentences, []);
   // only APPROVED knowledge counts (a suggestion is not truth, and a draft never changed the text)
   assert.deepEqual(moveEffect(nodes, [o('p', 'a', { status: 'Proposed' })], [], 'w', '', NOW).lost, []);
+});
+
+test('moveEffect reports a confirmed global rule that becomes overridden after the subtree moves under its replacement', () => {
+  const multipleRoots = [n('r', 'ریشهٔ یک'), n('r2', 'ریشهٔ دو'), n('a', 'الف', 'r'), n('w', 'کارگاه', 'a'), n('w1', 'جلسه‌ها', 'w')];
+  const objects = [
+    o('global', 'r2', { type: 'Fact', reach: 'global', title: 'قاعدهٔ عمومی' }),
+    o('replacement', 'w1', { type: 'Fact', title: 'قاعدهٔ جایگزین' }),
+  ];
+  const relationships = [{ id: 'override', sourceId: 'replacement', targetId: 'global', type: 'overrides' as const, createdAt: '' }];
+  const effect = moveEffect(multipleRoots, objects, relationships, 'w', 'r2', NOW);
+  assert.deepEqual(effect.lost.map((x) => x.object.id), ['global']);
+  assert.equal(effect.overrideChanges.length, 1);
+  assert.equal(effect.overrideChanges[0].object.id, 'global');
+  assert.equal(effect.overrideChanges[0].afterBy?.id, 'replacement');
+  assert.match(effect.sentences.join(' '), /از این پس به‌خاطر «قاعدهٔ جایگزین» کنار گذاشته می‌شود/);
 });

@@ -7,5 +7,5 @@ coverage/
 .env*
 !.env.example
 
-# BYOK vault + generated secret
+# Local database and application data
 server/data/

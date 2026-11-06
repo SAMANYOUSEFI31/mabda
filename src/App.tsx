@@ -12,6 +12,7 @@ import {
   GeneratedDeliverable,
   LedgerEntry,
   PlanId,
+  ThoughtKind,
   Workspace,
 } from './types';
 import type { WorkspaceState, ImpactInfo } from './types/state';
@@ -43,7 +44,7 @@ import type { SearchHit } from './core/globalSearch';
 import { StarterDialog } from './components/StarterDialog';
 import { ThinkingList } from './components/ThinkingList';
 import { assumptionsDue, decisionsDue } from './core/assumptions';
-import { thinkingOf, convertedTo } from './core/thinkingMarkers';
+import { thoughtItem, convertedTo } from './core/thinkingMarkers';
 import type { NoteThinkingItem } from './core/thinkingMarkers';
 import { ContextDetailModal } from './components/ContextDetailModal';
 import { NodeDialogs } from './components/NodeDialogs';
@@ -53,7 +54,6 @@ import { ProposalInbox } from './components/ProposalInbox';
 import { ContextPackDialog } from './components/ContextPackDialog';
 import type { PackTarget } from './components/ContextPackDialog';
 import { ImportAnswerDialog } from './components/ImportAnswerDialog';
-import { ConnectAiModal } from './components/ConnectAiModal';
 import { ChangesPanel } from './components/ChangesPanel';
 import { ThinkingSpace } from './components/ThinkingSpace';
 import { ThoughtDialog } from './components/ThoughtDialog';
@@ -61,7 +61,8 @@ import { DecisionOptionsDialog } from './components/DecisionOptionsDialog';
 import { TruthCompareDialog } from './components/TruthCompareDialog';
 import type { CompareMode } from './components/TruthCompareDialog';
 import { optionsOf, recordOfChoice } from './core/decisionOptions';
-import { resolveThoughtLine, sectionNameFromThought, thoughtToDraft } from './core/thoughts';
+import { sectionNameFromThought } from './core/thoughts';
+import type { AboutTarget } from './core/thoughtAbout';
 import { thinkingSpace } from './core/thinkingSpace';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from './core/decisionGraph';
 import { orderWaitingByStructure } from './core/decisionOrder';
@@ -85,7 +86,6 @@ import { PlanSelectionModal } from './components/PlanSelectionModal';
 import { AccountModal, WIPE_WORDS } from './components/AccountModal';
 import { ArchiveDialog } from './components/ArchiveDialog';
 import { DangerDialog } from './components/Removal';
-import { deleteByokKey } from './services/apiClient';
 import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
@@ -98,11 +98,10 @@ import { pathTo } from './core/nodeFocus';
 import { homeActions } from './core/homeActions';
 import type { HomeAction } from './core/homeActions';
 import { visibleFeatures } from './core/visibleFeatures';
-import { AiSettingsModal } from './components/AiSettingsModal';
 import { AiStatusBanner } from './components/AiNotices';
 import { ledgerEntryFromUsage } from './core/ledger';
 import { titleFromMarkdown } from './core/blocks';
-import { chatCredits, effectiveCredits } from './core/creditEngine';
+import { chatCredits } from './core/creditEngine';
 import { contextDraftFromBlock } from './core/blocks';
 import { DataApiError, dataApi } from './services/dataApi';
 import type { MetricsBundle } from './services/dataApi';
@@ -204,14 +203,13 @@ export default function App() {
   const [isPacksOpen, setIsPacksOpen] = useState(false);
   const approvals = useMemo(() => approvalsOf(data?.changes ?? []), [data?.changes]);
   /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
-  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string; kind?: import('./core/aiRequest').RequestKind; request?: string } | null>(null);
+  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string; kind?: import('./core/aiRequest').RequestKind; request?: string; thoughtIds?: string[] } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
   const [templateDraft, setTemplateDraft] = useState<{ kind: 'node' | 'workstream'; sourceId: string; name: string } | null>(null);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCustomSpecModalOpen, setIsCustomSpecModalOpen] = useState(false);
   const [editingSpec, setEditingSpec] = useState<WorkstreamSpec | undefined>(undefined);
-  const [isAiSettingsOpen, setIsAiSettingsOpen] = useState(false);
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [newWsName, setNewWsName] = useState('');
   const [nodeDialog, setNodeDialog] = useState<NodeDialogState>(null);
@@ -219,7 +217,6 @@ export default function App() {
   const [chatScope, setChatScope] = useState<string | undefined>(undefined);
   const [packTarget, setPackTarget] = useState<PackTarget | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
@@ -324,7 +321,6 @@ export default function App() {
   useEffect(() => { if (metricsOpen) track('dialog.metrics'); }, [metricsOpen]);
   useEffect(() => { if (weeklyOpen) track('dialog.weekly'); }, [weeklyOpen]);
   useEffect(() => { if (isOnboardingOpen) track('dialog.quickstart'); }, [isOnboardingOpen]);
-  useEffect(() => { if (isConnectOpen) track('dialog.connect'); }, [isConnectOpen]);
   useEffect(() => { if (isMemoryOpen) track('dialog.memory'); }, [isMemoryOpen]);
   useEffect(() => { if (isContextModalOpen) track('dialog.record'); }, [isContextModalOpen]);
   // the change log grows on every mutation; the server is its single writer, so re-read it when objects/relations move
@@ -417,25 +413,68 @@ export default function App() {
   };
 
   // ── thinking items (derived from note lines; src/core/thinkingMarkers.ts) ──
-  const thinking = useMemo(() => thinkingOf(data?.notes ?? []), [data?.notes]);
+  const thinking = useMemo(() => (data?.thoughts ?? []).map(thoughtItem).filter((t): t is NoteThinkingItem => !!t), [data?.thoughts]);
   /** «N فکر باز» per node: open thoughts + what waits for approval (one pass, not one per node) */
   const openCounts = useMemo(() => {
     const m = new Map<string, number>();
-    const v = thinkingSpace({ objects: workspaceContexts, notes: data?.notes ?? [], nodes });
+    const v = thinkingSpace({ objects: workspaceContexts, notes: data?.notes ?? [], thoughts: thinking, nodes });
     for (const w of v.waiting) m.set(w.object.nodeId, (m.get(w.object.nodeId) ?? 0) + 1);
     for (const t of v.thoughts) m.set(t.nodeId, (m.get(t.nodeId) ?? 0) + 1);
     return m;
   }, [workspaceContexts, data?.notes, nodes]);
-  const handleConvertItem = async (item: NoteThinkingItem, opts?: { as?: 'fact' | 'decision' }) => {
-    const r = await attempt(() => dataApi.convertThinkingItem(wid, item.noteId, { kind: item.kind, hash: item.hash, text: item.text }, opts));
+  const handleConvertItem = async (item: NoteThinkingItem, type: ContextObject['type']) => {
+    if (!item.id) return;
+    const r = await attempt(() => dataApi.convertThinkingItem(wid, item.id!, type));
     if (!r) return;
-    patch((d) => ({ ...d, objects: r.objects }));
-    toast.show({ intent: 'success', message: 'به‌صورت پیشنهادی ثبت شد؛ در صندوق پیشنهادها منتظر تأیید توست و متن یادداشت دست‌نخورده ماند.' });
+    patch((d) => ({ ...d, objects: r.objects, thoughts: r.thoughts }));
+    toast.show({ intent: 'success', message: 'به‌صورت پیشنهادی ثبت شد؛ در صندوق پیشنهادها منتظر تأیید توست و فکر به‌تنهایی حقیقت نمی‌شود.' });
+  };
+  const handleReviseThought = async (item: NoteThinkingItem, text: string, kind: ThoughtKind): Promise<boolean> => {
+    if (!item.id) return false;
+    if (text !== item.text) {
+      const r = await attempt(() => dataApi.reviseThought(wid, item.id!, text));
+      if (!r) return false;
+      patch((d) => ({ ...d, thoughts: d.thoughts.map((t) => t.id === item.id ? r.thought : t) }));
+    }
+    if (kind !== item.kind) {
+      const r = await attempt(() => dataApi.reclassifyThought(wid, item.id!, kind));
+      if (!r) return false;
+      patch((d) => ({ ...d, thoughts: d.thoughts.map((t) => t.id === item.id ? r.thought : t) }));
+    }
+    toast.show({ intent: 'success', message: 'فکر به‌روزرسانی شد؛ شناسه و پیوندهایش حفظ شدند.' });
+    return true;
+  };
+  const handleDeriveThought = async (item: NoteThinkingItem, text: string, kind: ThoughtKind): Promise<boolean> => {
+    if (!item.id) return false;
+    const r = await attempt(() => dataApi.deriveThought(wid, { parentIds: [item.id!], nodeId: item.nodeId, kind, text }));
+    if (!r) return false;
+    patch((d) => ({ ...d, thoughts: [...d.thoughts, r.thought] }));
+    toast.show({ intent: 'success', message: 'فکر تازه ساخته شد؛ فکر مبدأ دست‌نخورده ماند.' });
+    return true;
+  };
+  const handleSynthesizeThought = async (parentIds: string[], nodeId: string, kind: ThoughtKind, text: string): Promise<boolean> => {
+    const r = await attempt(() => dataApi.deriveThought(wid, { parentIds, nodeId, kind, text }));
+    if (!r) return false;
+    patch((d) => ({ ...d, thoughts: [...d.thoughts, r.thought] }));
+    toast.show({ intent: 'success', message: `فکر ترکیبی از ${formatNumber(parentIds.length)} فکر ساخته شد؛ فکرهای مبدأ دست‌نخورده ماندند.` });
+    return true;
+  };
+  const startThoughtAi = (ids: string[]) => {
+    const selected = thinking.filter((t) => t.id && ids.includes(t.id));
+    if (!selected.length) return;
+    setAiRequest({
+      scopeNodeId: '',
+      kind: 'audit',
+      request: selected.some((t) => t.kind === 'assumption')
+        ? 'این فکرهای تأییدنشده را با دانش تأییدشدهٔ مرتبط بسنج و فرض‌هایشان را به چالش بکش؛ چه چیزی پشتوانه یا خلافشان است؟'
+        : 'این فکرهای تأییدنشده را با دانش تأییدشدهٔ مرتبط بررسی و مقایسه کن؛ چه ابهام یا ناسازگاری‌ای دارند؟',
+      thoughtIds: selected.flatMap((t) => t.id ? [t.id] : []),
+    });
   };
   const handleSplitNote = async (noteId: string) => {
     const r = await attempt(() => dataApi.splitNote(wid, noteId));
     if (!r) return;
-    patch((d) => ({ ...d, nodes: r.nodes, notes: r.notes }));
+    patch((d) => ({ ...d, nodes: r.nodes, notes: r.notes, thoughts: r.thoughts }));
     toast.show({ intent: 'success', message: `${formatNumber(r.created.length)} گره ساخته شد؛ یادداشت اصلی همان‌جا ماند.` });
   };
   // due: assumptions to look at again, decisions that ask «نتیجه چه شد؟»
@@ -551,7 +590,7 @@ export default function App() {
   };
 
   // ── boards: every action returns the pieces of state it touched ──
-  const applyBundle = (r: CanvasBundle) => patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, notes: r.notes, stale: r.stale, canvas: r.canvas }));
+  const applyBundle = (r: CanvasBundle) => patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, notes: r.notes, thoughts: r.thoughts, stale: r.stale, canvas: r.canvas }));
   const handleCanvasMove = async (m: MovePayload) => {
     const before = data?.objects.find((o) => o.id === m.objectId);
     const r = await attempt(() => dataApi.canvasMove(wid, m));
@@ -709,54 +748,66 @@ export default function App() {
 
   // ── notes ──────────────────────────────────────────────────────────────────────────────────────
   // «فضای فکر» (thoughts that are not truth yet) and «فکر تازه»
-  const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string } | null>(null);
+  const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string; initialKind?: ThoughtKind; initialAbout?: AboutTarget[] } | null>(null);
   const [spaceNode, setSpaceNode] = useState<string | undefined>(undefined);
   const openThinkingSpace = (nodeId?: string) => { setSpaceNode(nodeId); setThinkingView('list'); setActiveTab('thinking'); };
   const previewTruth = () => { setPreviewNonce((n) => n + 1); setActiveTab('context'); setContextViewMode('canvas'); };
   /** a thought becomes a SECTION: she names it and picks the parent (or the top level); the thought's line is then done */
-  const startSectionFromThought = (t: { noteId: string; nodeId: string; line: number; text: string }) => setNodeDialog({ kind: 'create', parentId: t.nodeId, label: sectionNameFromThought(t.text), chooseParent: true, thought: { noteId: t.noteId, line: t.line, text: t.text } });
+  const startSectionFromThought = (t: NoteThinkingItem) => {
+    if (!t.id || !t.noteId) return;
+    setNodeDialog({ kind: 'create', parentId: t.nodeId, label: sectionNameFromThought(t.text), chooseParent: true, thought: { id: t.id, noteId: t.noteId, line: t.line, text: t.text } });
+  };
   const startSectionFromNote = (noteId: string) => {
     const n = data?.notes.find((x) => x.id === noteId);
     if (!n) return;
-    const first = thinkingOf([n]).find((i) => !convertedTo(i, workspaceContexts));
+    const first = thinking.find((i) => i.noteId === n.id && !convertedTo(i, workspaceContexts));
     const text = first?.text ?? n.content.split('\n')[0];
-    setNodeDialog({ kind: 'create', parentId: n.nodeId, label: sectionNameFromThought(text), chooseParent: true, ...(first ? { thought: { noteId: n.id, line: first.line, text: first.text } } : {}) });
+    setNodeDialog({ kind: 'create', parentId: n.nodeId, label: sectionNameFromThought(text), chooseParent: true,     ...(first?.id ? { thought: { id: first.id, noteId: n.id, line: first.line, text: first.text } } : {}) });
   };
-  const handleThoughtSectioned = async (t: { noteId: string; line: number; text: string }, label: string) => {
-    const n = data?.notes.find((x) => x.id === t.noteId);
-    if (n) await handleUpdateNote(n.id, resolveThoughtLine(n.content, t, label));
-    toast.show({ intent: 'success', message: `بخش «${label}» ساخته شد. می‌توانی در «ساختار» پرش کنی؛ فکر اولیه با ✓ در یادداشت ماند.` });
+  const handleThoughtSectioned = async (t: { id: string; noteId: string; line: number; text: string }, label: string, nodeId: string) => {
+    const r = await attempt(() => dataApi.resolveThought(wid, t.id, { nodeId }));
+    if (!r) return;
+    patch((d) => ({ ...d, thoughts: d.thoughts.map((x) => x.id === t.id ? r.thought : x) }));
+    toast.show({ intent: 'success', message: `بخش «${label}» ساخته شد. فکر حل شد و یادداشت اصلی بدون تغییر ماند.` });
   };
   const handleSaveThought = async (nodeId: string, content: string) => {
     await handleAddNote(nodeId, content);
-    toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش. به AI نمی‌رسد.' });
+    toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش و فقط با انتخاب صریح تو به AI می‌رسد.' });
+  };
+  const handleSaveAiThought = async (parentIds: string[], nodeId: string, text: string): Promise<boolean> => {
+    if (!text.trim() || !parentIds.length) return false;
+    const r = await attempt(() => dataApi.deriveThought(wid, { parentIds, nodeId, kind: 'idea', text: text.trim() }));
+    if (!r) return false;
+    patch((d) => ({ ...d, thoughts: [...d.thoughts, r.thought] }));
+    toast.show({ intent: 'success', message: 'پاسخ به‌عنوان فکر بازِ مشتق‌شده ذخیره شد؛ فکرهای مبدأ دست‌نخورده ماندند.' });
+    return true;
   };
   const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number) => {
     for (const n of notes) await handleAddNote(n.nodeId, n.content);
-    toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان. به AI نمی‌رسند.` });
+    toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان و فقط با انتخاب صریح تو به AI می‌رسند.` });
   };
   // «گزینه‌های تصمیم باز»: the options are lines under the decision in its note; choosing makes a PROPOSED decision, the others stay in its record
   const [optionsItemKey, setOptionsItemKey] = useState<string | null>(null);
   const optionsItem = optionsItemKey ? thinking.find((t) => t.key === optionsItemKey) ?? null : null;
   const optionsNote = optionsItem ? (data?.notes ?? []).find((n) => n.id === optionsItem.noteId) : undefined;
   const handleChooseOption = async (p: { question: string; chosen: { title: string; text: string }; others: Array<{ title: string; reason: string }> }) => {
-    if (!optionsItem) return;
+    if (!optionsItem?.id) return;
     const r = await attempt(() => dataApi.createObject(wid, {
       type: 'Decision', status: 'Proposed', provenance: 'User Input', title: p.chosen.title.slice(0, 80), content: p.chosen.text, nodeId: optionsItem.nodeId,
       record: recordOfChoice(p.question, p.chosen.title, p.others),
-      source: { kind: 'note', noteId: optionsItem.noteId, lineKey: optionsItem.hash, quote: optionsItem.text, at: new Date().toISOString() },
+      source: { kind: 'note', thoughtId: optionsItem.id, noteId: optionsItem.noteId, lineKey: optionsItem.sourceLineKey ?? optionsItem.hash, quote: optionsItem.text, at: new Date().toISOString() },
     }));
     if (!r) throw new Error('create failed');
-    patch((d) => ({ ...d, objects: [r.object, ...d.objects] }));
+    patch((d) => ({ ...d, objects: [r.object, ...d.objects], thoughts: r.thoughts }));
     toast.show({ intent: 'success', message: `تصمیم ثبت شد؛ ${formatNumber(p.others.length)} گزینهٔ دیگر با دلیل ماندند. در «فکر» منتظر تأیید توست.` });
   };
   const handleAddNote = async (nodeId: string, content: string) => {
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
-    if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes] }));
+    if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes], thoughts: r.thoughts }));
   };
   const handleUpdateNote = async (id: string, content: string) => {
     const r = await attempt(() => dataApi.updateNote(wid, id, content));
-    if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)) }));
+    if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
   };
   /** a small, throwaway removal: it happens at once and offers «برگرداندن» (the note comes back with its text, its section and its place) */
   const handleDeleteNote = async (id: string) => {
@@ -811,7 +862,7 @@ export default function App() {
     if (r) patch((d) => ({ ...d, ledger: [entry, ...d.ledger.filter((x) => x.id !== entry.id)] }));
   };
 
-  // usage is the real provider usage returned by the server; creditCost is already 0 for BYOK
+  // usage is provider metadata returned by the server; credits are shown and charged only when managed AI is enabled
   const handleSaveDeliverable = async (del: GeneratedDeliverable, creditCostIn: number, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
     let creditCost = creditCostIn;
     if (!(await persistDeliverable(del))) return;
@@ -829,7 +880,7 @@ export default function App() {
     if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
 
-  /** A finished chat turn: ledger row with real tokens/cost, and the credits the turn cost (0 for Auto / BYOK). */
+  /** A finished chat turn: ledger row with real provider usage and the credits the turn cost. */
   const handleRecordChatUsage = async (result: GenerationResult, creditCostIn: number, deep: boolean) => {
     let creditCost = creditCostIn;
     creditCost = ai.managedEnabled ? creditCost : 0;
@@ -994,11 +1045,10 @@ export default function App() {
     setWs(r.workspaces);
     toast.show({ intent: 'success', message: `فضای «${ws0.name}» برای همیشه حذف شد.` });
   };
-  /** «حذف همهٔ داده‌ها»: the server empties every table of this user; the browser forgets its own preferences and the AI key goes too */
+  /** «حذف همهٔ داده‌ها»: the server empties every table of this user; the browser forgets its local preferences too. */
   const handleDeleteEverything = async () => {
     const r = await attempt(() => dataApi.deleteAccountData(WIPE_WORDS));
     if (!r) return;
-    try { await deleteByokKey(); } catch { /* no key was saved, or the vault is already empty */ }
     try { Object.keys(localStorage).filter((k) => k.startsWith('mabda')).forEach((k) => localStorage.removeItem(k)); } catch { /* optional */ }
     setData(null); setWs(r.workspaces); setCurrentWorkspaceId('');
     toast.show({ intent: 'success', message: 'همهٔ داده‌ها برای همیشه پاک شد. برنامه خالی است.' });
@@ -1136,7 +1186,7 @@ export default function App() {
               onOpenNote={(_noteId, nodeId) => openThinkingSpace(nodeId)}
               onMoveNoteNode={async (noteId, nodeId) => {
                 const r = await attempt(() => dataApi.noteMoveNode(wid, noteId, nodeId));
-                if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === noteId ? r.note : n)) }));
+                if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === noteId ? r.note : n)), thoughts: r.thoughts }));
               }}
               onSetDependencies={handleSetDependencies}
               onCreateNote={handleFreeNoteCreate}
@@ -1223,8 +1273,6 @@ export default function App() {
         onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
         onOpenLedger={() => setActiveTab('ledger')}
-        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
-        onOpenConnect={() => setIsConnectOpen(true)}
         onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -1251,7 +1299,7 @@ export default function App() {
 
         {/* Main Canvas */}
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
-          {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner onOpenSettings={() => setIsAiSettingsOpen(true)} />}
+          {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
 
 
 
@@ -1355,6 +1403,8 @@ export default function App() {
                   objects={workspaceContexts}
                   nodes={nodes}
                   onConvert={handleConvertItem}
+                  onRevise={handleReviseThought}
+                  onDerive={handleDeriveThought}
                   onGoToNode={(nodeId) => { setActiveTab('context'); setContextViewMode('doc'); setTimeout(() => document.getElementById(`node-${nodeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120); }}
                 />
                 <DueItems {...dueProps} />
@@ -1363,7 +1413,7 @@ export default function App() {
 
             {changesOpen && <ChangesPanel onCompare={() => setCompare({ mode: 'week' })} open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
 
-            {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay, unlimited: ai.byok } : undefined} />}
+            {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay } : undefined} />}
 
             {vf.proposals && <ProposalInbox
               objects={workspaceContexts}
@@ -1374,7 +1424,6 @@ export default function App() {
               onReject={handleRejectProposal}
               onOpenImport={() => setIsImportOpen(true)}
               onOpenPack={() => setPackTarget({ title: currentWorkspace.name })}
-              onOpenConnect={() => setIsConnectOpen(true)}
               onOpenMemory={() => setIsMemoryOpen(true)}
             />}
 
@@ -1405,8 +1454,8 @@ export default function App() {
                   onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
                   items={[
                     { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                    { id: 'read', label: 'سند', icon: 'BookOpen' },
-                    { id: 'canvas', label: 'بوم', icon: 'Workflow' },
+                    { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
+                    ...(contextViewMode === 'read' ? [{ id: 'read', label: 'سند', icon: 'BookOpen' as const }] : []),
                     ...(contextViewMode === 'table' ? [{ id: 'table', label: 'جدول', icon: 'Table2' as const }] : []),
                   ]}
                 />
@@ -1415,6 +1464,7 @@ export default function App() {
                   align="end"
                   trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
                   items={[
+                    { label: 'خواندن به‌صورت سند', icon: contextViewMode === 'read' ? 'Check' : 'BookOpen', onSelect: () => setContextViewMode('read') },
                     { label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') },
                     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
                   ]}
@@ -1486,7 +1536,6 @@ export default function App() {
               nodes={nodes}
               quota={quota}
               credits={currentWorkspace.creditsRemaining}
-              byok={ai.byok}
               onUpload={handleUploadFile}
               onProcess={handleProcessFile}
               onDelete={handleDeleteFile}
@@ -1525,13 +1574,17 @@ export default function App() {
           onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
           onOptions={(item) => setOptionsItemKey(item.key)}
           optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).length}
-          onToKnowledge={(item) => openContext(thoughtToDraft(item, wid, new Date().toISOString()) as ContextObject)}
+          onToKnowledge={handleConvertItem}
+          onReviseThought={handleReviseThought}
+          onDeriveThought={handleDeriveThought}
+          onSynthesizeThought={handleSynthesizeThought}
+          onThinkWithAi={startThoughtAi}
           onOpenObject={(o) => openContext(o)}
           onApproveDraft={handleApproveDraft}
           onRejectDraft={handleRejectDraft}
           proposals={{
             onAccept: handleAcceptProposal, onReplace: handleReplaceWithProposal, onEdit: (o) => openContext(o), onReject: handleRejectProposal,
-            onOpenImport: () => setIsImportOpen(true), onOpenPack: () => setPackTarget({ title: currentWorkspace.name }), onOpenConnect: () => setIsConnectOpen(true), onOpenMemory: () => setIsMemoryOpen(true),
+            onOpenImport: () => setIsImportOpen(true), onOpenPack: () => setPackTarget({ title: currentWorkspace.name }), onOpenMemory: () => setIsMemoryOpen(true),
           }}
                 onPreviewTruth={previewTruth}
                 onToSection={(item) => startSectionFromThought(item)}
@@ -1576,7 +1629,6 @@ export default function App() {
             onOpenLedger={() => setActiveTab('ledger')}
             onOpenPack={setPackTarget}
             onOpenImport={() => setIsImportOpen(true)}
-            onOpenAiSettings={() => setIsAiSettingsOpen(true)}
           />
         )}
 
@@ -1655,12 +1707,12 @@ export default function App() {
       <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />
       <AiRequestDialog
-        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
+        open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} initialThoughtIds={aiRequest?.thoughtIds} thoughts={thinking} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
         sessions={data?.sessions ?? []}
         onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
-        onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? effectiveCredits(chatCredits(false), res.usage.byok) : 0, false); }}
+        onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? chatCredits(false) : 0, false); }}
         onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
-        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
+        onSaveAsThought={handleSaveAiThought}
         onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
       />
       <ContextDetailModal
@@ -1679,6 +1731,10 @@ export default function App() {
         onOpenBatch={() => setIsBatchOpen(true)}
         thoughts={thinking.filter((t) => !convertedTo(t, workspaceContexts))}
         onOpenThinking={() => { setIsContextModalOpen(false); openThinkingSpace(); }}
+        onThinkAbout={(object) => {
+          setIsContextModalOpen(false);
+          setThoughtDialog({ nodeId: object.nodeId, initialKind: 'question', initialAbout: [{ kind: 'object', id: object.id, label: object.title }] });
+        }}
         metrics={metrics}
         relationships={data?.relationships ?? []}
         onSetDependencies={handleSetDependencies}
@@ -1705,12 +1761,13 @@ export default function App() {
         onChoose={handleChooseOption}
         onAskAi={(text) => { setOptionsItemKey(null); setAiRequest({ scopeNodeId: optionsItem?.nodeId ?? '', kind: 'decision', request: text }); }}
       />
-      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} />
+      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} initialKind={thoughtDialog?.initialKind} initialAbout={thoughtDialog?.initialAbout} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} />
       <NodeDialogs
         state={nodeDialog}
         nodes={nodes}
         objects={workspaceContexts}
         notes={data.notes}
+        thoughts={data.thoughts}
         files={data.files}
         onClose={() => setNodeDialog(null)}
         workspaceId={wid}
@@ -1723,16 +1780,15 @@ export default function App() {
         onOpenCoach={(nodeId) => setNodeDialog({ kind: 'coach', nodeId })}
         onSaveProposals={handleSaveProposals}
         onLedger={setLedger}
-        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
         onRename={(nodeId, label, description) => nodeOp(() => dataApi.renameNode(wid, nodeId, { label, description }))}
         relationships={data.relationships}
         onMove={(nodeId, parentId, reason) => nodeOp(() => dataApi.moveNode(wid, nodeId, parentId, undefined, reason))}
         onDelete={async (nodeId, transferTo, mode) => {
           const r = await attempt(() => dataApi.deleteNode(wid, nodeId, transferTo, mode));
           if (!r) throw new Error('node delete failed');
-          patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, files: r.files, stale: r.stale }));
+          patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, thoughts: r.thoughts, files: r.files, stale: r.stale }));
           void reload(wid);
-          toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
+          toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
         }}
         onThoughtSectioned={handleThoughtSectioned}
       />
@@ -1758,7 +1814,6 @@ export default function App() {
             }
           })();
         }}
-        onOpenAiSettings={() => setIsAiSettingsOpen(true)}
       />
 
       {/* Plan Selection Modal (Starter / Pro / Max - F6) */}
@@ -1782,11 +1837,6 @@ export default function App() {
         onArchiveWorkspace={handleArchiveWorkspace}
         onDeleteWorkspace={handleDeleteWorkspace}
         onDeleteEverything={handleDeleteEverything}
-        onOpenAiSettings={() => {
-          setIsAccountModalOpen(false);
-          setIsAiSettingsOpen(true);
-        }}
-        onOpenConnect={() => setIsConnectOpen(true)}
       />
 
       {/* Custom Spec Modal (F8) */}
@@ -1889,10 +1939,6 @@ export default function App() {
         onProposed={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onSummary={(note, ledger) => patch((d) => ({ ...d, notes: [note, ...d.notes], ledger }))}
       />
-      <ConnectAiModal open={isConnectOpen} workspaceId={wid} planId={currentWorkspace.planId} onClose={() => setIsConnectOpen(false)} onUpgrade={() => setIsPlanModalOpen(true)} />
-
-      <AiSettingsModal isOpen={isAiSettingsOpen} onClose={() => setIsAiSettingsOpen(false)} />
-
       {/* New workspace dialog */}
       <Dialog
         open={isNewWorkspaceModalOpen}

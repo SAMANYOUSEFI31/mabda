@@ -56,13 +56,14 @@ test('guessThoughtKind / composeThought: the marker is written for the user; a q
   assert.deepEqual(back.map((b) => [b.kind, b.text]), [['open_decision', 'قیمت اشتراک سه‌ماهه؟']]);
 });
 
-test('thoughtToDraft: the knowledge form is prefilled — proposed, the line is the source; an assumption is a flagged Fact, the rest are Decisions', () => {
+test('thoughtToDraft: promotion is explicit and proposed, with stable Thought provenance', () => {
   const items = thinkingOf(notes);
-  const q = items.find((i) => i.kind === 'question')!, a = items.find((i) => i.kind === 'assumption')!;
-  const dq = thoughtToDraft(q, 'w', '2026-01-01');
+  const q = { ...items.find((i) => i.kind === 'question')!, id: 'thought-q' };
+  const a = { ...items.find((i) => i.kind === 'assumption')!, id: 'thought-a' };
+  const dq = thoughtToDraft(q, 'w', '2026-01-01', 'Decision');
   assert.deepEqual([dq.type, dq.status, dq.nodeId, dq.assumption], ['Decision', 'Proposed', 'offer', undefined]);
-  assert.deepEqual([dq.source?.kind, dq.source?.noteId, dq.source?.lineKey, dq.source?.quote], ['note', 'n1', q.hash, q.text]);
-  const da = thoughtToDraft(a, 'w', '2026-01-01');
+  assert.deepEqual([dq.source?.kind, dq.source?.thoughtId, dq.source?.noteId, dq.source?.lineKey, dq.source?.quote], ['note', 'thought-q', 'n1', q.hash, q.text]);
+  const da = thoughtToDraft(a, 'w', '2026-01-01', 'Fact');
   assert.deepEqual([da.type, da.assumption, da.status], ['Fact', true, 'Proposed']);
 });
 

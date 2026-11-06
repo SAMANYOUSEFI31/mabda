@@ -1,17 +1,21 @@
 /**
- * Writing a thought down without knowing any syntax. A thought is a LINE of a note with a marker (`[ایده]` …): the marker is
- * written FOR the user from a chip; the brackets stay a professional shortcut. The kind is decided by rules, never guessed by an
- * AI: a text that ends with «؟» / «?» is a question. Converting a thought to knowledge only PREFILLS the knowledge form — the
- * user looks, edits and saves; the line stays where it was and the new knowledge remembers it (`source`). Pure.
+ * User-facing helpers for writing and explicitly promoting Thoughts. Note markers remain the lightweight input syntax;
+ * persistence, identity and promotion are handled by the Thought repository.
  */
 
-import type { ContextDraft, ObjectSource } from '../types';
+import type { ContextDraft, ContextType, ObjectSource } from '../types';
 import { guessTitle } from './knowledgeGuess';
 import { MARKER_OF, THINKING_FA, isQuestionLine, parseThinking } from './thinkingMarkers';
 import type { NoteThinkingItem, ThinkingKind } from './thinkingMarkers';
 
 export const THOUGHT_KINDS: ThinkingKind[] = ['idea', 'question', 'assumption', 'open_decision'];
 export { THINKING_FA };
+
+export function promotionTypesForThought(kind: ThinkingKind): ContextType[] {
+  if (kind === 'assumption') return ['Fact'];
+  if (kind === 'open_decision') return ['Decision'];
+  return ['Fact', 'Decision', 'Constraint'];
+}
 
 /** idea by default; a text that ends with a question mark is a question (the user can change the chip) */
 export const guessThoughtKind = (text: string): ThinkingKind => (isQuestionLine(text.trim().split('\n').pop() ?? '') ? 'question' : 'idea');
@@ -27,22 +31,27 @@ export function composeThought(text: string, kind: ThinkingKind): string {
 }
 
 /**
- * The knowledge form, prefilled from a thought: question and open decision and idea → a Decision (a question to decide),
- * assumption → a Fact flagged as an assumption. Always PROPOSED (it waits in the thinking space for a yes), with the line as its quote.
+ * The target meaning is chosen explicitly; assumptions and open decisions keep their domain meaning.
+ * Always PROPOSED, with the stable Thought identity and its original Material reference.
  */
-export function thoughtToDraft(item: NoteThinkingItem, workspaceId: string, now: string): ContextDraft {
+export function thoughtToDraft(item: NoteThinkingItem, workspaceId: string, now: string, type: ContextType): ContextDraft {
+  if (!item.id) throw new Error('Thought identity is required before promotion.');
+  if (!promotionTypesForThought(item.kind).includes(type)) throw new Error('The selected Knowledge type does not match this Thought.');
   const assumption = item.kind === 'assumption';
-  const source: ObjectSource = { kind: 'note', noteId: item.noteId, lineKey: item.hash, quote: item.text, at: now };
+  const source: ObjectSource = {
+    kind: item.noteId ? 'note' : 'user', thoughtId: item.id, ...(item.noteId ? { noteId: item.noteId } : {}),
+    ...(item.sourceLineKey ? { lineKey: item.sourceLineKey } : { lineKey: item.hash }),
+    quote: item.text, at: now,
+  };
   return {
-    workspaceId, type: assumption ? 'Fact' : 'Decision', status: 'Proposed', provenance: 'User Input',
+    workspaceId, type, status: 'Proposed', provenance: 'User Input',
     title: guessTitle(item.text), content: item.text, nodeId: item.nodeId, source,
     ...(assumption ? { assumption: true } : {}),
   };
 }
 
 /**
- * A thought that became a SECTION (a tree node) is done: its line stays in the note as a plain record — no marker and not a
- * question any more — so the open-thought lists stop counting it. Only that line changes; every other line is as she typed it.
+ * Legacy text rewrite retained for old line-derived records; current section promotion leaves the source Note unchanged.
  */
 export function resolveThoughtLine(content: string, item: Pick<NoteThinkingItem, 'line' | 'text'> & { endLine?: number }, sectionLabel: string): string {
   const lines = content.split(/\r?\n/);

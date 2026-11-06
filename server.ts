@@ -9,8 +9,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp } from './server/app.ts';
 import { openDatabase } from './server/db/database.ts';
+import { decommissionLegacyByok } from './server/ai/decommission.ts';
 
 dotenv.config();
+
+const removedLegacyCredentials = decommissionLegacyByok();
+if (removedLegacyCredentials) console.info('[ai] removed retired personal-key vault files');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +26,7 @@ const { app, aiSessions } = createApp(openDatabase());
 /** At start-up, verify the configured model ids against the managed key's model list. Never guesses. */
 async function verifyManagedModels() {
   if (!aiSessions.managedEnabled) {
-    console.log('[ai] managed AI is OFF (MABDA_MANAGED_AI). Users must add their own API key (BYOK).');
+    console.log('[ai] managed AI is OFF (MABDA_MANAGED_AI). Platform AI requests are disabled.');
     return;
   }
   if (!aiSessions.managedKeyValid) {

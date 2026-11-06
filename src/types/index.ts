@@ -6,11 +6,12 @@
 export type ContextType = 'Fact' | 'Decision' | 'Constraint';
 export type ContextStatus = 'Confirmed' | 'Proposed' | 'Needs Review' | 'Superseded' | 'Archived';
 export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported';
+export type ThoughtKind = 'idea' | 'question' | 'assumption' | 'open_decision';
 
-/** Where a suggestion came from — shown in the proposals inbox (which AI, when). */
+/** Where a suggestion came from — legacy source kinds remain readable for stored records. */
 export interface ObjectSource {
   kind: 'mcp' | 'chat' | 'coach' | 'file' | 'note' | 'paste' | 'user' | 'asset';
-  /** MCP token label («Claude»), file name, … */
+  /** legacy external-source label, file name, … */
   label?: string;
   /** why the AI suggested it (shown in the inbox) */
   reason?: string;
@@ -18,8 +19,46 @@ export interface ObjectSource {
   quote?: string;
   /** kind 'note': the note and the line (a hash of its text) the object was made from — ties a thinking item to its «✓ converted» mark */
   noteId?: string;
+  /** stable Thought identity when this object was promoted from a persisted Thought */
+  thoughtId?: string;
   lineKey?: string;
   at: string;
+}
+
+export type ThoughtStatus = 'open' | 'resolved';
+export type ThoughtHistoryActor = 'user' | 'system';
+
+/** A durable, actionable thought; its source Note is raw Material and may change independently. */
+export interface Thought {
+  id: string;
+  workspaceId: string;
+  nodeId: string;
+  kind: ThoughtKind | null;
+  text: string;
+  status: ThoughtStatus;
+  sourceNoteId?: string;
+  sourceLine?: number;
+  sourceLineKey?: string;
+  sourceQuote?: string;
+  inferred?: boolean;
+  resolvedObjectId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Only explicit semantic edits are recorded; presentation edits and reclassification do not create history. */
+export interface ThoughtRevision {
+  thoughtId: string;
+  revision: number;
+  beforeText: string;
+  afterText: string;
+  at: string;
+}
+
+export interface ThoughtDerivation {
+  parentId: string;
+  childId: string;
+  createdAt: string;
 }
 
 /** question, what was weighed (and why each rejected option was rejected), what is expected, and when to look back */
@@ -56,7 +95,7 @@ export interface Metric {
   updatedAt: string;
 }
 export type MeasurementSource = 'manual' | 'csv' | 'mcp' | 'demo';
-/** one recorded value. `Proposed` = suggested by an AI/MCP client: it is not drawn, counted or packed until the user confirms */
+/** one recorded value. Legacy external suggestions remain Proposed until the user confirms them. */
 export interface Measurement {
   id: string;
   workspaceId: string;
@@ -76,7 +115,7 @@ export type ExpectationVerdict = 'met' | 'partial' | 'missed';
 
 export interface RedlineExample { kind: 'good' | 'bad'; text: string }
 
-/** an edit of CONFIRMED knowledge that nobody approved yet: it sits on the object, and no AI, MCP, pack, export or engine ever reads it — they read the object's own (approved) text */
+/** an edit of CONFIRMED knowledge that nobody approved yet: it sits on the object, and no AI, pack, export or engine ever reads it — they read the object's own (approved) text */
 export interface ObjectDraft { title: string; content: string; examples?: RedlineExample[]; at: string; reason?: string }
 
 export interface ContextObject {
@@ -97,7 +136,7 @@ export interface ContextObject {
   slotKey?: string;
   /** how far the object's effect reaches: 'position' = its node and sub-nodes; 'global' = everywhere. Absent = the type's default (Constraint: global, Fact/Decision: position) */
   reach?: 'global' | 'position';
-  /** up to three short «right / wrong» examples of a red line (a Constraint, or a Decision that reaches everywhere): they travel next to it into the AI request, the Context pack, MCP and the validator. Never on samples */
+  /** up to three short «right / wrong» examples of a red line (a Constraint, or a Decision that reaches everywhere): they travel next to it into the AI request, the Context pack and the validator. Never on samples */
   examples?: RedlineExample[];
   /** the unapproved rewrite of this (Confirmed) object, if any. The text above is still the truth until it is approved */
   draft?: ObjectDraft;
@@ -145,7 +184,7 @@ export interface ContextChange {
   toVersion: number;
   kind: ContextChangeKind;
   actor: ContextChangeActor;
-  /** e.g. the MCP token's name («Claude»), the file name */
+  /** e.g. a legacy external-source label or the file name */
   actorLabel?: string;
   reason?: string;
   /** only the fields that changed */
@@ -307,7 +346,7 @@ export interface GeneratedDeliverable {
   usedFileChunks?: UsedFileChunk[];
   /** staleness signature for which the one-time half-price rebuild was already used */
   halfPriceUsedFor?: string;
-  /** made outside Mabda (MCP client or pasted answer): which AI, and the Context pack it was built from */
+  /** made outside Mabda (for example a pasted answer): which AI, and the Context pack it was built from */
   source?: ObjectSource;
   sourcePackId?: string;
   /** per-criterion / per-guardrail validator results shown under the output */
@@ -408,6 +447,7 @@ export interface LedgerEntry {
   thinkingTokens?: number;
   plan?: AiPlan;
   stages?: import('./ai').StageUsage[];
+  /** Historical payer marker retained only to report pre-MVP entries correctly; new entries omit it. */
   byok?: boolean;
 }
 

@@ -3,7 +3,7 @@ import { modelsConfig } from './config.ts';
 import type { ModelsConfig } from './config.ts';
 import { BlockStreamParser, blocksToMarkdown, normalizeBlock, parseBlocks } from './blocks.ts';
 import { buildPrompt, estimateTokens, injectedRefs } from './context.ts';
-import type { ContextObjectLite, FileExcerpt } from './context.ts';
+import type { ContextObjectLite, ContextThoughtLite, FileExcerpt } from './context.ts';
 import { ModelDecisionLayer } from './decision.ts';
 import type { DecisionLayer, DecisionQuestion } from './decision.ts';
 import { AiError, toAiError } from './errors.ts';
@@ -33,6 +33,8 @@ export interface ChatRequest {
   excerpts?: FileExcerpt[];
   /** focused thread: what this conversation is for (added to the task) */
   threadGoal?: string;
+  /** Thoughts explicitly selected by the user; kept apart from confirmed context */
+  thoughts?: ContextThoughtLite[];
 }
 
 export interface GenerateRequest {
@@ -128,9 +130,9 @@ const sanitizeUsage = (u: unknown): StageUsage | null => {
   };
 };
 
-const usageSummary = (stages: StageUsage[], byok: boolean): UsageSummary => {
+const usageSummary = (stages: StageUsage[]): UsageSummary => {
   const { costUsd, ...t } = sumUsage(stages);
-  return { stages, totals: { ...t, costUsd }, byok };
+  return { stages, totals: { ...t, costUsd } };
 };
 
 export interface ServiceDeps {
@@ -198,9 +200,12 @@ export class AiService {
         history ? `## تاریخچهٔ اخیر گفتگو\n${history}` : '',
         req.allowedNodeIds?.length ? `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین گره‌ها مجاز است.` : '',
         `## پیام کاربر\n${req.message}`,
-        `${BLOCKS_INSTRUCTION}\nطول هدف: ${plan.outputBand.minWords} تا ${plan.outputBand.maxWords} کلمه.`,
       ].filter(Boolean).join('\n\n');
-      const prompt = buildPrompt({ contexts: req.contextList, focusNodeIds: req.focusNodeIds, task, nodeLabels: req.nodeLabels, excerpts: req.excerpts });
+      const prompt = buildPrompt({
+       contexts: req.contextList, focusNodeIds: req.focusNodeIds, task, nodeLabels: req.nodeLabels, excerpts: req.excerpts,
+       thoughts: req.thoughts,
+       responseFormat: `${BLOCKS_INSTRUCTION}\nطول هدف: ${plan.outputBand.minWords} تا ${plan.outputBand.maxWords} کلمه.`,
+      });
       const clamp = (b: ContentBlock): ContentBlock => clampProposal(b, req.allowedNodeIds, req.scopeNodeId);
 
       const s = runner.stream({ stage: 'chat', tier: plan.tier, effort: plan.effort, maxTokens: plan.maxTokens, timeoutMs: this.cfg.timeoutsMs.chat }, prompt, BLOCKS_SCHEMA);
@@ -219,7 +224,7 @@ export class AiService {
       let blocks: ContentBlock[];
       try { blocks = parseBlocks(JSON.parse(text)).map(clamp); } catch (e) { throw e instanceof AiError ? e : new AiError('bad_output', { stage: 'chat', detail: text.slice(0, 200) }); }
       const result: GenerationResult = {
-        blocks, markdown: blocksToMarkdown(blocks), plan, usage: usageSummary(stages, session.source === 'byok'),
+        blocks, markdown: blocksToMarkdown(blocks), plan, usage: usageSummary(stages),
         usedContext: injectedRefs(req.contextList), usedFileChunks: (req.excerpts ?? []).map((e) => ({ fileId: e.fileId, index: e.index })),
       };
       emit({ type: 'done', result });
@@ -273,7 +278,7 @@ export class AiService {
       });
       const stages = [...prior, ...out.stages];
       const result: GenerationResult = {
-        blocks: out.blocks, markdown: out.markdown, plan, usage: usageSummary(stages, session.source === 'byok'),
+        blocks: out.blocks, markdown: out.markdown, plan, usage: usageSummary(stages),
         critiqueFeedback: out.critiqueFeedback, validationFailed: out.validationFailed, checks: out.checks,
         usedContext: injectedRefs(all), usedFileChunks: (req.excerpts ?? []).map((e) => ({ fileId: e.fileId, index: e.index })),
       };
@@ -318,7 +323,7 @@ export class AiService {
         objects.push({ type: o.type as ExtractedObject['type'], title: o.title.trim(), content: o.content.trim(), nodeId: typeof o.nodeId === 'string' && allowed.has(o.nodeId) ? o.nodeId : req.nodeId, quote: verbatimQuote(text, o.quote) });
       }
       const summary = req.wantSummary && typeof v.summary === 'string' && v.summary.trim() ? v.summary.trim() : undefined;
-      return { summary, objects, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
+      return { summary, objects, usage: usageSummary([r.usage]), truncated };
     } finally { dl.done(); }
   }
 
@@ -338,7 +343,7 @@ export class AiService {
       const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش کسب‌وکار (نه طول متن؛ معنا)', stage: 'decision' }, questions);
       const judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }> = {};
       res.answers.forEach((a, i) => { judgments[items[i].id] = { ambiguous: a.choice === 'ambiguous', reason: a.reason ?? '', probability: a.probability }; });
-      return { judgments, usage: res.usage ? usageSummary([res.usage], session.source === 'byok') : undefined };
+      return { judgments, usage: res.usage ? usageSummary([res.usage]) : undefined };
     } finally { dl.done(); }
   }
 
@@ -372,7 +377,7 @@ export class AiService {
       const r = await runner.structured({ stage: 'chat', tier: 'cheap', effort: 'low', maxTokens: 800, timeoutMs: this.cfg.timeoutsMs.chat }, { system: SYSTEM_PROMPT, user: `${THREAD_SUMMARY_INSTRUCTION}\n\n## بخش: ${req.nodeLabel}\n## گفتگو\n${text}` }, SUMMARY_SCHEMA);
       const summary = (r.value as { summary?: unknown })?.summary;
       if (typeof summary !== 'string' || !summary.trim()) throw new AiError('bad_output', { stage: 'chat', detail: 'empty summary' });
-      return { summary: summary.trim(), usage: usageSummary([r.usage], session.source === 'byok') };
+      return { summary: summary.trim(), usage: usageSummary([r.usage]) };
     } finally { dl.done(); }
   }
 
@@ -394,7 +399,7 @@ export class AiService {
       const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شدهٔ کسب‌وکار', stage: 'decision' }, questions);
       const results: Record<string, { conflict: boolean; reason: string }> = {};
       res.answers.forEach((a, i) => { results[pairs[i].key] = { conflict: a.choice === 'conflict', reason: a.reason ?? '' }; });
-      return { results, usage: res.usage ? usageSummary([res.usage], session.source === 'byok') : undefined };
+      return { results, usage: res.usage ? usageSummary([res.usage]) : undefined };
     } finally { dl.done(); }
   }
 
@@ -433,7 +438,7 @@ export class AiService {
         questions: (v.questions as unknown[]).map(str).filter(Boolean).slice(0, 4),
         ambiguities: (v.ambiguities as Array<Record<string, unknown>>).map((a) => ({ quote: str(a?.quote), why: str(a?.why) })).filter((a) => a.quote && a.why).slice(0, 6),
         proposals,
-        usage: usageSummary([r.usage], session.source === 'byok'),
+        usage: usageSummary([r.usage]),
       };
     } finally { dl.done(); }
   }
@@ -463,7 +468,7 @@ export class AiService {
         blocks.push({ id: `a${blocks.length + 1}`, kind: it.kind as ParsedBlock['kind'], title: typeof it.title === 'string' && it.title.trim() ? it.title.trim().slice(0, 100) : md.slice(0, 60), markdown: md, method: 'ai' });
       }
       if (!blocks.length) throw new AiError('bad_output', { stage: 'extract', detail: 'no usable blocks' });
-      return { blocks, usage: usageSummary([r.usage], session.source === 'byok'), truncated };
+      return { blocks, usage: usageSummary([r.usage]), truncated };
     } finally { dl.done(); }
   }
 }

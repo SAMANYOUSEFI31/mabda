@@ -22,14 +22,13 @@ interface Props {
   /** saves the chosen proposals as PROPOSED objects (never Confirmed) */
   onSaveProposals: (proposals: Proposal[]) => Promise<void>;
   onLedger?: (ledger: LedgerEntry[]) => void;
-  onOpenAiSettings: () => void;
 }
 
 /**
  * Context Coach (balanced tier): asks clarifying questions, points at ambiguous phrases and drafts Proposed objects.
  * It writes nothing by itself; the user ticks what to keep. Has its own daily cap per plan.
  */
-export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes, seedText = '', onSaveProposals, onLedger, onOpenAiSettings }) => {
+export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes, seedText = '', onSaveProposals, onLedger }) => {
   const ai = useAiStatus();
   const [text, setText] = useState(seedText);
   const [history, setHistory] = useState<Array<{ role: 'user' | 'coach'; content: string }>>([]);
@@ -84,7 +83,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
 
       <Textarea label="چه چیزی را می‌خواهی روشن کنی؟" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
       {!ai.judgmentsAvailable && (
-        <Alert intent="warning" title="هوش مصنوعی راه‌اندازی نشده" action={<Button size="sm" variant="secondary" iconStart="Settings" onClick={onOpenAiSettings}>تنظیم کلید API</Button>}>برای مربی دانش کلید API لازم است.</Alert>
+        <Alert intent="warning" title="هوش مصنوعی در دسترس نیست">بعداً دوباره تلاش کن.</Alert>
       )}
       {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={ask}>دوباره</Button>}>{error}</Alert>}
       <div>

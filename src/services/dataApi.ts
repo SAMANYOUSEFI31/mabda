@@ -7,7 +7,7 @@ import type {
   ChatSession, ContextChange, ObjectSource, ContextObject, ContextProvenance, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry,
   Note, StoredFile, TreeNode, Workspace, WorkstreamSpec,
 } from '../types';
-import type { ImportParseResult, PackInfo, McpTokenInfo, CostReportRowInfo, UsageInfo, CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
+import type { ImportParseResult, PackInfo, CostReportRowInfo, UsageInfo, CoachQuota, CoachResultInfo, FileChargeInfo, FileQuotaInfo, ImpactInfo, ProcessedFile, WorkspaceState } from '../types/state';
 import type { StaleAsset } from '../core/impactEngine';
 /** what an erase for good would touch (server/db/removal.ts → purgeImpact) */
 export interface PurgeImpactInfo {
@@ -103,9 +103,9 @@ export const dataApi = {
   renameNode: (id: string, nodeId: string, patch: { label?: string; description?: string }) => call<{ nodes: TreeNode[] }>('PATCH', `${ws(id)}/nodes/${nodeId}`, patch),
   moveNode: (id: string, nodeId: string, parentId: string, index?: number, reason?: string) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index, ...(reason ? { reason } : {}) }),
   deleteNode: (id: string, nodeId: string, transferTo?: string, mode: 'move' | 'archive' = 'move') =>
-    call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; files: StoredFile[]; removal: { id: string; label: string }; stale: StaleAsset[] }>('DELETE', `${ws(id)}/nodes/${nodeId}?mode=${mode}${transferTo ? `&transferTo=${encodeURIComponent(transferTo)}` : ''}`),
+    call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; removal: { id: string; label: string }; stale: StaleAsset[] }>('DELETE', `${ws(id)}/nodes/${nodeId}?mode=${mode}${transferTo ? `&transferTo=${encodeURIComponent(transferTo)}` : ''}`),
   /** «برگرداندن»: a node removal is undone on the server (the sections, what moved, what was archived) */
-  undoRemoval: (id: string, removalId: string) => call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; files: StoredFile[]; samples: ContextObject[]; changes: ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/removals/${removalId}/undo`, {}),
+  undoRemoval: (id: string, removalId: string) => call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; samples: ContextObject[]; changes: ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/removals/${removalId}/undo`, {}),
   archive: (id: string) => call<{ objects: ContextObject[]; removals: Array<{ id: string; kind: string; label: string; createdAt: string }>; deliverables: GeneratedDeliverable[] }>('GET', `${ws(id)}/archive`),
   restoreObject: (id: string, objectId: string, nodeId?: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/restore`, nodeId ? { nodeId } : {}),
   purgeImpact: (id: string, objectId: string) => call<{ impact: PurgeImpactInfo }>('GET', `${ws(id)}/objects/${objectId}/purge-impact`),
@@ -123,7 +123,7 @@ export const dataApi = {
   restoreTemplate: (id: string, template: { id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }) => call<{ templates: unknown[] }>('POST', `${ws(id)}/templates/restore`, { template }),
 
   createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: import('../types').DecisionRecord; facets?: string[]; examples?: import('../types').RedlineExample[] }) =>
-    call<{ object: ContextObject }>('POST', `${ws(id)}/objects`, input),
+    call<{ object: ContextObject; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/objects`, input),
   updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; facets?: string[] | null; examples?: import('../types').RedlineExample[] | null; reason?: string; asDraft?: boolean }) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
   approveDraft: (id: string, objectId: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/draft/approve`, {}),
@@ -133,8 +133,8 @@ export const dataApi = {
 
   objectVersions: (id: string, objectId: string) => call<{ versions: Array<{ version: number; type: string; title: string; content: string; createdAt: string }> }>('GET', `${ws(id)}/objects/${objectId}/versions`).then((r) => r.versions),
 
-  createNote: (id: string, nodeId: string, content: string) => call<{ note: Note }>('POST', `${ws(id)}/notes`, { nodeId, content }),
-  updateNote: (id: string, noteId: string, content: string) => call<{ note: Note }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
+  createNote: (id: string, nodeId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes`, { nodeId, content }),
+  updateNote: (id: string, noteId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
   deleteNote: (id: string, noteId: string) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number } }>('DELETE', `${ws(id)}/notes/${noteId}`),
   extractDeliverable: (id: string, deliverableId: string) => call<{ created: ContextObject[]; found: number; skipped: number; ledger: LedgerEntry[] }>('POST', `${ws(id)}/deliverables/${deliverableId}/extract`, {}),
   extractNote: (id: string, noteId: string) => call<{ created: ContextObject[]; ledger: LedgerEntry; usage: UsageSummary }>('POST', `${ws(id)}/notes/${noteId}/extract`, {}),
@@ -158,7 +158,7 @@ export const dataApi = {
   canvasReset: (id: string) => call<CanvasBundle>('POST', `${ws(id)}/canvas/decisions/reset`, {}),
   canvasConnect: (id: string, input: { fromId: string; toId: string; type: 'depends_on' | 'supersedes'; reason?: string; confirmed?: boolean }) => call<CanvasBundle>('POST', `${ws(id)}/canvas/connect`, input),
   freeNoteCreate: (id: string, input: { content: string; x: number; y: number; nodeId?: string }) => call<CanvasBundle & { note: Note }>('POST', `${ws(id)}/canvas/free/notes`, input),
-  noteMoveNode: (id: string, noteId: string, nodeId: string) => call<{ note: import('../types').Note }>('POST', `${ws(id)}/notes/${noteId}/move-node`, { nodeId }),
+  noteMoveNode: (id: string, noteId: string, nodeId: string) => call<{ note: import('../types').Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes/${noteId}/move-node`, { nodeId }),
   freeNoteMove: (id: string, noteId: string, x: number, y: number) => call<{ canvas: CanvasBundle['canvas'] }>('PUT', `${ws(id)}/canvas/free/items/${noteId}`, { x, y }),
   freeObjectPlace: (id: string, objectId: string, x: number, y: number) => call<{ canvas: CanvasBundle['canvas'] }>('PUT', `${ws(id)}/canvas/free/objects/${objectId}`, { x, y }),
   freeObjectRemove: (id: string, objectId: string) => call<{ canvas: CanvasBundle['canvas'] }>('DELETE', `${ws(id)}/canvas/free/objects/${objectId}`),
@@ -166,8 +166,12 @@ export const dataApi = {
   freeNoteToKnowledge: (id: string, noteId: string, type: 'Fact' | 'Decision' | 'Constraint') => call<CanvasBundle & { object: ContextObject }>('POST', `${ws(id)}/canvas/free/notes/${noteId}/to-knowledge`, { type }),
   setOverride: (id: string, objectId: string, targetId: string, reason: string) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/overrides`, { targetId, reason }),
   removeOverride: (id: string, objectId: string, targetId: string, reason?: string) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/overrides/remove`, { targetId, reason }),
-  convertThinkingItem: (id: string, noteId: string, item: { kind: string; hash: string; text: string }, opts: { as?: 'fact' | 'decision'; reviewBy?: string } = {}) => call<{ object: ContextObject; objects: ContextObject[] }>('POST', `${ws(id)}/notes/${noteId}/items/convert`, { ...item, ...opts }),
-  splitNote: (id: string, noteId: string) => call<{ nodes: TreeNode[]; created: TreeNode[]; notes: Note[] }>('POST', `${ws(id)}/notes/${noteId}/split`, {}),
+  convertThinkingItem: (id: string, thoughtId: string, type: ContextObject['type']) => call<{ object: ContextObject; objects: ContextObject[]; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/thoughts/${thoughtId}/promote`, { type }),
+  reviseThought: (id: string, thoughtId: string, text: string) => call<{ thought: import('../types').Thought; revisions: import('../types').ThoughtRevision[] }>('POST', `${ws(id)}/thoughts/${thoughtId}/revise`, { text }),
+  reclassifyThought: (id: string, thoughtId: string, kind: import('../types').ThoughtKind) => call<{ thought: import('../types').Thought }>('POST', `${ws(id)}/thoughts/${thoughtId}/reclassify`, { kind }),
+  deriveThought: (id: string, input: { parentIds: string[]; nodeId: string; kind: import('../types').ThoughtKind; text: string }) => call<{ thought: import('../types').Thought; derivedFrom: string[] }>('POST', `${ws(id)}/thoughts/derive`, input),
+  resolveThought: (id: string, thoughtId: string, resolution: { objectId?: string; nodeId?: string }) => call<{ thought: import('../types').Thought }>('POST', `${ws(id)}/thoughts/${thoughtId}/resolve`, resolution),
+  splitNote: (id: string, noteId: string) => call<{ nodes: TreeNode[]; created: TreeNode[]; notes: Note[]; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes/${noteId}/split`, {}),
   noteOutcome: (id: string, objectId: string, text: string, verdict?: import('../types').ExpectationVerdict) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/outcome`, { text, ...(verdict ? { verdict } : {}) }),
   createMetric: (id: string, m: { name: string; unit: string; direction: import('../types').MetricDirection; target?: number }) => call<MetricsBundle>('POST', `${ws(id)}/metrics`, m),
   archiveMetric: (id: string, metricId: string) => call<MetricsBundle>('POST', `${ws(id)}/metrics/${metricId}/archive`, {}),
@@ -179,7 +183,7 @@ export const dataApi = {
   createSavedPack: (id: string, p: { name: string; instruction: string; selection: import('../types').PackSelection; kind?: import('../core/aiRequest').RequestKind; template?: string }) => call<{ pack: import('../types').SavedPack }>('POST', `${ws(id)}/saved-packs`, p),
   updateSavedPack: (id: string, packId: string, p: { name: string; instruction: string; selection: import('../types').PackSelection; kind?: import('../core/aiRequest').RequestKind; template?: string }) => call<{ pack: import('../types').SavedPack }>('PUT', `${ws(id)}/saved-packs/${packId}`, p),
   deleteSavedPack: (id: string, packId: string) => call<{ ok: boolean; pack?: import('../types').SavedPack }>('DELETE', `${ws(id)}/saved-packs/${packId}`),
-  aiRequest: (id: string, input: { kind: import('../core/aiRequest').RequestKind; request: string; scopeNodeId?: string; scopeNodeIds?: string[]; withChildren?: boolean; tokenBudget?: number; extraIds?: string[]; packId?: string; record?: boolean }) => call<import('../core/aiRequest').AiRequestResult & { packId: string; recorded: boolean }>('POST', `${ws(id)}/ai-requests`, input),
+  aiRequest: (id: string, input: { kind: import('../core/aiRequest').RequestKind; request: string; scopeNodeId?: string; scopeNodeIds?: string[]; withChildren?: boolean; tokenBudget?: number; extraIds?: string[]; thoughtIds?: string[]; packId?: string; record?: boolean }) => call<import('../core/aiRequest').AiRequestResult & { packId: string; recorded: boolean }>('POST', `${ws(id)}/ai-requests`, input),
   renderSavedPack: (id: string, packId: string) => call<{ markdown: string; tokens: number; counts: Record<string, number>; explain: import('../core/scopeExplain').Explain }>('GET', `${ws(id)}/saved-packs/${packId}/render`),
   previewSavedPack: (id: string, p: { instruction: string; selection: import('../types').PackSelection; kind?: import('../core/aiRequest').RequestKind; template?: string }) => call<{ markdown: string; tokens: number; chars: number; counts: Record<string, number>; explain: import('../core/scopeExplain').Explain }>('POST', `${ws(id)}/saved-packs/preview`, p),
   applyStarter: (id: string, starterId: string) => call<{ added: number; samples: ContextObject[]; nodes?: TreeNode[] }>('POST', `${ws(id)}/starters/${starterId}/apply`, {}),
@@ -199,9 +203,6 @@ export const dataApi = {
   coach: (id: string, input: { scope: 'onboarding' | 'node'; nodeId: string; text: string; history?: Array<{ role: 'user' | 'coach'; content: string }> }) =>
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),
 
-  listMcpTokens: (id: string) => call<{ tokens: McpTokenInfo[]; allowed: boolean }>('GET', `${ws(id)}/mcp/tokens`),
-  createMcpToken: (id: string, label: string) => call<{ id: string; token: string; last4: string }>('POST', `${ws(id)}/mcp/tokens`, { label }),
-  revokeMcpToken: (id: string, tokenId: string) => call<{ tokens: McpTokenInfo[] }>('DELETE', `${ws(id)}/mcp/tokens/${tokenId}`),
   createPack: (id: string, input: { specId?: string; deliverableId?: string; nodeId?: string }) => call<PackInfo>('POST', `${ws(id)}/packs`, input),
   listPacks: (id: string) => call<{ packs: Array<{ id: string; title: string; tokens: number; createdAt: string }> }>('GET', `${ws(id)}/packs`).then((r) => r.packs),
   parseImport: (id: string, input: { text: string; packId?: string }) => call<ImportParseResult>('POST', `${ws(id)}/imports/parse`, input),
@@ -215,7 +216,7 @@ export const dataApi = {
     const form = new FormData();
     form.set('file', file);
     if (nodeId) form.set('nodeId', nodeId);
-    return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'credits' | 'own-key' | 'blocked' }>('POST', `${ws(id)}/files`, form);
+    return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'credits' | 'blocked' }>('POST', `${ws(id)}/files`, form);
   },
   processFile: (id: string, fileId: string) => call<ProcessedFile>('POST', `${ws(id)}/files/${fileId}/process`, {}),
   deleteFile: (id: string, fileId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/files/${fileId}`),
@@ -229,6 +230,7 @@ export interface CanvasBundle {
   relationships: ContextRelationship[];
   changes: import('../types').ContextChange[];
   notes: Note[];
+  thoughts: import('../types').Thought[];
   stale: StaleAsset[];
   canvas: { decisions: import('../types/state').CanvasItem[]; free: import('../types/state').CanvasItem[] };
 }

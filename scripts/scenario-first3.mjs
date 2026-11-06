@@ -22,7 +22,7 @@ const children = [];
 /** a fresh server and database per width: the plan caps how many workspaces one install may hold */
 const startServer = async (port, tag) => {
   PORT = port; BASE = `http://127.0.0.1:${PORT}`;
-  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true }));
+  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(PORT), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), NODE_ENV: 'development' }, stdio: 'ignore', detached: true }));
   for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* retry */ } await wait(250); }
 };
 const api = async (path) => (await fetch(`${BASE}/api${path}`)).json();

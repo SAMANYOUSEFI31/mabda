@@ -60,7 +60,7 @@ export interface CanvasProps {
   onOpenObject: (o: ContextObject) => void;
   onOpenAssets: () => void;
   onAddKnowledge: () => void;
-  /** «بوم حقیقت» (default): only the approved relations map. «بوم فکر»: free + board, with open thoughts and suggestions in a tray. */
+  /** «نمای کلی حقیقت» shows approved relations; the thinking space uses its free canvas for open Thoughts and suggestions. */
   mode?: 'truth' | 'thinking';
   /** a new value turns «نشان بده چه در راه است» on (the thinking space asks «اگر همه را تأیید کنم؟») */
   previewNonce?: number;
@@ -70,7 +70,7 @@ export interface CanvasProps {
   revealObject?: { id: string; n: number };
   /** «دور یک مورد» looks beyond the section we are inside: everything in the workspace */
   lineageObjects?: ContextObject[];
-  /** a free note (a thought) becomes a SECTION of the tree: she picks the name and the parent */
+  /** a free note can become a SECTION of the tree: the person picks the name and the parent */
   onNoteToSection?: (noteId: string) => void;
 }
 
@@ -81,9 +81,9 @@ const TIPS = [
   'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
 const TIPS_THINKING = [
-  'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا فکر تازه بنویسی؛ کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور. خط‌چین یعنی رابطه‌ای که با تأیید واقعی می‌شود.',
+  'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «فکر تازه» در فهرست فکرها استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
 ];
-const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (بوم حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
+const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
 // three looks, one engine: the overview and «دور یک مورد» (the truth canvas), the free canvas (thinking). «تابلو» is gone: see docs/canvas-design.md
 const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['overview'], thinking: ['free'] };
@@ -95,7 +95,7 @@ function useMedia(q: string): boolean {
   return m;
 }
 
-/** «بوم»: ONE engine, two spaces — «بوم حقیقت» (رابطه‌ها، فقط تأییدشده) and «بوم فکر» (آزاد · تابلو، با سینی «تازه‌ها»). The layout of each is remembered on its own. See docs/canvas-design.md for the principles every choice below answers to. */
+/** One scene engine serves the truth overview and the free thinking canvas. See docs/canvas-design.md for their distinct jobs. */
 export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const toast = useToast();
   const prefs = useMemo(readPrefs, []);
@@ -577,7 +577,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
-      {mode === 'thinking' && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: '', x: 0, y: 0 })}>یادداشت</Button>}
+      {mode === 'thinking' && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: '', x: 0, y: 0 })}>یادداشت آزاد</Button>}
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
         {!sheet && <IconButton icon="PanelRight" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
@@ -622,8 +622,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   );
 
   const rootClass = fullscreen ? 'fixed top-space-0 bottom-space-0 start-space-0 end-space-0 z-dialog flex flex-col gap-stack-sm bg-surface-page p-inset-md' : 'flex flex-col gap-stack-md rounded-container border border-border-default bg-surface-raised p-inset-lg';
+  const viewLabel = mode === 'truth' ? 'نمای کلی حقیقت' : 'بوم فکر';
   const body = (
-    <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} aria-label="بوم" data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
+    <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} aria-label={viewLabel} data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
       {!sheet && toolbar}
       {lineage && (
         <div className="flex flex-wrap items-center gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="lineage-bar" role="status">
@@ -643,7 +644,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
           {(only || onlyReview || showPending || rowsBy === 'facet') && !lineage && <span role="status" data-testid="filter-active" className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default">نما فیلتر دارد: {[only === 'constraint' ? 'فقط خط قرمزها' : only === 'pending' ? 'فقط پیشنهادها' : '', onlyReview ? 'فقط نیاز به بازبینی' : '', showPending ? 'با آنچه در راه است' : '', rowsBy === 'facet' ? 'ردیف‌ها: بُعد' : ''].filter(Boolean).join(' · ')}</span>}
-          {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نقشهٔ حقیقت چه می‌شود؟</Button>}
+          {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نمای کلی حقیقت چه می‌شود؟</Button>}
         </div>
       )}
       {tip !== undefined && !stageEmpty && (
@@ -660,7 +661,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             dir="ltr"
             tabIndex={0}
             role="application"
-            aria-label={`بوم، چیدمان ${LAYOUT_FA[layoutEff]}. با کلیدهای جهت‌دار جابه‌جا شو؛ با Tab به کارت‌ها برو و با پیکان‌ها بین کارت‌ها حرکت کن. نمای «ساختار» همین اطلاعات را به‌صورت درخت می‌دهد.`}
+            aria-label={`${viewLabel}، چیدمان ${LAYOUT_FA[layoutEff]}. با کلیدهای جهت‌دار جابه‌جا شو؛ با Tab به کارت‌ها برو و با پیکان‌ها بین کارت‌ها حرکت کن. نمای «ساختار» جای بخش‌ها را نشان می‌دهد؛ اینجا رابطه‌های صریح دیده می‌شوند.`}
             {...handlers}
             onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) { clearSelection(); setCtx(null); } }}
             onDoubleClick={onStageDouble}
@@ -715,8 +716,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
-                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ روی فضای خالی دابل‌کلیک کن تا فکری بنویسی، یا از «⋯» یک کارت حقیقت را کنار فکرها بیاور.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
-                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
+                  <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ یادداشت‌های آزاد را اینجا بچین و از «فهرست فکرها» برای ایده‌ها و سؤال‌های باز استفاده کن.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
+                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت آزاد تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
                 </div>
               </div>
             )}
@@ -841,11 +842,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {moveTo && <Select label="بخش" value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
       </Dialog>
 
-      <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="فکر تازه روی بوم فکر"
+      <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="یادداشت آزاد روی بوم"
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">
-            <Textarea label="فکر خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این فقط یادداشت است؛ تا تبدیلش نکنی دانش نیست و به هوش مصنوعی داده نمی‌شود." />
+            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و به AI داده نمی‌شود. برای ایده، سؤال یا فرض باز از «فکر تازه» استفاده کن." />
             <Select label="به کدام گره مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
           </div>
         )}

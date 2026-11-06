@@ -1,6 +1,6 @@
 /**
  * What is IN FORCE at a node — the one answer every consumer shares (AI generation guardrails, node chat, the Context
- * pack, the output validator, the «آنچه اینجا اثر دارد» view, MCP get_context). Pure.
+ * pack, the output validator and the «آنچه اینجا اثر دارد» view). Pure.
  *
  * Rules (docs/spine.md):
  *  • an object in node M applies to M and to M's sub-nodes — never to M's parent and never to a sibling;
@@ -12,6 +12,7 @@
 
 import type { ContextObject, ContextRelationship, TreeNode } from '../types';
 import { ancestorIds } from './nodeTree';
+import { isActiveContext } from './contextStatus';
 
 export type Origin = 'own' | 'inherited' | 'global' | 'overridden' | 'expired';
 
@@ -30,7 +31,6 @@ export const IN_FORCE: ReadonlySet<Origin> = new Set<Origin>(['own', 'inherited'
 
 export const reachOf = (o: Pick<ContextObject, 'type' | 'reach'>): 'global' | 'position' => o.reach ?? (o.type === 'Constraint' ? 'global' : 'position');
 
-const isLive = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded';
 const toMs = (d: Date | string | number) => (d instanceof Date ? d.getTime() : typeof d === 'number' ? d : Date.parse(d));
 
 /** `validUntil` is a date (YYYY-MM-DD) or a timestamp; a date is valid through the END of that day */
@@ -47,7 +47,7 @@ function validOverrides(objects: ContextObject[], nodes: TreeNode[], relations: 
   for (const r of relations) {
     if (r.type !== 'overrides') continue;
     const by = byId.get(r.sourceId), target = byId.get(r.targetId);
-    if (!by || !target || !isLive(by) || isExpired(by, now)) continue;
+    if (!by || !target || !isActiveContext(by) || isExpired(by, now)) continue;
     if (by.nodeId === target.nodeId || !ancestorIds(nodes, by.nodeId).includes(target.nodeId)) continue;
     out.push({ by, target });
   }
@@ -75,7 +75,7 @@ export function effectiveFor(nodeId: string, objects: ContextObject[], nodes: Tr
   const rank = (i: EffectiveItem) => (i.origin === 'own' ? 0 : i.origin === 'inherited' ? 1 : i.origin === 'global' ? 2 : 3);
   const out: EffectiveItem[] = [];
   for (const o of objects) {
-    if (!isLive(o)) continue;
+    if (!isActiveContext(o)) continue;
     const here = inChain.has(o.nodeId);
     if (!here && reachOf(o) !== 'global') continue;
     const base: Origin = o.nodeId === nodeId ? 'own' : here ? 'inherited' : 'global';

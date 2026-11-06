@@ -2,9 +2,9 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 import type {
   ObjectSource, ContextObject, ContextRelationship, ContextStatus, ContextType, GeneratedDeliverable, LedgerEntry, Note, StoredFile, TreeNode,
-  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, RedlineExample, ObjectDraft, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict,
+  Workspace, WorkstreamSpec, ChatSession, FileStatus, ContextProvenance, ContextChange, ContextChangeKind, ContextChangeActor, DecisionRecord, RedlineExample, ObjectDraft, PackSelection, SavedPack, Metric, Measurement, MetricExpectation, MetricDirection, MeasurementSource, ExpectationVerdict, Thought, ThoughtKind, ThoughtRevision,
 } from '../../src/types/index.ts';
-import { canCreateUnder, canDelete, canMove, canRename, defaultNodeId, nextOrder, reorderSiblings, resolveNodeId } from '../../src/core/nodeTree.ts';
+import { canCreateUnder, canDelete, canMove, canRename, defaultNodeId, movedNodeTree, nextOrder, resolveNodeId } from '../../src/core/nodeTree.ts';
 import { planNodes } from '../../src/core/startTemplate.ts';
 import type { StartTemplate } from '../../src/core/startTemplate.ts';
 import { computeStaleAssets, newlyStale } from '../../src/core/impactEngine.ts';
@@ -20,6 +20,7 @@ import { isRequestKind, REQUEST_MAX_CHARS } from '../../src/core/aiRequest.ts';
 import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { canHaveExamples, cleanExamples } from '../../src/core/redlineExamples.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
+import { lineHash, parseThinking } from '../../src/core/thinkingMarkers.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
 export interface Scope { userId: string; workspaceId: string }
@@ -29,7 +30,6 @@ export class RepoError extends Error {
   constructor(public code: RepoErrorCode, message: string) { super(message); }
 }
 
-export const hashToken = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
 export const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 const now = () => new Date().toISOString();
 
@@ -97,6 +97,17 @@ const rowToNote = (r: Record<string, unknown>): Note => ({
   id: r.id as string, workspaceId: r.workspace_id as string, nodeId: r.node_id as string, content: r.content as string,
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
+const rowToThought = (r: Record<string, unknown>): Thought => ({
+  id: r.id as string, workspaceId: r.workspace_id as string, nodeId: r.node_id as string,
+  kind: r.kind as ThoughtKind | null, text: r.text as string, status: r.status as Thought['status'],
+  ...(r.source_note_id ? { sourceNoteId: r.source_note_id as string } : {}),
+  ...(r.source_line !== null && r.source_line !== undefined ? { sourceLine: r.source_line as number } : {}),
+  ...(r.source_line_key ? { sourceLineKey: r.source_line_key as string } : {}),
+  ...(r.source_quote ? { sourceQuote: r.source_quote as string } : {}),
+  ...(r.inferred ? { inferred: true } : {}),
+  ...(r.resolved_object_id ? { resolvedObjectId: r.resolved_object_id as string } : {}),
+  createdAt: r.created_at as string, updatedAt: r.updated_at as string,
+});
 const rowToFile = (r: Record<string, unknown>, chunkCount: number): StoredFile => ({
   id: r.id as string, workspaceId: r.workspace_id as string, ...(r.node_id ? { nodeId: r.node_id as string } : {}),
   name: r.name as string, mime: r.mime as string, sizeBytes: r.size_bytes as number, status: r.status as FileStatus,
@@ -159,7 +170,7 @@ export class Repo {
 
   /**
    * Deletes EVERYTHING that belongs to one workspace (every table that carries `workspace_id`, plus the weekly-review marker) and
-   * seeds the five system nodes again. The workspace row and its MCP tokens (a connection, not content) stay. Used by the
+   * seeds the five system nodes again. Retired token records remain historical metadata, not content. Used by the
    * showcase workspace's reset, which therefore always rebuilds from nothing.
    */
   resetWorkspaceData(s: Scope) {
@@ -238,24 +249,23 @@ export class Repo {
       const to = parentId || undefined;
       const here = nodes.find((n) => n.id === id)!;
       const upd = this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?');
-      const moved = nodes.map((n) => (n.id === id ? { ...n, parentId: to } : n));
-      for (const o of reorderSiblings(moved, to, id, index ?? nextOrder(nodes, to))) {
-        upd.run(o.id === id ? to ?? null : moved.find((n) => n.id === o.id)?.parentId ?? null, o.order, s.workspaceId, o.id);
-      }
+      const moved = movedNodeTree(nodes, id, parentId, index);
+      for (const n of moved.filter((item) => (item.parentId ?? undefined) === to)) upd.run(n.parentId ?? null, n.order, s.workspaceId, n.id);
       const label = (pid?: string | null) => (pid ? nodes.find((n) => n.id === pid)?.label ?? '' : 'سطح اصلی');
       if ((here.parentId ?? undefined) !== to) this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_moved', meta: { actor: 'user', reason: reason?.trim() || `گرهٔ «${here.label}» از «${label(here.parentId)}» به «${label(to)}» رفت` }, before: { parent: label(here.parentId) }, after: { parent: label(to) } });
       return this.listNodes(s);
     })();
   }
 
-  /** Delete a user node: only if empty, or after moving objects, notes, files and child nodes to `transferTo`. */
+  /** Delete a user node: only if empty, or after moving objects, notes, Thoughts, files and child nodes to `transferTo`. */
   deleteNode(s: Scope, id: string, transferTo?: string): TreeNode[] {
     return this.db.transaction(() => {
       const nodes = this.listNodes(s);
       const objects = this.listObjects(s);
       const notes = this.listNotes(s);
+      const thoughts = this.listThoughts(s, { includeResolved: true });
       const files = this.listFiles(s);
-      const ok = canDelete(nodes, id, objects, notes, transferTo, files);
+      const ok = canDelete(nodes, id, objects, notes, transferTo, files, thoughts);
       if (!ok.ok) throw new RepoError(ok.reason.includes('سیستمی') ? 'forbidden' : 'invalid', ok.reason);
       const here = nodes.find((n) => n.id === id)!;
       const target = nodes.find((n) => n.id === transferTo);
@@ -264,14 +274,15 @@ export class Repo {
         for (const o of objects.filter((x) => x.nodeId === id)) this.recordChange(s, { objectId: o.id, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta: { actor: 'user', reason: `گرهٔ «${here.label}» حذف شد؛ این دانش به «${target?.label ?? ''}» رفت` }, before: { nodeId: id }, after: { nodeId: transferTo } });
         this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
+        this.db.prepare('UPDATE thoughts SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
         const kids = nodes.filter((n) => n.parentId === id);
         const base = nextOrder(nodes, transferTo);
         kids.forEach((k, i) => this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(transferTo, base + i, s.workspaceId, k.id));
       }
       // the deletion itself is a record too (object id `node:<id>`: it is not in the knowledge feed, but it is there)
-      const moved = { objects: objects.filter((x) => x.nodeId === id).length, notes: notes.filter((x) => x.nodeId === id).length, files: files.filter((x) => x.nodeId === id).length, nodes: nodes.filter((n) => n.parentId === id).length };
-      this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: target ? `گرهٔ «${here.label}» حذف شد؛ ${moved.objects} دانش، ${moved.notes} یادداشت، ${moved.files} فایل و ${moved.nodes} زیربخش به «${target.label}» رفت` : `گرهٔ خالی «${here.label}» حذف شد` }, before: { label: here.label }, after: {} });
+      const moved = { objects: objects.filter((x) => x.nodeId === id).length, notes: notes.filter((x) => x.nodeId === id).length, thoughts: thoughts.filter((x) => x.nodeId === id).length, files: files.filter((x) => x.nodeId === id).length, nodes: nodes.filter((n) => n.parentId === id).length };
+      this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: target ? `گرهٔ «${here.label}» حذف شد؛ ${moved.objects} دانش، ${moved.notes} یادداشت، ${moved.thoughts} فکر، ${moved.files} فایل و ${moved.nodes} زیربخش به «${target.label}» رفت` : `گرهٔ خالی «${here.label}» حذف شد` }, before: { label: here.label }, after: {} });
       this.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND id = ?').run(s.workspaceId, id);
       return this.listNodes(s);
     })();
@@ -300,7 +311,7 @@ export class Repo {
   }
 
   /**
-   * THE one door to the user's knowledge for every AI path and every engine (injection, packs, MCP, Gap, Readiness,
+   * THE one door to the user's knowledge for every AI path and every engine (injection, packs, Gap, Readiness,
    * contradictions, the validator, impact …): SAMPLES ARE NOT HERE. A sample (starter / template example) is only visible
    * through `listSampleObjects`, which only the UI's state reads.
    */
@@ -393,16 +404,40 @@ export class Repo {
 
   createObject(s: Scope, input: ObjectInput & { id?: string }, meta?: ChangeMeta): ContextObject {
     this.assertWorkspace(s);
+    if (input.source?.kind === 'mcp') throw new RepoError('invalid', 'این نوع منشأ فقط برای خواندن داده‌های تاریخی پشتیبانی می‌شود.');
     input = { ...input, nodeId: this.placeNode(s, input.nodeId) };
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
     if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
+    const promotedThought = input.source?.thoughtId ? this.getThought(s, input.source.thoughtId) : undefined;
+    if (input.source?.thoughtId && !promotedThought) throw new RepoError('not_found', 'فکر مبدأ پیدا نشد.');
+    if (promotedThought) {
+      if (promotedThought.status !== 'open') throw new RepoError('invalid', 'این فکر قبلاً به نتیجه رسیده است.');
+      if (input.status && input.status !== 'Proposed') throw new RepoError('forbidden', 'فکر فقط می‌تواند دانش پیشنهادی بسازد؛ تأیید با کاربر است.');
+      if (promotedThought.kind === 'assumption' && input.type !== 'Fact') throw new RepoError('invalid', 'فرض فقط به‌صورت واقعیتِ برچسب‌خورده به دانش می‌رود.');
+      if (promotedThought.kind === 'open_decision' && input.type !== 'Decision') throw new RepoError('invalid', 'تصمیم باز فقط به‌صورت تصمیم به دانش می‌رود.');
+      const source = {
+        ...input.source!,
+        kind: promotedThought.sourceNoteId ? 'note' as const : 'user' as const,
+        thoughtId: promotedThought.id,
+        ...(promotedThought.sourceNoteId ? { noteId: promotedThought.sourceNoteId } : {}),
+        ...(promotedThought.sourceLineKey ? { lineKey: promotedThought.sourceLineKey } : {}),
+        quote: promotedThought.text,
+      };
+      if (!promotedThought.sourceNoteId) { delete source.noteId; delete source.lineKey; }
+      input = {
+        ...input, status: 'Proposed',
+        source,
+        ...(promotedThought.kind === 'assumption' ? { assumption: true } : {}),
+      };
+    }
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), ...(canHaveExamples({ type: input.type, reach: scopeFields(input).reach }) && cleanExamples(input.examples) ? { examples: cleanExamples(input.examples) } : {}), createdAt: t, updatedAt: t };
     this.db.transaction(() => {
       this.insertObject(s, o);
       this.recordChange(s, { objectId: o.id, fromVersion: 0, toVersion: 1, kind: o.provenance === 'Imported' ? 'imported' : 'created', meta, after: { type: o.type, title: o.title, nodeId: o.nodeId, status: o.status }, source: o.source });
+      if (promotedThought) this.resolveThought(s, promotedThought.id, { objectId: o.id });
     })();
     return o;
   }
@@ -434,7 +469,10 @@ export class Repo {
   }
 
   importNote(s: Scope, n: Note) {
-    this.db.prepare('INSERT OR REPLACE INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, n.nodeId, n.content, n.createdAt, n.updatedAt);
+    this.db.transaction(() => {
+      this.db.prepare('INSERT OR REPLACE INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, n.nodeId, n.content, n.createdAt, n.updatedAt);
+      this.syncNoteThoughts(s, n, true);
+    })();
   }
 
   importFile(s: Scope, f: { id: string; nodeId: string; name: string; mime: string; rawText: string; summary: string; tokens: number; createdAt: string; chunks: Array<{ index: number; text: string; tokens: number }> }) {
@@ -721,6 +759,125 @@ export class Repo {
   }
 
   // ── notes ─────────────────────────────────────────────────────────────────
+  listThoughts(s: Scope, opts: { includeResolved?: boolean } = {}): Thought[] {
+    const status = opts.includeResolved ? '' : " AND status = 'open'";
+    return (this.db.prepare(`SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ?${status} ORDER BY created_at, id`).all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToThought);
+  }
+
+  getThought(s: Scope, id: string): Thought | undefined {
+    const r = this.db.prepare('SELECT * FROM thoughts WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
+    return r ? rowToThought(r) : undefined;
+  }
+
+  private insertThought(s: Scope, input: { id?: string; nodeId: string; kind: ThoughtKind | null; text: string; sourceNoteId?: string; sourceLine?: number; sourceLineKey?: string; sourceQuote?: string; inferred?: boolean; status?: Thought['status']; resolvedObjectId?: string; at?: string }): Thought {
+    if (!input.text.trim()) throw new RepoError('invalid', 'متن فکر لازم است.');
+    this.requireNode(s, input.nodeId);
+    if (input.sourceNoteId && !this.getNote(s, input.sourceNoteId)) throw new RepoError('not_found', 'یادداشت منبع پیدا نشد.');
+    const at = input.at ?? now();
+    const thought: Thought = {
+      id: input.id ?? newId('thought'), workspaceId: s.workspaceId, nodeId: input.nodeId, kind: input.kind,
+      text: input.text, status: input.status ?? 'open',
+      ...(input.sourceNoteId ? { sourceNoteId: input.sourceNoteId } : {}),
+      ...(input.sourceLine !== undefined ? { sourceLine: input.sourceLine } : {}),
+      ...(input.sourceLineKey ? { sourceLineKey: input.sourceLineKey } : {}),
+      ...(input.sourceQuote ? { sourceQuote: input.sourceQuote } : {}),
+      ...(input.inferred ? { inferred: true } : {}),
+      ...(input.resolvedObjectId ? { resolvedObjectId: input.resolvedObjectId } : {}),
+      createdAt: at, updatedAt: at,
+    };
+    this.db.prepare(`INSERT INTO thoughts (id,user_id,workspace_id,node_id,kind,text,status,source_note_id,source_line,source_line_key,source_quote,inferred,resolved_object_id,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(thought.id, s.userId, s.workspaceId, thought.nodeId, thought.kind, thought.text, thought.status,
+      thought.sourceNoteId ?? null, thought.sourceLine ?? null, thought.sourceLineKey ?? null, thought.sourceQuote ?? null, thought.inferred ? 1 : 0,
+      thought.resolvedObjectId ?? null, thought.createdAt, thought.updatedAt);
+    return thought;
+  }
+
+  /** New or imported Note lines create separate Thoughts once; later raw-material edits never rewrite their text. */
+  private syncNoteThoughts(s: Scope, note: Note, deterministicIds = false): void {
+    const current = this.db.prepare('SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ? AND source_note_id = ? ORDER BY source_line,id').all(s.workspaceId, s.userId, note.id) as Array<Record<string, unknown>>;
+    const anchored = current.filter((t) => t.source_line !== null).map(rowToThought);
+    const used = new Set<string>();
+    let ordinal = 0;
+    for (const item of parseThinking(note.content)) {
+      const importedId = deterministicIds && current.length === 0 ? `imported_thought_${note.id}_${ordinal}` : undefined;
+      ordinal++;
+      const existing = anchored.find((thought) => !used.has(thought.id) && thought.sourceLine === item.line && thought.sourceLineKey === item.hash)
+        ?? anchored.find((thought) => !used.has(thought.id) && thought.sourceLineKey === item.hash);
+      if (existing) {
+        used.add(existing.id);
+        if (existing.kind !== item.kind || existing.inferred !== item.inferred || existing.sourceLine !== item.line) {
+          this.db.prepare('UPDATE thoughts SET kind = ?, inferred = ?, source_line = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
+            .run(item.kind, item.inferred ? 1 : 0, item.line, now(), existing.id, s.workspaceId, s.userId);
+        }
+        continue;
+      }
+      this.insertThought(s, {
+        ...(importedId ? { id: importedId } : {}), nodeId: note.nodeId, kind: item.kind, text: item.text, sourceNoteId: note.id,
+        sourceLine: item.line, sourceLineKey: item.hash, sourceQuote: item.text, inferred: item.inferred,
+        at: note.createdAt,
+      });
+    }
+  }
+
+  reviseThought(s: Scope, id: string, text: string): { thought: Thought; revisions: ThoughtRevision[] } {
+    const cur = this.getThought(s, id);
+    if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    if (!text.trim()) throw new RepoError('invalid', 'متن فکر لازم است.');
+    const at = now();
+    if (lineHash(cur.text) !== lineHash(text)) {
+      const nextRevision = (this.db.prepare('SELECT COALESCE(MAX(revision),0)+1 AS n FROM thought_revisions WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as { n: number }).n;
+      this.db.prepare('INSERT INTO thought_revisions (thought_id,revision,user_id,workspace_id,before_text,after_text,at) VALUES (?,?,?,?,?,?,?)')
+        .run(id, nextRevision, s.userId, s.workspaceId, cur.text, text, at);
+    }
+    this.db.prepare('UPDATE thoughts SET text = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(text, at, id, s.workspaceId, s.userId);
+    return { thought: this.getThought(s, id)!, revisions: this.listThoughtRevisions(s, id) };
+  }
+
+  reclassifyThought(s: Scope, id: string, kind: ThoughtKind): Thought {
+    const cur = this.getThought(s, id);
+    if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    this.db.prepare('UPDATE thoughts SET kind = ?, inferred = 0, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
+      .run(kind, now(), id, s.workspaceId, s.userId);
+    return this.getThought(s, id)!;
+  }
+
+  deriveThought(s: Scope, input: { parentIds: string[]; nodeId: string; kind: ThoughtKind; text: string }): { thought: Thought; derivedFrom: string[] } {
+    const parents = [...new Set(input.parentIds)];
+    if (!parents.length) throw new RepoError('invalid', 'فکر تازه باید دست‌کم یک فکر مبدأ داشته باشد.');
+    const parentThoughts = parents.map((id) => this.getThought(s, id));
+    if (parentThoughts.some((t) => !t)) throw new RepoError('not_found', 'یکی از فکرهای مبدأ پیدا نشد.');
+    this.requireNode(s, input.nodeId);
+    return this.db.transaction(() => {
+      const child = this.insertThought(s, { nodeId: input.nodeId, kind: input.kind, text: input.text });
+      const at = now();
+      const edge = this.db.prepare('INSERT INTO thought_derivations (parent_id,child_id,user_id,workspace_id,created_at) VALUES (?,?,?,?,?)');
+      for (const parentId of parents) edge.run(parentId, child.id, s.userId, s.workspaceId, at);
+      return { thought: child, derivedFrom: parents };
+    })();
+  }
+
+  listThoughtRevisions(s: Scope, thoughtId: string): ThoughtRevision[] {
+    return (this.db.prepare('SELECT thought_id,revision,before_text,after_text,at FROM thought_revisions WHERE thought_id = ? AND workspace_id = ? AND user_id = ? ORDER BY revision').all(thoughtId, s.workspaceId, s.userId) as Array<Record<string, unknown>>)
+      .map((r) => ({ thoughtId: r.thought_id as string, revision: r.revision as number, beforeText: r.before_text as string, afterText: r.after_text as string, at: r.at as string }));
+  }
+
+  listThoughtParents(s: Scope, thoughtId: string): string[] {
+    return (this.db.prepare('SELECT parent_id FROM thought_derivations WHERE child_id = ? AND workspace_id = ? AND user_id = ? ORDER BY created_at,parent_id').all(thoughtId, s.workspaceId, s.userId) as Array<{ parent_id: string }>).map((r) => r.parent_id);
+  }
+
+  resolveThought(s: Scope, id: string, resolution: { objectId?: string; nodeId?: string }): Thought {
+    const cur = this.getThought(s, id);
+    if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    if (resolution.objectId) {
+      const object = this.getObject(s, resolution.objectId);
+      if (!object || object.status !== 'Proposed') throw new RepoError('invalid', 'فکر فقط با دانش پیشنهادی می‌تواند تبدیل شود.');
+    } else if (resolution.nodeId) this.requireNode(s, resolution.nodeId);
+    else throw new RepoError('invalid', 'نتیجهٔ تبدیل فکر مشخص نیست.');
+    this.db.prepare("UPDATE thoughts SET status = 'resolved', resolved_object_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?")
+      .run(resolution.objectId ?? null, now(), id, s.workspaceId, s.userId);
+    return this.getThought(s, id)!;
+  }
+
   listNotes(s: Scope): Note[] {
     return (this.db.prepare('SELECT * FROM notes WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToNote);
   }
@@ -735,7 +892,10 @@ export class Repo {
     nodeId = this.placeNode(s, nodeId);
     const t = now();
     const n: Note = { id: newId('note'), workspaceId: s.workspaceId, nodeId, content, createdAt: t, updatedAt: t };
-    this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, content, t, t);
+    this.db.transaction(() => {
+      this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, content, t, t);
+      this.syncNoteThoughts(s, n);
+    })();
     return n;
   }
 
@@ -743,8 +903,12 @@ export class Repo {
     const cur = this.getNote(s, id);
     if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     const t = now();
-    this.db.prepare('UPDATE notes SET content = ?, updated_at = ? WHERE id = ? AND workspace_id = ?').run(content, t, id, s.workspaceId);
-    return { ...cur, content, updatedAt: t };
+    const updated = { ...cur, content, updatedAt: t };
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE notes SET content = ?, updated_at = ? WHERE id = ? AND workspace_id = ?').run(content, t, id, s.workspaceId);
+      this.syncNoteThoughts(s, updated);
+    })();
+    return updated;
   }
 
   /** a thought changes its SECTION (dragged into another section's frame on the free canvas); the text and the place stay */
@@ -752,7 +916,10 @@ export class Repo {
     const cur = this.getNote(s, id);
     if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     if (!this.listNodes(s).some((n) => n.id === nodeId)) throw new RepoError('not_found', 'بخش پیدا نشد.');
-    this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(nodeId, id, s.workspaceId);
+    this.db.transaction(() => {
+      this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(nodeId, id, s.workspaceId);
+      this.db.prepare('UPDATE thoughts SET node_id = ? WHERE source_note_id = ? AND source_line IS NOT NULL AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
+    })();
     return { ...cur, nodeId };
   }
 
@@ -761,9 +928,13 @@ export class Repo {
     this.assertWorkspace(s);
     if (this.getNote(s, n.id)) return this.getNote(s, n.id)!;
     const nodeId = this.placeNode(s, n.nodeId);
-    this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, String(n.content ?? ''), n.createdAt, n.updatedAt);
+    const restored = { ...n, content: String(n.content ?? ''), nodeId, workspaceId: s.workspaceId };
+    this.db.transaction(() => {
+      this.db.prepare('INSERT INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, nodeId, restored.content, n.createdAt, n.updatedAt);
+      this.syncNoteThoughts(s, restored);
+    })();
     if (pos && (pos.x !== undefined || pos.y !== undefined)) this.saveCanvasItem(s, 'free', `note:${n.id}`, pos);
-    return { ...n, nodeId, workspaceId: s.workspaceId };
+    return restored;
   }
   /** where a note sits on the free canvas (so a delete can be undone completely) */
   notePosition(s: Scope, id: string): { x?: number; y?: number } | undefined {
@@ -966,34 +1137,6 @@ export class Repo {
     return { loser: value, impact };
   }
 
-  // ── MCP tokens (one personal token per connection, per workspace) ─────────
-  createMcpToken(s: Scope, label: string): { id: string; token: string; last4: string } {
-    this.assertWorkspace(s);
-    const token = `mbd_${crypto.randomBytes(32).toString('base64url')}`;
-    const id = newId('mcp');
-    this.db.prepare('INSERT INTO mcp_tokens (id, user_id, workspace_id, label, token_hash, last4, created_at) VALUES (?,?,?,?,?,?,?)')
-      .run(id, s.userId, s.workspaceId, label.trim() || 'AI', hashToken(token), token.slice(-4), now());
-    return { id, token, last4: token.slice(-4) };
-  }
-
-  listMcpTokens(s: Scope): Array<{ id: string; label: string; last4: string; createdAt: string; lastUsedAt?: string; revokedAt?: string }> {
-    return (this.db.prepare('SELECT * FROM mcp_tokens WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>)
-      .map((r) => ({ id: r.id as string, label: r.label as string, last4: r.last4 as string, createdAt: r.created_at as string, ...(r.last_used_at ? { lastUsedAt: r.last_used_at as string } : {}), ...(r.revoked_at ? { revokedAt: r.revoked_at as string } : {}) }));
-  }
-
-  revokeMcpToken(s: Scope, id: string) {
-    this.db.prepare('UPDATE mcp_tokens SET revoked_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ? AND revoked_at IS NULL').run(now(), id, s.workspaceId, s.userId);
-  }
-
-  /** token → who it speaks for. Revoked tokens never resolve. */
-  resolveMcpToken(token: string): { scope: Scope; tokenId: string; label: string } | null {
-    if (!token.startsWith('mbd_')) return null;
-    const r = this.db.prepare('SELECT id, user_id, workspace_id, label FROM mcp_tokens WHERE token_hash = ? AND revoked_at IS NULL').get(hashToken(token)) as { id: string; user_id: string; workspace_id: string; label: string } | undefined;
-    if (!r) return null;
-    this.db.prepare('UPDATE mcp_tokens SET last_used_at = ? WHERE id = ?').run(now(), r.id);
-    return { scope: { userId: r.user_id, workspaceId: r.workspace_id }, tokenId: r.id, label: r.label };
-  }
-
   // ── Context packs (what was copied for an outside AI — the lineage of its pasted answer) ──
   savePack(s: Scope, p: { title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number }, id: string = newId('pack')): { id: string; createdAt: string } {
     const createdAt = now();
@@ -1026,7 +1169,7 @@ export class Repo {
   deleteTemplate(userId: string, id: string) { this.db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?').run(id, userId); }
 
   // ── metrics («شاخص‌ها»): recorded results. NOT Context objects, never facts. Every write leaves a Change (object_id `metric:<id>`);
-  //    a number suggested by an AI / MCP client is `Proposed` and invisible to charts, counts and packs until the user confirms it ──
+  //    a legacy externally-suggested number is `Proposed` and invisible to charts, counts and packs until the user confirms it ──
   private rowToMetric(r: Record<string, unknown>): Metric {
     return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, unit: (r.unit as string) ?? '', direction: r.direction as MetricDirection, ...(r.target !== null && r.target !== undefined ? { target: r.target as number } : {}), ...(r.archived ? { archived: true } : {}), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
   }
@@ -1096,24 +1239,22 @@ export class Repo {
     const r = this.db.prepare('SELECT * FROM measurements WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
     return r ? this.rowToMeasurement(r) : undefined;
   }
-  /**
-   * One number. `status` is Confirmed for the user's own entries (manual / csv) and ALWAYS Proposed for source `mcp` —
-   * an AI client cannot write a confirmed number, whatever it passes.
-   */
-  addMeasurement(s: Scope, i: { id?: string; metricId: string; value: unknown; at?: string; note?: unknown; source?: MeasurementSource; decisionId?: string; createdAt?: string }, meta?: ChangeMeta): Measurement {
+  /** One number; historical MCP measurements are read-only and can only enter through legacy data import. */
+  addMeasurement(s: Scope, i: { id?: string; metricId: string; value: unknown; at?: string; note?: unknown; source?: Exclude<MeasurementSource, 'mcp'>; decisionId?: string; createdAt?: string }, meta?: ChangeMeta): Measurement {
     const metric = this.getMetric(s, i.metricId);
     if (!metric) throw new RepoError('not_found', 'شاخص پیدا نشد.');
     if (metric.archived) throw new RepoError('invalid', 'این شاخص بایگانی شده است.');
     if (typeof i.value !== 'number' || !Number.isFinite(i.value)) throw new RepoError('invalid', 'مقدار باید عدد باشد.');
     const source: MeasurementSource = i.source ?? 'manual';
+    if ((source as string) === 'mcp') throw new RepoError('invalid', 'این نوع منشأ فقط برای خواندن داده‌های تاریخی پشتیبانی می‌شود.');
     const at = i.at ?? now().slice(0, 10);
     if (!isIsoDate(at)) throw new RepoError('invalid', 'تاریخ معتبر نیست.');
-    const status: Measurement['status'] = source === 'mcp' ? 'Proposed' : 'Confirmed';
+    const status: Measurement['status'] = 'Confirmed';
     const note = typeof i.note === 'string' && i.note.trim() ? i.note.trim().slice(0, 300) : undefined;
     const id = i.id ?? newId('msr'); const created = i.createdAt ?? now();
     this.db.transaction(() => {
       this.db.prepare('INSERT INTO measurements (id, user_id, workspace_id, metric_id, value, at, note, source, status, decision_id, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, i.metricId, i.value, at, note ?? null, source, status, i.decisionId ?? null, created);
-      this.recordChange(s, { objectId: `metric:${i.metricId}`, fromVersion: 1, toVersion: 1, kind: status === 'Proposed' ? 'measurement_proposed' : 'measurement_added', meta: { actor: source === 'mcp' ? 'mcp' : 'user', ...meta }, after: { measurementId: id, value: i.value, at, source, ...(i.decisionId ? { decisionId: i.decisionId } : {}) }, at: created });
+      this.recordChange(s, { objectId: `metric:${i.metricId}`, fromVersion: 1, toVersion: 1, kind: 'measurement_added', meta: { actor: 'user', ...meta }, after: { measurementId: id, value: i.value, at, source, ...(i.decisionId ? { decisionId: i.decisionId } : {}) }, at: created });
     })();
     return this.getMeasurement(s, id)!;
   }
@@ -1212,7 +1353,7 @@ export class Repo {
     const deliverables = this.listDeliverables(s);
     return {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
-      nodes: this.listNodes(s), objects, samples: this.listSampleObjects(s), relationships: this.listRelationships(s), notes: this.listNotes(s),
+      nodes: this.listNodes(s), objects, samples: this.listSampleObjects(s), relationships: this.listRelationships(s), notes: this.listNotes(s), thoughts: this.listThoughts(s, { includeResolved: true }),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
       stale: this.impactEnabled(s) ? this.computeStale(s, deliverables.filter((d) => !d.archivedAt)) : [],
       judgments: this.listJudgments(s),

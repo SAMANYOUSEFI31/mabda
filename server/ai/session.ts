@@ -1,5 +1,4 @@
 import type { AiStatus, Tier } from '../../src/types/ai.ts';
-import { ByokVault } from './byok.ts';
 import { modelsConfig, TIERS } from './config.ts';
 import type { ModelsConfig } from './config.ts';
 import { AiError } from './errors.ts';
@@ -27,7 +26,7 @@ export interface Verification {
 }
 
 /**
- * Check the config's model ids against what the key can actually use. Never guesses: the first candidate that
+ * Check the config's model ids against what the platform key can actually use. Never guesses: the first candidate that
  * the API lists (and that supports generateContent) wins; anything else produces a warning.
  */
 export async function verifyModels(provider: ModelProvider, cfg: ModelsConfig = modelsConfig, signal?: AbortSignal): Promise<Verification> {
@@ -64,14 +63,12 @@ export async function verifyModels(provider: ModelProvider, cfg: ModelsConfig = 
 }
 
 export interface AiSession {
-  source: 'byok' | 'managed';
   providerFor(tier: Tier): ModelProvider;
   modelFor(tier: Tier): string;
   verification: Verification;
 }
 
 export interface SessionDeps {
-  vault: ByokVault;
   managedEnabled: boolean;
   managedKey?: string;
   /** the manager ledger endpoint is on */
@@ -80,7 +77,7 @@ export interface SessionDeps {
   factory?: ProviderFactory;
 }
 
-/** Resolves who pays for a request: the user's own key first, otherwise the (flagged) managed key. */
+/** Resolves all requests to the platform-controlled AI configuration. */
 export class SessionResolver {
   private readonly cache = new Map<string, AiSession>();
   private readonly cfg: ModelsConfig;
@@ -94,25 +91,16 @@ export class SessionResolver {
   get managedEnabled() { return this.deps.managedEnabled; }
   get managedKeyValid() { return isValidGeminiKey(this.deps.managedKey); }
 
-  /** drop cached verification (after a BYOK key is saved/removed) */
-  invalidate(userId: string) { this.cache.delete(`byok:${userId}`); }
-
-  /**
-   * Who pays for subscription-included JUDGEMENTS (Gap ambiguity, Coach, file extraction): the platform key when the
-   * server has one, otherwise the user's own key. Output generation never uses this path.
-   */
-  platformPayer(): 'us' | 'user' { return this.managedKeyValid ? 'us' : 'user'; }
+  /** Whether platform-paid, quota-limited AI features have a configured server key. */
+  get platformAvailable() { return this.managedKeyValid; }
 
   async resolve(userId: string, purpose: 'user' | 'platform' = 'user'): Promise<AiSession> {
-    if (purpose === 'platform' && this.managedKeyValid) return this.build('platform', 'managed', this.deps.managedKey!);
-    const byok = this.deps.vault.get(userId);
-    if (byok) return this.build(`byok:${userId}`, 'byok', byok);
-    if (!this.deps.managedEnabled) throw new AiError(this.deps.vault.last4(userId) ? 'invalid_key' : 'no_key');
-    if (!this.managedKeyValid) throw new AiError('no_key', { message: 'کلید GEMINI_API_KEY روی سرور تنظیم نشده یا نامعتبر است. فایل .env را بررسی کن.' });
-    return this.build('managed', 'managed', this.deps.managedKey!);
+    if (!this.managedKeyValid) throw new AiError('disabled');
+    if (purpose !== 'platform' && !this.deps.managedEnabled) throw new AiError('disabled');
+    return this.build('managed', this.deps.managedKey!);
   }
 
-  private async build(cacheKey: string, source: 'byok' | 'managed', apiKey: string): Promise<AiSession> {
+  private async build(cacheKey: string, apiKey: string): Promise<AiSession> {
     const hit = this.cache.get(cacheKey);
     if (hit) return hit;
     const providers = new Map<string, ModelProvider>();
@@ -123,7 +111,7 @@ export class SessionResolver {
       return p;
     };
     const verification = await verifyModels(providerFor('cheap'), this.cfg);
-    const session: AiSession = { source, providerFor, modelFor: (t) => verification.resolved[t], verification };
+    const session: AiSession = { providerFor, modelFor: (t) => verification.resolved[t], verification };
     if (verification.listed) this.cache.set(cacheKey, session);
     return session;
   }
@@ -131,25 +119,13 @@ export class SessionResolver {
   async status(userId: string): Promise<AiStatus> {
     const base: AiStatus = {
       available: false,
-      source: null,
       managedEnabled: this.deps.managedEnabled,
-      byokConfigured: Boolean(this.deps.vault.last4(userId)),
       platformJudgments: this.managedKeyValid,
       admin: Boolean(this.deps.admin),
-      byokLast4: this.deps.vault.last4(userId) ?? undefined,
-      tiers: TIERS.map((tier) => ({ tier, modelId: this.cfg.tiers[tier].candidates[0], verified: false })),
-      warnings: [],
-      timeoutsMs: { chat: this.cfg.timeoutsMs.chat, deliverable: this.cfg.timeoutsMs.deliverable },
     };
     try {
       const s = await this.resolve(userId);
-      return {
-        ...base,
-        available: true,
-        source: s.source,
-        tiers: TIERS.map((tier) => ({ tier, modelId: s.modelFor(tier), verified: s.verification.verified[tier] })),
-        warnings: s.verification.warnings,
-      };
+      return { ...base, available: true };
     } catch (e) {
       if (e instanceof AiError) return { ...base, unavailable: { kind: e.kind, message: e.message } };
       throw e;

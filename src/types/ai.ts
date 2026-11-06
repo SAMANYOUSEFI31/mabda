@@ -57,8 +57,6 @@ export interface StageUsage extends TokenUsage {
 export interface UsageSummary {
   stages: StageUsage[];
   totals: TokenUsage & { costUsd: number };
-  /** true when the request used the user's own key (credits are not deducted) */
-  byok: boolean;
 }
 
 export type BlockKind = 'heading' | 'paragraph' | 'list' | 'table' | 'fact' | 'decision' | 'constraint' | 'question';
@@ -79,8 +77,6 @@ export interface ContentBlock {
 }
 
 export type AiErrorKind =
-  | 'no_key'
-  | 'invalid_key'
   | 'disabled'
   | 'quota'
   | 'rate_limit'
@@ -132,19 +128,13 @@ export interface GenerationResult {
 
 export interface AiStatus {
   available: boolean;
-  source: 'byok' | 'managed' | null;
   managedEnabled: boolean;
-  byokConfigured: boolean;
   /** a platform key pays for cheap judgements (Gap, Coach, file extraction) included in the subscription */
   platformJudgments: boolean;
   /** the manager ledger is enabled on this server (MABDA_ADMIN) */
   admin: boolean;
-  byokLast4?: string;
   /** why AI is unavailable (when `available` is false) */
   unavailable?: { kind: AiErrorKind; message: string };
-  tiers: Array<{ tier: Tier; modelId: string; verified: boolean }>;
-  warnings: string[];
-  timeoutsMs: { chat: number; deliverable: number };
 }
 
 /** NDJSON events of POST /api/ai/chat and POST /api/ai/generate */

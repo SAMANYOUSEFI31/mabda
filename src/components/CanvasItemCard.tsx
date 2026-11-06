@@ -126,9 +126,9 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
   const { item } = p;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
   const base = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${p.dimmed ? 'border-border-subtle bg-surface-sunken' : `${p.selected ? 'border-border-selected' : 'border-border-default'} bg-bg-warning-subtle`}`;
-  if (p.lod === 'far') return <div data-item-id={item.id} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={`یادداشت آزاد: ${item.label}`} onClick={(e) => p.onSelect(item.id, e.shiftKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={base} style={style} />;
+  if (p.lod === 'far') return <div data-item-id={item.id} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={`یادداشت آزاد روی بوم: ${item.label}`} onClick={(e) => p.onSelect(item.id, e.shiftKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={base} style={style} />;
   return (
-    <div data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod={p.lod} tabIndex={0} role="group" aria-label={`یادداشت آزاد: ${item.label}. با کلیدهای جهت‌دار جابه‌جا می‌شود.`}
+    <div data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod={p.lod} tabIndex={0} role="group" aria-label={`یادداشت آزاد روی بوم: ${item.label}. با کلیدهای جهت‌دار جابه‌جا می‌شود.`}
       onPointerDown={(e) => p.onPointerDown(e, item)} onClick={(e) => { if ((e.target as HTMLElement).closest('button, textarea')) return; p.onSelect(item.id, e.shiftKey); }}
       onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={`${base} p-inset-sm`} style={style}>
       <div dir="rtl" className="flex h-full flex-col gap-stack-xs">

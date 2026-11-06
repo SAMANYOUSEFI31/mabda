@@ -25,7 +25,7 @@ interface Props {
   onSplit?: (noteId: string) => Promise<void>;
 }
 
-/** Free-form notes of one node. They are never sent to the model; only «استخراج» reads one, on explicit click. */
+/** Free-form notes of one node. They are not injected automatically; «استخراج» reads one only on explicit click. */
 export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
@@ -41,7 +41,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
     <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
       <div className="flex flex-wrap items-center gap-inline-sm">
         <span className="label-md text-text-default">یادداشت آزاد</span>
-        <Badge intent="neutral" icon="Lock">به مدل داده نمی‌شود</Badge>
+        <Badge intent="neutral" icon="Lock">به‌طور خودکار به مدل نمی‌رسد</Badge>
       </div>
 
       {notes.length > 0 && (

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
+import { planNodeRemoval, removeNode, undoRemoval } from './removal.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import { applyDemo } from './demo.ts';
 import { treeOrder } from '../../src/core/nodeTree.ts';
@@ -35,6 +36,63 @@ test('migrations apply in order, are idempotent, and keep existing rows (v1 → 
   for (const t of ['notes', 'files', 'file_chunks', 'file_usage', 'context_object_versions']) {
     assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name = ?").get(t), `${t} exists`);
   }
+});
+
+test('Thought backfill preserves notes, stable legacy identity, classification and resolved state, and is idempotent', () => {
+  const db = new Database(':memory:');
+  migrate(db, 20);
+  const notes = [
+    { id: 'plain', content: 'یادداشت معمولی بدون فکر' },
+    { id: 'duplicates', content: '[ایده] قیمت اشتراک\n[ایده] قیمت اشتراک\n[سؤال] مشتری چه می‌خواهد؟\n[ایده] آیا همین پیشنهاد؟' },
+    { id: 'edited', content: '[ایده] قیمت اشتراک ۴۹۰ باشد' },
+    { id: 'question', content: 'آیا مشتری حاضر است پول بدهد؟' },
+    { id: 'normalized', content: '[ایده] بسته ی ویژه' },
+  ];
+  const insertNote = db.prepare('INSERT INTO notes (id,user_id,workspace_id,node_id,content,created_at,updated_at) VALUES (?,?,?,?,?,?,?)');
+  for (const n of notes) insertNote.run(n.id, U, 'w1', 'business', n.content, '2026-01-01', '2026-01-02');
+  const insertObject = db.prepare(`INSERT INTO context_objects
+    (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,source)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const source = (noteId: string, lineKey: string, quote: string) => JSON.stringify({ kind: 'note', noteId, lineKey, quote });
+  insertObject.run('converted-edited', U, 'w1', 'Fact', 'Proposed', 'User Input', 'قیمت اشتراک', 'قیمت اشتراک ۴۰۰ باشد', 'business', 't', 't',
+    source('edited', 'legacy-key', 'قیمت اشتراک ۴۰۰ باشد'));
+  insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
+    source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
+
+  assert.deepEqual(migrate(db), [21, 22]);
+  const repo = new Repo(db);
+  const s = { userId: U, workspaceId: 'w1' };
+  const thoughts = repo.listThoughts(s, { includeResolved: true });
+  assert.equal(thoughts.filter((t) => t.sourceNoteId === 'plain').length, 0, 'ordinary notes remain Material only');
+  assert.equal(thoughts.filter((t) => t.sourceNoteId === 'duplicates' && t.text === 'قیمت اشتراک').length, 2, 'similar repeated lines remain distinct');
+  assert.deepEqual(thoughts.filter((t) => t.sourceNoteId === 'duplicates').map((t) => t.kind), ['idea', 'idea', 'question', 'idea'], 'an explicit marker wins over an inferred question mark');
+  const edited = thoughts.find((t) => t.sourceNoteId === 'edited')!;
+  assert.deepEqual([edited.text, edited.status, edited.resolvedObjectId], ['قیمت اشتراک ۴۹۰ باشد', 'resolved', 'converted-edited']);
+  assert.equal(thoughts.find((t) => t.sourceNoteId === 'question')?.kind, 'question', 'terminal Persian question mark is inferred');
+  assert.equal(thoughts.find((t) => t.sourceNoteId === 'normalized')?.status, 'resolved', 'Persian hamza and spacing normalization match source quotes');
+  for (const n of notes) assert.equal(repo.getNote(s, n.id)?.content, n.content, 'migration leaves original note text intact');
+  assert.deepEqual(migrate(db), [], 're-running startup migration does not duplicate Thoughts');
+  assert.equal(repo.listThoughts(s, { includeResolved: true }).length, thoughts.length);
+  db.close();
+});
+
+test('MCP token shutdown revokes active tokens once and preserves historical token records', () => {
+  const db = new Database(':memory:');
+  migrate(db, 21);
+  db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
+  db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
+  assert.deepEqual(migrate(db), [22]);
+  const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
+  assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
+    ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
+    ['legacy-revoked', 'revoked client', 'hash-revoked', '5678', 'created'],
+  ]);
+  assert.ok((rows[0] as { revoked_at: string }).revoked_at);
+  assert.equal((rows[1] as { revoked_at: string }).revoked_at, 'already-revoked');
+  assert.deepEqual(migrate(db), []);
+  db.close();
 });
 
 test('every table carries user_id and workspace_id', () => {
@@ -85,6 +143,30 @@ test('nodes: nothing is locked — rename, move, create, delete (empty or with t
   // empty leaf deletes without transfer
   repo.deleteNode(s, c.id);
   assert.ok(!repo.listNodes(s).some((n) => n.id === c.id));
+});
+
+test('node removal moves derived Thoughts and undo restores their original nodes in both modes', () => {
+  const { repo, s } = fresh();
+  const sourceNote = repo.createNote(s, 'business', '[ایده] بررسی قیمت');
+  const source = repo.listThoughts(s).find((t) => t.sourceNoteId === sourceNote.id)!;
+  const moveNode = repo.createNode(s, { parentId: 'business', label: 'فکر مشتق‌شده برای انتقال' });
+  const movedThought = repo.deriveThought(s, { parentIds: [source.id], nodeId: moveNode.id, kind: 'question', text: 'آیا قیمت مانع خرید است؟' }).thought;
+  const movePlan = planNodeRemoval(repo, s, moveNode.id, { mode: 'move', transferTo: 'brand' });
+  assert.equal(movePlan.counts.thoughts, 1, 'a Thought-only node is not treated as empty');
+  assert.equal(movePlan.counts.notes, 0);
+  const moved = removeNode(repo, s, moveNode.id, { mode: 'move', transferTo: 'brand' });
+  assert.equal(repo.getThought(s, movedThought.id)?.nodeId, 'brand');
+  undoRemoval(repo, s, moved.removal.id);
+  assert.equal(repo.getThought(s, movedThought.id)?.nodeId, moveNode.id);
+
+  const archiveNode = repo.createNode(s, { parentId: 'business', label: 'فکر مشتق‌شده برای بایگانی' });
+  const archivedThought = repo.deriveThought(s, { parentIds: [source.id], nodeId: archiveNode.id, kind: 'idea', text: 'آزمودن پیشنهاد دیگر' }).thought;
+  const archivePlan = planNodeRemoval(repo, s, archiveNode.id, { mode: 'archive', transferTo: 'brand' });
+  assert.equal(archivePlan.counts.thoughts, 1, 'archive plans include Thoughts across the removed branch');
+  const archived = removeNode(repo, s, archiveNode.id, { mode: 'archive', transferTo: 'brand' });
+  assert.equal(repo.getThought(s, archivedThought.id)?.nodeId, 'brand');
+  undoRemoval(repo, s, archived.removal.id);
+  assert.equal(repo.getThought(s, archivedThought.id)?.nodeId, archiveNode.id);
 });
 
 test('versions: edits of title/content/type bump the version; status and node moves do not; history is kept', () => {
@@ -224,11 +306,12 @@ test('every mutation path writes a Change in its transaction: created / edited /
   const kinds = (id: string) => repo.listChanges(s, { objectId: id }).map((c) => c.kind);
   const a = repo.createObject(s, { type: 'Decision', provenance: 'User Input', title: 'قیمت', content: 'پنج', nodeId: 'business' });
   assert.deepEqual(kinds(a.id), ['created']);
-  const p = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'AI Suggested', title: 'پیشنهاد', content: 'x', nodeId: 'business', source: { kind: 'mcp', label: 'Claude', at: 't' } });
+  const p = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'Imported', title: 'پیشنهاد', content: 'x', nodeId: 'business', source: { kind: 'paste', label: 'Claude', at: 't' } });
   const first = repo.listChanges(s, { objectId: p.id })[0];
-  assert.deepEqual([first.actor, first.actorLabel, first.kind], ['mcp', 'Claude', 'created']);
+  assert.deepEqual([first.actor, first.actorLabel, first.kind], ['import', 'Claude', 'imported']);
   const imp = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'Imported', title: 'حافظه', content: 'x', nodeId: 'business', source: { kind: 'paste', label: 'حافظهٔ ChatGPT', at: 't' } });
   assert.deepEqual(kinds(imp.id), ['imported']);
+  assert.throws(() => repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'Imported', title: 'retired', content: 'x', nodeId: 'business', source: { kind: 'mcp', label: 'legacy', at: 't' } }), RepoError);
 
   repo.updateObject(s, a.id, { content: 'شش' });
   const edit = repo.listChanges(s, { objectId: a.id }).at(-1)!;
@@ -451,7 +534,7 @@ test('migration 14: metrics and measurements exist, carry user_id / workspace_id
 test('a reason is kept only for an edit of CONFIRMED knowledge; a draft edit carries none; the history groups drafts and ends them with the approval', async () => {
   const { repo, s } = fresh();
   const { versionHistory } = await import('../../src/core/versionHistory.ts');
-  const o = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'AI Suggested', title: 'قیمت', content: 'سی', nodeId: 'business' }, { actor: 'mcp', label: 'Claude' });
+  const o = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'AI Suggested', title: 'قیمت', content: 'سی', nodeId: 'business' }, { actor: 'user' });
   repo.updateObject(s, o.id, { content: 'چهل' }, { actor: 'user', reason: 'دلیل-پیش‌نویس' });
   repo.updateObject(s, o.id, { content: 'پنجاه' }, { actor: 'user', reason: 'دلیل-دوم' });
   repo.updateObject(s, o.id, { status: 'Confirmed' }, { actor: 'user', reason: 'تأیید با دلیل' });
@@ -517,11 +600,16 @@ test('a metric and its numbers: every write leaves a Change; metric changes stay
   assert.equal(repo.listMetrics(s).length, 1, 'archived, not deleted');
 });
 
-test('a number from an MCP client is ALWAYS a proposal: invisible to the series until the user confirms it', () => {
+test('a stored legacy MCP measurement remains Proposed until the user confirms it; new writes reject the retired source', () => {
   const { repo, s } = fresh();
   const m = repo.createMetric(s, { name: 'ماندگاری', unit: '٪', direction: 'up' });
-  const p = repo.addMeasurement(s, { metricId: m.id, value: 70, at: '2026-03-02', source: 'mcp' }, { actor: 'mcp', label: 'Claude' });
+  const id = 'legacy_mcp_measurement';
+  repo.db.prepare('INSERT INTO measurements (id,user_id,workspace_id,metric_id,value,at,source,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(id, s.userId, s.workspaceId, m.id, 70, '2026-03-02', 'mcp', 'Proposed', '2026-03-02T09:00:00.000Z');
+  repo.recordChange(s, { objectId: `metric:${m.id}`, fromVersion: 1, toVersion: 1, kind: 'measurement_proposed', meta: { actor: 'mcp', label: 'Claude' }, after: { measurementId: id, value: 70, at: '2026-03-02', source: 'mcp' } });
+  const p = repo.getMeasurement(s, id)!;
   assert.equal(p.status, 'Proposed');
+  assert.throws(() => repo.addMeasurement(s, { metricId: m.id, value: 70, at: '2026-03-02', source: 'mcp' as never }), RepoError);
   assert.equal(repo.listMeasurements(s, { status: 'Confirmed' }).length, 0);
   const prop = repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).at(-1)!;
   assert.deepEqual([prop.kind, prop.actor, prop.actorLabel], ['measurement_proposed', 'mcp', 'Claude']);
@@ -576,6 +664,7 @@ test('migration 18: nodes that were locked (is_system = 1) are ordinary now — 
   assert.equal(repo.listObjects(s)[0].nodeId, 'business', 'the knowledge is untouched');
   // the node that used to be locked now deletes like any other once another root exists
   const root = repo.createNode(s, { label: 'خدمات' });
+  migrate(db);
   repo.deleteNode(s, 'business', root.id);
   assert.equal(repo.listObjects(s)[0].nodeId, root.id);
   assert.ok(!repo.listNodes(s).some((n) => n.id === 'business'));
@@ -631,14 +720,90 @@ test('moving a section builds and removes NO relation; the structure is a hint, 
   assert.ok(!key().includes(up.id), 'the section above got no relation just for being above');
 });
 
-test('a thought changes its section; the text stays; a missing section or note is refused', () => {
+test('moving a Note updates its Thoughts without changing Material; a missing section or note is refused', () => {
   const { repo, s } = fresh();
   const a = repo.createNode(s, { parentId: 'business', label: 'اشتراک' });
   const note = repo.createNote(s, 'business', '[ایده] یک فکر');
+  const thought = repo.listThoughts(s)[0];
   const moved = repo.moveNoteToNode(s, note.id, a.id);
   assert.equal(moved.nodeId, a.id);
   assert.equal(moved.content, '[ایده] یک فکر');
   assert.equal(repo.listNotes(s).find((n) => n.id === note.id)!.nodeId, a.id);
+  assert.equal(repo.getThought(s, thought.id)?.nodeId, a.id);
   assert.throws(() => repo.moveNoteToNode(s, note.id, 'nope'), RepoError);
   assert.throws(() => repo.moveNoteToNode(s, 'nope', a.id), RepoError);
+});
+
+test('Note formatting and line shifts preserve anchored Thought identity; changed Material does not silently revise it', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک');
+  const original = repo.listThoughts(s)[0];
+  repo.updateNote(s, note.id, `پیش‌گفتار\n${note.content}`);
+  const afterShift = repo.listThoughts(s);
+  assert.deepEqual(afterShift.map((t) => t.id), [original.id]);
+  assert.equal(afterShift[0].sourceLine, 1);
+  assert.equal(afterShift[0].text, original.text);
+  repo.updateNote(s, note.id, 'پیش‌گفتار\n[ایده] قیمت اشتراک ویژه');
+  const afterMaterialEdit = repo.listThoughts(s);
+  assert.equal(afterMaterialEdit.length, 2, 'new marked material creates a new Thought instead of guessing revision intent');
+  assert.ok(afterMaterialEdit.some((t) => t.id === original.id && t.text === original.text));
+});
+
+test('deleting Note Material keeps its Thought and restoring the Note does not duplicate it', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[سؤال] مشتری چه می‌خواهد؟');
+  const thought = repo.listThoughts(s)[0];
+  repo.deleteNote(s, note.id);
+  assert.equal(repo.getThought(s, thought.id)?.text, thought.text);
+  assert.equal(repo.listNotes(s).some((n) => n.id === note.id), false);
+  repo.restoreNote(s, note);
+  assert.equal(repo.getThought(s, thought.id)?.id, thought.id);
+  assert.equal(repo.listThoughts(s).filter((t) => t.sourceNoteId === note.id).length, 1);
+});
+
+test('Thought revision, reclassification and derivation follow explicit identity and lineage rules', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک ۴۰۰ باشد');
+  const original = repo.listThoughts(s)[0];
+  const presentation = repo.reviseThought(s, original.id, ' قیمت اشتراک ۴۰۰ باشد. ');
+  assert.equal(presentation.thought.id, original.id);
+  assert.equal(presentation.revisions.length, 0, 'punctuation and whitespace do not create semantic history');
+  const semantic = repo.reviseThought(s, original.id, 'قیمت اشتراک ۴۹۰ باشد');
+  assert.equal(semantic.thought.id, original.id);
+  assert.deepEqual(semantic.revisions.map((r) => [r.beforeText, r.afterText]), [[' قیمت اشتراک ۴۰۰ باشد. ', 'قیمت اشتراک ۴۹۰ باشد']]);
+  const reclassified = repo.reclassifyThought(s, original.id, 'question');
+  assert.equal(reclassified.id, original.id);
+  assert.equal(reclassified.kind, 'question');
+  assert.equal(repo.listThoughtRevisions(s, original.id).length, 1, 'reclassification does not create text history');
+
+  const otherNote = repo.createNote(s, 'offer', '[سؤال] مشتری چه می‌خواهد؟');
+  const other = repo.listThoughts(s).find((t) => t.sourceNoteId === otherNote.id)!;
+  const child = repo.deriveThought(s, { parentIds: [original.id, other.id, original.id], nodeId: 'offer', kind: 'idea', text: 'ترکیب دو مشاهده' });
+  assert.notEqual(child.thought.id, original.id);
+  assert.deepEqual(child.derivedFrom, [original.id, other.id], 'duplicate parent links are collapsed');
+  assert.deepEqual(repo.listThoughtParents(s, child.thought.id).sort(), [original.id, other.id].sort());
+  assert.equal(repo.getThought(s, original.id)?.status, 'open', 'derivation never consumes its parents');
+  assert.equal(repo.getNote(s, note.id)?.content, '[ایده] قیمت اشتراک ۴۰۰ باشد', 'Thought editing leaves its source Material unchanged');
+  const childKnowledge = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: child.thought.text, content: child.thought.text, nodeId: child.thought.nodeId, source: { kind: 'note', thoughtId: child.thought.id, noteId: 'stale-note-reference', at: 't' } });
+  assert.deepEqual([childKnowledge.source?.kind, childKnowledge.source?.thoughtId, childKnowledge.source?.noteId], ['user', child.thought.id, undefined], 'directly written Thoughts do not invent a Note source');
+});
+
+test('Thought promotion creates only Proposed Knowledge with provenance; user confirmation is a separate action', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[فرض] مشتری پرداخت می‌کند');
+  const thought = repo.listThoughts(s)[0];
+  const input = {
+    type: 'Fact' as const, status: 'Proposed' as const, provenance: 'User Input' as const,
+    title: thought.text, content: thought.text, nodeId: thought.nodeId,
+    source: { kind: 'note' as const, thoughtId: thought.id, at: '2026-03-01T00:00:00Z' },
+  };
+  assert.throws(() => repo.createObject(s, { ...input, status: 'Confirmed' }), RepoError, 'a Thought cannot create Truth directly');
+  const proposal = repo.createObject(s, input);
+  assert.equal(proposal.status, 'Proposed');
+  assert.equal(proposal.assumption, true);
+  assert.deepEqual([proposal.source?.thoughtId, proposal.source?.noteId, proposal.source?.quote], [thought.id, note.id, thought.text]);
+  assert.equal(repo.getThought(s, thought.id)?.status, 'resolved');
+  repo.updateObject(s, proposal.id, { status: 'Confirmed' });
+  assert.equal(repo.getObject(s, proposal.id)?.status, 'Confirmed', 'Truth authority remains the existing explicit user status change');
+  assert.equal(repo.listThoughts(s).some((t) => t.id === thought.id), false, 'resolved Thoughts are not listed as open');
 });

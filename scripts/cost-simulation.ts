@@ -1,8 +1,8 @@
 /**
  * Heavy-use cost simulation: what each plan costs US when every daily cap and the whole file quota are used all month
- * (managed AI OFF: only the subscription-included judgements, Coach and file extraction run on our key).
- *   npx tsx scripts/cost-simulation.ts            → prints the table
- *   npx tsx scripts/cost-simulation.ts --write    → also writes docs/pricing-entitlements.md
+ * (subscription-included judgements, Coach and file extraction run through platform AI, independent of user credentials).
+ *   bun run scripts/cost-simulation.ts            → prints the table
+ *   bun run scripts/cost-simulation.ts --write    → also writes docs/pricing-entitlements.md
  * Prices come from server/ai/config/models.json; token counts per call are ASSUMPTIONS [فرض] — calibrate in Alpha.
  */
 import { writeFileSync } from 'node:fs';
@@ -34,9 +34,7 @@ const ent = [
   `| پردازش فایل در ماه (توکن) | ${rows.map(({ e }) => fa(e.fileTokensPerMonth)).join(' | ')} |`,
   `| اثر تغییر | ${rows.map(({ e }) => (e.engines.changeImpact ? '✓' : '—')).join(' | ')} |`,
   `| تناقض معنایی | ${rows.map(({ e }) => (e.engines.semanticContradiction ? '✓' : '—')).join(' | ')} |`,
-  `| MCP | ${rows.map(({ e }) => (e.mcp ? '✓' : '—')).join(' | ')} |`,
   `| بستهٔ Context | ${rows.map(({ e }) => (e.contextPack ? '✓' : '—')).join(' | ')} |`,
-  `| BYOK | ${rows.map(({ e }) => (e.byok ? '✓' : '—')).join(' | ')} |`,
   `| spec سفارشی | ${rows.map(({ e }) => (e.customSpecs ? '✓' : '—')).join(' | ')} |`,
   `| قضاوت لایهٔ تصمیم در روز | ${rows.map(({ e }) => fa(e.decisionJudgmentsPerDay)).join(' | ')} |`,
   `| Context Coach در روز | ${rows.map(({ e }) => fa(e.coachPerDay)).join(' | ')} |`,
@@ -55,9 +53,9 @@ const cost = [
 const assumptions = `- هر فراخوانی قضاوت دسته‌ای: ${fa(ASSUMPTIONS.judgmentCall.inputTokens)} توکن ورودی، ${fa(ASSUMPTIONS.judgmentCall.outputTokens)} خروجی، ${fa(ASSUMPTIONS.judgmentCall.judgmentsPerCall)} قضاوت در هر فراخوانی (سطح cheap: ورودی ${cheap.inputPerM}$ و خروجی ${cheap.outputPerM}$ به ازای هر میلیون توکن)
 - هر جلسهٔ Coach: ${fa(ASSUMPTIONS.coachCall.inputTokens)} ورودی، ${fa(ASSUMPTIONS.coachCall.outputTokens)} خروجی با احتساب thinking سطح low (سطح balanced: ${balanced.inputPerM}$ و ${balanced.outputPerM}$)
 - فایل‌ها به‌طور میانگین ${fa(ASSUMPTIONS.fileExtract.avgFileTokens)} توکن؛ استخراج یک‌باره حداکثر ${fa(ASSUMPTIONS.fileExtract.windowTokens)} توکن ابتدای فایل را می‌خواند و ${fa(ASSUMPTIONS.fileExtract.outputTokens)} توکن خروجی دارد (cheap)
-- ${fa(ASSUMPTIONS.days)} روز با استفادهٔ کامل از همهٔ سقف‌ها؛ AI مدیریت‌شده خاموش است، پس خروجی‌ها و گفتگو روی کلید کاربر است و هزینه‌ای برای ما ندارد
-- قیمت‌ها از \`server/ai/config/models.json\` (تاریخ ${modelsConfig.pricedAt}) و تأییدنشده با کلید واقعی`;
+- ${fa(ASSUMPTIONS.days)} روز با استفادهٔ کامل از همهٔ سقف‌ها؛ هزینهٔ پلتفرم با فرض مصرف AI مدیریت‌شده محاسبه شده است
+- قیمت‌ها از \`server/ai/config/models.json\` (تاریخ ${modelsConfig.pricedAt}) و تأییدنشده با صورتحساب واقعی`;
 
-const md = `# جدول پلن‌ها و هزینهٔ واقعی ما\n\nتولیدشده با \`npx tsx scripts/cost-simulation.ts --write\`. همهٔ عددها فرضی‌اند و فقط در \`src/core/entitlements.config.ts\` تغییر می‌کنند.\n\n## Entitlementها\n\n${ent}\n\n## سناریوی مصرف سنگین (هزینهٔ ما در ماه)\n\n${cost}\n\n### فرض‌ها\n\n${assumptions}\n`;
+const md = `# جدول پلن‌ها و هزینهٔ واقعی ما\n\nتولیدشده با \`bun run scripts/cost-simulation.ts --write\`. همهٔ عددها فرضی‌اند و فقط در \`src/core/entitlements.config.ts\` تغییر می‌کنند.\n\n## Entitlementها\n\n${ent}\n\n## سناریوی مصرف سنگین (هزینهٔ ما در ماه)\n\n${cost}\n\n### فرض‌ها\n\n${assumptions}\n`;
 console.log(md);
 if (process.argv.includes('--write')) writeFileSync('docs/pricing-entitlements.md', md);

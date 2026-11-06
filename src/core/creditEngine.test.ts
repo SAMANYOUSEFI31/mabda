@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { creditModeForPlan, previewCredits, effectiveCredits, rebuildCredits, chatCredits, calculateCreditCost } from './creditEngine.ts';
+import { creditModeForPlan, previewCredits, rebuildCredits, chatCredits, calculateCreditCost } from './creditEngine.ts';
 
 const plan = (pattern: 'single' | 'cascade' | 'critique', tier: 'cheap' | 'balanced' | 'frontier', userMode: 'auto' | 'fast' | 'deep' | 'sensitive' = 'auto') => ({ pattern, tier, userMode });
 
@@ -21,9 +21,7 @@ test('previewCredits equals the charge for the same plan (what is shown is what 
   assert.equal(previewCredits({ ...base, plan: plan('cascade', 'frontier') }), 50);
 });
 
-test('BYOK is free, rebuild is half, chat deep costs 5', () => {
-  assert.equal(effectiveCredits(26, true), 0);
-  assert.equal(effectiveCredits(26, false), 26);
+test('managed credits apply to generations, rebuilds are half, chat deep costs 5', () => {
   assert.equal(rebuildCredits(23), 12);
   assert.equal(chatCredits(true), 5);
   assert.equal(chatCredits(false), 0);

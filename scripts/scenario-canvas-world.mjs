@@ -29,7 +29,7 @@ const stopAll = () => {
 };
 const startServer = async (port, tag) => {
   BASE = `http://127.0.0.1:${port}`;
-  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(port), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), MABDA_SECRET: 's', NODE_ENV: 'development' }, stdio: 'ignore', detached: true, shell: process.platform === 'win32' }));
+  children.push(spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: String(port), MABDA_DB_PATH: join(dir, `${tag}.sqlite`), NODE_ENV: 'development' }, stdio: 'ignore', detached: true, shell: process.platform === 'win32' }));
   for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* retry */ } await wait(250); }
 };
 const call = async (method, path, body) => { const r = await fetch(`${BASE}/api${path}`, { method, headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }); return r.json(); };
@@ -61,7 +61,7 @@ try {
       if (!(await page.getByText(`خانه: دنیا ${width}`).count())) await account(`دنیا ${width}`);
       await page.getByText(`خانه: دنیا ${width}`).waitFor({ timeout: 8000 });
     };
-    const toTruth = async () => { await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first()); await stage.waitFor(); await page.waitForTimeout(500); };
+    const toTruth = async () => { await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first()); await stage.waitFor(); await page.waitForTimeout(500); };
     const toolbar = page.getByTestId('canvas-toolbar');
     const lod = () => stage.getAttribute('data-lod');
     const zoomOnce = async (name) => {
@@ -298,7 +298,7 @@ try {
     for (let i = 20; i < 300; i += 3) await call('PUT', `/workspaces/${wid}/objects/${made[i].id}/dependencies`, { dependsOn: [made[(i * 7) % i].id] });
     await enter();
     const t0 = Date.now();
-    await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first());
+    await nav('منبع', 'منبع حقیقت'); await click(page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first());
     await stage.locator('[data-testid=row-rail], [data-testid=row-summary]').first().waitFor({ timeout: 20000 });
     const opened = Date.now() - t0;
     const t1 = Date.now();

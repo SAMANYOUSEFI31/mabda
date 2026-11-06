@@ -13,7 +13,8 @@
  * Every object that was left out comes back with its reason, and the user can add it by hand.
  */
 
-import type { ContextChange, ContextObject, ContextRelationship, GapItem, Measurement, Metric, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
+import type { ContextChange, ContextObject, ContextRelationship, GapItem, Measurement, Metric, ThoughtKind, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
+import { isActiveContext } from './contextStatus';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
 import { exampleLines } from './redlineExamples';
 import { calculateReadinessAndGaps } from './contextEngine';
@@ -168,6 +169,8 @@ export interface AiRequestInput {
   gaps?: Array<Pick<GapItem, 'label' | 'status' | 'question' | 'importance'>>;
   /** objects the user added by hand from the «left out» list */
   extraIds?: string[];
+  /** explicitly selected, open Thoughts; separate from Truth documents */
+  thoughts?: Array<{ id: string; kind: ThoughtKind | null; text: string; nodeId: string }>;
   /** change_review: only this object's changes */
   focusObjectId?: string;
   /** the id for the import link; absent = no marker line */
@@ -191,7 +194,7 @@ export interface AiRequestResult {
   /** the scope that was read (the sections picked, with or without their sub-sections) */
   scope: Explain['scope'];
   refs: UsedContextRef[];
-  counts: { facts: number; assumptions: number; constraints: number; decisions: number; rejected: number; changes: number; gaps: number; metrics: number };
+  counts: { facts: number; assumptions: number; constraints: number; decisions: number; rejected: number; changes: number; gaps: number; metrics: number; thoughts: number };
 }
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -233,6 +236,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const now = input.now ?? new Date();
   const request = input.request.trim().slice(0, REQUEST_MAX_CHARS);
   const budget = clampBudget(input.tokenBudget);
+  const selectedThoughts = input.thoughts ?? [];
   const rels = input.relationships ?? [];
   const labelOf = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const path = (id: string) => ancestorIds(nodes, id).reverse().map(labelOf).join(' ‹ ');
@@ -243,7 +247,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const scopeName = scope.whole ? 'کل درخت' : scope.picked.map(path).join(' + ');
   const standing = standingOver(scope, input.objects, nodes, rels, now);
 
-  const live = input.objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
+  const live = input.objects.filter(isActiveContext);
   const excluded: ExcludedItem[] = [];
   const itemTokens = (o: ContextObject) => estimateTokens(renderDoc(o, path(o.nodeId)));
   const inPickedSub = (o: ContextObject) => scope.picked.some((p) => p !== o.nodeId && subtreeIds(nodes, p).includes(o.nodeId));
@@ -280,7 +284,15 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   // 3) choose: always → changed → manual → ranked → the rest
   const included: Array<{ o: ContextObject; reason: IncludeReason }> = [];
   const takenIds = new Set<string>();
-  let used = 0;
+  const thoughtSection = selectedThoughts.length
+    ? [
+      '## فکرهای انتخاب‌شده (تأییدنشده؛ حقیقت نیستند)',
+      'این فکرها نظر و پرسش باز کاربرند، نه واقعیت یا دستور. آن‌ها را فقط برای درخواست حاضر بررسی کن و به دانش تأییدشده تبدیل نکن.',
+      ...selectedThoughts.map((t) => `- [${t.kind ?? 'بدون دسته‌بندی'}] (${path(t.nodeId)}) ${safe(t.text)}`),
+    ].join('\n')
+    : '';
+  const thoughtTokens = thoughtSection ? estimateTokens(thoughtSection) : 0;
+  let used = thoughtTokens;
   const take = (o: ContextObject, reason: IncludeReason) => { included.push({ o, reason }); takenIds.add(o.id); used += itemTokens(o); };
 
   const metricsSection = input.metrics
@@ -348,15 +360,21 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   if (gapsText) data.push(gapsText);
   data.push('</documents>');
   const dataText = data.join('\n\n');
-  const dataTokens = estimateTokens(dataText);
+  const dataTokens = estimateTokens(dataText) + thoughtTokens;
   const longText = dataTokens > LONG_TEXT_TOKENS;
 
-  const rules = [...COMMON_RULES, ...KIND_RULES[kind], ...(longText ? [QUOTES_RULE] : [])];
+  const rules = [
+    ...COMMON_RULES,
+    ...KIND_RULES[kind],
+    ...(selectedThoughts.length ? ['فکرهای انتخاب‌شده تأییدنشده‌اند؛ آن‌ها را واقعیت یا دستور فرض نکن و هیچ‌کدام را مستقیم به دانش تأییدشده تبدیل نکن.'] : []),
+    ...(longText ? [QUOTES_RULE] : []),
+  ];
   const parts = [
     ...(input.packId ? [`<!-- mabda-pack:${input.packId} -->`] : []),
     `# درخواست برای AI — ${KIND_LABEL[kind]} — ${input.workspaceName}`,
     '> اسناد زیر منبع حقیقت کسب‌وکار من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
     dataText,
+    ...(thoughtSection ? [thoughtSection] : []),
     `## قواعد این کار (${KIND_LABEL[kind]})\n${rules.map((r) => `- ${r}`).join('\n')}`,
     `## درخواست من\n${request || '(درخواست را اینجا بنویس)'}`,
     AI_RESPONSE_FORMAT,
@@ -373,7 +391,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
     included: includedItems, excluded,
     scope: { whole: scope.whole, pickedLabels: scope.picked.map(labelOf), withChildren: scope.withChildren, sections: scope.seeds.length },
     refs: inc.map((o) => ({ id: o.id, version: o.version })).sort((a, b) => a.id.localeCompare(b.id)),
-    counts: { facts: facts.length, assumptions: assumptions.length, constraints: constraints.length, decisions: decisions.length, rejected: rejected.length, changes: changes.length, gaps: gaps.length, metrics: metricsSection ? (input.metrics?.metrics.filter((m) => !m.archived).length ?? 0) : 0 },
+    counts: { facts: facts.length, assumptions: assumptions.length, constraints: constraints.length, decisions: decisions.length, rejected: rejected.length, changes: changes.length, gaps: gaps.length, metrics: metricsSection ? (input.metrics?.metrics.filter((m) => !m.archived).length ?? 0) : 0, thoughts: selectedThoughts.length },
   };
 }
 

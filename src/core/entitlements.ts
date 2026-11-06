@@ -13,7 +13,7 @@ export const COST_WARN_RATIO = ENTITLEMENTS_CONFIG.costWarnRatio;
 
 export const entitlementsOf = (plan: PlanId): PlanEntitlements => ENTITLEMENTS_CONFIG.plans[plan] ?? ENTITLEMENTS_CONFIG.plans.starter;
 
-export type Feature = 'changeImpact' | 'semanticContradiction' | 'mcp' | 'contextPack' | 'byok' | 'customSpecs';
+export type Feature = 'changeImpact' | 'semanticContradiction' | 'contextPack' | 'customSpecs';
 
 export function can(plan: PlanId, feature: Feature): boolean {
   const e = entitlementsOf(plan);

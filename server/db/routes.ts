@@ -18,10 +18,11 @@ import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
 import { ancestorIds, defaultNodeId, resolveNodeId } from '../../src/core/nodeTree.ts';
 import { validateSpec } from '../../src/core/specGraph.ts';
 import { PLANS } from '../../src/core/creditEngine.ts';
-import { entitlementsOf } from '../../src/core/entitlements.ts';
+import { can, entitlementsOf } from '../../src/core/entitlements.ts';
 import { costReport } from '../../src/core/costReport.ts';
 import { buildContextPack, PACK_MARKER_RE } from '../../src/core/contextPack.ts';
 import { parseByHeadings } from '../../src/core/answerParser.ts';
+import { guessTitle } from '../../src/core/knowledgeGuess.ts';
 import type { ParsedBlock } from '../../src/core/answerParser.ts';
 import { renderSavedPack } from './packs.ts';
 import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverable, deleteWorkspace, listRemovals, planNodeRemoval, purgeImpact, purgeObject, removeNode, restoreDeliverable, restoreObject, undoRemoval, wipeUser } from './removal.ts';
@@ -32,10 +33,9 @@ import { planNodes, sampleNode } from '../../src/core/startTemplate.ts';
 import { nodeTemplateOf, nodeTemplateToStart, workstreamTemplateOf } from '../../src/core/templates.ts';
 import type { NodeTemplate, NodeTemplateNode } from '../../src/core/templates.ts';
 import type { SavedPack } from '../../src/types/index.ts';
-import { convertedTo, findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
+import { findItem, headingSections, parseThinking } from '../../src/core/thinkingMarkers.ts';
 import type { ThinkingKind } from '../../src/core/thinkingMarkers.ts';
 import { enabledBuiltInSpecs } from '../../src/core/specs.ts';
-import { can } from '../../src/core/entitlements.ts';
 import { needsReview } from '../../src/core/decisionGraph.ts';
 import { buildCanvasModel, moveEffect, rankBetween } from '../../src/core/canvasModel.ts';
 import type { Lane } from '../../src/core/canvasModel.ts';
@@ -52,9 +52,8 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
   try { await fn(req, res); } catch (e) { next(e); }
 };
 
-export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** who pays for subscription-included judgements */ payer?: () => 'us' | 'user'; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
+export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: FileService; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date }): { router: Router; files: FileService } {
   const { repo, ai } = deps;
-  const payer = deps.payer ?? (() => 'user' as const);
   const clock = deps.clock ?? (() => new Date());
   const files = deps.files ?? new FileService(repo, (aiUser, req) => ai.extract(aiUser, req));
   const router = express.Router();
@@ -110,12 +109,12 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.delete('/workspaces/:wid/nodes/:id', wrap((req, res) => {
     const s = scopeOf(req);
     const r = removeNode(repo, s, req.params.id, { mode: modeOf(req.query.mode), transferTo: typeof req.query.transferTo === 'string' && req.query.transferTo ? req.query.transferTo : undefined });
-    res.json({ nodes: r.nodes, removal: r.removal, objects: repo.listObjects(s), notes: repo.listNotes(s), files: repo.listFiles(s), stale: stale(s) });
+    res.json({ nodes: r.nodes, removal: r.removal, objects: repo.listObjects(s), notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), files: repo.listFiles(s), stale: stale(s) });
   }));
   router.post('/workspaces/:wid/removals/:id/undo', wrap((req, res) => {
     const s = scopeOf(req);
     const r = undoRemoval(repo, s, req.params.id);
-    res.json({ nodes: r.nodes, objects: repo.listObjects(s), notes: repo.listNotes(s), files: repo.listFiles(s), samples: repo.listSampleObjects(s), changes: repo.listChanges(s), stale: stale(s) });
+    res.json({ nodes: r.nodes, objects: repo.listObjects(s), notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), files: repo.listFiles(s), samples: repo.listSampleObjects(s), changes: repo.listChanges(s), stale: stale(s) });
   }));
 
   // ── the archive: knowledge that is out of the way, outputs, recent removals; «برگردان» and «حذف دائمی» ──
@@ -154,7 +153,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.post('/workspaces/:wid/objects', wrap((req, res) => {
     const s = scopeOf(req);
     const { change: _c, reason: _r, ...input } = body(req);
-    res.json({ object: repo.createObject(s, input as never, metaOf(body(req))) });
+    const object = repo.createObject(s, input as never, metaOf(body(req)));
+    res.json({ object, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   router.patch('/workspaces/:wid/objects/:id', wrap((req, res) => {
     const s = scopeOf(req);
@@ -185,6 +185,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   const LANES: Lane[] = ['thinking', 'confirmed'];
   const canvasBundle = (s: Scope) => ({
     objects: repo.listObjects(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), notes: repo.listNotes(s), stale: stale(s),
+    thoughts: repo.listThoughts(s, { includeResolved: true }),
     canvas: { decisions: repo.listCanvasItems(s, 'decisions'), free: repo.listCanvasItems(s, 'free') },
   });
   const reviewIdsOf = (s: Scope) => new Set(needsReview(repo.listObjects(s), repo.listRelationships(s), repo.listChanges(s)).keys());
@@ -313,9 +314,55 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.get('/workspaces/:wid/objects/:id/versions', wrap((req, res) => { res.json({ versions: repo.listVersions(scopeOf(req), req.params.id) }); }));
 
   // ── notes (never injected into the model) ────────────────────────────
-  router.post('/workspaces/:wid/notes', wrap((req, res) => { res.json({ note: repo.createNote(scopeOf(req), String(body(req).nodeId), String(body(req).content ?? '')) }); }));
-  router.post('/workspaces/:wid/notes/:id/move-node', wrap((req, res) => { res.json({ note: repo.moveNoteToNode(scopeOf(req), req.params.id, String(body(req).nodeId ?? '')) }); }));
-  router.patch('/workspaces/:wid/notes/:id', wrap((req, res) => { res.json({ note: repo.updateNote(scopeOf(req), req.params.id, String(body(req).content ?? '')) }); }));
+  router.post('/workspaces/:wid/notes', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.createNote(s, String(body(req).nodeId), String(body(req).content ?? ''));
+    res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
+  router.post('/workspaces/:wid/notes/:id/move-node', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.moveNoteToNode(s, req.params.id, String(body(req).nodeId ?? ''));
+    res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/revise', wrap((req, res) => {
+    const b = body(req);
+    const r = repo.reviseThought(scopeOf(req), req.params.id, String(b.text ?? ''));
+    res.json(r);
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/reclassify', wrap((req, res) => {
+    const b = body(req);
+    if (!['idea', 'question', 'assumption', 'open_decision'].includes(String(b.kind))) throw new RepoError('invalid', 'نوع فکر معتبر نیست.');
+    res.json({ thought: repo.reclassifyThought(scopeOf(req), req.params.id, b.kind as import('../../src/types/index.ts').ThoughtKind) });
+  }));
+  router.post('/workspaces/:wid/thoughts/derive', wrap((req, res) => {
+    const b = body(req);
+    const parentIds = Array.isArray(b.parentIds) ? b.parentIds.filter((id): id is string => typeof id === 'string') : [];
+    if (!['idea', 'question', 'assumption', 'open_decision'].includes(String(b.kind))) throw new RepoError('invalid', 'نوع فکر معتبر نیست.');
+    res.json(repo.deriveThought(scopeOf(req), { parentIds, nodeId: String(b.nodeId ?? ''), kind: b.kind as import('../../src/types/index.ts').ThoughtKind, text: String(b.text ?? '') }));
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/resolve', wrap((req, res) => {
+    const b = body(req);
+    res.json({ thought: repo.resolveThought(scopeOf(req), req.params.id, { ...(typeof b.objectId === 'string' ? { objectId: b.objectId } : {}), ...(typeof b.nodeId === 'string' ? { nodeId: b.nodeId } : {}) }) });
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/promote', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    if (!['Fact', 'Decision', 'Constraint'].includes(String(b.type))) throw new RepoError('invalid', 'نوع دانش مقصد را انتخاب کن.');
+    const thought = repo.getThought(s, req.params.id);
+    if (!thought || !thought.kind) throw new RepoError('not_found', 'فکر قابل تبدیل پیدا نشد.');
+    const type = b.type as import('../../src/types/index.ts').ContextType;
+    const title = guessTitle(thought.text);
+    const object = repo.createObject(s, {
+      type, status: 'Proposed', provenance: 'User Input', title, content: thought.text, nodeId: thought.nodeId,
+      source: { kind: 'note', thoughtId: thought.id, ...(thought.sourceNoteId ? { noteId: thought.sourceNoteId } : {}), ...(thought.sourceLineKey ? { lineKey: thought.sourceLineKey } : {}), quote: thought.text, at: new Date().toISOString() },
+    }, metaOf(b));
+    res.json({ object, objects: repo.listObjects(s), thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
+  router.patch('/workspaces/:wid/notes/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.updateNote(s, req.params.id, String(body(req).content ?? ''));
+    res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
   // a deleted note is handed back (with its place) so «برگرداندن» can put it exactly where it was
   router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { const s = scopeOf(req); const note = repo.getNote(s, req.params.id); const position = note ? repo.notePosition(s, note.id) : undefined; repo.deleteNote(s, req.params.id); res.json({ ok: true, note, position }); }));
   router.post('/workspaces/:wid/notes/restore', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ note: repo.restoreNote(s, b.note as never, b.position as never) }); }));
@@ -333,16 +380,15 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     const item = findItem(parseThinking(note.content), { kind: ['idea', 'assumption', 'open_decision', 'question'].includes(String(b.kind)) ? b.kind as ThinkingKind : undefined, hash: typeof b.hash === 'string' ? b.hash : undefined, text: typeof b.text === 'string' ? b.text : undefined });
     if (!item) throw new RepoError('not_found', 'این خط دیگر در یادداشت نیست.');
-    if (item.kind === 'question') throw new RepoError('invalid', 'سؤال، سؤال می‌ماند؛ تبدیل نمی‌شود.');
-    const as = item.kind === 'assumption' ? 'assumption' : item.kind === 'open_decision' ? 'decision' : (b.as === 'decision' ? 'decision' : 'fact');
-    if (convertedTo({ ...item, noteId: note.id, nodeId: note.nodeId, key: '' }, repo.listObjects(s))) throw new RepoError('invalid', 'این مورد قبلاً تبدیل شده است.');
-    const title = item.text.length > 70 ? `${item.text.slice(0, 70)}…` : item.text;
+    const thought = repo.listThoughts(s, { includeResolved: true }).find((t) => t.sourceNoteId === note.id && t.sourceLine === item.line && t.sourceLineKey === item.hash);
+    if (!thought) throw new RepoError('not_found', 'هویت پایدار این فکر پیدا نشد؛ فضا را تازه کن و دوباره تلاش کن.');
+    if (!['Fact', 'Decision', 'Constraint'].includes(String(b.type))) throw new RepoError('invalid', 'نوع دانش مقصد را انتخاب کن.');
+    const title = guessTitle(thought.text);
     const object = repo.createObject(s, {
-      type: as === 'decision' ? 'Decision' : 'Fact', status: 'Proposed', provenance: 'User Input', title, content: item.text, nodeId: note.nodeId,
-      ...(as === 'assumption' ? { assumption: true, ...(typeof b.reviewBy === 'string' ? { reviewBy: b.reviewBy } : {}) } : {}),
-      source: { kind: 'note', label: 'یادداشت', noteId: note.id, lineKey: item.hash, quote: item.text, at: new Date().toISOString() },
+      type: b.type as import('../../src/types/index.ts').ContextType, status: 'Proposed', provenance: 'User Input', title, content: thought.text, nodeId: thought.nodeId,
+      source: { kind: 'note', label: 'یادداشت', thoughtId: thought.id, noteId: note.id, lineKey: thought.sourceLineKey, quote: thought.text, at: new Date().toISOString() },
     }, metaOf(b));
-    res.json({ object, objects: repo.listObjects(s) });
+    res.json({ object, objects: repo.listObjects(s), thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   /** «ببر بالاتر»-style split: every ## section of a note becomes a child node (the note stays) */
   router.post('/workspaces/:wid/notes/:id/split', wrap((req, res) => {
@@ -350,7 +396,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const note = repo.getNote(s, req.params.id);
     if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     const nodes = repo.nodesFromNote(s, note.id, headingSections(note.content), metaOf(body(req)));
-    res.json({ nodes: repo.listNodes(s), created: nodes, notes: repo.listNotes(s) });
+    res.json({ nodes: repo.listNodes(s), created: nodes, notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   router.post('/workspaces/:wid/objects/:id/outcome', wrap((req, res) => {
     const s = scopeOf(req);
@@ -359,7 +405,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ change, changes: repo.listChanges(s) });
   }));
 
-  // ── metrics («شاخص‌ها»): recorded results, never Context objects. Numbers from an MCP client arrive Proposed (see the tools). ──
+  // ── metrics («شاخص‌ها»): recorded results, never Context objects. ──
   const metricsState = (s: Scope) => ({ metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s) });
   router.get('/workspaces/:wid/metrics', wrap((req, res) => { res.json(metricsState(scopeOf(req))); }));
   router.post('/workspaces/:wid/metrics', wrap((req, res) => { const s = scopeOf(req); const b = body(req); const metric = repo.createMetric(s, b, metaOf(b)); res.json({ metric, ...metricsState(s) }); }));
@@ -367,7 +413,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
   router.post('/workspaces/:wid/metrics/:id/archive', wrap((req, res) => { const s = scopeOf(req); const metric = repo.archiveMetric(s, req.params.id, metaOf(body(req))); res.json({ metric, ...metricsState(s) }); }));
   router.post('/workspaces/:wid/measurements', wrap((req, res) => {
     const s = scopeOf(req); const b = body(req);
-    // the browser is the user: never `mcp`, whatever the body says
+    // Measurements submitted through the browser are manual regardless of request data.
     const measurement = repo.addMeasurement(s, { metricId: String(b.metricId ?? ''), value: b.value, at: typeof b.at === 'string' ? b.at : undefined, note: b.note, source: 'manual', decisionId: typeof b.decisionId === 'string' ? b.decisionId : undefined }, metaOf(b));
     res.json({ measurement, ...metricsState(s) });
   }));
@@ -429,10 +475,9 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const ids = Array.isArray(body(req).objectIds) ? (body(req).objectIds as unknown[]).map(String) : [];
     const have = repo.listJudgments(s);
     const todo = ids.map((id) => repo.getObject(s, id)).filter((o): o is NonNullable<typeof o> => !!o && have[o.id]?.version !== o.version);
-    // judgements WE pay for are capped per plan per day; with the user's own key there is no cap
+    // Platform-paid judgements are always capped per plan per day.
     const planOf = repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId;
-    const capped = payer() === 'us';
-    const left = capped ? Math.max(0, entitlementsOf(planOf).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
+    const left = Math.max(0, entitlementsOf(planOf).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge'));
     const limited = todo.length > left;
     if (limited) todo.length = left;
     if (todo.length) {
@@ -440,7 +485,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
       const r = await ai.judgeAmbiguity(aiUserOf(req), todo.map((o) => ({ id: o.id, title: o.title, content: o.content })), ctl.signal);
       for (const o of todo) { const j = r.judgments[o.id]; if (j) repo.saveJudgment(s, o.id, o.version, j); }
-      if (capped) repo.addDailyUsage(s, today(), 'judge', todo.length);
+      repo.addDailyUsage(s, today(), 'judge', todo.length);
       // the decision-layer call is free for the user (PRD P3) but its real tokens/cost are in the ledger
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص ابهام Context (Gap)', mode: 'gap_judge', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
@@ -458,8 +503,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const plain = body(req).mode === 'text';
     const label = ['ChatGPT', 'Claude', 'Gemini'].includes(String(body(req).sourceLabel)) ? String(body(req).sourceLabel) : 'AI دیگر';
     const sourceName = plain ? 'متن چسبانده‌شده' : `حافظهٔ ${label}`;
-    if (payer() === 'us' && entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
-      throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره یا با کلید خودت ادامه بده.', retryable: false });
+    if (entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
+      throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره تلاش کن یا پلن را ارتقا بده.', retryable: false });
     }
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
@@ -467,7 +512,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const r = await ai.extract(aiUserOf(req), { kind: plain ? 'note' : 'memory', text, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
     const at = new Date().toISOString();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: sourceName, at, ...(o.quote ? { quote: o.quote } : {}) } }));
-    if (payer() === 'us') repo.addDailyUsage(s, today(), 'judge', 1);
+    repo.addDailyUsage(s, today(), 'judge', 1);
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: plain ? 'وارد کردن متن چسبانده‌شده' : `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
   }));
@@ -539,8 +584,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
     const only = Array.isArray(body(req).objectIds) ? new Set((body(req).objectIds as unknown[]).map(String)) : null;
     const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s), repo.listNodes(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
-    const capped = payer() === 'us';
-    const left = capped ? Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge')) : Infinity;
+    const left = Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge'));
     const limited = todo.length > left;
     if (limited) todo.length = left;
     if (todo.length) {
@@ -548,7 +592,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
       res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
       const r = await ai.judgeContradictions(aiUserOf(req), todo.map((p) => ({ key: p.key, a: p.a, b: p.b })), ctl.signal);
       for (const p of todo) { const j = r.results[p.key]; if (j) repo.savePairJudgment(s, p.a, p.b, j); }
-      if (capped) repo.addDailyUsage(s, today(), 'judge', todo.length);
+      repo.addDailyUsage(s, today(), 'judge', todo.length);
       if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص تناقض معنایی', mode: 'contradiction', creditCost: 0, usage: r.usage, id: newId('led') }));
     }
     res.json({ pairJudgments: repo.listPairJudgments(s), ledger: repo.listLedger(s), judged: todo.length, limited });
@@ -588,7 +632,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     const text = String(b.text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای Coach نوشته نشده است.');
-    if (payer() === 'us' && coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ Context Coach برای پلن این فضای کاری پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
+    if (coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ مربی دانش برای این پلن پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
     const nodes = repo.listNodes(s);
     const nodeId = resolveNodeId(nodes, typeof b.nodeId === 'string' ? b.nodeId : undefined);
     const node = nodes.find((n) => n.id === nodeId);
@@ -606,19 +650,6 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const { usage: _u, ...result } = r;
     res.json({ result, quota: coachQuota(s), ledger: repo.listLedger(s) });
   }));
-
-  // ── MCP tokens (settings) ────────────────────────────────────────────
-  router.get('/workspaces/:wid/mcp/tokens', wrap((req, res) => {
-    const s = scopeOf(req);
-    res.json({ tokens: repo.listMcpTokens(s), allowed: can(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId, 'mcp') });
-  }));
-  router.post('/workspaces/:wid/mcp/tokens', wrap((req, res) => {
-    const s = scopeOf(req);
-    if (!can(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId, 'mcp')) throw new RepoError('forbidden', 'اتصال MCP از پلن Pro به بالا فعال است.');
-    // the plaintext token is returned ONCE; only its hash is stored
-    res.json(repo.createMcpToken(s, String(body(req).label ?? 'Claude')));
-  }));
-  router.delete('/workspaces/:wid/mcp/tokens/:id', wrap((req, res) => { repo.revokeMcpToken(scopeOf(req), req.params.id); res.json({ tokens: repo.listMcpTokens(scopeOf(req)) }); }));
 
   // ── examples (starters / templates): grey samples, invisible to every AI path and engine ──
   router.post('/workspaces/:wid/starters/:id/apply', wrap((req, res) => {
@@ -687,7 +718,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ nodes: repo.listNodes(s), samples: repo.listSampleObjects(s), added, rootId: made.get(tpl.nodes[0].key) });
   }));
 
-  // ── saved packs: build once, paste anywhere (UI copy / print, MCP list_packs / get_pack) ──
+  // ── saved packs: build once, paste anywhere (UI copy / print) ──
   const packSummary = (s: Scope, p: SavedPack) => { const r = renderSavedPack(repo, s, p, clock()); return { ...p, tokens: r.tokens, counts: r.counts }; };
   router.get('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); res.json({ packs: repo.listSavedPacks(s).map((p) => packSummary(s, p)) }); }));
   router.post('/workspaces/:wid/saved-packs', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ pack: packSummary(s, repo.saveSavedPack(s, { name: String(b.name ?? ''), selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template })) }); }));
@@ -737,12 +768,18 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const request = typeof b.request === 'string' ? b.request.trim() : '';
     const record = b.record === true;
     if (record && !request) throw new RepoError('invalid', 'درخواست را یک خط بنویس.');
+    if (b.thoughtIds !== undefined && (!Array.isArray(b.thoughtIds) || b.thoughtIds.some((id: unknown) => typeof id !== 'string'))) {
+      throw new RepoError('invalid', 'فهرست فکرهای انتخاب‌شده معتبر نیست.');
+    }
+    const thoughtIds = Array.isArray(b.thoughtIds) ? [...new Set((b.thoughtIds as string[]).filter(Boolean))] : undefined;
+    if (thoughtIds && thoughtIds.length > 12) throw new RepoError('invalid', 'حداکثر ۱۲ فکر را می‌توان برای یک درخواست انتخاب کرد.');
     const wanted = typeof b.packId === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(b.packId) ? b.packId : newId('rq');
     const r = renderAiRequest(repo, s, {
       kind: b.kind, request, scopeNodeId: typeof b.scopeNodeId === 'string' && b.scopeNodeId ? b.scopeNodeId : undefined,
       scopeNodeIds: Array.isArray(b.scopeNodeIds) ? b.scopeNodeIds.filter((x): x is string => typeof x === 'string').slice(0, 40) : undefined, withChildren: typeof b.withChildren === 'boolean' ? b.withChildren : undefined,
       tokenBudget: typeof b.tokenBudget === 'number' ? b.tokenBudget : undefined,
       extraIds: Array.isArray(b.extraIds) ? b.extraIds.filter((x): x is string => typeof x === 'string').slice(0, 200) : undefined, packId: wanted,
+      thoughtIds,
     }, clock());
     if (record && !repo.getPack(s, wanted)) repo.savePack(s, { title: `${KIND_LABEL[b.kind]} — ${request.slice(0, 60)}`, refs: r.refs, tokens: r.tokens }, wanted);
     res.json({ ...r, packId: wanted, recorded: record });
@@ -784,9 +821,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const s = scopeOf(req);
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
     const month = clock().toISOString().slice(0, 7);
-    const byokCostUsd = repo.listLedger(s).filter((l) => l.byok && l.timestamp.startsWith(month)).reduce((sum, l) => sum + l.estimatedAiCostUsd, 0);
     res.json({
-      planId: ws.planId, month, payer: payer(), byokCostUsd,
+      planId: ws.planId, month,
       objects: repo.countActiveObjects(s), fileTokens: repo.fileUsage(s, month),
       judgmentsToday: repo.dailyUsage(s, today(), 'judge'), coachToday: repo.dailyUsage(s, today(), 'coach'),
     });
@@ -829,7 +865,7 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     if (err instanceof FileExtractError) return void res.status(422).json({ error: { code: 'unreadable', message: err.message } });
     if (err instanceof multer.MulterError) return void res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: { code: err.code, message: err.code === 'LIMIT_FILE_SIZE' ? 'حجم فایل بیشتر از ۲۵ مگابایت است.' : 'ارسال فایل نامعتبر بود.' } });
     const a = toAiError(err);
-    res.status(a.kind === 'bad_request' ? 400 : a.kind === 'quota' ? 429 : a.kind === 'no_key' || a.kind === 'invalid_key' || a.kind === 'disabled' ? 401 : 502).json({ error: a.toInfo() });
+    res.status(a.kind === 'bad_request' ? 400 : a.kind === 'quota' ? 429 : a.kind === 'disabled' ? 503 : 502).json({ error: a.toInfo() });
   });
 
   return { router, files };

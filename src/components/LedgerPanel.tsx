@@ -33,7 +33,6 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
 
   const totalCreditsUsed = ledgerEntries.reduce((sum, e) => sum + e.creditCost, 0);
-  const totalAiCostUsd = ledgerEntries.reduce((sum, e) => sum + e.estimatedAiCostUsd, 0);
 
   const TIER_FA = { cheap: 'سبک', balanced: 'متعادل', frontier: 'پیشرو' } as const;
   const EFFORT_FA = { minimal: 'حداقل', low: 'کم', medium: 'متوسط', high: 'زیاد', max: 'بیشینه' } as const;
@@ -45,7 +44,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
     },
     {
       title: 'هزینهٔ واقعی هر اعتبار',
-      text: 'آستانهٔ قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفتهٔ متوالی. در این حالت وزن اعتبار یا جدول انتخاب مدل اصلاح می‌شود.',
+      text: 'آستانهٔ قرمز: بیشتر از ۰٫۰۰۶ دلار دو هفتهٔ متوالی. در این حالت وزن اعتبار و پیکربندی مدل‌های پلتفرم بازبینی می‌شوند.',
     },
     {
       title: 'بازسازی با نصف قیمت',
@@ -85,7 +84,6 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
             value={formatNumber(chatCountToday(currentWorkspace.todayChatCount, currentWorkspace.chatCountDay, tehranDay()))}
             delta="بدون قفل؛ بعد از سقف روزانه سبک‌تر می‌شود"
           />
-          <Stat label="هزینهٔ AI (مصرف ثبت‌شده، قیمت لیست)" value={formatUsd(totalAiCostUsd, 4)} delta={ai.byok ? 'روی کلید شخصی تو' : 'ثبت‌شده در دفتر کل'} />
         </div>
       </Card>
 
@@ -126,7 +124,6 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
               render: (e) => e.plan ? (
                 <span className="flex flex-col gap-stack-xs caption text-text-subtle">
                   <span>{TIER_FA[e.stages?.filter((x) => x.stage !== 'decision' && x.stage !== 'validate').at(-1)?.tier ?? e.plan.tier]} · {EFFORT_FA[e.plan.effort]} · {PATTERN_FA[e.plan.pattern]}</span>
-                  {e.byok && <Badge intent="info" icon="Lock">کلید شخصی</Badge>}
                 </span>
               ) : <span className="caption text-text-subtlest">—</span>,
             },
@@ -145,9 +142,8 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
               key: 'creditCost',
               label: 'اعتبار کسرشده',
               numeric: true,
-              render: (e: LedgerEntry) => (e.creditCost === 0 ? <span className="text-text-success">{e.byok ? 'بدون کسر (کلید شخصی)' : 'رایگان (خودکار)'}</span> : `${formatNumber(e.creditCost)} اعتبار`),
+              render: (e: LedgerEntry) => (e.creditCost === 0 ? <span className="text-text-success">رایگان (خودکار)</span> : `${formatNumber(e.creditCost)} اعتبار`),
             }] : []),
-            { key: 'estimatedAiCostUsd', label: 'هزینهٔ AI', numeric: true, render: (e) => formatUsd(e.estimatedAiCostUsd, 4) },
             { key: 'status', label: 'وضعیت', render: (e) => <LedgerStatusBadge value={e.status} /> },
           ]}
         />

@@ -24,7 +24,7 @@ const CREDIT_TEXT = /موجودی اعتبار|اعتبار باقی‌ماند�
 async function run(managed, port, fakePort) {
   const dir = mkdtempSync(join(tmpdir(), 'mabda-plans-'));
   start(['tsx', 'server/ai/testing/fakeGemini.ts'], { FAKE_GEMINI_PORT: String(fakePort) });
-  start(['tsx', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, MABDA_SECRET: 's', GEMINI_API_KEY: KEY, MABDA_ADMIN: '1', ...(managed ? { MABDA_MANAGED_AI: '1' } : {}) });
+  start(['tsx', 'server.ts'], { PORT: String(port), MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_GEMINI_BASE_URL: `http://127.0.0.1:${fakePort}`, GEMINI_API_KEY: KEY, MABDA_ADMIN: '1', ...(managed ? { MABDA_MANAGED_AI: '1' } : {}) });
   const BASE = `http://127.0.0.1:${port}`;
   await up(`${BASE}/api/health`);
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });

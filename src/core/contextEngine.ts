@@ -12,6 +12,7 @@ import {  ContextObject,
   TreeNode,
   WorkstreamSpec,
 } from '../types';
+import { isActiveContext } from './contextStatus';
 
 /**
  * Returns parent chain for a node to resolve context inheritance:
@@ -54,7 +55,7 @@ export interface AmbiguityJudgment {
 }
 export type AmbiguityMap = Record<string, AmbiguityJudgment>;
 
-const activeOf = (objects: ContextObject[]) => objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
+const activeOf = (objects: ContextObject[]) => objects.filter(isActiveContext);
 
 /** Persian-aware normalisation for title matching: ی/ک variants, ZWNJ, diacritics, case, spacing. */
 export function normalizeFa(text: string): string {
@@ -74,7 +75,7 @@ const labelCore = (label: string) => normalizeFa(label.replace(/\([^)]*\)/g, '')
 /**
  * Does this object fill that required/suggested item?
  *  1. an object with an explicit `slotKey` fills exactly the item whose `key` equals it — and no other (the binding the
- *     Gap answer flow, the MCP and the proposals write);
+ *     Gap answer flow and proposal writes);
  *  2. only an object WITHOUT a slotKey (legacy data) is matched by TITLE (the item's label core).
  * Living in the same node, or mentioning the item's key in the text, never counts.
  */

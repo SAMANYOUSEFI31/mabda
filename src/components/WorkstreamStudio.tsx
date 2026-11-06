@@ -23,7 +23,7 @@ import type { AmbiguityMap } from '../core/contextEngine';
 import { lockOf, lockReason, topologicalOrder } from '../core/specGraph';
 import { halfPriceRebuildAvailable } from '../core/impactEngine';
 import type { StaleAsset } from '../core/impactEngine';
-import { calculateCreditCost, creditModeForPlan, effectiveCredits, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../core/creditEngine';
+import { calculateCreditCost, creditModeForPlan, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../core/creditEngine';
 import { GapEnginePanel } from './GapEnginePanel';
 import { ContextReplayCard } from './ContextReplayCard';
 import { asAiError, generateDeliverableApi, previewPlan } from '../services/apiClient';
@@ -55,7 +55,6 @@ interface WorkstreamStudioProps {
   nodes: TreeNode[];
   onAddContextObject: (obj: ContextDraft) => void;
   onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild') => void;
-  onOpenAiSettings: () => void;
   onOpenContextModal: (obj: ContextObject) => void;
   onOpenLedger: () => void;
   /** «کپی برای هوش مصنوعی»: a Context pack for this spec (and output) */
@@ -86,7 +85,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onOpenLedger,
   onOpenPack,
   onOpenImport,
-  onOpenAiSettings,
   pendingRebuild,
   onPendingRebuildHandled,
 }) => {
@@ -166,7 +164,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const costArgs = { deliverableType: currentDeliverableSpec.type, baseCreditCost: currentDeliverableSpec.baseCreditCost };
   const planCredits = preview ? previewCredits({ ...costArgs, plan: preview.plan }) : null;
   const creditCost = planCredits ?? calculateCreditCost({ ...costArgs, executionMode });
-  const chargedPreview = effectiveCredits(creditCost, ai.byok);
+  const chargedPreview = creditCost;
   const planMode = preview ? creditModeForPlan(preview.plan) : executionMode;
 
   const remainingOutputsEstimate = estimateRemainingOutputs(currentWorkspace.creditsRemaining);
@@ -217,7 +215,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       }
       const base = runPreview ? previewCredits({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, plan: runPreview.plan }) : calculateCreditCost({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, executionMode: runMode });
       const cost = halfPrice ? rebuildCredits(base) : base;
-      if (managed && !ai.byok && currentWorkspace.creditsRemaining < cost) {
+      if (managed && currentWorkspace.creditsRemaining < cost) {
         toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
         onOpenLedger();
         return;
@@ -255,7 +253,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         usage: result.usage,
         validationFailed: result.validationFailed,
         executionMode: runMode,
-        creditCost: managed ? effectiveCredits(cost, result.usage.byok) : 0,
+        creditCost: managed ? cost : 0,
         usedContext: result.usedContext,
         usedFileChunks: result.usedFileChunks,
         checks: result.checks,
@@ -461,13 +459,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               )}
 
               {/* step 3: build. The reason for «auto» is ONE plain line */}
-              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} onOpenSettings={onOpenAiSettings} />}
+              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} />}
               <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
                 <div className="body-sm flex flex-col gap-stack-xs">
                   {previewState === 'loading' ? (
                     <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
                   ) : managed ? (
-                    <span className="label-md tabular-nums text-text-default">{ai.byok ? 'بدون کسر اعتبار (کلید شخصی)' : `${formatNumber(chargedPreview)} اعتبار`}</span>
+                    <span className="label-md tabular-nums text-text-default">{`${formatNumber(chargedPreview)} اعتبار`}</span>
                   ) : null}
                   {preview && previewState === 'ready' && (
                     <span className="body-sm text-text-subtle" data-testid="auto-reason">
@@ -475,8 +473,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                       {managed && planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
                     </span>
                   )}
-                  {ai.byok && preview && previewState === 'ready' && <span className="caption text-text-subtle">{managed ? 'با کلید شخصی هزینه در دفتر کل ثبت می‌شود ولی اعتبار کم نمی‌شود.' : 'هزینهٔ توکن روی کلید خودت است و در دفتر کل ثبت می‌شود.'}</span>}
-                  {!ai.available && previewState === 'idle' && <span className="body-sm text-text-subtle">برای ساخت، اول کلید هوش مصنوعی را وصل کن (حساب ‹ کلید هوش مصنوعی).</span>}
+                  {!ai.available && previewState === 'idle' && <span className="body-sm text-text-subtle">هوش مصنوعی فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.</span>}
                   {managed && <span className="body-sm text-text-subtle">موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر</span>}
                 </div>
                 {isGenerating ? (
@@ -500,7 +497,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               {genError && !isGenerating && (
                 <AiErrorNotice
                   error={genError}
-                  onOpenSettings={onOpenAiSettings}
                   onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }}
                 />
               )}
@@ -546,7 +542,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           </div>
 
           {genError && !isGenerating && activeTab === 'history' && (
-            <AiErrorNotice error={genError} onOpenSettings={onOpenAiSettings} onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }} />
+            <AiErrorNotice error={genError} onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }} />
           )}
           {isGenerating && <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}><Progress indeterminate label="پیشرفت ساخت" intent="neutral" /></Alert>}
 

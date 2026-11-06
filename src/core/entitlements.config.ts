@@ -2,9 +2,8 @@
  * THE ONE PLACE for what each plan includes and costs. Every number is an ASSUMPTION [فرض] until the Alpha
  * calibrates it (PRD: «وزن اعتبار، پلن‌ها و سقف‌ها: پایان Alpha»). Change values here only — code, UI and tests read them.
  *
- * Model (decisions v3.1): the subscription pays for STRUCTURE and ENGINES (tree, versions, impact, files, Gap/Coach
- * judgements on OUR cheap key). Generating outputs runs on the user's own key (BYOK); managed AI + credits is a
- * separate feature-flagged layer (MABDA_MANAGED_AI) and lives in creditEngine.ts.
+ * The subscription pays for STRUCTURE and ENGINES (tree, versions, impact, files, Gap/Coach judgements).
+ * Platform AI + credits is a separate feature-flagged layer (MABDA_MANAGED_AI) and lives in creditEngine.ts.
  * Prices are USD (the PRD's economic basis); local-currency prices come from the payment gateway, never from code.
  */
 export interface PlanEntitlements {
@@ -22,12 +21,8 @@ export interface PlanEntitlements {
     /** AI-judged contradictions between Context objects (rule-based contradiction check is in every plan) */
     semanticContradiction: boolean;
   };
-  /** MCP server access to the workspace's Context */
-  mcp: boolean;
   /** exportable «Context pack» */
   contextPack: boolean;
-  /** bring-your-own key */
-  byok: boolean;
   /** decision-layer judgements per day that WE pay for (Gap ambiguity, …) */
   decisionJudgmentsPerDay: number;
   /** Context Coach sessions per day that WE pay for */
@@ -47,17 +42,17 @@ export const ENTITLEMENTS_CONFIG: {
   plans: {
     starter: {
       priceMonthlyUsd: 9, workspaces: 1, maxObjects: 400, fileTokensPerMonth: 150_000,
-      engines: { changeImpact: true, semanticContradiction: false }, mcp: true, contextPack: true, byok: true,
+      engines: { changeImpact: true, semanticContradiction: false }, contextPack: true,
       decisionJudgmentsPerDay: 40, coachPerDay: 5, customSpecs: false,
     },
     pro: {
       priceMonthlyUsd: 24, workspaces: 3, maxObjects: 2_000, fileTokensPerMonth: 500_000,
-      engines: { changeImpact: true, semanticContradiction: true }, mcp: true, contextPack: true, byok: true,
+      engines: { changeImpact: true, semanticContradiction: true }, contextPack: true,
       decisionJudgmentsPerDay: 150, coachPerDay: 15, customSpecs: true,
     },
     max: {
       priceMonthlyUsd: 49, workspaces: 10, maxObjects: 8_000, fileTokensPerMonth: 1_500_000,
-      engines: { changeImpact: true, semanticContradiction: true }, mcp: true, contextPack: true, byok: true,
+      engines: { changeImpact: true, semanticContradiction: true }, contextPack: true,
       decisionJudgmentsPerDay: 400, coachPerDay: 40, customSpecs: true,
     },
   },

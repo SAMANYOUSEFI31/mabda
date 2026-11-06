@@ -27,7 +27,6 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'dialog.import', label: 'وارد کردن پاسخ AI', level: 2 },
   { key: 'dialog.metrics', label: 'شاخص‌ها', level: 2 },
   { key: 'dialog.weekly', label: 'بازبینی هفتگی', level: 2 },
-  { key: 'dialog.connect', label: 'اتصال AI (MCP)', level: 3 },
   { key: 'dialog.memory', label: 'وارد کردن حافظه', level: 3 },
   { key: 'action.record', label: 'دانش ثبت شد', level: 1 },
   { key: 'action.ai-copy', label: 'درخواست AI کپی شد', level: 1 },

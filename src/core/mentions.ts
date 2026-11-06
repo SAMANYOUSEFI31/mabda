@@ -8,9 +8,10 @@
 import type { ContextObject, ContextRelationship } from '../types';
 import { jaccard, normalizeFa, titleTokens } from './contextEngine';
 import { buildSearchIndex, searchIndex } from './globalSearch';
+import { isActiveContext } from './contextStatus';
 
 const RE = /@«([^»\n]{1,120})»/g;
-const live = (o: ContextObject) => !o.sample && o.status !== 'Archived' && o.status !== 'Superseded';
+const live = (o: ContextObject) => !o.sample && isActiveContext(o);
 /** the text written between « » for an object: the title without characters that would end the reference */
 export const mentionTitle = (o: Pick<ContextObject, 'title'>): string => o.title.replace(/[»\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
 export const mentionText = (o: Pick<ContextObject, 'title'>): string => `@«${mentionTitle(o)}»`;

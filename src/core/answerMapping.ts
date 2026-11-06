@@ -13,6 +13,7 @@ import type { ParsedBlock } from './answerParser';
 import { isContextKind } from './answerParser';
 import { jaccard, normalizeFa, titleTokens } from './contextEngine';
 import { pathTo } from './nodeFocus';
+import { isActiveContext } from './contextStatus';
 
 export type MapAction = 'new' | 'update' | 'duplicate' | 'ignore';
 export interface BlockMapping {
@@ -66,7 +67,7 @@ export function nodeByPath(nodes: TreeNode[], path: string): TreeNode | undefine
   return last.length === 1 ? last[0] : undefined;
 }
 
-const live = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded' && !o.sample;
+const live = (o: ContextObject) => isActiveContext(o) && !o.sample;
 const headOf = (o: ContextObject, byId: Map<string, ContextObject>): ContextObject | undefined => { let c: ContextObject | undefined = o; for (let i = 0; c && c.status === 'Superseded' && i < 20; i++) c = c.supersededById ? byId.get(c.supersededById) : undefined; return c && live(c) ? c : undefined; };
 
 const DUP_CONTENT = 0.85;

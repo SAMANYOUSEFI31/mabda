@@ -24,6 +24,7 @@ import { EDGE_LABEL } from './mapModel';
 import { badges, extract } from './sceneParts';
 import { childrenOf } from './nodeTree';
 import { convertedTo, thinkingOf } from './thinkingMarkers';
+import { formatNumber } from '../ui/format';
 
 export const CARD_W = 220;
 export const CARD_H = 120;
@@ -193,7 +194,10 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
     boxes.push({ id: `row:${node.id}`, kind: 'row', label: node.label, depth, x: 0, y, w: width, h, nodeId: node.id, count: list.length, hint: 'بخش درخت؛ ستون‌ها لایهٔ وابستگی‌اند. ترتیب ردیف‌ها فقط نمایش است.' });
     y += h + ROW_GAP;
   }
-  for (let l = 0; l < layerCount; l++) boxes.push({ id: `col:${l}`, kind: 'column', label: l === 0 ? 'پایه' : `لایهٔ ${l}`, depth: 0, x: colX(l) - 8, y: 4, w: layerW(l) + 16, h: PAD - 8, hint: 'لایهٔ وابستگی: هرچه در ستون‌های سمت پایان است روی ستون‌های سمت شروع سوار است.' });
+  for (let l = 0; l < layerCount; l++) {
+    const label = edges.length === 0 ? 'بدون وابستگی در این نما' : layerCount === 1 ? 'با هم تصمیم بگیرید' : l === 0 ? 'پایه' : `گام ${formatNumber(l + 1)}`;
+    boxes.push({ id: `col:${l}`, kind: 'column', label, depth: 0, x: colX(l) - 8, y: 4, w: layerW(l) + 16, h: PAD - 8, hint: edges.length === 0 ? 'برای مواردی که اینجا می‌بینی، رابطهٔ وابستگی نمایش داده نشده است؛ جایگاه کنار هم به معنی تقدم یا وابستگی نیست.' : 'جایگاه ستون‌ها از رابطه‌های وابستگی ثبت‌شده می‌آید، نه از عمق بخش‌ها.' });
+  }
 
   // lines: INFLUENCER → influenced; direct links another path already implies are quieter
   const redundant = new Set(redundantLinks(input.objects, input.relationships).map((l) => `${l.to}>${l.from}`));

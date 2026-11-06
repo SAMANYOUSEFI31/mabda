@@ -1,9 +1,8 @@
 /**
- * «فضای فکر»: everything that is NOT truth yet, in one place — drawn from the data that already exists (nothing is stored
- * separately; approving is a status change, not a move):
+ * «فضای فکر»: everything that is NOT truth yet, in one place — persisted Thoughts plus the existing proposal/review records:
  *   • waiting      : suggestions (Proposed), knowledge that needs a look (Needs Review) and unapproved rewrites of confirmed
  *                    knowledge (a draft) — «منتظر تصمیم تو»; this is a passage, not a place, so it lives here, on top
- *   • thoughts     : lines of notes that are an idea / question / assumption / open decision and have not become knowledge
+ *   • thoughts     : open Thoughts that have not become Knowledge
  *   • assumptions  : confirmed working assumptions (they ARE approved and consumed, so they stay visible in the truth too)
  * Pure.
  */
@@ -32,14 +31,14 @@ export interface SpaceView {
 const live = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded' && !o.sample;
 
 /** the three lists, filtered by kind and by node (a node's whole sub-tree) */
-export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; nodes: TreeNode[]; relationships?: ContextRelationship[] }, filter: SpaceFilter = {}): SpaceView {
+export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; thoughts?: NoteThinkingItem[]; nodes: TreeNode[]; relationships?: ContextRelationship[] }, filter: SpaceFilter = {}): SpaceView {
   const { objects, notes, nodes } = input;
   const waitingAll: WaitingItem[] = [
     ...objects.filter((o) => live(o) && o.status === 'Proposed').map((o) => ({ type: 'proposal' as const, object: o })),
     ...objects.filter((o) => live(o) && o.status === 'Needs Review').map((o) => ({ type: 'review' as const, object: o })),
     ...objects.filter((o) => live(o) && o.status === 'Confirmed' && !!o.draft).map((o) => ({ type: 'draft' as const, object: o })),
   ];
-  const thoughtsAll = thinkingOf(notes).filter((i) => !convertedTo(i, objects));
+  const thoughtsAll = (input.thoughts ?? thinkingOf(notes)).filter((i) => i.status !== 'resolved' && !convertedTo(i, objects));
   const assumptionsAll = objects.filter((o) => live(o) && o.status === 'Confirmed' && o.assumption);
   const ids = filter.nodeId ? new Set(subtreeIds(nodes, filter.nodeId)) : null;
   const inNode = (id: string) => !ids || ids.has(id);
@@ -73,7 +72,7 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
 }
 
 /** «۳ فکر باز» on a node: open thoughts + what waits for approval, in THAT node (not its children — they have their own) */
-export function openThoughtCount(input: { objects: ContextObject[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[] }, nodeId: string): number {
+export function openThoughtCount(input: { objects: ContextObject[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; thoughts?: NoteThinkingItem[] }, nodeId: string): number {
   const v = thinkingSpace({ ...input, nodes: [] });
   return v.waiting.filter((w) => w.object.nodeId === nodeId).length + v.thoughts.filter((t) => t.nodeId === nodeId).length;
 }

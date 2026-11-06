@@ -10,13 +10,12 @@
  */
 
 import type { ContextChange, ContextObject } from '../types';
+import { isActiveContext } from './contextStatus';
 
 export const ASSUMPTION_RULE = 'این‌ها فرض‌اند، نه واقعیت. آن‌ها را واقعیت نگیر و چیزی را بر پایه‌شان قطعی ننویس؛ اگر لازم شد، صریح بگو «بر پایهٔ فرض …».';
 export const REJECTED_RULE = 'این گزینه‌ها بررسی و رد شده‌اند. دوباره پیشنهادشان نکن مگر کاربر خودش بخواهد.';
 
-const isLive = (o: Pick<ContextObject, 'status'>) => o.status !== 'Archived' && o.status !== 'Superseded';
-
-export const isAssumption = (o: Pick<ContextObject, 'assumption' | 'status'>) => o.assumption === true && isLive(o);
+export const isAssumption = (o: Pick<ContextObject, 'assumption' | 'status'>) => o.assumption === true && isActiveContext(o);
 /** confirmed KNOWLEDGE: Confirmed and not an assumption */
 export const isEstablished = (o: Pick<ContextObject, 'assumption' | 'status'>) => o.status === 'Confirmed' && o.assumption !== true;
 
@@ -25,7 +24,7 @@ export interface RejectedOption { objectId: string; objectTitle: string; title: 
 export function rejectedOptions(objects: ContextObject[]): RejectedOption[] {
   const out: RejectedOption[] = [];
   for (const o of objects) {
-    if (o.type !== 'Decision' || !isLive(o) || o.status === 'Proposed') continue;
+    if (o.type !== 'Decision' || !isActiveContext(o) || o.status === 'Proposed') continue;
     for (const opt of o.record?.options ?? []) if (opt.rejectedReason) out.push({ objectId: o.id, objectTitle: o.title, title: opt.title, reason: opt.rejectedReason });
   }
   return out;

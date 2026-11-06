@@ -33,6 +33,27 @@ test('columns are dependency layers: the base is the rightmost column (RTL), wha
   assert.ok(x('base') > x('mid') && x('mid') > x('top'), 'the depended-on thing is further to the right');
   assert.equal(s.overview!.layers, 3);
   assert.deepEqual(s.edges.map((e) => [e.influencer, e.influenced]).sort(), [['o:base', 'o:mid'], ['o:mid', 'o:top']]);
+  assert.deepEqual(s.boxes.filter((b) => b.kind === 'column').map((b) => b.label), ['پایه', 'گام ۲', 'گام ۳']);
+});
+
+test('a root-only workspace with no dependency has one ordinary row and does not imply a base layer', () => {
+  const rootOnly = input([obj('one', 'root'), obj('two', 'root')], [], { nodes: [node('root')] });
+  const s = buildOverviewScene(rootOnly);
+  assert.deepEqual(s.overview!.rows.map((r) => r.nodeId), ['root']);
+  assert.equal(s.overview!.layers, 1);
+  assert.equal(s.boxes.find((b) => b.id === 'col:0')?.label, 'بدون وابستگی در این نما');
+  assert.equal(s.edges.length, 0);
+});
+
+test('multiple roots and cross-root dependencies remain explicit; wide trees keep one row per first-level section', () => {
+  const roots = [node('left'), node('right')];
+  const crossRoot = buildOverviewScene(input([obj('base', 'left'), obj('dependent', 'right')], [dep('dependent', 'base')], { nodes: roots }));
+  assert.deepEqual(crossRoot.overview!.rows.map((r) => r.nodeId), ['left', 'right']);
+  assert.deepEqual(crossRoot.overview!.rowEdges.map((e) => [e.from, e.to, e.count]), [['left', 'right', 1]]);
+
+  const wideNodes = [node('root'), ...Array.from({ length: 120 }, (_, i) => node(`wide-${i}`, 'root', i))];
+  const wideObjects = Array.from({ length: 120 }, (_, i) => obj(`wide-object-${i}`, `wide-${i}`));
+  assert.equal(buildOverviewScene(input(wideObjects, [], { nodes: wideNodes })).overview!.rows.length, 120);
 });
 
 test('a cycle sits in one layer and is marked «با هم تصمیم بگیرید»; nothing else is', () => {

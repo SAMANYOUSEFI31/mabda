@@ -59,6 +59,7 @@ interface ContextDetailModalProps {
   /** the open thoughts (derived from notes): the ones that name this knowledge are listed as «فکرهای باز دربارهٔ این» */
   thoughts?: NoteThinkingItem[];
   onOpenThinking?: () => void;
+  onThinkAbout?: (object: ContextObject) => void;
   /** derived «needs review»: a dependency changed and nobody reviewed this object since */
   reviewNeed?: ReviewNeed;
   titleOf?: (id: string) => string;
@@ -121,6 +122,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   onOpenBatch,
   thoughts = [],
   onOpenThinking,
+  onThinkAbout,
   reviewNeed,
   titleOf,
   onAcceptReview,
@@ -330,6 +332,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
       <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+        {object?.status === 'Confirmed' && onThinkAbout && (
+          <div>
+            <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
+          </div>
+        )}
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
         <MentionTextarea
           label="چه چیزی دربارهٔ کسب‌وکارت درست است؟"

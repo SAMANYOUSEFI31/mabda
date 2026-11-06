@@ -128,6 +128,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               align="end"
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
+                { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
                 { label: 'درخواست برای AI', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 { label: 'گفتگوی متمرکز', icon: 'Pencil', onSelect: () => props.onOpenThread(node.id) },
@@ -210,7 +211,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
             {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
             <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
-              {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="FileText" onClick={() => props.onNewThought(node.id)}>فکر خامی داری؟ بنویس</Button>}
+              {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" onClick={() => props.onNewThought(node.id)}>فکر تازه‌ای داری؟ بنویس</Button>}
               <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>فایل یا متنی داری؟ اضافه کن</Button>
               <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
             </div>

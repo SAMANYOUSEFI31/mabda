@@ -11,6 +11,68 @@ export interface Migration {
   up(db: Database.Database): void;
 }
 
+type LegacyThinkingItem = { kind: 'idea' | 'question' | 'assumption' | 'open_decision'; inferred?: boolean; text: string; line: number; hash: string };
+const LEGACY_MARKS = '\\u200c\\u200d\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069\\ufeff';
+const LEGACY_LEAD = new RegExp(`^[\\s${LEGACY_MARKS}]*(?:[-*•–—]|[\\d۰-۹٠-٩]+[.)])?[\\s${LEGACY_MARKS}]*`);
+const LEGACY_MARKER = new RegExp(`^\\[[\\s${LEGACY_MARKS}]*(ایده|سؤال|سوال|فرض|تصمیم[\\s${LEGACY_MARKS}]*باز|idea|question|assumption|open[\\s${LEGACY_MARKS}]*decision)[\\s${LEGACY_MARKS}]*\\][\\s${LEGACY_MARKS}]*[:：\\-–—]?[\\s${LEGACY_MARKS}]*`, 'i');
+const legacyNormalizeFa = (text: string) => text.replace(/[\u064B-\u065F\u0670\u0654]/g, '').replace(/\u200c/g, ' ').replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/\s+/g, ' ').trim().toLowerCase();
+const legacyLineHash = (text: string) => {
+  const marks = new RegExp(`[${LEGACY_MARKS}]`, 'g');
+  const normalized = legacyNormalizeFa(text.replace(/\u200c/g, '')).replace(marks, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < normalized.length; i++) { hash ^= normalized.charCodeAt(i); hash = Math.imul(hash, 0x01000193) >>> 0; }
+  return hash.toString(36);
+};
+const LEGACY_STOP_WORDS = new Set(['و', 'در', 'به', 'از', 'برای', 'با', 'را', 'یا', 'که', 'این', 'آن', 'هر', 'یک']);
+const legacyTitleTokens = (text: string) => new Set(legacyNormalizeFa(text).replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter((word) => word.length >= 2 && !LEGACY_STOP_WORDS.has(word)));
+const legacySimilarity = (a: string, b: string) => {
+  const left = legacyTitleTokens(a), right = legacyTitleTokens(b);
+  if (!left.size || !right.size) return 0;
+  let intersection = 0;
+  for (const token of left) if (right.has(token)) intersection++;
+  return intersection / (left.size + right.size - intersection);
+};
+const legacyKind = (raw: string): LegacyThinkingItem['kind'] => {
+  const word = raw.replace(new RegExp(`[\\s${LEGACY_MARKS}]`, 'g'), '').toLowerCase();
+  if (word === 'ایده' || word === 'idea') return 'idea';
+  if (word === 'سؤال' || word === 'سوال' || word === 'question') return 'question';
+  if (word === 'فرض' || word === 'assumption') return 'assumption';
+  return 'open_decision';
+};
+function parseLegacyThinking(content: string): LegacyThinkingItem[] {
+  const out: LegacyThinkingItem[] = [];
+  let open: LegacyThinkingItem | undefined;
+  const hardBreak = /\\[ \t]*$/;
+  const tail = new RegExp(`[\\s${LEGACY_MARKS}»"')\\]}”’]*$`);
+  const question = (line: string) => {
+    const text = line.replace(tail, '');
+    if (!/[؟?]$/.test(text)) return false;
+    const body = line.replace(LEGACY_LEAD, '').trim();
+    return !(!/\s/.test(body) && body.includes('://')) && !body.startsWith('#') && /[\p{L}\p{N}]/u.test(text.slice(0, -1));
+  };
+  content.split(/\r?\n/).forEach((raw, line) => {
+    if (open) {
+      open.text = `${open.text}\n${raw.replace(hardBreak, '').trim()}`;
+      open.hash = legacyLineHash(open.text);
+      if (!hardBreak.test(raw)) open = undefined;
+      return;
+    }
+    const rest = raw.replace(LEGACY_LEAD, '');
+    const marker = LEGACY_MARKER.exec(rest);
+    if (!marker) {
+      if (question(rest)) out.push({ kind: 'question', inferred: true, text: rest.trim(), line, hash: legacyLineHash(rest) });
+      return;
+    }
+    const continues = hardBreak.test(rest);
+    const text = rest.slice(marker[0].length).replace(hardBreak, '').trim();
+    if (!text) return;
+    const item = { kind: legacyKind(marker[1]), text, line, hash: legacyLineHash(text) };
+    out.push(item);
+    if (continues) open = item;
+  });
+  return out;
+}
+
 export const MIGRATIONS: Migration[] = [
   {
     version: 1,
@@ -402,6 +464,97 @@ export const MIGRATIONS: Migration[] = [
         );
         CREATE INDEX idx_removals_ws ON removal_batches(workspace_id, created_at);
       `);
+    },
+  },
+  {
+    version: 21,
+    name: 'persisted Thoughts: stable identity, semantic revisions, explicit derivation, and legacy note-line backfill',
+    up(db) {
+      db.exec(`
+        CREATE TABLE thoughts (
+          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          node_id TEXT NOT NULL, kind TEXT, text TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+          source_note_id TEXT, source_line INTEGER, source_line_key TEXT, source_quote TEXT,
+          inferred INTEGER NOT NULL DEFAULT 0, resolved_object_id TEXT,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+          CHECK (status IN ('open', 'resolved'))
+        );
+        CREATE INDEX idx_thoughts_ws ON thoughts(workspace_id, user_id, status, node_id);
+        CREATE INDEX idx_thoughts_note ON thoughts(workspace_id, user_id, source_note_id);
+
+        CREATE TABLE thought_revisions (
+          thought_id TEXT NOT NULL, revision INTEGER NOT NULL,
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
+          before_text TEXT NOT NULL, after_text TEXT NOT NULL, at TEXT NOT NULL,
+          PRIMARY KEY (thought_id, revision)
+        );
+        CREATE INDEX idx_thought_revisions_ws ON thought_revisions(workspace_id, user_id, thought_id, revision);
+
+        CREATE TABLE thought_derivations (
+          parent_id TEXT NOT NULL, child_id TEXT NOT NULL,
+          user_id TEXT NOT NULL, workspace_id TEXT NOT NULL, created_at TEXT NOT NULL,
+          PRIMARY KEY (parent_id, child_id),
+          CHECK (parent_id <> child_id)
+        );
+        CREATE INDEX idx_thought_derivations_child ON thought_derivations(workspace_id, user_id, child_id);
+      `);
+
+      type LegacyNote = { id: string; user_id: string; workspace_id: string; node_id: string; content: string; created_at: string; updated_at: string };
+      type LegacySource = { kind?: string; noteId?: string; thoughtId?: string; lineKey?: string; quote?: string };
+      type LegacyObject = { id: string; status: string; source: string | null };
+      const notes = db.prepare('SELECT id,user_id,workspace_id,node_id,content,created_at,updated_at FROM notes ORDER BY workspace_id,user_id,id').all() as LegacyNote[];
+      const objects = db.prepare("SELECT id,status,source FROM context_objects WHERE source IS NOT NULL AND status <> 'Archived'").all() as LegacyObject[];
+      const refs = objects.flatMap((o) => {
+        const source = JSON.parse(o.source!) as LegacySource;
+        return source.kind === 'note' && source.noteId ? [{ objectId: o.id, status: o.status, ...source }] : [];
+      });
+      const insert = db.prepare(`INSERT INTO thoughts
+        (id,user_id,workspace_id,node_id,kind,text,status,source_note_id,source_line,source_line_key,source_quote,inferred,resolved_object_id,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      for (const note of notes) {
+        const parsed = parseLegacyThinking(note.content);
+        const used = new Set<number>();
+        let ordinal = 0;
+        for (const item of parsed) {
+          const candidates = refs.filter((r) => r.noteId === note.id && !used.has(refs.indexOf(r)));
+          const exact = candidates.find((r) => r.lineKey === item.hash && (!r.quote || legacyLineHash(r.quote) === item.hash));
+          const byText = candidates.find((r) => !!r.quote && legacyNormalizeFa(r.quote) === legacyNormalizeFa(item.text));
+          const soft = candidates
+            .map((r) => ({ r, score: r.quote ? legacySimilarity(r.quote, item.text) : 0 }))
+            .filter((x) => x.score >= 0.6)
+            .sort((a, b) => b.score - a.score)[0]?.r;
+          const source = exact ?? byText ?? soft;
+          let resolvedObjectId: string | null = null;
+          if (source) {
+            const refIndex = refs.indexOf(source);
+            used.add(refIndex);
+            resolvedObjectId = source.objectId;
+          }
+          const id = `legacy_thought_${note.id}_${ordinal++}`;
+          insert.run(id, note.user_id, note.workspace_id, note.node_id, item.kind, item.text, resolvedObjectId ? 'resolved' : 'open',
+            note.id, item.line, item.hash, item.text, item.inferred ? 1 : 0, resolvedObjectId, note.created_at, note.updated_at);
+        }
+
+        // The legacy "made a section" action stripped the marker and wrote this receipt in-place.
+        // It preserved the text and resolved state, but not the original kind; keep that kind unknown.
+        const lines = note.content.split(/\\r?\\n/);
+        for (let line = 0; line < lines.length; line++) {
+          const receipt = /^(.*?)\\s+✓\\s+\\(بخش «[^»\\n]+» از همین ساخته شد\\)\\s*$/.exec(lines[line]);
+          if (!receipt || !receipt[1].trim()) continue;
+          const text = receipt[1].trim();
+          const inferred = /[؟?]$/.test(text);
+          insert.run(`legacy_thought_${note.id}_${ordinal++}`, note.user_id, note.workspace_id, note.node_id,
+            inferred ? 'question' : null, text, 'resolved', note.id, line, legacyLineHash(text), text,
+            inferred ? 1 : 0, null, note.created_at, note.updated_at);
+        }
+      }
+    },
+  },
+  {
+    version: 22,
+    name: 'revoke legacy MCP tokens while retaining their historical records',
+    up(db) {
+      db.prepare('UPDATE mcp_tokens SET revoked_at = ? WHERE revoked_at IS NULL').run(new Date().toISOString());
     },
   },
 ];

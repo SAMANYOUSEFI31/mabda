@@ -7,7 +7,7 @@ import type { AiPlan, LedgerEntry, UsageSummary } from '../types';
 
 /**
  * Ledger row from REAL provider usage (token counts and cost come from response metadata and config/models.json
- * on the server — nothing here is estimated). Credits are whatever creditEngine decided (0 for BYOK).
+ * on the server — nothing here is estimated). Credits are whatever creditEngine decided.
  */
 export function ledgerEntryFromUsage(params: {
   workspaceId: string;
@@ -36,6 +36,5 @@ export function ledgerEntryFromUsage(params: {
     status: 'completed',
     plan: params.plan,
     stages: params.usage.stages,
-    byok: params.usage.byok,
   };
 }

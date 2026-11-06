@@ -11,14 +11,13 @@
 import type { ContextChange, ContextObject, ContextRelationship } from '../types';
 import { isBaselineChange, isContentChange } from './changeLog';
 import { stronglyConnected } from './graphAlgo';
+import { isActiveContext } from './contextStatus';
 
 export interface DepEdge { from: string; to: string }
 
-const isActive = (o: ContextObject) => o.status !== 'Superseded' && o.status !== 'Archived';
-
 /** `depends_on` edges between ACTIVE objects (no duplicates; self-loops count as a one-member cycle) */
 export function dependencyEdges(objects: ContextObject[], relationships: ContextRelationship[]): DepEdge[] {
-  const active = new Set(objects.filter(isActive).map((o) => o.id));
+  const active = new Set(objects.filter(isActiveContext).map((o) => o.id));
   const seen = new Set<string>();
   const out: DepEdge[] = [];
   for (const r of relationships) {
@@ -86,7 +85,7 @@ export function planDecisions(objects: ContextObject[], relationships: ContextRe
 /** every object that rests (directly or through others) on `id`, nearest first; cycle-safe; never includes `id` */
 export function dependentsOf(id: string, relationships: ContextRelationship[], objects?: ContextObject[]): string[] {
   const rev = new Map<string, string[]>();
-  const active = objects ? new Set(objects.filter(isActive).map((o) => o.id)) : null;
+  const active = objects ? new Set(objects.filter(isActiveContext).map((o) => o.id)) : null;
   for (const r of relationships) {
     if (r.type !== 'depends_on' || (active && (!active.has(r.sourceId) || !active.has(r.targetId)))) continue;
     rev.set(r.targetId, [...(rev.get(r.targetId) ?? []), r.sourceId]);
@@ -184,7 +183,7 @@ export function flipFlops(objects: ContextObject[], changes: ContextChange[], mi
     return Math.max(0, ...(predecessors.get(id) ?? []).map((p) => 1 + depth(p, seen)));
   };
   return objects
-    .filter(isActive)
+    .filter(isActiveContext)
     .map((o) => ({ id: o.id, times: depth(o.id, new Set()) }))
     .filter((x) => x.times >= min)
     .sort((a, b) => b.times - a.times || a.id.localeCompare(b.id));

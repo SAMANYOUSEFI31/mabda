@@ -12,11 +12,11 @@ import { redundantLinks } from './dependencyReduction';
 import { EDGE_LABEL } from './mapModel';
 import { CARD_H, CARD_W, GAP_X, PAD } from './swimlane';
 import { badges, extract } from './sceneParts';
+import { isActiveContext } from './contextStatus';
 
 export const LINEAGE_DEPTHS = [1, 2, 3] as const;
 const GAP_Y = 16;
 
-const isLive = (o: ContextObject) => o.status !== 'Superseded' && o.status !== 'Archived';
 const isPending = (o: ContextObject) => o.status === 'Proposed' || o.status === 'Needs Review';
 /** a suggestion, or confirmed knowledge with an unapproved rewrite */
 export const isUnapproved = (o: ContextObject) => isPending(o) || !!o.draft;
@@ -40,7 +40,7 @@ export function lineageOf(input: { centerId: string; objects: ContextObject[]; r
   const center = byId.get(input.centerId);
   if (!center) return undefined;
   const depth = Math.min(3, Math.max(1, input.depth ?? 2));
-  const okEnd = (o: ContextObject) => isLive(o) && !o.sample && (input.showPending || !isPending(o) || o.id === center.id);
+  const okEnd = (o: ContextObject) => isActiveContext(o) && !o.sample && (input.showPending || !isPending(o) || o.id === center.id);
   const objects = input.objects.filter(okEnd);
   const edges = dependencyEdges(objects, input.relationships).filter((e) => e.from !== e.to);
   const rests = new Map<string, string[]>(); // X → what X rests on

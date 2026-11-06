@@ -8,6 +8,7 @@ import type { ContextObject, ContextRelationship, TreeNode } from '../types';
 import { effectiveFor } from './effectiveContext';
 import type { EffectiveItem } from './effectiveContext';
 import { childrenOf, subtreeIds } from './nodeTree';
+import { isActiveContext } from './contextStatus';
 
 export interface Crumb { id: string; label: string }
 
@@ -32,7 +33,7 @@ export interface ChildSummary { node: TreeNode; knowledge: number; openThoughts:
 export function childSummaries(nodes: TreeNode[], objects: Pick<ContextObject, 'nodeId' | 'status'>[], openCounts: Map<string, number>, staleIds: Set<string>, parentId: string): ChildSummary[] {
   return childrenOf(nodes, parentId).map((node) => {
     const inside = new Set(subtreeIds(nodes, node.id));
-    const mine = objects.filter((o) => inside.has(o.nodeId) && o.status !== 'Archived' && o.status !== 'Superseded');
+    const mine = objects.filter((o) => inside.has(o.nodeId) && isActiveContext(o));
     let thoughts = 0;
     for (const id of inside) thoughts += openCounts.get(id) ?? 0;
     return {
