@@ -557,6 +557,79 @@ export const MIGRATIONS: Migration[] = [
       db.prepare('UPDATE mcp_tokens SET revoked_at = ? WHERE revoked_at IS NULL').run(new Date().toISOString());
     },
   },
+  {
+    version: 23,
+    name: 'thought_about durable relations and thought_events history',
+    up(db) {
+      db.exec(`
+        CREATE TABLE thought_about (
+          thought_id TEXT NOT NULL,
+          target_kind TEXT NOT NULL,
+          target_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          workspace_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (thought_id, target_kind, target_id)
+        );
+        CREATE INDEX idx_thought_about_target ON thought_about(workspace_id, user_id, target_kind, target_id);
+        CREATE INDEX idx_thought_about_thought ON thought_about(workspace_id, user_id, thought_id);
+
+        CREATE TABLE thought_events (
+          id TEXT PRIMARY KEY,
+          thought_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          workspace_id TEXT NOT NULL,
+          event_kind TEXT NOT NULL,
+          before_value TEXT,
+          after_value TEXT,
+          actor TEXT NOT NULL DEFAULT 'user',
+          at TEXT NOT NULL
+        );
+        CREATE INDEX idx_thought_events ON thought_events(workspace_id, user_id, thought_id, at);
+      `);
+
+      const thoughts = db.prepare('SELECT id, user_id, workspace_id, text, created_at FROM thoughts').all() as Array<{ id: string; user_id: string; workspace_id: string; text: string; created_at: string }>;
+      const objects = db.prepare("SELECT id, workspace_id, title FROM context_objects WHERE status <> 'Archived' AND status <> 'Superseded'").all() as Array<{ id: string; workspace_id: string; title: string }>;
+      const nodes = db.prepare('SELECT id, workspace_id, label FROM tree_nodes').all() as Array<{ id: string; workspace_id: string; label: string }>;
+
+      const TOKEN = /@«([^»\n]+)»/g;
+      const insertAbout = db.prepare('INSERT OR IGNORE INTO thought_about (thought_id, target_kind, target_id, user_id, workspace_id, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+
+      for (const t of thoughts) {
+        if (!t.text.includes('@«')) continue;
+        const matches = [...t.text.matchAll(TOKEN)];
+        for (const m of matches) {
+          const k = legacyNormalizeFa(m[1]);
+          const wsObjs = objects.filter((o) => o.workspace_id === t.workspace_id && legacyNormalizeFa(o.title) === k);
+          if (wsObjs.length === 1) {
+            insertAbout.run(t.id, 'object', wsObjs[0].id, t.user_id, t.workspace_id, t.created_at);
+            continue;
+          }
+          if (wsObjs.length > 1) continue; // ambiguous title: never guess
+          const wsNodes = nodes.filter((n) => n.workspace_id === t.workspace_id && legacyNormalizeFa(n.label) === k);
+          if (wsNodes.length === 1) {
+            insertAbout.run(t.id, 'node', wsNodes[0].id, t.user_id, t.workspace_id, t.created_at);
+          }
+        }
+      }
+
+      const notesWithReceipts = db.prepare("SELECT id, user_id, workspace_id, node_id, content, created_at, updated_at FROM notes WHERE content LIKE '%(بخش «% از همین ساخته شد)%'").all() as Array<{ id: string; user_id: string; workspace_id: string; node_id: string; content: string; created_at: string; updated_at: string }>;
+      const insReceipt = db.prepare(`INSERT OR IGNORE INTO thoughts
+        (id,user_id,workspace_id,node_id,kind,text,status,source_note_id,source_line,source_line_key,source_quote,inferred,resolved_object_id,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+      for (const n of notesWithReceipts) {
+        const lines = n.content.split(/\r?\n/);
+        for (let l = 0; l < lines.length; l++) {
+          const m = /^(.*?)\s+✓\s+\(بخش «[^»\n]+» از همین ساخته شد\)\s*$/.exec(lines[l]);
+          if (!m || !m[1].trim()) continue;
+          const text = m[1].trim();
+          const inferred = /[؟?]$/.test(text);
+          const thId = `legacy_thought_${n.id}_receipt_${l}`;
+          insReceipt.run(thId, n.user_id, n.workspace_id, n.node_id, inferred ? 'question' : null, text, 'resolved', n.id, l, legacyLineHash(text), text, inferred ? 1 : 0, null, n.created_at, n.updated_at);
+        }
+      }
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

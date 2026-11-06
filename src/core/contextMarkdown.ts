@@ -54,7 +54,7 @@ function nodeSection(node: TreeNode, nodes: TreeNode[], objects: ContextObject[]
   out.push(heading(level, node.label), '');
   ctx.outline.push({ id: nodeAnchor(node.id), level: Math.min(6, level), text: node.label, kind: 'node', refId: node.id });
   if (node.description) out.push(`> ${node.description}`, '');
-  const own = objects.filter((o) => o.nodeId === node.id && isActive(o));
+  const own = objects.filter((o) => o.nodeId === node.id && isActiveContext(o));
   if (own.length === 0 && (!ctx.withChildren || childrenOf(nodes, node.id).length === 0)) out.push('_هنوز چیزی در این بخش ثبت نشده است._', '');
   for (const o of own) {
     out.push(heading(level + 1, o.title), '');

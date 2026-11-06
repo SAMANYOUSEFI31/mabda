@@ -63,7 +63,7 @@ export function influenceOf(objectId: string, objects: ContextObject[], nodes: T
   for (const r of relations) {
     if (r.type !== 'overrides' || r.targetId !== objectId) continue;
     const by = byId.get(r.sourceId);
-    if (by && isLive(by) && !isExpired(by, now)) for (const n of subtreeIds(nodes, by.nodeId)) except.add(n);
+    if (by && isActiveContext(by) && !isExpired(by, now)) for (const n of subtreeIds(nodes, by.nodeId)) except.add(n);
   }
   return { shapedBy: { dependencies, constraints, exceptions, inputs }, shapes: { dependents, assets, scope: { kind, nodeIds: nodeIds.filter((n) => !except.has(n)), exceptNodeIds: [...except] } } };
 }

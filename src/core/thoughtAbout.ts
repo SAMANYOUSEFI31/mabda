@@ -38,25 +38,32 @@ export function aboutOf(text: string, objects: Pick<ContextObject, 'id' | 'title
 export const stripAbout = (text: string): string => text.replace(TOKEN, '').replace(/\s{2,}/g, ' ').trim();
 
 /** does a thought belong in the view of this section? its home, a section it names, or the section of a piece of knowledge it names */
-export function thoughtInScope(item: { nodeId: string; text: string }, scope: Set<string>, objects: ContextObject[], nodes: TreeNode[]): boolean {
+export function thoughtInScope(item: { nodeId: string; text: string; aboutNodeIds?: string[]; aboutObjectIds?: string[] }, scope: Set<string>, objects: ContextObject[], nodes: TreeNode[]): boolean {
   if (scope.has(item.nodeId)) return true;
+  if (item.aboutNodeIds?.some((id) => scope.has(id))) return true;
+  const at = new Map(objects.map((o) => [o.id, o.nodeId]));
+  if (item.aboutObjectIds?.some((id) => { const n = at.get(id); return !!n && scope.has(n); })) return true;
   const a = aboutOf(item.text, objects, nodes);
   if (a.nodeIds.some((id) => scope.has(id))) return true;
-  const at = new Map(objects.map((o) => [o.id, o.nodeId]));
   return a.objectIds.some((id) => { const n = at.get(id); return !!n && scope.has(n); });
 }
 
 /** the open thoughts that name this piece of knowledge */
-export function thoughtsAbout<T extends { text: string }>(thoughts: T[], objectId: string, objects: ContextObject[], nodes: TreeNode[]): T[] {
-  return thoughts.filter((t) => aboutOf(t.text, objects, nodes).objectIds.includes(objectId));
+export function thoughtsAbout<T extends { text: string; aboutObjectIds?: string[] }>(thoughts: T[], objectId: string, objects: ContextObject[], nodes: TreeNode[]): T[] {
+  return thoughts.filter((t) => {
+    if (t.aboutObjectIds?.includes(objectId)) return true;
+    return aboutOf(t.text, objects, nodes).objectIds.includes(objectId);
+  });
 }
 
 /** the targets of a thought as picker chips (for editing) */
-export function aboutTargets(text: string, objects: ContextObject[], nodes: TreeNode[]): AboutTarget[] {
+export function aboutTargets(text: string, objects: ContextObject[], nodes: TreeNode[], durable?: { aboutObjectIds?: string[]; aboutNodeIds?: string[] }): AboutTarget[] {
   const a = aboutOf(text, objects, nodes);
+  const objectIds = [...new Set([...(durable?.aboutObjectIds ?? []), ...a.objectIds])];
+  const nodeIds = [...new Set([...(durable?.aboutNodeIds ?? []), ...a.nodeIds])];
   return [
-    ...a.nodeIds.map((id) => ({ kind: 'node' as const, id, label: nodes.find((n) => n.id === id)?.label ?? id })),
-    ...a.objectIds.map((id) => ({ kind: 'object' as const, id, label: objects.find((o) => o.id === id)?.title ?? id })),
+    ...nodeIds.map((id) => ({ kind: 'node' as const, id, label: nodes.find((n) => n.id === id)?.label ?? id })),
+    ...objectIds.map((id) => ({ kind: 'object' as const, id, label: objects.find((o) => o.id === id)?.title ?? id })),
   ];
 }
 

@@ -42,6 +42,8 @@ export interface Thought {
   sourceQuote?: string;
   inferred?: boolean;
   resolvedObjectId?: string;
+  aboutObjectIds?: string[];
+  aboutNodeIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +61,29 @@ export interface ThoughtDerivation {
   parentId: string;
   childId: string;
   createdAt: string;
+}
+
+export interface ThoughtHistoryEntry {
+  kind: 'created' | 'revision' | 'reclassification' | 'resolved' | 'derived' | 'about_updated';
+  at: string;
+  actor: string;
+  details: {
+    beforeText?: string;
+    afterText?: string;
+    beforeKind?: ThoughtKind | null;
+    afterKind?: ThoughtKind | null;
+    parentIds?: string[];
+    objectId?: string;
+    sourceNoteId?: string;
+    sourceQuote?: string;
+  };
+}
+
+export interface ThoughtHistoryReport {
+  thought: Thought;
+  entries: ThoughtHistoryEntry[];
+  derivedThoughts: Thought[];
+  proposedObject?: ContextObject;
 }
 
 /** question, what was weighed (and why each rejected option was rejected), what is expected, and when to look back */

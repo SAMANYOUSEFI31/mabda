@@ -344,6 +344,19 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     res.json({ thought: repo.resolveThought(scopeOf(req), req.params.id, { ...(typeof b.objectId === 'string' ? { objectId: b.objectId } : {}), ...(typeof b.nodeId === 'string' ? { nodeId: b.nodeId } : {}) }) });
   }));
+  router.get('/workspaces/:wid/thoughts/:id/history', wrap((req, res) => {
+    res.json(repo.getThoughtHistory(scopeOf(req), req.params.id));
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/about', wrap((req, res) => {
+    const b = body(req);
+    const targets = Array.isArray(b.targets) ? b.targets : [];
+    res.json({ thought: repo.setThoughtAbout(scopeOf(req), req.params.id, targets) });
+  }));
+  router.post('/workspaces/:wid/thoughts/:id/split', wrap((req, res) => {
+    const b = body(req);
+    const children = Array.isArray(b.children) ? b.children : [];
+    res.json(repo.splitThought(scopeOf(req), req.params.id, children));
+  }));
   router.post('/workspaces/:wid/thoughts/:id/promote', wrap((req, res) => {
     const s = scopeOf(req);
     const b = body(req);

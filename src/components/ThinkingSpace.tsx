@@ -199,6 +199,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             items={view.thoughts}
             objects={p.objects}
             nodes={p.nodes}
+            workspaceId={p.objects[0]?.workspaceId}
             onConvert={p.onToKnowledge}
             onRevise={p.onReviseThought}
             onDerive={p.onDeriveThought}

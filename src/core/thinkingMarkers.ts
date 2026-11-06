@@ -40,6 +40,8 @@ export interface NoteThinkingItem extends ThinkingItem {
   id?: string;
   status?: ThoughtStatus;
   sourceLineKey?: string;
+  aboutObjectIds?: string[];
+  aboutNodeIds?: string[];
   /** note id + hash (+ #n for a repeated line), only for legacy-derived results */
   key: string;
 }
@@ -52,6 +54,8 @@ export function thoughtItem(thought: import('../types').Thought): NoteThinkingIt
     id: thought.id, status: thought.status, sourceLineKey: thought.sourceLineKey, kind: thought.kind, text: thought.text,
     line: thought.sourceLine ?? -1, hash, noteId: thought.sourceNoteId ?? '',
     nodeId: thought.nodeId, key: thought.id,
+    ...(thought.aboutObjectIds ? { aboutObjectIds: thought.aboutObjectIds } : {}),
+    ...(thought.aboutNodeIds ? { aboutNodeIds: thought.aboutNodeIds } : {}),
   };
 }
 

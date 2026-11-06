@@ -21,6 +21,7 @@ import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { canHaveExamples, cleanExamples } from '../../src/core/redlineExamples.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 import { lineHash, parseThinking } from '../../src/core/thinkingMarkers.ts';
+import { normalizeFa } from '../../src/core/contextEngine.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
 export interface Scope { userId: string; workspaceId: string }
@@ -97,7 +98,7 @@ const rowToNote = (r: Record<string, unknown>): Note => ({
   id: r.id as string, workspaceId: r.workspace_id as string, nodeId: r.node_id as string, content: r.content as string,
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
-const rowToThought = (r: Record<string, unknown>): Thought => ({
+const rowToThought = (r: Record<string, unknown>, about?: { objectIds: string[]; nodeIds: string[] }): Thought => ({
   id: r.id as string, workspaceId: r.workspace_id as string, nodeId: r.node_id as string,
   kind: r.kind as ThoughtKind | null, text: r.text as string, status: r.status as Thought['status'],
   ...(r.source_note_id ? { sourceNoteId: r.source_note_id as string } : {}),
@@ -106,6 +107,8 @@ const rowToThought = (r: Record<string, unknown>): Thought => ({
   ...(r.source_quote ? { sourceQuote: r.source_quote as string } : {}),
   ...(r.inferred ? { inferred: true } : {}),
   ...(r.resolved_object_id ? { resolvedObjectId: r.resolved_object_id as string } : {}),
+  ...(about?.objectIds?.length ? { aboutObjectIds: about.objectIds } : {}),
+  ...(about?.nodeIds?.length ? { aboutNodeIds: about.nodeIds } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
 });
 const rowToFile = (r: Record<string, unknown>, chunkCount: number): StoredFile => ({
@@ -758,18 +761,46 @@ export class Repo {
       .map((r) => ({ id: r.id as string, sourceId: r.source_id as string, targetId: r.target_id as string, type: r.type as ContextRelationship['type'], createdAt: r.created_at as string }));
   }
 
-  // ── notes ─────────────────────────────────────────────────────────────────
+  private hasTable(name: string): boolean {
+    try {
+      return !!this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+    } catch {
+      return false;
+    }
+  }
+
+  // ── notes & thoughts ────────────────────────────────────────────────────────
   listThoughts(s: Scope, opts: { includeResolved?: boolean } = {}): Thought[] {
     const status = opts.includeResolved ? '' : " AND status = 'open'";
-    return (this.db.prepare(`SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ?${status} ORDER BY created_at, id`).all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map(rowToThought);
+    const rows = this.db.prepare(`SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ?${status} ORDER BY created_at, id`).all(s.workspaceId, s.userId) as Array<Record<string, unknown>>;
+    const aboutMap = new Map<string, { objectIds: string[]; nodeIds: string[] }>();
+    if (this.hasTable('thought_about')) {
+      const aboutRows = this.db.prepare('SELECT thought_id, target_kind, target_id FROM thought_about WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<{ thought_id: string; target_kind: string; target_id: string }>;
+      for (const a of aboutRows) {
+        let cur = aboutMap.get(a.thought_id);
+        if (!cur) { cur = { objectIds: [], nodeIds: [] }; aboutMap.set(a.thought_id, cur); }
+        if (a.target_kind === 'object') cur.objectIds.push(a.target_id);
+        else if (a.target_kind === 'node') cur.nodeIds.push(a.target_id);
+      }
+    }
+    return rows.map((r) => rowToThought(r, aboutMap.get(r.id as string)));
   }
 
   getThought(s: Scope, id: string): Thought | undefined {
     const r = this.db.prepare('SELECT * FROM thoughts WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
-    return r ? rowToThought(r) : undefined;
+    if (!r) return undefined;
+    let about: { objectIds: string[]; nodeIds: string[] } | undefined;
+    if (this.hasTable('thought_about')) {
+      const aboutRows = this.db.prepare('SELECT target_kind, target_id FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').all(id, s.workspaceId, s.userId) as Array<{ target_kind: string; target_id: string }>;
+      about = {
+        objectIds: aboutRows.filter((a) => a.target_kind === 'object').map((a) => a.target_id),
+        nodeIds: aboutRows.filter((a) => a.target_kind === 'node').map((a) => a.target_id),
+      };
+    }
+    return rowToThought(r, about);
   }
 
-  private insertThought(s: Scope, input: { id?: string; nodeId: string; kind: ThoughtKind | null; text: string; sourceNoteId?: string; sourceLine?: number; sourceLineKey?: string; sourceQuote?: string; inferred?: boolean; status?: Thought['status']; resolvedObjectId?: string; at?: string }): Thought {
+  insertThought(s: Scope, input: { id?: string; nodeId: string; kind: ThoughtKind | null; text: string; sourceNoteId?: string; sourceLine?: number; sourceLineKey?: string; sourceQuote?: string; inferred?: boolean; status?: Thought['status']; resolvedObjectId?: string; at?: string; about?: Array<{ kind: 'object' | 'node'; id: string }> }): Thought {
     if (!input.text.trim()) throw new RepoError('invalid', 'متن فکر لازم است.');
     this.requireNode(s, input.nodeId);
     if (input.sourceNoteId && !this.getNote(s, input.sourceNoteId)) throw new RepoError('not_found', 'یادداشت منبع پیدا نشد.');
@@ -789,13 +820,46 @@ export class Repo {
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(thought.id, s.userId, s.workspaceId, thought.nodeId, thought.kind, thought.text, thought.status,
       thought.sourceNoteId ?? null, thought.sourceLine ?? null, thought.sourceLineKey ?? null, thought.sourceQuote ?? null, thought.inferred ? 1 : 0,
       thought.resolvedObjectId ?? null, thought.createdAt, thought.updatedAt);
-    return thought;
+
+    if (this.hasTable('thought_events')) {
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), thought.id, s.userId, s.workspaceId, 'created', null, thought.text, 'user', at);
+    }
+
+    if (this.hasTable('thought_about')) {
+      const insAbout = this.db.prepare('INSERT OR IGNORE INTO thought_about (thought_id,target_kind,target_id,user_id,workspace_id,created_at) VALUES (?,?,?,?,?,?)');
+      if (input.about?.length) {
+        for (const target of input.about) insAbout.run(thought.id, target.kind, target.id, s.userId, s.workspaceId, at);
+      } else if (input.text.includes('@«')) {
+        const TOKEN = /@«([^»\n]+)»/g;
+        const matches = [...input.text.matchAll(TOKEN)];
+        if (matches.length > 0) {
+          const objects = this.listObjects(s);
+          const nodes = this.listNodes(s);
+          for (const m of matches) {
+            const k = normalizeFa(m[1].replace(/\s+/g, ' ').trim());
+            const wsObjs = objects.filter((o) => normalizeFa(o.title.replace(/\s+/g, ' ').trim()) === k);
+            if (wsObjs.length === 1) {
+              insAbout.run(thought.id, 'object', wsObjs[0].id, s.userId, s.workspaceId, at);
+              continue;
+            }
+            if (wsObjs.length > 1) continue;
+            const wsNodes = nodes.filter((n) => normalizeFa(n.label.replace(/\s+/g, ' ').trim()) === k);
+            if (wsNodes.length === 1) {
+              insAbout.run(thought.id, 'node', wsNodes[0].id, s.userId, s.workspaceId, at);
+            }
+          }
+        }
+      }
+    }
+
+    return this.getThought(s, thought.id)!;
   }
 
   /** New or imported Note lines create separate Thoughts once; later raw-material edits never rewrite their text. */
   private syncNoteThoughts(s: Scope, note: Note, deterministicIds = false): void {
     const current = this.db.prepare('SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ? AND source_note_id = ? ORDER BY source_line,id').all(s.workspaceId, s.userId, note.id) as Array<Record<string, unknown>>;
-    const anchored = current.filter((t) => t.source_line !== null).map(rowToThought);
+    const anchored = current.filter((t) => t.source_line !== null).map((r) => rowToThought(r));
     const used = new Set<string>();
     let ordinal = 0;
     for (const item of parseThinking(note.content)) {
@@ -828,6 +892,32 @@ export class Repo {
       const nextRevision = (this.db.prepare('SELECT COALESCE(MAX(revision),0)+1 AS n FROM thought_revisions WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as { n: number }).n;
       this.db.prepare('INSERT INTO thought_revisions (thought_id,revision,user_id,workspace_id,before_text,after_text,at) VALUES (?,?,?,?,?,?,?)')
         .run(id, nextRevision, s.userId, s.workspaceId, cur.text, text, at);
+      if (this.hasTable('thought_events')) {
+        this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .run(newId('th_ev'), id, s.userId, s.workspaceId, 'revised', cur.text, text, 'user', at);
+      }
+    }
+    if (this.hasTable('thought_about') && text.includes('@«')) {
+      const TOKEN = /@«([^»\n]+)»/g;
+      const matches = [...text.matchAll(TOKEN)];
+      if (matches.length > 0) {
+        const objects = this.listObjects(s);
+        const nodes = this.listNodes(s);
+        const insAbout = this.db.prepare('INSERT OR IGNORE INTO thought_about (thought_id,target_kind,target_id,user_id,workspace_id,created_at) VALUES (?,?,?,?,?,?)');
+        for (const m of matches) {
+          const k = normalizeFa(m[1].replace(/\s+/g, ' ').trim());
+          const wsObjs = objects.filter((o) => normalizeFa(o.title.replace(/\s+/g, ' ').trim()) === k);
+          if (wsObjs.length === 1) {
+            insAbout.run(id, 'object', wsObjs[0].id, s.userId, s.workspaceId, at);
+            continue;
+          }
+          if (wsObjs.length > 1) continue;
+          const wsNodes = nodes.filter((n) => normalizeFa(n.label.replace(/\s+/g, ' ').trim()) === k);
+          if (wsNodes.length === 1) {
+            insAbout.run(id, 'node', wsNodes[0].id, s.userId, s.workspaceId, at);
+          }
+        }
+      }
     }
     this.db.prepare('UPDATE thoughts SET text = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(text, at, id, s.workspaceId, s.userId);
     return { thought: this.getThought(s, id)!, revisions: this.listThoughtRevisions(s, id) };
@@ -836,9 +926,73 @@ export class Repo {
   reclassifyThought(s: Scope, id: string, kind: ThoughtKind): Thought {
     const cur = this.getThought(s, id);
     if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    const at = now();
     this.db.prepare('UPDATE thoughts SET kind = ?, inferred = 0, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
-      .run(kind, now(), id, s.workspaceId, s.userId);
+      .run(kind, at, id, s.workspaceId, s.userId);
+    if (this.hasTable('thought_events')) {
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), id, s.userId, s.workspaceId, 'reclassified', cur.kind, kind, 'user', at);
+    }
     return this.getThought(s, id)!;
+  }
+
+  setThoughtAbout(s: Scope, thoughtId: string, targets: Array<{ kind: 'object' | 'node'; id: string }>): Thought {
+    const cur = this.getThought(s, thoughtId);
+    if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    const at = now();
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').run(thoughtId, s.workspaceId, s.userId);
+      const ins = this.db.prepare('INSERT OR IGNORE INTO thought_about (thought_id, target_kind, target_id, user_id, workspace_id, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+      for (const t of targets) {
+        ins.run(thoughtId, t.kind, t.id, s.userId, s.workspaceId, at);
+      }
+      if (this.hasTable('thought_events')) {
+        this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .run(newId('th_ev'), thoughtId, s.userId, s.workspaceId, 'about_updated', null, JSON.stringify(targets), 'user', at);
+      }
+    })();
+    return this.getThought(s, thoughtId)!;
+  }
+
+  getThoughtAbout(s: Scope, thoughtId: string): { objectIds: string[]; nodeIds: string[] } {
+    if (!this.hasTable('thought_about')) return { objectIds: [], nodeIds: [] };
+    const rows = this.db.prepare('SELECT target_kind, target_id FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').all(thoughtId, s.workspaceId, s.userId) as Array<{ target_kind: string; target_id: string }>;
+    return {
+      objectIds: rows.filter((r) => r.target_kind === 'object').map((r) => r.target_id),
+      nodeIds: rows.filter((r) => r.target_kind === 'node').map((r) => r.target_id),
+    };
+  }
+
+  listThoughtsAbout(s: Scope, objectId: string): Thought[] {
+    const targetThoughtIds = this.hasTable('thought_about')
+      ? (this.db.prepare("SELECT thought_id FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ? AND user_id = ?").all(objectId, s.workspaceId, s.userId) as Array<{ thought_id: string }>).map((r) => r.thought_id)
+      : [];
+    const seen = new Set(targetThoughtIds);
+    const all = this.listThoughts(s, { includeResolved: true });
+    const obj = this.getObject(s, objectId);
+    if (obj) {
+      const token = `@«${obj.title}»`;
+      for (const t of all) {
+        if (!seen.has(t.id) && t.text.includes(token)) {
+          seen.add(t.id);
+        }
+      }
+    }
+    return [...seen].map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
+  }
+
+  listThoughtsInScope(s: Scope, nodeIds: string[]): Thought[] {
+    const set = new Set(nodeIds);
+    const all = this.listThoughts(s, { includeResolved: true });
+    const objects = this.listObjects(s);
+    const nodes = this.listNodes(s);
+    return all.filter((t) => {
+      if (set.has(t.nodeId)) return true;
+      if (t.aboutNodeIds?.some((id) => set.has(id))) return true;
+      const at = new Map(objects.map((o) => [o.id, o.nodeId]));
+      if (t.aboutObjectIds?.some((id) => { const n = at.get(id); return !!n && set.has(n); })) return true;
+      return false;
+    });
   }
 
   deriveThought(s: Scope, input: { parentIds: string[]; nodeId: string; kind: ThoughtKind; text: string }): { thought: Thought; derivedFrom: string[] } {
@@ -865,6 +1019,123 @@ export class Repo {
     return (this.db.prepare('SELECT parent_id FROM thought_derivations WHERE child_id = ? AND workspace_id = ? AND user_id = ? ORDER BY created_at,parent_id').all(thoughtId, s.workspaceId, s.userId) as Array<{ parent_id: string }>).map((r) => r.parent_id);
   }
 
+  listDerivedThoughts(s: Scope, thoughtId: string): Thought[] {
+    const childIds = (this.db.prepare('SELECT child_id FROM thought_derivations WHERE parent_id = ? AND workspace_id = ? AND user_id = ? ORDER BY created_at').all(thoughtId, s.workspaceId, s.userId) as Array<{ child_id: string }>).map((r) => r.child_id);
+    return childIds.map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
+  }
+
+  getThoughtSources(s: Scope, thoughtId: string): { note?: Note; parents: Thought[]; quote?: string; inferred?: boolean } {
+    const thought = this.getThought(s, thoughtId);
+    if (!thought) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    const note = thought.sourceNoteId ? this.getNote(s, thought.sourceNoteId) : undefined;
+    const parents = this.listThoughtParents(s, thoughtId).map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
+    return {
+      note,
+      parents,
+      quote: thought.sourceQuote,
+      inferred: thought.inferred,
+    };
+  }
+
+  getProposedKnowledgeFromThought(s: Scope, thoughtId: string): ContextObject | undefined {
+    const thought = this.getThought(s, thoughtId);
+    if (thought?.resolvedObjectId) {
+      const obj = this.getObject(s, thought.resolvedObjectId);
+      if (obj) return obj;
+    }
+    const objects = this.listObjects(s);
+    return objects.find((o) => o.source?.thoughtId === thoughtId);
+  }
+
+  getSynthesisLineage(s: Scope, thoughtId: string): { thought: Thought; parentThoughts: Thought[] } {
+    const thought = this.getThought(s, thoughtId);
+    if (!thought) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    const parentThoughts = this.listThoughtParents(s, thoughtId).map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
+    return { thought, parentThoughts };
+  }
+
+  splitThought(s: Scope, parentId: string, children: Array<{ text: string; kind: ThoughtKind; nodeId?: string }>): { parent: Thought; children: Thought[] } {
+    const parent = this.getThought(s, parentId);
+    if (!parent) throw new RepoError('not_found', 'فکر مبدأ پیدا نشد.');
+    if (!children.length) throw new RepoError('invalid', 'دست‌کم یک فکر تازه برای تفکیک لازم است.');
+    const created: Thought[] = [];
+    this.db.transaction(() => {
+      for (const c of children) {
+        const derived = this.deriveThought(s, {
+          parentIds: [parentId],
+          nodeId: c.nodeId ?? parent.nodeId,
+          kind: c.kind,
+          text: c.text,
+        });
+        created.push(derived.thought);
+      }
+    })();
+    return { parent: this.getThought(s, parentId)!, children: created };
+  }
+
+  getThoughtHistory(s: Scope, thoughtId: string): import('../../src/types/index.ts').ThoughtHistoryReport {
+    const thought = this.getThought(s, thoughtId);
+    if (!thought) throw new RepoError('not_found', 'فکر پیدا نشد.');
+    const revisions = this.listThoughtRevisions(s, thoughtId);
+    const events = this.hasTable('thought_events')
+      ? (this.db.prepare('SELECT event_kind, before_value, after_value, actor, at FROM thought_events WHERE thought_id = ? AND workspace_id = ? AND user_id = ? ORDER BY at').all(thoughtId, s.workspaceId, s.userId) as Array<{ event_kind: string; before_value: string | null; after_value: string | null; actor: string; at: string }>)
+      : [];
+    const parents = this.listThoughtParents(s, thoughtId).map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
+    const derivedThoughts = this.listDerivedThoughts(s, thoughtId);
+    const proposedObject = this.getProposedKnowledgeFromThought(s, thoughtId);
+
+    const entries: import('../../src/types/index.ts').ThoughtHistoryEntry[] = [
+      {
+        kind: 'created',
+        at: thought.createdAt,
+        actor: 'user',
+        details: {
+          afterText: thought.text,
+          afterKind: thought.kind,
+          sourceNoteId: thought.sourceNoteId,
+          sourceQuote: thought.sourceQuote,
+          parentIds: parents.map((p) => p.id),
+        },
+      },
+    ];
+
+    for (const r of revisions) {
+      entries.push({
+        kind: 'revision',
+        at: r.at,
+        actor: 'user',
+        details: { beforeText: r.beforeText, afterText: r.afterText },
+      });
+    }
+
+    for (const ev of events) {
+      if (ev.event_kind === 'reclassified') {
+        entries.push({
+          kind: 'reclassification',
+          at: ev.at,
+          actor: ev.actor,
+          details: { beforeKind: ev.before_value as ThoughtKind, afterKind: ev.after_value as ThoughtKind },
+        });
+      } else if (ev.event_kind === 'resolved') {
+        entries.push({
+          kind: 'resolved',
+          at: ev.at,
+          actor: ev.actor,
+          details: { objectId: ev.after_value ?? undefined },
+        });
+      }
+    }
+
+    entries.sort((a, b) => a.at.localeCompare(b.at));
+
+    return {
+      thought,
+      entries,
+      derivedThoughts,
+      proposedObject,
+    };
+  }
+
   resolveThought(s: Scope, id: string, resolution: { objectId?: string; nodeId?: string }): Thought {
     const cur = this.getThought(s, id);
     if (!cur) throw new RepoError('not_found', 'فکر پیدا نشد.');
@@ -873,8 +1144,13 @@ export class Repo {
       if (!object || object.status !== 'Proposed') throw new RepoError('invalid', 'فکر فقط با دانش پیشنهادی می‌تواند تبدیل شود.');
     } else if (resolution.nodeId) this.requireNode(s, resolution.nodeId);
     else throw new RepoError('invalid', 'نتیجهٔ تبدیل فکر مشخص نیست.');
+    const at = now();
     this.db.prepare("UPDATE thoughts SET status = 'resolved', resolved_object_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?")
-      .run(resolution.objectId ?? null, now(), id, s.workspaceId, s.userId);
+      .run(resolution.objectId ?? null, at, id, s.workspaceId, s.userId);
+    if (this.hasTable('thought_events')) {
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), id, s.userId, s.workspaceId, 'resolved', 'open', resolution.objectId ?? resolution.nodeId, 'user', at);
+    }
     return this.getThought(s, id)!;
   }
 
