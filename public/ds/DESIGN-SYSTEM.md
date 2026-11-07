@@ -3,15 +3,24 @@
 You are building a product on the **Bushido** design system (dark-only, Persian/RTL, minimal, disciplined).
 Do NOT invent colors, sizes, fonts or components. Use only what is in this folder.
 
-## Files
-- `tokens.css` — all design tokens as CSS variables on `:root` (+ `@font-face` for Vazirmatn + type-style classes like `.body-md`, `.label-md`, `.heading-lg`).
-- `bundle.css` + `bundle.js` — 37 ready React 18 components, exposed as `window.Bushido`.
-- `lib/react.production.min.js`, `lib/react-dom.production.min.js` — React 18.3.1 UMD (globals `React`, `ReactDOM`).
-- `fonts/` — Vazirmatn woff2 (referenced by tokens.css as `fonts/...`).
-- `components.d.ts` — props of every component (documentation; read it before using a component).
-- `example.html` — a minimal working page. Copy its structure.
+## وضعیت و تمایز دو محیط (Architecture & Runtime Boundaries)
 
-## How to load (no build step; this is the required approach)
+> **مهم — مرز صریح دو محیط:**
+> ۱. **برنامه اصلی مبدأ (Mabda Main App):** از **React 19** و Vite استفاده می‌کند. تمام کامپوننت‌های کاربری در `src/ui/` به‌صورت بومی با React 19 و Tailwind v4 پیاده‌سازی شده‌اند. از دارایی‌های این پوشه، برنامه اصلی **تنها** از `tokens.css`، فونت‌های `fonts/` و استایل پایهٔ `bundle.css` (از طریق `src/index.css` در لایهٔ `layer(ds)`) استفاده می‌کند.
+> ۲. **فایل‌های UMD نباید در Runtime اصلی import یا load شوند:** فایل‌های `bundle.js`، `lib/react.production.min.js` و `lib/react-dom.production.min.js` تحت هیچ شرایطی نباید وارد `index.html` یا کدهای `src/` شوند.
+> ۳. **نمونهٔ مستقل (Standalone Reference):** فایل `example.html` صرفاً یک نمونهٔ مستقل بدون Build (no-build standalone demo) برای آزمایش محلی سیستم طراحی است که از React 18.3.1 UMD استفاده می‌کند و هیچ ارتباطی به Runtime اجرایی مبدأ ندارد. این فایل‌ها به عنوان *Removable Legacy Artifacts* ثبت شده‌اند.
+
+## Files
+- `tokens.css` — all design tokens as CSS variables on `:root` (+ `@font-face` for Vazirmatn + type-style classes like `.body-md`, `.label-md`, `.heading-lg`). [مصرف در برنامه اصلی]
+- `bundle.css` — base component styles, imported in `src/index.css` via `@import "../public/ds/bundle.css" layer(ds);`. [مصرف در برنامه اصلی]
+- `fonts/` — Vazirmatn woff2 fonts referenced by `tokens.css`. [مصرف در برنامه اصلی]
+- `bundle.js` — 37 legacy UMD React 18 components, exposed as `window.Bushido` (تنها برای دمو و مرجع مستقل؛ در برنامه اصلی لود نمی‌شود).
+- `lib/react.production.min.js`, `lib/react-dom.production.min.js` — React 18.3.1 UMD (تنها برای اجرای مستقل `example.html`؛ در برنامه اصلی لود نمی‌شود).
+- `components.d.ts` — props of every component (documentation / API reference).
+- `example.html` — a minimal standalone working page using React 18 UMD.
+
+## How the Standalone Demo Works (No-build Reference Only)
+*(این شیوه صرفاً برای تست مستقل `example.html` بدون نیاز به bundler است و در ساختار اپلیکیشن اصلی Mabda کاربرد ندارد)*
 ```html
 <html lang="fa" dir="rtl">
 <head>
@@ -23,11 +32,10 @@ Do NOT invent colors, sizes, fonts or components. Use only what is in this folde
   <script src="ds/lib/react.production.min.js"></script>
   <script src="ds/lib/react-dom.production.min.js"></script>
   <script src="ds/bundle.js"></script>
-  <script src="app.js"></script>   <!-- plain JS using React.createElement; no JSX, no bundler -->
+  <script src="app.js"></script>   <!-- standalone reference only -->
 </body></html>
 ```
-Keep the folder as `ds/` and never edit its files. App code goes in separate files. Use `const h = React.createElement; const B = window.Bushido;`.
-Do not install a second copy of React; the components use the global one.
+در اپلیکیشن مبدأ، تمام کدهای UI از کامپوننت‌های بومی `src/ui/` با React 19 ایمپورت می‌شوند. هرگز `bundle.js` یا React 18 را به `index.html` اصلی اضافه نکنید.
 
 ## Seven permanent rules
 1. Semantic tokens only (`surface-*`, `bg-*`, `text-*`, `border-*`, `inset-*`, `space-*`...). Never raw hex, never raw palette steps (`crimson-600`), never ad-hoc pixel numbers when a token exists.
