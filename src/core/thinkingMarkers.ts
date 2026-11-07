@@ -1,16 +1,16 @@
 /**
- * Legacy Note-line syntax (idea, question, assumption, open decision). New user-created lines are backfilled into persisted
- * Thoughts; the parser remains for migration, compatibility, and Note-to-Thought synchronization.
+ * Legacy Note-line syntax (idea, question, assumption, open decision).
  *
- *  • NO SYNTAX NEEDED: a line that ENDS with `؟` or `?` is a «question» by itself (the user never has to learn a bracket);
- *    an explicit marker on the same line wins. `markLine` writes a marker for the user from a small menu
- *  • derived, never stored: the note text is the only thing that exists, and it is never rewritten
- *  • tied to its note by note id + a hash of the line, so a soft re-match survives a small edit
- *  • a thought of SEVERAL lines: every line but the last ends with `\` (the Markdown hard line break), so `- [ایده] الف\` /
- *    `ب\` / `ج` is ONE thought whose text is «الف⏎ب⏎ج». Only a thought with an explicit marker can continue; a note that never
- *    used a trailing backslash reads exactly as before
- *  • notes are never injected into a model, so neither are their items; an item only becomes knowledge when the user
- *    converts it (always PROPOSED, with the line as its quote)
+ * Architecture & boundaries:
+ *  • The parser still interprets Note lines for legacy migration, compatibility, and Note-to-Thought synchronization.
+ *  • The parser result alone is a projection / legacy candidate and may not have a persisted ID (`NoteThinkingItem.id`).
+ *  • In the current model, a Thought is a persisted entity with a stable ID (`thoughts` table).
+ *  • `noteId + line hash/sourceLineKey` is only used for anchoring, migration, and soft matching of legacy data; it is NOT the Thought's identity.
+ *  • Note text is not the sole source of truth for Thoughts; editing or deleting a Note must not silently rewrite or delete a persisted Thought.
+ *  • NO SYNTAX NEEDED: a line that ENDS with `؟` or `?` is an inferred question (an explicit marker on the same line wins). `markLine` writes a marker from a menu.
+ *  • A thought of SEVERAL lines: every line but the last ends with `\` (the Markdown hard line break), so `- [ایده] الف\` / `ب\` / `ج` is ONE thought whose text is «الف⏎ب⏎ج».
+ *  • Neither Notes nor Thoughts are injected into AI without explicit user request.
+ *  • Promotion from Thought only creates Proposed Knowledge; it never directly creates Confirmed Truth.
  */
 
 import type { ContextObject, Note, ThoughtKind, ThoughtStatus } from '../types';
