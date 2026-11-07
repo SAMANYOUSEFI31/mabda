@@ -6,9 +6,12 @@ Do NOT invent colors, sizes, fonts or components. Use only what is in this folde
 ## وضعیت و تمایز دو محیط (Architecture & Runtime Boundaries)
 
 > **مهم — مرز صریح دو محیط:**
-> ۱. **برنامه اصلی مبدأ (Mabda Main App):** از **React 19** و Vite استفاده می‌کند. تمام کامپوننت‌های کاربری در `src/ui/` به‌صورت بومی با React 19 و Tailwind v4 پیاده‌سازی شده‌اند. از دارایی‌های این پوشه، برنامه اصلی **تنها** از `tokens.css`، فونت‌های `fonts/` و استایل پایهٔ `bundle.css` (از طریق `src/index.css` در لایهٔ `layer(ds)`) استفاده می‌کند.
-> ۲. **فایل‌های UMD نباید در Runtime اصلی import یا load شوند:** فایل‌های `bundle.js`، `lib/react.production.min.js` و `lib/react-dom.production.min.js` تحت هیچ شرایطی نباید وارد `index.html` یا کدهای `src/` شوند.
-> ۳. **نمونهٔ مستقل (Standalone Reference):** فایل `example.html` صرفاً یک نمونهٔ مستقل بدون Build (no-build standalone demo) برای آزمایش محلی سیستم طراحی است که از React 18.3.1 UMD استفاده می‌کند و هیچ ارتباطی به Runtime اجرایی مبدأ ندارد. این فایل‌ها به عنوان *Removable Legacy Artifacts* ثبت شده‌اند.
+> ۱. **برنامه اصلی مبدأ (Mabda Main App):** از **React 19**، Vite و ESM imports استفاده می‌کند. معماری رابط کاربری برنامه شامل دو بخش مجزا است:
+>    - `src/ui/`: شامل primitiveها، اجزای عمومی Design System، توکن‌ها و ابزارهای عمومی UI.
+>    - `src/components/`: شامل کامپوننت‌های ترکیبی، جریان‌های رابط و کامپوننت‌های آگاه از دامنهٔ Mabda.
+>    برنامه اصلی هر دو دسته را با React 19 و ESM imports مصرف می‌کند. از دارایی‌های پوشهٔ `public/ds`، برنامه اصلی **تنها** از `tokens.css`، فونت‌های `fonts/` و استایل پایهٔ `bundle.css` (از طریق `src/index.css` در لایهٔ `layer(ds)`) استفاده می‌کند.
+> ۲. **فایل‌های UMD نباید در Runtime اصلی import یا load شوند:** فایل‌های `bundle.js`، `lib/react.production.min.js` و `lib/react-dom.production.min.js` تحت هیچ شرایطی نباید در `index.html` اصلی، `src/` یا Runtime اصلی Mabda وارد (Load یا Import) شوند.
+> ۳. **نمونهٔ مستقل (Standalone Demo):** فایل `example.html` صرفاً یک نمونهٔ مستقل بدون Build (no-build standalone demo) برای آزمایش محلی سیستم طراحی است که مستقلاً از React 18.3.1 UMD و `bundle.js` استفاده می‌کند و هیچ ارتباطی به Runtime اجرایی مبدأ ندارد. این فایل‌ها به عنوان *Removable Legacy Artifacts* ثبت شده‌اند.
 
 ## Files
 - `tokens.css` — all design tokens as CSS variables on `:root` (+ `@font-face` for Vazirmatn + type-style classes like `.body-md`, `.label-md`, `.heading-lg`). [مصرف در برنامه اصلی]
@@ -35,7 +38,7 @@ Do NOT invent colors, sizes, fonts or components. Use only what is in this folde
   <script src="app.js"></script>   <!-- standalone reference only -->
 </body></html>
 ```
-در اپلیکیشن مبدأ، تمام کدهای UI از کامپوننت‌های بومی `src/ui/` با React 19 ایمپورت می‌شوند. هرگز `bundle.js` یا React 18 را به `index.html` اصلی اضافه نکنید.
+در برنامه اصلی Mabda، کامپوننت‌های عمومی و primitiveها در `src/ui/` و کامپوننت‌های ترکیبی و دامنه‌ای در `src/components/` قرار دارند و هر دو با React 19 و ESM imports مصرف می‌شوند. فایل‌های `bundle.js` و React 18 UMD منحصراً متعلق به Standalone Demo در `public/ds/example.html` هستند و نباید در `index.html` اصلی، `src/` یا Runtime اصلی Mabda لود یا ایمپورت شوند.
 
 ## Seven permanent rules
 1. Semantic tokens only (`surface-*`, `bg-*`, `text-*`, `border-*`, `inset-*`, `space-*`...). Never raw hex, never raw palette steps (`crimson-600`), never ad-hoc pixel numbers when a token exists.
