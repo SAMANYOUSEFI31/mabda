@@ -128,41 +128,82 @@
 
 نمونه‌ها: **پروژه** = کاربرد (یک بخش + دانش‌های آماده). **«پشتیبانی می‌کند»** = رابطه (معنا؛ یک ردیف رابطه یا `depends_on`، نه جدول). **بسته** = خروجی. **`lineHash`** = زیرساخت. **«فکر دربارهٔ قیمت»** = بنیادی (فکر) + معنا («دربارهٔ»). **«اگر تأیید کنم»** = قابلیت از سازوکار مقایسه. **دستیار پیشنهاد نوع** = لایهٔ هوش.
 
-## ۱۱. نقشهٔ پوشه‌ها (پیشنهاد برای پرامپت بعد — اجرا نشده)
+## ۱۱. نقشهٔ پوشه‌ها (اجراشده — «۰ب»: تقسیم بدون تغییر رفتار)
 
-### `server/db/repo.ts` (۱٬۷۰۰ خط، یک کلاس) ← یک پوشهٔ `server/db/repo/` با یک فایل برای هر حوزه، و `Repo` فقط آن‌ها را ترکیب کند
+هیچ رفتار، ظاهر، API یا دادهٔ ذخیره‌شده‌ای عوض نشد؛ فقط جای کد. هر فایل یک «جنس» را حمل می‌کند؛ منطق قطعی در `src/core`، دسترسی به داده در `server/db`، رابط در `src/components`، و هیچ وابستگی از `src/core` به `server` یا `src/components` نیست.
 
-| بخش فعلی (مارکر) | حوزه | فایل پیشنهادی |
-| --- | --- | --- |
-| workspaces | Workspace | `workspaces.ts` |
-| tree nodes، moveNode | بخش | `nodes.ts` |
-| context objects، versions، raw inserts | دانش | `objects.ts` |
-| Change log | تاریخچه | `changes.ts` |
-| depends_on، overrides، carryDependencies | رابطه | `relations.ts` |
-| notes & thoughts | ماده + فکر | `notes.ts`، `thoughts.ts` (جدا: `syncNoteThoughts` بین این دو پل می‌زند) |
-| boards (canvas_view_items) | چیدمان | `canvas.ts` |
-| JSON collections (deliverables، ledger، sessions، specs) | خروجی و گفتگو | `deliverables.ts`، `ledger.ts`، `sessions.ts`، `specs.ts` |
-| files | ماده | `files.ts` |
-| judgments، contradictions | قضاوت | `judgments.ts` |
-| packs، saved packs | بسته | `packs.ts` (کنار `server/db/packs.ts` فعلی) |
-| templates | کاربرد | `templates.ts` |
-| metrics | شاخص (خارج دامنه) | `metrics.ts` |
-| usage counters، whole-workspace state، legacy import | زیرساخت | `usage.ts`، `state.ts` |
+### `server/db/repo/` (قبلاً یک فایل ۱٬۷۰۰ خطی)
+`server/db/repo.ts` فقط `export * from './repo/index.ts'` است؛ هیچ import بیرونی عوض نشد.
 
-همین‌طور `server/db/routes.ts` (۸۹۰ خط) ← یک router برای هر حوزه.
+**روش: ترکیب متدها (mixin)، نه چند کلاس جدا.** کلاس `Repo` (در `index.ts`) فقط `db` و `transaction` دارد؛ هر حوزه یک شیء از متدها با `this: Repo` می‌دهد و `Object.assign(Repo.prototype, …)` آن‌ها را به `Repo` می‌چسباند (`interface Repo extends …` نوع‌ها را کامل می‌کند). **چرا:** (۱) نام و امضای همهٔ ۱۵۷ متد همان ماند؛ ۶۲۸ تست و همهٔ مسیرها بی‌تغییر؛ (۲) متدها بدنهٔ کلمه‌به‌کلمه‌ی خودشان را نگه داشتند (بررسی خودکار تفاوت خط‌ها)؛ (۳) تراکنش‌های چنددامنه‌ای همچنان `this.db.transaction` یک پایگاه‌داده‌اند و نیازی به تزریق وابستگی بین کلاس‌ها نیست؛ کلاس‌های جدا مجبور می‌کردند هر حوزه نمونهٔ حوزهٔ دیگر را بگیرد.
 
-### `src/App.tsx` (۲٬۰۰۰ خط) ← حوزه‌ها
+| فایل | محتوا |
+| --- | --- |
+| `index.ts` | کلاس `Repo` (db، transaction) و ترکیب حوزه‌ها |
+| `shared.ts` | Scope، RepoError، newId، now، ChangeMeta، تبدیل ردیف→نوع و کمکی‌های مشترک |
+| `workspaces.ts` | Workspace، سقف پلن، پرچم نمونه |
+| `nodes.ts` | درخت بخش‌ها: ساخت، نام، جابه‌جایی، حذف با انتقال |
+| `objects.ts` | دانش: نسخه‌ها، پیش‌نویس، نمونه، جایگزینی، پیامد هر نوشتن |
+| `changes.ts` | Change log فقط‌افزودنی |
+| `relations.ts` | depends_on، overrides و رابطه‌های دیگر |
+| `notes.ts` | یادداشت (ماده) و همگام‌سازی با فکر |
+| `thoughts.ts` | فکر: هویت پایدار، بازنگری، دربارهٔ، مشتق‌سازی، ارتقا |
+| `canvas.ts` | جای اعلام‌شدهٔ آیتم‌های بوم و رتبهٔ تخته |
+| `deliverables.ts` / `ledger.ts` / `sessions.ts` / `specs.ts` | خروجی‌ها، دفتر مصرف، گفتگوهای ذخیره‌شده، specها |
+| `files.ts` | فایل‌ها، تکه‌ها، سهمیهٔ ماهانه |
+| `judgments.ts` | قضاوت لایهٔ تصمیم و تناقض معنایی |
+| `packs.ts` | بستهٔ Context ثبت‌شده و بستهٔ ذخیره‌شده |
+| `templates.ts` | قالب‌های خود کاربر |
+| `metrics.ts` | شاخص و اندازه‌گیری (خارج دامنهٔ Context) |
+| `usage.ts` / `state.ts` | شمارنده‌ها؛ وضعیت کل فضا، نشان بازبینی هفتگی و واردسازی قدیمی |
 
-| بخش فعلی | حوزه | مقصد پیشنهادی |
-| --- | --- | --- |
-| بوت، فضاهای کاری، پلن، حساب | Workspace | `src/app/workspace/` |
-| handleهای دانش (ذخیره، جایگزین، بایگانی، تأیید) | دانش | `src/app/knowledge/` |
-| یادداشت و فکر (ساخت، حذف، تبدیل، بازنگری، فضای فکر) | ماده و فکر | `src/app/thinking/` |
-| بوم (حرکت، اتصال، کادر) | فهم و تصمیم | `src/app/canvas/` |
-| بسته، درخواست AI، وارد کردن پاسخ | Context | `src/app/context/` |
-| بخش‌ها (ساخت، جابه‌جایی، حذف) | سازمان‌دهی | `src/app/structure/` |
-| خانه، بازبینی هفتگی، خبرها | نگهداری و بازبینی | `src/app/home/` |
-| فایل‌ها | ماده | `src/app/files/` |
-| ناوبری، فوکوس بخش، history | پوسته | `src/app/shell/` |
+**تراکنش‌های چنددامنه‌ای** (هنوز یک تراکنش؛ ببین هر کدام به چه چیزی دست می‌زند):
 
-قاعدهٔ تقسیم: هر فایل جدید فقط یک «جنس» را حمل کند؛ منطق قطعی در `src/core`، دسترسی به داده در `server/db`، رابط در `src/components`؛ هیچ وابستگی از `src/core` به `server` یا `src/components` نیست.
+| متد (فایل) | حوزه‌هایی که با هم می‌نویسد |
+| --- | --- |
+| `deleteNode` (nodes) | بخش + دانش + یادداشت + فکر + فایل + Change |
+| `nodesFromNote` (nodes) | بخش + یادداشت + Change |
+| `importNote`، `createNote`، `updateNote` (notes) | یادداشت + فکرهای همگام‌شده |
+| `restoreNote` (notes) | یادداشت + فکر + بوم |
+| `deleteNote` (notes) | یادداشت + پاک‌کردن اختیاری فکرها |
+| `createObject` (objects) | دانش + فکرِ ارتقاداده‌شده (حل‌شدن) + Change |
+| `updateObject`، `supersedeObject`، `supersedeBy` (objects) | دانش + رابطه‌های منتقل‌شده + Change |
+| `setDependencies`، `setOverride`، `removeOverride` (relations) | رابطه + Change |
+| `setRank` (canvas) | بوم + Change |
+| `createMetric` … `removeMeasurement` (metrics) | شاخص + Change |
+| `saveWorkspace`، `resetWorkspaceData` (workspaces) | Workspace + بخش‌های شروع |
+
+### `server/db/routes/` (قبلاً یک فایل ۸۹۰ خطی)
+`routes.ts` (۷۲ خط) فقط `makeRouteContext(deps)` را می‌سازد و `registerXRoutes(ctx)` هر حوزه را **به همان ترتیب قبلی** روی **یک** Router ثبت می‌کند (Express به ترتیب تطبیق می‌دهد، پس ترتیب بخشی از قرارداد است). `routes.manifest.test.ts` فهرست (متد، مسیر، middleware، ترتیب) ۱۱۰ مسیر + middleware خطا را با `routes.manifest.json` مقایسه می‌کند؛ پیش از تقسیم از کد اصلی ثبت شد و پس از آن عوض نشد.
+
+`context.ts` (کمکی‌های مشترک: `stale`، `today`، …) · `bootstrap.ts` · `demo.ts` · `nodes.ts` · `archive.ts` · `account.ts` · `objects.ts` · `canvas.ts` (بوم و رابطه‌ها) · `notes-thoughts.ts` · `metrics.ts` · `outputs.ts` (Asset، دفتر، گفتگو، spec) · `judgments.ts` · `memory.ts` · `threads.ts` · `contradictions.ts` · `starters.ts` · `saved-packs.ts` · `packs.ts` · `usage.ts` · `files.ts`.
+
+### `src/App.tsx` (قبلاً ۲٬۰۰۰ خط)
+`App.tsx` (۴۳ خط) فقط هوک‌ها را به ترتیب صدا می‌زند و `AppView` را می‌دهد. هر هوک خروجی هوک‌های قبلی را می‌گیرد (همان وابستگی‌ای که قبلاً متغیرهای یک تابع بود).
+
+| فایل | محتوا |
+| --- | --- |
+| `shell/useAppCore.tsx` | بوت، state اصلی، ناوبری، toast، پلن |
+| `shell/useSearchAndFocus.ts` | جست‌وجو، فوکوس بخش، history |
+| `shell/useUsageCounters.ts` | شمارنده‌های مصرف و سهمیه |
+| `shell/useRemovalAndDialogs.tsx` | حذف/برگرداندن و باز و بسته شدن دیالوگ‌ها |
+| `workspace/useWorkspaceAssets.ts` | فضاهای کاری، Assetها، ساخت و بروزرسانی |
+| `knowledge/useKnowledge.tsx` | ذخیره، جایگزینی، بایگانی، تأیید دانش |
+| `thinking/useNotes.ts` · `thinking/useThinkingItems.ts` | یادداشت؛ فکر و فضای فکر |
+| `home/useHome.ts` | خانه، بازبینی هفتگی، خبرها |
+| `metrics/useMetrics.ts` · `files/useFiles.ts` | شاخص‌ها؛ فایل‌ها |
+| `structure/useNodeActions.tsx` · `structure/useStarters.ts` | ساخت/جابه‌جایی/حذف بخش؛ شروع‌کننده‌ها |
+| `canvas/useBoards.ts` | بوم: حرکت، اتصال، کادر |
+| `AppView.tsx` | JSX کل برنامه (محافظ‌های return زودهنگام + نما) |
+| `lazy.tsx` | بار شدن تکه‌تکه (پایین) |
+| `shared.ts` | نوع مشترک (`AppScope`) |
+
+**صادقانه:** هدف «App.tsx زیر ~۳۰۰ خط» برآورده شد (۴۳)، ولی `AppView.tsx` هنوز ~۸۵۰ خط است: JSX نما کلمه‌به‌کلمه منتقل شد و شکستن آن به کامپوننت‌های هر صفحه کار بعدی است (تغییر JSX ریسک بصری دارد و در «۰ب» ممنوع بود).
+
+### بار شدن تکه‌تکه («۰ب»)
+- صفحه‌های سنگین (`ThinkingSpace`، `ContextCanvas`، `WorkstreamStudio`، `DocWorkspace`، `ContextTableView`، `FilesPanel`، `AssetLibrary`، `LedgerPanel`) با `lazyNamed` (React.lazy + یک بار تلاش دوباره) و `PageSuspense` (جای‌نگهدار هم‌قد) بار می‌شوند.
+- ۲۵ دیالوگ با `Deferred` فقط **بار اول باز شدن** دانلود می‌شوند.
+- موتور Markdown (react-markdown + GFM) تکهٔ جدا؛ تا آماده شود متن ساده نشان داده می‌شود (هیچ‌وقت خالی نیست).
+- خطای بار شدن: `ChunkBoundary` پیام «این بخش بار نشد» + «دوباره»؛ نه صفحهٔ خالی.
+- **اندازه (build واقعی):** JS اولیه از **۱٬۱۲۶٫۸۸ kB** به **~۴۸۶ kB** (`index` ۴۴۸٫۴۹ + `ui` ۳۷٫۷۵)، یعنی ۵۶٪ کمتر (هدف: کمتر از نصف).
+- `scripts/scenario-lazy.mjs` در ۱۲۸۰ و ۳۹۰: خانه صفحه‌های سنگین را نمی‌خواهد؛ قطع شبکه برای یک تکه → پیام + «دوباره»؛ دیالوگ بار اول باز شدن بار می‌شود.
