@@ -1581,6 +1581,7 @@ export default function App() {
           notes={data.notes}
           nodes={nodes}
           relationships={data.relationships}
+          thoughts={thinking}
           nodeId={spaceNode}
           onNodeChange={setSpaceNode}
           onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
@@ -1720,7 +1721,10 @@ export default function App() {
         description={noteDeleteAsk ? `این یادداشت ${formatNumber(noteDeleteAsk.open)} فکر باز دارد. فکرها مال خودت‌اند؛ اگر چیزی نگویی می‌مانند و روی هر کدام نوشته می‌شود «یادداشت حذف شد».` : undefined}
         footer={<><Button variant="ghost" onClick={() => setNoteDeleteAsk(null)}>انصراف</Button><Button variant="danger" iconStart="Trash2" onClick={() => { const ask = noteDeleteAsk; setNoteDeleteAsk(null); if (ask) void handleDeleteNote(ask.id, noteDeleteWithThoughts); }}>حذف یادداشت</Button></>}
       >
-        <Checkbox label={`فکرهای باز آن هم بروند (${formatNumber(noteDeleteAsk?.open ?? 0)} فکر؛ با «برگرداندن» نوشتهٔ یادداشت برمی‌گردد ولی فکرها دوباره از روی خط‌ها ساخته می‌شوند، نه با تاریخچهٔ قبلی)`} checked={noteDeleteWithThoughts} onChange={(e) => setNoteDeleteWithThoughts(e.target.checked)} />
+        <div className="flex flex-col gap-stack-xs">
+          <Checkbox label={`فکرهای باز هم بروند (${formatNumber(noteDeleteAsk?.open ?? 0)} فکر)`} checked={noteDeleteWithThoughts} onChange={(e) => setNoteDeleteWithThoughts(e.target.checked)} />
+          <p className="body-sm text-text-subtle">با «برگرداندن» متن یادداشت برمی‌گردد و فکرها دوباره از روی خط‌هایش ساخته می‌شوند (بی‌تاریخچهٔ قبلی).</p>
+        </div>
       </Dialog>
       <ArchiveDialog open={archiveOpen} workspaceId={wid} nodes={nodes} workspaces={workspaces} currentWorkspaceId={wid} onClose={() => setArchiveOpen(false)} onChanged={() => void reload(wid)} onWorkspacesChange={setWs} />
       <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
