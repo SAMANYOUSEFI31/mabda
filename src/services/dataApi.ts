@@ -135,7 +135,7 @@ export const dataApi = {
 
   createNote: (id: string, nodeId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes`, { nodeId, content }),
   updateNote: (id: string, noteId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
-  deleteNote: (id: string, noteId: string) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number } }>('DELETE', `${ws(id)}/notes/${noteId}`),
+  deleteNote: (id: string, noteId: string, removeThoughts = false) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number }; keptThoughts: number; removedThoughts: number; thoughts: import('../types').Thought[] }>('DELETE', `${ws(id)}/notes/${noteId}${removeThoughts ? '?thoughts=remove' : ''}`),
   extractDeliverable: (id: string, deliverableId: string) => call<{ created: ContextObject[]; found: number; skipped: number; ledger: LedgerEntry[] }>('POST', `${ws(id)}/deliverables/${deliverableId}/extract`, {}),
   extractNote: (id: string, noteId: string) => call<{ created: ContextObject[]; ledger: LedgerEntry; usage: UsageSummary }>('POST', `${ws(id)}/notes/${noteId}/extract`, {}),
 

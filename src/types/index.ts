@@ -42,6 +42,10 @@ export interface Thought {
   sourceQuote?: string;
   inferred?: boolean;
   resolvedObjectId?: string;
+  /** the knowledge this thought became was erased for good: the pointer is gone, the thought says «منبع حذف‌شده» */
+  resolvedRemoved?: boolean;
+  /** where it came from is no longer there: its line was removed from the note, or the note was deleted (the thought stays) */
+  sourceState?: 'line_deleted' | 'note_deleted';
   aboutObjectIds?: string[];
   aboutNodeIds?: string[];
   createdAt: string;
@@ -64,7 +68,7 @@ export interface ThoughtDerivation {
 }
 
 export interface ThoughtHistoryEntry {
-  kind: 'created' | 'revision' | 'reclassification' | 'resolved' | 'derived' | 'about_updated';
+  kind: 'created' | 'revision' | 'reclassification' | 'resolved' | 'derived' | 'about_updated' | 'source_line_deleted' | 'source_note_deleted';
   at: string;
   actor: string;
   details: {

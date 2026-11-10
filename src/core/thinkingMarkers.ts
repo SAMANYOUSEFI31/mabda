@@ -34,6 +34,10 @@ export interface ThinkingItem {
   hash: string;
 }
 export interface NoteThinkingItem extends ThinkingItem {
+  /** its line / its note is gone; the thought stays and says so */
+  sourceState?: 'line_deleted' | 'note_deleted';
+  /** the knowledge it became was erased for good */
+  resolvedRemoved?: boolean;
   noteId: string;
   nodeId: string;
   /** Stable persisted identity; legacy parser results do not have one. */
@@ -54,6 +58,8 @@ export function thoughtItem(thought: import('../types').Thought): NoteThinkingIt
     id: thought.id, status: thought.status, sourceLineKey: thought.sourceLineKey, kind: thought.kind, text: thought.text,
     line: thought.sourceLine ?? -1, hash, noteId: thought.sourceNoteId ?? '',
     nodeId: thought.nodeId, key: thought.id,
+    ...(thought.sourceState ? { sourceState: thought.sourceState } : {}),
+    ...(thought.resolvedRemoved ? { resolvedRemoved: true } : {}),
     ...(thought.aboutObjectIds ? { aboutObjectIds: thought.aboutObjectIds } : {}),
     ...(thought.aboutNodeIds ? { aboutNodeIds: thought.aboutNodeIds } : {}),
   };

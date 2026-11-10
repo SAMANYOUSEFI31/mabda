@@ -377,7 +377,14 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   // a deleted note is handed back (with its place) so «برگرداندن» can put it exactly where it was
-  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { const s = scopeOf(req); const note = repo.getNote(s, req.params.id); const position = note ? repo.notePosition(s, note.id) : undefined; repo.deleteNote(s, req.params.id); res.json({ ok: true, note, position }); }));
+  // `?thoughts=remove`: the note's OPEN thoughts go with it; by default they stay and say «یادداشت حذف شد»
+  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.getNote(s, req.params.id);
+    const position = note ? repo.notePosition(s, note.id) : undefined;
+    const r = repo.deleteNote(s, req.params.id, { removeThoughts: req.query.thoughts === 'remove' });
+    res.json({ ok: true, note, position, ...r, thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
   router.post('/workspaces/:wid/notes/restore', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ note: repo.restoreNote(s, b.note as never, b.position as never) }); }));
 
   /** «استخراج»: the note becomes Proposed objects (provenance AI Suggested) — the user confirms them later. */
