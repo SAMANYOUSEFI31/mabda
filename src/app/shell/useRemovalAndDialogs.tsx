@@ -18,6 +18,7 @@ import type { AppCoreScope } from './useAppCore';
 import type { NotesScope } from '../thinking/useNotes';
 import type { SearchAndFocusScope } from './useSearchAndFocus';
 import type { BoardsScope } from '../canvas/useBoards';
+import type { ThinkingItemsScope } from '../thinking/useThinkingItems';
 import type { UsageCountersScope } from './useUsageCounters';
 
 /** the canvas is a separate chunk: loaded the first time a canvas is opened */
@@ -25,8 +26,8 @@ const ContextCanvas = lazyNamed(() => import('../../components/canvas/ContextCan
 
 export type RemovalAndDialogsScope = ReturnType<typeof useRemovalAndDialogs>;
 
-export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFocusScope & BoardsScope & UsageCountersScope) {
-  const { activeTab, askDeleteNote, attempt, canvasReveal, currentWorkspace, data, deliverables, focusScope, focusSection, goFocus, handleAcceptReview, handleAutoLayout, handleCanvasConnect, handleCanvasMove, handleFreeNoteCreate, handleFreeNoteMove, handleNoteToKnowledge, handlePlaceObject, handleSetDependencies, handleUnplaceObject, handleUpdateNote, nodes, openContext, openThinkingSpace, patch, previewNonce, previewTruth, reviewIdSet, setActiveTab, setCurrentWorkspaceId, setData, setEditingSpec, setIsCustomSpecModalOpen, setStatus, setWs, showImpact, staleIdSet, startSectionFromNote, toast, wid, workspaceContexts, workspaces } = p;
+export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFocusScope & BoardsScope & UsageCountersScope & ThinkingItemsScope) {
+  const { activeTab, askDeleteNote, attempt, canvasReveal, currentWorkspace, data, deliverables, focusScope, focusSection, goFocus, handleAcceptReview, handleAutoLayout, handleCanvasConnect, handleCanvasMove, handleFreeNoteCreate, handleFreeNoteMove, handleNoteToKnowledge, handlePlaceObject, handleSetDependencies, handleUnplaceObject, handleUpdateNote, nodes, openContext, openThinkingSpace, patch, previewNonce, previewTruth, reviewIdSet, setActiveTab, setCurrentWorkspaceId, setData, setEditingSpec, setIsCustomSpecModalOpen, setStatus, setWs, showImpact, staleIdSet, startSectionFromNote, thinking, toast, wid, workspaceContexts, workspaces } = p;
   const [demoDelete, setDemoDelete] = useState(false);
   const handleArchiveWorkspace = async () => {
     const ws0 = currentWorkspace;
@@ -138,9 +139,9 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   /** what is waiting for her in the thinking space: suggestions, drafts, open thoughts (the badge of «فکر») */
   const thinkingBadge = useMemo(() => {
     if (!data) return 0;
-    const v = thinkingSpace({ objects: workspaceContexts, notes: data.notes, nodes });
+    const v = thinkingSpace({ objects: workspaceContexts, notes: data.notes, thoughts: thinking, nodes });
     return v.waiting.length + v.thoughts.length;
-  }, [data, workspaceContexts, nodes]);
+  }, [data, workspaceContexts, nodes, thinking]);
 
   const scopedObjects = focusScope ? workspaceContexts.filter((o) => focusScope.has(o.nodeId)) : workspaceContexts;
   const scopedIds = new Set(scopedObjects.map((o) => o.id));
@@ -168,6 +169,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
               relationships={data?.relationships ?? []}
               deliverables={scopedDeliverables}
               notes={scopedNotes}
+              thoughts={thinking}
               canvas={data?.canvas ?? { decisions: [], free: [] }}
               reviewIds={reviewIdSet}
               staleAssetIds={staleIdSet}

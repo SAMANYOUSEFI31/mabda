@@ -27,6 +27,7 @@ import type { ConnectOption } from '../../core/connectRules';
 import { lineageText } from '../../core/lineage';
 import { beside, frameAt, freeFrames, shiftFrame } from '../../core/canvasFrames';
 import { usePanZoom } from './usePanZoom';
+import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 
 export interface MovePayload { objectId: string; lane: Lane; nodeId?: string; beforeId?: string; afterId?: string; reason?: string; confirmBackward?: boolean }
 export interface CanvasProps {
@@ -35,6 +36,8 @@ export interface CanvasProps {
   relationships: ContextRelationship[];
   deliverables: GeneratedDeliverable[];
   notes: Note[];
+  /** the stored Thoughts (what the thinking space lists): the «تازه‌ها» tray and the overview counters read them */
+  thoughts: NoteThinkingItem[];
   canvas: { decisions: CanvasItem[]; free: CanvasItem[] };
   reviewIds: Set<string>;
   staleAssetIds: Set<string>;
@@ -149,8 +152,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   const layoutEff: CanvasLayout = lineage ? 'lineage' : layout;
   const scene: Scene = useMemo(
-    () => buildScene(layoutEff, { nodes: p.nodes, objects: lineage ? p.lineageObjects ?? p.objects : p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, rowsBy, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
-    [layoutEff, lineage, p.lineageObjects, only, rowsBy, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.canvas, p.reviewIds, p.staleAssetIds, now, onlyReview, showPending, mode],
+    () => buildScene(layoutEff, { nodes: p.nodes, objects: lineage ? p.lineageObjects ?? p.objects : p.objects, relationships: p.relationships, deliverables: p.deliverables, notes: p.notes, thoughts: p.thoughts, canvas: p.canvas, reviewIds: p.reviewIds, staleAssetIds: p.staleAssetIds, now }, { onlyReview, showPending, tray: mode === 'thinking', only: only || undefined, rowsBy, opened: openedRows, rowOrder, centerId: lineage?.id, depth: lineage?.depth }),
+    [layoutEff, lineage, p.lineageObjects, only, rowsBy, openedRows, rowOrder, p.nodes, p.objects, p.relationships, p.deliverables, p.notes, p.thoughts, p.canvas, p.reviewIds, p.staleAssetIds, now, onlyReview, showPending, mode],
   );
   const byId = useMemo(() => new Map(scene.items.map((i) => [i.id, i])), [scene]);
   const frames = useMemo(() => (layoutEff === 'free' ? freeFrames(scene.items, p.nodes) : []), [layoutEff, scene.items, p.nodes]);
