@@ -770,7 +770,8 @@ test('walkthrough الف: an idea, a spelling fix, then a changed meaning — on
 test('an edited line moves with its Thought; a line that matches nothing is a new Thought; two identical lines stay two', () => {
   const { repo, s } = fresh();
   const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک\n[سؤال] ارسال چطور باشد؟');
-  const [a, b] = repo.listThoughts(s);
+  const a = repo.listThoughts(s).find((t) => t.kind === 'idea')!;
+  const b = repo.listThoughts(s).find((t) => t.kind === 'question')!;
   repo.updateNote(s, note.id, '[سؤال] ارسال چطور باشد؟\nیک خط بی‌نشان\n[ایده] قیمت اشتراک ماهانه'); // lines moved AND one edited
   const all = repo.listThoughts(s);
   assert.deepEqual(all.map((t) => t.id).sort(), [a.id, b.id].sort());
@@ -784,7 +785,8 @@ test('an edited line moves with its Thought; a line that matches nothing is a ne
 test('a removed line leaves its Thought OPEN with «خط حذف شد»; writing it back clears the mark; a converted Thought is never touched or duplicated', () => {
   const { repo, s } = fresh();
   const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک\n[فرض] مشتری پرداخت می‌کند');
-  const [idea, assumption] = repo.listThoughts(s);
+  const idea = repo.listThoughts(s).find((t) => t.kind === 'idea')!;
+  const assumption = repo.listThoughts(s).find((t) => t.kind === 'assumption')!;
   repo.updateNote(s, note.id, '[فرض] مشتری پرداخت می‌کند'); // the idea line is deleted
   const gone = repo.getThought(s, idea.id)!;
   assert.equal(gone.status, 'open', 'never closed in silence');
@@ -819,7 +821,8 @@ test('walkthrough ب: deleting a note keeps its open Thoughts («یادداشت 
   assert.ok(repo.listThoughts(s).every((t) => !t.sourceState));
   // delete with the thoughts
   const n2 = repo.createNote(s, 'offer', '[ایده] سه\n[فرض] چهار');
-  const [three, four] = repo.listThoughts(s).filter((t) => t.sourceNoteId === n2.id);
+  const three = repo.listThoughts(s).find((t) => t.sourceNoteId === n2.id && t.kind === 'idea')!;
+  const four = repo.listThoughts(s).find((t) => t.sourceNoteId === n2.id && t.kind === 'assumption')!;
   repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: four.text, content: four.text, nodeId: four.nodeId, source: { kind: 'note', thoughtId: four.id, at: '2026-03-01T00:00:00Z' } });
   const r2 = repo.deleteNote(s, n2.id, { removeThoughts: true });
   assert.deepEqual(r2, { keptThoughts: 0, removedThoughts: 1 });

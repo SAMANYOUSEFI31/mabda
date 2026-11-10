@@ -198,7 +198,8 @@ test('Part 8: Migration 21/23 overlap ensures exactly one resolved Thought per r
   assert.equal(receiptsB.length, 1, '22->23 migration path ends with exactly one Thought per receipt');
   assert.equal(receiptsB[0].status, 'resolved');
 
-  // Repeated startup
+  // The later migration still applies on top; after that a repeated startup does nothing
+  assert.deepEqual(migrate(dbB), [24]);
   assert.deepEqual(migrate(dbB), []);
   assert.equal(repoB.listThoughts(sB, { includeResolved: true }).length, 2);
   dbB.close();

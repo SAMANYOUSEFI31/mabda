@@ -28,9 +28,13 @@ export interface PurgeImpact {
   relationships: number;
   /** outputs built from it: they keep their own text; its name will show as «حذف‌شده» */
   usedIn: Array<{ id: string; title: string }>;
+  /** pointers to this knowledge that become «منبع حذف‌شده» (they are never erased: the thoughts were only ABOUT it or became it) */
+  pointers: { thoughtsAbout: number; thoughtsConverted: number };
   /** other places that say the same words — she picks which to clean (files cannot be edited: they are listed so she knows) */
   copies: {
     notes: Array<{ id: string; nodeLabel: string; lines: number }>;
+    /** thoughts that say the same words (as text, an earlier wording, or where they came from) — she picks which to erase */
+    thoughts: Array<{ id: string; nodeLabel: string; status: string }>;
     sessions: Array<{ id: string; title: string }>;
     deliverables: Array<{ id: string; title: string }>;
     files: Array<{ id: string; name: string }>;
@@ -47,14 +51,22 @@ export function purgeImpact(repo: Repo, s: Scope, id: string): PurgeImpact {
   const noteCopies = repo.listNotes(s).filter((n) => containsAny(n.content, needles)).map((n) => ({ id: n.id, nodeLabel: nodes.find((x) => x.id === n.nodeId)?.label ?? 'بخش حذف‌شده', lines: n.content.split(/\r?\n/).filter((l) => containsAny(l, needles)).length }));
   const fileCopies = rows<{ id: string; name: string }>(repo, 'SELECT DISTINCT f.id, f.name FROM files f JOIN file_chunks c ON c.file_id = f.id WHERE f.workspace_id = ? AND f.user_id = ?', s.workspaceId, s.userId)
     .filter((f) => rows<{ text: string }>(repo, 'SELECT text FROM file_chunks WHERE file_id = ?', f.id).some((c) => containsAny(c.text, needles)));
+  const thoughtText = (t: { id: string; text: string; sourceQuote?: string }) => [t.text, t.sourceQuote ?? '', ...repo.listThoughtRevisions(s, t.id).flatMap((r) => [r.beforeText, r.afterText])].join(' / ');
+  const thoughtCopies = repo.listThoughts(s, { includeResolved: true }).filter((t) => containsAny(thoughtText(t), needles))
+    .map((t) => ({ id: t.id, nodeLabel: nodes.find((x) => x.id === t.nodeId)?.label ?? 'بخش حذف‌شده', status: t.status }));
   return {
     title: o.title, status: o.status,
+    pointers: {
+      thoughtsAbout: count("SELECT COUNT(DISTINCT thought_id) AS n FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ?", id, s.workspaceId),
+      thoughtsConverted: count('SELECT COUNT(*) AS n FROM thoughts WHERE resolved_object_id = ? AND workspace_id = ?', id, s.workspaceId),
+    },
     versions: count('SELECT COUNT(*) AS n FROM context_object_versions WHERE object_id = ? AND workspace_id = ?', id, s.workspaceId),
     changes: count('SELECT COUNT(*) AS n FROM context_changes WHERE object_id = ? AND workspace_id = ?', id, s.workspaceId),
     relationships: count('SELECT COUNT(*) AS n FROM context_relationships WHERE workspace_id = ? AND (source_id = ? OR target_id = ?)', s.workspaceId, id, id),
     usedIn: deliverables.filter((d) => (d.usedContext ?? []).some((u) => u.id === id)).map((d) => ({ id: d.id, title: d.title })),
     copies: {
       notes: noteCopies,
+      thoughts: thoughtCopies,
       sessions: repo.listSessions(s).filter((c) => containsAny(JSON.stringify(c.messages ?? []), needles)).map((c) => ({ id: c.id, title: c.title || 'گفتگو' })),
       deliverables: deliverables.filter((d) => containsAny(d.content, needles)).map((d) => ({ id: d.id, title: d.title })),
       files: fileCopies,
@@ -68,12 +80,12 @@ export function purgeImpact(repo: Repo, s: Scope, id: string): PurgeImpact {
  * lines, a saved chat, an output) are cleaned too. What stays is one record WITHOUT content: «یک مورد حذف دائمی شد».
  * Only knowledge that is already out of the way (archived or superseded) can be erased: nobody erases the truth by one click.
  */
-export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: string[]; sessions?: string[]; deliverables?: string[] } = {}): { purged: string; scrubbed: { notes: number; sessions: number; deliverables: number } } {
+export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: string[]; thoughts?: string[]; sessions?: string[]; deliverables?: string[] } = {}): { purged: string; scrubbed: { notes: number; thoughts: number; sessions: number; deliverables: number } } {
   const o = repo.getObjectAny(s, id);
   if (!o) throw new RepoError('not_found', 'مورد پیدا نشد.');
   if (o.status !== 'Archived' && o.status !== 'Superseded') throw new RepoError('forbidden', 'حذف دائمی فقط از بایگانی ممکن است؛ اول بایگانی کن.');
   const needles = needlesOf(o);
-  const out = { notes: 0, sessions: 0, deliverables: 0 };
+  const out = { notes: 0, thoughts: 0, sessions: 0, deliverables: 0 };
   repo.db.transaction(() => {
     const w = s.workspaceId, u = s.userId;
     repo.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ?').run(id, w);
@@ -94,6 +106,21 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
       const kept = d.usedContext.filter((u) => u.id !== id);
       repo.db.prepare('UPDATE deliverables SET data = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(JSON.stringify({ ...d, usedContext: kept, removedSources: (d.removedSources ?? 0) + (d.usedContext.length - kept.length) }), d.id, w, u);
     }
+    // thoughts that were only ABOUT this knowledge, or became it, are not erased: the pointer goes and they say «منبع حذف‌شده»
+    repo.db.prepare("DELETE FROM thought_about WHERE workspace_id = ? AND target_kind = 'object' AND target_id = ?").run(w, id);
+    repo.db.prepare('UPDATE thoughts SET resolved_object_id = NULL, resolved_removed = 1 WHERE workspace_id = ? AND resolved_object_id = ?').run(w, id);
+    for (const ev of rows<{ id: string; event_kind: string; before_value: string | null; after_value: string | null }>(repo, "SELECT id, event_kind, before_value, after_value FROM thought_events WHERE workspace_id = ? AND event_kind IN ('resolved','about_updated')", w)) {
+      const clean = (v: string | null): string | null => {
+        if (v === null) return v;
+        if (ev.event_kind === 'resolved') return v === id ? null : v;
+        try { return JSON.stringify((JSON.parse(v) as Array<{ kind: string; id: string }>).filter((t) => !(t.kind === 'object' && t.id === id))); } catch { return v; }
+      };
+      const b = clean(ev.before_value), a = clean(ev.after_value);
+      if (b !== ev.before_value || a !== ev.after_value) repo.db.prepare('UPDATE thought_events SET before_value = ?, after_value = ? WHERE id = ?').run(b, a, ev.id);
+    }
+    // the thoughts she chose to erase (their text, every revision, every event) — erased from every thought table
+    const chosen = (copies.thoughts ?? []).filter((tid) => !!repo.getThought(s, tid));
+    out.thoughts = repo.eraseThoughts(s, chosen);
     // the copies she chose
     for (const nid of copies.notes ?? []) {
       const n = repo.getNote(s, nid);

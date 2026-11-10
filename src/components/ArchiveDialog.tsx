@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, TreeNode, Workspace } from '../types';
 import { dataApi, DataApiError } from '../services/dataApi';
-import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Spinner, StatusBadge, TypeBadge, formatJalaliDate, useToast } from '../ui';
+import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Spinner, StatusBadge, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../ui';
 import { DangerDialog, PurgeDialog } from './Removal';
 
 type Section = 'knowledge' | 'removals' | 'outputs' | 'workspaces';
@@ -102,7 +102,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
             </ul>)}
         </div>
       </Dialog>
-      <PurgeDialog workspaceId={workspaceId} object={purge} onClose={() => setPurge(null)} onDone={() => { setPurge(null); toast.show({ intent: 'success', message: 'برای همیشه حذف شد.' }); void load(); onChanged(); }} />
+      <PurgeDialog workspaceId={workspaceId} object={purge} onClose={() => setPurge(null)} onDone={(r) => { setPurge(null); toast.show({ intent: 'success', message: `برای همیشه حذف شد${r.scrubbed.thoughts ? `؛ ${formatNumber(r.scrubbed.thoughts)} فکر هم پاک شد` : ''}.` }); void load(); onChanged(); }} />
       <DangerDialog
         open={!!deleteWs} onClose={() => setDeleteWs(null)} title={`حذف دائمی «${deleteWs?.name ?? ''}»`}
         description="همهٔ دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها و تاریخچهٔ این فضای کاری برای همیشه پاک می‌شود."
