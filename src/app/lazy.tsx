@@ -51,15 +51,15 @@ const After: React.FC<{ ms: number; children: ReactNode }> = ({ ms, children }) 
   return on ? <>{children}</> : null;
 };
 
-const Loading: React.FC<{ label: string; minHeight?: number }> = ({ label, minHeight }) => (
+const Loading: React.FC<{ label: string; minHeight?: number | string }> = ({ label, minHeight }) => (
   <div role="status" aria-live="polite" className="flex items-center justify-center gap-inline-sm p-inset-xl text-text-subtle" style={minHeight ? { minBlockSize: minHeight } : undefined}>
     <Spinner label={label} /><span className="body-sm">{label}</span>
   </div>
 );
 
 /** a page that is a separate chunk: the same height from the first frame (no jump), the words «در حال بار شدن…» for everyone */
-export const PageSuspense: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <ChunkBoundary><Suspense fallback={<Loading label="در حال بار شدن…" minHeight={280} />}>{children}</Suspense></ChunkBoundary>
+export const PageSuspense: React.FC<{ children: ReactNode; /** the height the loaded page will take (a number of px or a CSS length): the layout does not jump when it arrives */ minHeight?: number | string }> = ({ children, minHeight = 280 }) => (
+  <ChunkBoundary><Suspense fallback={<Loading label="در حال بار شدن…" minHeight={minHeight} />}>{children}</Suspense></ChunkBoundary>
 );
 
 /** a dialog that is a separate chunk: not loaded until `when` is true once; after that it stays mounted (its own open / close animation is untouched) */

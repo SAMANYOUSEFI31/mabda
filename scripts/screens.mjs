@@ -129,7 +129,9 @@ for (const size of SIZES) {
   await page.reload({ waitUntil: 'networkidle' });
 
   const shoot = async (name) => {
-    await page.waitForTimeout(250);
+    // pages and dialogs are separate chunks (src/app/lazy.tsx): wait until none is still loading, then let animations settle
+    await page.waitForFunction(() => ![...document.querySelectorAll('[role=status]')].some((e) => /در حال (بار|باز) شدن/.test(e.textContent ?? '')), null, { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(900);
     await page.screenshot({ path: `${OUT}/${name}-${size.name}.png`, fullPage: false });
     const r = await page.evaluate(audit);
     if (r.dimmedChecked) console.log(`  [${size.name}] ${name}: ${r.dimmedChecked} dimmed card titles measured`);
@@ -205,7 +207,7 @@ for (const size of SIZES) {
   await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(350); await shoot('canvas-relations-selected');
   await page.getByTestId('canvas-inspector').getByRole('button', { name: /^به چه چیزی وابسته است/ }).click({ timeout: 2000 }).catch(() => {}); await page.getByTestId('canvas-inspector').getByRole('button', { name: /^چه چیزی روی آن سوار است/ }).click({ timeout: 2000 }).catch(() => {}); await shoot('canvas-inspector-open');
   // «دور یک مورد» and back
-  await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(450); await shoot('canvas-lineage');
+  await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(900); await shoot('canvas-lineage');
   await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
   // the thinking canvas: one free canvas (with the tray and section frames)
   await goTab(TABS[4]); await shoot('thinking-list');

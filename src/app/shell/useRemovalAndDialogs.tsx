@@ -156,7 +156,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   const renderCanvas = (mode: 'truth' | 'thinking') => (
     <div className="flex flex-col gap-stack-sm">
     {scopeChip}
-    <PageSuspense><ContextCanvas
+    <PageSuspense minHeight="75vh"><ContextCanvas
       mode={mode}
       previewNonce={mode === 'truth' ? previewNonce : undefined}
       lineageObjects={workspaceContexts}
