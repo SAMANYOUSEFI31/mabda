@@ -3,54 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AccountModal } from '../components/AccountModal';
-import { AiRequestDialog } from '../components/AiRequestDialog';
 import { AiStatusBanner } from '../components/AiNotices';
 import { AppNavigation } from '../components/AppNavigation';
-import { ArchiveDialog } from '../components/ArchiveDialog';
-import { AssetLibrary } from '../components/AssetLibrary';
 import { AttentionPanel } from '../components/AttentionPanel';
 import { Button, Card, Checkbox, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber } from '../ui';
-import { ChangesPanel } from '../components/ChangesPanel';
 import { ChatSession } from '../types';
 import { CommandPalette } from '../components/CommandPalette';
-import { ContextDetailModal } from '../components/ContextDetailModal';
-import { ContextPackDialog } from '../components/ContextPackDialog';
-import { ContextTableView } from '../components/ContextTableView';
 import { ContextTreeDocView } from '../components/ContextTreeDocView';
 import { ContradictionPanel } from '../components/ContradictionPanel';
 import { DangerDialog } from '../components/Removal';
-import { DecisionOptionsDialog } from '../components/DecisionOptionsDialog';
-import { DocWorkspace } from '../components/DocWorkspace';
 import { DueItems } from '../components/DueItems';
-import { FilesPanel } from '../components/FilesPanel';
 import { HomeTodo } from '../components/HomeTodo';
-import { ImportAnswerDialog } from '../components/ImportAnswerDialog';
 import { InheritNoticeList } from '../components/InheritNoticeList';
-import { KnowledgeBatchDialog } from '../components/KnowledgeBatchDialog';
-import { LedgerPanel } from '../components/LedgerPanel';
 import { MX } from '../core/metricsText';
-import { MemoryImportDialog } from '../components/MemoryImportDialog';
-import { MetricsDialog } from '../components/MetricsDialog';
-import { NodeDialogs } from '../components/NodeDialogs';
-import { NodeEffectDialog } from '../components/NodeEffectDialog';
-import { NodeReaderDialog } from '../components/NodeReaderDialog';
-import { NodeThreadPanel } from '../components/NodeThreadPanel';
-import { PlanSelectionModal } from '../components/PlanSelectionModal';
 import { ProposalInbox } from '../components/ProposalInbox';
-import { QuickStartDialog } from '../components/QuickStartDialog';
-import { SavedPacksDialog } from '../components/SavedPacksDialog';
-import { SpecEditorModal } from '../components/SpecEditorModal';
-import { SpecLibraryDialog } from '../components/SpecLibraryDialog';
-import { StarterDialog } from '../components/StarterDialog';
 import { ThinkingList } from '../components/ThinkingList';
-import { ThinkingSpace } from '../components/ThinkingSpace';
-import { ThoughtDialog } from '../components/ThoughtDialog';
 import { TopStatusBar } from '../components/TopStatusBar';
-import { TruthCompareDialog } from '../components/TruthCompareDialog';
-import { UsageDialog } from '../components/UsageDialog';
-import { WeeklyReviewDialog } from '../components/WeeklyReviewDialog';
-import { WorkstreamStudio } from '../components/WorkstreamStudio';
 import { chatCredits } from '../core/creditEngine';
 import { contextDraftFromBlock } from '../core/blocks';
 import { convertedTo } from '../core/thinkingMarkers';
@@ -75,6 +43,41 @@ import type { NotesScope } from './thinking/useNotes';
 import type { FilesScope } from './files/useFiles';
 import type { WorkspaceAssetsScope } from './workspace/useWorkspaceAssets';
 import type { RemovalAndDialogsScope } from './shell/useRemovalAndDialogs';
+import { Deferred, PageSuspense, lazyNamed } from './lazy';
+
+/** separate chunks: loaded the first time the page / dialog is needed (src/app/lazy.tsx) */
+const AccountModal = lazyNamed(() => import('../components/AccountModal'), 'AccountModal');
+const AiRequestDialog = lazyNamed(() => import('../components/AiRequestDialog'), 'AiRequestDialog');
+const ArchiveDialog = lazyNamed(() => import('../components/ArchiveDialog'), 'ArchiveDialog');
+const ChangesPanel = lazyNamed(() => import('../components/ChangesPanel'), 'ChangesPanel');
+const ContextDetailModal = lazyNamed(() => import('../components/ContextDetailModal'), 'ContextDetailModal');
+const ContextPackDialog = lazyNamed(() => import('../components/ContextPackDialog'), 'ContextPackDialog');
+const DecisionOptionsDialog = lazyNamed(() => import('../components/DecisionOptionsDialog'), 'DecisionOptionsDialog');
+const ImportAnswerDialog = lazyNamed(() => import('../components/ImportAnswerDialog'), 'ImportAnswerDialog');
+const KnowledgeBatchDialog = lazyNamed(() => import('../components/KnowledgeBatchDialog'), 'KnowledgeBatchDialog');
+const MemoryImportDialog = lazyNamed(() => import('../components/MemoryImportDialog'), 'MemoryImportDialog');
+const MetricsDialog = lazyNamed(() => import('../components/MetricsDialog'), 'MetricsDialog');
+const NodeDialogs = lazyNamed(() => import('../components/NodeDialogs'), 'NodeDialogs');
+const NodeEffectDialog = lazyNamed(() => import('../components/NodeEffectDialog'), 'NodeEffectDialog');
+const NodeReaderDialog = lazyNamed(() => import('../components/NodeReaderDialog'), 'NodeReaderDialog');
+const NodeThreadPanel = lazyNamed(() => import('../components/NodeThreadPanel'), 'NodeThreadPanel');
+const PlanSelectionModal = lazyNamed(() => import('../components/PlanSelectionModal'), 'PlanSelectionModal');
+const QuickStartDialog = lazyNamed(() => import('../components/QuickStartDialog'), 'QuickStartDialog');
+const SavedPacksDialog = lazyNamed(() => import('../components/SavedPacksDialog'), 'SavedPacksDialog');
+const SpecEditorModal = lazyNamed(() => import('../components/SpecEditorModal'), 'SpecEditorModal');
+const SpecLibraryDialog = lazyNamed(() => import('../components/SpecLibraryDialog'), 'SpecLibraryDialog');
+const StarterDialog = lazyNamed(() => import('../components/StarterDialog'), 'StarterDialog');
+const ThoughtDialog = lazyNamed(() => import('../components/ThoughtDialog'), 'ThoughtDialog');
+const TruthCompareDialog = lazyNamed(() => import('../components/TruthCompareDialog'), 'TruthCompareDialog');
+const UsageDialog = lazyNamed(() => import('../components/UsageDialog'), 'UsageDialog');
+const WeeklyReviewDialog = lazyNamed(() => import('../components/WeeklyReviewDialog'), 'WeeklyReviewDialog');
+const ContextTableView = lazyNamed(() => import('../components/ContextTableView'), 'ContextTableView');
+const DocWorkspace = lazyNamed(() => import('../components/DocWorkspace'), 'DocWorkspace');
+const FilesPanel = lazyNamed(() => import('../components/FilesPanel'), 'FilesPanel');
+const ThinkingSpace = lazyNamed(() => import('../components/ThinkingSpace'), 'ThinkingSpace');
+const WorkstreamStudio = lazyNamed(() => import('../components/WorkstreamStudio'), 'WorkstreamStudio');
+const AssetLibrary = lazyNamed(() => import('../components/AssetLibrary'), 'AssetLibrary');
+const LedgerPanel = lazyNamed(() => import('../components/LedgerPanel'), 'LedgerPanel');
 
 /** everything the hooks of src/app/* produce */
 export type AppScope = AppCoreScope & SearchAndFocusScope & UsageCountersScope & KnowledgeScope & ThinkingItemsScope & HomeScope & MetricsScope & StartersScope & BoardsScope & NodeActionsScope & NotesScope & FilesScope & WorkspaceAssetsScope & RemovalAndDialogsScope;
@@ -277,7 +280,7 @@ export function AppView(p: AppScope) {
               </Card>
             )}
 
-            {changesOpen && <ChangesPanel onCompare={() => setCompare({ mode: 'week' })} open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} />}
+            {changesOpen && <Deferred when={changesOpen}><ChangesPanel onCompare={() => setCompare({ mode: 'week' })} open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} /></Deferred>}
 
             {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay } : undefined} />}
 
@@ -340,14 +343,14 @@ export function AppView(p: AppScope) {
 
             <div id="context-view" style={{ scrollMarginTop: 80 }} />
             {contextViewMode === 'read' ? (
-              <DocWorkspace
+              <PageSuspense><DocWorkspace
                 nodes={nodes}
                 objects={workspaceContexts}
                 relationships={data.relationships}
                 approvals={approvals}
                 fileName={currentWorkspace.name}
                 empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
-              />
+              /></PageSuspense>
             ) : contextViewMode === 'doc' ? (
               <ContextTreeDocView
                 objects={workspaceContexts}
@@ -388,16 +391,16 @@ export function AppView(p: AppScope) {
             ) : contextViewMode === 'canvas' ? (
               renderCanvas('truth')
             ) : (
-              <ContextTableView
+              <PageSuspense><ContextTableView
                 objects={workspaceContexts}
                 nodes={nodes}
                 onSelectObject={(obj) => openContext(obj)}
                 onAddNew={() => openContext(null)}
                 samples={data.samples ?? []}
-              />
+              /></PageSuspense>
             )}
 
-            <FilesPanel
+            <PageSuspense><FilesPanel
               files={data.files}
               nodes={nodes}
               quota={quota}
@@ -405,7 +408,7 @@ export function AppView(p: AppScope) {
               onUpload={handleUploadFile}
               onProcess={handleProcessFile}
               onDelete={handleDeleteFile}
-            />
+            /></PageSuspense>
           </div>
         )}
 
@@ -430,7 +433,7 @@ export function AppView(p: AppScope) {
             {thinkingView === 'canvas' ? renderCanvas('thinking') : (
               <div className="flex flex-col gap-stack-sm">
               {spaceNode === focusNodeId && scopeChip}
-              <ThinkingSpace
+              <PageSuspense><ThinkingSpace
           objects={workspaceContexts}
           notes={data.notes}
           nodes={nodes}
@@ -455,7 +458,7 @@ export function AppView(p: AppScope) {
           }}
                 onPreviewTruth={previewTruth}
                 onToSection={(item) => startSectionFromThought(item)}
-              />
+              /></PageSuspense>
               </div>
             )}
           </div>
@@ -474,7 +477,7 @@ export function AppView(p: AppScope) {
           <Button variant="ghost" size="sm" iconStart="ArrowRight" onClick={() => setActiveTab('assets')}>همهٔ خروجی‌ها</Button>
         )}
         {activeTab === 'workstreams' && specs.length > 0 && (
-          <WorkstreamStudio
+          <PageSuspense><WorkstreamStudio
             currentWorkspace={currentWorkspace}
             allContextObjects={workspaceContexts}
             allDeliverables={deliverables}
@@ -496,7 +499,7 @@ export function AppView(p: AppScope) {
             onOpenLedger={() => setActiveTab('ledger')}
             onOpenPack={setPackTarget}
             onOpenImport={() => setIsImportOpen(true)}
-          />
+          /></PageSuspense>
         )}
 
         {/* TAB 3: Smart Chat */}
@@ -532,7 +535,7 @@ export function AppView(p: AppScope) {
                 <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>
               </div>
             </section>
-          <AssetLibrary
+          <PageSuspense><AssetLibrary
             focus={focusAsset}
             currentWorkspace={currentWorkspace}
             deliverables={deliverables}
@@ -552,19 +555,19 @@ export function AppView(p: AppScope) {
               setPendingRebuild(del);
               setActiveTab('workstreams');
             }}
-          />
+          /></PageSuspense>
           </div>
         )}
 
         {/* TAB 5: Ledger & Economics */}
         {activeTab === 'ledger' && (
-          <LedgerPanel
+          <PageSuspense><LedgerPanel
             currentWorkspace={currentWorkspace}
             ledgerEntries={ledgerEntries}
             onChangePlan={handleChangePlan}
             onAddCredits={handleAddCredits}
             onOpenPlans={() => setIsPlanModalOpen(true)}
-          />
+          /></PageSuspense>
         )}
       </main>
       </div>
@@ -580,10 +583,10 @@ export function AppView(p: AppScope) {
           <p className="body-sm text-text-subtle">با «برگرداندن» متن یادداشت برمی‌گردد و فکرها دوباره از روی خط‌هایش ساخته می‌شوند (بی‌تاریخچهٔ قبلی).</p>
         </div>
       </Dialog>
-      <ArchiveDialog open={archiveOpen} workspaceId={wid} nodes={nodes} workspaces={workspaces} currentWorkspaceId={wid} onClose={() => setArchiveOpen(false)} onChanged={() => void reload(wid)} onWorkspacesChange={setWs} />
+      <Deferred when={archiveOpen}><ArchiveDialog open={archiveOpen} workspaceId={wid} nodes={nodes} workspaces={workspaces} currentWorkspaceId={wid} onClose={() => setArchiveOpen(false)} onChanged={() => void reload(wid)} onWorkspacesChange={setWs} /></Deferred>
       <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
-      <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />
-      <AiRequestDialog
+      <Deferred when={isPacksOpen}><SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} /></Deferred>
+      <Deferred when={!!aiRequest}><AiRequestDialog
         open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} initialThoughtIds={aiRequest?.thoughtIds} thoughts={thinking} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
         sessions={data?.sessions ?? []}
         onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
@@ -591,8 +594,8 @@ export function AppView(p: AppScope) {
         onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
         onSaveAsThought={handleSaveAiThought}
         onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
-      />
-      <ContextDetailModal
+      /></Deferred>
+      <Deferred when={isContextModalOpen}><ContextDetailModal
         isOpen={isContextModalOpen}
         object={selectedContextObject}
         onClose={() => setIsContextModalOpen(false)}
@@ -624,22 +627,22 @@ export function AppView(p: AppScope) {
         onOpenAssets={() => { setIsContextModalOpen(false); setActiveTab('assets'); }}
         onOpenRelated={(o) => openContext(o)}
         onPatchObject={handlePatchObject}
-      />
+      /></Deferred>
 
-      <TruthCompareDialog
+      <Deferred when={!!compare}><TruthCompareDialog
         open={!!compare} onClose={() => setCompare(null)} mode={compare?.mode} scopeNodeId={compare?.scopeNodeId}
         objects={data?.objects ?? []} changes={data?.changes ?? []} nodes={nodes} deliverables={deliverables}
         onOpenObject={(o) => openContext(o)} onOpenAssets={() => setActiveTab('assets')}
-      />
-      <DecisionOptionsDialog
+      /></Deferred>
+      <Deferred when={!!optionsItem}><DecisionOptionsDialog
         open={!!optionsItem} onClose={() => setOptionsItemKey(null)} item={optionsItem} noteContent={optionsNote?.content ?? ''}
         objects={workspaceContexts} nodes={nodes} relationships={data?.relationships ?? []}
         onChangeNote={async (content) => { if (optionsNote) await handleUpdateNote(optionsNote.id, content); }}
         onChoose={handleChooseOption}
         onAskAi={(text) => { setOptionsItemKey(null); setAiRequest({ scopeNodeId: optionsItem?.nodeId ?? '', kind: 'decision', request: text }); }}
-      />
-      <ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} initialKind={thoughtDialog?.initialKind} initialAbout={thoughtDialog?.initialAbout} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} />
-      <NodeDialogs
+      /></Deferred>
+      <Deferred when={!!thoughtDialog}><ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} initialKind={thoughtDialog?.initialKind} initialAbout={thoughtDialog?.initialAbout} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} /></Deferred>
+      <Deferred when={!!nodeDialog}><NodeDialogs
         state={nodeDialog}
         nodes={nodes}
         objects={workspaceContexts}
@@ -668,11 +671,11 @@ export function AppView(p: AppScope) {
           toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
         }}
         onThoughtSectioned={handleThoughtSectioned}
-      />
+      /></Deferred>
 
-      {currentWorkspace && <SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes.map((n) => ({ id: n.id, label: n.label }))} />}
+      {currentWorkspace && <Deferred when={isSpecLibraryOpen}><SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes.map((n) => ({ id: n.id, label: n.label }))} /></Deferred>}
 
-      <QuickStartDialog
+      <Deferred when={isOnboardingOpen}><QuickStartDialog
         open={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         workspaceId={wid}
@@ -691,10 +694,10 @@ export function AppView(p: AppScope) {
             }
           })();
         }}
-      />
+      /></Deferred>
 
       {/* Plan Selection Modal (Starter / Pro / Max - F6) */}
-      <PlanSelectionModal
+      <Deferred when={isPlanModalOpen}><PlanSelectionModal
         isOpen={isPlanModalOpen}
         onClose={() => setIsPlanModalOpen(false)}
         currentWorkspace={currentWorkspace}
@@ -702,10 +705,10 @@ export function AppView(p: AppScope) {
           handleChangePlan(pid);
           setIsPlanModalOpen(false);
         }}
-      />
+      /></Deferred>
 
       {/* Account Modal (F1 - Mobile OTP, JSON Data Export, 30-day Deletion) */}
-      <AccountModal
+      <Deferred when={isAccountModalOpen}><AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
         currentWorkspace={currentWorkspace}
@@ -714,10 +717,10 @@ export function AppView(p: AppScope) {
         onArchiveWorkspace={handleArchiveWorkspace}
         onDeleteWorkspace={handleDeleteWorkspace}
         onDeleteEverything={handleDeleteEverything}
-      />
+      /></Deferred>
 
       {/* Custom Spec Modal (F8) */}
-      <SpecEditorModal
+      <Deferred when={isCustomSpecModalOpen}><SpecEditorModal
         key={editingSpec?.id ?? 'new'}
         isOpen={isCustomSpecModalOpen}
         onClose={() => setIsCustomSpecModalOpen(false)}
@@ -731,9 +734,9 @@ export function AppView(p: AppScope) {
           if (ok) { setSelectedSpecId(newSpec.id); setActiveTab('workstreams'); }
           return ok;
         }}
-      />
+      /></Deferred>
 
-      <NodeEffectDialog
+      <Deferred when={!!effectNodeId}><NodeEffectDialog
         nodeId={effectNodeId}
         nodes={nodes}
         objects={workspaceContexts}
@@ -750,9 +753,9 @@ export function AppView(p: AppScope) {
         }}
         onAddToNode={(nodeId) => { setEffectNodeId(null); openContext(null, nodeId); }}
         onOpenObject={(o) => { setEffectNodeId(null); openContext(o); }}
-      />
-      <NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} relationships={data?.relationships ?? []} onClose={() => setReadNodeId(null)} />
-      <StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} />
+      /></Deferred>
+      <Deferred when={!!readNodeId}><NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} relationships={data?.relationships ?? []} onClose={() => setReadNodeId(null)} /></Deferred>
+      <Deferred when={isStarterOpen}><StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} /></Deferred>
       <Dialog
         open={!!templateDraft}
         onClose={() => setTemplateDraft(null)}
@@ -765,12 +768,12 @@ export function AppView(p: AppScope) {
           <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
         </div>
       </Dialog>
-      <UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} />
+      <Deferred when={usageOpen}><UsageDialog open={usageOpen} onClose={() => setUsageOpen(false)} /></Deferred>
       <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
-      <ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} />
-      <ImportAnswerDialog open={isImportOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onUpdateDraft={handleDraftFromImport} onSaveAsset={persistDeliverable} />
-      <KnowledgeBatchDialog open={isBatchOpen} onClose={() => setIsBatchOpen(false)} nodes={nodes} onPropose={handleProposeBatch} />
-      <MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} />
+      <Deferred when={!!packTarget}><ContextPackDialog workspaceId={wid} target={packTarget} onClose={() => setPackTarget(null)} onOpenImport={() => setIsImportOpen(true)} /></Deferred>
+      <Deferred when={isImportOpen}><ImportAnswerDialog open={isImportOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsImportOpen(false)} onProposeContext={handleProposeFromImport} onUpdateDraft={handleDraftFromImport} onSaveAsset={persistDeliverable} /></Deferred>
+      <Deferred when={isBatchOpen}><KnowledgeBatchDialog open={isBatchOpen} onClose={() => setIsBatchOpen(false)} nodes={nodes} onPropose={handleProposeBatch} /></Deferred>
+      <Deferred when={isMemoryOpen}><MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} /></Deferred>
       <Dialog
         open={demoConfirm}
         onClose={() => setDemoConfirm(false)}
@@ -781,7 +784,7 @@ export function AppView(p: AppScope) {
         <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، دارایی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
       </Dialog>
 
-      <MetricsDialog
+      <Deferred when={metricsOpen}><MetricsDialog
         open={metricsOpen}
         onClose={() => setMetricsOpen(false)}
         metrics={metrics}
@@ -790,8 +793,8 @@ export function AppView(p: AppScope) {
         changes={data?.changes ?? []}
         {...metricHandlers}
         onOpenObject={(o) => { setMetricsOpen(false); openContext(o); }}
-      />
-      <WeeklyReviewDialog
+      /></Deferred>
+      <Deferred when={weeklyOpen}><WeeklyReviewDialog
         open={weeklyOpen}
         onClose={() => setWeeklyOpen(false)}
         data={weekly}
@@ -807,15 +810,15 @@ export function AppView(p: AppScope) {
         dueProps={dueProps}
         metricsEntry={{ metrics, measurements, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
         onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
-      />
-      <NodeThreadPanel
+      /></Deferred>
+      <Deferred when={!!threadNodeId}><NodeThreadPanel
         open={!!threadNodeId}
         workspaceId={wid}
         node={nodes.find((n) => n.id === threadNodeId) ?? null}
         onClose={() => setThreadNodeId(null)}
         onProposed={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
         onSummary={(note, ledger) => patch((d) => ({ ...d, notes: [note, ...d.notes], ledger }))}
-      />
+      /></Deferred>
       {/* New workspace dialog */}
       <Dialog
         open={isNewWorkspaceModalOpen}

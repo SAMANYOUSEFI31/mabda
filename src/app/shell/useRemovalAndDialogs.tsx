@@ -5,7 +5,7 @@
 
 import type { PageAction } from '../../components/TopStatusBar';
 import { Button, Icon, formatNumber } from '../../ui';
-import { ContextCanvas } from '../../components/ContextCanvas';
+import { PageSuspense, lazyNamed } from '../lazy';
 import { ContextObject, GeneratedDeliverable, LedgerEntry, WorkstreamSpec } from '../../types';
 import { WIPE_WORDS } from '../../components/AccountModal';
 import { acceptanceSentence, outputsUsing } from '../../core/weeklyReview';
@@ -19,6 +19,9 @@ import type { NotesScope } from '../thinking/useNotes';
 import type { SearchAndFocusScope } from './useSearchAndFocus';
 import type { BoardsScope } from '../canvas/useBoards';
 import type { UsageCountersScope } from './useUsageCounters';
+
+/** the canvas is a separate chunk: loaded the first time a canvas is opened */
+const ContextCanvas = lazyNamed(() => import('../../components/ContextCanvas'), 'ContextCanvas');
 
 export type RemovalAndDialogsScope = ReturnType<typeof useRemovalAndDialogs>;
 
@@ -153,7 +156,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   const renderCanvas = (mode: 'truth' | 'thinking') => (
     <div className="flex flex-col gap-stack-sm">
     {scopeChip}
-    <ContextCanvas
+    <PageSuspense><ContextCanvas
       mode={mode}
       previewNonce={mode === 'truth' ? previewNonce : undefined}
       lineageObjects={workspaceContexts}
@@ -196,7 +199,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
               onOpenObject={(obj) => openContext(obj)}
               onOpenAssets={() => setActiveTab('assets')}
               onAddKnowledge={() => openContext(null)}
-  />
+  /></PageSuspense>
     </div>
   );
 
