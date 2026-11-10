@@ -90,7 +90,7 @@ import { SpecEditorModal } from './components/SpecEditorModal';
 import { PLANS, chatCountToday, tehranDay } from './core/creditEngine';
 import { enabledBuiltInSpecs, currentSpecIds } from './core/specs';
 import { WorkstreamSpec } from './types';
-import { Alert, Button, Card, Dialog, EmptyState, Icon, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
+import { Checkbox, Alert, Button, Card, Dialog, EmptyState, Icon, IconButton, Menu, SegmentedControl, Spinner, TextField, formatNumber, useToast } from './ui';
 import { HomeTodo } from './components/HomeTodo';
 import { effectiveObjects } from './core/effectiveContext';
 import { defaultNodeId, resolveNodeId, subtreeIds } from './core/nodeTree';
@@ -809,14 +809,26 @@ export default function App() {
     const r = await attempt(() => dataApi.updateNote(wid, id, content));
     if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
   };
-  /** a small, throwaway removal: it happens at once and offers «برگرداندن» (the note comes back with its text, its section and its place) */
-  const handleDeleteNote = async (id: string) => {
-    const r = await attempt(() => dataApi.deleteNote(wid, id));
+  /**
+   * A small, throwaway removal: it happens at once and offers «برگرداندن» (the note comes back with its text, its section and its place).
+   * Only when the note holds OPEN thoughts does a short dialog ask first: they stay by default («یادداشت حذف شد» on each), and the user
+   * can send them away with the note — the one choice that cannot be undone by the toast.
+   */
+  const handleDeleteNote = async (id: string, removeThoughts = false) => {
+    const r = await attempt(() => dataApi.deleteNote(wid, id, removeThoughts));
     if (!r) return;
-    patch((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
+    patch((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id), thoughts: r.thoughts }));
     const note = r.note;
     if (!note) return;
-    toast.show({ intent: 'success', message: 'یادداشت حذف شد.', duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreNote(wid, note, r.position)).then((x) => { if (x) patch((d) => ({ ...d, notes: [x.note, ...d.notes], canvas: r.position ? { ...d.canvas, free: [...d.canvas.free.filter((i) => i.itemRef !== `note:${note.id}`), { itemRef: `note:${note.id}`, ...r.position }] } : d.canvas })); }); } } });
+    const msg = r.removedThoughts ? `یادداشت و ${formatNumber(r.removedThoughts)} فکر باز آن حذف شد.` : r.keptThoughts ? `یادداشت حذف شد؛ ${formatNumber(r.keptThoughts)} فکر باز مانده است.` : 'یادداشت حذف شد.';
+    toast.show({ intent: 'success', message: msg, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreNote(wid, note, r.position)).then((x) => { if (x) patch((d) => ({ ...d, notes: [x.note, ...d.notes], thoughts: x.thoughts, canvas: r.position ? { ...d.canvas, free: [...d.canvas.free.filter((i) => i.itemRef !== `note:${note.id}`), { itemRef: `note:${note.id}`, ...r.position }] } : d.canvas })); }); } } });
+  };
+  const [noteDeleteAsk, setNoteDeleteAsk] = useState<{ id: string; open: number } | null>(null);
+  const [noteDeleteWithThoughts, setNoteDeleteWithThoughts] = useState(false);
+  const askDeleteNote = async (id: string) => {
+    const open = (data?.thoughts ?? []).filter((t) => t.sourceNoteId === id && t.status === 'open').length;
+    if (open === 0) { await handleDeleteNote(id); return; }
+    setNoteDeleteWithThoughts(false); setNoteDeleteAsk({ id, open });
   };
   const handleExtractNote = async (id: string) => {
     setExtractingNoteId(id);
@@ -1192,7 +1204,7 @@ export default function App() {
               onCreateNote={handleFreeNoteCreate}
               onMoveNote={handleFreeNoteMove}
               onUpdateNote={handleUpdateNote}
-              onDeleteNote={handleDeleteNote}
+              onDeleteNote={askDeleteNote}
               onNoteToKnowledge={handleNoteToKnowledge}
               onPlaceObject={handlePlaceObject}
               onUnplaceObject={handleUnplaceObject}
@@ -1516,7 +1528,7 @@ export default function App() {
                 onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در بخش «فایل‌ها» پردازشش کن.' }); }}
                 onAddNote={handleAddNote}
                 onUpdateNote={handleUpdateNote}
-                onDeleteNote={handleDeleteNote}
+                onDeleteNote={askDeleteNote}
                 onExtractNote={handleExtractNote}
               />
             ) : contextViewMode === 'canvas' ? (
@@ -1569,6 +1581,7 @@ export default function App() {
           notes={data.notes}
           nodes={nodes}
           relationships={data.relationships}
+          thoughts={thinking}
           nodeId={spaceNode}
           onNodeChange={setSpaceNode}
           onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
@@ -1703,6 +1716,16 @@ export default function App() {
       </div>
 
       {/* Context Object Add/Edit Modal */}
+      <Dialog
+        open={!!noteDeleteAsk} onClose={() => setNoteDeleteAsk(null)} size="sm" title="حذف یادداشت"
+        description={noteDeleteAsk ? `این یادداشت ${formatNumber(noteDeleteAsk.open)} فکر باز دارد. فکرها مال خودت‌اند؛ اگر چیزی نگویی می‌مانند و روی هر کدام نوشته می‌شود «یادداشت حذف شد».` : undefined}
+        footer={<><Button variant="ghost" onClick={() => setNoteDeleteAsk(null)}>انصراف</Button><Button variant="danger" iconStart="Trash2" onClick={() => { const ask = noteDeleteAsk; setNoteDeleteAsk(null); if (ask) void handleDeleteNote(ask.id, noteDeleteWithThoughts); }}>حذف یادداشت</Button></>}
+      >
+        <div className="flex flex-col gap-stack-xs">
+          <Checkbox label={`فکرهای باز هم بروند (${formatNumber(noteDeleteAsk?.open ?? 0)} فکر)`} checked={noteDeleteWithThoughts} onChange={(e) => setNoteDeleteWithThoughts(e.target.checked)} />
+          <p className="body-sm text-text-subtle">با «برگرداندن» متن یادداشت برمی‌گردد و فکرها دوباره از روی خط‌هایش ساخته می‌شوند (بی‌تاریخچهٔ قبلی).</p>
+        </div>
+      </Dialog>
       <ArchiveDialog open={archiveOpen} workspaceId={wid} nodes={nodes} workspaces={workspaces} currentWorkspaceId={wid} onClose={() => setArchiveOpen(false)} onChanged={() => void reload(wid)} onWorkspacesChange={setWs} />
       <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
       <SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} />

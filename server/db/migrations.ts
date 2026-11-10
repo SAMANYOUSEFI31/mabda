@@ -630,6 +630,17 @@ export const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 24,
+    name: 'thoughts keep a visible origin state (line/note gone) and a «converted knowledge was erased» mark',
+    up(db) {
+      // null = the origin is fine; 'line_deleted' = the line was removed from its note; 'note_deleted' = the note itself is gone.
+      // The thought is the user's: it stays open and says where it came from instead of being closed or erased in silence.
+      db.exec('ALTER TABLE thoughts ADD COLUMN source_state TEXT');
+      // 1 = the knowledge this thought became was permanently deleted; resolved_object_id is cleared (not even an id stays)
+      db.exec('ALTER TABLE thoughts ADD COLUMN resolved_removed INTEGER NOT NULL DEFAULT 0');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -89,6 +89,9 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
               {nodes && <span className="caption text-text-subtle">· {label(it.nodeId)}</span>}
               {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? <span className="caption text-text-subtle">· دربارهٔ {t.map((x) => x.label).join('، ')}</span> : null; })()}
               {done && <Badge intent="success" icon="Check">تبدیل شد ✓</Badge>}
+              {it.sourceState === 'line_deleted' && <Badge intent="neutral" icon="Info">خط از یادداشت حذف شد؛ فکر می‌ماند</Badge>}
+              {it.sourceState === 'note_deleted' && <Badge intent="neutral" icon="Info">یادداشتش حذف شد؛ فکر می‌ماند</Badge>}
+              {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
             </span>
             <span className="flex flex-wrap items-center gap-inline-xs">
               {onToggleSelection && it.id && <Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} />}
@@ -173,6 +176,8 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                               : entry.kind === 'reclassification' ? 'تغییر نوع'
                               : entry.kind === 'resolved' ? 'به نتیجه رسیدن'
                               : entry.kind === 'derived' ? 'اشتقاق'
+                              : entry.kind === 'source_line_deleted' ? 'خط از یادداشت حذف شد'
+                              : entry.kind === 'source_note_deleted' ? 'یادداشت حذف شد'
                               : 'به‌روزرسانی'}
                           </span>
                           <span className="caption text-text-subtle">{formatJalaliDate(entry.at)}</span>
@@ -181,6 +186,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                           <div className="body-sm text-text-subtle">
                             <span className="caption text-text-subtle">متن قبلی: </span>
                             <span className="line-through">{entry.details.beforeText}</span>
+                            {entry.details.afterText && <><br /><span className="caption text-text-subtle">متن تازه: </span><span>{entry.details.afterText}</span></>}
                           </div>
                         )}
                         {entry.kind === 'reclassification' && entry.details.beforeKind && entry.details.afterKind && (

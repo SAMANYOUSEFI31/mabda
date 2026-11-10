@@ -54,7 +54,7 @@ test('permanent delete: after it, NO table holds any trace of the text — versi
   assert.ok(!JSON.stringify(impact).includes('6037'), 'the impact never repeats the text it is about to erase');
 
   const r = purgeObject(repo, s, o.id, { notes: [note.id], sessions: ['ses1'], deliverables: ['d_copy'] });
-  assert.deepEqual(r.scrubbed, { notes: 1, sessions: 1, deliverables: 1 });
+  assert.deepEqual(r.scrubbed, { notes: 1, thoughts: 0, sessions: 1, deliverables: 1 });
   // the file is the one place she did not (and could not) clean: take it out of the measure, then NOTHING may be left
   repo.deleteFile(s, f.id);
   const after = dump(db);
@@ -236,4 +236,45 @@ test('on disk too: after an erase for good the words are not in the database fil
     assert.ok(!bytes().includes(Buffer.from('نشانهٔ-یکتا')), 'not the Persian words either');
     db.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('permanent delete reaches the THOUGHT tables: the thoughts she picks (text, revisions, events, about, derivations) are erased; thoughts that were only about it or became it lose the pointer and say «منبع حذف‌شده»', () => {
+  const { db, repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  const note2 = repo.createNote(s, node, '[فرض] چیزی کاملاً متفاوت');
+  const became = repo.listThoughts(s).find((t) => t.sourceNoteId === note2.id)!;
+  // the knowledge that will be erased was made FROM a thought (different words), and holds the secret
+  const o = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: 'شمارهٔ محرمانه', content: SECRET, nodeId: node, source: { kind: 'note', thoughtId: became.id, at: '2026-03-01T00:00:00Z' } });
+  // a thought that SAYS it (typed, revised, derived from) — she will erase it
+  const note = repo.createNote(s, node, `[ایده] ${SECRET}`);
+  const said = repo.listThoughts(s).find((t) => t.sourceNoteId === note.id)!;
+  repo.reviseThought(s, said.id, `${SECRET} نسخهٔ ویرایش‌شده`);
+  repo.setThoughtAbout(s, said.id, [{ kind: 'object', id: o.id }]);
+  const child = repo.deriveThought(s, { parentIds: [said.id], nodeId: node, kind: 'idea', text: 'فکر مشتق، بدون آن کلمات' }).thought;
+  // a thought that is only ABOUT it
+  const about = repo.insertThought(s, { nodeId: node, kind: 'question', text: 'این چه بود؟', about: [{ kind: 'object', id: o.id }] });
+  assert.ok(dump(db).includes('6037-9971-2345-6789'), 'sanity: the text is in the thought tables too');
+
+  repo.updateObject(s, o.id, { status: 'Archived' });
+  const impact = purgeImpact(repo, s, o.id);
+  assert.deepEqual(impact.copies.thoughts.map((t) => t.id), [said.id], 'only the thought that says the words is a «copy» — found by its text, and by its earlier wording');
+  assert.deepEqual(impact.pointers, { thoughtsAbout: 2, thoughtsConverted: 1 });
+  assert.ok(!JSON.stringify(impact).includes('6037'), 'the impact never repeats the text');
+
+  const r = purgeObject(repo, s, o.id, { notes: [note.id], thoughts: [said.id] });
+  assert.equal(r.scrubbed.thoughts, 1);
+  const after = dump(db);
+  for (const needle of ['6037-9971-2345-6789', '6037', 'نسخهٔ ویرایش‌شده']) assert.ok(!after.includes(needle), `no trace of «${needle}» in ANY table, thought tables included`);
+  assert.equal(repo.getThought(s, said.id), undefined);
+  for (const tbl of ['thought_revisions', 'thought_events', 'thought_about']) assert.equal((db.prepare(`SELECT COUNT(*) AS n FROM ${tbl} WHERE thought_id = ?`).get(said.id) as { n: number }).n, 0, tbl);
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM thought_derivations WHERE parent_id = ? OR child_id = ?').get(said.id, said.id) as { n: number }).n, 0, 'derivation links of the erased thought are gone');
+  assert.ok(repo.getThought(s, child.id), 'the derived thought is hers and stays');
+  const thoughtTables = ['thoughts', 'thought_revisions', 'thought_events', 'thought_about', 'thought_derivations'].map((t) => JSON.stringify(db.prepare(`SELECT * FROM ${t}`).all())).join('');
+  assert.ok(!thoughtTables.includes(o.id), 'not even the id of the erased knowledge is left in a thought table (the knowledge records only an empty «purged» change)');
+  // the two that were not chosen: alive, pointer gone
+  assert.deepEqual(repo.getThought(s, about.id)!.aboutObjectIds ?? [], []);
+  const b = repo.getThought(s, became.id)!;
+  assert.equal(b.resolvedObjectId, undefined);
+  assert.equal(b.resolvedRemoved, true);
+  assert.equal(b.status, 'resolved');
 });

@@ -59,7 +59,7 @@ test('Thought backfill preserves notes, stable legacy identity, classification a
   insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
     source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
 
-  assert.deepEqual(migrate(db), [21, 22, 23]);
+  assert.deepEqual(migrate(db), [21, 22, 23, 24]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const thoughts = repo.listThoughts(s, { includeResolved: true });
@@ -83,7 +83,7 @@ test('MCP token shutdown revokes active tokens once and preserves historical tok
     .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
   db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
     .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
-  assert.deepEqual(migrate(db), [22, 23]);
+  assert.deepEqual(migrate(db), [22, 23, 24]);
   const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
   assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
     ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
@@ -734,7 +734,7 @@ test('moving a Note updates its Thoughts without changing Material; a missing se
   assert.throws(() => repo.moveNoteToNode(s, 'nope', a.id), RepoError);
 });
 
-test('Note formatting and line shifts preserve anchored Thought identity; changed Material does not silently revise it', () => {
+test('Note formatting and line shifts preserve anchored Thought identity; an edited line REVISES its Thought instead of duplicating it', () => {
   const { repo, s } = fresh();
   const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک');
   const original = repo.listThoughts(s)[0];
@@ -745,8 +745,101 @@ test('Note formatting and line shifts preserve anchored Thought identity; change
   assert.equal(afterShift[0].text, original.text);
   repo.updateNote(s, note.id, 'پیش‌گفتار\n[ایده] قیمت اشتراک ویژه');
   const afterMaterialEdit = repo.listThoughts(s);
-  assert.equal(afterMaterialEdit.length, 2, 'new marked material creates a new Thought instead of guessing revision intent');
-  assert.ok(afterMaterialEdit.some((t) => t.id === original.id && t.text === original.text));
+  assert.deepEqual(afterMaterialEdit.map((t) => t.id), [original.id], 'the same Thought, revised — never a twin');
+  assert.equal(afterMaterialEdit[0].text, 'قیمت اشتراک ویژه');
+  assert.equal(repo.listThoughtRevisions(s, original.id).length, 1);
+});
+
+test('walkthrough الف: an idea, a spelling fix, then a changed meaning — one open Thought all the way', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] کارگاه آنلاین بگذاریم');
+  const id = repo.listThoughts(s)[0].id;
+  repo.updateNote(s, note.id, '[ایده] کارگاه انلاین بگذاریم'); // spelling
+  repo.updateNote(s, note.id, '[ایده] کارگاه آنلاین ماهانه بگذاریم'); // meaning
+  const all = repo.listThoughts(s);
+  assert.deepEqual(all.map((t) => t.id), [id]);
+  assert.equal(all[0].text, 'کارگاه آنلاین ماهانه بگذاریم');
+  assert.ok(repo.listThoughtRevisions(s, id).length >= 1);
+  // a purely cosmetic change (spaces) records no new revision and makes no twin
+  const before = repo.listThoughtRevisions(s, id).length;
+  repo.updateNote(s, note.id, '[ایده]   کارگاه آنلاین   ماهانه بگذاریم  ');
+  assert.equal(repo.listThoughtRevisions(s, id).length, before);
+  assert.equal(repo.listThoughts(s).length, 1);
+});
+
+test('an edited line moves with its Thought; a line that matches nothing is a new Thought; two identical lines stay two', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک\n[سؤال] ارسال چطور باشد؟');
+  const a = repo.listThoughts(s).find((t) => t.kind === 'idea')!;
+  const b = repo.listThoughts(s).find((t) => t.kind === 'question')!;
+  repo.updateNote(s, note.id, '[سؤال] ارسال چطور باشد؟\nیک خط بی‌نشان\n[ایده] قیمت اشتراک ماهانه'); // lines moved AND one edited
+  const all = repo.listThoughts(s);
+  assert.deepEqual(all.map((t) => t.id).sort(), [a.id, b.id].sort());
+  assert.equal(all.find((t) => t.id === a.id)!.text, 'قیمت اشتراک ماهانه');
+  repo.updateNote(s, note.id, '[سؤال] ارسال چطور باشد؟\n[ایده] قیمت اشتراک ماهانه\n[ایده] کاملاً چیز دیگری دربارهٔ ویدیو');
+  assert.equal(repo.listThoughts(s).length, 3, 'unrelated words = a new Thought');
+  const twin = repo.createNote(s, 'offer', '[ایده] تکراری\n[ایده] تکراری');
+  assert.equal(repo.listThoughts(s).filter((t) => t.sourceNoteId === twin.id).length, 2);
+});
+
+test('a removed line leaves its Thought OPEN with «خط حذف شد»; writing it back clears the mark; a converted Thought is never touched or duplicated', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک\n[فرض] مشتری پرداخت می‌کند');
+  const idea = repo.listThoughts(s).find((t) => t.kind === 'idea')!;
+  const assumption = repo.listThoughts(s).find((t) => t.kind === 'assumption')!;
+  repo.updateNote(s, note.id, '[فرض] مشتری پرداخت می‌کند'); // the idea line is deleted
+  const gone = repo.getThought(s, idea.id)!;
+  assert.equal(gone.status, 'open', 'never closed in silence');
+  assert.equal(gone.sourceState, 'line_deleted');
+  assert.equal(gone.text, 'قیمت اشتراک', 'never erased in silence');
+  assert.ok(repo.getThoughtHistory(s, idea.id).entries.some((e) => e.kind === 'source_line_deleted'));
+  repo.updateNote(s, note.id, '[ایده] قیمت اشتراک\n[فرض] مشتری پرداخت می‌کند');
+  assert.equal(repo.getThought(s, idea.id)!.sourceState, undefined, 'the line is back: the mark goes');
+  assert.equal(repo.listThoughts(s).length, 2);
+  // convert the assumption, then edit its line: no change, no twin
+  const prop = repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: assumption.text, content: assumption.text, nodeId: assumption.nodeId, source: { kind: 'note', thoughtId: assumption.id, at: '2026-03-01T00:00:00Z' } });
+  assert.ok(prop.id);
+  assert.equal(repo.getThought(s, assumption.id)!.status, 'resolved');
+  repo.updateNote(s, note.id, '[ایده] قیمت اشتراک\n[فرض] مشتری حتماً پرداخت می‌کند');
+  const after = repo.listThoughts(s, { includeResolved: true });
+  assert.equal(after.length, 2, 'no twin of the converted Thought');
+  assert.equal(after.find((t) => t.id === assumption.id)!.text, assumption.text, 'its text is untouched');
+});
+
+test('walkthrough ب: deleting a note keeps its open Thoughts («یادداشت حذف شد»); the user may remove them too; converted ones always stay', () => {
+  const { repo, s } = fresh();
+  const n1 = repo.createNote(s, 'offer', '[ایده] یک\n[سؤال] دو؟');
+  assert.equal(repo.countOpenThoughtsOf(s, n1.id), 2);
+  const r1 = repo.deleteNote(s, n1.id);
+  assert.deepEqual(r1, { keptThoughts: 2, removedThoughts: 0 });
+  const kept = repo.listThoughts(s);
+  assert.equal(kept.length, 2);
+  assert.ok(kept.every((t) => t.sourceState === 'note_deleted' && t.status === 'open'));
+  // restore: they re-attach (no duplicate) and the mark goes
+  repo.restoreNote(s, n1);
+  assert.equal(repo.listThoughts(s).length, 2);
+  assert.ok(repo.listThoughts(s).every((t) => !t.sourceState));
+  // delete with the thoughts
+  const n2 = repo.createNote(s, 'offer', '[ایده] سه\n[فرض] چهار');
+  const three = repo.listThoughts(s).find((t) => t.sourceNoteId === n2.id && t.kind === 'idea')!;
+  const four = repo.listThoughts(s).find((t) => t.sourceNoteId === n2.id && t.kind === 'assumption')!;
+  repo.createObject(s, { type: 'Fact', status: 'Proposed', provenance: 'User Input', title: four.text, content: four.text, nodeId: four.nodeId, source: { kind: 'note', thoughtId: four.id, at: '2026-03-01T00:00:00Z' } });
+  const r2 = repo.deleteNote(s, n2.id, { removeThoughts: true });
+  assert.deepEqual(r2, { keptThoughts: 0, removedThoughts: 1 });
+  assert.equal(repo.getThought(s, three.id), undefined, 'the open one went');
+  assert.equal(repo.getThought(s, four.id)!.status, 'resolved', 'the converted one stays');
+  for (const tbl of ['thought_revisions', 'thought_events', 'thought_about']) assert.equal((repo.db.prepare(`SELECT COUNT(*) AS n FROM ${tbl} WHERE thought_id = ?`).get(three.id) as { n: number }).n, 0, tbl);
+});
+
+test('a multi-line Thought is edited as one: the continuation line is part of the same Thought', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] کارگاه آنلاین \\\n  هر ماه یک بار');
+  const t = repo.listThoughts(s);
+  assert.equal(t.length, 1);
+  repo.updateNote(s, note.id, '[ایده] کارگاه آنلاین \\\n  هر دو هفته یک بار');
+  const after = repo.listThoughts(s);
+  assert.deepEqual(after.map((x) => x.id), [t[0].id]);
+  assert.match(after[0].text, /هر دو هفته/);
 });
 
 test('deleting Note Material keeps its Thought and restoring the Note does not duplicate it', () => {

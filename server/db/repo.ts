@@ -21,7 +21,7 @@ import { overrideProblem } from '../../src/core/effectiveContext.ts';
 import { canHaveExamples, cleanExamples } from '../../src/core/redlineExamples.ts';
 import { can, entitlementsOf, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 import { lineHash, parseThinking } from '../../src/core/thinkingMarkers.ts';
-import { normalizeFa } from '../../src/core/contextEngine.ts';
+import { jaccard, normalizeFa, titleTokens } from '../../src/core/contextEngine.ts';
 
 /** Every query is scoped by these two ids. One local user for now; real accounts later only change how `userId` is found. */
 export interface Scope { userId: string; workspaceId: string }
@@ -107,6 +107,8 @@ const rowToThought = (r: Record<string, unknown>, about?: { objectIds: string[];
   ...(r.source_quote ? { sourceQuote: r.source_quote as string } : {}),
   ...(r.inferred ? { inferred: true } : {}),
   ...(r.resolved_object_id ? { resolvedObjectId: r.resolved_object_id as string } : {}),
+  ...(r.resolved_removed ? { resolvedRemoved: true } : {}),
+  ...(r.source_state ? { sourceState: r.source_state as 'line_deleted' | 'note_deleted' } : {}),
   ...(about?.objectIds?.length ? { aboutObjectIds: about.objectIds } : {}),
   ...(about?.nodeIds?.length ? { aboutNodeIds: about.nodeIds } : {}),
   createdAt: r.created_at as string, updatedAt: r.updated_at as string,
@@ -761,27 +763,17 @@ export class Repo {
       .map((r) => ({ id: r.id as string, sourceId: r.source_id as string, targetId: r.target_id as string, type: r.type as ContextRelationship['type'], createdAt: r.created_at as string }));
   }
 
-  private hasTable(name: string): boolean {
-    try {
-      return !!this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
-    } catch {
-      return false;
-    }
-  }
-
   // ── notes & thoughts ────────────────────────────────────────────────────────
   listThoughts(s: Scope, opts: { includeResolved?: boolean } = {}): Thought[] {
     const status = opts.includeResolved ? '' : " AND status = 'open'";
     const rows = this.db.prepare(`SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ?${status} ORDER BY created_at, id`).all(s.workspaceId, s.userId) as Array<Record<string, unknown>>;
     const aboutMap = new Map<string, { objectIds: string[]; nodeIds: string[] }>();
-    if (this.hasTable('thought_about')) {
-      const aboutRows = this.db.prepare('SELECT thought_id, target_kind, target_id FROM thought_about WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<{ thought_id: string; target_kind: string; target_id: string }>;
-      for (const a of aboutRows) {
-        let cur = aboutMap.get(a.thought_id);
-        if (!cur) { cur = { objectIds: [], nodeIds: [] }; aboutMap.set(a.thought_id, cur); }
-        if (a.target_kind === 'object') cur.objectIds.push(a.target_id);
-        else if (a.target_kind === 'node') cur.nodeIds.push(a.target_id);
-      }
+    const aboutRows = this.db.prepare('SELECT thought_id, target_kind, target_id FROM thought_about WHERE workspace_id = ? AND user_id = ?').all(s.workspaceId, s.userId) as Array<{ thought_id: string; target_kind: string; target_id: string }>;
+    for (const a of aboutRows) {
+      let cur = aboutMap.get(a.thought_id);
+      if (!cur) { cur = { objectIds: [], nodeIds: [] }; aboutMap.set(a.thought_id, cur); }
+      if (a.target_kind === 'object') cur.objectIds.push(a.target_id);
+      else if (a.target_kind === 'node') cur.nodeIds.push(a.target_id);
     }
     return rows.map((r) => rowToThought(r, aboutMap.get(r.id as string)));
   }
@@ -790,13 +782,11 @@ export class Repo {
     const r = this.db.prepare('SELECT * FROM thoughts WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
     if (!r) return undefined;
     let about: { objectIds: string[]; nodeIds: string[] } | undefined;
-    if (this.hasTable('thought_about')) {
-      const aboutRows = this.db.prepare('SELECT target_kind, target_id FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').all(id, s.workspaceId, s.userId) as Array<{ target_kind: string; target_id: string }>;
-      about = {
-        objectIds: aboutRows.filter((a) => a.target_kind === 'object').map((a) => a.target_id),
-        nodeIds: aboutRows.filter((a) => a.target_kind === 'node').map((a) => a.target_id),
-      };
-    }
+    const aboutRows = this.db.prepare('SELECT target_kind, target_id FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').all(id, s.workspaceId, s.userId) as Array<{ target_kind: string; target_id: string }>;
+    about = {
+      objectIds: aboutRows.filter((a) => a.target_kind === 'object').map((a) => a.target_id),
+      nodeIds: aboutRows.filter((a) => a.target_kind === 'node').map((a) => a.target_id),
+    };
     return rowToThought(r, about);
   }
 
@@ -821,33 +811,29 @@ export class Repo {
       thought.sourceNoteId ?? null, thought.sourceLine ?? null, thought.sourceLineKey ?? null, thought.sourceQuote ?? null, thought.inferred ? 1 : 0,
       thought.resolvedObjectId ?? null, thought.createdAt, thought.updatedAt);
 
-    if (this.hasTable('thought_events')) {
-      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
-        .run(newId('th_ev'), thought.id, s.userId, s.workspaceId, 'created', null, thought.text, 'user', at);
-    }
+    this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(newId('th_ev'), thought.id, s.userId, s.workspaceId, 'created', null, thought.text, 'user', at);
 
-    if (this.hasTable('thought_about')) {
-      const insAbout = this.db.prepare('INSERT OR IGNORE INTO thought_about (thought_id,target_kind,target_id,user_id,workspace_id,created_at) VALUES (?,?,?,?,?,?)');
-      if (input.about?.length) {
-        for (const target of input.about) insAbout.run(thought.id, target.kind, target.id, s.userId, s.workspaceId, at);
-      } else if (input.text.includes('@«')) {
-        const TOKEN = /@«([^»\n]+)»/g;
-        const matches = [...input.text.matchAll(TOKEN)];
-        if (matches.length > 0) {
-          const objects = this.listObjects(s);
-          const nodes = this.listNodes(s);
-          for (const m of matches) {
-            const k = normalizeFa(m[1].replace(/\s+/g, ' ').trim());
-            const wsObjs = objects.filter((o) => normalizeFa(o.title.replace(/\s+/g, ' ').trim()) === k);
-            if (wsObjs.length === 1) {
-              insAbout.run(thought.id, 'object', wsObjs[0].id, s.userId, s.workspaceId, at);
-              continue;
-            }
-            if (wsObjs.length > 1) continue;
-            const wsNodes = nodes.filter((n) => normalizeFa(n.label.replace(/\s+/g, ' ').trim()) === k);
-            if (wsNodes.length === 1) {
-              insAbout.run(thought.id, 'node', wsNodes[0].id, s.userId, s.workspaceId, at);
-            }
+    const insAbout = this.db.prepare('INSERT OR IGNORE INTO thought_about (thought_id,target_kind,target_id,user_id,workspace_id,created_at) VALUES (?,?,?,?,?,?)');
+    if (input.about?.length) {
+      for (const target of input.about) insAbout.run(thought.id, target.kind, target.id, s.userId, s.workspaceId, at);
+    } else if (input.text.includes('@«')) {
+      const TOKEN = /@«([^»\n]+)»/g;
+      const matches = [...input.text.matchAll(TOKEN)];
+      if (matches.length > 0) {
+        const objects = this.listObjects(s);
+        const nodes = this.listNodes(s);
+        for (const m of matches) {
+          const k = normalizeFa(m[1].replace(/\s+/g, ' ').trim());
+          const wsObjs = objects.filter((o) => normalizeFa(o.title.replace(/\s+/g, ' ').trim()) === k);
+          if (wsObjs.length === 1) {
+            insAbout.run(thought.id, 'object', wsObjs[0].id, s.userId, s.workspaceId, at);
+            continue;
+          }
+          if (wsObjs.length > 1) continue;
+          const wsNodes = nodes.filter((n) => normalizeFa(n.label.replace(/\s+/g, ' ').trim()) === k);
+          if (wsNodes.length === 1) {
+            insAbout.run(thought.id, 'node', wsNodes[0].id, s.userId, s.workspaceId, at);
           }
         }
       }
@@ -856,31 +842,96 @@ export class Repo {
     return this.getThought(s, thought.id)!;
   }
 
-  /** New or imported Note lines create separate Thoughts once; later raw-material edits never rewrite their text. */
+  /**
+   * Note lines ↔ Thoughts (docs/spine.md → «یادداشت ماده است، فکر هویت دارد»). A note line is matched to a Thought in this order:
+   *   1. the same line with the same text (or the same text moved to another line) — nothing changes except where it sits;
+   *   2. an EDITED line: an open, unconverted Thought of this note whose anchor (its line, its original words) is close to the new
+   *      line — the same line and ≥ 25% shared words, or ≥ 50% shared words anywhere — is REVISED (same id; a purely cosmetic
+   *      change records no revision), never duplicated;
+   *   3. a resolved (converted) Thought that matches the same way is left alone: editing the note neither changes it nor makes a twin;
+   *   4. only a line that matches nothing makes a new Thought.
+   * A Thought whose line is gone stays OPEN (it is the user's) with `sourceState = 'line_deleted'`; it is never closed or erased in silence.
+   */
   private syncNoteThoughts(s: Scope, note: Note, deterministicIds = false): void {
     const current = this.db.prepare('SELECT * FROM thoughts WHERE workspace_id = ? AND user_id = ? AND source_note_id = ? ORDER BY source_line,id').all(s.workspaceId, s.userId, note.id) as Array<Record<string, unknown>>;
     const anchored = current.filter((t) => t.source_line !== null).map((r) => rowToThought(r));
     const used = new Set<string>();
-    let ordinal = 0;
-    for (const item of parseThinking(note.content)) {
-      const importedId = deterministicIds && current.length === 0 ? `imported_thought_${note.id}_${ordinal}` : undefined;
-      ordinal++;
-      const existing = anchored.find((thought) => !used.has(thought.id) && thought.sourceLine === item.line && thought.sourceLineKey === item.hash)
-        ?? anchored.find((thought) => !used.has(thought.id) && thought.sourceLineKey === item.hash);
-      if (existing) {
-        used.add(existing.id);
-        if (existing.kind !== item.kind || existing.inferred !== item.inferred || existing.sourceLine !== item.line) {
-          this.db.prepare('UPDATE thoughts SET kind = ?, inferred = ?, source_line = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
-            .run(item.kind, item.inferred ? 1 : 0, item.line, now(), existing.id, s.workspaceId, s.userId);
-        }
+    const pairs = parseThinking(note.content).map((item, ordinal) => ({ item, ordinal, thought: undefined as Thought | undefined, edited: false }));
+    for (const p of pairs) { // 1. exact
+      const hit = anchored.find((t) => !used.has(t.id) && t.sourceLine === p.item.line && t.sourceLineKey === p.item.hash)
+        ?? anchored.find((t) => !used.has(t.id) && t.sourceLineKey === p.item.hash);
+      if (hit) { used.add(hit.id); p.thought = hit; }
+    }
+    const words = (x: string) => titleTokens(x);
+    for (const p of pairs) { // 2 & 3. an edited line
+      if (p.thought) continue;
+      let best: { t: Thought; sim: number; gap: number } | undefined;
+      for (const t of anchored) {
+        if (used.has(t.id)) continue;
+        const sim = Math.max(jaccard(words(p.item.text), words(t.sourceQuote ?? t.text)), jaccard(words(p.item.text), words(t.text)));
+        const near = t.sourceLine === p.item.line;
+        if (!((near && sim >= 0.25) || sim >= 0.5)) continue;
+        const gap = Math.abs((t.sourceLine ?? 0) - p.item.line);
+        if (!best || sim > best.sim || (sim === best.sim && gap < best.gap)) best = { t, sim, gap };
+      }
+      if (best) { used.add(best.t.id); p.thought = best.t; p.edited = true; }
+    }
+    const at = now();
+    for (const p of pairs) {
+      const { item, thought } = p;
+      if (!thought) { // 4. really new
+        this.insertThought(s, {
+          ...(deterministicIds && current.length === 0 ? { id: `imported_thought_${note.id}_${p.ordinal}` } : {}), nodeId: note.nodeId, kind: item.kind, text: item.text, sourceNoteId: note.id,
+          sourceLine: item.line, sourceLineKey: item.hash, sourceQuote: item.text, inferred: item.inferred,
+          at: note.createdAt,
+        });
         continue;
       }
-      this.insertThought(s, {
-        ...(importedId ? { id: importedId } : {}), nodeId: note.nodeId, kind: item.kind, text: item.text, sourceNoteId: note.id,
-        sourceLine: item.line, sourceLineKey: item.hash, sourceQuote: item.text, inferred: item.inferred,
-        at: note.createdAt,
-      });
+      if (p.edited) {
+        if (thought.status === 'open') this.reviseThought(s, thought.id, item.text); // same id; cosmetic changes record nothing
+        this.db.prepare('UPDATE thoughts SET kind = ?, inferred = ?, source_line = ?, source_line_key = ?, source_quote = ?, source_state = NULL, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
+          .run(thought.status === 'open' ? item.kind : thought.kind, thought.status === 'open' ? (item.inferred ? 1 : 0) : (thought.inferred ? 1 : 0), item.line, item.hash, item.text, at, thought.id, s.workspaceId, s.userId);
+        continue;
+      }
+      if (thought.kind !== item.kind || thought.inferred !== item.inferred || thought.sourceLine !== item.line || thought.sourceState) {
+        this.db.prepare('UPDATE thoughts SET kind = ?, inferred = ?, source_line = ?, source_state = NULL, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
+          .run(item.kind, item.inferred ? 1 : 0, item.line, at, thought.id, s.workspaceId, s.userId);
+      }
     }
+    for (const t of anchored) { // the line is gone: the thought stays, open, and says so
+      if (used.has(t.id) || t.sourceState === 'line_deleted') continue;
+      this.db.prepare("UPDATE thoughts SET source_state = 'line_deleted', updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?").run(at, t.id, s.workspaceId, s.userId);
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), t.id, s.userId, s.workspaceId, 'source_line_deleted', null, null, 'user', at);
+    }
+  }
+
+  /**
+   * Erase thoughts for good: the row, every revision, every event, what they were about and their derivation links — and the pointer
+   * knowledge keeps to them (`source.thoughtId`). Used by «حذف یادداشت با فکرهایش» and by the permanent delete of knowledge.
+   */
+  eraseThoughts(s: Scope, ids: string[]): number {
+    const set = [...new Set(ids)];
+    if (!set.length) return 0;
+    const w = s.workspaceId, u = s.userId;
+    let n = 0;
+    this.db.transaction(() => {
+      for (const id of set) {
+        n += this.db.prepare('DELETE FROM thoughts WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u).changes;
+        this.db.prepare('DELETE FROM thought_revisions WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+        this.db.prepare('DELETE FROM thought_events WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+        this.db.prepare('DELETE FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+        this.db.prepare('DELETE FROM thought_derivations WHERE workspace_id = ? AND user_id = ? AND (parent_id = ? OR child_id = ?)').run(w, u, id, id);
+      }
+      // knowledge that came from an erased thought keeps its own text but not the pointer
+      for (const o of this.db.prepare("SELECT id, source FROM context_objects WHERE workspace_id = ? AND user_id = ? AND source LIKE '%thoughtId%'").all(w, u) as Array<{ id: string; source: string }>) {
+        const src = JSON.parse(o.source) as ObjectSource;
+        if (!src.thoughtId || !set.includes(src.thoughtId)) continue;
+        const { thoughtId: _t, ...rest } = src;
+        this.db.prepare('UPDATE context_objects SET source = ? WHERE id = ? AND workspace_id = ?').run(JSON.stringify(rest), o.id, w);
+      }
+    })();
+    return n;
   }
 
   reviseThought(s: Scope, id: string, text: string): { thought: Thought; revisions: ThoughtRevision[] } {
@@ -892,12 +943,10 @@ export class Repo {
       const nextRevision = (this.db.prepare('SELECT COALESCE(MAX(revision),0)+1 AS n FROM thought_revisions WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as { n: number }).n;
       this.db.prepare('INSERT INTO thought_revisions (thought_id,revision,user_id,workspace_id,before_text,after_text,at) VALUES (?,?,?,?,?,?,?)')
         .run(id, nextRevision, s.userId, s.workspaceId, cur.text, text, at);
-      if (this.hasTable('thought_events')) {
-        this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
-          .run(newId('th_ev'), id, s.userId, s.workspaceId, 'revised', cur.text, text, 'user', at);
-      }
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), id, s.userId, s.workspaceId, 'revised', cur.text, text, 'user', at);
     }
-    if (this.hasTable('thought_about') && text.includes('@«')) {
+    if (text.includes('@«')) {
       const TOKEN = /@«([^»\n]+)»/g;
       const matches = [...text.matchAll(TOKEN)];
       if (matches.length > 0) {
@@ -929,10 +978,8 @@ export class Repo {
     const at = now();
     this.db.prepare('UPDATE thoughts SET kind = ?, inferred = 0, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?')
       .run(kind, at, id, s.workspaceId, s.userId);
-    if (this.hasTable('thought_events')) {
-      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
-        .run(newId('th_ev'), id, s.userId, s.workspaceId, 'reclassified', cur.kind, kind, 'user', at);
-    }
+    this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(newId('th_ev'), id, s.userId, s.workspaceId, 'reclassified', cur.kind, kind, 'user', at);
     return this.getThought(s, id)!;
   }
 
@@ -946,16 +993,13 @@ export class Repo {
       for (const t of targets) {
         ins.run(thoughtId, t.kind, t.id, s.userId, s.workspaceId, at);
       }
-      if (this.hasTable('thought_events')) {
-        this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
-          .run(newId('th_ev'), thoughtId, s.userId, s.workspaceId, 'about_updated', null, JSON.stringify(targets), 'user', at);
-      }
+      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+        .run(newId('th_ev'), thoughtId, s.userId, s.workspaceId, 'about_updated', null, JSON.stringify(targets), 'user', at);
     })();
     return this.getThought(s, thoughtId)!;
   }
 
   getThoughtAbout(s: Scope, thoughtId: string): { objectIds: string[]; nodeIds: string[] } {
-    if (!this.hasTable('thought_about')) return { objectIds: [], nodeIds: [] };
     const rows = this.db.prepare('SELECT target_kind, target_id FROM thought_about WHERE thought_id = ? AND workspace_id = ? AND user_id = ?').all(thoughtId, s.workspaceId, s.userId) as Array<{ target_kind: string; target_id: string }>;
     return {
       objectIds: rows.filter((r) => r.target_kind === 'object').map((r) => r.target_id),
@@ -964,9 +1008,7 @@ export class Repo {
   }
 
   listThoughtsAbout(s: Scope, objectId: string): Thought[] {
-    const targetThoughtIds = this.hasTable('thought_about')
-      ? (this.db.prepare("SELECT thought_id FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ? AND user_id = ?").all(objectId, s.workspaceId, s.userId) as Array<{ thought_id: string }>).map((r) => r.thought_id)
-      : [];
+    const targetThoughtIds = (this.db.prepare("SELECT thought_id FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ? AND user_id = ?").all(objectId, s.workspaceId, s.userId) as Array<{ thought_id: string }>).map((r) => r.thought_id);
     const seen = new Set(targetThoughtIds);
     const all = this.listThoughts(s, { includeResolved: true });
     const obj = this.getObject(s, objectId);
@@ -1077,9 +1119,7 @@ export class Repo {
     const thought = this.getThought(s, thoughtId);
     if (!thought) throw new RepoError('not_found', 'فکر پیدا نشد.');
     const revisions = this.listThoughtRevisions(s, thoughtId);
-    const events = this.hasTable('thought_events')
-      ? (this.db.prepare('SELECT event_kind, before_value, after_value, actor, at FROM thought_events WHERE thought_id = ? AND workspace_id = ? AND user_id = ? ORDER BY at').all(thoughtId, s.workspaceId, s.userId) as Array<{ event_kind: string; before_value: string | null; after_value: string | null; actor: string; at: string }>)
-      : [];
+    const events = (this.db.prepare('SELECT event_kind, before_value, after_value, actor, at FROM thought_events WHERE thought_id = ? AND workspace_id = ? AND user_id = ? ORDER BY at').all(thoughtId, s.workspaceId, s.userId) as Array<{ event_kind: string; before_value: string | null; after_value: string | null; actor: string; at: string }>);
     const parents = this.listThoughtParents(s, thoughtId).map((id) => this.getThought(s, id)).filter((t): t is Thought => !!t);
     const derivedThoughts = this.listDerivedThoughts(s, thoughtId);
     const proposedObject = this.getProposedKnowledgeFromThought(s, thoughtId);
@@ -1116,6 +1156,8 @@ export class Repo {
           actor: ev.actor,
           details: { beforeKind: ev.before_value as ThoughtKind, afterKind: ev.after_value as ThoughtKind },
         });
+      } else if (ev.event_kind === 'source_line_deleted' || ev.event_kind === 'source_note_deleted') {
+        entries.push({ kind: ev.event_kind, at: ev.at, actor: ev.actor, details: {} });
       } else if (ev.event_kind === 'resolved') {
         entries.push({
           kind: 'resolved',
@@ -1147,10 +1189,8 @@ export class Repo {
     const at = now();
     this.db.prepare("UPDATE thoughts SET status = 'resolved', resolved_object_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?")
       .run(resolution.objectId ?? null, at, id, s.workspaceId, s.userId);
-    if (this.hasTable('thought_events')) {
-      this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
-        .run(newId('th_ev'), id, s.userId, s.workspaceId, 'resolved', 'open', resolution.objectId ?? resolution.nodeId, 'user', at);
-    }
+    this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(newId('th_ev'), id, s.userId, s.workspaceId, 'resolved', 'open', resolution.objectId ?? resolution.nodeId, 'user', at);
     return this.getThought(s, id)!;
   }
 
@@ -1218,9 +1258,35 @@ export class Repo {
     return r ? { ...(r.x !== null ? { x: r.x } : {}), ...(r.y !== null ? { y: r.y } : {}) } : undefined;
   }
 
-  deleteNote(s: Scope, id: string) {
-    this.db.prepare("DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = 'free' AND item_ref = ?").run(s.workspaceId, s.userId, `note:${id}`);
-    this.db.prepare('DELETE FROM notes WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
+  /** how many OPEN thoughts a note holds (what the delete dialog tells the user: «N فکر باز دارد؛ می‌مانند») */
+  countOpenThoughtsOf(s: Scope, noteId: string): number {
+    return (this.db.prepare("SELECT COUNT(*) AS n FROM thoughts WHERE workspace_id = ? AND user_id = ? AND source_note_id = ? AND status = 'open'").get(s.workspaceId, s.userId, noteId) as { n: number }).n;
+  }
+
+  /**
+   * Deleting a note: its thoughts are the user's, so by default they STAY (open ones say «یادداشت حذف شد»). With `removeThoughts`
+   * the OPEN ones go too (converted ones are knowledge now and always stay).
+   */
+  deleteNote(s: Scope, id: string, opts: { removeThoughts?: boolean } = {}): { keptThoughts: number; removedThoughts: number } {
+    let removed = 0, kept = 0;
+    this.db.transaction(() => {
+      const mine = this.db.prepare('SELECT id, status FROM thoughts WHERE workspace_id = ? AND user_id = ? AND source_note_id = ?').all(s.workspaceId, s.userId, id) as Array<{ id: string; status: string }>;
+      const open = mine.filter((t) => t.status === 'open').map((t) => t.id);
+      if (opts.removeThoughts) removed = this.eraseThoughts(s, open);
+      const at = now();
+      for (const t of mine) {
+        if (opts.removeThoughts && open.includes(t.id)) continue;
+        this.db.prepare("UPDATE thoughts SET source_state = 'note_deleted', updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?").run(at, t.id, s.workspaceId, s.userId);
+        if (t.status === 'open') {
+          kept++;
+          this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)')
+            .run(newId('th_ev'), t.id, s.userId, s.workspaceId, 'source_note_deleted', null, null, 'user', at);
+        }
+      }
+      this.db.prepare("DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND view = 'free' AND item_ref = ?").run(s.workspaceId, s.userId, `note:${id}`);
+      this.db.prepare('DELETE FROM notes WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
+    })();
+    return { keptThoughts: kept, removedThoughts: removed };
   }
 
   // ── JSON collections (assets, ledger, chats, specs) ──────────────────────

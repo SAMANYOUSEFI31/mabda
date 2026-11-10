@@ -13,7 +13,9 @@ import type { StaleAsset } from '../core/impactEngine';
 export interface PurgeImpactInfo {
   title: string; status: string; versions: number; changes: number; relationships: number;
   usedIn: Array<{ id: string; title: string }>;
-  copies: { notes: Array<{ id: string; nodeLabel: string; lines: number }>; sessions: Array<{ id: string; title: string }>; deliverables: Array<{ id: string; title: string }>; files: Array<{ id: string; name: string }> };
+  /** thoughts that were only ABOUT it or became it: they stay and say «منبع حذف‌شده» */
+  pointers: { thoughtsAbout: number; thoughtsConverted: number };
+  copies: { notes: Array<{ id: string; nodeLabel: string; lines: number }>; thoughts: Array<{ id: string; nodeLabel: string; status: string }>; sessions: Array<{ id: string; title: string }>; deliverables: Array<{ id: string; title: string }>; files: Array<{ id: string; name: string }> };
 }
 import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
@@ -109,8 +111,8 @@ export const dataApi = {
   archive: (id: string) => call<{ objects: ContextObject[]; removals: Array<{ id: string; kind: string; label: string; createdAt: string }>; deliverables: GeneratedDeliverable[] }>('GET', `${ws(id)}/archive`),
   restoreObject: (id: string, objectId: string, nodeId?: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/restore`, nodeId ? { nodeId } : {}),
   purgeImpact: (id: string, objectId: string) => call<{ impact: PurgeImpactInfo }>('GET', `${ws(id)}/objects/${objectId}/purge-impact`),
-  purgeObject: (id: string, objectId: string, copies: { notes: string[]; sessions: string[]; deliverables: string[] }) =>
-    call<{ purged: string; scrubbed: { notes: number; sessions: number; deliverables: number }; objects: ContextObject[]; notes: Note[]; sessions: ChatSession[]; deliverables: GeneratedDeliverable[]; relationships: ContextRelationship[]; changes: ContextChange[]; stale: StaleAsset[] }>('DELETE', `${ws(id)}/objects/${objectId}/permanent`, { confirm: true, copies }),
+  purgeObject: (id: string, objectId: string, copies: { notes: string[]; thoughts: string[]; sessions: string[]; deliverables: string[] }) =>
+    call<{ purged: string; scrubbed: { notes: number; thoughts: number; sessions: number; deliverables: number }; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; sessions: ChatSession[]; deliverables: GeneratedDeliverable[]; relationships: ContextRelationship[]; changes: ContextChange[]; stale: StaleAsset[] }>('DELETE', `${ws(id)}/objects/${objectId}/permanent`, { confirm: true, copies }),
   archiveDeliverable: (id: string, did: string) => call<{ deliverables: GeneratedDeliverable[]; stale: StaleAsset[] }>('POST', `${ws(id)}/deliverables/${did}/archive`, {}),
   restoreDeliverable: (id: string, did: string) => call<{ deliverables: GeneratedDeliverable[]; stale: StaleAsset[] }>('POST', `${ws(id)}/deliverables/${did}/restore`, {}),
   deleteDeliverable: (id: string, did: string) => call<{ deliverables: GeneratedDeliverable[]; stale: StaleAsset[] }>('DELETE', `${ws(id)}/deliverables/${did}`),
@@ -118,7 +120,7 @@ export const dataApi = {
   deleteWorkspace: (id: string, confirmName?: string) => call<{ removed: number; workspaces: Workspace[] }>('DELETE', ws(id), { confirmName }),
   /** «حذف همهٔ داده‌ها»: every row of this user in every table */
   deleteAccountData: (confirm: string) => call<{ removed: number; workspaces: Workspace[] }>('POST', '/account/delete-all', { confirm }),
-  restoreNote: (id: string, note: Note, position?: { x?: number; y?: number }) => call<{ note: Note }>('POST', `${ws(id)}/notes/restore`, { note, position }),
+  restoreNote: (id: string, note: Note, position?: { x?: number; y?: number }) => call<{ note: Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes/restore`, { note, position }),
   restoreSavedPack: (id: string, pack: import('../types').SavedPack) => call<{ pack: import('../types').SavedPack }>('POST', `${ws(id)}/saved-packs/restore`, { pack }),
   restoreTemplate: (id: string, template: { id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }) => call<{ templates: unknown[] }>('POST', `${ws(id)}/templates/restore`, { template }),
 
@@ -135,7 +137,7 @@ export const dataApi = {
 
   createNote: (id: string, nodeId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes`, { nodeId, content }),
   updateNote: (id: string, noteId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
-  deleteNote: (id: string, noteId: string) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number } }>('DELETE', `${ws(id)}/notes/${noteId}`),
+  deleteNote: (id: string, noteId: string, removeThoughts = false) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number }; keptThoughts: number; removedThoughts: number; thoughts: import('../types').Thought[] }>('DELETE', `${ws(id)}/notes/${noteId}${removeThoughts ? '?thoughts=remove' : ''}`),
   extractDeliverable: (id: string, deliverableId: string) => call<{ created: ContextObject[]; found: number; skipped: number; ledger: LedgerEntry[] }>('POST', `${ws(id)}/deliverables/${deliverableId}/extract`, {}),
   extractNote: (id: string, noteId: string) => call<{ created: ContextObject[]; ledger: LedgerEntry; usage: UsageSummary }>('POST', `${ws(id)}/notes/${noteId}/extract`, {}),
 

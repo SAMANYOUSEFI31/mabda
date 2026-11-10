@@ -126,8 +126,8 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     const b = body(req);
     if (b.confirm !== true) throw new RepoError('invalid', 'حذف دائمی باید صریحاً تأیید شود.');
     const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 200) : []);
-    const r = purgeObject(repo, s, req.params.id, { notes: ids(b.copies?.notes), sessions: ids(b.copies?.sessions), deliverables: ids(b.copies?.deliverables) });
-    res.json({ ...r, objects: repo.listObjects(s), notes: repo.listNotes(s), sessions: repo.listSessions(s), deliverables: repo.listDeliverables(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), stale: stale(s) });
+    const r = purgeObject(repo, s, req.params.id, { notes: ids(b.copies?.notes), thoughts: ids(b.copies?.thoughts), sessions: ids(b.copies?.sessions), deliverables: ids(b.copies?.deliverables) });
+    res.json({ ...r, objects: repo.listObjects(s), notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), sessions: repo.listSessions(s), deliverables: repo.listDeliverables(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), stale: stale(s) });
   }));
   router.post('/workspaces/:wid/deliverables/:id/archive', wrap((req, res) => { const s = scopeOf(req); archiveDeliverable(repo, s, req.params.id); res.json({ deliverables: repo.listDeliverables(s), stale: stale(s) }); }));
   router.post('/workspaces/:wid/deliverables/:id/restore', wrap((req, res) => { const s = scopeOf(req); restoreDeliverable(repo, s, req.params.id); res.json({ deliverables: repo.listDeliverables(s), stale: stale(s) }); }));
@@ -377,8 +377,15 @@ export function createDataRouter(deps: { repo: Repo; ai: AiService; files?: File
     res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   // a deleted note is handed back (with its place) so «برگرداندن» can put it exactly where it was
-  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => { const s = scopeOf(req); const note = repo.getNote(s, req.params.id); const position = note ? repo.notePosition(s, note.id) : undefined; repo.deleteNote(s, req.params.id); res.json({ ok: true, note, position }); }));
-  router.post('/workspaces/:wid/notes/restore', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ note: repo.restoreNote(s, b.note as never, b.position as never) }); }));
+  // `?thoughts=remove`: the note's OPEN thoughts go with it; by default they stay and say «یادداشت حذف شد»
+  router.delete('/workspaces/:wid/notes/:id', wrap((req, res) => {
+    const s = scopeOf(req);
+    const note = repo.getNote(s, req.params.id);
+    const position = note ? repo.notePosition(s, note.id) : undefined;
+    const r = repo.deleteNote(s, req.params.id, { removeThoughts: req.query.thoughts === 'remove' });
+    res.json({ ok: true, note, position, ...r, thoughts: repo.listThoughts(s, { includeResolved: true }) });
+  }));
+  router.post('/workspaces/:wid/notes/restore', wrap((req, res) => { const s = scopeOf(req); const b = body(req); res.json({ note: repo.restoreNote(s, b.note as never, b.position as never), thoughts: repo.listThoughts(s, { includeResolved: true }) }); }));
 
   /** «استخراج»: the note becomes Proposed objects (provenance AI Suggested) — the user confirms them later. */
   /**

@@ -56,6 +56,7 @@ const assumptions = `- هر فراخوانی قضاوت دسته‌ای: ${fa(AS
 - ${fa(ASSUMPTIONS.days)} روز با استفادهٔ کامل از همهٔ سقف‌ها؛ هزینهٔ پلتفرم با فرض مصرف AI مدیریت‌شده محاسبه شده است
 - قیمت‌ها از \`server/ai/config/models.json\` (تاریخ ${modelsConfig.pricedAt}) و تأییدنشده با صورتحساب واقعی`;
 
-const md = `# جدول پلن‌ها و هزینهٔ واقعی ما\n\nتولیدشده با \`bun run scripts/cost-simulation.ts --write\`. همهٔ عددها فرضی‌اند و فقط در \`src/core/entitlements.config.ts\` تغییر می‌کنند.\n\n## Entitlementها\n\n${ent}\n\n## سناریوی مصرف سنگین (هزینهٔ ما در ماه)\n\n${cost}\n\n### فرض‌ها\n\n${assumptions}\n`;
+const FREEZE_NOTE = '> **وضعیت: فریز تا تصمیم بعدی.** AI مولد و گفتگویی فعلاً در محصول نیست؛ مدل‌های غیرمولد (embedding، rerank، قضاوت نوع‌دار، گفتار به متن) برای کمک «پیشنهادی» در دست بررسی‌اند (`docs/architecture.md → لایهٔ هوش`). کد `creditEngine` و AI مدیریت‌شده حذف نشده ولی گسترش هم نمی‌یابد؛ جدول زیر فقط **مرجع هزینه** است، نه تصمیم قیمت‌گذاری. «اعتبار برای خروجی‌ها» دیگر وعدهٔ محصول نیست.';
+const md = `# جدول پلن‌ها و هزینهٔ واقعی ما\n\n${FREEZE_NOTE}\n\nتولیدشده با \`bun run scripts/cost-simulation.ts --write\`. همهٔ عددها فرضی‌اند و فقط در \`src/core/entitlements.config.ts\` تغییر می‌کنند.\n\n## Entitlementها\n\n${ent}\n\n## سناریوی مصرف سنگین (هزینهٔ ما در ماه)\n\n${cost}\n\n### فرض‌ها\n\n${assumptions}\n`;
 console.log(md);
 if (process.argv.includes('--write')) writeFileSync('docs/pricing-entitlements.md', md);
