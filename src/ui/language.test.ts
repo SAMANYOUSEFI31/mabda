@@ -16,7 +16,7 @@ export const BANNED: Banned[] = (JSON.parse(readFileSync('src/ui/bannedWords.jso
 /** where a banned word may stay, and why. Keep it short. */
 export const EXCEPTIONS: Array<{ file: string; includes: string; why: string }> = [];
 
-const ROOTS = ['src/App.tsx', 'src/components', 'src/ui'];
+const ROOTS = ['src/App.tsx', 'src/app', 'src/components', 'src/ui'];
 const walk = (p: string): string[] => (statSync(p).isDirectory() ? readdirSync(p).flatMap((f) => walk(join(p, f))) : /\.tsx$/.test(p) ? [p] : []);
 const PERSIAN = /[؀-ۿ]/;
 
