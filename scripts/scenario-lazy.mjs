@@ -37,7 +37,7 @@ try {
     const errors = [];
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const requested = [];
-    page.on('request', (r) => { const m = /\/(?:components|app)\/([A-Za-z]+)\.tsx/.exec(r.url()); if (m) requested.push(m[1]); });
+    page.on('request', (r) => { const m = /\/(?:components|app)\/(?:[a-z]+\/)?([A-Za-z]+)\.tsx/.exec(r.url()); if (m) requested.push(m[1]); });
     const click = (loc) => loc.evaluate((n) => n.click());
     const nav = (m, d) => click(page.locator(mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`));
 
@@ -48,14 +48,14 @@ try {
     assert.ok(requested.includes('AppView') && requested.includes('HomeTodo'), 'the shell and the home are there');
 
     step(`[${width}] 2: a page that cannot load says so and offers «دوباره»`);
-    await page.route('**/components/ThinkingSpace.tsx*', (route) => route.abort('failed'));
+    await page.route('**/components/thinking/ThinkingSpace.tsx*', (route) => route.abort('failed'));
     await nav('فکر', 'فکر');
     const alert = page.getByRole('alert').filter({ hasText: 'این بخش بار نشد' });
     await alert.waitFor({ timeout: 10000 });
     assert.ok(await alert.getByRole('button', { name: 'دوباره' }).isVisible());
     assert.ok((await page.locator('body').innerText()).length > 50, 'not a blank page');
     await page.screenshot({ path: `docs/screens/lazy-${width}-1-failed.png` });
-    await page.unroute('**/components/ThinkingSpace.tsx*');
+    await page.unroute('**/components/thinking/ThinkingSpace.tsx*');
     await alert.getByRole('button', { name: 'دوباره' }).click();
     await page.getByRole('radio', { name: /^منتظر تو/ }).waitFor({ timeout: 10000 }); // the thinking space itself
     assert.equal(await page.getByRole('alert').filter({ hasText: 'این بخش بار نشد' }).count(), 0, 'the message is gone after the retry');

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type { CompareMode } from '../../components/TruthCompareDialog';
+import type { CompareMode } from '../../components/knowledge/TruthCompareDialog';
 import { buildInheritNotices } from '../../core/inheritNotice';
 import { buildSearchIndex } from '../../core/globalSearch';
 import { buildWeeklyReview, reviewDue } from '../../core/weeklyReview';

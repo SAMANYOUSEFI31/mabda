@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { PageAction } from '../../components/TopStatusBar';
+import type { PageAction } from '../../components/shell/TopStatusBar';
 import { Button, Icon, formatNumber } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { ContextObject, GeneratedDeliverable, LedgerEntry, WorkstreamSpec } from '../../types';
-import { WIPE_WORDS } from '../../components/AccountModal';
+import { WIPE_WORDS } from '../../components/workspace/wipeWords';
 import { acceptanceSentence, outputsUsing } from '../../core/weeklyReview';
 import { dataApi } from '../../services/dataApi';
 import { pathTo } from '../../core/nodeFocus';
@@ -21,7 +21,7 @@ import type { BoardsScope } from '../canvas/useBoards';
 import type { UsageCountersScope } from './useUsageCounters';
 
 /** the canvas is a separate chunk: loaded the first time a canvas is opened */
-const ContextCanvas = lazyNamed(() => import('../../components/ContextCanvas'), 'ContextCanvas');
+const ContextCanvas = lazyNamed(() => import('../../components/canvas/ContextCanvas'), 'ContextCanvas');
 
 export type RemovalAndDialogsScope = ReturnType<typeof useRemovalAndDialogs>;
 

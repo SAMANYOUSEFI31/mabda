@@ -5,8 +5,8 @@
 
 import type { AboutTarget } from '../../core/thoughtAbout';
 import type { FileQuotaInfo, WorkspaceState } from '../../types/state';
-import type { NodeDialogState } from '../../components/NodeDialogs';
-import type { PackTarget } from '../../components/ContextPackDialog';
+import type { NodeDialogState } from '../../components/structure/NodeDialogs';
+import type { PackTarget } from '../../components/context/ContextPackDialog';
 import { ContextObject, GeneratedDeliverable, ThoughtKind, Workspace, WorkstreamSpec } from '../../types';
 import { approvalsOf } from '../../core/versionHistory';
 import { dataApi } from '../../services/dataApi';
