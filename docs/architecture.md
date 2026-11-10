@@ -85,9 +85,15 @@
 
 حقیقت نیستند و به‌صورت دانش برنمی‌گردند مگر با «پیشنهاد ← تأیید».
 
-## ۷. جعبه‌ابزار کاربرد و تجربه‌ها
+## ۷. جعبه‌ابزار کاربرد
 
-شروع‌های آماده (`starters.ts`، `startTemplate.ts`)، قالب‌ها (`templates.ts`؛ جدول `templates`)، specها و کتابخانهٔ آن‌ها (`specs.ts`، `specLibrary.ts`؛ جدول `specs`)، نمونهٔ قهوه (`seedData.ts`، `demoData.ts`). **هیچ‌کدام چیز بنیادی تازه نمی‌سازند**؛ فقط بخش، دانش یا spec می‌چینند که پیش‌تر وجود دارند. «پروژه» هم کاربرد است، نه مفهوم (آزمون جنس).
+شروع‌های آماده (`starters.ts`، `startTemplate.ts`)، قالب بخش‌ها (`templates.ts`؛ جدول `templates`)، سؤال‌های راهنما (`QuickStartDialog`)، دستورپخت بسته (spec و کتابخانهٔ آن: `specs.ts`، `specLibrary.ts`؛ جدول `specs`)، نمونهٔ قهوه (`seedData.ts`، `demoData.ts`).
+
+**قاعده: یک کاربرد (پروژه، پژوهش، بررسی محصول، …) رابط جدا نمی‌گیرد.** فقط «داده» است: بخش‌ها و دانش‌هایی را که پیش‌تر وجود دارند می‌چیند، سؤال راهنما و دستورپخت بسته می‌دهد، و روی **همان رابط همیشگی** می‌نشیند: خانه، فکر، منبع، خروجی‌ها. بدون حالت و بدون زبانهٔ مخصوص «حالت پروژه».
+
+**چرا:** تصمیم قبلی محصول «کف پایین» است؛ کاربر نباید پیش از شروع بپرسد «در کدام حالت هستم؟». هر حالتِ جدا یعنی یک رابط دیگر برای آموختن و یک مسیر دیگر برای نگه‌داشتن. چیز بنیادی تازه هم نمی‌سازد (آزمون جنس).
+
+**لایهٔ «تجربهٔ ویژه» نداریم:** آنچه پیش‌تر با این نام فکر می‌شد همان کاربرد است و با آن ادغام شد؛ اگر روزی چیزی از آن کم آمد، با «آزمون جنس» در `docs/later.md` می‌آید.
 
 ## ۸. محورهای کناری
 
@@ -178,32 +184,62 @@
 
 `context.ts` (کمکی‌های مشترک: `stale`، `today`، …) · `bootstrap.ts` · `demo.ts` · `nodes.ts` · `archive.ts` · `account.ts` · `objects.ts` · `canvas.ts` (بوم و رابطه‌ها) · `notes-thoughts.ts` · `metrics.ts` · `outputs.ts` (Asset، دفتر، گفتگو، spec) · `judgments.ts` · `memory.ts` · `threads.ts` · `contradictions.ts` · `starters.ts` · `saved-packs.ts` · `packs.ts` · `usage.ts` · `files.ts`.
 
-### `src/App.tsx` (قبلاً ۲٬۰۰۰ خط)
-`App.tsx` (۴۳ خط) فقط هوک‌ها را به ترتیب صدا می‌زند و `AppView` را می‌دهد. هر هوک خروجی هوک‌های قبلی را می‌گیرد (همان وابستگی‌ای که قبلاً متغیرهای یک تابع بود).
+### `src/App.tsx` و `src/app/` (قبلاً `App.tsx` ۲٬۰۰۰ خط، سپس `AppView.tsx` ۸۵۰ خط)
+`App.tsx` (۴۳ خط) فقط هوک‌ها را به ترتیب صدا می‌زند (هر هوک خروجی هوک‌های قبلی را می‌گیرد) و `AppView` را می‌دهد. `AppView.tsx` (۳۸ خط) فقط انتخاب می‌کند: پیش از بار شدن فضای کاری «شروع تازه» یا «بوت»؛ پس از آن پوسته و صفحهٔ زبانهٔ فعال. **هر صفحه و هر گروه دیالوگ کنار هوک حوزهٔ خودش است** و فقط props خودش را می‌خواهد (`Pick<ReadyScope, …>`؛ وضعیت سراسری پنهان نیست: `ReadyScope` فقط نوع خروجی هوک‌هاست).
 
-| فایل | محتوا |
+| پوشه | فایل‌ها (هوک = منطق؛ صفحه و دیالوگ = رابط) |
 | --- | --- |
-| `shell/useAppCore.tsx` | بوت، state اصلی، ناوبری، toast، پلن |
-| `shell/useSearchAndFocus.ts` | جست‌وجو، فوکوس بخش، history |
-| `shell/useUsageCounters.ts` | شمارنده‌های مصرف و سهمیه |
-| `shell/useRemovalAndDialogs.tsx` | حذف/برگرداندن و باز و بسته شدن دیالوگ‌ها |
-| `workspace/useWorkspaceAssets.ts` | فضاهای کاری، Assetها، ساخت و بروزرسانی |
-| `knowledge/useKnowledge.tsx` | ذخیره، جایگزینی، بایگانی، تأیید دانش |
-| `thinking/useNotes.ts` · `thinking/useThinkingItems.ts` | یادداشت؛ فکر و فضای فکر |
-| `home/useHome.ts` | خانه، بازبینی هفتگی، خبرها |
-| `metrics/useMetrics.ts` · `files/useFiles.ts` | شاخص‌ها؛ فایل‌ها |
-| `structure/useNodeActions.tsx` · `structure/useStarters.ts` | ساخت/جابه‌جایی/حذف بخش؛ شروع‌کننده‌ها |
-| `canvas/useBoards.ts` | بوم: حرکت، اتصال، کادر |
-| `AppView.tsx` | JSX کل برنامه (محافظ‌های return زودهنگام + نما) |
-| `lazy.tsx` | بار شدن تکه‌تکه (پایین) |
-| `shared.ts` | نوع مشترک (`AppScope`) |
+| `src/app/` | `AppView.tsx` انتخاب صفحه · `shared.ts` (`AppScope`، `ReadyScope`، `errText`) · `lazy.tsx` بار شدن تکه‌تکه |
+| `shell/` | `useAppCore` بوت و state اصلی · `useSearchAndFocus` جست‌وجو و فوکوس · `useUsageCounters` شمارنده‌ها · `useRemovalAndDialogs` حذف، باز/بسته شدن دیالوگ‌ها و `renderCanvas` · `AppShell` قاب (ناوبری، نوار بالا، main) · `AppDialogs` همهٔ دیالوگ‌ها · `ShellDialogs` پالت فرمان · `FirstRunScreen`، `BootScreen` |
+| `home/` | `useHome` · `HomePage` · `HomeDialogs` (بازبینی هفتگی) |
+| `knowledge/` | `useKnowledge` · `KnowledgePage` (منبع) · `KnowledgeDialogs` |
+| `thinking/` | `useNotes`، `useThinkingItems` · `ThinkingPage` · `ThinkingDialogs` |
+| `structure/` | `useNodeActions`، `useStarters` · `StructureDialogs` |
+| `canvas/` | `useBoards` |
+| `files/`، `metrics/` | `useFiles` · `useMetrics`، `MetricsDialogs` |
+| `workspace/` | `useWorkspaceAssets` · `LedgerPage` · `WorkspaceDialogs` |
+| `outputs/` | `WorkstreamsPage`، `AssetsPage` · `OutputsDialogs` |
+| `context/` | `ContextDialogs` (بسته، درخواست برای AI، وارد کردن پاسخ، گفتگوی بخش) |
 
-**صادقانه:** هدف «App.tsx زیر ~۳۰۰ خط» برآورده شد (۴۳)، ولی `AppView.tsx` هنوز ~۸۵۰ خط است: JSX نما کلمه‌به‌کلمه منتقل شد و شکستن آن به کامپوننت‌های هر صفحه کار بعدی است (تغییر JSX ریسک بصری دارد و در «۰ب» ممنوع بود).
+### `src/components/` (قبلاً ۷۵ فایل در یک پوشه)
+**انتخاب: `src/components/<حوزه>/`، نه `src/app/<حوزه>/components`.** دلیل: `src/app` «سیم‌کشی» است (هوک، صفحه، دیالوگ‌ها) و `src/components` «رابط» است؛ جزءها از هوک خبر ندارند و فقط props می‌گیرند. با پوشهٔ جدا این مرز دیده می‌شود، و `language.test` و `noFixedNodes.test` هر دو را می‌گردند. حوزه‌ها همان‌های `src/app` هستند. **نام و export هیچ جزئی عوض نشد؛ فقط مسیر.**
 
-### بار شدن تکه‌تکه («۰ب»)
-- صفحه‌های سنگین (`ThinkingSpace`، `ContextCanvas`، `WorkstreamStudio`، `DocWorkspace`، `ContextTableView`، `FilesPanel`، `AssetLibrary`، `LedgerPanel`) با `lazyNamed` (React.lazy + یک بار تلاش دوباره) و `PageSuspense` (جای‌نگهدار هم‌قد) بار می‌شوند.
-- ۲۵ دیالوگ با `Deferred` فقط **بار اول باز شدن** دانلود می‌شوند.
-- موتور Markdown (react-markdown + GFM) تکهٔ جدا؛ تا آماده شود متن ساده نشان داده می‌شود (هیچ‌وقت خالی نیست).
-- خطای بار شدن: `ChunkBoundary` پیام «این بخش بار نشد» + «دوباره»؛ نه صفحهٔ خالی.
-- **اندازه (build واقعی):** JS اولیه از **۱٬۱۲۶٫۸۸ kB** به **~۴۸۶ kB** (`index` ۴۴۸٫۴۹ + `ui` ۳۷٫۷۵)، یعنی ۵۶٪ کمتر (هدف: کمتر از نصف).
-- `scripts/scenario-lazy.mjs` در ۱۲۸۰ و ۳۹۰: خانه صفحه‌های سنگین را نمی‌خواهد؛ قطع شبکه برای یک تکه → پیام + «دوباره»؛ دیالوگ بار اول باز شدن بار می‌شود.
+| پوشه | جزءها |
+| --- | --- |
+| `shared/` | `AiNotices`، `BeforeAfter`، `BlockView`، `ClosedSection`، `MentionTextarea`، `Removal` (بیش از یک حوزه استفاده می‌کند) |
+| `shell/` | `AppNavigation`، `CommandPalette`، `TopStatusBar` |
+| `home/` | `HomeTodo`، `DueItems`، `AttentionPanel`، `WeeklyReviewDialog`، `InheritNoticeList` |
+| `knowledge/` | جزئیات، جدول، سند، تاریخچهٔ نسخه، تغییرات، ورود گروهی و حافظه، بایگانی، مقایسهٔ منبع، گزینه‌های تصمیم، خواننده و اثر بخش، صندوق پیشنهاد، تناقض، Coach، موتور Gap، منشأ، تأثیر، انتخابگر رابطه |
+| `thinking/` | `ThinkingSpace`، `ThinkingList`، `ThoughtDialog`، `NodeNotes`، `NoteLines`، `AboutPicker` |
+| `structure/` | `NodeDialogs`، `QuickStartDialog`، `StarterDialog` |
+| `context/` | `ContextPackDialog`، `AiRequestDialog`، `ImportAnswerDialog`، `SavedPacksDialog`، `ScopeExplain`، `NodeThreadPanel`، `SmartChat` |
+| `outputs/` | `AssetLibrary`، `WorkstreamStudio`، `SpecEditorModal`، `SpecLibraryDialog`، `ContextReplayCard` |
+| `canvas/` | `ContextCanvas` و اجزایش (لبه، بازرس، کارت، نقشهٔ کوچک، لایهٔ نمای کلی، اتصال)، `usePanZoom` |
+| `metrics/`، `files/`، `workspace/` | شاخص‌ها؛ `FilesPanel`؛ حساب، پلن، مصرف و دفتر |
+
+هشدار «import دوگانه»ی `AccountModal` (هم lazy هم static) با جدا کردن ثابت `WIPE_WORDS` در `workspace/wipeWords.ts` رفع شد.
+
+قاعدهٔ تقسیم: هر فایل جدید فقط یک «جنس» را حمل کند؛ منطق قطعی در `src/core`، دسترسی به داده در `server/db`، رابط در `src/components`؛ هیچ وابستگی از `src/core` به `server` یا `src/components` نیست.
+
+### `src/core/` صاف می‌ماند: هر موتور به کجا تعلق دارد
+پوشه‌بندی نمی‌شود چون موتورها از هم می‌خوانند و جابه‌جایی‌شان فقط مسیر import را عوض می‌کند، بی‌آن‌که چیزی روشن شود؛ جدول زیر نقشهٔ آن‌هاست.
+
+| حوزه | موتورها | سازوکار |
+| --- | --- | --- |
+| دانش و حقیقت | `effectiveContext`، `contextStatus`، `contextEngine`، `knowledgeGuess`، `assumptions`، `redlineExamples`، `provenance`، `versionHistory`، `truthCompare`، `textDiff` | حل دانش مؤثر، Gap و Readiness، منشأ، مقایسهٔ منبع |
+| رابطه و تصمیم | `decisionGraph`، `decisionOrder`، `decisionOptions`، `impactEngine`، `influence`، `dependencyReduction`، `graphAlgo`، `specGraph`، `upstreamLinks`، `relationPlan`، `connectRules`، `pairBlocking`، `contradictionCandidates` | پخش اثر، ترتیب و گروه تصمیم‌ها، تناقض |
+| فکر و یادداشت | `thinkingMarkers`، `thinkingSpace`، `thoughts`، `thoughtAbout`، `thoughtBatch`، `mentions`، `batchLines`، `homeActions` | تجزیهٔ خط، «فکر باز» (`openThoughts`)، ارتقا، نگاشت ورودی |
+| بوم | `canvasScene`، `canvasModel`، `canvasFrames`، `canvasHistory`، `canvasLod`، `swimlane`، `lineage`، `mapModel`، `sceneParts`، `edgeRouting`، `jsonCanvas`، `nodeFocus`، `scopeMove`، `nodeMove` | ساخت صحنه (نمایش، نه ذخیره) |
+| ساخت Context و ورودی | `contextPack`، `packScope`، `scopeExplain`، `proposalContext`، `retrieval`، `aiRequest`، `answerParser`، `answerMapping`، `knowledgeBatch`، `blocks`، `contextMarkdown`، `tokens` | بسته و درخواست برای AI، نگاشت پاسخ بیرونی |
+| ساختار و کاربرد | `nodeTree`، `specs`، `specLibrary`، `starters`، `startTemplate`، `templates`، `quickStartSummary`، `seedData`، `demoData`، `removal`، `globalSearch` | درخت، شروع‌های آماده، حذف و برگرداندن |
+| تاریخچه و بازبینی | `changeLog`، `changeDigest`، `weeklyReview`، `inheritNotice` | Change log، بازبینی هفتگی |
+| شاخص (خارج دامنه) | `metrics`، `metricsText` | اندازه‌گیری، نه دانش |
+| پلن، سهمیه، هزینه | `entitlements`، `entitlements.config`، `creditEngine` (فریز)، `usage`، `ledger`، `costReport`، `judgePolicy`، `visibleFeatures` | سهمیه و سقف‌ها؛ فقط `entitlements.config` عددها را دارد |
+
+## بدهی آگاهانه
+
+**همهٔ متدهای دسترسی به داده (۱۵۷ متد) هنوز در یک کلاس `Repo` ترکیب می‌شوند** (فایل‌های `server/db/repo/*.ts` با `Object.assign(Repo.prototype, …)`). مرز حوزه‌ها در کد **اجبار نمی‌شود**: هر حوزه می‌تواند متد حوزهٔ دیگر را صدا بزند (مثلاً `deleteNode` هم به یادداشت و فکر و فایل دست می‌زند؛ فهرست تراکنش‌های چنددامنه‌ای بالاتر آمده).
+
+**چرا الان پذیرفته شد:** (۱) هیچ فراخوانی عوض نشد و تست‌ها (از جمله مقایسهٔ فهرست مسیرها) بدون تغییر ماندند؛ (۲) تراکنش‌ها سالم ماندند: همه روی یک `db`‌اند و به تزریق وابستگی بین حوزه‌ها نیازی نیست؛ (۳) مرز واقعی را هنوز نمی‌دانیم (مثلاً «بوم»، «یادداشت» و «فکر» در عمل به هم گره‌اند) و مرزی که زود اجبار شود زود هم غلط درمی‌آید.
+
+**کی بازبینی شود:** وقتی (الف) **لایهٔ هوش** اضافه شود و بخواهد فقط بخشی از داده را بخواند یا نوشتن را فقط از راه «پیشنهاد ← تأیید» بگذراند، یا (ب) **تیم** اضافه شود و دو نفر هم‌زمان روی دو حوزه کار کنند؛ آن‌وقت هر حوزه یک رابط صریح (نوع) می‌گیرد و فراخوانی بین‌حوزه‌ای از مرز آن می‌گذرد.
