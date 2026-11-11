@@ -44,8 +44,11 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | `shadow-1/2/3` | `shadow.seated/raised/overlay` | همان کلید، مقدار تازه؛ `shadow.overflow` حذف |
 | `blur-bar`، `saturate-bar` | ندارد | **اضافه شود** (`effect.bar-blur`، `effect.bar-saturate`) |
 | `sidebar-*`، `content-*`، `measure`، `margin-col`، `inspector`، `bar-*`، `dialog-*` | بخشی در `overlay-width.*` و `container.*` | **اضافه یا هم‌مقدار شود** با جدول پایین |
-| `duration-base`، `duration-moderate` | `duration.normal`، `duration.slow` | مقدار تازه؛ `duration.slower` = ۳۶۰ |
-| `ease-standard`، `ease-settle` | `ease.move`، ندارد | `ease.settle` اضافه شود |
+| `duration-instant/fast/base/moderate/slow/stagger` | `duration.instant/fast/normal/slow/slower/stagger` | همان کلید، مقدار تازه: ۸۰ · ۱۴۰ · ۲۰۰ · ۲۸۰ · ۳۶۰ · ۳۰ |
+| `duration-spin`، `duration-pulse` | `duration.spin`، `duration.pulse` | همان کلید؛ ۹۰۰ و ۱۴۰۰ |
+| `ease-standard`، `ease-enter`، `ease-exit`، `ease-settle` | `ease.move`، `ease.enter`، `ease.exit`، ندارد | مقدار تازه طبق جدول «منحنی»؛ `ease.settle` اضافه شود |
+| `z-*` | `layer.*` | همان کلیدها و همان ترتیب؛ مقدارهای کد می‌مانند (`z-raised` = `layer.raised`، `z-bar` = `layer.sticky`، `z-skip` = `layer.skip-link`) |
+| `dialog-sm/md/lg/xl` | `overlay-width.sm/md/lg` | `sm` ۴۰۰ می‌ماند، `md` ۴۸۰ ← ۵۲۰، `lg` ۶۴۰ ← ۷۲۰، `xl` ۹۶۰ اضافه شود؛ `overlay-width.xs` (۲۴۰) فقط کمترین پهنای منو |
 | سبک‌های تایپ | `type.*` | مقدار تازه مطابق [typography.md](./typography.md)؛ واحد `rem` |
 
 ## رنگ
@@ -76,12 +79,12 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | توکن | مقدار | کاربرد |
 | --- | --- | --- |
 | `radius-xs` | `4px` | kbd، برجسته‌سازی متن، خانهٔ تقویم. |
-| `radius-sm` | `6px` | chip مستطیلی، ردیف منو در منوی فشرده، کنترل sm. |
+| `radius-sm` | `6px` | راهنمای ابزار، کنترل sm. |
 | `radius-md` | `8px` | دکمه، فیلد، ردیف منو و ناوبری. |
 | `radius-lg` | `12px` | برگ، کارت، منو، popover، کاشی انتخاب نوار تب. |
 | `radius-xl` | `16px` | دیالوگ، پنل کناری. |
 | `radius-2xl` | `20px` | گوشهٔ بالای sheet گوشی. |
-| `radius-full` | `999px` | نشان شمارش، chip فیلتر، سوئیچ، دستگیره. |
+| `radius-full` | `999px` | شمارنده، chip فیلتر، سوئیچ، آواتار، دستگیرهٔ برگه. |
 
 ## سایه
 
@@ -95,7 +98,7 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 
 | توکن | مقدار | کاربرد |
 | --- | --- | --- |
-| `control-sm` | `32px` | کنترل فشرده (فقط اشاره‌گر دقیق؛ ناحیهٔ لمس ۴۴ با ::after). |
+| `control-sm` | `32px` | کنترل فشرده. روی اشاره‌گر درشت ۳۶ دیده می‌شود و ناحیهٔ لمسش با ::after به ۴۴ می‌رسد. |
 | `control-md` | `40px` | کنترل پیش‌فرض. با اشاره‌گر درشت (لمس) ۴۴px می‌شود. |
 | `control-lg` | `48px` | دکمهٔ اصلی تمام‌عرض گوشی، فیلد جست‌وجوی بزرگ. |
 | `touch-min` | `44px` | کمترین ناحیهٔ لمس هر کنترل روی دستگاه لمسی. |
@@ -104,7 +107,8 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | `icon-lg` | `24px` | آیکن نوار تب پایین و نوار بالا. |
 | `nuqta-sm` | `8px` | نقطهٔ وضعیت کنار متن ۱۴. |
 | `nuqta-md` | `10px` | نقطهٔ وضعیت کنار عنوان قلم دانش. |
-| `nuqta-lg` | `14px` | نقطهٔ خط زمان نسخه‌ها. |
+| `nuqta-lg` | `14px` | نقطهٔ خط زمان نسخه‌ها و نوار کناری. |
+| `nuqta-xl` | `28px` | نقطهٔ «جای خالی» در حالت خالی. |
 
 ## چیدمان
 
@@ -113,7 +117,7 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | `bp-sm` | `600px` | گوشی بزرگ/افقی: sheet با سقف پهنای ۵۶۰ وسط می‌نشیند. |
 | `bp-md` | `768px` | تبلت: نوار تب پایین می‌رود، ریل ۶۴ می‌آید. |
 | `bp-lg` | `1024px` | لپ‌تاپ: نوار کناری باز مجاز (پیش‌فرض ریل). |
-| `bp-xl` | `1280px` | دسکتاپ: نوار کناری باز پیش‌فرض، ستون حاشیه دیده می‌شود. |
+| `bp-xl` | `1280px` | دسکتاپ: نوار کناری باز پیش‌فرض. |
 | `bp-2xl` | `1536px` | عریض: محتوا وسط‌چین با سقف ۱۱۲۰ + حاشیه. |
 | `sidebar-width` | `264px` | پهنای پیش‌فرض نوار کناری. |
 | `sidebar-min` | `232px` | کمترین پهنا با کشیدن؛ کمتر از ۲۰۰ ← ریل. |
@@ -122,25 +126,30 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | `content-min` | `560px` | کمترین پهنای ستون محتوا؛ اگر جا نشود نوار کناری خودش ریل می‌شود. |
 | `measure` | `680px` | پهنای سطر «متن» (حدود ۶۸ نویسه). |
 | `content-max` | `1120px` | سقف پهنای محتوا. |
-| `margin-col` | `288px` | ستون «حاشیه» کنار متن از ۱۲۸۰ به بالا. |
+| `margin-col` | `288px` | ستون «حاشیه» کنار متن، وقتی ظرف محتوا دست‌کم ۱۰۰۰ است ([layout.md](./layout.md)). |
+| `measure-min` | `600px` | کمترین پهنای ستون متن وقتی حاشیه کنارش است. |
 | `inspector` | `400px` | پنل جزئیات (۳۶۰ تا ۵۶۰ با کشیدن). |
-| `bar-top` | `56px` | نوار بالا (گوشی ۵۲). |
+| `bar-top` | `56px` | نوار بالا در همهٔ پهناها (+ ناحیهٔ امن در گوشی). |
 | `bar-tab` | `56px` | نوار تب پایین، به‌علاوهٔ safe-area. |
 | `dialog-sm` | `400px` | تأیید و پرسش کوتاه. |
 | `dialog-md` | `520px` | فرم (پیش‌فرض). |
-| `dialog-lg` | `720px` | محتوای دوستونه، پیش‌نمایش، جست‌وجو. |
-| `dialog-xl` | `960px` | مقایسه و جدول؛ بیشتر از این، نمای کامل است نه دیالوگ. |
+| `dialog-lg` | `720px` | مرور، مقایسهٔ دو نسخه، فهرست انتخاب، جست‌وجو و فرمان. |
+| `dialog-xl` | `960px` | دو ستون: فهرست و پیش‌نمایش؛ بیشتر از این، نمای کامل است نه دیالوگ. |
 
 ## مدت
 
 | توکن | مقدار | کاربرد |
 | --- | --- | --- |
-| `duration-instant` | `80ms` | فشردن، تغییر رنگ فوری. |
-| `duration-fast` | `140ms` | hover، فوکوس، تیک، سوئیچ. |
-| `duration-base` | `200ms` | منو، popover، tooltip، toast. |
-| `duration-moderate` | `280ms` | دیالوگ، باز و بسته شدن بخش، جابه‌جایی ردیف. |
-| `duration-slow` | `360ms` | sheet گوشی، پنل کناری، نشستن نقطه. |
-| `duration-stagger` | `30ms` | فاصلهٔ ورود ردیف‌های پشت‌سرهم؛ حداکثر ۶ ردیف. |
+| `duration-instant` | `80ms` | |
+| `duration-fast` | `140ms` | |
+| `duration-base` | `200ms` | |
+| `duration-moderate` | `280ms` | |
+| `duration-slow` | `360ms` | |
+| `duration-stagger` | `30ms` | |
+| `duration-spin` | `900ms` | یک دور چرخه |
+| `duration-pulse` | `1400ms` | تپش اسکلت |
+
+کدام حرکت کدام مدت را می‌گیرد، و قاعدهٔ خروج (یک پله پایین‌تر)، فقط در [motion.md](./motion.md) است.
 
 ## منحنی
 
@@ -148,14 +157,14 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | --- | --- | --- |
 | `ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` | جابه‌جایی و تغییر اندازه روی صفحه. |
 | `ease-enter` | `cubic-bezier(0, 0, 0, 1)` | ورود: تند شروع می‌شود و آرام می‌نشیند. |
-| `ease-exit` | `cubic-bezier(0.3, 0, 1, 1)` | خروج: ۰٫۷۵ برابر مدت ورود. |
+| `ease-exit` | `cubic-bezier(0.3, 0, 1, 1)` | خروج: آرام شروع، تند تمام. |
 | `ease-settle` | `cubic-bezier(0.34, 1.3, 0.64, 1)` | فقط «نشستن نقطه» هنگام تأیید: تنها جای مجاز برای کمی جهش. |
 
 ## جلوه
 
 | توکن | مقدار | کاربرد |
 | --- | --- | --- |
-| `blur-bar` | `16px` | backdrop-filter نوارهای surface-bar. تیره: ۲۰px. |
+| `blur-bar` | `16px` | backdrop-filter نوارهای surface-bar، در هر دو تم. |
 | `saturate-bar` | `1.4` | اشباع پشت نوار تا رنگ محتوا خاکستری نشود. |
 | `opacity-disabled` | `0.4` | کنترل غیرفعال. |
 | `opacity-dragging` | `0.6` | جای خالی چیزی که کشیده می‌شود. |
