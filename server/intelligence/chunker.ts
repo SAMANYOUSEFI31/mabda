@@ -30,7 +30,7 @@ function cutWindow(text: string, maxChars: number): [string, string] {
 }
 
 /** تیتر صریح مارک‌داون: هر تیتر یک بخش جدید را آغاز می‌کند */
-function splitByHeadings(text: string): string[] {
+export function splitByHeadings(text: string): string[] {
   const parts: string[] = [];
   let cur: string[] = [];
   for (const line of text.split('\n')) {
