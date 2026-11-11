@@ -8,7 +8,7 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -73,12 +73,11 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const card = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
+    <Card key={obj.id} padding="lg" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
       <div className="flex items-start justify-between gap-inline-sm">
         <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
           <TypeBadge value={obj.type} />
-          <AssumptionBadge object={obj} />
           <ReachBadge object={obj} />
           <AssumptionBadge object={obj} />
           <StatusBadge value={obj.status} />
@@ -93,7 +92,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   );
 
   const sampleCard = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm border-dashed opacity-70">
+    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} knowledge="thought" className="flex flex-col gap-stack-sm">
       <div className="flex items-start justify-between gap-inline-sm">
         <h4 className="title min-w-space-0 flex-1 text-text-subtle">{obj.title}</h4>
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs"><SampleBadge /><TypeBadge value={obj.type} /></div>

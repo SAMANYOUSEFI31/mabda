@@ -135,7 +135,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
         {p.editing ? (
           <>
             <textarea aria-label="متن یادداشت" value={p.editing.text} onChange={(e) => p.onEditText(e.target.value)} className="body-sm min-h-space-0 flex-1 resize-none rounded-control-sm border border-border-input bg-surface-raised p-inset-xs text-text-default" />
-            <span className="flex gap-inline-xs"><button type="button" onClick={p.onSave} className="bsh-btn bsh-btn--secondary bsh-btn--sm">ذخیره</button><button type="button" onClick={p.onCancel} className="bsh-btn bsh-btn--ghost bsh-btn--sm">انصراف</button></span>
+            <span className="flex gap-inline-xs"><button type="button" onClick={p.onSave} className="mb-btn mb-btn--secondary mb-btn--sm">ذخیره</button><button type="button" onClick={p.onCancel} className="mb-btn mb-btn--ghost mb-btn--sm">انصراف</button></span>
           </>
         ) : (
           <>

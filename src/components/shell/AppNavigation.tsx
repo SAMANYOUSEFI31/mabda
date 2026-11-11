@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
 import { PLANS } from '../../core/creditEngine';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, formatNumber } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, formatNumber, useTheme, nextTheme, THEME_LABEL } from '../../ui';
 import type { IconName, MenuItem } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 
@@ -76,6 +76,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const planName = plan.title.split(' ')[0];
 
   const ai = useAiStatus();
+  const [theme, setTheme] = useTheme();
   const accountItems: Array<MenuItem & { section: 'workspace' | 'import' | 'plan' | 'account' }> = [
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
@@ -89,6 +90,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
     { section: 'account', label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
     { section: 'account', label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
+    { section: 'account', label: `ظاهر: ${THEME_LABEL[theme]}`, icon: 'Palette', onSelect: () => setTheme(nextTheme(theme)) },
   ];
   const withDividers = (): MenuItem[] => {
     const out: MenuItem[] = [];

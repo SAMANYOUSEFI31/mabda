@@ -55,7 +55,7 @@ try {
       if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
     };
-    const primaries = () => page.locator('main button[class*="primary"], main .bsh-btn--primary').evaluateAll((els) => els.filter((e) => e.offsetParent !== null).length);
+    const primaries = () => page.locator('main button[class*="primary"], main .mb-btn--primary').evaluateAll((els) => els.filter((e) => e.offsetParent !== null).length);
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Screenshot every main view at 390px and 1280px into docs/screens/ and print layout audit findings
- * (horizontal overflow, text < 12px, long text < 14px, touch targets < 44px, physical-direction misplacement).
+ * Screenshot every main view at 390px and 1280px, light and dark, into docs/screens/ and print layout audit findings
+ * (horizontal overflow, text < 12px, long text < 14px, touch targets < 44px, WCAG contrast, more than one primary).
+ * Light files are <view>-<width>.png, dark files <view>-<width>-dark.png. SCHEMES=light (or dark) runs one mode only.
  * Usage: node scripts/screens.mjs [baseUrl]   (default http://localhost:3100)
  */
 import { chromium } from 'playwright';
@@ -28,8 +29,8 @@ const audit = () => {
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
   const over = (top, bot) => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 });
   const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
-  const bgOf = (el) => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(e); let bg = { r: 9, g: 9, b: 11, a: 1 }; for (const e of chain.reverse()) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) bg = over(c, bg); } return bg; };
-  out.primaries = [...document.querySelectorAll('.bsh-btn--primary')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[inert]'); }).length;
+  const bgOf = (el) => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(e); let bg = { r: 255, g: 255, b: 255, a: 1 }; for (const e of chain.reverse()) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) bg = over(c, bg); } return bg; };
+  out.primaries = [...document.querySelectorAll('.mb-btn--primary')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[inert]'); }).length;
   const de = document.documentElement;
   if (de.scrollWidth > de.clientWidth + 1) {
     const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
@@ -50,6 +51,12 @@ const audit = () => {
         const l1 = lum(f), l2 = lum(bg); const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
         const large = fs >= 24 || (fs >= 18.66 && parseInt(getComputedStyle(el).fontWeight) >= 700);
         if (ratio < (large ? 3 : 4.5)) out.contrast.push(`${ratio.toFixed(2)}:1 ${fs}px "${own.slice(0, 30)}"`);
+        // APCA (perceptual, polarity-aware) floor next to WCAG: Lc 45 is the least for any readable text, 60 for running text ≥ 14px
+        const ay = (c) => 0.2126729 * (c.r / 255) ** 2.4 + 0.7151522 * (c.g / 255) ** 2.4 + 0.072175 * (c.b / 255) ** 2.4;
+        const cl = (v) => (v > 0.022 ? v : v + (0.022 - v) ** 1.414);
+        const yt = cl(ay(f)), yb = cl(ay(bg));
+        const lc = Math.abs((yb > yt ? (yb ** 0.56 - yt ** 0.57) * 1.14 - 0.027 : (yb ** 0.65 - yt ** 0.62) * 1.14 + 0.027) * 100);
+        if (lc < (own.length > 30 && fs < 18 ? 60 : 45) && ratio >= (large ? 3 : 4.5)) out.contrast.push(`APCA Lc ${lc.toFixed(0)} ${fs}px "${own.slice(0, 30)}"`);
       }
       const key = `${fs}|${own.slice(0, 24)}`;
       if (!seen.has(key)) {
@@ -60,7 +67,7 @@ const audit = () => {
     }
     if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {
       const r = el.getBoundingClientRect();
-      const hitPseudo = /bsh-btn--sm|bsh-iconbtn--sm|bsh-tab\b|bsh-tag__remove|bsh-page|bsh-check__input|bsh-radio__input|bsh-switch__input/.test(el.className);
+      const hitPseudo = /mb-btn--sm|mb-iconbtn--sm|mb-tab\b|mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className);
       // controls INSIDE the canvas stage scale with the zoom by design (docs/canvas-design.md); every one has a ≥ 44px equivalent in the inspector / menu
       if (el.closest('[data-testid=canvas-stage]')) continue;
       if ((r.height < 43.5 || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
@@ -118,8 +125,10 @@ const audit = () => {
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 let problems = 0;
-for (const size of SIZES) {
-  const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR' });
+const SCHEMES = (process.env.SCHEMES || 'light,dark').split(',');
+for (const scheme of SCHEMES) for (const baseSize of SIZES) {
+  const size = { ...baseSize, name: baseSize.name + (scheme === 'dark' ? '-dark' : '') };
+  const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR', colorScheme: scheme });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });

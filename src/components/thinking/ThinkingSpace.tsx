@@ -155,7 +155,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
           <h3 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h3>
           {drafts.map((o) => (
-            <Card key={o.id} padding="lg" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
+            <Card key={o.id} padding="lg" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><Badge intent="warning" icon={false}>۱ تغییر در انتظار تأیید</Badge><span className="caption text-text-subtle">{nodeLabel(o.nodeId)}</span></span>
               </div>

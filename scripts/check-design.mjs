@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check:design — fails when UI source bypasses the Bushido semantic tokens.
+ * check:design — fails when UI source bypasses Mabda's semantic tokens (src/ui/tokens, docs/design-system/tokens.md).
  *
  * Flags (in src/** and index.html):
  *   hex        raw hex colors                           #09090b
@@ -11,7 +11,8 @@
  *   physical   left/right instead of logical props      ml-2  pr-4  text-right  left-0  marginLeft  border-l
  *   scale      non-token scales                         p-4  gap-2  w-8  text-xs  font-medium  italic  shadow-md
  *
- * Only `public/ds` may contain raw values; it is never scanned.
+ * Only the generated token files (src/ui/tokens/build/) contain raw values; they are never scanned (src/ui/tokens.test.ts
+ * proves they equal the DTCG source). Primitive palette names (ink, lapis, …) exist only in JSON, never as CSS variables.
  * Usage: node scripts/check-design.mjs [--list-rules]
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -21,8 +22,9 @@ const ROOT = process.cwd();
 const TARGETS = ['src', 'index.html'];
 const EXT = new Set(['.ts', '.tsx', '.css', '.html']);
 const SKIP_DIR = new Set(['node_modules', 'dist']);
+const SKIP_PATH = /^src\/ui\/tokens\/build\//;
 
-const PALETTE = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|crimson|vermilion)';
+const PALETTE = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|crimson|vermilion|ink|lapis|verdigris|ochre|brick|petrol)';
 const COLOR_PREFIX = '(?:bg|text|border|border-[xytblrse]|divide|ring|ring-offset|outline|fill|stroke|from|via|to|shadow|decoration|accent|caret|placeholder)';
 const SPACING_PREFIX = '(?:p|px|py|pt|pb|ps|pe|m|mx|my|mt|mb|ms|me|gap|gap-x|gap-y|space-x|space-y|w|h|size|min-w|min-h|max-w|max-h|inset|inset-x|inset-y|top|bottom|start|end|basis)';
 
@@ -30,7 +32,7 @@ const rules = [
   // ---- raw-line rules ----
   { id: 'hex', line: true, re: /(?<![\w&/])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b(?!-)/g, msg: 'raw hex color — use a semantic token' },
   { id: 'color-fn', line: true, re: /\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/g, msg: 'color function — use a semantic token' },
-  { id: 'raw-var', line: true, re: /var\(--(?:neutral|crimson|vermilion|amber|emerald|sky)-(?:\d+|a\d+)\)|var\(--white(?:-a\d+)?\)|var\(--neutral-950-a88\)/g, msg: 'raw palette variable — use surface-*/bg-*/text-*/border-* tokens' },
+  { id: 'raw-var', line: true, re: /var\(--(?:neutral|crimson|vermilion|amber|emerald|sky|ink|lapis|verdigris|ochre|brick|petrol)-(?:\d+|a\d+)\)|var\(--white(?:-a\d+)?\)/g, msg: 'raw palette variable — use surface-*/bg-*/text-*/border-* tokens' },
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
   // ---- token (class) rules ----
@@ -72,6 +74,7 @@ for (const target of TARGETS) {
   try { statSync(abs); } catch { continue; }
   for (const file of walk(abs)) {
     const rel = relative(ROOT, file).replaceAll(sep, '/'); // one path style on every OS (the rules match «src/ui/»)
+    if (SKIP_PATH.test(rel)) continue;
     const lines = readFileSync(file, 'utf8').split('\n');
     lines.forEach((line, i) => {
       // `theme-color` meta cannot use var(); it is the one documented raw value (same as the DS brief).

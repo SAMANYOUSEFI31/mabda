@@ -69,7 +69,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
 
                   <ul className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md body-sm">
                     {rows.map((r) => (
-                      <li key={r.text} className={`flex items-start gap-inline-sm ${r.ok ? 'text-text-default' : 'text-text-subtlest'}`}>
+                      <li key={r.text} className={`flex items-start gap-inline-sm ${r.ok ? 'text-text-default' : 'text-text-subtle'}`}>
                         <Icon name={r.ok ? 'Check' : 'Minus'} size="sm" className="mt-stack-xs shrink-0" />
                         <span><span className="sr-only">{r.ok ? 'شامل: ' : 'شامل نیست: '}</span>{r.text}</span>
                       </li>
