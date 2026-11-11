@@ -82,7 +82,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
     ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
     // grouped by what you are doing: plan and usage · the account (a divider between groups)
-    { section: 'import', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
+    { section: 'import', label: 'وارد کردن حافظه از ابزار دیگر', icon: 'Brain', onSelect: p.onOpenMemory },
     { section: 'plan', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),

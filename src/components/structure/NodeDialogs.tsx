@@ -12,6 +12,7 @@ import { nodeRemovalPlan } from '../../core/removal';
 import type { RemovalMode } from '../../core/removal';
 import { ClosedSection } from '../shared/ClosedSection';
 import { CoachPanel } from '../knowledge/CoachPanel';
+import { useAiStatus } from '../../services/aiStatus';
 import type { LedgerEntry } from '../../types';
 
 export type NodeDialogState =
@@ -59,6 +60,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
   const [moveReason, setMoveReason] = useState('');
   const [delMode, setDelMode] = useState<RemovalMode>('move');
   const [busy, setBusy] = useState(false);
+  const { managedEnabled } = useAiStatus();
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -66,6 +68,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
   };
 
   if (state.kind === 'coach') {
+    if (!managedEnabled) return null;
     const n = nodes.find((x) => x.id === state.nodeId);
     if (!n) return null;
     return (
@@ -83,7 +86,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         onClose={onClose}
         size="sm"
         title={state.kind === 'create' ? (parent ? `گرهٔ جدید زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.') : undefined}
+        description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : managedEnabled ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined) : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -105,7 +108,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
               if (state.thought) {
                 const th = state.thought;
                 onCreate(createParent, label.trim(), description.trim()).then((nodeId) => onThoughtSectioned?.(th, label.trim(), nodeId)).then(onClose).catch(() => undefined).finally(() => setBusy(false));
-              } else onCreate(createParent, label.trim(), description.trim()).then(onOpenCoach).catch(() => undefined).finally(() => setBusy(false));
+              } else onCreate(createParent, label.trim(), description.trim()).then((id) => { if (managedEnabled) onOpenCoach(id); else onClose(); }).catch(() => undefined).finally(() => setBusy(false));
             } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}
         >

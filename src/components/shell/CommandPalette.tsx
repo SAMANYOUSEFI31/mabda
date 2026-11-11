@@ -51,7 +51,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
 
   let n = 0;
   return (
-    <Dialog open onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ AI‌ای نمی‌روند.">
+    <Dialog open onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.">
       <div className="flex flex-col gap-stack-md" onKeyDown={onKey}>
         <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md">
           <Icon name="Search" size="md" />

@@ -35,7 +35,7 @@ export const AiErrorNotice: React.FC<{ error: AiErrorInfo; onRetry?: () => void;
  * Config warnings (unverified model ids…) live in the AI settings dialog, not here.
  */
 export const AiStatusBanner: React.FC = () => {
-  const { status, error, loading, refresh } = useAiStatus();
+  const { status, error, loading, refresh, managedEnabled } = useAiStatus();
   if (loading && !status && !error) return null;
   const bar = (tone: 'warning' | 'danger', text: string, action: React.ReactNode) => (
     <div role="status" className={`flex flex-wrap items-center justify-between gap-inline-md rounded-control-sm border px-inset-md py-inset-xs ${tone === 'danger' ? 'border-border-danger-subtle bg-bg-danger-subtle' : 'border-border-warning-subtle bg-bg-warning-subtle'}`}>
@@ -44,7 +44,8 @@ export const AiStatusBanner: React.FC = () => {
     </div>
   );
   if (error) return bar('danger', 'ارتباط با سرور برقرار نشد.', <Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void refresh()}>بررسی دوباره</Button>);
-  if (status && !status.available) return bar('warning', 'هوش مصنوعی فعلاً در دسترس نیست.', <Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void refresh()}>بررسی دوباره</Button>);
+  // internal AI is frozen: with the flag off «not available» is the normal state, not a warning
+  if (managedEnabled && status && !status.available) return bar('warning', 'هوش مصنوعی فعلاً در دسترس نیست.', <Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void refresh()}>بررسی دوباره</Button>);
   return null;
 };
 

@@ -43,7 +43,18 @@ export function AiStatusProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const value = useMemo<Ctx>(() => ({ status, error, loading, refresh, available: Boolean(status?.available), managedEnabled: Boolean(status?.managedEnabled), platformJudgments: Boolean(status?.platformJudgments), judgmentsAvailable: Boolean(status?.available || status?.platformJudgments), admin: Boolean(status?.admin) }), [status, error, loading, refresh]);
+  // Internal (platform) AI is frozen behind MABDA_MANAGED_AI: with the flag off every derived value is false, so no
+  // surface can offer Mabda-made answers, judgements or Coach even if a platform key happens to be configured.
+  const value = useMemo<Ctx>(() => {
+    const managedEnabled = Boolean(status?.managedEnabled);
+    return {
+      status, error, loading, refresh, managedEnabled,
+      available: managedEnabled && Boolean(status?.available),
+      platformJudgments: managedEnabled && Boolean(status?.platformJudgments),
+      judgmentsAvailable: managedEnabled && Boolean(status?.available || status?.platformJudgments),
+      admin: Boolean(status?.admin),
+    };
+  }, [status, error, loading, refresh]);
   return <AiStatusContext.Provider value={value}>{children}</AiStatusContext.Provider>;
 }
 

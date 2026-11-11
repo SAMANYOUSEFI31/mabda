@@ -8,7 +8,7 @@ import type { ContextObject } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber, useToast } from '../../ui';
 
-const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'AI دیگر'];
+const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
 
 /** Ask the other AI for what it remembers about you — the user copies this prompt there and pastes the answer back here. */
 const EXPORT_PROMPT = 'هر چیزی که تا حالا دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس: کسب‌وکار، مخاطب، محصول و قیمت، لحن، تصمیم‌ها و خط قرمزها. فقط چیزهایی که واقعاً می‌دانی؛ حدس نزن.';
@@ -46,7 +46,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onImported }) => {
       open
       onClose={onClose}
       size="lg"
-      title="وارد کردن حافظهٔ AI دیگر"
+      title="وارد کردن حافظه از ابزار دیگر"
       description="حافظهٔ ChatGPT یا Claude (یا هر متنی دربارهٔ کسب‌وکارت) را بچسبان. مبدأ آن را به «پیشنهاد» تبدیل می‌کند و برای هر مورد، همان بخش متن را نقل می‌کند. تا تأیید نکنی هیچ‌چیز واقعیت نیست."
       footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Wand2" loading={busy} disabled={!text.trim()} onClick={run}>استخراج پیشنهادها</Button></>}
     >
@@ -54,7 +54,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onImported }) => {
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <span className="label-md text-text-default">متن آماده برای گرفتن حافظه</span>
           <p className="body-sm text-text-subtle">{EXPORT_PROMPT}</p>
-          <div><Button size="sm" variant="secondary" iconStart="Copy" onClick={async () => { await navigator.clipboard.writeText(EXPORT_PROMPT).catch(() => undefined); toast.show({ intent: 'success', message: 'کپی شد؛ آن را در AI دیگر بفرست و پاسخ را اینجا بچسبان.' }); }}>کپی متن</Button></div>
+          <div><Button size="sm" variant="secondary" iconStart="Copy" onClick={async () => { await navigator.clipboard.writeText(EXPORT_PROMPT).catch(() => undefined); toast.show({ intent: 'success', message: 'کپی شد؛ آن را در آن ابزار بفرست و جواب را اینجا بچسبان.' }); }}>کپی متن</Button></div>
         </div>
         <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />
         <Textarea label="حافظه یا متن" rows={8} value={text} onChange={(e) => setText(e.target.value)} />

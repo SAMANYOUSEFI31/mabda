@@ -39,7 +39,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
           <Card padding="lg" className="flex flex-col gap-stack-xs">
             <span className="label-md text-text-default">داده‌های تو کجاست؟</span>
             <p className="body-sm text-text-subtle">
-              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند. برای کارهای هوش مصنوعی، فقط زمینهٔ لازم فرستاده می‌شود؛ یادداشت‌های آزاد هرگز خودکار به هوش مصنوعی نمی‌روند.
+              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند. هیچ‌چیز خودکار به جایی فرستاده نمی‌شود؛ بسته‌های دانش را خودت کپی می‌کنی و یادداشت‌های آزاد هرگز در آن‌ها نمی‌آیند.
             </p>
           </Card>
 

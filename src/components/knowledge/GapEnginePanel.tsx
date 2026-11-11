@@ -60,12 +60,12 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       </div>
 
       {/* Free gap cost notice (P3) */}
-      <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
+      {managedEnabled && <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
         <p className="body-sm text-text-subtle">
           شناسایی شکاف‌ها و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
         </p>
-        {managedEnabled && <Badge intent="success">۰ اعتبار</Badge>}
-      </div>
+        <Badge intent="success">۰ اعتبار</Badge>
+      </div>}
 
       {/* Gaps */}
       <div className="flex flex-col gap-stack-md">

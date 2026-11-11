@@ -30,7 +30,7 @@ interface Props {
 }
 
 type Path = 'text' | 'memory' | 'questions';
-const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'AI دیگر'];
+const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
 const QUESTIONS: Array<{ key: string; label: string; type: ContextDraft['type']; title: string; nodeId: string; multiline?: boolean }> = [
   { key: 'domain', label: 'روی چه کاری کار می‌کنی؟', type: 'Fact', title: 'حوزهٔ کسب‌وکار و تخصص', nodeId: 'business' },
   { key: 'audience', label: 'مخاطب اصلی تو کیست؟', type: 'Decision', title: 'مخاطب اصلی', nodeId: 'business' },
@@ -108,7 +108,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
       const ta = document.createElement('textarea'); ta.value = pack.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
     setCopied(true);
-    toast.show({ intent: 'success', message: 'کپی شد. آن را اول گفتگوی هر AI بچسبان.' });
+    toast.show({ intent: 'success', message: 'کپی شد. آن را اول گفتگوی هر ابزاری که می‌خواهی بچسبان.' });
   };
 
   const makeSample = async () => {
@@ -135,7 +135,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
       onClose={onClose}
       size="lg"
       title="شروع سریع"
-      description="از هر جا که دانشت هست شروع کن؛ در چند دقیقه یک بستهٔ آمادهٔ چسباندن در هر AI داری."
+      description="از هر جا که دانشت هست شروع کن؛ در چند دقیقه یک بستهٔ آمادهٔ چسباندن در هر ابزار داری."
       footer={
         step === 'choose' ? <Button variant="ghost" onClick={onClose}>بعداً</Button>
         : step === 'input' ? (
@@ -167,7 +167,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
         {step === 'input' && path !== 'questions' && (
           <div className="flex flex-col gap-stack-md">
             {path === 'memory' && <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />}
-            {path === 'memory' && <p className="body-sm text-text-subtle">در آن AI بنویس: «هر چیزی که دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
+            {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
             <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint="هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست." />
           </div>
         )}
@@ -230,13 +230,13 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                 </div>
                 <ol className="body-md flex list-persian list-decimal flex-col gap-stack-xs ps-inset-xl text-text-default">
                   <li>کپی کن.</li>
-                  <li>اول یک گفتگوی تازه در ChatGPT، Claude یا هر AI دیگر بچسبان.</li>
+                  <li>اول یک گفتگوی تازه در هر ابزاری که می‌خواهی بچسبان.</li>
                   <li>بعد سؤالت را بپرس؛ پاسخ را با قبل مقایسه کن.</li>
                 </ol>
                 <div><Button variant="secondary" iconStart={copied ? 'Check' : 'Copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی بسته'}</Button></div>
               </section>
             )}
-            <section className="flex flex-col gap-stack-sm" aria-label="خروجی نمونه">
+            {ai.managedEnabled && <section className="flex flex-col gap-stack-sm" aria-label="خروجی نمونه">
               <h3 className="title text-text-default">یک خروجی نمونه از همین دانش</h3>
               {!ai.available && <AiErrorNotice error={{ kind: 'disabled', message: 'هوش مصنوعی فعلاً در دسترس نیست؛ بستهٔ بالا همچنان آماده است.', retryable: false }} />}
               {sampleError && <AiErrorNotice error={sampleError} onRetry={makeSample} retrying={sampling} />}
@@ -248,7 +248,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
               ) : (
                 <div><Button variant="secondary" iconStart="Sparkles" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
               )}
-            </section>
+            </section>}
           </div>
         )}
 

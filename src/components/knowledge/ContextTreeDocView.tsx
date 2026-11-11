@@ -11,6 +11,7 @@ import { childrenOf, quickMoves } from '../../core/nodeTree';
 import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
+import { useAiStatus } from '../../services/aiStatus';
 
 interface ContextTreeDocViewProps {
   objects: ContextObject[];
@@ -59,6 +60,8 @@ interface ContextTreeDocViewProps {
 
 export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => {
   const { objects, nodes } = props;
+  // the Coach is Mabda's own AI: frozen (hidden) while MABDA_MANAGED_AI is off
+  const { managedEnabled } = useAiStatus();
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
@@ -129,12 +132,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
-                { label: 'درخواست برای AI', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
+                { label: 'آماده‌سازی درخواست', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
-                { label: 'گفتگوی متمرکز', icon: 'Pencil', onSelect: () => props.onOpenThread(node.id) },
+                ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                { label: 'مربی دانش', icon: 'Brain', onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) },
+                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Brain' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
