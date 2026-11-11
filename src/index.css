@@ -52,7 +52,7 @@
 }
 
 /* Board cards: a gentle lift while dragging; no movement for people who ask for less motion. */
-.canvas-card { transition: box-shadow var(--duration-fast) var(--ease-move), border-color var(--duration-fast) var(--ease-move), opacity var(--duration-fast) var(--ease-move); }
+.canvas-card { transition: box-shadow var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
 .canvas-card.is-lifted { opacity: 0.35; }
 .canvas-card.is-ghost { box-shadow: var(--shadow-overlay); cursor: grabbing; }
 .canvas-card:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
@@ -64,8 +64,8 @@
 .canvas-card:not(.is-ghost) { cursor: grab; }
 .canvas-card:not(.is-ghost):active { cursor: grabbing; }
 
-/* Canvas: cards glide to their new place when the layout changes (≤ 200ms); nothing moves for people who ask for less motion. */
-.canvas-glide { transition: transform 200ms ease, opacity 120ms ease; }
+/* Canvas: other cards make room with ease-standard (FLIP, motion.md «جابه‌جایی ردیف»); nothing moves for people who ask for less motion. */
+.canvas-glide { transition: transform var(--duration-moderate) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
 @media (prefers-reduced-motion: reduce) { .canvas-glide { transition: none; } }
 
 /* A prompt preview mixes Persian lines with LTR markers (<!-- … -->, tags): every line takes its own direction, so none is flipped. */
@@ -91,15 +91,16 @@
 .scroll-menu .mb-menu { max-block-size: 50dvh; overflow-y: auto; }
 
 /* a note line: its «علامت بزن» button shows on hover / focus (and stays reachable by long-press on touch) */
-.note-line .note-mark { opacity: 0; transition: opacity 120ms; }
+.note-line .note-mark { opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
 .note-line:hover .note-mark, .note-line:focus-within .note-mark, .note-line .note-mark[aria-expanded='true'] { opacity: 1; }
 /* touch: nothing is hover-only — the «علامت بزن» button is always visible and tappable (long-press stays as a shortcut) */
 @media (hover: none) { .note-line .note-mark { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .note-line .note-mark { transition: none; } }
 
 /* entering a section: a short slide that follows the reading direction (RTL: deeper = from the start side) */
-@keyframes focus-in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
-.focus-enter { animation: focus-in 180ms ease-out; }
+/* «رفتن به عمق»: the new section comes from the end edge (the left in RTL) */
+@keyframes focus-in { from { opacity: 0; translate: calc(var(--distance-lg) * -1) 0; } }
+.focus-enter { animation: focus-in var(--duration-moderate) var(--ease-enter); }
 @media (prefers-reduced-motion: reduce) { .focus-enter { animation: none; } }
 
 /* the path bar of a section we are inside stays at the top while the section scrolls; on a phone it sits under the sticky top bar */

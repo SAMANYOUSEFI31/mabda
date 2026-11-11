@@ -1032,7 +1032,7 @@
   },
   "duration": {
     "$type": "duration",
-    "$description": "short and physical: motion only shows cause and continuity",
+    "$description": "short and physical: motion only shows cause and continuity; exit = one step below entry (motion.md)",
     "none": {
       "$value": {
         "value": 0,
@@ -1041,7 +1041,7 @@
     },
     "instant": {
       "$value": {
-        "value": 90,
+        "value": 80,
         "unit": "ms"
       }
     },
@@ -1051,27 +1051,27 @@
         "unit": "ms"
       }
     },
-    "normal": {
+    "base": {
       "$value": {
         "value": 200,
         "unit": "ms"
       }
     },
-    "slow": {
+    "moderate": {
       "$value": {
-        "value": 260,
+        "value": 280,
         "unit": "ms"
       }
     },
-    "slower": {
+    "slow": {
       "$value": {
-        "value": 400,
+        "value": 360,
         "unit": "ms"
       }
     },
     "stagger": {
       "$value": {
-        "value": 40,
+        "value": 30,
         "unit": "ms"
       }
     },
@@ -1083,34 +1083,34 @@
     },
     "pulse": {
       "$value": {
-        "value": 1600,
+        "value": 1400,
         "unit": "ms"
       }
     }
   },
   "ease": {
     "$type": "cubicBezier",
-    "enter": {
+    "standard": {
       "$value": [
         0.2,
-        0.8,
-        0.2,
+        0,
+        0,
+        1
+      ]
+    },
+    "enter": {
+      "$value": [
+        0,
+        0,
+        0,
         1
       ]
     },
     "exit": {
       "$value": [
-        0.6,
-        0,
-        0.8,
-        0.2
-      ]
-    },
-    "move": {
-      "$value": [
         0.3,
         0,
-        0.1,
+        1,
         1
       ]
     },
@@ -1134,15 +1134,22 @@
   },
   "distance": {
     "$type": "dimension",
+    "$description": "how far things travel as they arrive (motion.md): menu 4, toast 8, detail panel 24",
     "sm": {
       "$value": {
-        "value": 6,
+        "value": 4,
         "unit": "px"
       }
     },
     "md": {
       "$value": {
-        "value": 12,
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 24,
         "unit": "px"
       }
     }
@@ -1150,6 +1157,11 @@
   "scale-press": {
     "$type": "number",
     "$value": 0.98
+  },
+  "scale-enter": {
+    "$type": "number",
+    "$description": "a dialog panel grows from 97% as it arrives",
+    "$value": 0.97
   },
   "layer": {
     "$type": "number",

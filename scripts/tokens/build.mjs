@@ -200,7 +200,7 @@ ${ease.join('\n')}
 }
 ${layers.join('\n')}
 @utility duration-fast { transition-duration: var(--duration-fast); }
-@utility duration-normal { transition-duration: var(--duration-normal); }
+@utility duration-base { transition-duration: var(--duration-base); }
 @utility focus-ring { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
 @utility min-h-screen-dvh { min-block-size: 100dvh; }
 `;

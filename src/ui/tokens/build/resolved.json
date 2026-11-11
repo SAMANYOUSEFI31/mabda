@@ -2840,8 +2840,8 @@
    "type": "duration",
    "description": null,
    "alias": null,
-   "light": "90ms",
-   "dark": "90ms"
+   "light": "80ms",
+   "dark": "80ms"
   },
   {
    "token": "duration.fast",
@@ -2854,8 +2854,8 @@
    "dark": "140ms"
   },
   {
-   "token": "duration.normal",
-   "css": "--duration-normal",
+   "token": "duration.base",
+   "css": "--duration-base",
    "level": "semantic",
    "type": "duration",
    "description": null,
@@ -2864,24 +2864,24 @@
    "dark": "200ms"
   },
   {
+   "token": "duration.moderate",
+   "css": "--duration-moderate",
+   "level": "semantic",
+   "type": "duration",
+   "description": null,
+   "alias": null,
+   "light": "280ms",
+   "dark": "280ms"
+  },
+  {
    "token": "duration.slow",
    "css": "--duration-slow",
    "level": "semantic",
    "type": "duration",
    "description": null,
    "alias": null,
-   "light": "260ms",
-   "dark": "260ms"
-  },
-  {
-   "token": "duration.slower",
-   "css": "--duration-slower",
-   "level": "semantic",
-   "type": "duration",
-   "description": null,
-   "alias": null,
-   "light": "400ms",
-   "dark": "400ms"
+   "light": "360ms",
+   "dark": "360ms"
   },
   {
    "token": "duration.stagger",
@@ -2890,8 +2890,8 @@
    "type": "duration",
    "description": null,
    "alias": null,
-   "light": "40ms",
-   "dark": "40ms"
+   "light": "30ms",
+   "dark": "30ms"
   },
   {
    "token": "duration.spin",
@@ -2910,8 +2910,28 @@
    "type": "duration",
    "description": null,
    "alias": null,
-   "light": "1600ms",
-   "dark": "1600ms"
+   "light": "1400ms",
+   "dark": "1400ms"
+  },
+  {
+   "token": "ease.standard",
+   "css": "--ease-standard",
+   "level": "semantic",
+   "type": "cubicBezier",
+   "description": null,
+   "alias": null,
+   "light": [
+    0.2,
+    0,
+    0,
+    1
+   ],
+   "dark": [
+    0.2,
+    0,
+    0,
+    1
+   ]
   },
   {
    "token": "ease.enter",
@@ -2921,15 +2941,15 @@
    "description": null,
    "alias": null,
    "light": [
-    0.2,
-    0.8,
-    0.2,
+    0,
+    0,
+    0,
     1
    ],
    "dark": [
-    0.2,
-    0.8,
-    0.2,
+    0,
+    0,
+    0,
     1
    ]
   },
@@ -2941,35 +2961,15 @@
    "description": null,
    "alias": null,
    "light": [
-    0.6,
-    0,
-    0.8,
-    0.2
-   ],
-   "dark": [
-    0.6,
-    0,
-    0.8,
-    0.2
-   ]
-  },
-  {
-   "token": "ease.move",
-   "css": "--ease-move",
-   "level": "semantic",
-   "type": "cubicBezier",
-   "description": null,
-   "alias": null,
-   "light": [
     0.3,
     0,
-    0.1,
+    1,
     1
    ],
    "dark": [
     0.3,
     0,
-    0.1,
+    1,
     1
    ]
   },
@@ -3020,8 +3020,8 @@
    "type": "dimension",
    "description": null,
    "alias": null,
-   "light": "6px",
-   "dark": "6px"
+   "light": "4px",
+   "dark": "4px"
   },
   {
    "token": "distance.md",
@@ -3030,8 +3030,18 @@
    "type": "dimension",
    "description": null,
    "alias": null,
-   "light": "12px",
-   "dark": "12px"
+   "light": "8px",
+   "dark": "8px"
+  },
+  {
+   "token": "distance.lg",
+   "css": "--distance-lg",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "24px",
+   "dark": "24px"
   },
   {
    "token": "scale-press",
@@ -3042,6 +3052,16 @@
    "alias": null,
    "light": 0.98,
    "dark": 0.98
+  },
+  {
+   "token": "scale-enter",
+   "css": "--scale-enter",
+   "level": "semantic",
+   "type": "number",
+   "description": "a dialog panel grows from 97% as it arrives",
+   "alias": null,
+   "light": 0.97,
+   "dark": 0.97
   },
   {
    "token": "layer.base",

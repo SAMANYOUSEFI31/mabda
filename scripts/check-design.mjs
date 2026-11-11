@@ -9,6 +9,7 @@
  *   palette    Tailwind default palette / white / black bg-zinc-900  text-white  border-red-500
  *   raw-var    raw DS palette variables                 var(--neutral-800)  var(--crimson-600)  var(--white-a8)
  *   physical   left/right instead of logical props      ml-2  pr-4  text-right  left-0  marginLeft  border-l
+ *   motion     raw ms / ease keywords in transition or animation; duration-150, ease-out
  *   scale      non-token scales                         p-4  gap-2  w-8  text-xs  font-medium  italic  shadow-md
  *
  * Only the generated token files (src/ui/tokens/build/) contain raw values; they are never scanned (src/ui/tokens.test.ts
@@ -36,7 +37,9 @@ const rules = [
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
   { id: 'ai-icon', line: true, re: /\b(?:Sparkles?|Wand2?|WandSparkles|Zap|Brain|BrainCircuit|Bot|Stars)\b/g, msg: 'AI-magic icon — forbidden (docs/design-system/iconography.md, «ممنوع»); say it in words' },
+  { id: 'motion', line: true, re: /\b(?:transition|animation)(?:-duration|-delay|-timing-function)?\s*:[^;}]*?(?:(?<![\w-])\d+(?:\.\d+)?m?s\b|(?<![\w-])(?:ease|ease-in|ease-out|ease-in-out)(?![\w-]))/g, msg: 'raw duration or easing — use --duration-* / --ease-* (docs/design-system/motion.md)' },
   // ---- token (class) rules ----
+  { id: 'motion', tok: /^(?:duration|delay)-\d+$|^ease-(?:in|out|in-out)$/, msg: 'Tailwind duration/easing scale — use duration-fast / duration-base (motion.md)' },
   { id: 'brand', ctx: /./, notIn: /^src\/ui\//, tok: /(?:^|-)(?:bg|text|border|icon)-brand(?:-\S+)?$/, msg: 'brand color outside src/ui — brand is only for the primary Button / BrandMark (never error, warning, selection or link)' },
   { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },
   { id: 'palette', tok: /^(?:bg|text|border|fill|stroke)-(?:white|black)(?:\/\d+)?$/, msg: 'white/black — use a semantic token' },

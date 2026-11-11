@@ -20,7 +20,14 @@ export function resolveDark(pref: ThemePref, systemDark: boolean): boolean {
 
 function apply(pref: ThemePref) {
   const systemDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-  document.documentElement.classList.toggle('dark', resolveDark(pref, systemDark));
+  const root = document.documentElement;
+  const dark = resolveDark(pref, systemDark);
+  // motion.md «تعویض تم»: no motion. Transitions are off for one frame so hundreds of things do not recolour together.
+  if (root.classList.contains('dark') !== dark) {
+    root.setAttribute('data-theme-switching', '');
+    requestAnimationFrame(() => requestAnimationFrame(() => root.removeAttribute('data-theme-switching')));
+  }
+  root.classList.toggle('dark', dark);
   // the browser chrome follows the chosen mode, not only the system one
   const page = getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim();
   if (page) document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => { m.content = page; });
