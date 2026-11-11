@@ -26,7 +26,7 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const [savedPackCount, setSavedPackCount] = useState(0);
   const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
-  const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: data?.deliverables ?? [], notes: data?.notes ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes]);
+  const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: (data?.deliverables ?? []).filter((d) => !d.archivedAt), notes: data?.notes ?? [], thoughts: data?.thoughts ?? [], files: data?.files ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes, data?.thoughts, data?.files]);
   useEffect(() => {
     const on = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); setPaletteOpen((o) => !o); } };
     window.addEventListener('keydown', on);
