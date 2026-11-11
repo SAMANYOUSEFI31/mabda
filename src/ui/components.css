@@ -253,13 +253,15 @@
 .mb-bottomnav__item:not(.is-action):active::before{background:var(--interaction-pressed)}
 .mb-bottomnav__item.is-active{color:var(--text-default)}
 .mb-bottomnav__item.is-active>.mb-bottomnav__label{font-weight:600}
+.mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon svg{stroke-width:1.75}.mb-bottomnav__item.is-active .mb-bottomnav__icon svg{stroke-width:2.25;color:var(--icon-default)}
+.mb-bottomnav__label::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}
 .mb-bottomnav__item.is-active::before{background:var(--bg-selected)}
-.mb-bottomnav__label{font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mb-bottomnav__label{display:flex;flex-direction:column;align-items:center;font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mb-bottomnav__icon{position:relative;display:grid;place-items:center;inline-size:var(--icon-xl);block-size:var(--icon-xl)}
-/* «افزودن»: the one lapis element of the bar, 52×40, radius 12; its name stays for screen readers */
-.mb-bottomnav__item.is-action .mb-bottomnav__icon{inline-size:calc(var(--space-12) + var(--space-1));block-size:var(--space-10);border-radius:var(--radius-lg);background:var(--button-primary-bg);color:var(--button-primary-fg);transition:background-color var(--duration-fast) var(--ease-move)}
-@media (hover:hover){.mb-bottomnav__item.is-action:hover .mb-bottomnav__icon{background:var(--button-primary-bg-hover)}}
-.mb-bottomnav__item.is-action:active .mb-bottomnav__icon{background:var(--button-primary-bg-pressed)}
+/* «افزودن»: a filled ink tile 52×40, radius 12 (not lapis: the page's own primary keeps the one lapis); its name stays for screen readers */
+.mb-bottomnav__item.is-action .mb-bottomnav__icon{inline-size:calc(var(--space-12) + var(--space-1));block-size:var(--space-10);border-radius:var(--radius-lg);background:var(--surface-inverse);color:var(--text-on-neutral);transition:background-color var(--duration-fast) var(--ease-move)}
+@media (hover:hover){.mb-bottomnav__item.is-action:hover .mb-bottomnav__icon{background:var(--bg-neutral-bold-hover)}}
+.mb-bottomnav__item.is-action:active .mb-bottomnav__icon{background:var(--bg-neutral-bold-pressed)}
 .mb-bottomnav__badge{position:absolute;inset-block-start:calc(var(--space-2) * -1);inset-inline-start:calc(100% + var(--space-1) / 2);min-inline-size:var(--space-4);padding-inline:var(--space-1);border-radius:var(--radius-pill);background:var(--nav-badge-bg);color:var(--nav-badge-fg);line-height:var(--space-4);font-variant-numeric:tabular-nums}
 
 /* ---------- Popover / Menu ---------- */
@@ -442,7 +444,7 @@
  * samples too (they are not the user's knowledge). Shapes are masks over currentColor-free fills so the colour is the nuqta-* token. */
 @layer components{
 .mb-knowledge{position:relative;background:transparent;border:0;box-shadow:none;border-radius:var(--radius-container);padding-inline-start:var(--space-8)!important}
-.mb-knowledge::before{content:"";position:absolute;inset-inline-start:var(--space-3);inset-block-start:calc(var(--space-4) + 0.4rem);inline-size:var(--nuqta-size-md);block-size:var(--nuqta-size-md);background:var(--nuqta-pending);-webkit-mask:var(--nuqta-shape) center/contain no-repeat;mask:var(--nuqta-shape) center/contain no-repeat}
+.mb-knowledge::before{content:"";position:absolute;inset-inline-start:var(--space-3);inset-block-start:calc(var(--space-3) + 0.5rem);inline-size:var(--nuqta-size-md);block-size:var(--nuqta-size-md);background:var(--nuqta-pending);-webkit-mask:var(--nuqta-shape) center/contain no-repeat;mask:var(--nuqta-shape) center/contain no-repeat}
 .mb-knowledge[data-knowledge=proposed],.mb-knowledge[data-knowledge=sample]{background:var(--bg-neutral-subtle)}
 .mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}.mb-knowledge[data-knowledge=sample]::before{content:none}
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
@@ -453,12 +455,4 @@
 .mb-knowledge[data-knowledge=past]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1.4 10.6 6 6 10.6 1.4 6z' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M3.9 6h4.2' stroke='black' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=past]::before{background:var(--nuqta-pending)}
 }
 
-/* phones: «افزودن» in the bottom bar is the one lapis action of the page (navigation.md «نوار پایین»), so a page's own
-   primary button reads as secondary there. Dialogs and sheets keep theirs: the bar is behind them. */
-@layer components{
-@media (max-width:767.98px){
-  body:has(.mb-bottomnav.is-fixed) .mb-btn--primary:not(:is(.mb-dialog,.mb-popover__panel) *){background:var(--button-secondary-bg);color:var(--text-default);border-color:var(--button-secondary-border);box-shadow:var(--button-secondary-shadow)}
-  @media (hover:hover){body:has(.mb-bottomnav.is-fixed) .mb-btn--primary:not(:is(.mb-dialog,.mb-popover__panel) *):hover:not(:disabled){background:var(--button-secondary-bg-hover)}}
-  body:has(.mb-bottomnav.is-fixed) .mb-btn--primary:not(:is(.mb-dialog,.mb-popover__panel) *):active:not(:disabled){background:var(--bg-neutral-subtle-pressed)}
-}
-}
+@layer components{.mb-navlabel::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}}

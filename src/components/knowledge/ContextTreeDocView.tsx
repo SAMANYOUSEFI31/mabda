@@ -167,7 +167,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 </div>
                 {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
                   <>
-                    <div className="flex max-w-prose flex-col gap-stack-lg">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    <div className="flex max-w-prose flex-col gap-stack-sm">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}

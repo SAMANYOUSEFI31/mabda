@@ -186,7 +186,7 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
               </>
             ) : null}
           </span>
-          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'}>{it.label}</span>
+          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
         </button>
       ))}
     </nav>
@@ -223,14 +223,15 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
         compact && 'justify-center px-inset-xs',
         nested ? 'body-sm' : 'label-md',
         selected
-          ? 'bg-bg-selected text-text-default'
+          ? 'bg-bg-selected font-semibold text-text-default'
           : 'text-text-subtle hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed',
         className,
       )}
     >
-      {icon && <Icon name={icon} size="lg" className="text-icon-subtle" />}
+      {icon && <Icon name={icon} size="lg" className={selected ? 'text-icon-default' : 'text-icon-subtle'} strokeWidth={selected ? 2.25 : 1.75} />}
       {compact ? (trailing != null && <span aria-hidden="true" className="absolute end-space-2 top-space-2 rounded-pill bg-bg-neutral-bold" style={{ inlineSize: 8, blockSize: 8 }} />) : (<>
-        <span className="min-w-space-0 flex-1 break-words">{label}</span>
+        {/* the 600 copy reserves its width so the label never jumps when selected (navigation.md) */}
+        <span className="mb-navlabel min-w-space-0 flex-1 break-words" data-label={typeof label === 'string' ? label : undefined}>{label}</span>
         {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtle">{trailing}</span>}
       </>)}
     </button>
