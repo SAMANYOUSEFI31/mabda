@@ -285,7 +285,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       onClose={onClose}
       size="lg"
       title={title_}
-      description={isEditing ? undefined : 'هر چه دربارهٔ کسب‌وکارت درست است بنویس. بقیه‌اش را خودمان حدس می‌زنیم.'}
+      description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
       footer={
         <>
           {isEditing && !isSupersedingMode && (
@@ -338,7 +338,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
         <MentionTextarea
           id="context-content"
-          label="چه چیزی دربارهٔ کسب‌وکارت درست است؟"
+          label="چه چیزی درست است؟"
           required
           error={contentError || undefined}
           rows={isEditing ? 5 : 6}

@@ -24,9 +24,10 @@ export const INITIAL_WORKSPACES: Workspace[] = [
   },
   {
     id: 'ws_course',
-    name: 'آکادمی رشد فریلنسرها',
-    slug: 'freelance-academy',
-    description: 'دوره‌ها و منابع آموزش فریلنسری پیشرفته در ایران',
+    name: 'زندگی من',
+    slug: 'my-life',
+    description: 'سلامت، مالی شخصی، خانه و برنامه‌ها',
+    purpose: 'personal',
     planId: 'starter',
     creditsRemaining: 240,
     todayChatCount: 3,

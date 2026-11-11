@@ -138,8 +138,8 @@ try {
   await shot('5-all-outputs', true);
 
   step('Pro and above only: the Starter workspace gets the upgrade notice');
-  await account('آکادمی رشد فریلنسرها');
-  await page.getByText('خانه: آکادمی').waitFor().catch(() => {});
+  await account('زندگی من');
+  await page.getByText('خانه: زندگی من').waitFor().catch(() => {});
   await nav('خروجی‌ها'); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
   await page.getByRole('button', { name: 'بیشتر دربارهٔ جریان کار' }).click(); // the editor / library are under «⋯»
   await page.getByRole('menuitem', { name: 'تعریف جریان کار سفارشی' }).click();

@@ -539,14 +539,14 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
                 {isIntro ? (
                   // fixed product intro, not a model answer
-                  <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-prose">{m.content}</div>
+                  <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-reading">{m.content}</div>
                 ) : m.error ? (
-                  <div className="w-full sm:max-w-prose">
+                  <div className="w-full sm:max-w-reading">
                     <AiErrorNotice error={m.error} onRetry={() => void handleRetry(m.id)} retrying={isLoading} />
                   </div>
                 ) : (
                   <div
-                    className={`flex w-fit max-w-full flex-col gap-stack-md rounded-container border p-inset-lg sm:max-w-prose ${
+                    className={`flex w-fit max-w-full flex-col gap-stack-md rounded-container border p-inset-lg sm:max-w-reading ${
                       m.role === 'user'
                         ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
                         : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'

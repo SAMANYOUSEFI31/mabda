@@ -6,6 +6,8 @@
 /** The dialogs of workspace: plans, account, usage, the demo workspace, a new workspace. Each lazy dialog loads the first time it is opened. */
 
 import { useState } from 'react';
+import { NAME_EXAMPLE, PurposeField } from '../../components/workspace/PurposeField';
+import type { WorkspacePurpose } from '../../core/specs';
 import { DangerDialog } from '../../components/shared/Removal';
 import { Button, Dialog, TextField } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
@@ -20,6 +22,7 @@ export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoB
 
 export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleChangePlan, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, isPlanModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setIsPlanModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
   const [nameError, setNameError] = useState('');
+  const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
   return (
     <>
     <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
@@ -59,25 +62,28 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       open={isNewWorkspaceModalOpen}
       onClose={() => { setIsNewWorkspaceModalOpen(false); setNameError(''); }}
       size="sm"
-      title="ایجاد فضای کاری جدید"
-      description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد."
+      title="فضای تازه"
+      description="هر فضا دانش، خروجی‌ها و تاریخچهٔ جدای خودش را دارد."
       footer={
         <>
           <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
-          <Button variant="primary" type="submit" form="new-workspace-form">ایجاد فضای کاری</Button>
+          <Button variant="primary" type="submit" form="new-workspace-form">ساختن فضا</Button>
         </>
       }
     >
       <form id="new-workspace-form" noValidate onSubmit={(e) => { if (!newWsName.trim()) { e.preventDefault(); setNameError('نام فضا را بنویس تا ساخته شود.'); document.getElementById('new-workspace-name')?.focus(); return; } void handleCreateWorkspace(e); }}>
+        <div className="flex flex-col gap-stack-md">
+        <PurposeField onChange={setPurpose} />
         <TextField
-          label="نام فضای کاری یا نام برند"
+          label="نام فضا"
           id="new-workspace-name"
           required
-          placeholder="مثلاً: استودیو دیزاین نوین"
+          placeholder={NAME_EXAMPLE[purpose]}
           value={newWsName}
           error={nameError || undefined}
           onChange={(e) => { setNewWsName(e.target.value); if (nameError && e.target.value.trim()) setNameError(''); }}
         />
+        </div>
       </form>
     </Dialog>
     </>

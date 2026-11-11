@@ -178,7 +178,7 @@ ${shadow.join('\n')}
   --container-form: var(--container-sm);
   --container-content: var(--container-lg);
   --container-wide: var(--container-xl);
-  --container-prose: var(--container-prose);
+  --container-reading: var(--container-prose);
   --container-overlay-xs: var(--overlay-width-xs);
   --container-overlay-sm: var(--overlay-width-sm);
   --container-overlay-md: var(--overlay-width-md);

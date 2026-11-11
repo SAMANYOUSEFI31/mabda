@@ -94,7 +94,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   const withOutline = items.length > 0 && view === 'read';
 
   const doc = markdown.trim().length === 0 ? (empty ?? null) : view === 'read' ? (
-    <article className="w-full min-w-space-0 rounded-container border border-border-default bg-surface-raised p-inset-lg lg:p-inset-xl" aria-label="سند">
+    <article className="w-full min-w-space-0 max-w-reading" aria-label="سند">
       <Markdown variant="document" anchors={items.map(({ id, text }) => ({ id, text }))}>{markdown}</Markdown>
     </article>
   ) : (
@@ -102,7 +102,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   );
 
   return (
-    <div className={`mx-auto flex w-full flex-col gap-stack-md ${items.length ? 'max-w-wide' : 'max-w-prose'}`}>
+    <div className={`mx-auto flex w-full flex-col gap-stack-md ${items.length ? 'max-w-wide' : 'max-w-reading'}`}>
       {header}
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <SegmentedControl

@@ -29,6 +29,49 @@ export const DEFAULT_START: StartTemplate = {
   samples: [],
 };
 
+/**
+ * The starting point of a personal space (a person's own life, projects and learning — Mabda is not only for businesses).
+ * Same rules as the default: data, every node renamable; a workflow hint that names a business node falls back to the default place.
+ */
+const leaf = (key: string, label: string, description: string) => ({ key, label, description });
+export const PERSONAL_START: StartTemplate = {
+  schema: TEMPLATE_SCHEMA, id: 'personal', version: 1, title: 'شخصی', description: 'برای زندگی خودت؛ هر شاخه‌اش را می‌شود حذف یا عوض کرد.',
+  nodes: [
+    leaf('me', 'دربارهٔ من', 'ارزش‌ها، اولویت‌ها و اصولی که با آن تصمیم می‌گیری'),
+    leaf('health', 'سلامت', 'حساسیت‌ها، داروها، عادت‌ها و توصیه‌هایی که باید یادت بماند'),
+    leaf('money', 'مالی شخصی', 'درآمد، هزینه‌ها، قراردادها و تصمیم‌های مالی'),
+    leaf('home', 'خانه و خانواده', 'اجاره، قرارها و آنچه به خانه و خانواده مربوط است'),
+    leaf('learning', 'یادگیری', 'آنچه خوانده‌ای و یاد گرفته‌ای، و آنچه می‌خواهی یاد بگیری'),
+    leaf('plans', 'سفر و برنامه‌ها', 'برنامه‌های پیش رو و تصمیم‌هایشان'),
+  ],
+  samples: [],
+};
+
+export const PROJECT_START: StartTemplate = {
+  schema: TEMPLATE_SCHEMA, id: 'project', version: 1, title: 'پروژه', description: 'برای یک پروژه؛ هر شاخه‌اش را می‌شود حذف یا عوض کرد.',
+  nodes: [
+    leaf('goal', 'هدف', 'این پروژه برای چیست و کی تمام است'),
+    leaf('scope', 'دامنه و خط قرمزها', 'چه چیزی در آن هست، چه چیزی نیست، و چه کاری نباید کرد'),
+    leaf('people', 'آدم‌ها', 'چه کسانی درگیرند و هر کدام چه می‌خواهند'),
+    leaf('decisions', 'تصمیم‌ها', 'آنچه تصمیم گرفته شد و چرا'),
+    leaf('plan', 'برنامه', 'قدم‌ها و تاریخ‌ها'),
+  ],
+  samples: [],
+};
+
+/** «خالی»: no starting branches; one plain place so the first thing written has somewhere to sit */
+export const EMPTY_START: StartTemplate = {
+  schema: TEMPLATE_SCHEMA, id: 'empty', version: 1, title: 'خالی', description: 'بدون شاخهٔ آماده.',
+  nodes: [leaf('notes', 'نوشته‌ها', 'هر چه درست است؛ شاخه‌ها را بعد خودت می‌سازی')],
+  samples: [],
+};
+
+/** what a space is for (audience.md): picks the starting tree, the guide texts and the examples. Absent = work, as before. */
+export type WorkspacePurpose = 'personal' | 'work' | 'project' | 'empty';
+export const WORKSPACE_PURPOSES: WorkspacePurpose[] = ['personal', 'work', 'project', 'empty'];
+export const startTemplateFor = (purpose: WorkspacePurpose | undefined): StartTemplate =>
+  purpose === 'personal' ? PERSONAL_START : purpose === 'project' ? PROJECT_START : purpose === 'empty' ? EMPTY_START : DEFAULT_START;
+
 /** the starting tree as rows (some engines and tests want a concrete tree; real workspaces read their own from the database) */
 export const DEFAULT_TREE_NODES: TreeNode[] = templateTree(DEFAULT_START);
 

@@ -140,11 +140,15 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       return;
     }
 
+    // what the space is for travels with the form (PurposeField); it picks the starting tree on the server
+    const raw = new FormData(e.currentTarget as HTMLFormElement).get('purpose');
+    const purpose = raw === 'work' || raw === 'project' || raw === 'empty' ? raw : 'personal';
     const newWs: Workspace = {
+      purpose,
       id: `ws_${Date.now()}`,
       name: newWsName.trim(),
       slug: newWsName.trim().toLowerCase().replace(/\s+/g, '-'),
-      description: 'فضای کاری جدید در مبدأ',
+      description: { personal: 'فضای شخصی در مبدأ', work: 'فضای کاری در مبدأ', project: 'فضای پروژه در مبدأ', empty: 'فضا در مبدأ' }[purpose],
       planId: currentWorkspace?.planId ?? 'pro',
       creditsRemaining: 150,
       todayChatCount: 0,

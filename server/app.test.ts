@@ -225,11 +225,11 @@ test('Context Coach: separate daily cap per plan, counted only after a successfu
     assert.deepEqual([q0.limit, q0.used], [5, 0], 'starter: 5 per day');
     assert.equal((await t.call('GET', '/workspaces/ws_studio/coach/quota')).json.limit, 15, 'pro: 15 per day');
     fail = true;
-    assert.notEqual((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' })).status, 200);
+    assert.notEqual((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'me', text: 'متن' })).status, 200);
     assert.equal((await t.call('GET', '/workspaces/ws_course/coach/quota')).json.used, 0, 'failed answers are not counted');
     fail = false;
-    for (let i = 0; i < 5; i++) assert.equal((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' })).status, 200);
-    const sixth = await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'business', text: 'متن' });
+    for (let i = 0; i < 5; i++) assert.equal((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'me', text: 'متن' })).status, 200);
+    const sixth = await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'me', text: 'متن' });
     assert.equal(sixth.status, 429);
     assert.match(sixth.json.error.message, /سقف روزانه/);
     // the coach only proposes: nothing was written to the tree
@@ -275,9 +275,9 @@ test('plan limits over the API: object cap (403 with a Persian message) and work
     const cap = ENTITLEMENTS_CONFIG.plans.starter.maxObjects;
     ENTITLEMENTS_CONFIG.plans.starter.maxObjects = 1;
     try {
-      const ok = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'business' });
+      const ok = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'me' });
       assert.equal(ok.status, 200);
-      const over = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'پ', content: 'ت', nodeId: 'business' });
+      const over = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'پ', content: 'ت', nodeId: 'me' });
       assert.equal(over.status, 403);
       assert.match(over.json.error.message, /سقف قلم دانش/);
     } finally { ENTITLEMENTS_CONFIG.plans.starter.maxObjects = cap; }

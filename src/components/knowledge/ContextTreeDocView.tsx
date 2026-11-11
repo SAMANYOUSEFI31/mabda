@@ -84,7 +84,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           {obj.status !== 'Confirmed' && <StatusBadge value={obj.status} />}
         </div>
       </div>
-      <p className="body-reading line-clamp-3 text-pretty text-text-default">{obj.content}</p>
+      <p className="body-reading text-pretty text-text-default">{obj.content}</p>
       <p className="body-sm text-text-subtle">{TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
     </Card>
   );
@@ -167,7 +167,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 </div>
                 {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
                   <>
-                    <div className="flex max-w-prose flex-col gap-stack-sm">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    <div className="flex max-w-reading flex-col gap-stack-sm">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}

@@ -501,6 +501,8 @@ export interface SavedPack {
 }
 
 export interface Workspace {
+  /** what the space is for, chosen when it is made: it picks the starting tree and the wording (absent = work, as before) */
+  purpose?: 'personal' | 'work' | 'project' | 'empty';
   /** the workspace is archived: hidden from the menu, nothing deleted; set only by the server («بایگانی») */
   archivedAt?: string;
   id: string;

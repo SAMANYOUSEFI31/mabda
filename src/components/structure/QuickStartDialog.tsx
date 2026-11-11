@@ -158,7 +158,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'choose' && (
           <div className="flex flex-col gap-stack-sm">
-            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی دربارهٔ کسب‌وکارت" onClick={() => { setPath('text'); setStep('input'); }} />
+            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی، از کار یا زندگی" onClick={() => { setPath('text'); setStep('input'); }} />
             <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه دربارهٔ تو یاد گرفته‌اند" onClick={() => { setPath('memory'); setStep('input'); }} />
             <OptionCard title="به چند سؤال کوتاه جواب می‌دهم" description="حداکثر پنج سؤال کوتاه" onClick={() => { setPath('questions'); setStep('input'); }} />
           </div>

@@ -28,7 +28,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
                 منبع حقیقت: {currentWorkspace.name}
               </h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">
-                «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
+                «مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد.»
               </p>
             </div>
 
