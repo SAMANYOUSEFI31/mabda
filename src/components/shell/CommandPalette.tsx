@@ -9,7 +9,7 @@ import type { SearchHit, SearchIndex } from '../../core/globalSearch';
 import { Dialog, Icon, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
 
-const ICON: Record<SearchHit['kind'], IconName> = { command: 'Zap', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote' };
+const ICON: Record<SearchHit['kind'], IconName> = { command: 'Zap', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
 
 interface Props {
   open: boolean;
