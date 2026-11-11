@@ -1,5 +1,6 @@
 node_modules/
 build/
+!src/ui/tokens/build/
 dist/
 coverage/
 .DS_Store
