@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import type { ContextObject } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
+import { DocumentImportDialog } from './DocumentImportDialog';
 import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber, useToast } from '../../ui';
 
 const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
@@ -17,14 +18,24 @@ interface Props {
   open: boolean;
   workspaceId: string;
   onClose: () => void;
+  /** a document was saved as notes (the page reloads what it shows) */
+  onDocumentImported?: () => void;
   /** objects created (already Proposed on the server) */
   onImported: (created: ContextObject[], ledger: import('../../types').LedgerEntry[]) => void;
 }
 
 /** Import the memory of ChatGPT / Claude / any text: it becomes PROPOSED objects (Imported), each with the passage it came from. */
-export const MemoryImportDialog: React.FC<Props> = (props) => (props.open ? <Importer {...props} /> : null);
+export const MemoryImportDialog: React.FC<Props> = (props) => (props.open ? <Entry {...props} /> : null);
 
-const Importer: React.FC<Props> = ({ workspaceId, onClose, onImported }) => {
+/** two ways in, one dialog: your own document (pasted or a file; preview, then notes) or the memory of another tool (suggestions). */
+const Entry: React.FC<Props> = (props) => {
+  const [mode, setMode] = useState<'document' | 'memory'>('document');
+  return mode === 'document'
+    ? <DocumentImportDialog workspaceId={props.workspaceId} onClose={props.onClose} onImported={() => props.onDocumentImported?.()} onSwitch={() => setMode('memory')} />
+    : <Importer {...props} onSwitch={() => setMode('document')} />;
+};
+
+const Importer: React.FC<Props & { onSwitch: () => void }> = ({ workspaceId, onClose, onImported, onSwitch }) => {
   const toast = useToast();
   const [text, setText] = useState('');
   const [source, setSource] = useState(SOURCES[0]);
@@ -48,7 +59,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, onImported }) => {
       size="lg"
       title="وارد کردن حافظه از ابزار دیگر"
       description="حافظهٔ ChatGPT یا Claude (یا هر متنی دربارهٔ کسب‌وکارت) را بچسبان. مبدأ آن را به «پیشنهاد» تبدیل می‌کند و برای هر مورد، همان بخش متن را نقل می‌کند. تا تأیید نکنی هیچ‌چیز واقعیت نیست."
-      footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Wand2" loading={busy} disabled={!text.trim()} onClick={run}>استخراج پیشنهادها</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="ghost" onClick={onSwitch}>وارد کردن سند خودم</Button><Button variant="primary" iconStart="Wand2" loading={busy} disabled={!text.trim()} onClick={run}>استخراج پیشنهادها</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
