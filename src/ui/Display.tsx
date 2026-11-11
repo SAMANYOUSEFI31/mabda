@@ -92,7 +92,8 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
 }
 
 /** thought (light, temporary) · proposed (on its way) · truth (seated) · stale (aged, needs a look) · past (replaced or archived) */
-export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'past';
+/** sample: an example Mabda wrote to show the shape of things; not the user's knowledge, not a thought of theirs */
+export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'past' | 'sample';
 
 export function Card({ interactive = false, href, selected, knowledge, padding = 'lg', className, children, onClick, ...rest }: CardProps) {
   const isInteractive = interactive || Boolean(href) || Boolean(onClick);

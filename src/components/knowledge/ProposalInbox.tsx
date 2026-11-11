@@ -69,7 +69,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
 
       <ul className="flex flex-col gap-stack-md">
         {pending.map((o) => (
-          <li key={o.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+          <li key={o.id} data-knowledge="proposed" className="mb-knowledge flex flex-col gap-stack-sm p-inset-lg">
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <div className="flex flex-wrap items-center gap-inline-sm">
                 <TypeBadge value={o.type} />

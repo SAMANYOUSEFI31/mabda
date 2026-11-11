@@ -134,7 +134,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <ul className="flex flex-col gap-stack-xs">
             {truthAnchors.slice(0, 8).map((o) => (
               <li key={o.id}>
-                <Card padding="md" className="flex flex-wrap items-start justify-between gap-inline-sm">
+                <Card padding="md" knowledge="truth" className="flex flex-wrap items-start justify-between gap-inline-sm">
                   <div className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
                     <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-sm text-text-default">{o.title}</span><TypeBadge value={o.type} /><AssumptionBadge object={o} /></span>
                     <p className="body-sm whitespace-pre-wrap text-text-subtle">{o.content}</p>
@@ -174,7 +174,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
-                <li key={o.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+                <li key={o.id} data-knowledge="stale" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
                   <span className="flex flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs"><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>{reasonOf(o.id) && <span className="body-sm text-text-subtle">{reasonOf(o.id)}</span>}</span>
                   <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
                 </li>
@@ -191,7 +191,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
-              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="Sparkles" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>آماده‌سازی درخواست</Button>}
+              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="PackageOpen" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>آماده‌سازی درخواست</Button>}
             </Card>
           )}
           {selectMode && selectedThoughts.length === 0 && <p className="body-sm text-text-subtle">یک یا چند فکر را انتخاب کن تا بتوانی آن‌ها را ترکیب کنی یا برایشان درخواست آماده کنی.</p>}
@@ -218,7 +218,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <p className="body-sm text-text-subtle">تأییدشده‌اند و AI آن‌ها را در بخش جدای «فرض» می‌بیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+              <li key={o.id} data-knowledge="truth" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
                 <span className="flex flex-wrap items-center gap-inline-xs"><ThinkingBadge kind="assumption" /><span className="body-md text-text-default">{o.title}</span><span className="caption text-text-subtle">· {nodeLabel(o.nodeId)}</span></span>
                 <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
               </li>

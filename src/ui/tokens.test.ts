@@ -3,7 +3,8 @@
  *  1. the generated CSS / Tailwind theme / resolved JSON match the DTCG source exactly (no hand edits, no drift);
  *  2. light and dark define the same roles;
  *  3. components alias only semantic tokens (never the raw palette);
- *  4. every text / control role meets WCAG 2.2 AA and an APCA floor, in both modes, on every surface it sits on.
+ *  4. every text / control role meets WCAG 2.2 AA and an APCA floor, in both modes, on every surface it sits on;
+ *  5. the generated reference.md (the numbers the docs quote) matches the source too (test 1).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -77,6 +78,11 @@ for (const i of INTENTS) {
 }
 for (const state of ['', '-hover', '-pressed']) pairs.push({ fg: ['text.on-neutral'], bg: [`bg.neutral-bold${state}`], wcag: 4.5, apca: 60, why: 'label on a bold neutral fill (toast, checked box)' });
 for (const n of [1, 2, 3, 4, 5]) pairs.push({ fg: [`chart.categorical-${n}`], bg: ['surface.raised'], wcag: 3, apca: 0, why: 'chart series' });
+// the knowledge edge is the one non-colour cue of thought / proposed (dashed vs solid): it must be seen
+pairs.push({ fg: ['knowledge.thought-border'], bg: ['knowledge.thought-surface'], wcag: 3, apca: 0, why: 'dashed edge of a thought' });
+pairs.push({ fg: ['knowledge.proposed-border'], bg: ['knowledge.proposed-surface', 'surface.page'], wcag: 3, apca: 0, why: 'dashed edge of a proposal' });
+pairs.push({ fg: ['knowledge.stale-rule'], bg: ['surface.page'], wcag: 3, apca: 0, why: 'start rule of stale knowledge' });
+pairs.push({ fg: ['text.default'], bg: ['knowledge.proposed-surface', 'surface.page'], wcag: 7, apca: 70, why: 'text inside a proposal' });
 for (const e of ['edge-dependency', 'edge-lineage', 'edge-supersedes']) pairs.push({ fg: [`mabda.${e}`], bg: ['surface.sunken'], wcag: 3, apca: 0, why: 'canvas line' });
 
 for (const mode of ['light', 'dark']) {

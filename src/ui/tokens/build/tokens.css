@@ -86,16 +86,16 @@
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-size-12: 12px;
-  --font-size-14: 14px;
-  --font-size-16: 16px;
-  --font-size-18: 18px;
-  --font-size-20: 20px;
-  --font-size-24: 24px;
-  --font-size-30: 30px;
-  --font-size-36: 36px;
-  --font-size-40: 40px;
-  --font-size-56: 56px;
+  --font-size-12: 0.75rem;
+  --font-size-14: 0.875rem;
+  --font-size-16: 1rem;
+  --font-size-18: 1.125rem;
+  --font-size-20: 1.25rem;
+  --font-size-24: 1.5rem;
+  --font-size-30: 1.875rem;
+  --font-size-36: 2.25rem;
+  --font-size-40: 2.5rem;
+  --font-size-56: 3.5rem;
   --line-height-tight: 1.3;
   --line-height-snug: 1.45;
   --line-height-normal: 1.55;
@@ -131,22 +131,24 @@
   --opacity-40: 0.4;
   --opacity-disabled: 0.4;
   --knowledge-thought-surface: var(--surface-page);
-  --knowledge-thought-border: var(--border-bold);
+  --knowledge-thought-border: var(--border-input);
   --knowledge-thought-border-style: dashed;
   --knowledge-thought-radius: var(--radius-lg);
   --knowledge-proposed-surface: var(--bg-info-subtle);
-  --knowledge-proposed-border: var(--border-info-subtle);
+  --knowledge-proposed-border: var(--border-info);
   --knowledge-proposed-border-style: dashed;
   --knowledge-proposed-radius: var(--radius-md);
   --knowledge-truth-surface: var(--surface-raised);
   --knowledge-truth-border: var(--border-default);
   --knowledge-truth-border-style: solid;
   --knowledge-truth-radius: var(--radius-sm);
-  --knowledge-truth-rule: var(--border-success);
   --knowledge-truth-shadow: var(--shadow-seated);
   --knowledge-stale-rule: var(--border-warning);
   --knowledge-stale-surface: var(--surface-raised);
   --knowledge-past-text: var(--text-subtle);
+  --knowledge-sample-surface: var(--surface-page);
+  --knowledge-sample-border: var(--border-default);
+  --knowledge-sample-radius: var(--radius-sm);
   --mabda-type-fact-bg: var(--bg-info-subtle);
   --mabda-type-fact-fg: var(--text-info);
   --mabda-type-fact-border: var(--border-info-subtle);
@@ -336,7 +338,7 @@
   --chart-sequential-2: #7e9fec;
   --chart-sequential-3: #4263b9;
   --chart-sequential-4: #253b77;
-  --shadow-seated: 0px 1px 0px 0px rgb(26 23 19 / 0.07);
+  --shadow-seated: 0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1);
   --shadow-raised: 0px 1px 2px 0px rgb(26 23 19 / 0.06), 0px 2px 6px -2px rgb(26 23 19 / 0.05);
   --shadow-overflow: 0px 6px 14px -8px rgb(26 23 19 / 0.1);
   --shadow-overlay: 0px 14px 36px -10px rgb(26 23 19 / 0.14), 0px 2px 8px -2px rgb(26 23 19 / 0.08);
@@ -498,7 +500,7 @@
   --chart-sequential-2: #334e99;
   --chart-sequential-3: #5b7ed7;
   --chart-sequential-4: #a7c0fa;
-  --shadow-seated: 0px 1px 0px 0px rgb(13 11 8 / 0.5);
+  --shadow-seated: 0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55);
   --shadow-raised: 0px 1px 2px 0px rgb(13 11 8 / 0.45), 0px 2px 6px -2px rgb(13 11 8 / 0.3);
   --shadow-overflow: 0px 6px 14px -8px rgb(13 11 8 / 0.55);
   --shadow-overlay: 0px 14px 36px -10px rgb(13 11 8 / 0.6), 0px 2px 8px -2px rgb(13 11 8 / 0.4);
@@ -506,23 +508,23 @@
 }
 
 /* type styles (class = token name) */
-.display-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 56px; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
-.display-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 40px; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
-.display-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 30px; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
-.heading-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 36px; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
-.heading-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 30px; line-height: 1.4; font-weight: 700; letter-spacing: 0em; }
-.heading-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 24px; line-height: 1.45; font-weight: 700; letter-spacing: 0em; }
-.heading-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 20px; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.heading-xs { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.title { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 16px; line-height: 1.6; font-weight: 600; letter-spacing: 0em; }
-.body-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 18px; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
-.body-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 16px; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
-.body-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 14px; line-height: 1.8; font-weight: 400; letter-spacing: 0em; }
-.caption { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 12px; line-height: 1.65; font-weight: 400; letter-spacing: 0em; }
-.label-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 16px; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.label-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 14px; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.label-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 12px; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.numeric-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 36px; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
-.numeric-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 30px; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
-.numeric-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: 0em; }
-.code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 14px; line-height: 1.55; font-weight: 400; letter-spacing: 0.02em; }
+.display-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 3.5rem; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
+.display-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.5rem; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
+.display-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
+.heading-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
+.heading-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.4; font-weight: 700; letter-spacing: 0em; }
+.heading-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.45; font-weight: 700; letter-spacing: 0em; }
+.heading-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.25rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
+.heading-xs { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
+.title { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.6; font-weight: 600; letter-spacing: 0em; }
+.body-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
+.body-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
+.body-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.8; font-weight: 400; letter-spacing: 0em; }
+.caption { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.65; font-weight: 400; letter-spacing: 0em; }
+.label-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
+.label-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
+.label-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
+.numeric-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
+.numeric-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
+.numeric-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.25; font-weight: 700; letter-spacing: 0em; }
+.code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 0.875rem; line-height: 1.55; font-weight: 400; letter-spacing: 0.02em; }

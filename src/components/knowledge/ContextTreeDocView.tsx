@@ -80,7 +80,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <TypeBadge value={obj.type} />
           <ReachBadge object={obj} />
           <AssumptionBadge object={obj} />
-          <StatusBadge value={obj.status} />
+          {/* truth is the calm default here: only an exception (needs review, proposed) carries a status badge */}
+          {obj.status !== 'Confirmed' && <StatusBadge value={obj.status} />}
         </div>
       </div>
       <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
@@ -92,7 +93,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   );
 
   const sampleCard = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} knowledge="thought" className="flex flex-col gap-stack-sm">
+    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} knowledge="sample" className="flex flex-col gap-stack-sm">
       <div className="flex items-start justify-between gap-inline-sm">
         <h4 className="title min-w-space-0 flex-1 text-text-subtle">{obj.title}</h4>
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs"><SampleBadge /><TypeBadge value={obj.type} /></div>
@@ -131,7 +132,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
               items={[
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
-                { label: 'آماده‌سازی درخواست', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
+                { label: 'آماده‌سازی درخواست', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
@@ -242,22 +243,23 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const path = pathTo(nodes, focusNode.id);
     const above = fromAbove(nodes, objects, props.relationships ?? [], focusNode.id, new Date());
     return (
-      <Card padding="xl" className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
+      <section className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
         <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
         <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
           {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
           {renderNode(focusNode, '', 0, true)}
         </div>
-      </Card>
+      </section>
     );
   }
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-xl">
+    // no frame around the tree: the knowledge cards are the only raised surface, so «raised = recorded» reads at a glance
+    <section className="flex flex-col gap-stack-xl" aria-label="ساختار منبع حقیقت">
       <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="heading-sm text-text-default">ساختار منبع حقیقت</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            هر بخش یک گره است و هر کارت یک قلم دانش. برای خواندن به‌صورت یک سند زیبا، «خواندن سند» را بزن.
+            هر بخش شاخه‌ای از درخت است و هر کارت یک قلم دانش. برای خواندن پیوسته، «خواندن سند» را بزن.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
@@ -266,7 +268,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
       </div>
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
-    </Card>
+    </section>
   );
 };
 

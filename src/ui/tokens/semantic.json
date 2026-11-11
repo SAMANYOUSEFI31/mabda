@@ -1,76 +1,252 @@
 {
   "$description": "Mabda semantic tokens shared by both colour modes: space, size, radius, type, motion, layers, and the domain (knowledge-state) aliases. Meaning of each value: docs/ux/meaning-map.md.",
   "space": {
-    "0": { "$value": { "value": 0, "unit": "px" } },
-    "1": { "$value": { "value": 4, "unit": "px" } },
-    "2": { "$value": { "value": 8, "unit": "px" } },
-    "3": { "$value": { "value": 12, "unit": "px" } },
-    "4": { "$value": { "value": 16, "unit": "px" } },
-    "5": { "$value": { "value": 20, "unit": "px" } },
-    "6": { "$value": { "value": 24, "unit": "px" } },
-    "8": { "$value": { "value": 32, "unit": "px" } },
-    "10": { "$value": { "value": 40, "unit": "px" } },
-    "12": { "$value": { "value": 48, "unit": "px" } },
-    "16": { "$value": { "value": 64, "unit": "px" } },
-    "20": { "$value": { "value": 80, "unit": "px" } },
-    "24": { "$value": { "value": 96, "unit": "px" } },
-    "32": { "$value": { "value": 128, "unit": "px" } },
-    "40": { "$value": { "value": 160, "unit": "px" } },
+    "0": {
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      }
+    },
+    "1": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      }
+    },
+    "2": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "3": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "4": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    },
+    "5": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      }
+    },
+    "6": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      }
+    },
+    "8": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    },
+    "10": {
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      }
+    },
+    "12": {
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      }
+    },
+    "16": {
+      "$value": {
+        "value": 64,
+        "unit": "px"
+      }
+    },
+    "20": {
+      "$value": {
+        "value": 80,
+        "unit": "px"
+      }
+    },
+    "24": {
+      "$value": {
+        "value": 96,
+        "unit": "px"
+      }
+    },
+    "32": {
+      "$value": {
+        "value": 128,
+        "unit": "px"
+      }
+    },
+    "40": {
+      "$value": {
+        "value": 160,
+        "unit": "px"
+      }
+    },
     "$type": "dimension",
     "$description": "raw 4px-based scale (a quarter of the body size): every gap is a whole fraction of the reading line",
-    "0.5": { "$value": { "value": 2, "unit": "px" } }
+    "0.5": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
+    }
   },
   "inset": {
     "$type": "dimension",
     "$description": "padding inside a thing",
-    "xs": { "$value": "{space.1}" },
-    "sm": { "$value": "{space.2}" },
-    "md": { "$value": "{space.3}" },
-    "lg": { "$value": "{space.4}" },
-    "xl": { "$value": "{space.6}" },
-    "2xl": { "$value": "{space.8}" }
+    "xs": {
+      "$value": "{space.1}"
+    },
+    "sm": {
+      "$value": "{space.2}"
+    },
+    "md": {
+      "$value": "{space.3}"
+    },
+    "lg": {
+      "$value": "{space.4}"
+    },
+    "xl": {
+      "$value": "{space.6}"
+    },
+    "2xl": {
+      "$value": "{space.8}"
+    }
   },
   "stack": {
     "$type": "dimension",
     "$description": "vertical gap between things; sm inside a group, lg between groups (Gestalt proximity)",
-    "xs": { "$value": "{space.1}" },
-    "sm": { "$value": "{space.2}" },
-    "md": { "$value": "{space.4}" },
-    "lg": { "$value": "{space.6}" },
-    "xl": { "$value": "{space.8}" },
-    "2xl": { "$value": "{space.12}" },
-    "3xl": { "$value": "{space.16}" }
+    "xs": {
+      "$value": "{space.1}"
+    },
+    "sm": {
+      "$value": "{space.2}"
+    },
+    "md": {
+      "$value": "{space.4}"
+    },
+    "lg": {
+      "$value": "{space.6}"
+    },
+    "xl": {
+      "$value": "{space.8}"
+    },
+    "2xl": {
+      "$value": "{space.12}"
+    },
+    "3xl": {
+      "$value": "{space.16}"
+    }
   },
   "inline": {
     "$type": "dimension",
     "$description": "horizontal gap between things in a row",
-    "xs": { "$value": "{space.1}" },
-    "sm": { "$value": "{space.2}" },
-    "md": { "$value": "{space.3}" },
-    "lg": { "$value": "{space.4}" },
-    "xl": { "$value": "{space.6}" }
+    "xs": {
+      "$value": "{space.1}"
+    },
+    "sm": {
+      "$value": "{space.2}"
+    },
+    "md": {
+      "$value": "{space.3}"
+    },
+    "lg": {
+      "$value": "{space.4}"
+    },
+    "xl": {
+      "$value": "{space.6}"
+    }
   },
   "control": {
     "$type": "dimension",
     "$description": "control heights; sm is drawn smaller but always gets a 44px hit area",
-    "sm": { "$value": { "value": 36, "unit": "px" } },
-    "md": { "$value": { "value": 44, "unit": "px" } },
-    "lg": { "$value": { "value": 52, "unit": "px" } }
+    "sm": {
+      "$value": {
+        "value": 36,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 44,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 52,
+        "unit": "px"
+      }
+    }
   },
   "touch-target": {
     "$type": "dimension",
-    "min": { "$value": { "value": 44, "unit": "px" } },
-    "comfortable": { "$value": { "value": 48, "unit": "px" } }
+    "min": {
+      "$value": {
+        "value": 44,
+        "unit": "px"
+      }
+    },
+    "comfortable": {
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      }
+    }
   },
   "icon": {
     "$type": "dimension",
-    "xs": { "$value": { "value": 12, "unit": "px" } },
-    "sm": { "$value": { "value": 14, "unit": "px" } },
-    "md": { "$value": { "value": 16, "unit": "px" } },
-    "lg": { "$value": { "value": 20, "unit": "px" } },
-    "xl": { "$value": { "value": 24, "unit": "px" } },
-    "2xl": { "$value": { "value": 32, "unit": "px" } },
-    "3xl": { "$value": { "value": 48, "unit": "px" } }
+    "xs": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "sm": {
+      "$value": {
+        "value": 14,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      }
+    },
+    "2xl": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    },
+    "3xl": {
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      }
+    }
   },
   "indicator-size": {
     "$type": "dimension",
@@ -81,54 +257,196 @@
   },
   "overlay-width": {
     "$type": "dimension",
-    "xs": { "$value": { "value": 240, "unit": "px" } },
-    "sm": { "$value": { "value": 400, "unit": "px" } },
-    "md": { "$value": { "value": 480, "unit": "px" } },
-    "lg": { "$value": { "value": 640, "unit": "px" } }
+    "xs": {
+      "$value": {
+        "value": 240,
+        "unit": "px"
+      }
+    },
+    "sm": {
+      "$value": {
+        "value": 400,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 480,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 640,
+        "unit": "px"
+      }
+    }
   },
   "avatar": {
     "$type": "dimension",
-    "xs": { "$value": { "value": 24, "unit": "px" } },
-    "sm": { "$value": { "value": 32, "unit": "px" } },
-    "md": { "$value": { "value": 40, "unit": "px" } },
-    "lg": { "$value": { "value": 56, "unit": "px" } }
+    "xs": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      }
+    },
+    "sm": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 56,
+        "unit": "px"
+      }
+    }
   },
   "container": {
     "$type": "dimension",
-    "sm": { "$value": { "value": 640, "unit": "px" } },
-    "md": { "$value": { "value": 768, "unit": "px" } },
-    "lg": { "$value": { "value": 1024, "unit": "px" } },
-    "xl": { "$value": { "value": 1280, "unit": "px" } },
-    "prose": { "$value": { "value": 680, "unit": "px" } }
+    "sm": {
+      "$value": {
+        "value": 640,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 768,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 1024,
+        "unit": "px"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 1280,
+        "unit": "px"
+      }
+    },
+    "prose": {
+      "$value": {
+        "value": 680,
+        "unit": "px"
+      }
+    }
   },
   "radius": {
     "$type": "dimension",
     "$description": "restrained curvature: corners say how settled a thing is (smaller = more settled), not decoration",
-    "none": { "$value": { "value": 0, "unit": "px" } },
-    "xs": { "$value": { "value": 3, "unit": "px" } },
-    "sm": { "$value": { "value": 6, "unit": "px" } },
-    "md": { "$value": { "value": 8, "unit": "px" } },
-    "lg": { "$value": { "value": 12, "unit": "px" } },
-    "xl": { "$value": { "value": 16, "unit": "px" } },
-    "2xl": { "$value": { "value": 20, "unit": "px" } },
-    "full": { "$value": { "value": 9999, "unit": "px" } },
-    "indicator": { "$value": "{radius.xs}" },
-    "control-sm": { "$value": "{radius.sm}" },
-    "control": { "$value": "{radius.md}" },
-    "container": { "$value": "{radius.lg}" },
-    "overlay": { "$value": "{radius.xl}" },
-    "pill": { "$value": "{radius.full}" }
+    "none": {
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      }
+    },
+    "xs": {
+      "$value": {
+        "value": 3,
+        "unit": "px"
+      }
+    },
+    "sm": {
+      "$value": {
+        "value": 6,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    },
+    "2xl": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      }
+    },
+    "full": {
+      "$value": {
+        "value": 9999,
+        "unit": "px"
+      }
+    },
+    "indicator": {
+      "$value": "{radius.xs}"
+    },
+    "control-sm": {
+      "$value": "{radius.sm}"
+    },
+    "control": {
+      "$value": "{radius.md}"
+    },
+    "container": {
+      "$value": "{radius.lg}"
+    },
+    "overlay": {
+      "$value": "{radius.xl}"
+    },
+    "pill": {
+      "$value": "{radius.full}"
+    }
   },
   "border-width": {
     "$type": "dimension",
-    "thin": { "$value": { "value": 1, "unit": "px" } },
-    "thick": { "$value": { "value": 2, "unit": "px" } },
-    "rule": { "$value": { "value": 3, "unit": "px" } }
+    "thin": {
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    },
+    "thick": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
+    },
+    "rule": {
+      "$value": {
+        "value": 3,
+        "unit": "px"
+      }
+    }
   },
   "focus": {
     "$type": "dimension",
-    "width": { "$value": { "value": 2, "unit": "px" } },
-    "offset": { "$value": { "value": 2, "unit": "px" } }
+    "width": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
+    },
+    "offset": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
+    }
   },
   "font": {
     "family": {
@@ -164,35 +482,109 @@
     },
     "weight": {
       "$type": "fontWeight",
-      "regular": { "$value": 400 },
-      "semibold": { "$value": 600 },
-      "bold": { "$value": 700 }
+      "regular": {
+        "$value": 400
+      },
+      "semibold": {
+        "$value": 600
+      },
+      "bold": {
+        "$value": 700
+      }
     },
     "size": {
-      "12": { "$value": { "value": 12, "unit": "px" } },
-      "14": { "$value": { "value": 14, "unit": "px" } },
-      "16": { "$value": { "value": 16, "unit": "px" } },
-      "18": { "$value": { "value": 18, "unit": "px" } },
-      "20": { "$value": { "value": 20, "unit": "px" } },
-      "24": { "$value": { "value": 24, "unit": "px" } },
-      "30": { "$value": { "value": 30, "unit": "px" } },
-      "36": { "$value": { "value": 36, "unit": "px" } },
-      "40": { "$value": { "value": 40, "unit": "px" } },
-      "56": { "$value": { "value": 56, "unit": "px" } },
+      "12": {
+        "$value": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "14": {
+        "$value": {
+          "value": 14,
+          "unit": "px"
+        }
+      },
+      "16": {
+        "$value": {
+          "value": 16,
+          "unit": "px"
+        }
+      },
+      "18": {
+        "$value": {
+          "value": 18,
+          "unit": "px"
+        }
+      },
+      "20": {
+        "$value": {
+          "value": 20,
+          "unit": "px"
+        }
+      },
+      "24": {
+        "$value": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "30": {
+        "$value": {
+          "value": 30,
+          "unit": "px"
+        }
+      },
+      "36": {
+        "$value": {
+          "value": 36,
+          "unit": "px"
+        }
+      },
+      "40": {
+        "$value": {
+          "value": 40,
+          "unit": "px"
+        }
+      },
+      "56": {
+        "$value": {
+          "value": 56,
+          "unit": "px"
+        }
+      },
       "$type": "dimension"
     }
   },
   "line-height": {
     "$type": "number",
-    "tight": { "$value": 1.3 },
-    "snug": { "$value": 1.45 },
-    "normal": { "$value": 1.55 },
-    "relaxed": { "$value": 1.85 }
+    "tight": {
+      "$value": 1.3
+    },
+    "snug": {
+      "$value": 1.45
+    },
+    "normal": {
+      "$value": 1.55
+    },
+    "relaxed": {
+      "$value": 1.85
+    }
   },
   "letter-spacing": {
     "$type": "dimension",
-    "none": { "$value": { "value": 0, "unit": "em" } },
-    "code": { "$value": { "value": 0.02, "unit": "em" } }
+    "none": {
+      "$value": {
+        "value": 0,
+        "unit": "em"
+      }
+    },
+    "code": {
+      "$value": {
+        "value": 0.02,
+        "unit": "em"
+      }
+    }
   },
   "type": {
     "$type": "typography",
@@ -503,15 +895,60 @@
   "duration": {
     "$type": "duration",
     "$description": "short and physical: motion only shows cause and continuity",
-    "none": { "$value": { "value": 0, "unit": "ms" } },
-    "instant": { "$value": { "value": 90, "unit": "ms" } },
-    "fast": { "$value": { "value": 140, "unit": "ms" } },
-    "normal": { "$value": { "value": 200, "unit": "ms" } },
-    "slow": { "$value": { "value": 260, "unit": "ms" } },
-    "slower": { "$value": { "value": 400, "unit": "ms" } },
-    "stagger": { "$value": { "value": 40, "unit": "ms" } },
-    "spin": { "$value": { "value": 900, "unit": "ms" } },
-    "pulse": { "$value": { "value": 1600, "unit": "ms" } }
+    "none": {
+      "$value": {
+        "value": 0,
+        "unit": "ms"
+      }
+    },
+    "instant": {
+      "$value": {
+        "value": 90,
+        "unit": "ms"
+      }
+    },
+    "fast": {
+      "$value": {
+        "value": 140,
+        "unit": "ms"
+      }
+    },
+    "normal": {
+      "$value": {
+        "value": 200,
+        "unit": "ms"
+      }
+    },
+    "slow": {
+      "$value": {
+        "value": 260,
+        "unit": "ms"
+      }
+    },
+    "slower": {
+      "$value": {
+        "value": 400,
+        "unit": "ms"
+      }
+    },
+    "stagger": {
+      "$value": {
+        "value": 40,
+        "unit": "ms"
+      }
+    },
+    "spin": {
+      "$value": {
+        "value": 900,
+        "unit": "ms"
+      }
+    },
+    "pulse": {
+      "$value": {
+        "value": 1600,
+        "unit": "ms"
+      }
+    }
   },
   "ease": {
     "$type": "cubicBezier",
@@ -550,8 +987,18 @@
   },
   "distance": {
     "$type": "dimension",
-    "sm": { "$value": { "value": 6, "unit": "px" } },
-    "md": { "$value": { "value": 12, "unit": "px" } }
+    "sm": {
+      "$value": {
+        "value": 6,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    }
   },
   "scale-press": {
     "$type": "number",
@@ -559,31 +1006,55 @@
   },
   "layer": {
     "$type": "number",
-    "base": { "$value": 0 },
-    "raised": { "$value": 100 },
-    "sticky": { "$value": 200 },
-    "dropdown": { "$value": 300 },
-    "scrim": { "$value": 400 },
-    "dialog": { "$value": 500 },
-    "popover": { "$value": 600 },
-    "toast": { "$value": 700 },
-    "tooltip": { "$value": 800 },
-    "skip-link": { "$value": 900 }
+    "base": {
+      "$value": 0
+    },
+    "raised": {
+      "$value": 100
+    },
+    "sticky": {
+      "$value": 200
+    },
+    "dropdown": {
+      "$value": 300
+    },
+    "scrim": {
+      "$value": 400
+    },
+    "dialog": {
+      "$value": 500
+    },
+    "popover": {
+      "$value": 600
+    },
+    "toast": {
+      "$value": 700
+    },
+    "tooltip": {
+      "$value": 800
+    },
+    "skip-link": {
+      "$value": 900
+    }
   },
   "opacity": {
-    "40": { "$value": 0.4 },
+    "40": {
+      "$value": 0.4
+    },
     "$type": "number",
-    "disabled": { "$value": 0.4 }
+    "disabled": {
+      "$value": 0.4
+    }
   },
   "knowledge": {
-    "$description": "the four knowledge states, the main axis of the visual language: each differs by edge style, corner, surface and label at once, never by colour alone",
+    "$description": "the knowledge states, the main axis of the visual language: dashed edge = not settled yet, solid = recorded. Each differs by edge style, corner, surface and label at once, never by colour alone. Truth is the calm default; only exceptions (stale) carry a rule.",
     "thought-surface": {
       "$type": "color",
       "$value": "{surface.page}"
     },
     "thought-border": {
       "$type": "color",
-      "$value": "{border.bold}"
+      "$value": "{border.input}"
     },
     "thought-border-style": {
       "$type": "strokeStyle",
@@ -599,7 +1070,7 @@
     },
     "proposed-border": {
       "$type": "color",
-      "$value": "{border.info-subtle}"
+      "$value": "{border.info}"
     },
     "proposed-border-style": {
       "$type": "strokeStyle",
@@ -625,10 +1096,6 @@
       "$type": "dimension",
       "$value": "{radius.sm}"
     },
-    "truth-rule": {
-      "$type": "color",
-      "$value": "{border.success}"
-    },
     "truth-shadow": {
       "$type": "shadow",
       "$value": "{shadow.seated}"
@@ -644,95 +1111,277 @@
     "past-text": {
       "$type": "color",
       "$value": "{text.subtle}"
+    },
+    "sample-surface": {
+      "$type": "color",
+      "$value": "{surface.page}"
+    },
+    "sample-border": {
+      "$type": "color",
+      "$value": "{border.default}"
+    },
+    "sample-radius": {
+      "$type": "dimension",
+      "$value": "{radius.sm}"
     }
   },
   "mabda": {
     "$type": "color",
     "$description": "domain colours: aliases of an intent, never new colours; always paired with a label and icon (src/ui/mabda.tsx)",
-    "type-fact-bg": { "$value": "{bg.info-subtle}" },
-    "type-fact-fg": { "$value": "{text.info}" },
-    "type-fact-border": { "$value": "{border.info-subtle}" },
-    "type-fact-icon": { "$value": "{icon.info}" },
-    "type-decision-bg": { "$value": "{bg.neutral-subtle}" },
-    "type-decision-fg": { "$value": "{text.subtle}" },
-    "type-decision-border": { "$value": "{border.default}" },
-    "type-decision-icon": { "$value": "{icon.subtle}" },
-    "type-constraint-bg": { "$value": "{bg.warning-subtle}" },
-    "type-constraint-fg": { "$value": "{text.warning}" },
-    "type-constraint-border": { "$value": "{border.warning-subtle}" },
-    "type-constraint-icon": { "$value": "{icon.warning}" },
-    "status-confirmed-bg": { "$value": "{bg.success-subtle}" },
-    "status-confirmed-fg": { "$value": "{text.success}" },
-    "status-confirmed-border": { "$value": "{border.success-subtle}" },
-    "status-confirmed-icon": { "$value": "{icon.success}" },
-    "status-proposed-bg": { "$value": "{bg.info-subtle}" },
-    "status-proposed-fg": { "$value": "{text.info}" },
-    "status-proposed-border": { "$value": "{border.info-subtle}" },
-    "status-proposed-icon": { "$value": "{icon.info}" },
-    "status-needs-review-bg": { "$value": "{bg.warning-subtle}" },
-    "status-needs-review-fg": { "$value": "{text.warning}" },
-    "status-needs-review-border": { "$value": "{border.warning-subtle}" },
-    "status-needs-review-icon": { "$value": "{icon.warning}" },
-    "status-superseded-bg": { "$value": "{bg.neutral-subtle}" },
-    "status-superseded-fg": { "$value": "{text.subtle}" },
-    "status-superseded-border": { "$value": "{border.default}" },
-    "status-superseded-icon": { "$value": "{icon.subtle}" },
-    "status-archived-bg": { "$value": "{bg.neutral-subtle}" },
-    "status-archived-fg": { "$value": "{text.subtle}" },
-    "status-archived-border": { "$value": "{border.default}" },
-    "status-archived-icon": { "$value": "{icon.subtle}" },
-    "gap-required-bg": { "$value": "{bg.danger-subtle}" },
-    "gap-required-fg": { "$value": "{text.danger}" },
-    "gap-required-border": { "$value": "{border.danger-subtle}" },
-    "gap-required-icon": { "$value": "{icon.danger}" },
-    "gap-suggested-bg": { "$value": "{bg.warning-subtle}" },
-    "gap-suggested-fg": { "$value": "{text.warning}" },
-    "gap-suggested-border": { "$value": "{border.warning-subtle}" },
-    "gap-suggested-icon": { "$value": "{icon.warning}" },
-    "gap-optional-bg": { "$value": "{bg.neutral-subtle}" },
-    "gap-optional-fg": { "$value": "{text.subtle}" },
-    "gap-optional-border": { "$value": "{border.default}" },
-    "gap-optional-icon": { "$value": "{icon.subtle}" },
-    "ready-ready-bg": { "$value": "{bg.success-subtle}" },
-    "ready-ready-fg": { "$value": "{text.success}" },
-    "ready-ready-border": { "$value": "{border.success-subtle}" },
-    "ready-ready-icon": { "$value": "{icon.success}" },
-    "ready-needs-work-bg": { "$value": "{bg.warning-subtle}" },
-    "ready-needs-work-fg": { "$value": "{text.warning}" },
-    "ready-needs-work-border": { "$value": "{border.warning-subtle}" },
-    "ready-needs-work-icon": { "$value": "{icon.warning}" },
-    "ready-blocked-bg": { "$value": "{bg.danger-subtle}" },
-    "ready-blocked-fg": { "$value": "{text.danger}" },
-    "ready-blocked-border": { "$value": "{border.danger-subtle}" },
-    "ready-blocked-icon": { "$value": "{icon.danger}" },
-    "mode-fast-bg": { "$value": "{bg.neutral-subtle}" },
-    "mode-fast-fg": { "$value": "{text.subtle}" },
-    "mode-fast-border": { "$value": "{border.default}" },
-    "mode-fast-icon": { "$value": "{icon.subtle}" },
-    "mode-auto-bg": { "$value": "{bg.info-subtle}" },
-    "mode-auto-fg": { "$value": "{text.info}" },
-    "mode-auto-border": { "$value": "{border.info-subtle}" },
-    "mode-auto-icon": { "$value": "{icon.info}" },
-    "mode-critique-bg": { "$value": "{bg.success-subtle}" },
-    "mode-critique-fg": { "$value": "{text.success}" },
-    "mode-critique-border": { "$value": "{border.success-subtle}" },
-    "mode-critique-icon": { "$value": "{icon.success}" },
-    "mode-sensitive-bg": { "$value": "{bg.warning-subtle}" },
-    "mode-sensitive-fg": { "$value": "{text.warning}" },
-    "mode-sensitive-border": { "$value": "{border.warning-subtle}" },
-    "mode-sensitive-icon": { "$value": "{icon.warning}" },
-    "ledger-completed-bg": { "$value": "{bg.success-subtle}" },
-    "ledger-completed-fg": { "$value": "{text.success}" },
-    "ledger-completed-border": { "$value": "{border.success-subtle}" },
-    "ledger-completed-icon": { "$value": "{icon.success}" },
-    "ledger-refunded-bg": { "$value": "{bg.info-subtle}" },
-    "ledger-refunded-fg": { "$value": "{text.info}" },
-    "ledger-refunded-border": { "$value": "{border.info-subtle}" },
-    "ledger-refunded-icon": { "$value": "{icon.info}" },
-    "edge-dependency": { "$value": "{text.default}" },
-    "edge-lineage": { "$value": "{text.info}" },
-    "edge-supersedes": { "$value": "{text.warning}" },
-    "edge-halo": { "$value": "{surface.sunken}" },
-    "edge-chip-bg": { "$value": "{surface.raised}" }
+    "type-fact-bg": {
+      "$value": "{bg.info-subtle}"
+    },
+    "type-fact-fg": {
+      "$value": "{text.info}"
+    },
+    "type-fact-border": {
+      "$value": "{border.info-subtle}"
+    },
+    "type-fact-icon": {
+      "$value": "{icon.info}"
+    },
+    "type-decision-bg": {
+      "$value": "{bg.neutral-subtle}"
+    },
+    "type-decision-fg": {
+      "$value": "{text.subtle}"
+    },
+    "type-decision-border": {
+      "$value": "{border.default}"
+    },
+    "type-decision-icon": {
+      "$value": "{icon.subtle}"
+    },
+    "type-constraint-bg": {
+      "$value": "{bg.warning-subtle}"
+    },
+    "type-constraint-fg": {
+      "$value": "{text.warning}"
+    },
+    "type-constraint-border": {
+      "$value": "{border.warning-subtle}"
+    },
+    "type-constraint-icon": {
+      "$value": "{icon.warning}"
+    },
+    "status-confirmed-bg": {
+      "$value": "{bg.success-subtle}"
+    },
+    "status-confirmed-fg": {
+      "$value": "{text.success}"
+    },
+    "status-confirmed-border": {
+      "$value": "{border.success-subtle}"
+    },
+    "status-confirmed-icon": {
+      "$value": "{icon.success}"
+    },
+    "status-proposed-bg": {
+      "$value": "{bg.info-subtle}"
+    },
+    "status-proposed-fg": {
+      "$value": "{text.info}"
+    },
+    "status-proposed-border": {
+      "$value": "{border.info-subtle}"
+    },
+    "status-proposed-icon": {
+      "$value": "{icon.info}"
+    },
+    "status-needs-review-bg": {
+      "$value": "{bg.warning-subtle}"
+    },
+    "status-needs-review-fg": {
+      "$value": "{text.warning}"
+    },
+    "status-needs-review-border": {
+      "$value": "{border.warning-subtle}"
+    },
+    "status-needs-review-icon": {
+      "$value": "{icon.warning}"
+    },
+    "status-superseded-bg": {
+      "$value": "{bg.neutral-subtle}"
+    },
+    "status-superseded-fg": {
+      "$value": "{text.subtle}"
+    },
+    "status-superseded-border": {
+      "$value": "{border.default}"
+    },
+    "status-superseded-icon": {
+      "$value": "{icon.subtle}"
+    },
+    "status-archived-bg": {
+      "$value": "{bg.neutral-subtle}"
+    },
+    "status-archived-fg": {
+      "$value": "{text.subtle}"
+    },
+    "status-archived-border": {
+      "$value": "{border.default}"
+    },
+    "status-archived-icon": {
+      "$value": "{icon.subtle}"
+    },
+    "gap-required-bg": {
+      "$value": "{bg.danger-subtle}"
+    },
+    "gap-required-fg": {
+      "$value": "{text.danger}"
+    },
+    "gap-required-border": {
+      "$value": "{border.danger-subtle}"
+    },
+    "gap-required-icon": {
+      "$value": "{icon.danger}"
+    },
+    "gap-suggested-bg": {
+      "$value": "{bg.warning-subtle}"
+    },
+    "gap-suggested-fg": {
+      "$value": "{text.warning}"
+    },
+    "gap-suggested-border": {
+      "$value": "{border.warning-subtle}"
+    },
+    "gap-suggested-icon": {
+      "$value": "{icon.warning}"
+    },
+    "gap-optional-bg": {
+      "$value": "{bg.neutral-subtle}"
+    },
+    "gap-optional-fg": {
+      "$value": "{text.subtle}"
+    },
+    "gap-optional-border": {
+      "$value": "{border.default}"
+    },
+    "gap-optional-icon": {
+      "$value": "{icon.subtle}"
+    },
+    "ready-ready-bg": {
+      "$value": "{bg.success-subtle}"
+    },
+    "ready-ready-fg": {
+      "$value": "{text.success}"
+    },
+    "ready-ready-border": {
+      "$value": "{border.success-subtle}"
+    },
+    "ready-ready-icon": {
+      "$value": "{icon.success}"
+    },
+    "ready-needs-work-bg": {
+      "$value": "{bg.warning-subtle}"
+    },
+    "ready-needs-work-fg": {
+      "$value": "{text.warning}"
+    },
+    "ready-needs-work-border": {
+      "$value": "{border.warning-subtle}"
+    },
+    "ready-needs-work-icon": {
+      "$value": "{icon.warning}"
+    },
+    "ready-blocked-bg": {
+      "$value": "{bg.danger-subtle}"
+    },
+    "ready-blocked-fg": {
+      "$value": "{text.danger}"
+    },
+    "ready-blocked-border": {
+      "$value": "{border.danger-subtle}"
+    },
+    "ready-blocked-icon": {
+      "$value": "{icon.danger}"
+    },
+    "mode-fast-bg": {
+      "$value": "{bg.neutral-subtle}"
+    },
+    "mode-fast-fg": {
+      "$value": "{text.subtle}"
+    },
+    "mode-fast-border": {
+      "$value": "{border.default}"
+    },
+    "mode-fast-icon": {
+      "$value": "{icon.subtle}"
+    },
+    "mode-auto-bg": {
+      "$value": "{bg.info-subtle}"
+    },
+    "mode-auto-fg": {
+      "$value": "{text.info}"
+    },
+    "mode-auto-border": {
+      "$value": "{border.info-subtle}"
+    },
+    "mode-auto-icon": {
+      "$value": "{icon.info}"
+    },
+    "mode-critique-bg": {
+      "$value": "{bg.success-subtle}"
+    },
+    "mode-critique-fg": {
+      "$value": "{text.success}"
+    },
+    "mode-critique-border": {
+      "$value": "{border.success-subtle}"
+    },
+    "mode-critique-icon": {
+      "$value": "{icon.success}"
+    },
+    "mode-sensitive-bg": {
+      "$value": "{bg.warning-subtle}"
+    },
+    "mode-sensitive-fg": {
+      "$value": "{text.warning}"
+    },
+    "mode-sensitive-border": {
+      "$value": "{border.warning-subtle}"
+    },
+    "mode-sensitive-icon": {
+      "$value": "{icon.warning}"
+    },
+    "ledger-completed-bg": {
+      "$value": "{bg.success-subtle}"
+    },
+    "ledger-completed-fg": {
+      "$value": "{text.success}"
+    },
+    "ledger-completed-border": {
+      "$value": "{border.success-subtle}"
+    },
+    "ledger-completed-icon": {
+      "$value": "{icon.success}"
+    },
+    "ledger-refunded-bg": {
+      "$value": "{bg.info-subtle}"
+    },
+    "ledger-refunded-fg": {
+      "$value": "{text.info}"
+    },
+    "ledger-refunded-border": {
+      "$value": "{border.info-subtle}"
+    },
+    "ledger-refunded-icon": {
+      "$value": "{icon.info}"
+    },
+    "edge-dependency": {
+      "$value": "{text.default}"
+    },
+    "edge-lineage": {
+      "$value": "{text.info}"
+    },
+    "edge-supersedes": {
+      "$value": "{text.warning}"
+    },
+    "edge-halo": {
+      "$value": "{surface.sunken}"
+    },
+    "edge-chip-bg": {
+      "$value": "{surface.raised}"
+    }
   }
 }

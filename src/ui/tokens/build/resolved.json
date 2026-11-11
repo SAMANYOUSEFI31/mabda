@@ -2793,9 +2793,9 @@
    "level": "semantic",
    "type": "color",
    "description": null,
-   "alias": "{border.bold}",
-   "light": "rgb(26 23 19 / 0.3)",
-   "dark": "rgb(254 249 245 / 0.26)"
+   "alias": "{border.input}",
+   "light": "#8b857f",
+   "dark": "#8b857f"
   },
   {
    "token": "knowledge.thought-border-style",
@@ -2833,9 +2833,9 @@
    "level": "semantic",
    "type": "color",
    "description": null,
-   "alias": "{border.info-subtle}",
-   "light": "rgb(51 144 172 / 0.42)",
-   "dark": "rgb(101 173 198 / 0.42)"
+   "alias": "{border.info}",
+   "light": "#057490",
+   "dark": "#65adc6"
   },
   {
    "token": "knowledge.proposed-border-style",
@@ -2898,24 +2898,14 @@
    "dark": "6px"
   },
   {
-   "token": "knowledge.truth-rule",
-   "css": "--knowledge-truth-rule",
-   "level": "semantic",
-   "type": "color",
-   "description": null,
-   "alias": "{border.success}",
-   "light": "#107c5a",
-   "dark": "#68b394"
-  },
-  {
    "token": "knowledge.truth-shadow",
    "css": "--knowledge-truth-shadow",
    "level": "semantic",
    "type": "shadow",
    "description": null,
    "alias": "{shadow.seated}",
-   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.07)",
-   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5)"
+   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1)",
+   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55)"
   },
   {
    "token": "knowledge.stale-rule",
@@ -2946,6 +2936,36 @@
    "alias": "{text.subtle}",
    "light": "#59544f",
    "dark": "#cfc9c3"
+  },
+  {
+   "token": "knowledge.sample-surface",
+   "css": "--knowledge-sample-surface",
+   "level": "semantic",
+   "type": "color",
+   "description": null,
+   "alias": "{surface.page}",
+   "light": "#faf5f0",
+   "dark": "#1a1713"
+  },
+  {
+   "token": "knowledge.sample-border",
+   "css": "--knowledge-sample-border",
+   "level": "semantic",
+   "type": "color",
+   "description": null,
+   "alias": "{border.default}",
+   "light": "rgb(26 23 19 / 0.13)",
+   "dark": "rgb(254 249 245 / 0.12)"
+  },
+  {
+   "token": "knowledge.sample-radius",
+   "css": "--knowledge-sample-radius",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": "{radius.sm}",
+   "light": "6px",
+   "dark": "6px"
   },
   {
    "token": "mabda.type-fact-bg",
@@ -4844,8 +4864,8 @@
    "type": "shadow",
    "description": null,
    "alias": null,
-   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.07)",
-   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5)"
+   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1)",
+   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55)"
   },
   {
    "token": "shadow.raised",
@@ -5034,8 +5054,8 @@
    "type": "shadow",
    "description": null,
    "alias": "{shadow.seated}",
-   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.07)",
-   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5)"
+   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1)",
+   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55)"
   },
   {
    "token": "card.radius",
@@ -5084,8 +5104,8 @@
    "type": "shadow",
    "description": null,
    "alias": "{shadow.seated}",
-   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.07)",
-   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5)"
+   "light": "0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1)",
+   "dark": "0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55)"
   },
   {
    "token": "card.shadow-hover",
