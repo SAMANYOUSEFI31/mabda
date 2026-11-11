@@ -22,8 +22,8 @@ import { affectPlan, affectedBy } from '../../core/relationPlan';
 import { TYPE_CHIP_FA, guessTitle, guessType } from '../../core/knowledgeGuess';
 import { suggestLinks } from '../../core/mentions';
 import { suggestUpstreamLinks } from '../../core/upstreamLinks';
-import { provenanceOf } from '../../core/provenance';
-import { ProvenanceList } from './ProvenanceList';
+import { AroundPanel } from './AroundPanel';
+import { aroundOf } from '../../core/around';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
@@ -180,6 +180,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const plan = isEditing && object ? planDecisions(allObjects, relationships) : null;
   const unit = plan?.layers.flat().find((u) => u.ids.includes(object!.id));
   const dependents = isEditing && object ? dependentsOf(object.id, relationships, allObjects) : [];
+  const around = useMemo(() => (isEditing && object ? aroundOf({ objectId: object.id, objects: allObjects, relationships, nodes, thoughts, notes, deliverables }) : undefined), [isEditing, object, allObjects, relationships, nodes, thoughts, notes, deliverables]);
   const influence = useMemo(() => (isEditing && object ? influenceOf(object.id, allObjects, nodes, relationships, deliverables, new Date()) : undefined), [isEditing, object, allObjects, nodes, relationships, deliverables]);
   const parentNodeId = object ? nodes.find((n) => n.id === object.nodeId)?.parentId : undefined;
   const [supersedeReason, setSupersedeReason] = useState('');
@@ -201,7 +202,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   }, [content, title, type, nodeId, nodes, object?.id, allObjects, relationships, deps, turnedDown]);
   const turnDown = (targetId: string) => { const next = [...turnedDown, noKey(targetId)].slice(-200); setTurnedDown(next); try { localStorage.setItem('mabda.mentions.no', JSON.stringify(next)); } catch { /* optional */ } };
   const history = useMemo(() => versionHistory(changes), [changes]);
-  const [tab, setTab] = useState<'edit' | 'history' | 'influence'>('edit');
+  const [tab, setTab] = useState<'edit' | 'history' | 'around'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
     let live = true;
@@ -315,23 +316,19 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       {isEditing && object && (
         <div className="mb-stack-md flex flex-col gap-stack-sm">
           <ApprovalBadge history={history} />
-          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'influence')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `نسخه‌ها (${formatNumber(history.entries.length)})` }, { id: 'influence', label: 'اثرگذاران' }]} />
+          <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'around')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `نسخه‌ها (${formatNumber(history.entries.length)})` }, { id: 'around', label: 'اطراف این مورد' }]} />
         </div>
       )}
-      {tab === 'influence' && isEditing && object && influence && <InfluencePanel influence={influence} nodes={nodes} onOpenObject={onOpenRelated} />}
-      {tab === 'influence' && isEditing && object && (
-        <section className="mt-stack-md flex flex-col gap-stack-sm" aria-label="منشأ">
-          <h3 className="title text-text-default">منشأ: از کجا آمده و به کجا رفته</h3>
-          <ProvenanceList
-            provenance={provenanceOf({ objectId: object.id, objects: allObjects, relationships, notes, deliverables })}
-            onOpen={(l) => { const t = l.target; if (!t) return; if (t.type === 'object') { const o = allObjects.find((x) => x.id === t.objectId); if (o) onOpenRelated?.(o); } else if (t.type === 'note') onOpenNote?.(t.noteId, t.nodeId); else onOpenAssets?.(); }}
-          />
-        </section>
+      {tab === 'around' && isEditing && object && (
+        <div className="flex flex-col gap-stack-lg">
+          <AroundPanel object={object} around={around!} allObjects={allObjects} onOpenObject={onOpenRelated} onOpenNote={onOpenNote} onOpenThinking={onOpenThinking} onOpenAssets={onOpenAssets} />
+          {influence && <InfluencePanel influence={influence} nodes={nodes} onOpenObject={onOpenRelated} />}
+        </div>
       )}
       {tab === 'history' && isEditing && (
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
-      <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'influence') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+      <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
