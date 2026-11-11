@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Screenshot every main view at 390px and 1280px, light and dark, into docs/screens/ and print layout audit findings
- * (horizontal overflow, text < 12px, long text < 14px, touch targets < 44px, WCAG contrast, more than one primary).
+ * (horizontal overflow, overlap, clipping, text < 12px, long text < 14px, touch targets < 44px, WCAG + APCA contrast, more than one primary).
  * Light files are <view>-<width>.png, dark files <view>-<width>-dark.png. SCHEMES=light (or dark) runs one mode only.
  * Usage: node scripts/screens.mjs [baseUrl]   (default http://localhost:3100)
  */
@@ -24,7 +24,7 @@ const TABS = [
 ];
 
 const audit = () => {
-  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], edges: [], canvas: [], primaries: 0, dimmedChecked: 0 };
+  const out = { overflow: null, tiny: [], smallBody: [], touch: [], contrast: [], edges: [], canvas: [], overlap: [], clipped: [], primaries: 0, dimmedChecked: 0 };
   // contrast: composite ancestor backgrounds, compare with text color (WCAG relative luminance)
   const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
   const over = (top, bot) => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 });
@@ -74,6 +74,66 @@ const audit = () => {
         out.touch.push(`${Math.round(r.width)}x${Math.round(r.height)} <${el.tagName.toLowerCase()}> "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}"`);
       }
     }
+  }
+  // overlap: two visible, unrelated pieces (controls, icons, own-text elements) drawn on top of each other —
+  // a badge over its icon, a floating button over a card, two-line rows spilling into each other
+  const label = (e) => `<${e.tagName.toLowerCase()}> "${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 24)}"`;
+  const live = (e) => vis(e) && !e.closest('[inert], [aria-hidden=true]:not(svg), [data-testid=canvas-stage], .mb-sr, .sr-only') && parseFloat(getComputedStyle(e).opacity) > 0.05;
+  const topLayer = document.querySelector('[role=dialog], [role=alertdialog], [role=menu]');
+  const pieces = [...document.querySelectorAll('button, a[href], input, select, textarea, svg, body *')].filter((e, i, a) => a.indexOf(e) === i).filter((e) => {
+    if (!live(e)) return false;
+    if (topLayer && !topLayer.contains(e) && !e.closest('[role=dialog], [role=alertdialog], [role=menu]')) return false; // behind a modal or open menu
+    if (e.matches('button, a[href], input, select, textarea, svg')) return true;
+    return [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+  });
+  // a decorative glyph laid inside a field (search icon, select chevron) does not take clicks: it is part of the field
+  const deco = (e) => e.matches('svg') && getComputedStyle(e).pointerEvents === 'none';
+  // a fixed / sticky bar over flowing content is fine while the page can scroll that content clear (checked below)
+  const pinned = (e) => { for (let a = e; a && a !== document.body; a = a.parentElement) { const p = getComputedStyle(a).position; if (p === 'fixed' || p === 'sticky') return a; } return null; };
+  // what is actually drawn: the box cut by every scrolling / clipping ancestor (a row scrolled out of a list is not on screen)
+  const shown = (e) => {
+    let r = e.getBoundingClientRect(); let { left, top, right, bottom } = r;
+    for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (!/auto|scroll|hidden|clip/.test(cs.overflowX + cs.overflowY)) continue;
+      const ar = a.getBoundingClientRect();
+      left = Math.max(left, ar.left); top = Math.max(top, ar.top); right = Math.min(right, ar.right); bottom = Math.min(bottom, ar.bottom);
+    }
+    return { left, top, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  };
+  const boxes = pieces.filter((e) => !deco(e)).map((e) => ({ e, r: shown(e), pin: pinned(e) })).filter((b) => b.r.width > 0 && b.r.height > 0);
+  for (let i = 0; i < boxes.length && out.overlap.length < 12; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const A = boxes[i], B = boxes[j];
+    if (A.e.contains(B.e) || B.e.contains(A.e)) continue;
+    if (A.pin !== B.pin && (!A.pin || !B.pin)) continue;
+    const w = Math.min(A.r.right, B.r.right) - Math.max(A.r.left, B.r.left), h = Math.min(A.r.bottom, B.r.bottom) - Math.max(A.r.top, B.r.top);
+    if (w <= 1 || h <= 1) continue;
+    const small = Math.min(A.r.width * A.r.height, B.r.width * B.r.height);
+    if (w * h > 0.2 * small) out.overlap.push(`${label(A.e)} × ${label(B.e)} (${Math.round(w)}x${Math.round(h)})`);
+  }
+  // clipped: a control or text cut by a non-scrolling ancestor, or a menu / dialog that runs past the viewport or needs scrolling
+  for (const { e } of boxes) {
+    const r = e.getBoundingClientRect();
+    for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (!/hidden|clip/.test(cs.overflowX + cs.overflowY) || /auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
+      const ar = a.getBoundingClientRect();
+      if (r.top < ar.top - 2 || r.bottom > ar.bottom + 2 || r.left < ar.left - 2 || r.right > ar.right + 2) { out.clipped.push(`${label(e)} cut by <${a.tagName.toLowerCase()}.${String(a.className).split(' ')[0]}>`); }
+      break;
+    }
+    if (out.clipped.length > 8) break;
+  }
+  // the last content must be able to scroll clear of a bar pinned to the bottom (no floating control may cover it for good)
+  const bottomBar = [...document.querySelectorAll('nav, [data-testid]')].find((e) => vis(e) && getComputedStyle(e).position === 'fixed' && Math.abs(e.getBoundingClientRect().bottom - innerHeight) < 2 && e.getBoundingClientRect().width > innerWidth / 2);
+  if (bottomBar && de.scrollHeight > innerHeight) {
+    const room = parseFloat(getComputedStyle(document.querySelector('#root > div') || document.body).paddingBottom) || 0;
+    if (room + 1 < bottomBar.getBoundingClientRect().height) out.clipped.push(`page end has ${room}px under a ${Math.round(bottomBar.getBoundingClientRect().height)}px bottom bar`);
+  }
+  for (const m of document.querySelectorAll('[role=menu], .mb-popover__panel, .mb-dialog')) {
+    if (!vis(m)) continue;
+    const r = m.getBoundingClientRect();
+    if (r.top < -1 || r.bottom > innerHeight + 1 || r.left < -1 || r.right > innerWidth + 1) out.clipped.push(`${m.getAttribute('role') || 'panel'} "${(m.getAttribute('aria-label') || '').slice(0, 20)}" runs past the viewport`);
+    if (m.matches('[role=menu]') && m.scrollHeight > m.clientHeight + 2) out.clipped.push(`menu "${(m.getAttribute('aria-label') || '').slice(0, 20)}" hides ${m.scrollHeight - m.clientHeight}px below its edge`);
   }
   // canvas toolbar: controls are GROUPED (view · history · camera · note · details · «⋯»); more than 9 loose children means it grew back into a bar
   const tb = document.querySelector('[data-testid=canvas-toolbar]');
@@ -144,8 +204,8 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     await page.screenshot({ path: `${OUT}/${name}-${size.name}.png`, fullPage: false });
     const r = await page.evaluate(audit);
     if (r.dimmedChecked) console.log(`  [${size.name}] ${name}: ${r.dimmedChecked} dimmed card titles measured`);
-    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.canvas.length || r.primaries > 1;
-    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges', 'canvas']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
+    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.canvas.length || r.overlap.length || r.clipped.length || r.primaries > 1;
+    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges', 'canvas', 'overlap', 'clipped']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
   };
   const goTab = async (t) => {
     const mobile = size.width < 768;
@@ -199,7 +259,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   // the truth overview, its focused lineage view, and the free thinking canvas
-  await accountItem('ساخت یا بازنشانی فضای نمونه');
+  await accountItem('بازسازی فضای نمونه');
   await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 2500 }).catch(() => {});
   await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
   await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
