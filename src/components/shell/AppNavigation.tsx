@@ -6,9 +6,10 @@
 import React, { useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
 import { PLANS } from '../../core/creditEngine';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, NavItem, formatNumber, useTheme, nextTheme, THEME_LABEL } from '../../ui';
-import type { IconName, MenuItem } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, formatNumber, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
+import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
+import { requestQuickCapture } from '../../core/quickCapture';
 
 type ContextView = 'doc' | 'read' | 'table' | 'canvas';
 
@@ -80,17 +81,17 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const accountItems: Array<MenuItem & { section: 'workspace' | 'import' | 'plan' | 'account' }> = [
     ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
-    { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
+    { section: 'workspace', label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo },
     ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
     // grouped by what you are doing: plan and usage · the account (a divider between groups)
     { section: 'import', label: 'وارد کردن سند یا حافظه', icon: 'Brain', onSelect: p.onOpenMemory },
-    { section: 'plan', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
+    { section: 'plan', label: 'پلن و ارتقا', icon: 'CreditCard', onSelect: p.onOpenPlanModal },
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
     { section: 'account', label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
     { section: 'account', label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
-    { section: 'account', label: `ظاهر: ${THEME_LABEL[theme]}`, icon: 'Palette', onSelect: () => setTheme(nextTheme(theme)) },
+    { section: 'account', label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
   ];
   const withDividers = (): MenuItem[] => {
     const out: MenuItem[] = [];
@@ -162,7 +163,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   );
 
   const close = () => setDrawer(false);
-  const drawerRow = (it: MenuItem, i: number) => it.divider ? <div key={i} role="separator" className="my-stack-xs border-t border-border-default" /> : (
+  const drawerRow = (it: MenuItem, i: number) => it.divider ? <div key={i} role="separator" className="my-stack-xs border-t border-border-default" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`drawer-choice-${i}`} /> : (
     <button key={i} type="button" onClick={() => { it.onSelect?.(); close(); }}
       className="flex min-h-touch w-full items-center gap-inline-md rounded-control px-inset-md text-start body-md text-text-default hover:bg-interaction-hover active:bg-interaction-pressed">
       {it.icon ? <Icon name={it.icon as IconName} size="md" /> : <span className="inline-block w-icon-md" aria-hidden="true" />}
@@ -206,16 +207,18 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         <div className="flex flex-col gap-stack-xs">{withDividers().map(drawerRow)}</div>
       </Dialog>
 
-      {/* Mobile bottom navigation: home + the four destinations (the account drawer is the button in the top bar) */}
+      {/* Mobile bottom navigation: four destinations and «ثبت» in the middle (the account drawer is the button in the top bar) */}
       <BottomNav
         fixed
         className="md:hidden"
         label="منوی پایینی موبایل"
         value={activeTab === 'workstreams' ? 'assets' : activeTab}
-        onChange={onTabChange}
+        onChange={(id) => (id === 'capture' ? requestQuickCapture() : onTabChange(id))}
         items={[
           { id: 'home', label: 'خانه', icon: 'House' },
           { id: 'thinking', label: 'فکر', icon: 'Lightbulb', badge: p.thinkingCount || undefined, badgeLabel: 'مورد باز' },
+          // capture lives in the bar itself: always reachable, and it never floats over the page
+          { id: 'capture', label: 'ثبت', icon: 'Plus', action: true, testId: 'quick-capture-fab' },
           { id: 'context', label: 'منبع', icon: 'BookOpen' },
           { id: 'assets', label: 'خروجی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'خروجی' },
         ]}

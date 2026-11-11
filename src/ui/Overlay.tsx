@@ -207,7 +207,26 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
 }
 
 /* ---------------- Menu ---------------- */
-export interface MenuItem { label?: ReactNode; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean }
+/** choice: a row of mutually exclusive options shown together (e.g. appearance); choosing one does not close the menu */
+export interface MenuChoice { value: string; label: string }
+export interface MenuItem { label?: ReactNode; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean; choice?: { options: MenuChoice[]; value: string; onChoose: (value: string) => void } }
+
+/** a labelled group of radio items; used inside Menu and in drawers so both read the same */
+export function MenuChoiceRow({ item, labelId }: { item: MenuItem; labelId: string }) {
+  const c = item.choice!;
+  return (
+    <div className="mb-menu__choice" role="group" aria-labelledby={labelId}>
+      <span id={labelId} className="mb-menu__choice-label body-md">{item.icon && <Icon name={item.icon} size="md" />}<span>{item.label}</span></span>
+      <span className="mb-tabs mb-seg mb-tabs--full">
+        {c.options.map((o) => (
+          <button key={o.value} type="button" role="menuitemradio" aria-checked={o.value === c.value} tabIndex={-1}
+            className="mb-tab label-md"
+            onClick={(e) => { e.stopPropagation(); c.onChoose(o.value); }}>{o.label}</button>
+        ))}
+      </span>
+    </div>
+  );
+}
 export interface MenuProps {
   trigger: ReactElement<Record<string, unknown>>;
   items: MenuItem[];
@@ -225,7 +244,7 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
   const id = useId();
   const close = (refocus?: boolean) => { setOpen(false); if (refocus) btn.current?.focus(); };
   useDismiss(open, [root], (esc) => close(esc));
-  const enabled = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)') ?? []);
+  const enabled = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled),[role="menuitemradio"]') ?? []);
   useEffect(() => { if (open) enabled()[0]?.focus(); }, [open]);
   const onKey = (e: React.KeyboardEvent) => {
     const list = enabled();
@@ -245,9 +264,9 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
         onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } },
       })}
       {open && (
-        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} style={{ maxBlockSize: 'min(70dvh, 32rem)', overflowY: 'auto' }}
+        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} style={{ maxBlockSize: 'calc(100dvh - 4rem)', overflowY: 'auto' }}
           className={cx('mb-popover__panel', 'mb-menu', `is-${align}`, side === 'top' && 'is-top')}>
-          {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : (
+          {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}
               className={cx('mb-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}
               onClick={() => { it.onSelect?.(); close(true); }}>

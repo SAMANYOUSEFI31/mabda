@@ -7,13 +7,13 @@ export { BrandMark, Badge, Tag, Avatar, Card, Divider, Stat, EmptyState, Alert, 
 export type { Intent, StatusIntent, BadgeProps, TagProps, CardProps, AlertProps, ProgressProps, KnowledgeState } from './Display.tsx';
 export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard } from './Forms.tsx';
 export type { TextFieldProps, TextareaProps, SelectProps, SelectOption } from './Forms.tsx';
-export { Dialog, Toast, ToastProvider, useToast, Popover, Menu } from './Overlay.tsx';
-export type { DialogProps, MenuItem } from './Overlay.tsx';
+export { Dialog, Toast, ToastProvider, useToast, Popover, Menu, MenuChoiceRow } from './Overlay.tsx';
+export type { DialogProps, MenuItem, MenuChoice } from './Overlay.tsx';
 export { Tabs, SegmentedControl, Table, List, ListItem, BottomNav, NavItem, Breadcrumb } from './Navigation.tsx';
 export type { TabItem, TableColumn } from './Navigation.tsx';
 export * from './format.ts';
 export * from './mabda.tsx';
 export { Markdown } from './Markdown.tsx';
 export type { HeadingAnchor } from './Markdown.tsx';
-export { useTheme, nextTheme, THEME_LABEL, resolveDark } from './theme.ts';
+export { useTheme, THEME_ORDER, THEME_LABEL, resolveDark } from './theme.ts';
 export type { ThemePref } from './theme.ts';

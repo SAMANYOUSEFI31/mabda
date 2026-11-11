@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
  */
 export type ThemePref = 'system' | 'light' | 'dark';
 const KEY = 'mabda:theme';
-export const THEME_LABEL: Record<ThemePref, string> = { system: 'مثل دستگاه', light: 'روشن', dark: 'تیره' };
-/** order of the «ظاهر» control: one press moves to the next */
-export const nextTheme = (p: ThemePref): ThemePref => (p === 'system' ? 'light' : p === 'light' ? 'dark' : 'system');
+export const THEME_LABEL: Record<ThemePref, string> = { system: 'خودکار', light: 'روشن', dark: 'تیره' };
+/** order of the options in the «ظاهر» control */
+export const THEME_ORDER: ThemePref[] = ['system', 'light', 'dark'];
 
 export function readThemePref(): ThemePref {
   try { const v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : 'system'; } catch { return 'system'; }
@@ -21,6 +21,9 @@ export function resolveDark(pref: ThemePref, systemDark: boolean): boolean {
 function apply(pref: ThemePref) {
   const systemDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.classList.toggle('dark', resolveDark(pref, systemDark));
+  // the browser chrome follows the chosen mode, not only the system one
+  const page = getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim();
+  if (page) document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => { m.content = page; });
 }
 
 export function useTheme(): [ThemePref, (p: ThemePref) => void] {
