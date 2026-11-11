@@ -252,7 +252,9 @@ test('caller abort -> aborted', async () => {
 });
 test('timeout -> timeout', async () => {
   const { sp } = fake([waitAbort], { embedding: 20 });
-  await rejects(sp.embedding('embPlain').embed(['a'], 'query'), 'timeout');
+  // AbortSignal.timeout does not keep the event loop alive; without a ref'd timer node:test cancels the pending test
+  const keepAlive = setTimeout(() => {}, 1000);
+  try { await rejects(sp.embedding('embPlain').embed(['a'], 'query'), 'timeout'); } finally { clearTimeout(keepAlive); }
 });
 test('no retry: a failing call is made exactly once', async () => {
   const { sp, calls } = fake([text('x', 500), json({ data: [{ index: 0, embedding: [1] }] })]);
