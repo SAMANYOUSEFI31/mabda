@@ -1,0 +1,73 @@
+{
+  "$description": "Mabda component tokens: the third level. Each component reads only these and semantic tokens (src/ui/components.css). Changing a component's look starts here.",
+  "button": {
+    "radius": { "$type": "dimension", "$value": "{radius.control}" },
+    "height-sm": { "$type": "dimension", "$value": "{control.sm}" },
+    "height-md": { "$type": "dimension", "$value": "{control.md}" },
+    "height-lg": { "$type": "dimension", "$value": "{control.lg}" },
+    "padding-sm": { "$type": "dimension", "$value": "{inset.md}" },
+    "padding-md": { "$type": "dimension", "$value": "{inset.lg}" },
+    "padding-lg": { "$type": "dimension", "$value": "{inset.xl}" },
+    "primary-bg": { "$type": "color", "$value": "{bg.brand-bold}" },
+    "primary-bg-hover": { "$type": "color", "$value": "{bg.brand-bold-hover}" },
+    "primary-bg-pressed": { "$type": "color", "$value": "{bg.brand-bold-pressed}" },
+    "primary-fg": { "$type": "color", "$value": "{text.on-brand}" },
+    "secondary-bg": { "$type": "color", "$value": "{surface.raised}" },
+    "secondary-bg-hover": { "$type": "color", "$value": "{bg.neutral-subtle-hover}" },
+    "secondary-border": { "$type": "color", "$value": "{border.default-hover}" },
+    "secondary-shadow": { "$type": "shadow", "$value": "{shadow.seated}" }
+  },
+  "card": {
+    "radius": { "$type": "dimension", "$value": "{radius.container}" },
+    "surface": { "$type": "color", "$value": "{surface.raised}" },
+    "border": { "$type": "color", "$value": "{border.default}" },
+    "border-hover": { "$type": "color", "$value": "{border.default-hover}" },
+    "shadow": { "$type": "shadow", "$value": "{shadow.seated}" },
+    "shadow-hover": { "$type": "shadow", "$value": "{shadow.raised}" }
+  },
+  "field": {
+    "radius": { "$type": "dimension", "$value": "{radius.control}" },
+    "surface": { "$type": "color", "$value": "{bg.input}" },
+    "border": { "$type": "color", "$value": "{border.input}" },
+    "border-hover": { "$type": "color", "$value": "{border.input-hover}" },
+    "border-invalid": { "$type": "color", "$value": "{border.danger}" }
+  },
+  "badge": {
+    "radius": { "$type": "dimension", "$value": "{radius.pill}" },
+    "height": { "$type": "dimension", "$value": "{space.6}" }
+  },
+  "tabs": {
+    "radius": { "$type": "dimension", "$value": "{radius.control}" },
+    "tab-radius": { "$type": "dimension", "$value": "{radius.control-sm}" },
+    "track": { "$type": "color", "$value": "{surface.sunken}" },
+    "selected-surface": { "$type": "color", "$value": "{surface.raised}" },
+    "selected-shadow": { "$type": "shadow", "$value": "{shadow.raised}" }
+  },
+  "dialog": {
+    "radius": { "$type": "dimension", "$value": "{radius.overlay}" },
+    "surface": { "$type": "color", "$value": "{surface.overlay}" },
+    "shadow": { "$type": "shadow", "$value": "{shadow.overlay}" },
+    "padding": { "$type": "dimension", "$value": "{inset.xl}" }
+  },
+  "menu": {
+    "radius": { "$type": "dimension", "$value": "{radius.container}" },
+    "item-radius": { "$type": "dimension", "$value": "{radius.control-sm}" },
+    "surface": { "$type": "color", "$value": "{surface.overlay}" },
+    "shadow": { "$type": "shadow", "$value": "{shadow.overlay}" }
+  },
+  "toast": {
+    "radius": { "$type": "dimension", "$value": "{radius.container}" },
+    "surface": { "$type": "color", "$value": "{bg.neutral-bold}" },
+    "fg": { "$type": "color", "$value": "{text.on-neutral}" }
+  },
+  "check": {
+    "on": { "$type": "color", "$value": "{bg.neutral-bold}" },
+    "on-hover": { "$type": "color", "$value": "{bg.neutral-bold-hover}" },
+    "mark": { "$type": "color", "$value": "{text.on-neutral}" }
+  },
+  "nav": {
+    "surface": { "$type": "color", "$value": "{surface.raised}" },
+    "badge-bg": { "$type": "color", "$value": "{bg.neutral-bold}" },
+    "badge-fg": { "$type": "color", "$value": "{text.on-neutral}" }
+  }
+}
