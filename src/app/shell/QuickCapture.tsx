@@ -11,7 +11,8 @@
 
 import { useEffect, useState } from 'react';
 import { IconButton } from '../../ui';
-import { QUICK_CAPTURE_EVENT, defaultSectionFor } from '../../core/quickCapture';
+import { QUICK_CAPTURE_EVENT, defaultSectionFor, requestQuickCapture } from '../../core/quickCapture';
+import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
 
@@ -35,6 +36,8 @@ export function QuickCapture({ data, focusNodeId, handleSaveThought, handleSaveT
     if (prefill?.trim()) setText((t) => (t.trim() ? `${t}\n${prefill}` : prefill));
     setOpen(true);
   };
+  // «ثبت سریع» در پالت فرمان هم پیدا شود (Ctrl+K)
+  useEffect(() => registerPaletteCommand({ id: 'quick-capture', title: 'ثبت سریع', keywords: ['فکر', 'یادداشت', 'فوری', 'Ctrl+J'], run: () => requestQuickCapture() }), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyJ') return;
