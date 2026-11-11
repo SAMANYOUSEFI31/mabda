@@ -254,15 +254,22 @@
 /* ---------- BottomNav ---------- */
 .mb-bottomnav{display:flex;inline-size:100%;background:var(--nav-surface);border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--safe-bottom);box-shadow:var(--shadow-overflow)}
 .mb-bottomnav.is-fixed{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--layer-sticky)}
-.mb-bottomnav__item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--stack-xs);min-block-size:calc(var(--touch-target-comfortable) + var(--space-4));
-  border:0;background:transparent;color:var(--text-subtle);cursor:pointer;transition:color var(--duration-fast) var(--ease-move)}
-.mb-bottomnav__item[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-bottomnav__item:hover{color:var(--text-default)}}
-@media (hover:hover){.mb-bottomnav__item:hover .mb-bottomnav__icon{background:var(--interaction-hover)}}
-.mb-bottomnav__item:active .mb-bottomnav__icon{background:var(--interaction-pressed)}
+/* spec navigation.md «نوار پایین»: bar 56; the selected state is one neutral tile (48 tall, radius 12) holding icon AND label */
+.mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
+  border:0;background:transparent;color:var(--text-subtle);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-move)}
+.mb-bottomnav__item::before{content:"";position:absolute;z-index:-1;inset-block:var(--space-1);inset-inline:var(--space-1);border-radius:var(--radius-lg);background:transparent;transition:background-color var(--duration-fast) var(--ease-move)}
+.mb-bottomnav__item[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-bottomnav__item:hover{color:var(--text-default)}.mb-bottomnav__item:not(.is-action):hover::before{background:var(--interaction-hover)}}
+.mb-bottomnav__item:not(.is-action):active::before{background:var(--interaction-pressed)}
 .mb-bottomnav__item.is-active{color:var(--text-default)}
-.mb-bottomnav__item.is-active .mb-bottomnav__icon{background:var(--bg-selected)}
-.mb-bottomnav__icon{position:relative;display:grid;place-items:center;inline-size:calc(var(--icon-xl) + var(--space-8));block-size:calc(var(--icon-xl) + var(--space-1));border-radius:var(--radius-pill);transition:background-color var(--duration-fast) var(--ease-move)}
-.mb-bottomnav__badge{position:absolute;inset-block-start:calc(var(--space-1) * -1);inset-inline-start:calc(50% + var(--icon-xl) / 2 - var(--space-1));min-inline-size:var(--space-4);padding-inline:var(--space-1);border-radius:var(--radius-pill);background:var(--nav-badge-bg);color:var(--nav-badge-fg);line-height:var(--space-4);font-variant-numeric:tabular-nums}
+.mb-bottomnav__item.is-active>.mb-bottomnav__label{font-weight:600}
+.mb-bottomnav__item.is-active::before{background:var(--bg-selected)}
+.mb-bottomnav__label{font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mb-bottomnav__icon{position:relative;display:grid;place-items:center;inline-size:var(--icon-xl);block-size:var(--icon-xl)}
+/* «افزودن»: the one lapis element of the bar, 52×40, radius 12; its name stays for screen readers */
+.mb-bottomnav__item.is-action .mb-bottomnav__icon{inline-size:calc(var(--space-12) + var(--space-1));block-size:var(--space-10);border-radius:var(--radius-lg);background:var(--button-primary-bg);color:var(--button-primary-fg);transition:background-color var(--duration-fast) var(--ease-move)}
+@media (hover:hover){.mb-bottomnav__item.is-action:hover .mb-bottomnav__icon{background:var(--button-primary-bg-hover)}}
+.mb-bottomnav__item.is-action:active .mb-bottomnav__icon{background:var(--button-primary-bg-pressed)}
+.mb-bottomnav__badge{position:absolute;inset-block-start:calc(var(--space-2) * -1);inset-inline-start:calc(100% + var(--space-1) / 2);min-inline-size:var(--space-4);padding-inline:var(--space-1);border-radius:var(--radius-pill);background:var(--nav-badge-bg);color:var(--nav-badge-fg);line-height:var(--space-4);font-variant-numeric:tabular-nums}
 
 /* ---------- Popover / Menu ---------- */
 .mb-popover{position:relative;display:inline-flex}
@@ -365,25 +372,28 @@
 .mb-dialog-layer{position:fixed;inset:0;z-index:var(--layer-dialog);display:flex;align-items:flex-end;justify-content:center}
 .mb-dialog-layer.is-inline{position:relative;inset:auto;min-block-size:100%;z-index:auto;padding-block-start:var(--space-6)}
 .mb-scrim{position:absolute;inset:0;background:var(--bg-scrim);animation:mb-fade var(--duration-slow) var(--ease-enter)}
-.mb-dialog{position:relative;inline-size:100%;max-block-size:90dvh;overflow:auto;padding:var(--dialog-padding);padding-block-end:calc(var(--dialog-padding) + var(--safe-bottom));
+/* spec overlays.md «یک ساختار برای همه»: head and foot stay, only the body scrolls */
+.mb-dialog{position:relative;inline-size:100%;max-block-size:90dvh;display:flex;flex-direction:column;overflow:hidden;padding:0;padding-block-end:var(--safe-bottom);
   background:var(--dialog-surface);border:var(--border-width-thin) solid var(--border-default);border-block-end:0;border-start-start-radius:var(--dialog-radius);border-start-end-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);color:var(--text-default);outline:none;
   animation:mb-sheet var(--duration-slow) var(--ease-enter)}
+.mb-dialog__top{flex:none;padding:var(--space-5) var(--dialog-padding) var(--space-4);border-block-end:var(--border-width-thin) solid transparent;transition:border-color var(--duration-fast) var(--ease-move)}
+.mb-dialog__top.is-scrolled{border-block-end-color:var(--border-default)}
 .mb-dialog__grab{display:block;inline-size:var(--space-10);block-size:var(--space-1);margin:calc(var(--space-3) * -1) auto var(--stack-md);border-radius:var(--radius-pill);background:var(--border-bold)}
 .mb-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-md)}
 .mb-dialog__head h2{margin:0;min-inline-size:0}
 .mb-dialog__desc{margin:var(--stack-xs) 0 0;color:var(--text-subtle)}
-.mb-dialog__body{margin-block-start:var(--stack-lg)}
-.mb-dialog__foot{display:flex;flex-direction:column-reverse;gap:var(--stack-sm);margin-block-start:var(--stack-lg)}
+.mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
+.mb-dialog__foot{flex:none;display:flex;flex-direction:column-reverse;gap:var(--stack-sm);padding:var(--space-3) var(--dialog-padding);border-block-start:var(--border-width-thin) solid var(--border-default)}
+.mb-dialog--sm .mb-dialog__foot,.mb-dialog__top+.mb-dialog__foot{border-block-start-color:transparent}
 @media (min-width:640px){
   .mb-dialog-layer{align-items:center;padding:var(--space-6)}
-  .mb-dialog{border-radius:var(--dialog-radius);border-block-end:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--dialog-padding);animation:mb-pop var(--duration-slow) var(--ease-enter)}
+  .mb-dialog{max-block-size:min(85dvh, calc(var(--space-40) * 5));border-radius:var(--dialog-radius);border-block-end:var(--border-width-thin) solid var(--border-default);padding-block-end:0;animation:mb-pop var(--duration-slow) var(--ease-enter)}
   .mb-dialog--sm{max-inline-size:var(--overlay-width-sm)}.mb-dialog--md{max-inline-size:var(--overlay-width-md)}.mb-dialog--lg{max-inline-size:var(--overlay-width-lg)}.mb-dialog--xl{max-inline-size:var(--container-lg)}
   .mb-dialog__grab{display:none}
   .mb-dialog__foot{flex-direction:row;justify-content:flex-end}
   /* side panel (the focused per-section thread) */
   .mb-dialog-layer.is-side{align-items:stretch;justify-content:flex-end;padding:0}
-  .mb-dialog-layer.is-side .mb-dialog{max-block-size:none;block-size:100%;max-inline-size:var(--overlay-width-lg);border-radius:0;border-block-end:0;display:flex;flex-direction:column}
-  .mb-dialog-layer.is-side .mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto}
+  .mb-dialog-layer.is-side .mb-dialog{max-block-size:none;block-size:100%;max-inline-size:var(--overlay-width-lg);border-radius:0;border-block-end:0}
 }
 @keyframes mb-fade{from{opacity:0}}
 @keyframes mb-sheet{from{translate:0 100%}}
@@ -424,4 +434,4 @@
 .mb-menu__choice [role=menuitemradio]:focus-visible{outline:var(--focus-width) solid var(--border-focus);outline-offset:calc(var(--focus-width) * -1)}
 }
 /* a menu opened from a full-width trigger (sidebar account) is exactly as wide as it, so the sidebar never clips it */
-@layer components{.mb-popover.w-full>.mb-menu{min-inline-size:0;inset-inline:0}}
+@layer components{.mb-popover__panel.is-portal{inset-block-end:auto;inset-inline-end:auto}}

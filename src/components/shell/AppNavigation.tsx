@@ -78,38 +78,45 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
 
   const ai = useAiStatus();
   const [theme, setTheme] = useTheme();
-  const accountItems: Array<MenuItem & { section: 'workspace' | 'import' | 'plan' | 'account' }> = [
-    ...allWorkspaces.map((w): MenuItem & { section: 'workspace' } => ({ section: 'workspace', label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
-    { section: 'workspace', label: 'فضای کاری تازه', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
-    { section: 'workspace', label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo },
-    ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
-    // grouped by what you are doing: plan and usage · the account (a divider between groups)
-    { section: 'import', label: 'وارد کردن سند یا حافظه', icon: 'Brain', onSelect: p.onOpenMemory },
-    { section: 'plan', label: 'پلن و ارتقا', icon: 'CreditCard', onSelect: p.onOpenPlanModal },
-    { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
-    ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
-    { section: 'account', label: 'شروع سریع', icon: 'Zap', onSelect: p.onOpenOnboarding },
-    { section: 'account', label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
-    { section: 'account', label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
-    { section: 'account', label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
+  // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
+  const workspaceItems: MenuItem[] = [
+    ...allWorkspaces.map((w): MenuItem => ({ label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
+    { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
+    { divider: true },
+    { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory },
+    { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo },
+    ...(p.onDeleteDemo ? [{ label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
   ];
-  const withDividers = (): MenuItem[] => {
-    const out: MenuItem[] = [];
-    accountItems.forEach((it, i) => {
-      if (i > 0 && accountItems[i - 1].section !== it.section) out.push({ divider: true });
-      out.push(it);
-    });
-    return out;
-  };
+  const accountItems: MenuItem[] = [
+    { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
+    { label: 'پلن و ارتقا', icon: 'CreditCard', onSelect: p.onOpenPlanModal },
+    { label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
+    ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
+    { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
+    { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },
+    { divider: true },
+    { label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
+  ];
+  const workspacePicker = (compact: boolean) => (
+    <Menu
+      label="فضاها"
+      className="min-w-space-0 flex-1"
+      trigger={(
+        <button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} className="flex min-h-touch w-full min-w-space-0 items-center gap-inline-sm rounded-control px-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+          <BrandMark size={compact ? 'sm' : undefined} />
+          <span className={compact ? 'body-sm min-w-space-0 flex-1 truncate text-text-subtle' : 'label-md min-w-space-0 flex-1 truncate text-text-default'}>{currentWorkspace.name}</span>
+          <Icon name="ChevronsUpDown" size="md" className="shrink-0 text-icon-subtle" />
+        </button>
+      )}
+      items={workspaceItems}
+    />
+  );
 
   const sidebar = (
     <div className="flex h-full flex-col justify-between gap-stack-lg select-none">
       <div className="flex flex-col gap-stack-lg">
-        <div className="flex items-center justify-between gap-inline-md px-inset-sm">
-          <span className="flex min-w-space-0 items-center gap-inline-md">
-            <BrandMark />
-            <span className="text-heading-xs text-text-default">مبدأ</span>
-          </span>
+        <div className="flex items-center justify-between gap-inline-xs">
+          {workspacePicker(false)}
           {toggleButton}
         </div>
 
@@ -147,16 +154,16 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           side="top"
           className="w-full"
           trigger={(
-            <button type="button" aria-label={`حساب کاربری، ${currentWorkspace.name}، پلن ${planName}`} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+            <button type="button" aria-label={`حساب کاربری، پلن ${planName}`} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
               <span className="grid size-control-sm shrink-0 place-items-center rounded-control-sm bg-bg-neutral-subtle text-icon-subtle"><Icon name="User" size="lg" /></span>
               <span className="min-w-space-0 flex-1">
-                <span className="label-md block truncate text-text-default">{currentWorkspace.name}</span>
-                <span className="body-sm block whitespace-nowrap text-text-subtle">{currentWorkspace.isDemo ? 'نمونه · ' : ''}پلن {planName}</span>
+                <span className="label-md block truncate text-text-default">حساب من</span>
+                <span className="body-sm block whitespace-nowrap text-text-subtle">پلن {planName}</span>
               </span>
-              <Icon name="ChevronUp" size="md" className="text-icon-subtle" />
+              <Icon name="ChevronsUpDown" size="md" className="text-icon-subtle" />
             </button>
           )}
-          items={withDividers()}
+          items={accountItems}
         />
       </div>
     </div>
@@ -191,11 +198,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
 
       {/* Mobile top bar: brand + current workspace. The plan is NOT repeated here. */}
       <header className="sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default bg-surface-sunken px-inset-lg py-inset-sm md:hidden">
-        <span className="flex min-w-space-0 items-center gap-inline-sm">
-          <BrandMark size="sm" />
-          <span className="title text-text-default">مبدأ</span>
-          <span className="body-sm truncate text-text-subtle">· {currentWorkspace.name}</span>
-        </span>
+        <span className="flex min-w-space-0 flex-1 items-center">{workspacePicker(true)}</span>
         <span className="flex items-center gap-inline-xs">
           <IconButton icon="Search" label="جستجو" variant="secondary" onClick={p.onOpenSearch} />
           <IconButton icon="User" label="حساب کاربری" variant="secondary" onClick={() => setDrawer(true)} />
@@ -203,8 +206,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       </header>
 
       {/* Mobile account drawer */}
-      <Dialog open={drawer} onClose={close} title="حساب کاربری" description={`فضای کاری: ${currentWorkspace.name} · پلن ${planName}`} size="sm">
-        <div className="flex flex-col gap-stack-xs">{withDividers().map(drawerRow)}</div>
+      <Dialog open={drawer} onClose={close} title="حساب کاربری" description={`پلن ${planName}`} size="sm">
+        <div className="flex flex-col gap-stack-xs">{accountItems.map(drawerRow)}</div>
       </Dialog>
 
       {/* Mobile bottom navigation: four destinations and «ثبت» in the middle (the account drawer is the button in the top bar) */}
@@ -218,7 +221,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           { id: 'home', label: 'خانه', icon: 'House' },
           { id: 'thinking', label: 'فکر', icon: 'Lightbulb', badge: p.thinkingCount || undefined, badgeLabel: 'مورد باز' },
           // capture lives in the bar itself: always reachable, and it never floats over the page
-          { id: 'capture', label: 'ثبت', icon: 'Plus', action: true, testId: 'quick-capture-fab' },
+          { id: 'capture', label: 'افزودن', icon: 'Plus', action: true, testId: 'quick-capture-fab' },
           { id: 'context', label: 'منبع', icon: 'BookOpen' },
           { id: 'assets', label: 'خروجی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'خروجی' },
         ]}

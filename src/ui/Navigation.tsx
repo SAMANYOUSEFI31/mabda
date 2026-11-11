@@ -181,12 +181,12 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
             <Icon name={it.icon} size="xl" />
             {it.badge ? (
               <>
-                <span className="mb-bottomnav__badge label-sm" aria-hidden="true">{formatNumber(it.badge)}</span>
+                <span className="mb-bottomnav__badge label-sm" aria-hidden="true">{it.badge > 99 ? `${formatNumber(99)}+` : formatNumber(it.badge)}</span>
                 <span className="mb-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
               </>
             ) : null}
           </span>
-          <span className="label-sm">{it.label}</span>
+          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'}>{it.label}</span>
         </button>
       ))}
     </nav>

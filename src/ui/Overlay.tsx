@@ -1,5 +1,5 @@
-import { cloneElement, createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
-import type { ReactElement, ReactNode } from 'react';
+import { cloneElement, createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from './cx.ts';
 import { Icon, STATUS_ICON } from './Icon.tsx';
@@ -33,6 +33,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   const id = useId();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     if (!open || inline) return;
@@ -78,13 +79,15 @@ export function Dialog({ open, onClose, title, description, children, footer, in
         tabIndex={-1}
         className={cx('mb-dialog', `mb-dialog--${size}`)}
       >
-        <span className="mb-dialog__grab" aria-hidden="true" />
-        <div className="mb-dialog__head">
-          <h2 id={`${id}-t`} className="heading-md">{title}</h2>
-          {onClose && <IconButton icon="X" label="بستن" onClick={onClose} />}
+        <div className={cx('mb-dialog__top', scrolled && 'is-scrolled')}>
+          <span className="mb-dialog__grab" aria-hidden="true" />
+          <div className="mb-dialog__head">
+            <h2 id={`${id}-t`} className="heading-md">{title}</h2>
+            {onClose && <IconButton icon="X" label="بستن" onClick={onClose} />}
+          </div>
+          {description && <p id={`${id}-d`} className="mb-dialog__desc body-sm">{description}</p>}
         </div>
-        {description && <p id={`${id}-d`} className="mb-dialog__desc body-sm">{description}</p>}
-        {children && <div className="mb-dialog__body">{children}</div>}
+        {children && <div className="mb-dialog__body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)}>{children}</div>}
         {footer && <div className="mb-dialog__foot">{footer}</div>}
       </div>
     </div>
@@ -241,11 +244,43 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
   const root = useRef<HTMLSpanElement>(null);
   const btn = useRef<HTMLElement | null>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<CSSProperties | null>(null);
   const id = useId();
-  const close = (refocus?: boolean) => { setOpen(false); if (refocus) btn.current?.focus(); };
-  useDismiss(open, [root], (esc) => close(esc));
+  const close = (refocus?: boolean) => { setOpen(false); setPos(null); if (refocus) btn.current?.focus(); };
+  useDismiss(open, [root, menu], (esc) => close(esc));
   const enabled = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled),[role="menuitemradio"]') ?? []);
-  useEffect(() => { if (open) enabled()[0]?.focus(); }, [open]);
+  // The panel lives in the document's overlay layer (a portal), never inside the trigger's container (a scrolling
+  // sidebar would clip it). Placed against the trigger: preferred side, flips when there is no room, slides inside
+  // the viewport with 8px to spare, and scrolls itself only when it is taller than the viewport (navigation.md «منوی حساب»).
+  const place = useCallback(() => {
+    const t = btn.current, m = menu.current;
+    if (!t || !m) return;
+    const tr = t.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight, edge = 8, gap = 8;
+    const fill = root.current?.classList.contains('w-full');
+    m.style.maxBlockSize = '';
+    m.style.minInlineSize = fill ? `${Math.min(Math.max(tr.width, 240), 320)}px` : '';
+    const mw = Math.min(m.offsetWidth, vw - 2 * edge);
+    const mh = Math.min(m.scrollHeight + 2, vh - 2 * edge);
+    const above = tr.top - gap - edge, below = vh - tr.bottom - gap - edge;
+    const up = side === 'top' ? above >= mh || above > below : !(below >= mh || below > above);
+    let y = up ? tr.top - gap - mh : tr.bottom + gap;
+    y = Math.max(edge, Math.min(y, vh - edge - mh));
+    const rtl = getComputedStyle(t).direction === 'rtl';
+    // align start: the panel's inline-start edge meets the trigger's (its right edge in RTL); end: the opposite edges
+    let x = rtl === (align === 'start') ? tr.right - mw : tr.left;
+    x = Math.max(edge, Math.min(x, vw - edge - mw));
+    setPos({ position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: vw - 2 * edge, overflowY: 'auto' });
+  }, [align, side]);
+  useLayoutEffect(() => { if (open) place(); }, [open, place, items.length]);
+  useEffect(() => {
+    if (!open) return;
+    const on = () => place();
+    window.addEventListener('resize', on);
+    window.addEventListener('scroll', on, true);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };
+  }, [open, place]);
+  useEffect(() => { if (open && pos) enabled()[0]?.focus(); }, [open, pos !== null]);
   const onKey = (e: React.KeyboardEvent) => {
     const list = enabled();
     if (!list.length) return;
@@ -260,12 +295,13 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     <span className={cx('mb-popover', className)} ref={root}>
       {cloneElement(trigger, {
         ref: btn, id: `${id}-b`, 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-controls': `${id}-m`,
-        onClick: () => setOpen((o) => !o),
+        onClick: () => (open ? close() : setOpen(true)),
         onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } },
       })}
-      {open && (
-        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} style={{ maxBlockSize: 'calc(100dvh - 4rem)', overflowY: 'auto' }}
-          className={cx('mb-popover__panel', 'mb-menu', `is-${align}`, side === 'top' && 'is-top')}>
+      {open && createPortal(
+        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey}
+          style={pos ?? { position: 'fixed', insetBlockStart: 0, insetInlineStart: 0, visibility: 'hidden' }}
+          className={cx('mb-popover__panel', 'mb-menu', 'is-portal')}>
           {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}
               className={cx('mb-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}
@@ -274,7 +310,8 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
               <span>{it.label}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </span>
   );
