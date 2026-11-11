@@ -130,7 +130,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
-              {p.specs.map((s) => <NavItem nested key={s.id} label={`بساز: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
+              {p.specs.map((s) => <NavItem nested key={s.id} label={`${ai.managedEnabled ? 'بساز' : 'آماده‌سازی'}: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
               <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
             </div>

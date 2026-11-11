@@ -404,8 +404,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               <div className="flex flex-col gap-stack-sm" data-testid="readiness-line">
                 <p className="body-md text-text-default">
                   {todo.length === 0
-                    ? 'همه‌چیز لازم را داریم؛ آمادهٔ ساخت است.'
-                    : `برای ساخت بهتر ${formatNumber(todo.length)} چیز کم است${readiness.gaps.length > todo.length ? ` (${formatNumber(readiness.gaps.length - todo.length)} مورد دیگر در «چه چیزی کم است»)` : ''}؛ می‌توانی همین‌جا جواب بدهی یا بدون آن‌ها بسازی.`}
+                    ? (managed ? 'همه‌چیز لازم را داریم؛ آمادهٔ ساخت است.' : 'همه‌چیز لازم را داریم؛ بسته آمادهٔ کپی است.')
+                    : `${managed ? 'برای ساخت بهتر' : 'برای نتیجهٔ بهتر'} ${formatNumber(todo.length)} چیز کم است${readiness.gaps.length > todo.length ? ` (${formatNumber(readiness.gaps.length - todo.length)} مورد دیگر در «چه چیزی کم است»)` : ''}؛ می‌توانی همین‌جا جواب بدهی${managed ? ' یا بدون آن‌ها بسازی' : ' یا بدون آن‌ها کپی کنی'}.`}
                 </p>
                 {todo.map((g) => (
                   <div key={g.key} className="flex flex-col gap-stack-xs sm:flex-row sm:items-end">

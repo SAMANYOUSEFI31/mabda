@@ -8,6 +8,7 @@
 import { Button, Card, EmptyState } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
+import { useAiStatus } from '../../services/aiStatus';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const AssetLibrary = lazyNamed(() => import('../../components/outputs/AssetLibrary'), 'AssetLibrary');
@@ -15,14 +16,17 @@ const AssetLibrary = lazyNamed(() => import('../../components/outputs/AssetLibra
 export type AssetsPageProps = Pick<ReadyScope, 'currentWorkspace' | 'data' | 'deliverables' | 'extractingAssetId' | 'focusAsset' | 'handleArchiveDeliverable' | 'handleDeleteDeliverable' | 'handleExtractFromAsset' | 'openContext' | 'openSpecEditor' | 'setActiveTab' | 'setArchiveOpen' | 'setIsSpecLibraryOpen' | 'setPendingRebuild' | 'setSelectedSpecId' | 'specs' | 'stale' | 'workspaceContexts'>;
 
 export function AssetsPage({ currentWorkspace, data, deliverables, extractingAssetId, focusAsset, handleArchiveDeliverable, handleDeleteDeliverable, handleExtractFromAsset, openContext, openSpecEditor, setActiveTab, setArchiveOpen, setIsSpecLibraryOpen, setPendingRebuild, setSelectedSpecId, specs, stale, workspaceContexts }: AssetsPageProps) {
+  // «بساز» is Mabda's own generation: with MABDA_MANAGED_AI off the entry is the outside route («آماده‌سازی»)
+  const { managedEnabled } = useAiStatus();
+  const verb = managedEnabled ? 'بساز' : 'آماده‌سازی';
   return (
         <div className="space-y-stack-lg">
           <div>
             <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
-            <p className="text-body-sm text-text-subtle mt-stack-xs">بالا: با چه چیزی می‌سازی. پایین: چه ساخته‌ای و کدام‌ها دیگر به‌روز نیستند.</p>
+            <p className="text-body-sm text-text-subtle mt-stack-xs">{managedEnabled ? 'بالا: با چه چیزی می‌سازی. پایین: چه ساخته‌ای و کدام‌ها دیگر به‌روز نیستند.' : 'بالا: برای چه چیزی آماده‌سازی می‌کنی. پایین: چه خروجی‌ای داری و کدام‌ها دیگر به‌روز نیستند.'}</p>
           </div>
-          <section className="flex flex-col gap-stack-md" aria-label="بساز" data-testid="outputs-build">
-            <h2 className="heading-sm text-text-default">بساز</h2>
+          <section className="flex flex-col gap-stack-md" aria-label={verb} data-testid="outputs-build">
+            <h2 className="heading-sm text-text-default">{verb}</h2>
             {specs.length === 0 ? (
               <EmptyState icon="Layers" title="این فضا هنوز جریان کاری ندارد" description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
             ) : (
@@ -34,7 +38,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
                         <span className="label-md text-text-default">{sp.title}</span>
                         <p className="body-sm text-text-subtle">{sp.description}</p>
                       </div>
-                      <div><Button size="sm" variant="secondary" iconStart="Sparkles" data-testid={`build-${sp.id}`} aria-label={`بساز: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>بساز</Button></div>
+                      <div><Button size="sm" variant="secondary" iconStart="Sparkles" data-testid={`build-${sp.id}`} aria-label={`${verb}: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>{verb}</Button></div>
                     </Card>
                   </li>
                 ))}
