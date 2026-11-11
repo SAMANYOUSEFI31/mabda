@@ -98,9 +98,9 @@ async function scenario(width, tag) {
   await page.getByText(/قطعه/).first().waitFor();
   await shot('2-files', true);
 
-  step('«درخواست برای AI» from the node: scope preselected, «همین‌جا جواب بده» answers through the chat route; the block goes to knowledge on a click');
+  step('«آماده‌سازی درخواست» from the node: scope preselected, «همین‌جا جواب بده» answers through the chat route; the block goes to knowledge on a click');
   await campaign.getByRole('button', { name: 'عملیات گرهٔ کمپین پاییز' }).click(); // the node page has ONE main action; the rest is under «⋯»
-  await page.getByRole('menuitem', { name: 'درخواست برای AI' }).click();
+  await page.getByRole('menuitem', { name: 'آماده‌سازی درخواست' }).click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('درباره کجا؟').waitFor();
   assert.equal(await dlg.getByLabel('درباره کجا؟').inputValue() !== '', true, 'scope preselected');

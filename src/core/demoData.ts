@@ -155,7 +155,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_nodiscount', type: 'Constraint', node: 'offer', title: 'بدون تخفیف', first: 'تخفیف نداریم؛ ارزش را با کیفیت نشان می‌دهیم و روی قیمت اشتراک چانه نمی‌زنیم.', status: 'Confirmed', provenance: 'User Input', slot: 'pricing_boundary', created: [30], reach: 'global',
     examples: [{ kind: 'good', text: 'اشتراک سه‌ماهه را با یک دانهٔ هدیه همراه می‌کنیم.' }, { kind: 'bad', text: 'فقط تا آخر هفته ۲۰٪ تخفیف!' }] });
   add({ id: 'dm_discount', type: 'Decision', node: 'offer', title: 'کمپین ماه اول', first: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 15],
-    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'در گفت‌وگو گفتی می‌خواهی ماه اول جذاب باشد.', quote: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'در متنی که چسباندی گفته شده بود ماه اول جذاب باشد.', quote: 'برای ماه اول اشتراک تخفیف ۲۰ درصد بدهیم.' } });
 
   // ── subscription ───────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_price', type: 'Decision', node: 'dn_sub', title: 'قیمت اشتراک ماهانه', first: '۴۲۰ هزار تومان در ماه برای ۴ بستهٔ ۲۵۰ گرمی.', status: 'Confirmed', provenance: 'User Input', slot: 'subscription_price', created: [33],
@@ -174,7 +174,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_ship_policy', type: 'Decision', node: 'dn_ship', title: 'سیاست ارسال', first: 'ارسال برای همهٔ اشتراک‌ها رایگان است.', status: 'Proposed', provenance: 'AI Suggested', slot: 'shipping_policy', created: [2, 9],
     source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'گفتی مشتری‌ها از هزینهٔ ارسال ناراضی‌اند.', quote: 'ارسال برای همهٔ اشتراک‌ها رایگان است.' } });
   add({ id: 'dm_ship_cost', type: 'Decision', node: 'dn_ship', title: 'هزینهٔ ارسال', first: 'ارسال با هزینهٔ ۶۰ هزار تومان برای همهٔ سفارش‌ها.', status: 'Proposed', provenance: 'AI Suggested', created: [2, 16],
-    source: { kind: 'chat', reason: 'در گفتگوی گرهٔ ارسال گفتی هزینهٔ پست را مشتری بدهد.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'در متنی که چسباندی آمده بود هزینهٔ پست را مشتری بدهد.', quote: 'هزینهٔ پست با مشتری باشد.' } });
   // «روز ارسال» was replaced three times: Monday → Tuesday → Thursday → Saturday
   add({ id: 'dm_day1', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر دوشنبه.', status: 'Confirmed', provenance: 'User Input', created: [35], supersededBy: { id: 'dm_day2', d: 26, reason: 'پست دوشنبه‌ها شلوغ بود.' } });
   add({ id: 'dm_day2', type: 'Decision', node: 'dn_ship', title: 'روز ارسال اشتراک', first: 'ارسال هر سه‌شنبه.', status: 'Confirmed', provenance: 'User Input', created: [26, 13], supersededBy: { id: 'dm_day3', d: 15, reason: 'برشته‌کاری سه‌شنبه تمام نمی‌شود.' } });
@@ -189,7 +189,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_tg_budget', type: 'Decision', node: 'dn_social', title: 'بودجهٔ کمپین تلگرام', first: 'برای کمپین تلگرام ۳ میلیون تومان کنار بگذاریم.', status: 'Proposed', provenance: 'Imported', created: [1, 14],
     source: { kind: 'paste', label: 'متن چسبانده‌شده', reason: 'از یادداشت جلسهٔ هفتگی که چسباندی.', quote: 'برای کمپین تلگرام ۳ میلیون تومان کنار بگذاریم' } });
   add({ id: 'dm_tg_campaign', type: 'Decision', node: 'dn_social', title: 'کمپین کانال تلگرام', first: 'یک کمپین دوهفته‌ای برای رشد کانال تلگرام اجرا کنیم.', status: 'Proposed', provenance: 'AI Suggested', created: [4, 14],
-    source: { kind: 'coach', reason: 'مربی دانش پرسید برای رشد کانال چه برنامه‌ای داری.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'از متنی که دربارهٔ رشد کانال چسباندی.', quote: 'یک کمپین دوهفته‌ای برای رشد کانال تلگرام.' } });
 
   // ── workshop ───────────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_ws_price', type: 'Decision', node: 'dn_ws', title: 'قیمت کارگاه', first: '۸۵۰ هزار تومان برای هر شرکت‌کننده.', status: 'Confirmed', provenance: 'User Input', slot: 'workshop_price', created: [22] });
@@ -197,7 +197,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_ws_refund', type: 'Constraint', node: 'dn_ws', title: 'بازگشت وجه کارگاه', first: 'تا ۴۸ ساعت قبل از کارگاه بازگشت وجه کامل داریم؛ بعد از آن بازگشت وجه نداریم.', status: 'Confirmed', provenance: 'User Input', created: [22, 12], reach: 'position',
     examples: [{ kind: 'good', text: 'انصراف ۵۰ ساعت قبل از کارگاه: بازگشت کامل وجه.' }, { kind: 'bad', text: 'انصراف همان روز کارگاه: بازگشت وجه.' }] });
   add({ id: 'dm_ws_plan', type: 'Decision', node: 'dn_ws_prog', title: 'برنامهٔ جلسه‌ها', first: 'سه جلسهٔ دو ساعته: آشنایی با دانه، برشته‌کاری، قهوه‌چشی.', status: 'Proposed', provenance: 'AI Suggested', created: [5, 11],
-    source: { kind: 'coach', reason: 'از جواب‌هایت دربارهٔ کارگاه ساختم؛ بررسی‌اش کن.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'از متنی که دربارهٔ کارگاه چسباندی؛ بررسی‌اش کن.', quote: 'سه جلسهٔ دو ساعته برای کارگاه.' } });
 
   // ── support, content ───────────────────────────────────────────────────────────────────────
   add({ id: 'dm_sup_hours', type: 'Fact', node: 'dn_support', title: 'ساعت پاسخگویی', first: 'پیام مشتری‌ها از ۹ تا ۱۸ همهٔ روزهای هفته پاسخ داده می‌شود.', status: 'Confirmed', provenance: 'User Input', created: [28] });
@@ -227,7 +227,7 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_p_paste', type: 'Fact', node: 'brand', title: 'ترجیح مشتری دربارهٔ پیام‌رسانی', first: 'مشتری‌ها پیام‌رسان را از ایمیل بیشتر می‌خوانند.', status: 'Proposed', provenance: 'Imported', created: [1, 16],
     source: { kind: 'paste', label: 'حافظهٔ ChatGPT', reason: 'از حافظهٔ ChatGPT چسباندی.', quote: 'مشتری‌ها پیام‌رسان را از ایمیل بیشتر می‌خوانند' } });
   add({ id: 'dm_p_coach', type: 'Fact', node: 'dn_support', title: 'پرسش رایج دربارهٔ آسیاب', first: 'مشتری‌ها اغلب می‌پرسند دانه را آسیاب‌شده بفرستیم یا کامل.', status: 'Proposed', provenance: 'AI Suggested', created: [4, 16],
-    source: { kind: 'coach', reason: 'از پاسخ‌هایت دربارهٔ پشتیبانی.' } });
+    source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'از متنی که دربارهٔ پشتیبانی چسباندی.', quote: 'مشتری‌ها اغلب دربارهٔ آسیاب می‌پرسند.' } });
 
   // ── relations (all `depends_on` are read by decisionGraph / impactEngine) ────────────────────
   const dep = (a: string, b: string, d: number) => rel('depends_on', a, b, at(d));
@@ -292,7 +292,7 @@ export function buildDemo(now: Date): DemoData {
   ];
 
   // ── three sample assets, written by hand (NOT AI output); lineage = the exact object versions they were made from ─────────
-  const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده. با «ساخت با هوش مصنوعی» خودت یک نسخهٔ واقعی بساز.';
+  const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده.';
   const made = (id: string, specId: string, delId: string, title: string, body: string, used: Array<[string, number]>, d: number): GeneratedDeliverable => ({
     id, workspaceId: W, workstreamId: specId, deliverableId: delId, title, content: `${label}\n\n${body}`, executionMode: 'auto', creditCost: 0,
     usedContext: used.map(([i, v]) => ({ id: i, version: v })), rebuildCount: 0, createdAt: at(d, 15), source: { kind: 'user', label: 'نمونهٔ دستی', at: at(d, 15) },

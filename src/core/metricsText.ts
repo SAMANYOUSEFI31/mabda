@@ -34,7 +34,7 @@ export const MX = {
   reviewTitle: 'بازبینی تصمیم‌ها',
   reviewDueHint: 'موعد این انتظارها رسیده است.',
   verdictQuestion: 'نتیجه چه شد؟',
-  proposedTitle: 'اعداد پیشنهادی از AI',
+  proposedTitle: 'اعداد پیشنهادی',
   proposedHint: 'تا تأیید نکنی در نمودار و بسته نمی‌آیند.',
   confirm: 'تأیید عدد',
   reject: 'حذف',

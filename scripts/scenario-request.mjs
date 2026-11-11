@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * «درخواست برای AI» on a REAL server + temp SQLite: the user opens the dialog from Home (default: سؤال, whole tree),
+ * «آماده‌سازی درخواست» on a REAL server + temp SQLite: the user opens the dialog from Home (default: سؤال, whole tree),
  * writes ONE line, copies — and the clipboard holds a prompt with the knowledge first, the rules of the kind, the
  * request at the end and the answer template; Proposed and samples are not in it; the answer comes back through import.
  * Screenshots → docs/screens/request-*.png (1280) and request-m-*.png (390)
@@ -47,7 +47,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] one click opens it with «سؤال» chosen; one line later the preview is ready`);
-    await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
+    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
     const dlg = page.getByRole('dialog');
     await dlg.waitFor();
     assert.equal(await dlg.locator('[role=radio][aria-checked=true]').innerText(), 'سؤال');
@@ -71,7 +71,7 @@ try {
     await shot('2-audit');
 
     step(`[${width}] copy: the clipboard holds exactly the preview, and the answer comes back through import`);
-    await dlg.getByRole('button', { name: 'کپی برای AI خودم' }).click();
+    await dlg.getByRole('button', { name: 'کپی برای استفاده در هر ابزار' }).click();
     await page.getByText(/کپی شد/).first().waitFor();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     assert.equal(clip.replace(/\s+$/, ''), (await preview()).replace(/\s+$/, ''));
@@ -79,8 +79,8 @@ try {
     assert.ok(marker, 'the pack marker links the answer');
     assert.ok((await api(`/workspaces/${wid}/packs`)).packs.some((p) => p.id === marker), 'the request is recorded');
 
-    await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'پاسخ AI را وارد کن' }).click();
-    const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن پاسخ AI بیرونی' });
+    await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
+    const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن متن آماده' });
     await imp.waitFor();
     await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با خط قرمز «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);
     await imp.getByRole('button', { name: 'تبدیل به بلوک' }).click();

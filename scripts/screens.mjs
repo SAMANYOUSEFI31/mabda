@@ -142,7 +142,7 @@ for (const size of SIZES) {
     const mobile = size.width < 768;
     const sel = mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${t.label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${t.desktopLabel || t.label}")`;
     await page.locator(sel).first().click();
-    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
+    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
 
@@ -228,12 +228,12 @@ for (const size of SIZES) {
   await page.getByTestId('node-delete').waitFor(); await page.waitForTimeout(300);
   await shoot('dialog-node-delete'); await closeDialog();
   await accountItem('بایگانی و حذف‌های اخیر'); await page.waitForTimeout(500); await shoot('dialog-archive'); await closeDialog();
-  // «درخواست برای AI» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
+  // «آماده‌سازی درخواست» on the showcase: «ممیزی» + one line, scoped to the whole tree (the preview is the exact text that is copied)
   await goTab(TABS[0]);
   await shoot('home-demo');
   await page.locator('button[aria-controls="home-all"]').click(); await page.waitForTimeout(250); await shoot('home-all');
   await page.locator('button[aria-controls="home-all"]').click();
-  await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
+  await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
   await page.getByRole('dialog').getByRole('radio', { name: 'ممیزی' }).click();
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با خط قرمزهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));

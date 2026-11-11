@@ -334,7 +334,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             ...(isCustomSpec ? [{ label: 'ویرایش این جریان کار', icon: 'Pencil' as const, onSelect: () => onOpenSpecEditor(currentSpec) }] : []),
             ...(isCustomSpec && onSaveTemplate ? [{ label: 'ذخیره به‌عنوان قالب', icon: 'Package' as const, onSelect: () => onSaveTemplate(currentSpec) }] : []),
             { divider: true },
-            { label: 'کپی جریان کار برای AI', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, title: currentSpec.title }) },
+            { label: 'کپی جریان کار برای استفاده در هر ابزار', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, title: currentSpec.title }) },
           ]}
         />
       </Card>
@@ -344,7 +344,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         value={activeTab}
         onChange={(id) => setActiveTab(id as typeof activeTab)}
         items={[
-          { id: 'create', label: 'تولید' },
+          { id: 'create', label: managed ? 'تولید' : 'آماده‌سازی' },
           { id: 'gap_analysis', label: readiness.gaps.length > 0 ? `چه چیزی کم است (${formatNumber(readiness.gaps.length)})` : 'چه چیزی کم است' },
           { id: 'history', label: `خروجی‌ها (${formatNumber(workstreamDeliverables.length)})` },
         ]}
@@ -391,8 +391,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   align="end"
                   trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ این خروجی" size="sm" />}
                   items={[
-                    { label: 'کپی برای هوش مصنوعی', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title }) },
-                    { label: 'وارد کردن پاسخ AI', icon: 'Upload', onSelect: onOpenImport },
+                    { label: 'کپی برای استفاده در هر ابزار', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title }) },
+                    { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: onOpenImport },
                     { label: moreOpen ? 'بستن جزئیات اجرا' : 'جزئیات اجرا (حالت، معیارها)', icon: 'Settings', onSelect: () => setMoreOpen((v) => !v) },
                   ]}
                 />
@@ -404,8 +404,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               <div className="flex flex-col gap-stack-sm" data-testid="readiness-line">
                 <p className="body-md text-text-default">
                   {todo.length === 0
-                    ? 'همه‌چیز لازم را داریم؛ آمادهٔ ساخت است.'
-                    : `برای ساخت بهتر ${formatNumber(todo.length)} چیز کم است${readiness.gaps.length > todo.length ? ` (${formatNumber(readiness.gaps.length - todo.length)} مورد دیگر در «چه چیزی کم است»)` : ''}؛ می‌توانی همین‌جا جواب بدهی یا بدون آن‌ها بسازی.`}
+                    ? (managed ? 'همه‌چیز لازم را داریم؛ آمادهٔ ساخت است.' : 'همه‌چیز لازم را داریم؛ بسته آمادهٔ کپی است.')
+                    : `${managed ? 'برای ساخت بهتر' : 'برای نتیجهٔ بهتر'} ${formatNumber(todo.length)} چیز کم است${readiness.gaps.length > todo.length ? ` (${formatNumber(readiness.gaps.length - todo.length)} مورد دیگر در «چه چیزی کم است»)` : ''}؛ می‌توانی همین‌جا جواب بدهی${managed ? ' یا بدون آن‌ها بسازی' : ' یا بدون آن‌ها کپی کنی'}.`}
                 </p>
                 {todo.map((g) => (
                   <div key={g.key} className="flex flex-col gap-stack-xs sm:flex-row sm:items-end">
@@ -432,7 +432,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     )}
                     <span className="body-sm text-text-subtle">خط قرمزهای تأییدشدهٔ فضای کار هم خودکار به‌عنوان خط قرمز بررسی می‌شوند.</span>
                   </div>
-                  <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
+                  {managed && <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
                     <Switch
                       checked={executionMode === 'sensitive' || executionMode === 'critique'}
                       disabled={!importantMode}
@@ -454,13 +454,23 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                         <OptionCard title="حساس" description="بررسی دقیق + شکاف + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
                       </div>
                     )}
-                  </div>
+                  </div>}
                 </div>
               )}
 
               {/* step 3: build. The reason for «auto» is ONE plain line */}
-              {previewState === 'error' && previewError && <AiErrorNotice error={previewError} />}
-              <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
+              {/* internal generation is frozen (MABDA_MANAGED_AI off): the step is the outside route — copy the pack, bring the text back */}
+              {!managed && (
+                <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
+                  <p className="body-sm text-text-subtle">دانش این خروجی را کپی کن و در هر ابزاری که می‌خواهی بچسبان؛ متن آماده را برگردان تا کنار بقیه نگه داری.</p>
+                  <div className="flex flex-wrap items-center gap-inline-sm">
+                    <Button variant="secondary" size="lg" iconStart="Upload" onClick={onOpenImport}>وارد کردن متن آماده</Button>
+                    <Button variant="primary" size="lg" iconStart="Copy" disabled={lock.locked} onClick={() => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title })}>کپی برای استفاده در هر ابزار</Button>
+                  </div>
+                </div>
+              )}
+              {managed && previewState === 'error' && previewError && <AiErrorNotice error={previewError} />}
+              {managed && <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
                 <div className="body-sm flex flex-col gap-stack-xs">
                   {previewState === 'loading' ? (
                     <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
@@ -483,9 +493,9 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     ساخت دارایی
                   </Button>
                 )}
-              </div>
+              </div>}
 
-              {isGenerating && (
+              {managed && isGenerating && (
                 <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}>
                   <div className="flex items-center gap-inline-sm pt-inset-xs">
                     <Spinner size="sm" label="در حال ساخت" />
@@ -494,7 +504,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 </Alert>
               )}
 
-              {genError && !isGenerating && (
+              {managed && genError && !isGenerating && (
                 <AiErrorNotice
                   error={genError}
                   onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }}
@@ -537,20 +547,20 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       {activeTab === 'history' && (
         <div className="flex flex-col gap-stack-lg">
           <div className="flex items-center justify-between gap-inline-md border-b border-border-default pb-inset-md">
-            <h3 className="title text-text-default">دارایی‌های تولیدشده در این جریان کار ({formatNumber(workstreamDeliverables.length)})</h3>
-            <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>تولید مورد جدید</Button>
+            <h3 className="title text-text-default">{managed ? 'دارایی‌های تولیدشده' : 'خروجی‌های ثبت‌شده'} در این جریان کار ({formatNumber(workstreamDeliverables.length)})</h3>
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>{managed ? 'تولید مورد جدید' : 'آماده‌سازی مورد جدید'}</Button>
           </div>
 
-          {genError && !isGenerating && activeTab === 'history' && (
+          {managed && genError && !isGenerating && activeTab === 'history' && (
             <AiErrorNotice error={genError} onRetry={() => { const r = lastRun.current; void handleGenerate(r?.rebuild ?? false, r?.target); }} />
           )}
-          {isGenerating && <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}><Progress indeterminate label="پیشرفت ساخت" intent="neutral" /></Alert>}
+          {managed && isGenerating && <Alert intent="info" title={stageLabel || 'در حال ساخت دارایی…'}><Progress indeterminate label="پیشرفت ساخت" intent="neutral" /></Alert>}
 
           {workstreamDeliverables.length === 0 ? (
             <EmptyState
               icon="Package"
-              title="هنوز خروجی‌ای برای این جریان کار تولید نشده"
-              action={<Button variant="primary" onClick={() => setActiveTab('create')}>تولید اولین دارایی</Button>}
+              title={managed ? 'هنوز خروجی‌ای برای این جریان کار تولید نشده' : 'هنوز خروجی‌ای برای این جریان کار ثبت نشده'}
+              action={<Button variant="primary" onClick={() => setActiveTab('create')}>{managed ? 'تولید اولین دارایی' : 'آماده‌سازی اولین خروجی'}</Button>}
             />
           ) : (
             <div className="flex flex-col gap-stack-lg">

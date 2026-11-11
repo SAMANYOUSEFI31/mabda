@@ -30,7 +30,7 @@ export function printPack(name: string, markdown: string) {
   return true;
 }
 
-/** «بسته‌های دانش»: a named selection, built once and pasted into any AI in one click. The AI only gets Confirmed knowledge as fact; assumptions travel apart. */
+/** «بسته‌های دانش»: a named selection, built once and pasted into any outside tool in one click. The AI only gets Confirmed knowledge as fact; assumptions travel apart. */
 export const SavedPacksDialog: React.FC<Props> = (props) => (props.open ? <Packs {...props} /> : null);
 
 const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenObject }) => {
@@ -68,7 +68,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
     try {
       const md = await render(p);
       try { await navigator.clipboard.writeText(md); } catch { const ta = document.createElement('textarea'); ta.value = md; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-      toast.show({ intent: 'success', message: `«${p.name}» کپی شد؛ در هر AI بچسبان.` });
+      toast.show({ intent: 'success', message: `«${p.name}» کپی شد؛ در هر ابزاری بچسبان.` });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
   const print = async (p: PackRow) => { setBusy(`p${p.id}`); try { printPack(p.name, await render(p)); } finally { setBusy(null); } };
@@ -85,7 +85,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
   return (
     <Dialog
       open onClose={onClose} size="xl" title="بسته‌های دانش"
-      description="یک‌بار بساز، با یک کلیک در هر AI بچسبان. فقط دانش تأییدشده «واقعیت» است؛ فرض‌ها و گزینه‌های ردشده جدا و با دستور صریح می‌روند."
+      description="یک‌بار بساز، با یک کلیک در هر ابزاری بچسبان. فقط دانش تأییدشده «واقعیت» است؛ فرض‌ها و گزینه‌های ردشده جدا و با دستور صریح می‌روند."
       footer={editing
         ? <><Button variant="ghost" onClick={() => setEditing(null)}>انصراف</Button><Button variant="primary" loading={busy === 'save'} disabled={!editing.name.trim()} onClick={save}>ذخیرهٔ بسته</Button></>
         : <><Button variant="secondary" iconStart="Plus" onClick={() => setEditing({ name: '', instruction: '', selection: EMPTY })}>بستهٔ تازه</Button><Button variant="ghost" onClick={onClose}>بستن</Button></>}
@@ -97,7 +97,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
           <TextField label="نام بسته" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: برای نوشتن متن تبلیغ" />
           {editing.kind
             ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ گرهٔ اول دامنه است." />
-            : <Textarea label="دستور کوتاه برای AI (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
+            : <Textarea label="دستور کوتاه همراه بسته (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
           <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام گره‌ها؟ (هیچ‌کدام = کل درخت)</legend>
             <div className="grid grid-cols-1 gap-inline-xs">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
           </fieldset>

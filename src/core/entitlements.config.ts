@@ -6,6 +6,10 @@
  * Platform AI + credits is a separate feature-flagged layer (MABDA_MANAGED_AI) and lives in creditEngine.ts.
  * Prices are USD (the PRD's economic basis); local-currency prices come from the payment gateway, never from code.
  */
+/** capabilities of the intelligence layer (server/intelligence): a recipe names ONE of these in `capability`; which plan has it is decided only here (rule 5) */
+export type IntelligenceCapability = 'suggestRelated' | 'suggestKind' | 'suggestPlace' | 'voiceNote';
+export const INTELLIGENCE_CAPABILITIES: IntelligenceCapability[] = ['suggestRelated', 'suggestKind', 'suggestPlace', 'voiceNote'];
+
 export interface PlanEntitlements {
   /** list price per month, USD */
   priceMonthlyUsd: number;
@@ -29,6 +33,8 @@ export interface PlanEntitlements {
   coachPerDay: number;
   /** create / edit custom workstream specs */
   customSpecs: boolean;
+  /** which intelligence-layer capabilities the plan includes (the pricing decision is open: for now every plan has all of them) */
+  intelligence: Record<IntelligenceCapability, boolean>;
 }
 
 export type PlanKey = 'starter' | 'pro' | 'max';
@@ -44,16 +50,19 @@ export const ENTITLEMENTS_CONFIG: {
       priceMonthlyUsd: 9, workspaces: 1, maxObjects: 400, fileTokensPerMonth: 150_000,
       engines: { changeImpact: true, semanticContradiction: false }, contextPack: true,
       decisionJudgmentsPerDay: 40, coachPerDay: 5, customSpecs: false,
+      intelligence: { suggestRelated: true, suggestKind: true, suggestPlace: true, voiceNote: true },
     },
     pro: {
       priceMonthlyUsd: 24, workspaces: 3, maxObjects: 2_000, fileTokensPerMonth: 500_000,
       engines: { changeImpact: true, semanticContradiction: true }, contextPack: true,
       decisionJudgmentsPerDay: 150, coachPerDay: 15, customSpecs: true,
+      intelligence: { suggestRelated: true, suggestKind: true, suggestPlace: true, voiceNote: true },
     },
     max: {
       priceMonthlyUsd: 49, workspaces: 10, maxObjects: 8_000, fileTokensPerMonth: 1_500_000,
       engines: { changeImpact: true, semanticContradiction: true }, contextPack: true,
       decisionJudgmentsPerDay: 400, coachPerDay: 40, customSpecs: true,
+      intelligence: { suggestRelated: true, suggestKind: true, suggestPlace: true, voiceNote: true },
     },
   },
 };

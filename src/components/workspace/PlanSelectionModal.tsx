@@ -35,8 +35,8 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
       open={isOpen}
       onClose={onClose}
       size="xl"
-      title="منبع حقیقت کسب‌وکار، همراه با هوش مصنوعی مبدأ"
-      description="اشتراک مبدأ برای ساختار، موتورها و استفاده از هوش مصنوعی است: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است."
+      title={managed ? 'منبع حقیقت کسب‌وکار، همراه با هوش مصنوعی مبدأ' : 'منبع حقیقت کسب‌وکار'}
+      description={managed ? 'اشتراک مبدأ برای ساختار، موتورها و استفاده از هوش مصنوعی است: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.' : 'اشتراک مبدأ برای ساختار و موتورهاست: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.'}
     >
       <div className="flex flex-col gap-stack-lg">
         <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-3">
@@ -47,12 +47,12 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
             const rows: Array<{ ok: boolean; text: string }> = [
               { ok: true, text: `${formatNumber(e.workspaces)} فضای کاری برای کسب‌وکارها یا مشتری‌هایت` },
               { ok: true, text: `تا ${formatNumber(e.maxObjects)} قلم دانش فعال در درخت منبع حقیقت` },
-              { ok: true, text: `فایل‌هایت را بخوان: حدود ${k(e.fileTokensPerMonth)} توکن پردازش در ماه` },
+              ...(managed ? [{ ok: true, text: `فایل‌هایت را بخوان: حدود ${k(e.fileTokensPerMonth)} توکن پردازش در ماه` }] : []),
               { ok: e.engines.changeImpact, text: 'بفهم کدام دارایی با تغییر دانش نیاز به بازبینی پیدا کرد' },
-              { ok: e.engines.semanticContradiction, text: 'تناقض معنایی بین تصمیم‌هایت را پیدا کن' },
+              ...(managed ? [{ ok: e.engines.semanticContradiction, text: 'تناقض معنایی بین تصمیم‌هایت را پیدا کن' }] : []),
               { ok: e.contextPack, text: 'بستهٔ دانش بگیر و هرجا خواستی ببر' },
               { ok: e.customSpecs, text: 'جریان کار سفارشی با وابستگی و خط قرمز بساز' },
-              { ok: true, text: `هر روز تا ${formatNumber(e.decisionJudgmentsPerDay)} قضاوت هوشمند و ${formatNumber(e.coachPerDay)} جلسهٔ مربی دانش، با هزینهٔ ما` },
+              ...(managed ? [{ ok: true, text: `هر روز تا ${formatNumber(e.decisionJudgmentsPerDay)} قضاوت هوشمند و ${formatNumber(e.coachPerDay)} جلسهٔ مربی دانش، با هزینهٔ ما` }] : []),
             ];
             return (
               <Card key={pid} padding="lg" selected={isCurrent || undefined} className="flex h-full flex-col justify-between gap-stack-lg">

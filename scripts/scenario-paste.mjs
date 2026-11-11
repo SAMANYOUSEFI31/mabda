@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Copy/paste scenario on a REAL server + temp SQLite (AI parsing is not needed: the pasted answer uses the headings):
- *   «کپی برای هوش مصنوعی» (size shown) → an outside AI's answer (scripted here) → «وارد کردن پاسخ» → blocks →
+ *   «کپی برای استفاده در هر ابزار» (size shown) → an outside AI's answer (scripted here) → «وارد کردن پاسخ» → blocks →
  *   Context (Proposed) + asset with the pack's lineage → the proposals inbox → confirm.
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-paste.mjs   → docs/screens/paste-*.png
  */
@@ -34,10 +34,10 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
 
-  step('studio: «کپی برای هوش مصنوعی» on an output → pack with its size');
+  step('studio: «کپی برای استفاده در هر ابزار» on an output → pack with its size');
   await nav('خروجی‌ها'); await page.getByTestId('build-main_positioning').click();
   await page.getByRole('button', { name: 'بیشتر دربارهٔ این خروجی' }).click(); // the copy is under «⋯» of the output
-  await page.getByRole('menuitem', { name: 'کپی برای هوش مصنوعی' }).click();
+  await page.getByRole('menuitem', { name: 'کپی برای استفاده در هر ابزار' }).click();
   await page.getByText(/حدود .* توکن/).first().waitFor();
   const pack = await page.getByLabel('پیش‌نمایش بسته (فقط‌خواندنی)').inputValue();
   assert.match(pack, /<!-- mabda-pack:/);
@@ -64,7 +64,7 @@ try {
     '## Asset: جملهٔ موقعیت‌یابی',
     'برای طراحان فریلنسر که از توضیح دوبارهٔ کسب‌وکارشان خسته‌اند، مبدأ منبع حقیقتی است که هر AI از آن کار می‌کند.',
   ].join('\n');
-  await page.getByRole('button', { name: 'پاسخ AI را وارد کن' }).click();
+  await page.getByRole('button', { name: 'وارد کردن متن آماده' }).click();
   await page.getByRole('textbox', { name: 'پاسخ AI' }).fill(answer);
   await page.getByRole('button', { name: 'تبدیل به بلوک' }).click();
   await page.getByText('بر اساس سرتیترها').waitFor();

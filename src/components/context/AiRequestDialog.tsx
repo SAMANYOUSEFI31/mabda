@@ -50,7 +50,7 @@ const THOUGHT_SECTIONS_SCOPE = '__selected_thought_sections__';
 const newPackId = () => `rq_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /**
- * «درخواست برای AI»: pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
+ * «آماده‌سازی درخواست» (was «درخواست برای AI»): pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
  * (src/core/aiRequest.ts); the preview is the exact text that is copied. Nothing is generated here — no AI is called.
  */
 export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner {...props} /> : null);
@@ -110,7 +110,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       const r = await dataApi.aiRequest(workspaceId, { kind, request, ...requestScope, extraIds, thoughtIds, packId, record: true });
       try { await navigator.clipboard.writeText(r.markdown); } catch { const ta = document.createElement('textarea'); ta.value = r.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
       setResult(r); setCopied(true); track('action.ai-copy');
-      toast.show({ intent: 'success', message: 'کپی شد. در Claude یا ChatGPT بچسبان؛ پاسخ را که گرفتی، «پاسخ AI را وارد کن».' });
+      toast.show({ intent: 'success', message: 'کپی شد. در هر ابزاری که می‌خواهی بچسبان؛ جوابش را که گرفتی، «وارد کردن متن آماده» را بزن.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
   /** «همین‌جا جواب بده» uses Mabda's platform AI route; failures stay explicit and retryable. */
@@ -156,7 +156,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
 
   return (
     <Dialog
-      open onClose={onClose} size="xl" title="درخواست برای AI" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
+      open onClose={onClose} size="xl" title="آماده‌سازی درخواست" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -167,12 +167,12 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="ghost" />}
             items={[
               { label: 'ذخیره به‌عنوان درخواست', icon: 'Package', disabled: !ready || thoughtIds.length > 0, onSelect: () => { void save(); } },
-              { label: 'پاسخ AI را وارد کن', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
+              { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
             ]}
           />
-          {/* two outputs, ONE main: with a key «همین‌جا جواب بده» is the main one; without a key the copy is */}
-          <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>
-          <Button variant={ai.available ? 'secondary' : 'primary'} iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای AI خودم'}</Button>
+          {/* internal AI is frozen (MABDA_MANAGED_AI): «همین‌جا جواب بده» exists only with the flag on; otherwise the copy is the only action */}
+          {ai.managedEnabled && <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>}
+          <Button variant={ai.managedEnabled && ai.available ? 'secondary' : 'primary'} iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای استفاده در هر ابزار'}</Button>
         </>
       }
     >
@@ -208,8 +208,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
         <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint={usesThoughtSections ? 'دانش تأییدشدهٔ مؤثر در بخش‌های فکرهای انتخاب‌شده می‌آید؛ برای گسترش زمینه، کل کسب‌وکار یا یک بخش دیگر را انتخاب کن.' : 'دانش خود این بخش + آنچه از بالا به ارث می‌برد + خط قرمزهای «همه‌جا». بخش‌های هم‌سطح نمی‌آیند.'}/>
         {hasKids && <Checkbox label="زیربخش‌هایش هم بیایند" checked={withChildren} onChange={(e) => { setWithChildren(e.target.checked); setExtraIds([]); }} hint="همان قاعدهٔ «بسته‌های دانش». بودجهٔ توکن نگه‌دار است: اگر جا نشد، مرتبط‌ترین‌ها می‌آیند و بقیه با دلیل کنار می‌مانند." />}
 
-        {answerError && <AiErrorNotice error={answerError} onRetry={answerHere} retrying={busy === 'answer'} />}
-        {answer && (
+        {ai.managedEnabled && answerError && <AiErrorNotice error={answerError} onRetry={answerHere} retrying={busy === 'answer'} />}
+        {ai.managedEnabled && answer && (
           <section className="flex flex-col gap-stack-sm rounded-control border border-border-default bg-surface-sunken p-inset-lg" aria-label="پاسخ" aria-live="polite">
             <h3 className="label-md text-text-default">پاسخ</h3>
             {answer.blocks.length === 0 && answer.streaming && <div className="body-sm flex items-center gap-inline-sm text-text-subtle"><Spinner size="sm" label="در حال نوشتن" />در حال نوشتن…</div>}
@@ -235,7 +235,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
               {result.counts.rejected > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.rejected)} گزینهٔ ردشده</Badge>}
             </div>
             {result.overBudget && <Alert intent="warning">خط قرمزها و تصمیم‌های سراسری از بودجه بیشترند؛ همیشه می‌آیند. دامنه را کوچک‌تر کن.</Alert>}
-            {result.longText && <p className="body-sm text-text-subtle">متن بلند است؛ از AI خواسته شده اول نقل‌قول‌های مرتبط را بیاورد.</p>}
+            {result.longText && <p className="body-sm text-text-subtle">متن بلند است؛ در درخواست خواسته شده اول نقل‌قول‌های مرتبط بیاید.</p>}
             {result.counts.thoughts > 0 && <Badge intent="neutral" icon="Lightbulb">{formatNumber(result.counts.thoughts)} فکرِ انتخاب‌شده (تأییدنشده)</Badge>}
             <Textarea label="پیش‌نمایش (دقیقاً همین متن کپی می‌شود)" rows={10} readOnly value={result.markdown} className="code bidi-plain" />
 
@@ -276,7 +276,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           </div>
           </ClosedSection>
         )}
-        {sessions.length > 0 && (
+        {ai.managedEnabled && sessions.length > 0 && (
           <ClosedSection title="پاسخ‌های قبلی" count={sessions.length}>
             <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="پاسخ‌های قبلی">
               {[...sessions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((sess) => (
@@ -298,7 +298,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             </ul>
           </ClosedSection>
         )}
-        <p className="body-sm text-text-subtle">«کپی» هیچ AI‌ای را صدا نمی‌زند. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
+        <p className="body-sm text-text-subtle">«کپی» فقط متن را آماده می‌کند؛ مبدأ جوابی نمی‌سازد. نمونه‌ها و پیشنهادی‌ها هرگز به‌عنوان واقعیت نمی‌آیند.</p>
       </div>
     </Dialog>
   );

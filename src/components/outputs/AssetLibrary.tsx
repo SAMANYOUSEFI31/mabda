@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable, Workspace } from '../../types';
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../../core/impactEngine';
+import { useAiStatus } from '../../services/aiStatus';
 import { Button, EmptyState, IconButton, Menu, Tabs, formatNumber, useToast } from '../../ui';
 
 interface AssetLibraryProps {
@@ -49,6 +50,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onDelete,
   onOpenArchive,
 }) => {
+  const { managedEnabled } = useAiStatus();
   const [filter, setFilter] = useState<string>('all');
   const toast = useToast();
   useEffect(() => {
@@ -103,9 +105,9 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
       {filtered.length === 0 ? (
         <EmptyState
           icon="Package"
-          title={deliverables.length === 0 ? 'هنوز دارایی‌ای نساخته‌ای' : 'دارایی‌ای با این فیلتر نیست'}
-          description="در جریان‌های کار، اولین دارایی را از دانش تأییدشده‌ات بساز."
-          action={<Button variant="secondary" iconStart="Sparkles" onClick={onGoToWorkstreams}>ساخت دارایی</Button>}
+          title={deliverables.length === 0 ? (managedEnabled ? 'هنوز دارایی‌ای نساخته‌ای' : 'هنوز خروجی‌ای نداری') : 'دارایی‌ای با این فیلتر نیست'}
+          description={managedEnabled ? 'در جریان‌های کار، اولین دارایی را از دانش تأییدشده‌ات بساز.' : 'در جریان‌های کار، بستهٔ دانش تأییدشده‌ات را برای هر ابزار آماده کن.'}
+          action={<Button variant="secondary" iconStart={managedEnabled ? 'Sparkles' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساخت دارایی' : 'آماده‌سازی خروجی'}</Button>}
         />
       ) : (
         <div className="flex flex-col gap-stack-lg">

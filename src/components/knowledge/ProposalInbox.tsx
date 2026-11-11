@@ -38,9 +38,9 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
   const actions = (
     <div className="flex flex-wrap items-center gap-inline-sm">
-      <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای AI</Button>
-      <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ AI</Button>
-      <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن حافظهٔ AI</Button>
+      <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای استفاده در هر ابزار</Button>
+      <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن متن آماده</Button>
+      <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن حافظه از ابزار دیگر</Button>
     </div>
   );
 
@@ -48,7 +48,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   if (pending.length === 0) {
     return (
       <Card padding="md" id="proposal-inbox" className="flex flex-col justify-between gap-inline-md md:flex-row md:items-center" aria-label="صندوق پیشنهادها">
-        <p className="body-md text-text-subtle">صندوق پیشنهادها خالی است. هر چیزی که AI پیشنهاد بدهد اینجا منتظر تأیید تو می‌ماند.</p>
+        <p className="body-md text-text-subtle">صندوق پیشنهادها خالی است. هر چیزی که وارد کنی و هنوز تأیید نشده باشد اینجا منتظر تأیید تو می‌ماند.</p>
         {actions}
       </Card>
     );
@@ -62,7 +62,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             <h2 className="heading-sm text-text-default">صندوق پیشنهادها</h2>
             <Badge intent="warning" icon={false}>{formatNumber(pending.length)} منتظر تأیید</Badge>
           </div>
-          <p className="body-sm text-text-subtle">پیشنهادهای هوش مصنوعی، فایل و پاسخ چسبانده‌شده اینجا می‌مانند. تا تأیید نکنی واقعیت نیستند و به‌عنوان واقعیت به هیچ هوش مصنوعی داده نمی‌شوند.</p>
+          <p className="body-sm text-text-subtle">پیشنهادها، فایل‌ها و متن‌های واردشده اینجا می‌مانند. تا تأیید نکنی واقعیت نیستند و به‌عنوان واقعیت به هیچ ابزاری داده نمی‌شوند.</p>
         </div>
         {actions}
       </div>

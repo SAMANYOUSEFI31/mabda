@@ -15,9 +15,9 @@ import { flatten } from '../../core/nodeTree';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber } from '../../ui';
 
-const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال AI', paragraph: 'متن' };
+const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
-const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'AI نوشته', similar: 'شباهت', none: 'بدون سرنخ' };
+const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'نشانهٔ صریح', similar: 'شباهت', none: 'بدون سرنخ' };
 
 interface Props {
   open: boolean;
@@ -78,7 +78,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     if (c.action === 'update' && m.targetId && onUpdateDraft) {
       const target = objects.find((o) => o.id === m.targetId);
       if (!target || target.status !== 'Confirmed') { setError('دانشی که باید به‌روز شود دیگر تأییدشده نیست؛ «تازه» را انتخاب کن.'); return false; }
-      const ok = await onUpdateDraft(m.targetId, { title: b.title || target.title, content: m.body, reason: `از پاسخ AI بیرونی${res?.packTitle ? ` (بستهٔ «${res.packTitle}»)` : ''}` });
+      const ok = await onUpdateDraft(m.targetId, { title: b.title || target.title, content: m.body, reason: `از متن آمادهٔ وارد‌شده${res?.packTitle ? ` (بستهٔ «${res.packTitle}»)` : ''}` });
       if (ok) mark(b.id, `پیش‌نویس روی «${target.title}» ساخته شد؛ در «فکر» تأییدش کن`);
       return ok;
     }
@@ -114,12 +114,12 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
       open
       onClose={onClose}
       size="xl"
-      title="وارد کردن پاسخ AI بیرونی"
-      description="پاسخ را همان‌طور که AI داد بچسبان. برای هر مورد می‌گوییم کجا می‌رود و چرا؛ تو تأیید یا عوضش می‌کنی. هیچ‌چیز خودکار ثبت نمی‌شود."
+      title="وارد کردن متن آماده"
+      description="متن را همان‌طور که از ابزار گرفتی بچسبان. برای هر مورد می‌گوییم کجا می‌رود و چرا؛ تو تأیید یا عوضش می‌کنی. هیچ‌چیز خودکار ثبت نمی‌شود."
       footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}
     >
       <div className="flex flex-col gap-stack-lg">
-        <Textarea label="پاسخ AI" rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={'## Decision: …\n## Asset: …'} />
+        <Textarea label="متن آماده" rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={'## Decision: …\n## Asset: …'} />
         <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
           <div className="sm:flex-1">
             <Select label="از کدام بستهٔ دانش؟ (اصالت)" value={packId} onChange={(e) => setPackId(e.target.value)} options={[{ value: '', label: 'بدون بسته (اصالت ثبت نمی‌شود)' }, ...packs.map((p) => ({ value: p.id, label: p.title }))]} hint="اگر پاسخ نشانهٔ بسته را دارد، همان بسته خودکار انتخاب می‌شود." />

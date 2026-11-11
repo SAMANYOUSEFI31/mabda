@@ -54,6 +54,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
       const r = await onUpload(f, nodeId);
       if (!r) return;
       setBlocked(null);
+      if (!managed) return; // processing is Mabda's own AI: frozen with MABDA_MANAGED_AI off, the file is only stored
       if (r.policy === 'blocked') setBlocked(`«${r.file.name}» از سهمیهٔ ماهانهٔ پردازش فایل بیشتر است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.`);
       else if (r.policy === 'credits') setConfirm(r);
       else await run(r.file.id, () => onProcess(r.file.id));
@@ -69,7 +70,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
         <div className="flex flex-col gap-stack-xs">
           <h2 className="heading-sm text-text-default">فایل‌ها</h2>
           <p className="body-sm text-text-subtle">
-            txt، md، pdf و docx تا ۲۵ مگابایت. هر فایل یک‌بار پردازش می‌شود (خلاصه، دانش پیشنهادی، قطعه‌ها) و فقط قطعه‌های مرتبط با پرسش به مدل می‌رسند.
+            {managed ? 'txt، md، pdf و docx تا ۲۵ مگابایت. هر فایل یک‌بار پردازش می‌شود (خلاصه، دانش پیشنهادی، قطعه‌ها) و فقط قطعه‌های مرتبط با پرسش به مدل می‌رسند.' : 'txt، md، pdf و docx تا ۲۵ مگابایت. فایل‌ها کنار دانشت نگه داشته می‌شوند.'}
           </p>
         </div>
         <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
@@ -83,7 +84,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
 
       {blocked && <Alert intent="warning" title="سهمیهٔ فایل پر است">{blocked}</Alert>}
 
-      {quota && (
+      {managed && quota && (
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <Progress value={Math.min(used, total)} max={total} label="سهمیهٔ پردازش فایل این ماه" showValue={false} intent={used >= total ? 'warning' : 'neutral'} />
           <span className="body-sm text-text-subtle">
@@ -93,7 +94,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
       )}
 
       {files.length === 0 ? (
-        <EmptyState icon="Upload" title="هنوز فایلی بارگذاری نشده" description="سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد." action={<Button variant="secondary" iconStart="Upload" onClick={() => input.current?.click()}>بارگذاری فایل</Button>} />
+        <EmptyState icon="Upload" title="هنوز فایلی بارگذاری نشده" description={managed ? 'سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد.' : 'سند یا برندبوکت را بگذار تا کنار دانشت نگه داشته شود.'} action={<Button variant="secondary" iconStart="Upload" onClick={() => input.current?.click()}>بارگذاری فایل</Button>} />
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="فایل‌های بارگذاری‌شده">
           {files.map((f) => (
@@ -101,11 +102,11 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <div className="flex min-w-space-0 flex-wrap items-center gap-inline-sm">
                   <span className="label-md text-text-default">{f.name}</span>
-                  <Badge intent={STATUS[f.status].intent} icon={false}>{STATUS[f.status].label}</Badge>
+                  {managed && <Badge intent={STATUS[f.status].intent} icon={false}>{STATUS[f.status].label}</Badge>}
                   <span className="caption text-text-subtle">{kb(f.sizeBytes)} · حدود {formatNumber(f.tokens)} توکن{f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}</span>
                 </div>
                 <div className="flex items-center gap-inline-xs">
-                  {(f.status === 'uploaded' || f.status === 'failed') && (
+                  {managed && (f.status === 'uploaded' || f.status === 'failed') && (
                     <Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
                       {f.status === 'failed' ? 'دوباره' : 'پردازش'}
                     </Button>

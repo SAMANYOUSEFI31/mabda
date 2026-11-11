@@ -2,7 +2,7 @@
   "_comment": [
     "دستورپخت‌های لایهٔ هوش: ترکیب پرتکرار متخصص‌ها در نقش‌ها. فقط «کلید مستعار» مدل می‌آید؛ نام مدل و قیمت در server/ai/config/models.json است (قانون ۴).",
     "عوض کردن مدل یا حذف یک مرحله (مثلاً بدون embedding: finders فقط lexical؛ بدون مرتب‌کننده: ranker.enabled=false) فقط تغییر همین فایل است.",
-    "plans: 'all' یا فهرستی از starter|pro|max. تا تصمیم قیمت‌گذاری، همه 'all'اند؛ عدد «چه چیزی در کدام پلن» جای نهایی‌اش src/core/entitlements.config.ts است (قانون ۵) و این فیلد فقط شناسهٔ پلن‌ها را می‌گوید.",
+    "capability: فقط کلید قابلیت (suggestRelated|suggestKind|suggestPlace|voiceNote). «کدام پلن این قابلیت را دارد» فقط در src/core/entitlements.config.ts (intelligence) است (قانون ۵)؛ اینجا هیچ شناسهٔ پلنی نمی‌آید.",
     "مقدارهای پیش‌فرض اینجا «نقطهٔ شروع» اند، نه نتیجهٔ سنجش: ترکیب برگزیده و آستانه‌ها را bun run eval:intelligence با دادهٔ فارسی پیشنهاد می‌دهد (docs/eval/).",
     "tiers: آستانه بر اساس امتیاز مرتب‌کننده (نه شمار ثابت). null = هنوز سنجیده نشده؛ همهٔ نتیجه‌ها «unscored» برمی‌گردند. موارد بین weak و strong جدا علامت می‌خورند (tier=weak) تا رابط بعداً به‌تدریج نشانشان دهد.",
     "minConfidence: null = هنوز سنجیده نشده؛ تا آن زمان فقط پاسخ «هیچ‌کدام/نامعلوم» داور «مطمئن نبود» حساب می‌شود."
@@ -12,7 +12,7 @@
       "kind": "findRelated",
       "description": "مرتبط‌ها را پیدا کن: یابنده (واژه‌ای + embedding، ترکیب رتبه‌ای) ← مرتب‌کننده (rerank)",
       "version": 1,
-      "plans": "all",
+      "capability": "suggestRelated",
       "finders": [
         { "specialist": "lexical", "weight": 1 },
         { "specialist": "embedding", "model": "e5-large", "weight": 1, "queryRole": "query" }
@@ -27,7 +27,7 @@
       "kind": "whatIsThis",
       "description": "این چیست؟ داور با سؤال‌های بسته: نوع فکر، نوع دانش، قطعی یا با تردید",
       "version": 1,
-      "plans": "all",
+      "capability": "suggestKind",
       "judge": { "model": "jev-114" },
       "minConfidence": null,
       "questions": [
@@ -67,7 +67,7 @@
       "kind": "whereTo",
       "description": "کجا برود؟ مرتبط‌ها ← داور برای برگزیدن بخش از نامزدها (+ «هیچ‌کدام»)",
       "version": 1,
-      "plans": "all",
+      "capability": "suggestPlace",
       "related": "findRelated",
       "judge": { "model": "jev-114" },
       "candidates": "all",
@@ -80,7 +80,7 @@
       "kind": "transcribe",
       "description": "صدا را به متن تبدیل کن",
       "version": 1,
-      "plans": "all",
+      "capability": "voiceNote",
       "model": "whisper-large-v3",
       "language": "fa"
     }

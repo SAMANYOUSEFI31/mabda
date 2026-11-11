@@ -43,13 +43,13 @@ test('tree: four levels deep, user nodes under product and offer (subscription, 
   assert.ok(d.objects.every((o) => nodes.some((n) => n.id === o.nodeId)), 'every object lives in a real node');
 });
 
-test('objects: all three types in every status; Proposed come from chat, coach, import (file) and paste, each with a reason', () => {
+test('objects: all three types in every status; Proposed come from import (file) and paste only — never from Mabda own AI (chat or coach), each with a reason', () => {
   const types = new Set(d.objects.map((o) => o.type));
   assert.deepEqual([...types].sort(), ['Constraint', 'Decision', 'Fact']);
   for (const st of ['Confirmed', 'Proposed', 'Needs Review', 'Superseded', 'Archived'] as const) assert.ok(d.objects.some((o) => o.status === st), st);
   for (const t of ['Fact', 'Decision', 'Constraint'] as const) for (const st of ['Confirmed', 'Proposed'] as const) assert.ok(d.objects.some((o) => o.type === t && o.status === st) || t === 'Constraint', `${t}/${st}`);
   const proposed = d.objects.filter((o) => o.status === 'Proposed' && !o.source?.noteId); // (what the user converted from a note line is hers: see the thinking test)
-  assert.deepEqual([...new Set(proposed.map((o) => o.source!.kind))].sort(), ['chat', 'coach', 'file', 'paste']);
+  assert.deepEqual([...new Set(proposed.map((o) => o.source!.kind))].sort(), ['file', 'paste']);
   assert.ok(proposed.every((o) => o.source!.reason), 'every suggestion says why');
   assert.ok(proposed.filter((o) => o.source!.kind === 'file' || o.source!.kind === 'paste').every((o) => o.source!.quote), 'imported ones keep their quote');
   assert.ok(d.objects.every((o) => o.status !== 'Proposed' || o.provenance === 'AI Suggested' || o.provenance === 'Imported' || !!o.source?.noteId), 'no Proposed object pretends to be user input (except a converted note line, which says so)');
@@ -101,10 +101,11 @@ test('review states: the audience edit makes the channel / budget (and the value
   assert.ok(d.deliverables.every((x) => x.usedContext.every((u) => byId.has(u.id))));
 });
 
-test('last week: Changes by user, external import, chat and coach — with reasons — feed the weekly review and the digest', () => {
+test('last week: Changes by user and external import — with reasons — feed the weekly review and the digest', () => {
   const digest = buildChangeDigest({ changes: d.changes, objects: d.objects, relationships: d.relationships, deliverables: d.deliverables, now: NOW });
   const actors = new Set(digest.groups.map((g) => g.actor));
-  for (const a of ['user', 'chat', 'import', 'coach']) assert.ok(actors.has(a as never), a);
+  for (const a of ['user', 'import']) assert.ok(actors.has(a as never), a);
+  for (const a of ['chat', 'coach']) assert.ok(!actors.has(a as never), `${a}: the showcase must not present Mabda's own AI as an author`);
   assert.ok(digest.groups.flatMap((g) => g.entries).filter((e) => e.change.actor === 'user' && e.change.reason).length >= 3);
   assert.ok(digest.assetsToReview >= 1);
   const week = buildWeeklyReview({ objects: d.objects, relationships: d.relationships, changes: d.changes, deliverables: d.deliverables, now: NOW });

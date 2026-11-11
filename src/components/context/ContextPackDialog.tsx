@@ -17,7 +17,7 @@ interface Props {
   onOpenImport: () => void;
 }
 
-/** «کپی برای هوش مصنوعی»: compact Markdown for any AI (even a free chat). The size is shown before copying. */
+/** «کپی برای استفاده در هر ابزار»: compact Markdown for any outside tool (even a free chat). The size is shown before copying. */
 export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClose, onOpenImport }) => {
   const toast = useToast();
   const [pack, setPack] = useState<PackInfo | null>(null);
@@ -40,7 +40,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       const ta = document.createElement('textarea'); ta.value = pack.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
     setCopied(true);
-    toast.show({ intent: 'success', message: 'بستهٔ دانش کپی شد. آن را در گفتگوی هر AI بچسبان و از او بخواه طبق قالب پاسخ بدهد.' });
+    toast.show({ intent: 'success', message: 'بستهٔ دانش کپی شد. آن را در هر ابزاری که می‌خواهی بچسبان و بخواه طبق قالب جواب بدهد.' });
   };
 
   return (
@@ -48,12 +48,12 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       open={!!target}
       onClose={onClose}
       size="lg"
-      title={`کپی برای هوش مصنوعی — ${target?.title ?? ''}`}
-      description="Markdown فشرده با دانش تأییدشده، شکاف‌ها، معیارها و خط قرمزها و قالب پاسخی که AI باید رعایت کند."
+      title={`کپی برای استفاده در هر ابزار — ${target?.title ?? ''}`}
+      description="Markdown فشرده با دانش تأییدشده، شکاف‌ها، معیارها و خط قرمزها و قالب پاسخی که ابزار باید رعایت کند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
-          <Button variant="secondary" iconStart="Upload" onClick={() => { onClose(); onOpenImport(); }}>پاسخ AI را وارد کن</Button>
+          <Button variant="secondary" iconStart="Upload" onClick={() => { onClose(); onOpenImport(); }}>وارد کردن متن آماده</Button>
           <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!pack} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
         </>
       }
@@ -71,7 +71,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
             {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} خط قرمز</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />
-          <p className="caption text-text-subtle">وقتی پاسخ AI را برگرداندی، بخش‌های پاسخ به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>
+          <p className="caption text-text-subtle">وقتی جواب را از ابزار برگرداندی و وارد کردی، بخش‌های جواب به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>
         </div>
       )}
     </Dialog>

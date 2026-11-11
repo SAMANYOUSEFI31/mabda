@@ -191,10 +191,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
-              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="Sparkles" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>کمک AI</Button>}
+              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="Sparkles" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>آماده‌سازی درخواست</Button>}
             </Card>
           )}
-          {selectMode && selectedThoughts.length === 0 && <p className="body-sm text-text-subtle">یک یا چند فکر را انتخاب کن تا بتوانی آن‌ها را ترکیب کنی یا از AI کمک بگیری.</p>}
+          {selectMode && selectedThoughts.length === 0 && <p className="body-sm text-text-subtle">یک یا چند فکر را انتخاب کن تا بتوانی آن‌ها را ترکیب کنی یا برایشان درخواست آماده کنی.</p>}
           <ThinkingList
             items={view.thoughts}
             objects={p.objects}

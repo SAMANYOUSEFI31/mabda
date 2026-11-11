@@ -82,7 +82,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { section: 'workspace', label: 'ساخت یا بازنشانی فضای نمونه', icon: 'Sparkles', onSelect: p.onResetDemo },
     ...(p.onDeleteDemo ? [{ section: 'workspace' as const, label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
     // grouped by what you are doing: plan and usage · the account (a divider between groups)
-    { section: 'import', label: 'وارد کردن حافظهٔ AI', icon: 'Brain', onSelect: p.onOpenMemory },
+    { section: 'import', label: 'وارد کردن حافظه از ابزار دیگر', icon: 'Brain', onSelect: p.onOpenMemory },
     { section: 'plan', label: 'پلن و ارتقا', icon: 'Sparkles', onSelect: p.onOpenPlanModal },
     { section: 'plan', label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ section: 'plan' as const, label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
@@ -130,7 +130,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
-              {p.specs.map((s) => <NavItem nested key={s.id} label={`بساز: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
+              {p.specs.map((s) => <NavItem nested key={s.id} label={`${ai.managedEnabled ? 'بساز' : 'آماده‌سازی'}: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
               <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
             </div>

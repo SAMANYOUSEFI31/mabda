@@ -18,7 +18,7 @@ const page = await ctx.newPage();
 const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
 const askHere = async (text) => {
   await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("خانه")').click();
-  await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
+  await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
   await page.getByLabel('درخواستت را در یک خط بنوی').fill(text);
   await page.getByRole('dialog').getByRole('button', { name: 'همین‌جا جواب بده' }).click();
 };
@@ -68,7 +68,7 @@ if (process.env.KILL_FAKE_PID) {
   await askHere('پیام آزمایشی دو');
   await page.getByRole('button', { name: 'دوباره' }).first().waitFor({ timeout: 20000 });
   await shot('8-error-retry');
-  const errorDialog = page.getByRole('dialog', { name: 'درخواست برای AI' });
+  const errorDialog = page.getByRole('dialog', { name: 'آماده‌سازی درخواست' });
   assert.equal(await errorDialog.getByText('تصمیم نمونه').count(), 0, 'provider failure does not show a canned answer');
   assert.ok(await page.getByText(/ارتباط|سرویس مدل|به‌موقع/).count(), 'a clear error message is visible');
 }
