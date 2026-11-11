@@ -175,6 +175,8 @@
           "pricedAt": "2026-11-11"
         }
       },
+      "mai-transcribe-15": { "kind": "transcription", "id": "microsoft/mai-transcribe-1.5", "note": "قیمت دیده نشد" },
+      "gpt-transcribe": { "kind": "transcription", "id": "openai/gpt-transcribe", "pricing": { "unit": "perAudioMinute", "amount": 0.0045, "currency": "USD", "pricedAt": "2026-11-11" } },
       "chirp-3": {
         "kind": "transcription",
         "id": "google/chirp-3",

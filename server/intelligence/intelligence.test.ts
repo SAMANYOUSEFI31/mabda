@@ -266,8 +266,13 @@ test('the SQLite embedding store round-trips vectors, keeps them by text hash an
   const got = [...(await s.getMany([key])).values()][0];
   assert.deepEqual([...got], [0.25, -1.5, 3]);
   assert.equal((await s.getMany([{ ...key, textHash: 'h2' }])).size, 0);
-  assert.equal(await s.dropStale('w1', 'u1', 'thought', 't1', ['h2']), 1);
+  assert.equal(await s.dropStale('w1', 'u1', 'thought', 't1', 'e5-large', ['h2']), 1);
   assert.equal((await s.getMany([key])).size, 0);
+  // مدل دیگرِ همان چیز دست‌نخورده می‌ماند
+  const other = { ...key, modelKey: 'gemini-embedding-2', textHash: 'g1' };
+  await s.putMany([{ key: other, vector: Float32Array.from([1]) }]);
+  assert.equal(await s.dropStale('w1', 'u1', 'thought', 't1', 'e5-large', []), 0);
+  assert.equal((await s.getMany([other])).size, 1);
 });
 
 test('permanent delete of a knowledge removes its embeddings and suggestions too (a trigger, on every delete path)', async () => {

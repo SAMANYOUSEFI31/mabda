@@ -187,7 +187,7 @@ export interface EmbeddingStore {
   getMany(keys: EmbeddingKey[]): Promise<Map<string, Float32Array>>;
   putMany(rows: Array<{ key: EmbeddingKey; vector: Float32Array }>): Promise<void>;
   /** برای همهٔ بردارهای یک چیز که هش دیگری دارند؛ پاک‌سازی بردار کهنه */
-  dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, keepHashes: string[]): Promise<number>;
+  dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, modelKey: string, keepHashes: string[]): Promise<number>;
 }
 
 export const embeddingKeyId = (k: EmbeddingKey): string =>

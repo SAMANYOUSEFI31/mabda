@@ -12,12 +12,12 @@ export class MemoryEmbeddingStore implements EmbeddingStore {
   async putMany(rows: Array<{ key: EmbeddingKey; vector: Float32Array }>): Promise<void> {
     for (const r of rows) this.rows.set(embeddingKeyId(r.key), r);
   }
-  async dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, keepHashes: string[]): Promise<number> {
+  async dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, modelKey: string, keepHashes: string[]): Promise<number> {
     const keep = new Set(keepHashes);
     let n = 0;
     for (const [id, r] of this.rows) {
       const k = r.key;
-      if (k.workspaceId === workspaceId && k.userId === userId && k.itemKind === itemKind && k.itemId === itemId && !keep.has(k.textHash)) { this.rows.delete(id); n++; }
+      if (k.workspaceId === workspaceId && k.userId === userId && k.itemKind === itemKind && k.itemId === itemId && k.modelKey === modelKey && !keep.has(k.textHash)) { this.rows.delete(id); n++; }
     }
     return n;
   }
@@ -52,12 +52,12 @@ export class SqliteEmbeddingStore implements EmbeddingStore {
     this.db.transaction(() => { for (const { key: k, vector } of rows) stmt.run(k.workspaceId, k.userId, k.itemKind, k.itemId, k.chunkIndex, k.textHash, k.modelKey, vector.length, toBlob(vector), at); })();
   }
 
-  async dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, keepHashes: string[]): Promise<number> {
-    const rows = this.db.prepare('SELECT DISTINCT text_hash AS h FROM intelligence_embeddings WHERE workspace_id = ? AND user_id = ? AND item_kind = ? AND item_id = ?').all(workspaceId, userId, itemKind, itemId) as Array<{ h: string }>;
+  async dropStale(workspaceId: string, userId: string, itemKind: string, itemId: string, modelKey: string, keepHashes: string[]): Promise<number> {
+    const rows = this.db.prepare('SELECT DISTINCT text_hash AS h FROM intelligence_embeddings WHERE workspace_id = ? AND user_id = ? AND item_kind = ? AND item_id = ? AND model_key = ?').all(workspaceId, userId, itemKind, itemId, modelKey) as Array<{ h: string }>;
     const keep = new Set(keepHashes);
-    const del = this.db.prepare('DELETE FROM intelligence_embeddings WHERE workspace_id = ? AND user_id = ? AND item_kind = ? AND item_id = ? AND text_hash = ?');
+    const del = this.db.prepare('DELETE FROM intelligence_embeddings WHERE workspace_id = ? AND user_id = ? AND item_kind = ? AND item_id = ? AND model_key = ? AND text_hash = ?');
     let n = 0;
-    for (const { h } of rows) if (!keep.has(h)) n += del.run(workspaceId, userId, itemKind, itemId, h).changes;
+    for (const { h } of rows) if (!keep.has(h)) n += del.run(workspaceId, userId, itemKind, itemId, modelKey, h).changes;
     return n;
   }
 }

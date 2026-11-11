@@ -96,7 +96,7 @@ export async function embedItems(env: Env, scope: Scope, modelKey: string, items
   }
   const byItem = new Map<string, string[]>();
   for (const e of entries) byItem.set(e.item.id, [...(byItem.get(e.item.id) ?? []), e.key.textHash]);
-  for (const item of items) await env.store.dropStale(scope.workspaceId, scope.userId, item.kind, item.id, byItem.get(item.id) ?? []);
+  for (const item of items) await env.store.dropStale(scope.workspaceId, scope.userId, item.kind, item.id, modelKey, byItem.get(item.id) ?? []);
   return entries.map((e) => ({ itemId: e.item.id, vector: have.get(embeddingKeyId(e.key))! }));
 }
 

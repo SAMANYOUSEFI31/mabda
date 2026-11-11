@@ -44,8 +44,8 @@ test('the evaluators and the report run end-to-end on mock specialists (no netwo
   results.push(await evalRelated(ctx, combos.related[7], combos.thresholdPrecision));
   results.push(await evalRelated(ctx, combos.related[0], combos.thresholdPrecision));
   results.push(await evalJudge(ctx, 'jev-114'));
-  results.push(await evalPlacement(ctx, combos.placement[2], combos.related));
-  results.push(await evalPlacement(ctx, combos.placement[0], combos.related));
+  results.push(await evalPlacement(ctx, combos.placement[4], combos.related));
+  results.push(await evalPlacement(ctx, combos.placement[1], combos.related));
   results.push(await evalDuplicatesScore(ctx, combos.duplicates.scoreMethods[1]));
   results.push(await evalDuplicatesScore(ctx, combos.duplicates.scoreMethods[0]));
   results.push(await evalDuplicatesJudge(ctx, 'jev-113', questions.duplicates));

@@ -1,7 +1,7 @@
 import type { EvalResult, Task } from './evaluators.ts';
 
 export interface Bars {
-  related: { recallAt5: number; precisionAt5: number; hardNegativeAt5: number };
+  related: { recallAt5: number; hardNegativeAt5: number };
   judge: { accuracy: number };
   placement: { accuracy: number; wrongAssignment: number };
   duplicates: { f1Duplicate: number };
@@ -35,7 +35,8 @@ const by = (rs: EvalResult[], task: Task): EvalResult[] => rs.filter((r) => r.ta
 
 /** بهترین با اولویت کیفیت: کلیدهای مرتب‌سازی به ترتیب؛ پیکان ↓ یعنی بیشتر بهتر است، ↑ یعنی کمتر بهتر است */
 function rank(rs: EvalResult[], keys: Array<[string, 'desc' | 'asc']>): EvalResult[] {
-  const v = (r: EvalResult, k: string) => r.metrics[k] ?? (keys.find(([kk]) => kk === k)?.[1] === 'desc' ? -Infinity : Infinity);
+  const cover = (r: EvalResult) => (r.n + r.errors ? r.n / (r.n + r.errors) : 0); // خطا نمرهٔ بد است، نه کنارگذاشتنی
+  const v = (r: EvalResult, k: string) => { const m = r.metrics[k]; const dir = keys.find(([kk]) => kk === k)?.[1]; if (m === null || m === undefined) return dir === 'desc' ? -Infinity : Infinity; return dir === 'desc' ? m * cover(r) : cover(r) ? m / cover(r) : Infinity; };
   return [...rs].filter((r) => r.n > 0).sort((a, b) => {
     for (const [k, dir] of keys) { const d = v(a, k) - v(b, k); if (d !== 0 && Number.isFinite(d)) return dir === 'desc' ? -d : d; }
     const ca = a.costPer1000Usd ?? Infinity, cb = b.costPer1000Usd ?? Infinity;
@@ -75,8 +76,8 @@ export function renderReport(results: EvalResult[], meta: ReportMeta): string {
     if (ranked[0]) {
       const b = ranked[0];
       out.push(`\n**بهترین (کیفیت اول): «${b.name}»** — nDCG@۵ = ${num(b.metrics.ndcg5)}، R@۵ = ${pct(b.metrics.r5)}، P@۵ = ${pct(b.metrics.p5)}.${noteNear(rel, b, 'ndcg5', 0.02)}`);
-      if ((b.metrics.r5 ?? 0) < meta.bars.related.recallAt5 || (b.metrics.p5 ?? 0) < meta.bars.related.precisionAt5 || (b.metrics.hardNeg5 ?? 1) > meta.bars.related.hardNegativeAt5)
-        bad.push(`**مرتبط‌ها:** بهترین ترکیب («${b.name}») به حد پذیرش نرسید (R@۵ ≥ ${pct(meta.bars.related.recallAt5)}، P@۵ ≥ ${pct(meta.bars.related.precisionAt5)}، هم‌موضوع@۵ ≤ ${pct(meta.bars.related.hardNegativeAt5)}؛ به‌دست‌آمده: ${pct(b.metrics.r5)}، ${pct(b.metrics.p5)}، ${pct(b.metrics.hardNeg5)}). تا بهتر شدن، رابط بعدی باید این نتیجه را «پیشنهاد کم‌اطمینان» نشان دهد.`);
+      if ((b.metrics.r5 ?? 0) < meta.bars.related.recallAt5 || (b.metrics.hardNeg5 ?? 1) > meta.bars.related.hardNegativeAt5)
+        bad.push(`**مرتبط‌ها:** بهترین ترکیب («${b.name}») به حد پذیرش نرسید (R@۵ ≥ ${pct(meta.bars.related.recallAt5)}، هم‌موضوع@۵ ≤ ${pct(meta.bars.related.hardNegativeAt5)}؛ به‌دست‌آمده: ${pct(b.metrics.r5)}، ${pct(b.metrics.hardNeg5)}). تا بهتر شدن، رابط بعدی باید این نتیجه را «پیشنهاد کم‌اطمینان» نشان دهد.`);
     }
     const thr = rel.filter((r) => r.extras.suggestedStrong !== undefined);
     if (thr.length) {
@@ -104,7 +105,7 @@ export function renderReport(results: EvalResult[], meta: ReportMeta): string {
     const ranked = rank(jd, [['accuracy', 'desc']]);
     if (ranked[0]) {
       out.push(`\n**بهترین (کیفیت اول): «${ranked[0].name}»** — دقت میانگین ${pct(ranked[0].metrics.accuracy)}.`);
-      for (const r of jd) for (const k of ['thoughtKind', 'knowledgeType', 'certainty'] as const) if ((r.metrics[`${k}.accuracy`] ?? 1) < meta.bars.judge.accuracy) bad.push(`**این چیست؟ (${k}، ${r.name}):** دقت ${pct(r.metrics[`${k}.accuracy`])} < حد ${pct(meta.bars.judge.accuracy)}.`);
+      for (const r of jd) for (const k of ['thoughtKind', 'knowledgeType', 'certainty'] as const) if ((r.metrics[`${k}.accuracy`] ?? 0) * (r.n + r.errors ? r.n / (r.n + r.errors) : 0) < meta.bars.judge.accuracy) bad.push(`**این چیست؟ (${k}، ${r.name}):** دقت ${pct(r.metrics[`${k}.accuracy`])} < حد ${pct(meta.bars.judge.accuracy)}.`);
     }
   }
 

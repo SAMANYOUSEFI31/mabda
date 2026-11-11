@@ -5,7 +5,8 @@
     "bars: «حد پذیرش» برای جمله‌ی «هیچ ترکیبی به‌اندازهٔ کافی خوب نیست». این عددها فرض‌اند، نه سنجش؛ تصمیم محصول است و می‌شود عوضشان کرد. گزارش آن‌ها را عیناً می‌آورد."
   ],
   "bars": {
-    "related": { "recallAt5": 0.8, "precisionAt5": 0.6, "hardNegativeAt5": 0.2 },
+    "_note": "P@5 عمداً حد ندارد: هر پرس‌وجو به‌طور میانگین ۳٫۲ مورد مرتبط دارد و P@5 کامل هم حدود ۰٫۵۶ است",
+    "related": { "recallAt5": 0.8, "hardNegativeAt5": 0.2 },
     "judge": { "accuracy": 0.85 },
     "placement": { "accuracy": 0.8, "wrongAssignment": 0.1 },
     "duplicates": { "f1Duplicate": 0.8 },
@@ -28,6 +29,8 @@
   ],
   "judge": ["jev-113", "jev-114"],
   "placement": [
+    { "name": "فقط واژه‌ای (بدون rerank، بدون داور)", "related": "lex", "judge": null, "candidates": "all", "dossier": false },
+    { "name": "lex+e5+cohere → بدون داور", "related": "lex+e5+cohere", "judge": null, "candidates": "all", "dossier": false },
     { "name": "lex+cohere → بدون داور", "related": "lex+cohere", "judge": null, "candidates": "all", "dossier": false },
     { "name": "e5+cohere → بدون داور", "related": "e5+cohere", "judge": null, "candidates": "all", "dossier": false },
     { "name": "lex+cohere → jev-114", "related": "lex+cohere", "judge": "jev-114", "candidates": "all", "dossier": true },

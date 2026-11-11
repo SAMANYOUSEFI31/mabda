@@ -69,7 +69,7 @@ class Acc {
     }
     if (r.error) { this.errors++; this.errorKinds[r.error.kind] = (this.errorKinds[r.error.kind] ?? 0) + 1; return false; }
     this.n++;
-    this.ms.push(r.ms - 0);
+    this.ms.push(r.ms - r.records.filter((c) => c.stage === 'embed-items').reduce((s, c) => s + c.durationMs, 0));
     return true;
   }
   finish(task: Task, name: string, metrics: EvalResult['metrics'], byTag: EvalResult['byTag'], extras: EvalResult['extras'] = {}): EvalResult {
@@ -193,8 +193,12 @@ export async function evalPlacement(ctx: Ctx, combo: PlacementCombo, relatedComb
   const rows: Array<{ c: PlacementCase; v: Record<string, number | null> }> = [];
   const sel: Array<{ answered: boolean; correct: boolean }> = [];
   const cal: Array<{ confidence: number | undefined; correct: boolean }> = [];
+  let leakExcluded = 0;
   for (const c of take(ctx.dataset.tasks.placement, ctx.limit)) {
-    const r = await timed(ctx, () => whereTo(env, 'whereTo', { scope, text: c.text, sections: ctx.dataset.sections.map((s) => ({ id: s.id, label: s.label, description: s.description, parentId: s.parentId })), items: ctx.corpus, itemSection: ctx.itemSection }));
+    // نسخهٔ تقریباً یکسانِ همین متن در پیکره پاسخ را لو می‌دهد؛ از نتیجه‌ها کنار می‌رود و شمرده می‌شود
+    const leaks = ctx.corpus.filter((i) => jaccard(c.text, i.text) >= 0.5).map((i) => i.id);
+    leakExcluded += leaks.length;
+    const r = await timed(ctx, () => whereTo(env, 'whereTo', { scope, excludeIds: leaks, text: c.text, sections: ctx.dataset.sections.map((s) => ({ id: s.id, label: s.label, description: s.description, parentId: s.parentId })), items: ctx.corpus, itemSection: ctx.itemSection }));
     if (!acc.add(r)) continue;
     const got = r.value!.sectionId;
     const ok = c.expectNone ? got === null : got !== null && (c.expectedNodeIds.includes(got) || (c.acceptableNodeIds ?? []).includes(got));
@@ -208,7 +212,7 @@ export async function evalPlacement(ctx: Ctx, combo: PlacementCombo, relatedComb
   const sa = selectiveAccuracy(sel);
   metrics.accuracyWhenAnswered = sa.accuracyWhenAnswered;
   const hits = rows.filter((r) => r.v.accuracy === 1).length;
-  return acc.finish('placement', combo.name, metrics, groupByTag(rows, ['accuracy', 'wrongAssignment']), { ci95: wilson(hits, rows.length), calibration: calibration(cal) });
+  return acc.finish('placement', combo.name, metrics, groupByTag(rows, ['accuracy', 'wrongAssignment']), { ci95: wilson(hits, rows.length), calibration: calibration(cal), leakExcluded });
 }
 
 // ───────────── تکراری ─────────────
