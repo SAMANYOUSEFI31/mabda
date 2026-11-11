@@ -142,7 +142,7 @@ for (const size of SIZES) {
     const mobile = size.width < 768;
     const sel = mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${t.label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${t.desktopLabel || t.label}")`;
     await page.locator(sel).first().click();
-    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
+    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
 
