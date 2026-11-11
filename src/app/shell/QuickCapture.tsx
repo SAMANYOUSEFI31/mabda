@@ -10,7 +10,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { IconButton } from '../../ui';
 import { QUICK_CAPTURE_EVENT, defaultSectionFor, requestQuickCapture } from '../../core/quickCapture';
 import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
@@ -54,12 +53,6 @@ export function QuickCapture({ data, focusNodeId, handleSaveThought, handleSaveT
 
   return (
     <>
-      {/* phones have no shortcut and no top-bar action: one reachable button, above the bottom navigation */}
-      <IconButton
-        className="fixed bottom-space-24 end-space-4 z-sticky md:hidden shadow-overlay"
-        icon="Plus" label="ثبت سریع" variant="secondary" size="lg" data-testid="quick-capture-fab"
-        onClick={() => show()}
-      />
       <Deferred when={open}>
         <QuickCaptureDialog
           open={open} onClose={() => setOpen(false)} nodes={nodes} objects={workspaceContexts} thoughts={data.thoughts}

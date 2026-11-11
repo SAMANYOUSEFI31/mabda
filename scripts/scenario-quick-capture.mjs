@@ -192,16 +192,16 @@ try {
     await dlg.getByRole('button', { name: 'تمام' }).click();
 
     if (mobile) {
-      step('[390] دکمهٔ شناور: بالای ناوبری پایین، هدف لمسی ۴۴px، بدون هم‌پوشانی با آن');
+      step('[390] «ثبت» در خود ناوبری پایین: هدف لمسی ۴۴px و هیچ چیز روی صفحه شناور نیست');
       await home();
       const fab = page.getByTestId('quick-capture-fab');
       const b = await fab.boundingBox();
       const nb = await page.locator('nav[aria-label="منوی پایینی موبایل"]').boundingBox();
       assert.ok(b && b.width >= 44 && b.height >= 44, 'touch target');
-      assert.ok(b.y + b.height <= nb.y, 'above the bottom navigation');
+      assert.ok(b.y >= nb.y && b.y + b.height <= nb.y + nb.height, 'inside the bottom navigation');
       await shot('0-fab');
     } else {
-      assert.equal(await page.getByTestId('quick-capture-fab').isVisible(), false, 'the floating button is for phones only');
+      assert.equal(await page.getByTestId('quick-capture-fab').isVisible(), false, 'the bottom-bar capture is for phones only');
     }
     assert.deepEqual(errors, [], `no page errors: ${errors.join(' | ')}`);
   }

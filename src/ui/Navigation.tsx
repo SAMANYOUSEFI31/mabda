@@ -159,7 +159,8 @@ export function ListItem({ leading, title, description, trailing, chevron = fals
 }
 
 /* ---------------- BottomNav (mobile primary navigation) ---------------- */
-export interface BottomNavItem { id: string; label: ReactNode; icon: IconName; badge?: number; badgeLabel?: string }
+/** action: an item that does something (opens a dialog) instead of being a destination; it is never «current» */
+export interface BottomNavItem { id: string; label: ReactNode; icon: IconName; badge?: number; badgeLabel?: string; action?: boolean; testId?: string }
 export interface BottomNavProps {
   items: BottomNavItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
   label?: string; fixed?: boolean; className?: string;
@@ -172,9 +173,9 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
     <nav aria-label={label} className={cx('mb-bottomnav', fixed && 'is-fixed', className)}>
       {items.map((it) => (
         <button
-          key={it.id} type="button" aria-current={current === it.id ? 'page' : undefined}
-          className={cx('mb-bottomnav__item', current === it.id && 'is-active')}
-          onClick={() => { setInner(it.id); onChange?.(it.id); }}
+          key={it.id} type="button" aria-current={!it.action && current === it.id ? 'page' : undefined} data-testid={it.testId}
+          className={cx('mb-bottomnav__item', !it.action && current === it.id && 'is-active', it.action && 'is-action')}
+          onClick={() => { if (!it.action) setInner(it.id); onChange?.(it.id); }}
         >
           <span className="mb-bottomnav__icon">
             <Icon name={it.icon} size="xl" />
