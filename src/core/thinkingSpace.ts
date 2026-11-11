@@ -30,6 +30,16 @@ export interface SpaceView {
 
 const live = (o: ContextObject) => o.status !== 'Archived' && o.status !== 'Superseded' && !o.sample;
 
+/**
+ * THE open thoughts: the stored Thoughts (the `thoughts` table, with their stable ids) that are not resolved and did not become
+ * knowledge. Every screen that lists or counts thoughts (the thinking space, the badge, the canvas tray, the overview rows) reads
+ * them through here, so they cannot disagree. Without `thoughts` (old data not yet synced, and the pure engine tests) the note
+ * lines are parsed instead: that is a fallback for those, never what the app passes.
+ */
+export function openThoughts(input: { thoughts?: NoteThinkingItem[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; objects: Pick<ContextObject, 'id' | 'status' | 'source'>[] }): NoteThinkingItem[] {
+  return (input.thoughts ?? thinkingOf(input.notes)).filter((i) => i.status !== 'resolved' && !convertedTo(i, input.objects));
+}
+
 /** the three lists, filtered by kind and by node (a node's whole sub-tree) */
 export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; thoughts?: NoteThinkingItem[]; nodes: TreeNode[]; relationships?: ContextRelationship[] }, filter: SpaceFilter = {}): SpaceView {
   const { objects, notes, nodes } = input;
@@ -38,7 +48,7 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
     ...objects.filter((o) => live(o) && o.status === 'Needs Review').map((o) => ({ type: 'review' as const, object: o })),
     ...objects.filter((o) => live(o) && o.status === 'Confirmed' && !!o.draft).map((o) => ({ type: 'draft' as const, object: o })),
   ];
-  const thoughtsAll = (input.thoughts ?? thinkingOf(notes)).filter((i) => i.status !== 'resolved' && !convertedTo(i, objects));
+  const thoughtsAll = openThoughts({ thoughts: input.thoughts, notes, objects });
   const assumptionsAll = objects.filter((o) => live(o) && o.status === 'Confirmed' && o.assumption);
   const ids = filter.nodeId ? new Set(subtreeIds(nodes, filter.nodeId)) : null;
   const inNode = (id: string) => !ids || ids.has(id);

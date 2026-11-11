@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { PageAction } from '../../components/TopStatusBar';
+import type { PageAction } from '../../components/shell/TopStatusBar';
 import { Button, Icon, formatNumber } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { ContextObject, GeneratedDeliverable, LedgerEntry, WorkstreamSpec } from '../../types';
-import { WIPE_WORDS } from '../../components/AccountModal';
+import { WIPE_WORDS } from '../../components/workspace/wipeWords';
 import { acceptanceSentence, outputsUsing } from '../../core/weeklyReview';
 import { dataApi } from '../../services/dataApi';
 import { pathTo } from '../../core/nodeFocus';
@@ -18,15 +18,16 @@ import type { AppCoreScope } from './useAppCore';
 import type { NotesScope } from '../thinking/useNotes';
 import type { SearchAndFocusScope } from './useSearchAndFocus';
 import type { BoardsScope } from '../canvas/useBoards';
+import type { ThinkingItemsScope } from '../thinking/useThinkingItems';
 import type { UsageCountersScope } from './useUsageCounters';
 
 /** the canvas is a separate chunk: loaded the first time a canvas is opened */
-const ContextCanvas = lazyNamed(() => import('../../components/ContextCanvas'), 'ContextCanvas');
+const ContextCanvas = lazyNamed(() => import('../../components/canvas/ContextCanvas'), 'ContextCanvas');
 
 export type RemovalAndDialogsScope = ReturnType<typeof useRemovalAndDialogs>;
 
-export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFocusScope & BoardsScope & UsageCountersScope) {
-  const { activeTab, askDeleteNote, attempt, canvasReveal, currentWorkspace, data, deliverables, focusScope, focusSection, goFocus, handleAcceptReview, handleAutoLayout, handleCanvasConnect, handleCanvasMove, handleFreeNoteCreate, handleFreeNoteMove, handleNoteToKnowledge, handlePlaceObject, handleSetDependencies, handleUnplaceObject, handleUpdateNote, nodes, openContext, openThinkingSpace, patch, previewNonce, previewTruth, reviewIdSet, setActiveTab, setCurrentWorkspaceId, setData, setEditingSpec, setIsCustomSpecModalOpen, setStatus, setWs, showImpact, staleIdSet, startSectionFromNote, toast, wid, workspaceContexts, workspaces } = p;
+export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFocusScope & BoardsScope & UsageCountersScope & ThinkingItemsScope) {
+  const { activeTab, askDeleteNote, attempt, canvasReveal, currentWorkspace, data, deliverables, focusScope, focusSection, goFocus, handleAcceptReview, handleAutoLayout, handleCanvasConnect, handleCanvasMove, handleFreeNoteCreate, handleFreeNoteMove, handleNoteToKnowledge, handlePlaceObject, handleSetDependencies, handleUnplaceObject, handleUpdateNote, nodes, openContext, openThinkingSpace, patch, previewNonce, previewTruth, reviewIdSet, setActiveTab, setCurrentWorkspaceId, setData, setEditingSpec, setIsCustomSpecModalOpen, setStatus, setWs, showImpact, staleIdSet, startSectionFromNote, thinking, toast, wid, workspaceContexts, workspaces } = p;
   const [demoDelete, setDemoDelete] = useState(false);
   const handleArchiveWorkspace = async () => {
     const ws0 = currentWorkspace;
@@ -138,9 +139,9 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   /** what is waiting for her in the thinking space: suggestions, drafts, open thoughts (the badge of «فکر») */
   const thinkingBadge = useMemo(() => {
     if (!data) return 0;
-    const v = thinkingSpace({ objects: workspaceContexts, notes: data.notes, nodes });
+    const v = thinkingSpace({ objects: workspaceContexts, notes: data.notes, thoughts: thinking, nodes });
     return v.waiting.length + v.thoughts.length;
-  }, [data, workspaceContexts, nodes]);
+  }, [data, workspaceContexts, nodes, thinking]);
 
   const scopedObjects = focusScope ? workspaceContexts.filter((o) => focusScope.has(o.nodeId)) : workspaceContexts;
   const scopedIds = new Set(scopedObjects.map((o) => o.id));
@@ -168,6 +169,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
               relationships={data?.relationships ?? []}
               deliverables={scopedDeliverables}
               notes={scopedNotes}
+              thoughts={thinking}
               canvas={data?.canvas ?? { decisions: [], free: [] }}
               reviewIds={reviewIdSet}
               staleAssetIds={staleIdSet}

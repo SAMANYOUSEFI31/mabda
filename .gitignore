@@ -9,3 +9,8 @@ coverage/
 
 # Local database and application data
 server/data/
+
+# فایل‌های صدای آزمون کاربر (حریم خصوصی: کامیت نمی‌شوند؛ فقط راهنما می‌ماند)
+scripts/eval-intelligence/audio/*
+!scripts/eval-intelligence/audio/README.md
+!scripts/eval-intelligence/audio/.gitkeep

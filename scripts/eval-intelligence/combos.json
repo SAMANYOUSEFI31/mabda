@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "ترکیب‌های قابل‌سنجش. فقط «کلید مستعار» مدل‌ها از server/ai/config/models.json می‌آید؛ هیچ نام مدلی اینجا نیست.",
+    "هر ترکیب فقط یک وصله روی دستورپخت‌های server/intelligence/config/recipes.json است (حذف مرحله یا عوض کردن مدل = تغییر همین فایل).",
+    "bars: «حد پذیرش» برای جمله‌ی «هیچ ترکیبی به‌اندازهٔ کافی خوب نیست». این عددها فرض‌اند، نه سنجش؛ تصمیم محصول است و می‌شود عوضشان کرد. گزارش آن‌ها را عیناً می‌آورد."
+  ],
+  "bars": {
+    "_note": "P@5 عمداً حد ندارد: هر پرس‌وجو به‌طور میانگین ۳٫۲ مورد مرتبط دارد و P@5 کامل هم حدود ۰٫۵۶ است",
+    "related": { "recallAt5": 0.8, "hardNegativeAt5": 0.2 },
+    "judge": { "accuracy": 0.85 },
+    "placement": { "accuracy": 0.8, "wrongAssignment": 0.1 },
+    "duplicates": { "f1Duplicate": 0.8 },
+    "contradictions": { "accuracy": 0.85, "falseAlarm": 0.1 },
+    "asr": { "wer": 0.2 }
+  },
+  "thresholdPrecision": { "strong": 0.9, "weak": 0.7 },
+  "related": [
+    { "name": "lex", "finders": [{ "specialist": "lexical", "weight": 1 }], "ranker": null },
+    { "name": "e5", "finders": [{ "specialist": "embedding", "model": "e5-large", "weight": 1 }], "ranker": null },
+    { "name": "gemini", "finders": [{ "specialist": "embedding", "model": "gemini-embedding-2", "weight": 1 }], "ranker": null },
+    { "name": "lex+cohere", "finders": [{ "specialist": "lexical", "weight": 1 }], "ranker": "cohere-rerank-35" },
+    { "name": "e5+cohere", "finders": [{ "specialist": "embedding", "model": "e5-large", "weight": 1 }], "ranker": "cohere-rerank-35" },
+    { "name": "e5(symmetric)+cohere", "finders": [{ "specialist": "embedding", "model": "e5-large", "weight": 1, "queryRole": "passage" }], "ranker": "cohere-rerank-35" },
+    { "name": "gemini+cohere", "finders": [{ "specialist": "embedding", "model": "gemini-embedding-2", "weight": 1 }], "ranker": "cohere-rerank-35" },
+    { "name": "lex+e5+cohere", "finders": [{ "specialist": "lexical", "weight": 1 }, { "specialist": "embedding", "model": "e5-large", "weight": 1 }], "ranker": "cohere-rerank-35" },
+    { "name": "lex+gemini+cohere", "finders": [{ "specialist": "lexical", "weight": 1 }, { "specialist": "embedding", "model": "gemini-embedding-2", "weight": 1 }], "ranker": "cohere-rerank-35" },
+    { "name": "lex+e5+voyage", "finders": [{ "specialist": "lexical", "weight": 1 }, { "specialist": "embedding", "model": "e5-large", "weight": 1 }], "ranker": "voyage-rerank-25" },
+    { "name": "lex+voyage", "finders": [{ "specialist": "lexical", "weight": 1 }], "ranker": "voyage-rerank-25" }
+  ],
+  "judge": ["jev-113", "jev-114"],
+  "placement": [
+    { "name": "فقط واژه‌ای (بدون rerank، بدون داور)", "related": "lex", "judge": null, "candidates": "all", "dossier": false },
+    { "name": "lex+e5+cohere → بدون داور", "related": "lex+e5+cohere", "judge": null, "candidates": "all", "dossier": false },
+    { "name": "lex+cohere → بدون داور", "related": "lex+cohere", "judge": null, "candidates": "all", "dossier": false },
+    { "name": "e5+cohere → بدون داور", "related": "e5+cohere", "judge": null, "candidates": "all", "dossier": false },
+    { "name": "lex+cohere → jev-114", "related": "lex+cohere", "judge": "jev-114", "candidates": "all", "dossier": true },
+    { "name": "e5+cohere → jev-114", "related": "e5+cohere", "judge": "jev-114", "candidates": "all", "dossier": true },
+    { "name": "gemini+cohere → jev-114", "related": "gemini+cohere", "judge": "jev-114", "candidates": "all", "dossier": true },
+    { "name": "lex+e5+cohere → jev-114", "related": "lex+e5+cohere", "judge": "jev-114", "candidates": "all", "dossier": true },
+    { "name": "lex+e5+voyage → jev-114", "related": "lex+e5+voyage", "judge": "jev-114", "candidates": "all", "dossier": true },
+    { "name": "lex+e5+cohere → jev-113", "related": "lex+e5+cohere", "judge": "jev-113", "candidates": "all", "dossier": true },
+    { "name": "lex+e5+cohere → jev-114 (بدون پرونده)", "related": "lex+e5+cohere", "judge": "jev-114", "candidates": "all", "dossier": false },
+    { "name": "lex+e5+cohere → jev-114 (نامزد از مرتبط‌ها)", "related": "lex+e5+cohere", "judge": "jev-114", "candidates": "related", "dossier": true }
+  ],
+  "duplicates": {
+    "scoreMethods": [
+      { "name": "واژه‌ای (Jaccard)", "kind": "lexical" },
+      { "name": "e5 (cosine)", "kind": "embedding", "model": "e5-large" },
+      { "name": "gemini (cosine)", "kind": "embedding", "model": "gemini-embedding-2" },
+      { "name": "cohere (rerank)", "kind": "rerank", "model": "cohere-rerank-35" },
+      { "name": "voyage (rerank)", "kind": "rerank", "model": "voyage-rerank-25" }
+    ],
+    "judges": ["jev-113", "jev-114"]
+  },
+  "contradictions": { "judges": ["jev-113", "jev-114"] },
+  "asr": { "models": "all" }
+}

@@ -15,7 +15,8 @@ import type { CanvasItem } from '../types/state';
 import { buildCanvasModel, CARD_H as BOARD_CARD_H, CARD_W as BOARD_CARD_W } from './canvasModel';
 import type { BoardColumns, BoardRows } from './canvasModel';
 import { isExpired, reachOf } from './effectiveContext';
-import { thinkingOf, convertedTo } from './thinkingMarkers';
+import type { NoteThinkingItem } from './thinkingMarkers';
+import { openThoughts } from './thinkingSpace';
 import { buildMapModel, EDGE_LABEL } from './mapModel';
 import type { MapEdgeKind } from './mapModel';
 
@@ -46,6 +47,8 @@ export interface SceneItem {
   summary?: string;
   x: number; y: number; w: number; h: number;
   objectId?: string; nodeId?: string; assetId?: string; noteId?: string;
+  /** a tray card for an open thought whose note is gone (display only: there is no note to place) */
+  thoughtId?: string;
   type?: ContextObject['type'];
   status?: ContextObject['status'];
   /** badges */
@@ -78,6 +81,8 @@ export interface SceneInput {
   relationships: ContextRelationship[];
   deliverables: GeneratedDeliverable[];
   notes: Note[];
+  /** the stored Thoughts (what the thinking space lists); the tray and the overview rows read them, not the note lines */
+  thoughts?: NoteThinkingItem[];
   /** stored positions: decision-board ranks and free-zone x/y */
   canvas: { decisions: CanvasItem[]; free: CanvasItem[] };
   reviewIds: Set<string>;
@@ -144,11 +149,18 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
       loose.push({ id: `o:${o.id}`, kind: 'object', label: o.title, summary: extract(o.content), x: 0, y: 0, w: BOARD_CARD_W, h: BOARD_CARD_H, objectId: o.id, nodeId: o.nodeId, type: o.type, status: o.status, pending: true, unplaced: true, ...badges(o, input.reviewIds.has(o.id), now) });
     }
     const placedNoteIds = new Set(input.canvas.free.filter((i) => i.itemRef.startsWith('note:')).map((i) => i.itemRef.slice(5)));
+    // the open Thoughts decide what is here (the same list as the thinking space): a note shows up while it holds one; a thought
+    // whose note was deleted has no note to place, so it gets a card of its own (display only)
+    const open = openThoughts({ thoughts: input.thoughts, notes: input.notes, objects: input.objects });
+    const noteIdsWithOpen = new Set(open.map((t) => t.noteId).filter(Boolean));
+    const liveNotes = new Set(input.notes.map((n) => n.id));
     for (const n of input.notes) {
-      if (placedNote.has(n.id) || placedNoteIds.has(n.id)) continue;
-      const open = thinkingOf([n]).filter((t) => !convertedTo(t, input.objects));
-      if (open.length === 0) continue;
+      if (placedNote.has(n.id) || placedNoteIds.has(n.id) || !noteIdsWithOpen.has(n.id)) continue;
       loose.push({ id: `note:${n.id}`, kind: 'note', label: n.content.split('\n')[0].slice(0, 80), summary: extract(n.content, 400), x: 0, y: 0, w: NOTE_W, h: NOTE_H, noteId: n.id, nodeId: n.nodeId, unplaced: true });
+    }
+    for (const t of open) {
+      if (t.noteId && liveNotes.has(t.noteId)) continue;
+      loose.push({ id: `thought:${t.id ?? t.key}`, kind: 'note', label: t.text.split('\n')[0].slice(0, 80), summary: extract(t.text, 400), x: 0, y: 0, w: NOTE_W, h: NOTE_H, thoughtId: t.id ?? t.key, nodeId: t.nodeId, unplaced: true });
     }
     if (loose.length) {
       const x0 = items.length ? Math.max(...items.map((i) => i.x + i.w)) + 80 : 40;

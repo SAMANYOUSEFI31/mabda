@@ -56,5 +56,132 @@
       },
       "pricing": { "inputPerM": 1.25, "cachedInputPerM": 0.31, "outputPerM": 10.00 }
     }
+  },
+  "intelligence": {
+    "_comment": [
+      "لایهٔ هوش (server/intelligence): مدل‌های غیرمولد از لیارا. نام مدل فقط اینجاست؛ دستورپخت‌ها و اسکریپت ارزیابی فقط «کلید مستعار» (key) را می‌آورند.",
+      "شناسه‌ها و قیمت‌ها از مستندات و صفحهٔ محصول لیارا (docs/intelligence-providers.md، دیده‌شده ۲۰۲۶-۱۱-۱۱) آمده‌اند و با درخواست واقعی تأیید نشده‌اند؛ bun run eval:intelligence با کلید واقعی هر مدل را می‌سنجد و شناسهٔ ناکار را در گزارش می‌آورد.",
+      "pricing نبود = قیمت دیده نشد؛ هزینه «نامعلوم» گزارش می‌شود، نه صفر. قیمت‌گذاری محصول در این مرحله تصمیم نشده.",
+      "charsPerToken سنجش محافظه‌کارانهٔ توکن پیش از فراخوانی است (کمتر = تکه‌های کوچک‌تر و امن‌تر)؛ ارزیابی نسبت توکن واقعی به تخمین را گزارش می‌کند.",
+      "calibratedScore=false تا ارزیابی نشان دهد امتیاز بین پرس‌وجوها قابل‌مقایسه است؛ تا آن زمان آستانه‌ها (درجهٔ مرتبط/کمتر مرتبط) اعمال نمی‌شوند."
+    ],
+    "liara": {
+      "baseUrlEnv": "LIARA_BASE_URL",
+      "apiKeyEnv": "LIARA_API_KEY",
+      "timeoutsMs": {
+        "embedding": 30000,
+        "rerank": 30000,
+        "judgment": 30000,
+        "transcription": 120000
+      }
+    },
+    "models": {
+      "e5-large": {
+        "kind": "embedding",
+        "id": "intfloat/multilingual-e5-large",
+        "maxInputTokens": 512,
+        "charsPerToken": 2,
+        "inputSafety": 0.9,
+        "dimensions": 1024,
+        "inputPrefix": {
+          "query": "query: ",
+          "passage": "passage: "
+        },
+        "calibratedScore": false,
+        "pricing": {
+          "unit": "perMillionTokens",
+          "amount": 0.01,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        },
+        "note": "سقف ۵۱۲ توکن و پیشوندها از کارت مدل؛ مستندات لیارا نگفته‌اند"
+      },
+      "gemini-embedding-2": {
+        "kind": "embedding",
+        "id": "google/gemini-embedding-2",
+        "maxInputTokens": 2048,
+        "charsPerToken": 2,
+        "inputSafety": 0.9,
+        "calibratedScore": false,
+        "pricing": {
+          "unit": "perMillionTokens",
+          "amount": 0.2,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        },
+        "note": "سقف ۲۰۴۸ فرض محافظه‌کارانه است (تأییدنشده)؛ ابعاد و پیشوند نامعلوم"
+      },
+      "cohere-rerank-35": {
+        "kind": "rerank",
+        "id": "cohere/rerank-v3.5",
+        "calibratedScore": false,
+        "pricing": {
+          "unit": "perRequest",
+          "amount": 0.001,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        },
+        "note": "قیمت به‌ازای هر درخواست جست‌وجو"
+      },
+      "voyage-rerank-25": {
+        "kind": "rerank",
+        "id": "voyageai/rerank-2.5",
+        "calibratedScore": false,
+        "pricing": {
+          "unit": "perRequest",
+          "amount": 0.05,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        },
+        "note": "واحد قیمت Voyage در صفحهٔ محصول مبهم است (تأییدنشده)"
+      },
+      "jev-113": {
+        "kind": "judgment",
+        "id": "typesafe/jev-1.13",
+        "note": "سقف ورودی و قیمت معلوم نیست"
+      },
+      "jev-114": {
+        "kind": "judgment",
+        "id": "typesafe/jev-1.14",
+        "note": "سقف ورودی و قیمت معلوم نیست"
+      },
+      "nemotron-asr": {
+        "kind": "transcription",
+        "id": "nvidia/nemotron-3.5-asr-streaming-multilingual-0.6b",
+        "note": "قیمت دیده نشد"
+      },
+      "qwen3-asr": {
+        "kind": "transcription",
+        "id": "qwen/qwen3-asr-0.6b",
+        "note": "قیمت دیده نشد"
+      },
+      "whisper-large-v3": {
+        "kind": "transcription",
+        "id": "openai/whisper-large-v3",
+        "pricing": {
+          "unit": "perAudioMinute",
+          "amount": 0.00048,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        }
+      },
+      "mai-transcribe-2": {
+        "kind": "transcription",
+        "id": "microsoft/mai-transcribe-2",
+        "pricing": {
+          "unit": "perAudioMinute",
+          "amount": 0.0016666666666666668,
+          "currency": "USD",
+          "pricedAt": "2026-11-11"
+        }
+      },
+      "mai-transcribe-15": { "kind": "transcription", "id": "microsoft/mai-transcribe-1.5", "note": "قیمت دیده نشد" },
+      "gpt-transcribe": { "kind": "transcription", "id": "openai/gpt-transcribe", "pricing": { "unit": "perAudioMinute", "amount": 0.0045, "currency": "USD", "pricedAt": "2026-11-11" } },
+      "chirp-3": {
+        "kind": "transcription",
+        "id": "google/chirp-3",
+        "note": "در صفحهٔ Gemini به‌صراحت مدل گفتار معرفی نشده (تأییدنشده)؛ قیمت دیده نشد"
+      }
+    }
   }
 }

@@ -1028,7 +1028,7 @@ P1 با مستندکردن قرارداد و شکاف تمام می‌شود؛ �
 | محل | باقی‌مانده | دلیل |
 | --- | --- | --- |
 | `server/db/migrations.ts`، `server/db/repo.ts` | جدول قدیمی `mcp_tokens` و migrationهای ایجاد/ابطال آن | سازگاری دیتابیس؛ توکن فعال در v22 باطل می‌شود، رکوردها فقط تا حذف Workspace/حساب می‌مانند، و endpointی برای خواندن/نوشتن آن‌ها وجود ندارد. |
-| `src/types/index.ts`، `src/core/changeLog.ts`، `src/core/changeDigest.ts`، `src/core/provenance.ts`، `src/components/ProposalInbox.tsx` | برچسب‌های source/actor قدیمی `mcp` | تفسیر و نمایش منشأ رکوردهای ذخیره‌شده؛ `createObject` نوشتن تازه با این source را رد می‌کند. مسیر عددهای قدیمی نیز فقط در storage حفظ می‌شود. |
+| `src/types/index.ts`، `src/core/changeLog.ts`، `src/core/changeDigest.ts`، `src/core/provenance.ts`، `src/components/knowledge/ProposalInbox.tsx` | برچسب‌های source/actor قدیمی `mcp` | تفسیر و نمایش منشأ رکوردهای ذخیره‌شده؛ `createObject` نوشتن تازه با این source را رد می‌کند. مسیر عددهای قدیمی نیز فقط در storage حفظ می‌شود. |
 | `src/types/index.ts`، `src/core/costReport.ts` | `LedgerEntry.byok` و محاسبهٔ payer تاریخی | هزینهٔ کاربر را از هزینهٔ پلتفرم در ledgerهای قدیمی جدا می‌کند؛ ledgerهای تازه این marker را ندارند. |
 | `server/ai/decommission.ts` و تست آن | نام فایل‌های قدیمی `byok.json` و `secret.key` | پاک‌سازی محدود و idempotent vaultهای محلی در شروع سرور؛ credential کاربر دیگر خوانده یا اجرا نمی‌شود. |
 | تست‌های `server/app.test.ts`, `server/db/db.test.ts`, `server/ai/decommission.test.ts`, `src/core/changeLog.test.ts`, `src/core/changeDigest.test.ts`, `src/core/lineage.test.ts`, `src/core/entitlements.test.ts`, `src/core/ledger.test.ts`, `src/core/versionHistory.test.ts` | ورودی‌ها و markerهای MCP/BYOK در fixtureها | اثبات 404 بودن endpointهای حذف‌شده، رد نوشتن source قدیمی، ابطال توکن‌ها، حفظ provenance/هزینهٔ تاریخی و جلوگیری از تبدیل دادهٔ بیرونی به Truth. |
@@ -1108,3 +1108,12 @@ P1 با مستندکردن قرارداد و شکاف تمام می‌شود؛ �
 | `AppView.tsx` | (کد، نه رابط) | ~۸۵۰ خط JSX یکجا؛ تغییر یک نما یعنی خواندن همهٔ نماها | شکستن به کامپوننت هر صفحه در یک PR جدا با مقایسهٔ پیکسلی | متوسط |
 
 **صادقانه:** این فهرست از دیدن اسکرین‌شات‌ها و خواندن کد آمده، نه از آزمون با کاربر؛ ردیف نشان‌های ناوبری و نوار بالا را در مرورگر با ۲۰۰٪ بزرگ‌نمایی نسنجیدم.
+
+## سینی «تازه‌ها»: یک منبع برای فکر (۰ج)
+
+بدون تغییر ظاهر؛ فقط اینکه سینی، شمارندهٔ ردیف‌های نمای کلی و نشان «فکر» همان فهرستی را بخوانند که فضای فکر می‌خواند (`openThoughts` در `src/core/thinkingSpace.ts`).
+
+| راه‌ها | انتخاب |
+| --- | --- |
+| (الف) یک کارت برای **هر فکر** با جای ذخیره‌شدهٔ تازه (`thought:<id>`) | رد شد: ظاهر سینی (یک کارت برای هر یادداشت) عوض می‌شد، قالب ذخیره‌شدهٔ بوم هم؛ خلاف «ظاهر عوض نشود» |
+| (ب) کارت‌ها همان کارت‌های یادداشت می‌مانند، ولی **اینکه کدام یادداشت فکر باز دارد** از جدول thoughts می‌آید؛ فکرِ یادداشتِ حذف‌شده کارت خودش را (فقط نمایشی) می‌گیرد | **ب.** فکرِ بازنگری‌شده و فکرِ خط‌حذف‌شده حالا در سینی هم هست؛ فکرِ یادداشتِ حذف‌شده دیده می‌شود و نمی‌گذاریم کاربر فکر را «گم» کند (Nielsen: دیدنیِ وضعیت)؛ قابل‌گذاشتن‌نبودنش در `docs/later.md` ثبت شد |

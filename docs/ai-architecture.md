@@ -45,6 +45,23 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 جایگزین (fallback) بین دو شرکت برای هر سطح، ضریب ۱٫۵/۲ طول خروجی در UI، حساب کاربری سمت سرور، اندازه‌گیری واقعی ضریب effort (Alpha). انتخاب provider/model توسط کاربر و کلید شخصی عمداً خارج از MVP است.
 
 
+## لایهٔ هوش غیرمولد (`server/intelligence/`) — محور کناری، جدا از همهٔ بالا
+
+AI مولد در این سند (`server/ai/`) فریز است. لایهٔ هوش چیز دیگری است: مدل‌های **غیرمولد** (embedding، rerank، قضاوت نوع‌دار، گفتار به متن) از لیارا برای «پیشنهاد»؛ هیچ‌چیز از `server/ai/` یا `creditEngine` نمی‌خواند. معماری و جنس هر بخش (متخصص، نقش، دستورپخت، قابلیت): `docs/architecture.md` §۸ب؛ شکل درخواست/پاسخ لیارا: `docs/intelligence-providers.md`؛ آزمون کیفیت: `scripts/eval-intelligence/` و `docs/eval/`.
+
+| فایل | نقش |
+| --- | --- |
+| `types.ts`, `errors.ts` | قرارداد متخصص‌ها (چهار رابط ارائه‌دهنده)، `IntelligenceError` |
+| `config.ts`, `config/recipes.json` | بارگذاری و اعتبارسنجی؛ دستورپخت‌ها (فقط کلید مستعار مدل). نام مدل و قیمت: `server/ai/config/models.json → intelligence` |
+| `providers/liara.ts` | پیاده‌سازی لیارا با `fetch` (یک BASE_URL و یک کلید) |
+| `lexical.ts`, `chunker.ts`, `math.ts` | «قاعده‌ها» (بدون مدل): BM25، تکه‌کردن بر اساس ساختار صریح و سنجش توکن، ترکیب رتبه‌ای |
+| `recipes.ts` | «مرتبط‌ها»، «این چیست؟»، «کجا برود؟»، «صدا را به متن» |
+| `embeddingStore.ts`, `store.ts` | نگه‌داری embedding (شناسه + نسخهٔ متن)؛ پیشنهاد و واکنش کاربر (migration 25) |
+| `callLog.ts` | لاگ هر فراخوانی: مدت، توکن/ثانیهٔ واقعی، هزینهٔ تخمینی، خطا |
+| `testing/` | فقط تست: متخصص‌های ساختگی |
+
+متغیرهای محیطی: `LIARA_BASE_URL`، `LIARA_API_KEY` (هر دو لازم؛ نبودشان = خاموش بی‌خطا).
+
 ## ذخیره‌سازی، نسخه و اصالت (v3.1)
 
 - **SQLite** در `server/data/mabda.sqlite` (`MABDA_DB_PATH`)، مهاجرت‌های نسخه‌دار در `server/db/migrations.ts`؛ همهٔ جدول‌ها `user_id` و `workspace_id` دارند (بعداً Postgres). فرانت فقط از `/api` می‌خواند (`src/services/dataApi.ts`)؛ دادهٔ localStorage قدیمی یک‌بار با `POST /api/bootstrap` وارد می‌شود.

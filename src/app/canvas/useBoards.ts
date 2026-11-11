@@ -4,7 +4,7 @@
  */
 
 import type { CanvasBundle } from '../../services/dataApi';
-import type { MovePayload } from '../../components/ContextCanvas';
+import type { MovePayload } from '../../components/canvas/ContextCanvas';
 import type { VersionBaseline } from '../../core/judgePolicy';
 import { ContextDraft, ContextObject, Contradiction } from '../../types';
 import { JUDGE_SETTLE_MS, baselineOf, changedSince, pairsAfterChange } from '../../core/judgePolicy';

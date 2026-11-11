@@ -149,7 +149,7 @@ test('no UI sentence claims a cause: the words «اثر», «علت», «تأث�
 });
 
 test('the metric components and the screen text in App/DueItems are free of causal wording too', () => {
-  const files = [...readdirSync('src/components').filter((f) => /^Metric.*\.tsx$/.test(f)).map((f) => `src/components/${f}`), 'src/components/DueItems.tsx'];
+  const files = [...readdirSync('src/components/metrics').filter((f) => /^Metric.*\.tsx$/.test(f)).map((f) => `src/components/metrics/${f}`), 'src/components/home/DueItems.tsx'];
   assert.ok(files.length >= 4, 'chart, dialog, quick entry, due items');
   for (const f of files) {
     const src = readFileSync(f, 'utf8');

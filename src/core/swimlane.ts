@@ -23,7 +23,7 @@ import { isExpired } from './effectiveContext';
 import { EDGE_LABEL } from './mapModel';
 import { badges, extract } from './sceneParts';
 import { childrenOf } from './nodeTree';
-import { convertedTo, thinkingOf } from './thinkingMarkers';
+import { openThoughts } from './thinkingSpace';
 import { formatNumber } from '../ui/format';
 
 export const CARD_W = 220;
@@ -132,7 +132,7 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
   const rowObjects = new Map<string, ContextObject[]>();
   for (const o of objects) rowObjects.set(rowKeyOfObject(o), [...(rowObjects.get(rowKeyOfObject(o)) ?? []), o]);
   const rowThoughts = new Map<string, number>();
-  if (!byFacet) for (const t of thinkingOf(input.notes)) if (nodeById.has(t.nodeId) && inScope(t.nodeId) && !convertedTo(t, input.objects)) rowThoughts.set(rowKeyOf(t.nodeId), (rowThoughts.get(rowKeyOf(t.nodeId)) ?? 0) + 1);
+  if (!byFacet) for (const t of openThoughts({ thoughts: input.thoughts, notes: input.notes, objects: input.objects })) if (nodeById.has(t.nodeId) && inScope(t.nodeId)) rowThoughts.set(rowKeyOf(t.nodeId), (rowThoughts.get(rowKeyOf(t.nodeId)) ?? 0) + 1);
   if (!byFacet) for (const o of input.objects) if (isPendingObject(o) && !o.sample && nodeById.has(o.nodeId) && inScope(o.nodeId) && !shown.has(o.id)) rowThoughts.set(rowKeyOf(o.nodeId), (rowThoughts.get(rowKeyOf(o.nodeId)) ?? 0) + 1);
 
   const order: Array<{ node: TreeNode; depth: number }> = [];
