@@ -17,3 +17,5 @@ export { Markdown } from './Markdown.tsx';
 export type { HeadingAnchor } from './Markdown.tsx';
 export { useTheme, THEME_ORDER, THEME_LABEL, resolveDark } from './theme.ts';
 export type { ThemePref } from './theme.ts';
+export { Nuqta, NUQTA_LABEL } from './Nuqta.tsx';
+export type { NuqtaState, NuqtaSize, NuqtaProps } from './Nuqta.tsx';

@@ -1,6 +1,7 @@
 import { cloneElement, useId, useState } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.ts';
+import { Nuqta } from './Nuqta.tsx';
 import { Icon, STATUS_ICON } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { IconButton } from './Button.tsx';
@@ -244,18 +245,13 @@ export function Tooltip({ content, children, side = 'top', forceOpen = false }: 
   );
 }
 
-/* ---------------- BrandMark (product identity; the only non-button use of the brand color) ---------------- */
-export function BrandMark({ size = 'md', className }: { size?: 'sm' | 'md'; className?: string }) {
+/* ---------------- BrandMark: the lapis diamond (identity.md; the only non-button use of the brand colour) ---------------- */
+export function BrandMark({ size = 'md', word = false, className }: { size?: 'sm' | 'md' | 'lg'; word?: boolean; className?: string }) {
+  const px = size === 'lg' ? 'xl' : size === 'md' ? 'lg' : 'md';
   return (
-    <span
-      aria-hidden="true"
-      className={cx(
-        'grid place-items-center rounded-control bg-bg-brand-bold text-text-on-brand',
-        size === 'md' ? 'size-control-sm label-lg' : 'size-space-6 label-sm rounded-control-sm',
-        className,
-      )}
-    >
-      م
+    <span className={cx('inline-flex items-center gap-inline-sm', className)} aria-hidden={word ? undefined : true}>
+      <Nuqta state="brand" size={px} label={false} />
+      {word && <span className={size === 'lg' ? 'title-2 text-text-default' : 'headline text-text-default'}>مبدأ</span>}
     </span>
   );
 }

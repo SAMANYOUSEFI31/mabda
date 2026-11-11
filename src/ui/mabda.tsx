@@ -23,9 +23,9 @@ function MabdaBadge({ entry, className, iconOnly = false }: { entry: Entry; clas
 }
 
 export const TYPE_META: Record<ContextType, Entry> = {
-  Fact: { label: 'واقعیت', icon: 'FileText', cls: 'bg-mabda-type-fact-bg text-mabda-type-fact-fg border-mabda-type-fact-border' },
-  Decision: { label: 'تصمیم', icon: 'Target', cls: 'bg-mabda-type-decision-bg text-mabda-type-decision-fg border-mabda-type-decision-border' },
-  Constraint: { label: 'خط قرمز', icon: 'Lock', cls: 'bg-mabda-type-constraint-bg text-mabda-type-constraint-fg border-mabda-type-constraint-border' },
+  Fact: { label: 'واقعیت', icon: 'FileText', cls: 'bg-bg-neutral-subtle text-text-subtle border-border-default' },
+  Decision: { label: 'تصمیم', icon: 'Target', cls: 'bg-bg-neutral-subtle text-text-subtle border-border-default' },
+  Constraint: { label: 'خط قرمز', icon: 'Lock', cls: 'bg-bg-neutral-subtle text-text-default border-border-default [&_svg]:text-mabda-type-constraint-icon' },
 };
 export function TypeBadge({ value, className, iconOnly }: { value: ContextType; className?: string; iconOnly?: boolean }) {
   return <MabdaBadge entry={TYPE_META[value]} className={className} iconOnly={iconOnly} />;
@@ -128,7 +128,7 @@ export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING
 }
 
 /** an example that came with a starter / template: grey, «نمونه». It is never knowledge and no AI or engine sees it. */
-const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default border-dashed' };
+const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default' };
 export function SampleBadge({ className }: { className?: string }) {
   return <MabdaBadge entry={SAMPLE} className={className} />;
 }

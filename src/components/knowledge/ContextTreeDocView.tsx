@@ -8,7 +8,7 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -72,23 +72,20 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const quick = (id: string) => quickMoves(nodes, id);
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
+  // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
   const card = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
+    <Card key={obj.id} padding="md" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
       <div className="flex items-start justify-between gap-inline-sm">
-        <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
+        <h4 className="headline min-w-space-0 flex-1 text-balance text-text-default">{obj.title}</h4>
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
-          <TypeBadge value={obj.type} />
           <ReachBadge object={obj} />
           <AssumptionBadge object={obj} />
-          {/* truth is the calm default here: only an exception (needs review, proposed) carries a status badge */}
+          {/* truth is the calm default: only an exception (needs review, proposed) carries words */}
           {obj.status !== 'Confirmed' && <StatusBadge value={obj.status} />}
         </div>
       </div>
-      <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
-      <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
-        <span>منبع: {PROVENANCE_LABEL[obj.provenance]} · نسخهٔ {formatNumber(obj.version)}</span>
-        <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>
-      </div>
+      <p className="body-reading line-clamp-3 text-pretty text-text-default">{obj.content}</p>
+      <p className="body-sm text-text-subtle">{TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
     </Card>
   );
 
@@ -170,7 +167,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 </div>
                 {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
                   <>
-                    <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    <div className="flex max-w-prose flex-col gap-stack-lg">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}
