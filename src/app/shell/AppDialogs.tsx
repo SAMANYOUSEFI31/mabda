@@ -11,6 +11,7 @@ import { OutputsDialogs } from '../outputs/OutputsDialogs';
 import { StructureDialogs } from '../structure/StructureDialogs';
 import { ThinkingDialogs } from '../thinking/ThinkingDialogs';
 import { WorkspaceDialogs } from '../workspace/WorkspaceDialogs';
+import { QuickCapture } from './QuickCapture';
 import { ShellDialogs } from './ShellDialogs';
 import type { ReadyScope } from '../shared';
 
@@ -30,6 +31,7 @@ export function AppDialogs(p: ReadyScope) {
       <MetricsDialogs {...p} />
       <HomeDialogs {...p} />
       <ShellDialogs {...p} />
+      <QuickCapture {...p} />
     </>
   );
 }

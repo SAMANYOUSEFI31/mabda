@@ -31,6 +31,8 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
       return;
     }
     if (hit.kind === 'asset') { setActiveTab('assets'); setFocusAsset({ id: hit.id, n }); return; }
+    if (hit.kind === 'thought') { openThinkingSpace((data?.thoughts ?? []).find((x) => x.id === hit.id)?.nodeId); return; }
+    if (hit.kind === 'file') { const nodeId = (data?.files ?? []).find((x) => x.id === hit.id)?.nodeId; setActiveTab('context'); setContextViewMode('doc'); if (nodeId) { goFocus(nodeId); revealWhenThere(`node-${nodeId}`); } return; }
     switch (hit.id) {
       case 'record': openContext(null); break;
       case 'thought': setThoughtDialog({}); break;
