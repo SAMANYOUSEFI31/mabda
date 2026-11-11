@@ -83,10 +83,10 @@ try {
     await page.getByRole('button', { name: 'تمام شد' }).click();
 
     step(`[${width}] the first request for an AI: one line, one click, a text ready to paste`);
-    await page.getByRole('button', { name: 'درخواست برای AI' }).first().click();
+    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('درخواستت را در یک خط بنویس').fill('مخاطب اصلی ما کیست؟');
-    await dlg.getByRole('button', { name: 'کپی برای AI خودم' }).click();
+    await dlg.getByRole('button', { name: 'کپی برای استفاده در هر ابزار' }).click();
     await page.getByText(/کپی شد/).first().waitFor();
     assert.match(await page.evaluate(() => navigator.clipboard.readText()), /mabda-pack:/);
     await noMachineWords('AI request');

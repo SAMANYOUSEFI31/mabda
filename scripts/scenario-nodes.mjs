@@ -68,8 +68,7 @@ try {
     await nodeOp('محصول و خدمت', 'زیرگرهٔ جدید');
     await page.getByLabel('نام گره').fill('بسته‌های خدمت');
     await page.getByRole('button', { name: 'ساخت گره' }).click();
-    await page.getByRole('dialog').getByText('مربی دانش').first().waitFor();
-    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
     await page.getByRole('heading', { name: 'بسته‌های خدمت' }).first().waitFor();
 
     step(`[${width}] the quick start: its hints point at nodes that may be gone — the answers still land somewhere real`);
@@ -103,8 +102,7 @@ try {
     await page.getByRole('button', { name: 'بخش اصلی تازه' }).click();
     await page.getByLabel('نام گره').fill('خدمات');
     await page.getByRole('button', { name: 'ساخت گره' }).click();
-    await page.getByRole('dialog').getByText('مربی دانش').first().waitFor();
-    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
     await nodeOp('کسب‌وکار و بنیان', 'حذف');
     await page.getByRole('dialog').getByText(/با محتوای این بخش چه کنیم/).waitFor();
     await shot('5-delete-with-content');
