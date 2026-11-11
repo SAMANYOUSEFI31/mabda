@@ -40,7 +40,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
   { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },
   { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'خط قرمز', 'قید'] },
-  { id: 'ai-request', title: 'درخواست برای AI', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی'] },
+  { id: 'ai-request', title: 'آماده‌سازی درخواست', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی', 'ابزار'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
   { id: 'go-context', title: 'رفتن به منبع حقیقت', keywords: ['دانش', 'درخت', 'ساختار'] },
@@ -50,7 +50,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-workstreams', title: 'ساخت خروجی (جریان‌های کار)', keywords: ['جریان', 'ساخت', 'بساز'] },
   { id: 'metrics', title: 'شاخص‌ها و اعداد', keywords: ['نتیجه', 'عدد', 'نمودار'] },
   { id: 'packs', title: 'بسته‌های دانش', keywords: ['کپی', 'بسته'] },
-  { id: 'import', title: 'وارد کردن پاسخ AI', keywords: ['چسباندن', 'پاسخ'] },
+  { id: 'import', title: 'وارد کردن متن آماده', keywords: ['چسباندن', 'پاسخ', 'ابزار'] },
 ];
 
 interface Doc { kind: Exclude<SearchKind, 'command'>; id: string; title: string; text: string; subtitle?: string; content: string; tf: Map<string, number>; len: number }
