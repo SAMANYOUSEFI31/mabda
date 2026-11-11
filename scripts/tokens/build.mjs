@@ -247,7 +247,7 @@ export function buildReference(src) {
   table('Surfaces', 'surface.');
   table('Text', 'text.');
   table('Borders', 'border.');
-  table('Knowledge states', 'knowledge.');
+  table('Nuqta (knowledge state)', 'nuqta.');
   table('Radius', 'radius.', false);
   table('Shadows', 'shadow.');
   const type = [...light.values()].filter((t) => t.type === 'typography');

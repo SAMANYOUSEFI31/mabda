@@ -78,11 +78,9 @@ for (const i of INTENTS) {
 }
 for (const state of ['', '-hover', '-pressed']) pairs.push({ fg: ['text.on-neutral'], bg: [`bg.neutral-bold${state}`], wcag: 4.5, apca: 60, why: 'label on a bold neutral fill (toast, checked box)' });
 for (const n of [1, 2, 3, 4, 5]) pairs.push({ fg: [`chart.categorical-${n}`], bg: ['surface.raised'], wcag: 3, apca: 0, why: 'chart series' });
-// the knowledge edge is the one non-colour cue of thought / proposed (dashed vs solid): it must be seen
-pairs.push({ fg: ['knowledge.thought-border'], bg: ['knowledge.thought-surface'], wcag: 3, apca: 0, why: 'dashed edge of a thought' });
-pairs.push({ fg: ['knowledge.proposed-border'], bg: ['knowledge.proposed-surface', 'surface.page'], wcag: 3, apca: 0, why: 'dashed edge of a proposal' });
-pairs.push({ fg: ['knowledge.stale-rule'], bg: ['surface.page'], wcag: 3, apca: 0, why: 'start rule of stale knowledge' });
-pairs.push({ fg: ['text.default'], bg: ['knowledge.proposed-surface', 'surface.page'], wcag: 7, apca: 70, why: 'text inside a proposal' });
+// the nuqta is the one cue of a knowledge state (shape first, colour reinforces): every one must be seen on every surface
+for (const n of ['truth', 'pending', 'stale', 'conflict', 'brand']) pairs.push({ fg: [`nuqta.${n}`], bg: ['surface.page', 'surface.raised', 'surface.sunken'], wcag: 3, apca: 0, why: `nuqta ${n}` });
+pairs.push({ fg: ['text.default'], bg: ['bg.neutral-subtle', 'surface.page'], wcag: 7, apca: 70, why: 'text inside a proposal (neutral block)' });
 for (const e of ['edge-dependency', 'edge-lineage', 'edge-supersedes']) pairs.push({ fg: [`mabda.${e}`], bg: ['surface.sunken'], wcag: 3, apca: 0, why: 'canvas line' });
 
 for (const mode of ['light', 'dark']) {

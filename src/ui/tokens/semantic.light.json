@@ -13,24 +13,33 @@
     },
     "overlay": {
       "$value": "{color.ink.0}"
+    },
+    "bar": {
+      "$value": "{color.ink.50}",
+      "$extensions": {
+        "mabda.alpha": 0.86
+      }
+    },
+    "inverse": {
+      "$value": "{color.ink.900}"
     }
   },
   "bg": {
     "$type": "color",
     "neutral-subtle": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.045
+        "mabda.alpha": 0.05
       }
     },
     "neutral-subtle-hover": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.075
+        "mabda.alpha": 0.08
       }
     },
     "neutral-subtle-pressed": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
         "mabda.alpha": 0.11
       }
@@ -183,33 +192,33 @@
       "$value": "{color.ink.0}"
     },
     "selected": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.07
+        "mabda.alpha": 0.08
       }
     },
     "selected-hover": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.1
+        "mabda.alpha": 0.11
       }
     },
     "disabled": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
         "mabda.alpha": 0.05
       }
     },
     "skeleton": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.06
+        "mabda.alpha": 0.07
       }
     },
     "scrim": {
-      "$value": "{color.ink.975}",
+      "$value": "{color.ink.1000}",
       "$extensions": {
-        "mabda.alpha": 0.42
+        "mabda.alpha": 0.4
       }
     },
     "selection": {
@@ -222,13 +231,13 @@
   "interaction": {
     "$type": "color",
     "hover": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
         "mabda.alpha": 0.05
       }
     },
     "pressed": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
         "mabda.alpha": 0.09
       }
@@ -237,7 +246,7 @@
   "text": {
     "$type": "color",
     "default": {
-      "$value": "{color.ink.950}"
+      "$value": "{color.ink.900}"
     },
     "subtle": {
       "$value": "{color.ink.700}"
@@ -252,7 +261,7 @@
       "$value": "{color.ink.0}"
     },
     "link": {
-      "$value": "{color.ink.950}"
+      "$value": "{color.ink.900}"
     },
     "link-hover": {
       "$value": "{color.ink.1000}"
@@ -291,7 +300,7 @@
   "icon": {
     "$type": "color",
     "default": {
-      "$value": "{color.ink.900}"
+      "$value": "{color.ink.800}"
     },
     "subtle": {
       "$value": "{color.ink.600}"
@@ -321,27 +330,27 @@
   "border": {
     "$type": "color",
     "subtle": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.075
+        "mabda.alpha": 0.08
       }
     },
     "default": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.13
+        "mabda.alpha": 0.14
       }
     },
     "default-hover": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.2
+        "mabda.alpha": 0.22
       }
     },
     "bold": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
-        "mabda.alpha": 0.3
+        "mabda.alpha": 0.28
       }
     },
     "input": {
@@ -357,7 +366,7 @@
       "$value": "{color.ink.900}"
     },
     "disabled": {
-      "$value": "{color.ink.950}",
+      "$value": "{color.ink.900}",
       "$extensions": {
         "mabda.alpha": 0.08
       }
@@ -446,7 +455,7 @@
     "seated": {
       "$value": [
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.08,
           "offsetX": "0px",
           "offsetY": "1px",
@@ -454,7 +463,7 @@
           "spread": "0px"
         },
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.1,
           "offsetX": "0px",
           "offsetY": "2px",
@@ -466,7 +475,7 @@
     "raised": {
       "$value": [
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.06,
           "offsetX": "0px",
           "offsetY": "1px",
@@ -474,7 +483,7 @@
           "spread": "0px"
         },
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.05,
           "offsetX": "0px",
           "offsetY": "2px",
@@ -486,7 +495,7 @@
     "overflow": {
       "$value": [
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.1,
           "offsetX": "0px",
           "offsetY": "6px",
@@ -498,7 +507,7 @@
     "overlay": {
       "$value": [
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.14,
           "offsetX": "0px",
           "offsetY": "14px",
@@ -506,7 +515,7 @@
           "spread": "-10px"
         },
         {
-          "color": "{color.ink.950}",
+          "color": "{color.ink.900}",
           "alpha": 0.08,
           "offsetX": "0px",
           "offsetY": "2px",
@@ -514,19 +523,25 @@
           "spread": "-2px"
         }
       ]
+    }
+  },
+  "nuqta": {
+    "$type": "color",
+    "$description": "the knowledge-state mark (docs/design-system/iconography.md «نقطه»); shape carries the meaning, colour only reinforces it",
+    "truth": {
+      "$value": "{color.ink.900}"
     },
-    "brand-glow": {
-      "$value": [
-        {
-          "color": "{color.ink.950}",
-          "alpha": 0,
-          "offsetX": "0px",
-          "offsetY": "0px",
-          "blur": "0px",
-          "spread": "0px"
-        }
-      ],
-      "$description": "kept for API compatibility (Button glow); intentionally invisible: glow is the «AI shine» the identity rejects"
+    "pending": {
+      "$value": "{color.ink.600}"
+    },
+    "stale": {
+      "$value": "{color.ochre.600}"
+    },
+    "conflict": {
+      "$value": "{color.brick.600}"
+    },
+    "brand": {
+      "$value": "{color.lapis.700}"
     }
   }
 }

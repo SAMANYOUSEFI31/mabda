@@ -86,6 +86,7 @@
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  --font-weight-medium: 500;
   --font-size-12: 0.75rem;
   --font-size-14: 0.875rem;
   --font-size-16: 1rem;
@@ -115,6 +116,7 @@
   --ease-exit: cubic-bezier(0.6, 0, 0.8, 0.2);
   --ease-move: cubic-bezier(0.3, 0, 0.1, 1);
   --ease-linear: cubic-bezier(0, 0, 1, 1);
+  --ease-settle: cubic-bezier(0.34, 1.3, 0.64, 1);
   --distance-sm: 6px;
   --distance-md: 12px;
   --scale-press: 0.98;
@@ -130,36 +132,6 @@
   --layer-skip-link: 900;
   --opacity-40: 0.4;
   --opacity-disabled: 0.4;
-  --knowledge-thought-surface: var(--surface-page);
-  --knowledge-thought-border: var(--border-input);
-  --knowledge-thought-border-style: dashed;
-  --knowledge-thought-radius: var(--radius-lg);
-  --knowledge-proposed-surface: var(--bg-info-subtle);
-  --knowledge-proposed-border: var(--border-info);
-  --knowledge-proposed-border-style: dashed;
-  --knowledge-proposed-radius: var(--radius-md);
-  --knowledge-truth-surface: var(--surface-raised);
-  --knowledge-truth-border: var(--border-default);
-  --knowledge-truth-border-style: solid;
-  --knowledge-truth-radius: var(--radius-sm);
-  --knowledge-truth-shadow: var(--shadow-seated);
-  --knowledge-stale-rule: var(--border-warning);
-  --knowledge-stale-surface: var(--surface-raised);
-  --knowledge-past-text: var(--text-subtle);
-  --knowledge-sample-surface: var(--surface-page);
-  --knowledge-sample-border: var(--border-default);
-  --knowledge-sample-radius: var(--radius-sm);
-  --mabda-type-fact-bg: var(--bg-info-subtle);
-  --mabda-type-fact-fg: var(--text-info);
-  --mabda-type-fact-border: var(--border-info-subtle);
-  --mabda-type-fact-icon: var(--icon-info);
-  --mabda-type-decision-bg: var(--bg-neutral-subtle);
-  --mabda-type-decision-fg: var(--text-subtle);
-  --mabda-type-decision-border: var(--border-default);
-  --mabda-type-decision-icon: var(--icon-subtle);
-  --mabda-type-constraint-bg: var(--bg-warning-subtle);
-  --mabda-type-constraint-fg: var(--text-warning);
-  --mabda-type-constraint-border: var(--border-warning-subtle);
   --mabda-type-constraint-icon: var(--icon-warning);
   --mabda-status-confirmed-bg: var(--bg-success-subtle);
   --mabda-status-confirmed-fg: var(--text-success);
@@ -234,28 +206,35 @@
   --mabda-edge-supersedes: var(--text-warning);
   --mabda-edge-halo: var(--surface-sunken);
   --mabda-edge-chip-bg: var(--surface-raised);
-  --surface-page: #faf5f0;
-  --surface-sunken: #f4eee8;
-  --surface-raised: #fffdfb;
-  --surface-overlay: #fffdfb;
-  --bg-neutral-subtle: rgb(26 23 19 / 0.045);
-  --bg-neutral-subtle-hover: rgb(26 23 19 / 0.075);
-  --bg-neutral-subtle-pressed: rgb(26 23 19 / 0.11);
-  --bg-neutral-bold: #2a2621;
-  --bg-neutral-bold-hover: #342f2b;
-  --bg-neutral-bold-pressed: #443f3a;
-  --bg-brand-subtle: rgb(91 126 215 / 0.1);
-  --bg-brand-subtle-hover: rgb(91 126 215 / 0.14);
-  --bg-brand-subtle-pressed: rgb(91 126 215 / 0.18);
-  --bg-brand-bold: #334e99;
-  --bg-brand-bold-hover: #253b77;
-  --bg-brand-bold-pressed: #1a2b56;
+  --nuqta-size-sm: 8px;
+  --nuqta-size-md: 10px;
+  --nuqta-size-lg: 14px;
+  --nuqta-size-xl: 28px;
+  --effect-bar-blur: 16px;
+  --surface-page: #f9f8f5;
+  --surface-sunken: #f3f2ee;
+  --surface-raised: #ffffff;
+  --surface-overlay: #ffffff;
+  --surface-bar: rgb(249 248 245 / 0.86);
+  --surface-inverse: #1d2330;
+  --bg-neutral-subtle: rgb(29 35 48 / 0.05);
+  --bg-neutral-subtle-hover: rgb(29 35 48 / 0.08);
+  --bg-neutral-subtle-pressed: rgb(29 35 48 / 0.11);
+  --bg-neutral-bold: #1d2330;
+  --bg-neutral-bold-hover: #272e3b;
+  --bg-neutral-bold-pressed: #373d4b;
+  --bg-brand-subtle: rgb(81 123 235 / 0.1);
+  --bg-brand-subtle-hover: rgb(81 123 235 / 0.14);
+  --bg-brand-subtle-pressed: rgb(81 123 235 / 0.18);
+  --bg-brand-bold: #294aab;
+  --bg-brand-bold-hover: #1d3787;
+  --bg-brand-bold-pressed: #152862;
   --bg-danger-subtle: rgb(214 81 65 / 0.09);
   --bg-danger-subtle-hover: rgb(214 81 65 / 0.13);
   --bg-danger-subtle-pressed: rgb(214 81 65 / 0.17);
   --bg-danger-bold: #b63325;
-  --bg-danger-bold-hover: #962317;
-  --bg-danger-bold-pressed: #751910;
+  --bg-danger-bold-hover: #982115;
+  --bg-danger-bold-pressed: #76150c;
   --bg-warning-subtle: rgb(175 118 2 / 0.16);
   --bg-warning-subtle-hover: rgb(175 118 2 / 0.2);
   --bg-warning-subtle-pressed: rgb(175 118 2 / 0.24);
@@ -266,60 +245,60 @@
   --bg-success-subtle-hover: rgb(56 151 115 / 0.16);
   --bg-success-subtle-pressed: rgb(56 151 115 / 0.2);
   --bg-success-bold: #107c5a;
-  --bg-success-bold-hover: #0b6347;
-  --bg-success-bold-pressed: #064c36;
+  --bg-success-bold-hover: #056347;
+  --bg-success-bold-pressed: #004c35;
   --bg-info-subtle: rgb(51 144 172 / 0.11);
   --bg-info-subtle-hover: rgb(51 144 172 / 0.15);
   --bg-info-subtle-pressed: rgb(51 144 172 / 0.19);
   --bg-info-bold: #057490;
-  --bg-info-bold-hover: #035d74;
-  --bg-info-bold-pressed: #014759;
-  --bg-input: #fffdfb;
-  --bg-selected: rgb(26 23 19 / 0.07);
-  --bg-selected-hover: rgb(26 23 19 / 0.1);
-  --bg-disabled: rgb(26 23 19 / 0.05);
-  --bg-skeleton: rgb(26 23 19 / 0.06);
-  --bg-scrim: rgb(19 16 13 / 0.42);
-  --bg-selection: rgb(91 126 215 / 0.22);
-  --interaction-hover: rgb(26 23 19 / 0.05);
-  --interaction-pressed: rgb(26 23 19 / 0.09);
-  --text-default: #1a1713;
-  --text-subtle: #59544f;
-  --text-subtlest: #706b65;
-  --text-disabled: #a9a39d;
-  --text-on-neutral: #fffdfb;
-  --text-link: #1a1713;
-  --text-link-hover: #0d0b08;
-  --text-brand: #334e99;
-  --text-danger: #962317;
-  --text-warning: #563905;
-  --text-success: #0b6347;
-  --text-info: #035d74;
-  --text-on-brand: #fffdfb;
-  --text-on-danger: #fffdfb;
-  --text-on-warning: #13100d;
-  --text-on-success: #fffdfb;
-  --text-on-info: #fffdfb;
-  --icon-default: #2a2621;
-  --icon-subtle: #706b65;
-  --icon-disabled: #cfc9c3;
-  --icon-on-neutral: #fffdfb;
-  --icon-brand: #4263b9;
+  --bg-info-bold-hover: #0b5d73;
+  --bg-info-bold-pressed: #034759;
+  --bg-input: #ffffff;
+  --bg-selected: rgb(29 35 48 / 0.08);
+  --bg-selected-hover: rgb(29 35 48 / 0.11);
+  --bg-disabled: rgb(29 35 48 / 0.05);
+  --bg-skeleton: rgb(29 35 48 / 0.07);
+  --bg-scrim: rgb(6 8 15 / 0.4);
+  --bg-selection: rgb(81 123 235 / 0.22);
+  --interaction-hover: rgb(29 35 48 / 0.05);
+  --interaction-pressed: rgb(29 35 48 / 0.09);
+  --text-default: #1d2330;
+  --text-subtle: #4d535f;
+  --text-subtlest: #676c77;
+  --text-disabled: #a5a8ae;
+  --text-on-neutral: #ffffff;
+  --text-link: #1d2330;
+  --text-link-hover: #06080f;
+  --text-brand: #294aab;
+  --text-danger: #982115;
+  --text-warning: #573901;
+  --text-success: #056347;
+  --text-info: #0b5d73;
+  --text-on-brand: #ffffff;
+  --text-on-danger: #ffffff;
+  --text-on-warning: #0a0e17;
+  --text-on-success: #ffffff;
+  --text-on-info: #ffffff;
+  --icon-default: #373d4b;
+  --icon-subtle: #676c77;
+  --icon-disabled: #d0cdc8;
+  --icon-on-neutral: #ffffff;
+  --icon-brand: #395fcc;
   --icon-danger: #b63325;
   --icon-warning: #8c5f0f;
   --icon-success: #107c5a;
   --icon-info: #057490;
-  --border-subtle: rgb(26 23 19 / 0.075);
-  --border-default: rgb(26 23 19 / 0.13);
-  --border-default-hover: rgb(26 23 19 / 0.2);
-  --border-bold: rgb(26 23 19 / 0.3);
-  --border-input: #8b857f;
-  --border-input-hover: #59544f;
-  --border-focus: #5b7ed7;
-  --border-selected: #2a2621;
-  --border-disabled: rgb(26 23 19 / 0.08);
-  --border-brand: #5b7ed7;
-  --border-brand-subtle: rgb(91 126 215 / 0.38);
+  --border-subtle: rgb(29 35 48 / 0.08);
+  --border-default: rgb(29 35 48 / 0.14);
+  --border-default-hover: rgb(29 35 48 / 0.22);
+  --border-bold: rgb(29 35 48 / 0.28);
+  --border-input: #82868f;
+  --border-input-hover: #4d535f;
+  --border-focus: #517beb;
+  --border-selected: #1d2330;
+  --border-disabled: rgb(29 35 48 / 0.08);
+  --border-brand: #517beb;
+  --border-brand-subtle: rgb(81 123 235 / 0.38);
   --border-danger: #b63325;
   --border-danger-subtle: rgb(214 81 65 / 0.4);
   --border-warning: #8c5f0f;
@@ -328,21 +307,25 @@
   --border-success-subtle: rgb(56 151 115 / 0.42);
   --border-info: #057490;
   --border-info-subtle: rgb(51 144 172 / 0.42);
-  --chart-categorical-1: #5b7ed7;
+  --chart-categorical-1: #517beb;
   --chart-categorical-2: #af7602;
   --chart-categorical-3: #3390ac;
-  --chart-categorical-4: #8b857f;
+  --chart-categorical-4: #82868f;
   --chart-categorical-5: #389773;
-  --chart-sequential-0: #ede7e0;
-  --chart-sequential-1: #cadbff;
-  --chart-sequential-2: #7e9fec;
-  --chart-sequential-3: #4263b9;
-  --chart-sequential-4: #253b77;
-  --shadow-seated: 0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1);
-  --shadow-raised: 0px 1px 2px 0px rgb(26 23 19 / 0.06), 0px 2px 6px -2px rgb(26 23 19 / 0.05);
-  --shadow-overflow: 0px 6px 14px -8px rgb(26 23 19 / 0.1);
-  --shadow-overlay: 0px 14px 36px -10px rgb(26 23 19 / 0.14), 0px 2px 8px -2px rgb(26 23 19 / 0.08);
-  --shadow-brand-glow: 0px 0px 0px 0px rgb(26 23 19 / 0);
+  --chart-sequential-0: #eceae6;
+  --chart-sequential-1: #cbdbfe;
+  --chart-sequential-2: #769dfe;
+  --chart-sequential-3: #395fcc;
+  --chart-sequential-4: #1d3787;
+  --shadow-seated: 0px 1px 0px 0px rgb(29 35 48 / 0.08), 0px 2px 6px -2px rgb(29 35 48 / 0.1);
+  --shadow-raised: 0px 1px 2px 0px rgb(29 35 48 / 0.06), 0px 2px 6px -2px rgb(29 35 48 / 0.05);
+  --shadow-overflow: 0px 6px 14px -8px rgb(29 35 48 / 0.1);
+  --shadow-overlay: 0px 14px 36px -10px rgb(29 35 48 / 0.14), 0px 2px 8px -2px rgb(29 35 48 / 0.08);
+  --nuqta-truth: #1d2330;
+  --nuqta-pending: #676c77;
+  --nuqta-stale: #8c5f0f;
+  --nuqta-conflict: #b63325;
+  --nuqta-brand: #294aab;
   --button-radius: var(--radius-control);
   --button-height-sm: var(--control-sm);
   --button-height-md: var(--control-md);
@@ -396,28 +379,30 @@
 }
 :root.dark {
   color-scheme: dark;
-  --surface-page: #1a1713;
-  --surface-sunken: #13100d;
-  --surface-raised: #211d19;
-  --surface-overlay: #2a2621;
-  --bg-neutral-subtle: rgb(254 249 245 / 0.07);
-  --bg-neutral-subtle-hover: rgb(254 249 245 / 0.1);
-  --bg-neutral-subtle-pressed: rgb(254 249 245 / 0.14);
-  --bg-neutral-bold: #f4eee8;
-  --bg-neutral-bold-hover: #e4ded8;
-  --bg-neutral-bold-pressed: #cfc9c3;
-  --bg-brand-subtle: rgb(126 159 236 / 0.16);
-  --bg-brand-subtle-hover: rgb(126 159 236 / 0.2);
-  --bg-brand-subtle-pressed: rgb(126 159 236 / 0.24);
-  --bg-brand-bold: #4263b9;
-  --bg-brand-bold-hover: #334e99;
-  --bg-brand-bold-pressed: #253b77;
+  --surface-page: #10151f;
+  --surface-sunken: #0a0e17;
+  --surface-raised: #161c27;
+  --surface-overlay: #1d2330;
+  --surface-bar: rgb(16 21 31 / 0.8);
+  --surface-inverse: #f3f2ee;
+  --bg-neutral-subtle: rgb(243 242 238 / 0.07);
+  --bg-neutral-subtle-hover: rgb(243 242 238 / 0.1);
+  --bg-neutral-subtle-pressed: rgb(243 242 238 / 0.14);
+  --bg-neutral-bold: #f3f2ee;
+  --bg-neutral-bold-hover: #e3e1dc;
+  --bg-neutral-bold-pressed: #d0cdc8;
+  --bg-brand-subtle: rgb(118 157 254 / 0.16);
+  --bg-brand-subtle-hover: rgb(118 157 254 / 0.2);
+  --bg-brand-subtle-pressed: rgb(118 157 254 / 0.24);
+  --bg-brand-bold: #395fcc;
+  --bg-brand-bold-hover: #456ddb;
+  --bg-brand-bold-pressed: #294aab;
   --bg-danger-subtle: rgb(238 123 106 / 0.16);
   --bg-danger-subtle-hover: rgb(238 123 106 / 0.2);
   --bg-danger-subtle-pressed: rgb(238 123 106 / 0.24);
   --bg-danger-bold: #b63325;
-  --bg-danger-bold-hover: #962317;
-  --bg-danger-bold-pressed: #751910;
+  --bg-danger-bold-hover: #c64333;
+  --bg-danger-bold-pressed: #76150c;
   --bg-warning-subtle: rgb(203 150 71 / 0.16);
   --bg-warning-subtle-hover: rgb(203 150 71 / 0.2);
   --bg-warning-subtle-pressed: rgb(203 150 71 / 0.24);
@@ -428,60 +413,60 @@
   --bg-success-subtle-hover: rgb(104 179 148 / 0.2);
   --bg-success-subtle-pressed: rgb(104 179 148 / 0.24);
   --bg-success-bold: #107c5a;
-  --bg-success-bold-hover: #0b6347;
-  --bg-success-bold-pressed: #064c36;
+  --bg-success-bold-hover: #056347;
+  --bg-success-bold-pressed: #004c35;
   --bg-info-subtle: rgb(101 173 198 / 0.17);
   --bg-info-subtle-hover: rgb(101 173 198 / 0.21);
   --bg-info-subtle-pressed: rgb(101 173 198 / 0.25);
   --bg-info-bold: #057490;
-  --bg-info-bold-hover: #035d74;
-  --bg-info-bold-pressed: #014759;
-  --bg-input: #13100d;
-  --bg-selected: rgb(254 249 245 / 0.11);
-  --bg-selected-hover: rgb(254 249 245 / 0.15);
-  --bg-disabled: rgb(254 249 245 / 0.06);
-  --bg-skeleton: rgb(254 249 245 / 0.07);
-  --bg-scrim: rgb(13 11 8 / 0.72);
-  --bg-selection: rgb(126 159 236 / 0.34);
-  --interaction-hover: rgb(254 249 245 / 0.07);
-  --interaction-pressed: rgb(254 249 245 / 0.11);
-  --text-default: #f4eee8;
-  --text-subtle: #cfc9c3;
-  --text-subtlest: #a9a39d;
-  --text-disabled: #706b65;
-  --text-on-neutral: #13100d;
-  --text-link: #f4eee8;
-  --text-link-hover: #fffdfb;
-  --text-brand: #a7c0fa;
-  --text-danger: #fdcec5;
+  --bg-info-bold-hover: #0b5d73;
+  --bg-info-bold-pressed: #034759;
+  --bg-input: #0a0e17;
+  --bg-selected: rgb(243 242 238 / 0.11);
+  --bg-selected-hover: rgb(243 242 238 / 0.15);
+  --bg-disabled: rgb(243 242 238 / 0.06);
+  --bg-skeleton: rgb(243 242 238 / 0.08);
+  --bg-scrim: rgb(6 8 15 / 0.6);
+  --bg-selection: rgb(118 157 254 / 0.34);
+  --interaction-hover: rgb(243 242 238 / 0.06);
+  --interaction-pressed: rgb(243 242 238 / 0.1);
+  --text-default: #f3f2ee;
+  --text-subtle: #d0cdc8;
+  --text-subtlest: #a5a8ae;
+  --text-disabled: #676c77;
+  --text-on-neutral: #0a0e17;
+  --text-link: #f3f2ee;
+  --text-link-hover: #ffffff;
+  --text-brand: #a5c0fe;
+  --text-danger: #fea798;
   --text-warning: #e1ba84;
   --text-success: #9acfb7;
   --text-info: #97cadc;
-  --text-on-brand: #fffdfb;
-  --text-on-danger: #fffdfb;
-  --text-on-warning: #13100d;
-  --text-on-success: #fffdfb;
-  --text-on-info: #fffdfb;
-  --icon-default: #f4eee8;
-  --icon-subtle: #a9a39d;
-  --icon-disabled: #59544f;
-  --icon-on-neutral: #13100d;
-  --icon-brand: #7e9fec;
+  --text-on-brand: #ffffff;
+  --text-on-danger: #ffffff;
+  --text-on-warning: #0a0e17;
+  --text-on-success: #ffffff;
+  --text-on-info: #ffffff;
+  --icon-default: #e3e1dc;
+  --icon-subtle: #a5a8ae;
+  --icon-disabled: #4d535f;
+  --icon-on-neutral: #0a0e17;
+  --icon-brand: #769dfe;
   --icon-danger: #ee7b6a;
   --icon-warning: #cb9647;
   --icon-success: #68b394;
   --icon-info: #65adc6;
-  --border-subtle: rgb(254 249 245 / 0.07);
-  --border-default: rgb(254 249 245 / 0.12);
-  --border-default-hover: rgb(254 249 245 / 0.18);
-  --border-bold: rgb(254 249 245 / 0.26);
-  --border-input: #8b857f;
-  --border-input-hover: #a9a39d;
-  --border-focus: #7e9fec;
-  --border-selected: #f4eee8;
-  --border-disabled: rgb(254 249 245 / 0.08);
-  --border-brand: #7e9fec;
-  --border-brand-subtle: rgb(126 159 236 / 0.38);
+  --border-subtle: rgb(243 242 238 / 0.08);
+  --border-default: rgb(243 242 238 / 0.14);
+  --border-default-hover: rgb(243 242 238 / 0.22);
+  --border-bold: rgb(243 242 238 / 0.3);
+  --border-input: #82868f;
+  --border-input-hover: #a5a8ae;
+  --border-focus: #769dfe;
+  --border-selected: #f3f2ee;
+  --border-disabled: rgb(243 242 238 / 0.08);
+  --border-brand: #769dfe;
+  --border-brand-subtle: rgb(118 157 254 / 0.38);
   --border-danger: #ee7b6a;
   --border-danger-subtle: rgb(238 123 106 / 0.4);
   --border-warning: #cb9647;
@@ -490,41 +475,54 @@
   --border-success-subtle: rgb(104 179 148 / 0.42);
   --border-info: #65adc6;
   --border-info-subtle: rgb(101 173 198 / 0.42);
-  --chart-categorical-1: #a7c0fa;
+  --chart-categorical-1: #a5c0fe;
   --chart-categorical-2: #e1ba84;
   --chart-categorical-3: #97cadc;
-  --chart-categorical-4: #cfc9c3;
+  --chart-categorical-4: #d0cdc8;
   --chart-categorical-5: #9acfb7;
-  --chart-sequential-0: #342f2b;
-  --chart-sequential-1: #1a2b56;
-  --chart-sequential-2: #334e99;
-  --chart-sequential-3: #5b7ed7;
-  --chart-sequential-4: #a7c0fa;
-  --shadow-seated: 0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55);
-  --shadow-raised: 0px 1px 2px 0px rgb(13 11 8 / 0.45), 0px 2px 6px -2px rgb(13 11 8 / 0.3);
-  --shadow-overflow: 0px 6px 14px -8px rgb(13 11 8 / 0.55);
-  --shadow-overlay: 0px 14px 36px -10px rgb(13 11 8 / 0.6), 0px 2px 8px -2px rgb(13 11 8 / 0.4);
-  --shadow-brand-glow: 0px 0px 0px 0px rgb(26 23 19 / 0);
+  --chart-sequential-0: #272e3b;
+  --chart-sequential-1: #152862;
+  --chart-sequential-2: #294aab;
+  --chart-sequential-3: #517beb;
+  --chart-sequential-4: #a5c0fe;
+  --shadow-seated: 0px 1px 0px 0px rgb(6 8 15 / 0.5), 0px 2px 6px -2px rgb(6 8 15 / 0.55);
+  --shadow-raised: 0px 1px 2px 0px rgb(6 8 15 / 0.45), 0px 2px 6px -2px rgb(6 8 15 / 0.3);
+  --shadow-overflow: 0px 6px 14px -8px rgb(6 8 15 / 0.55);
+  --shadow-overlay: 0px 14px 36px -10px rgb(6 8 15 / 0.6), 0px 2px 8px -2px rgb(6 8 15 / 0.4);
+  --nuqta-truth: #f3f2ee;
+  --nuqta-pending: #a5a8ae;
+  --nuqta-stale: #cb9647;
+  --nuqta-conflict: #ee7b6a;
+  --nuqta-brand: #769dfe;
 }
 
 /* type styles (class = token name) */
 .display-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 3.5rem; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
 .display-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.5rem; line-height: 1.3; font-weight: 700; letter-spacing: 0em; }
 .display-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
-.heading-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.35; font-weight: 700; letter-spacing: 0em; }
-.heading-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.4; font-weight: 700; letter-spacing: 0em; }
-.heading-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.45; font-weight: 700; letter-spacing: 0em; }
-.heading-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.25rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.heading-xs { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.title { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.6; font-weight: 600; letter-spacing: 0em; }
-.body-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
-.body-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.85; font-weight: 400; letter-spacing: 0em; }
-.body-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.8; font-weight: 400; letter-spacing: 0em; }
-.caption { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.65; font-weight: 400; letter-spacing: 0em; }
-.label-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.label-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.label-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.5; font-weight: 600; letter-spacing: 0em; }
-.numeric-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
-.numeric-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.875rem; line-height: 1.2; font-weight: 700; letter-spacing: 0em; }
-.numeric-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.25; font-weight: 700; letter-spacing: 0em; }
-.code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 0.875rem; line-height: 1.55; font-weight: 400; letter-spacing: 0.02em; }
+.heading-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.4444; font-weight: 700; letter-spacing: 0em; }
+.heading-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.75rem; line-height: 1.5; font-weight: 700; letter-spacing: 0em; }
+.heading-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.375rem; line-height: 1.5455; font-weight: 600; letter-spacing: 0em; }
+.heading-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.6667; font-weight: 600; letter-spacing: 0em; }
+.heading-xs { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.6667; font-weight: 600; letter-spacing: 0em; }
+.title { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.625; font-weight: 600; letter-spacing: 0em; }
+.body-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.0625rem; line-height: 1.8824; font-weight: 400; letter-spacing: 0em; }
+.body-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.75; font-weight: 400; letter-spacing: 0em; }
+.body-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.7143; font-weight: 400; letter-spacing: 0em; }
+.caption { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.6667; font-weight: 400; letter-spacing: 0em; }
+.label-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.5; font-weight: 500; letter-spacing: 0em; }
+.label-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.4286; font-weight: 500; letter-spacing: 0em; }
+.label-sm { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.75rem; line-height: 1.5; font-weight: 500; letter-spacing: 0em; }
+.numeric-xl { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.3333; font-weight: 700; letter-spacing: 0em; }
+.numeric-lg { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.75rem; line-height: 1.4286; font-weight: 600; letter-spacing: 0em; }
+.numeric-md { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.5rem; line-height: 1.4167; font-weight: 600; letter-spacing: 0em; }
+.code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; font-size: 0.8125rem; line-height: 1.6923; font-weight: 400; letter-spacing: 0em; }
+.display { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 2.25rem; line-height: 1.4444; font-weight: 700; letter-spacing: 0em; }
+.title-1 { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.75rem; line-height: 1.5; font-weight: 700; letter-spacing: 0em; }
+.title-2 { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.375rem; line-height: 1.5455; font-weight: 600; letter-spacing: 0em; }
+.title-3 { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.125rem; line-height: 1.6667; font-weight: 600; letter-spacing: 0em; }
+.headline { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.625; font-weight: 600; letter-spacing: 0em; }
+.body-reading { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.0625rem; line-height: 1.8824; font-weight: 400; letter-spacing: 0em; }
+.body { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1rem; line-height: 1.75; font-weight: 400; letter-spacing: 0em; }
+.label { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.4286; font-weight: 500; letter-spacing: 0em; }
+.numeric { font-family: Vazirmatn, 'Vazirmatn Latin', Tahoma, system-ui, sans-serif; font-size: 1.75rem; line-height: 1.4286; font-weight: 600; letter-spacing: 0em; }

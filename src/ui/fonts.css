@@ -1,11 +1,7 @@
 /*
  * Vazirmatn (SIL OFL 1.1, public/fonts/OFL.txt), self-hosted: no request leaves the app for a font.
  * Arabic-script and Latin subsets are separate families so Latin runs (codes, file names) use the matching Latin design.
- * Only 400 / 600 / 700 are shipped: the type scale uses no other weight. Why Vazirmatn: docs/design-system/typography.md.
+ * One variable file per subset (weights 100–900; the scale uses 400 / 500 / 600 / 700), from @fontsource-variable/vazirmatn 5.2.5. Why Vazirmatn: docs/design-system/typography.md.
  */
-@font-face { font-family: 'Vazirmatn'; src: url('/fonts/vazirmatn-arabic-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Vazirmatn'; src: url('/fonts/vazirmatn-arabic-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Vazirmatn'; src: url('/fonts/vazirmatn-arabic-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Vazirmatn Latin'; src: url('/fonts/vazirmatn-latin-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Vazirmatn Latin'; src: url('/fonts/vazirmatn-latin-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'Vazirmatn Latin'; src: url('/fonts/vazirmatn-latin-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Vazirmatn'; src: url('/fonts/vazirmatn-arabic-var.woff2') format('woff2-variations'), url('/fonts/vazirmatn-arabic-var.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Vazirmatn Latin'; src: url('/fonts/vazirmatn-latin-var.woff2') format('woff2-variations'), url('/fonts/vazirmatn-latin-var.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }

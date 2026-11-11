@@ -6,48 +6,50 @@ Every number the design-system docs rely on, resolved from the DTCG source for b
 
 | token | css | light | dark |
 | --- | --- | --- | --- |
-| `surface.page` | `--surface-page` | #faf5f0 | #1a1713 |
-| `surface.sunken` | `--surface-sunken` | #f4eee8 | #13100d |
-| `surface.raised` | `--surface-raised` | #fffdfb | #211d19 |
-| `surface.overlay` | `--surface-overlay` | #fffdfb | #2a2621 |
+| `surface.page` | `--surface-page` | #f9f8f5 | #10151f |
+| `surface.sunken` | `--surface-sunken` | #f3f2ee | #0a0e17 |
+| `surface.raised` | `--surface-raised` | #ffffff | #161c27 |
+| `surface.overlay` | `--surface-overlay` | #ffffff | #1d2330 |
+| `surface.bar` | `--surface-bar` | rgb(249 248 245 / 0.86) | rgb(16 21 31 / 0.8) |
+| `surface.inverse` | `--surface-inverse` | #1d2330 | #f3f2ee |
 
 ## Text
 
 | token | css | light | dark |
 | --- | --- | --- | --- |
-| `text.default` | `--text-default` | #1a1713 | #f4eee8 |
-| `text.subtle` | `--text-subtle` | #59544f | #cfc9c3 |
-| `text.subtlest` | `--text-subtlest` | #706b65 | #a9a39d |
-| `text.disabled` | `--text-disabled` | #a9a39d | #706b65 |
-| `text.on-neutral` | `--text-on-neutral` | #fffdfb | #13100d |
-| `text.link` | `--text-link` | #1a1713 | #f4eee8 |
-| `text.link-hover` | `--text-link-hover` | #0d0b08 | #fffdfb |
-| `text.brand` | `--text-brand` | #334e99 | #a7c0fa |
-| `text.danger` | `--text-danger` | #962317 | #fdcec5 |
-| `text.warning` | `--text-warning` | #563905 | #e1ba84 |
-| `text.success` | `--text-success` | #0b6347 | #9acfb7 |
-| `text.info` | `--text-info` | #035d74 | #97cadc |
-| `text.on-brand` | `--text-on-brand` | #fffdfb | #fffdfb |
-| `text.on-danger` | `--text-on-danger` | #fffdfb | #fffdfb |
-| `text.on-warning` | `--text-on-warning` | #13100d | #13100d |
-| `text.on-success` | `--text-on-success` | #fffdfb | #fffdfb |
-| `text.on-info` | `--text-on-info` | #fffdfb | #fffdfb |
+| `text.default` | `--text-default` | #1d2330 | #f3f2ee |
+| `text.subtle` | `--text-subtle` | #4d535f | #d0cdc8 |
+| `text.subtlest` | `--text-subtlest` | #676c77 | #a5a8ae |
+| `text.disabled` | `--text-disabled` | #a5a8ae | #676c77 |
+| `text.on-neutral` | `--text-on-neutral` | #ffffff | #0a0e17 |
+| `text.link` | `--text-link` | #1d2330 | #f3f2ee |
+| `text.link-hover` | `--text-link-hover` | #06080f | #ffffff |
+| `text.brand` | `--text-brand` | #294aab | #a5c0fe |
+| `text.danger` | `--text-danger` | #982115 | #fea798 |
+| `text.warning` | `--text-warning` | #573901 | #e1ba84 |
+| `text.success` | `--text-success` | #056347 | #9acfb7 |
+| `text.info` | `--text-info` | #0b5d73 | #97cadc |
+| `text.on-brand` | `--text-on-brand` | #ffffff | #ffffff |
+| `text.on-danger` | `--text-on-danger` | #ffffff | #ffffff |
+| `text.on-warning` | `--text-on-warning` | #0a0e17 | #0a0e17 |
+| `text.on-success` | `--text-on-success` | #ffffff | #ffffff |
+| `text.on-info` | `--text-on-info` | #ffffff | #ffffff |
 
 ## Borders
 
 | token | css | light | dark |
 | --- | --- | --- | --- |
-| `border.subtle` | `--border-subtle` | rgb(26 23 19 / 0.075) | rgb(254 249 245 / 0.07) |
-| `border.default` | `--border-default` | rgb(26 23 19 / 0.13) | rgb(254 249 245 / 0.12) |
-| `border.default-hover` | `--border-default-hover` | rgb(26 23 19 / 0.2) | rgb(254 249 245 / 0.18) |
-| `border.bold` | `--border-bold` | rgb(26 23 19 / 0.3) | rgb(254 249 245 / 0.26) |
-| `border.input` | `--border-input` | #8b857f | #8b857f |
-| `border.input-hover` | `--border-input-hover` | #59544f | #a9a39d |
-| `border.focus` | `--border-focus` | #5b7ed7 | #7e9fec |
-| `border.selected` | `--border-selected` | #2a2621 | #f4eee8 |
-| `border.disabled` | `--border-disabled` | rgb(26 23 19 / 0.08) | rgb(254 249 245 / 0.08) |
-| `border.brand` | `--border-brand` | #5b7ed7 | #7e9fec |
-| `border.brand-subtle` | `--border-brand-subtle` | rgb(91 126 215 / 0.38) | rgb(126 159 236 / 0.38) |
+| `border.subtle` | `--border-subtle` | rgb(29 35 48 / 0.08) | rgb(243 242 238 / 0.08) |
+| `border.default` | `--border-default` | rgb(29 35 48 / 0.14) | rgb(243 242 238 / 0.14) |
+| `border.default-hover` | `--border-default-hover` | rgb(29 35 48 / 0.22) | rgb(243 242 238 / 0.22) |
+| `border.bold` | `--border-bold` | rgb(29 35 48 / 0.28) | rgb(243 242 238 / 0.3) |
+| `border.input` | `--border-input` | #82868f | #82868f |
+| `border.input-hover` | `--border-input-hover` | #4d535f | #a5a8ae |
+| `border.focus` | `--border-focus` | #517beb | #769dfe |
+| `border.selected` | `--border-selected` | #1d2330 | #f3f2ee |
+| `border.disabled` | `--border-disabled` | rgb(29 35 48 / 0.08) | rgb(243 242 238 / 0.08) |
+| `border.brand` | `--border-brand` | #517beb | #769dfe |
+| `border.brand-subtle` | `--border-brand-subtle` | rgb(81 123 235 / 0.38) | rgb(118 157 254 / 0.38) |
 | `border.danger` | `--border-danger` | #b63325 | #ee7b6a |
 | `border.danger-subtle` | `--border-danger-subtle` | rgb(214 81 65 / 0.4) | rgb(238 123 106 / 0.4) |
 | `border.warning` | `--border-warning` | #8c5f0f | #cb9647 |
@@ -57,29 +59,15 @@ Every number the design-system docs rely on, resolved from the DTCG source for b
 | `border.info` | `--border-info` | #057490 | #65adc6 |
 | `border.info-subtle` | `--border-info-subtle` | rgb(51 144 172 / 0.42) | rgb(101 173 198 / 0.42) |
 
-## Knowledge states
+## Nuqta (knowledge state)
 
 | token | css | light | dark |
 | --- | --- | --- | --- |
-| `knowledge.thought-surface` | `--knowledge-thought-surface` | #faf5f0 | #1a1713 |
-| `knowledge.thought-border` | `--knowledge-thought-border` | #8b857f | #8b857f |
-| `knowledge.thought-border-style` | `--knowledge-thought-border-style` | dashed | dashed |
-| `knowledge.thought-radius` | `--knowledge-thought-radius` | 12px | 12px |
-| `knowledge.proposed-surface` | `--knowledge-proposed-surface` | rgb(51 144 172 / 0.11) | rgb(101 173 198 / 0.17) |
-| `knowledge.proposed-border` | `--knowledge-proposed-border` | #057490 | #65adc6 |
-| `knowledge.proposed-border-style` | `--knowledge-proposed-border-style` | dashed | dashed |
-| `knowledge.proposed-radius` | `--knowledge-proposed-radius` | 8px | 8px |
-| `knowledge.truth-surface` | `--knowledge-truth-surface` | #fffdfb | #211d19 |
-| `knowledge.truth-border` | `--knowledge-truth-border` | rgb(26 23 19 / 0.13) | rgb(254 249 245 / 0.12) |
-| `knowledge.truth-border-style` | `--knowledge-truth-border-style` | solid | solid |
-| `knowledge.truth-radius` | `--knowledge-truth-radius` | 6px | 6px |
-| `knowledge.truth-shadow` | `--knowledge-truth-shadow` | 0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1) | 0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55) |
-| `knowledge.stale-rule` | `--knowledge-stale-rule` | #8c5f0f | #cb9647 |
-| `knowledge.stale-surface` | `--knowledge-stale-surface` | #fffdfb | #211d19 |
-| `knowledge.past-text` | `--knowledge-past-text` | #59544f | #cfc9c3 |
-| `knowledge.sample-surface` | `--knowledge-sample-surface` | #faf5f0 | #1a1713 |
-| `knowledge.sample-border` | `--knowledge-sample-border` | rgb(26 23 19 / 0.13) | rgb(254 249 245 / 0.12) |
-| `knowledge.sample-radius` | `--knowledge-sample-radius` | 6px | 6px |
+| `nuqta.truth` | `--nuqta-truth` | #1d2330 | #f3f2ee |
+| `nuqta.pending` | `--nuqta-pending` | #676c77 | #a5a8ae |
+| `nuqta.stale` | `--nuqta-stale` | #8c5f0f | #cb9647 |
+| `nuqta.conflict` | `--nuqta-conflict` | #b63325 | #ee7b6a |
+| `nuqta.brand` | `--nuqta-brand` | #294aab | #769dfe |
 
 ## Radius
 
@@ -104,11 +92,10 @@ Every number the design-system docs rely on, resolved from the DTCG source for b
 
 | token | css | light | dark |
 | --- | --- | --- | --- |
-| `shadow.seated` | `--shadow-seated` | 0px 1px 0px 0px rgb(26 23 19 / 0.08), 0px 2px 6px -2px rgb(26 23 19 / 0.1) | 0px 1px 0px 0px rgb(13 11 8 / 0.5), 0px 2px 6px -2px rgb(13 11 8 / 0.55) |
-| `shadow.raised` | `--shadow-raised` | 0px 1px 2px 0px rgb(26 23 19 / 0.06), 0px 2px 6px -2px rgb(26 23 19 / 0.05) | 0px 1px 2px 0px rgb(13 11 8 / 0.45), 0px 2px 6px -2px rgb(13 11 8 / 0.3) |
-| `shadow.overflow` | `--shadow-overflow` | 0px 6px 14px -8px rgb(26 23 19 / 0.1) | 0px 6px 14px -8px rgb(13 11 8 / 0.55) |
-| `shadow.overlay` | `--shadow-overlay` | 0px 14px 36px -10px rgb(26 23 19 / 0.14), 0px 2px 8px -2px rgb(26 23 19 / 0.08) | 0px 14px 36px -10px rgb(13 11 8 / 0.6), 0px 2px 8px -2px rgb(13 11 8 / 0.4) |
-| `shadow.brand-glow` | `--shadow-brand-glow` | 0px 0px 0px 0px rgb(26 23 19 / 0) | 0px 0px 0px 0px rgb(26 23 19 / 0) |
+| `shadow.seated` | `--shadow-seated` | 0px 1px 0px 0px rgb(29 35 48 / 0.08), 0px 2px 6px -2px rgb(29 35 48 / 0.1) | 0px 1px 0px 0px rgb(6 8 15 / 0.5), 0px 2px 6px -2px rgb(6 8 15 / 0.55) |
+| `shadow.raised` | `--shadow-raised` | 0px 1px 2px 0px rgb(29 35 48 / 0.06), 0px 2px 6px -2px rgb(29 35 48 / 0.05) | 0px 1px 2px 0px rgb(6 8 15 / 0.45), 0px 2px 6px -2px rgb(6 8 15 / 0.3) |
+| `shadow.overflow` | `--shadow-overflow` | 0px 6px 14px -8px rgb(29 35 48 / 0.1) | 0px 6px 14px -8px rgb(6 8 15 / 0.55) |
+| `shadow.overlay` | `--shadow-overlay` | 0px 14px 36px -10px rgb(29 35 48 / 0.14), 0px 2px 8px -2px rgb(29 35 48 / 0.08) | 0px 14px 36px -10px rgb(6 8 15 / 0.6), 0px 2px 8px -2px rgb(6 8 15 / 0.4) |
 
 ## Type scale
 
@@ -117,20 +104,29 @@ Every number the design-system docs rely on, resolved from the DTCG source for b
 | `display-lg` | 3.5rem (56px) | 700 | 1.3 |
 | `display-md` | 2.5rem (40px) | 700 | 1.3 |
 | `display-sm` | 1.875rem (30px) | 700 | 1.35 |
-| `heading-xl` | 2.25rem (36px) | 700 | 1.35 |
-| `heading-lg` | 1.875rem (30px) | 700 | 1.4 |
-| `heading-md` | 1.5rem (24px) | 700 | 1.45 |
-| `heading-sm` | 1.25rem (20px) | 600 | 1.5 |
-| `heading-xs` | 1.125rem (18px) | 600 | 1.5 |
-| `title` | 1rem (16px) | 600 | 1.6 |
-| `body-lg` | 1.125rem (18px) | 400 | 1.85 |
-| `body-md` | 1rem (16px) | 400 | 1.85 |
-| `body-sm` | 0.875rem (14px) | 400 | 1.8 |
-| `caption` | 0.75rem (12px) | 400 | 1.65 |
-| `label-lg` | 1rem (16px) | 600 | 1.5 |
-| `label-md` | 0.875rem (14px) | 600 | 1.5 |
-| `label-sm` | 0.75rem (12px) | 600 | 1.5 |
-| `numeric-xl` | 2.25rem (36px) | 700 | 1.2 |
-| `numeric-lg` | 1.875rem (30px) | 700 | 1.2 |
-| `numeric-md` | 1.5rem (24px) | 700 | 1.25 |
-| `code` | 0.875rem (14px) | 400 | 1.55 |
+| `heading-xl` | 2.25rem (36px) | 700 | 1.4444 |
+| `heading-lg` | 1.75rem (28px) | 700 | 1.5 |
+| `heading-md` | 1.375rem (22px) | 600 | 1.5455 |
+| `heading-sm` | 1.125rem (18px) | 600 | 1.6667 |
+| `heading-xs` | 1.125rem (18px) | 600 | 1.6667 |
+| `title` | 1rem (16px) | 600 | 1.625 |
+| `body-lg` | 1.0625rem (17px) | 400 | 1.8824 |
+| `body-md` | 1rem (16px) | 400 | 1.75 |
+| `body-sm` | 0.875rem (14px) | 400 | 1.7143 |
+| `caption` | 0.75rem (12px) | 400 | 1.6667 |
+| `label-lg` | 1rem (16px) | 500 | 1.5 |
+| `label-md` | 0.875rem (14px) | 500 | 1.4286 |
+| `label-sm` | 0.75rem (12px) | 500 | 1.5 |
+| `numeric-xl` | 2.25rem (36px) | 700 | 1.3333 |
+| `numeric-lg` | 1.75rem (28px) | 600 | 1.4286 |
+| `numeric-md` | 1.5rem (24px) | 600 | 1.4167 |
+| `code` | 0.8125rem (13px) | 400 | 1.6923 |
+| `display` | 2.25rem (36px) | 700 | 1.4444 |
+| `title-1` | 1.75rem (28px) | 700 | 1.5 |
+| `title-2` | 1.375rem (22px) | 600 | 1.5455 |
+| `title-3` | 1.125rem (18px) | 600 | 1.6667 |
+| `headline` | 1rem (16px) | 600 | 1.625 |
+| `body-reading` | 1.0625rem (17px) | 400 | 1.8824 |
+| `body` | 1rem (16px) | 400 | 1.75 |
+| `label` | 0.875rem (14px) | 500 | 1.4286 |
+| `numeric` | 1.75rem (28px) | 600 | 1.4286 |

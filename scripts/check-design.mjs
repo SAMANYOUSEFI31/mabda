@@ -44,7 +44,7 @@ const rules = [
   { id: 'scale', tok: new RegExp(`^-?${SPACING_PREFIX}-(?:\\d+(?:\\.\\d+)?|px)$`), msg: 'numeric scale — use space-*/inset-*/stack-*/inline-*/control-*/icon-* tokens' },
   { id: 'scale', tok: /^text-(?:xs|sm|base|lg|xl|[2-9]xl)$/, msg: 'Tailwind text size — use text-body-md / label-md / heading-* etc.' },
   { id: 'scale', ctx: /class|@apply/, tok: /^(?:shadow|rounded)$/, msg: 'bare shadow/rounded — use shadow-raised|overflow|overlay and rounded-control|container|overlay|pill' },
-  { id: 'scale', tok: /^(?:font-(?:thin|extralight|light|medium|extrabold|black)|italic|not-italic|text-justify|tracking-(?:tighter|tight|normal|wide|wider|widest)|leading-(?:\d+|none|loose))$/, msg: 'type rule: weights 400/600/700 only, no italics, no justify, letter-spacing 0' },
+  { id: 'scale', tok: /^(?:font-(?:thin|extralight|light|extrabold|black)|italic|not-italic|text-justify|tracking-(?:tighter|tight|normal|wide|wider|widest)|leading-(?:\d+|none|loose))$/, msg: 'type rule: weights 400/500/600/700 only, no italics, no justify, letter-spacing 0' },
   { id: 'scale', tok: /^(?:shadow-(?:xs|sm|md|lg|xl|2xl|inner|none)|backdrop-blur(?:-\S+)?|blur(?:-\S+)?|drop-shadow(?:-\S+)?|z-\d+)$/, msg: 'non-token shadow/radius/blur/z-index — use shadow-raised|overflow|overlay, rounded-*, z-dialog …' },
 ];
 
