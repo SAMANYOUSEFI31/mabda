@@ -641,6 +641,73 @@ export const MIGRATIONS: Migration[] = [
       db.exec('ALTER TABLE thoughts ADD COLUMN resolved_removed INTEGER NOT NULL DEFAULT 0');
     },
   },
+  {
+    version: 25,
+    name: 'intelligence layer: derived embeddings (by item + text hash), suggestions and the user reaction to them',
+    up(db) {
+      // The intelligence layer is a side axis: it only READS knowledge / thoughts / notes and writes ONLY these three tables.
+      // Nothing here is truth, a relation or structure. Without a key the tables stay empty and the product works as before.
+      db.exec(`
+        CREATE TABLE intelligence_embeddings (
+          workspace_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          item_kind TEXT NOT NULL,       -- 'object' | 'thought' | 'note' | 'file'
+          item_id TEXT NOT NULL,
+          chunk_index INTEGER NOT NULL,
+          text_hash TEXT NOT NULL,       -- hash of the text + chunker version + model id: a changed text is never served an old vector
+          model_key TEXT NOT NULL,
+          dims INTEGER NOT NULL,
+          vector BLOB NOT NULL,          -- float32[]; a derived value, never shown
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (workspace_id, user_id, item_kind, item_id, chunk_index, text_hash, model_key)
+        );
+        CREATE INDEX idx_intel_emb_item ON intelligence_embeddings(workspace_id, user_id, item_kind, item_id);
+
+        -- «a suggestion»: what the layer proposed. It holds ids, labels and scores — never the user's text.
+        CREATE TABLE intelligence_suggestions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          workspace_id TEXT NOT NULL,
+          recipe TEXT NOT NULL,
+          recipe_version INTEGER NOT NULL,
+          kind TEXT NOT NULL,            -- related | thought_kind | knowledge_type | certainty | placement | duplicate | contradiction
+          subject_kind TEXT NOT NULL,    -- thought | object | note | file | text
+          subject_id TEXT,
+          subject_hash TEXT,             -- hash of the subject text when it was suggested (to know it is out of date)
+          suggestion TEXT NOT NULL,      -- JSON: the proposed value(s) — ids / labels / scores
+          specialists TEXT NOT NULL,     -- JSON: which models and rules produced it (model keys + versions)
+          confidence REAL,
+          tier TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_intel_sug_ws ON intelligence_suggestions(workspace_id, user_id, kind, created_at);
+        CREATE INDEX idx_intel_sug_subject ON intelligence_suggestions(workspace_id, user_id, subject_kind, subject_id);
+
+        -- «the user's reaction»: accepted / rejected / changed (+ what she chose instead). Append-only; the user is always the final judge.
+        CREATE TABLE intelligence_reactions (
+          id TEXT PRIMARY KEY,
+          suggestion_id TEXT NOT NULL REFERENCES intelligence_suggestions(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL,
+          workspace_id TEXT NOT NULL,
+          reaction TEXT NOT NULL CHECK (reaction IN ('accepted', 'rejected', 'changed')),
+          final_value TEXT,              -- JSON: what the user ended up with (ids / labels), only for 'changed'
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_intel_react_sug ON intelligence_reactions(suggestion_id);
+        CREATE INDEX idx_intel_react_ws ON intelligence_reactions(workspace_id, user_id, created_at);
+      `);
+      // Derived data goes with its root on EVERY delete path (permanent delete, workspace delete, erase): a trigger, not a call site to remember.
+      for (const [table, kind] of [['context_objects', 'object'], ['thoughts', 'thought'], ['notes', 'note'], ['files', 'file']] as const) {
+        db.exec(`
+          CREATE TRIGGER trg_intel_${kind}_gone AFTER DELETE ON ${table}
+          BEGIN
+            DELETE FROM intelligence_embeddings WHERE workspace_id = OLD.workspace_id AND item_kind = '${kind}' AND item_id = OLD.id;
+            DELETE FROM intelligence_suggestions WHERE workspace_id = OLD.workspace_id AND subject_kind = '${kind}' AND subject_id = OLD.id;
+          END;
+        `);
+      }
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

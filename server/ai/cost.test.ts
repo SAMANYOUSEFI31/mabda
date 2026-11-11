@@ -50,3 +50,22 @@ test('model ids live only in config/models.json', async () => {
   roots.forEach(visit);
   assert.deepEqual(hits, []);
 });
+
+test('intelligence layer: its model ids live only in config/models.json (code, recipes and eval files hold aliases only)', async () => {
+  const { readdirSync, readFileSync, statSync } = await import('node:fs');
+  const { join, sep } = await import('node:path');
+  const { loadIntelligenceConfig } = await import('../intelligence/config.ts');
+  const cfg = loadIntelligenceConfig();
+  const ids = Object.values(cfg.models).map((m) => m.id);
+  assert.ok(ids.length >= 8);
+  const hits: string[] = [];
+  const visit = (p: string) => {
+    if (statSync(p).isDirectory()) { for (const n of readdirSync(p)) if (n !== 'node_modules' && n !== 'data') visit(join(p, n)); return; }
+    const unix = p.split(sep).join('/');
+    if (!/\.(ts|tsx|json|mjs|md)$/.test(unix) || unix.endsWith('ai/config/models.json') || /\.test\.ts$/.test(unix) || unix.includes('/testing/') || unix.endsWith('/audio/README.md')) return;
+    const text = readFileSync(p, 'utf8');
+    for (const id of ids) if (text.includes(id)) hits.push(`${unix}: ${id}`);
+  };
+  ['server', 'src', 'scripts', 'server.ts'].forEach(visit);
+  assert.deepEqual(hits, []);
+});

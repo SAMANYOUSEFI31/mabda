@@ -1,0 +1,88 @@
+{
+  "_comment": [
+    "دستورپخت‌های لایهٔ هوش: ترکیب پرتکرار متخصص‌ها در نقش‌ها. فقط «کلید مستعار» مدل می‌آید؛ نام مدل و قیمت در server/ai/config/models.json است (قانون ۴).",
+    "عوض کردن مدل یا حذف یک مرحله (مثلاً بدون embedding: finders فقط lexical؛ بدون مرتب‌کننده: ranker.enabled=false) فقط تغییر همین فایل است.",
+    "plans: 'all' یا فهرستی از starter|pro|max. تا تصمیم قیمت‌گذاری، همه 'all'اند؛ عدد «چه چیزی در کدام پلن» جای نهایی‌اش src/core/entitlements.config.ts است (قانون ۵) و این فیلد فقط شناسهٔ پلن‌ها را می‌گوید.",
+    "مقدارهای پیش‌فرض اینجا «نقطهٔ شروع» اند، نه نتیجهٔ سنجش: ترکیب برگزیده و آستانه‌ها را bun run eval:intelligence با دادهٔ فارسی پیشنهاد می‌دهد (docs/eval/).",
+    "tiers: آستانه بر اساس امتیاز مرتب‌کننده (نه شمار ثابت). null = هنوز سنجیده نشده؛ همهٔ نتیجه‌ها «unscored» برمی‌گردند. موارد بین weak و strong جدا علامت می‌خورند (tier=weak) تا رابط بعداً به‌تدریج نشانشان دهد.",
+    "minConfidence: null = هنوز سنجیده نشده؛ تا آن زمان فقط پاسخ «هیچ‌کدام/نامعلوم» داور «مطمئن نبود» حساب می‌شود."
+  ],
+  "recipes": {
+    "findRelated": {
+      "kind": "findRelated",
+      "description": "مرتبط‌ها را پیدا کن: یابنده (واژه‌ای + embedding، ترکیب رتبه‌ای) ← مرتب‌کننده (rerank)",
+      "version": 1,
+      "plans": "all",
+      "finders": [
+        { "specialist": "lexical", "weight": 1 },
+        { "specialist": "embedding", "model": "e5-large", "weight": 1, "queryRole": "query" }
+      ],
+      "fusion": { "method": "rrf", "k": 60 },
+      "candidates": 40,
+      "ranker": { "specialist": "rerank", "model": "cohere-rerank-35", "enabled": true },
+      "tiers": { "strong": null, "weak": null },
+      "maxReturned": null
+    },
+    "whatIsThis": {
+      "kind": "whatIsThis",
+      "description": "این چیست؟ داور با سؤال‌های بسته: نوع فکر، نوع دانش، قطعی یا با تردید",
+      "version": 1,
+      "plans": "all",
+      "judge": { "model": "jev-114" },
+      "minConfidence": null,
+      "questions": [
+        {
+          "id": "thoughtKind",
+          "type": "choice",
+          "instructions": "این متن اگر یک فکر هنوز حل‌نشده باشد، کدام نوع فکر است؟ فقط به آنچه در متن آمده تکیه کن.",
+          "criteria": [
+            { "id": "idea", "description": "ایده: طرح یا پیشنهادی برای انجام کاری («بیایم ... را امتحان کنیم»، «می‌شود ... کرد»)" },
+            { "id": "question", "description": "سؤال: پرسشی که پاسخش را نمی‌دانیم و باید روشن شود" },
+            { "id": "assumption", "description": "فرض: ادعایی دربارهٔ وضعیت دنیا یا مشتری که درستی‌اش بررسی نشده و فعلاً فرض گرفته شده" },
+            { "id": "open_decision", "description": "تصمیم باز: باید یکی از چند گزینه را برگزید و هنوز برگزیده نشده" }
+          ]
+        },
+        {
+          "id": "knowledgeType",
+          "type": "choice",
+          "instructions": "این متن اگر دانشِ ثبت‌شدهٔ کسب‌وکار باشد، کدام نوع دانش است؟",
+          "criteria": [
+            { "id": "Fact", "description": "واقعیت: توصیف وضعیت موجود، عدد، داده یا ویژگی" },
+            { "id": "Decision", "description": "تصمیم: انتخابی که گرفته شده و همین‌طور عمل می‌شود" },
+            { "id": "Constraint", "description": "خط قرمز: قاعدهٔ سخت‌گیرانه‌ای که نباید شکسته شود («هرگز»، «ممنوع»، «حتماً»)" }
+          ]
+        },
+        {
+          "id": "certainty",
+          "type": "choice",
+          "instructions": "گوینده چقدر مطمئن حرف می‌زند؟ فقط لحن و واژه‌های متن را بسنج، نه درستی ادعا را.",
+          "criteria": [
+            { "id": "certain", "description": "قطعی: ادعا بدون تردید و بدون قید احتمال گفته شده" },
+            { "id": "uncertain", "description": "با تردید: واژه‌هایی مثل «شاید»، «حدس می‌زنم»، «فکر کنم»، «احتمالاً» یا پرسش و دودلی در متن هست" }
+          ]
+        }
+      ]
+    },
+    "whereTo": {
+      "kind": "whereTo",
+      "description": "کجا برود؟ مرتبط‌ها ← داور برای برگزیدن بخش از نامزدها (+ «هیچ‌کدام»)",
+      "version": 1,
+      "plans": "all",
+      "related": "findRelated",
+      "judge": { "model": "jev-114" },
+      "candidates": "all",
+      "dossier": true,
+      "noneOption": true,
+      "minConfidence": null,
+      "instructions": "این متن به کدام بخش از درخت کسب‌وکار تعلق دارد؟ بخشی را برگزین که موضوع اصلی متن در آن است. اگر به هیچ‌یک مربوط نیست «هیچ‌کدام» را برگزین؛ حدس نزن."
+    },
+    "transcribe": {
+      "kind": "transcribe",
+      "description": "صدا را به متن تبدیل کن",
+      "version": 1,
+      "plans": "all",
+      "model": "whisper-large-v3",
+      "language": "fa"
+    }
+  }
+}
