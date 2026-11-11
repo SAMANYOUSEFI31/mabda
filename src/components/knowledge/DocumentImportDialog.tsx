@@ -94,7 +94,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
               {file && <Button size="sm" variant="ghost" onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ''; }}>برداشتن فایل</Button>}
             </div>
             <Textarea label={file ? 'یا متن را بچسبان (با فایل انتخاب‌شده کاری ندارد)' : 'یا متن را بچسبان'} dir="auto" rows={9} value={text} disabled={!!file} onChange={(e) => setText(e.target.value)} hint="متن بی‌تیتر و نامرتب هم درست وارد می‌شود." />
-            <div><Button size="sm" variant="ghost" iconStart="Brain" onClick={onSwitch}>به‌جای این، حافظهٔ ابزار دیگر را وارد کن</Button></div>
+            <div><Button size="sm" variant="ghost" iconStart="FolderInput" onClick={onSwitch}>به‌جای این، حافظهٔ ابزار دیگر را وارد کن</Button></div>
           </div>
         )}
 

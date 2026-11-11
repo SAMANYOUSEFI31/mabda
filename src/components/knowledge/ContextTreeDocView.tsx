@@ -137,7 +137,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
                 { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Brain' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
+                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Target' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },

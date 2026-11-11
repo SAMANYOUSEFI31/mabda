@@ -75,7 +75,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <div className="flex flex-wrap items-center gap-inline-sm">
           <span className="label-md text-text-default">مربی دانش</span>
-          <Badge intent="neutral" icon="Brain">سطح متعادل</Badge>
+          <Badge intent="neutral" icon="Target">سطح متعادل</Badge>
         </div>
         {quota && <span className="caption text-text-subtle">باقی‌ماندهٔ امروز: {formatNumber(quota.remaining)} از {formatNumber(quota.limit)}</span>}
       </div>

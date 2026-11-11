@@ -9,7 +9,7 @@ import type { SearchHit, SearchIndex, SearchKind } from '../../core/globalSearch
 import { Dialog, Icon, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
 
-const ICON: Record<SearchHit['kind'], IconName> = { command: 'Zap', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
+const ICON: Record<SearchHit['kind'], IconName> = { command: 'CornerDownLeft', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
 
 type Row = { type: 'hit'; hit: SearchHit } | { type: 'more'; kind: SearchKind; remaining: number };
 

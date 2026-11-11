@@ -35,6 +35,7 @@ const rules = [
   { id: 'raw-var', line: true, re: /var\(--(?:neutral|crimson|vermilion|amber|emerald|sky|ink|lapis|verdigris|ochre|brick|petrol)-(?:\d+|a\d+)\)|var\(--white(?:-a\d+)?\)/g, msg: 'raw palette variable — use surface-*/bg-*/text-*/border-* tokens' },
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
+  { id: 'ai-icon', line: true, re: /\b(?:Sparkles?|Wand2?|WandSparkles|Zap|Brain|BrainCircuit|Bot|Stars)\b/g, msg: 'AI-magic icon — forbidden (docs/design-system/iconography.md, «ممنوع»); say it in words' },
   // ---- token (class) rules ----
   { id: 'brand', ctx: /./, notIn: /^src\/ui\//, tok: /(?:^|-)(?:bg|text|border|icon)-brand(?:-\S+)?$/, msg: 'brand color outside src/ui — brand is only for the primary Button / BrandMark (never error, warning, selection or link)' },
   { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },

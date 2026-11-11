@@ -4,12 +4,12 @@ import {
   LoaderCircle, Minus, ArrowLeft, ArrowRight, Plus, Flame, Search, Trash2, Bell, House, CalendarDays, ChartColumn,
   User, Settings, Ellipsis, Copy, Inbox, Pencil, Share2, LogOut, ExternalLink,
   // Extra names the Mabda app needs (all from lucide).
-  Menu, Download, Building2, MessageSquare, Lightbulb, Zap, Network, Palette, Tag as TagIcon, Shield, BookOpen,
-  CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Sparkles, Eye, Lock, Layers, Table2,
-  Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive, CircleDot,
+  Menu, Download, Building2, MessageSquare, Lightbulb, Network, Palette, Tag as TagIcon, Shield, BookOpen,
+  CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Eye, Lock, Layers, Table2,
+  Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive, CircleDot,
   ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
-  SunMoon, FolderInput, PackageOpen, RotateCcw,
+  SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
 } from 'lucide-react';
 import { cx } from './cx.ts';
 
@@ -17,12 +17,12 @@ const ICONS = {
   Check, X, TriangleAlert, OctagonAlert, Info, CircleCheck, ChevronDown, ChevronLeft, ChevronRight, LoaderCircle,
   Minus, ArrowLeft, Plus, Flame, Search, Trash2, Bell, House, CalendarDays, ChartColumn, User, Settings, Ellipsis,
   Copy, Inbox, Pencil, Share2, LogOut, ExternalLink,
-  ChevronUp, ArrowRight, Menu, Download, Building2, MessageSquare, Lightbulb, Zap, Network, Palette, TagIcon,
-  Shield, BookOpen, CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Sparkles, Eye, Lock,
-  Layers, Table2, Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive,
+  ChevronUp, ArrowRight, Menu, Download, Building2, MessageSquare, Lightbulb, Network, Palette, TagIcon,
+  Shield, BookOpen, CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Eye, Lock,
+  Layers, Table2, Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive,
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
-  SunMoon, FolderInput, PackageOpen, RotateCcw,
+  SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -46,7 +46,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
                   { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
                   { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                   { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                  { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
+                  { label: 'شروع سریع', icon: 'Compass', onSelect: () => setIsOnboardingOpen(true) },
                 ]}
               />}
             </div>
@@ -58,7 +58,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               description="یک جمله دربارهٔ کسب‌وکارت بنویس یا یک متن بچسبان؛ بقیه‌اش را مبدأ مرتب می‌کند. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
               action={(
                 <div className="flex flex-wrap justify-center gap-inline-md">
-                  <Button variant="primary" iconStart="Zap" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                  <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
                   <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
                   <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
                 </div>

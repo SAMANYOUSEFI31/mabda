@@ -40,7 +40,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
     <div className="flex flex-wrap items-center gap-inline-sm">
       <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای استفاده در هر ابزار</Button>
       <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن متن آماده</Button>
-      <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن سند یا حافظه</Button>
+      <Button variant="secondary" size="sm" iconStart="FolderInput" onClick={onOpenMemory}>وارد کردن سند یا حافظه</Button>
     </div>
   );
 
