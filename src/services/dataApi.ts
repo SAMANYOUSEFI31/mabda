@@ -216,6 +216,12 @@ export const dataApi = {
   featureUsage: () => call<{ rows: Array<{ feature: string; count: number; lastAt: string }> }>('GET', '/admin/usage'),
   costReport: (month?: string) => call<{ month: string; rows: CostReportRowInfo[] }>('GET', `/admin/cost-report${month ? `?month=${month}` : ''}`),
 
+  previewDocument: (id: string, input: { file: File } | { text: string; name?: string }) => {
+    if ('file' in input) { const form = new FormData(); form.set('file', input.file); return call<DocumentPreviewInfo>('POST', `${ws(id)}/memory/document/preview`, form); }
+    return call<DocumentPreviewInfo>('POST', `${ws(id)}/memory/document/preview`, input);
+  },
+  importDocument: (id: string, input: { name: string; text: string; chunks: Array<{ text: string; section?: string }> }) => call<DocumentImportResult>('POST', `${ws(id)}/memory/document`, input),
+
   fileQuota: (id: string) => call<FileQuotaInfo>('GET', `${ws(id)}/files/quota`),
   uploadFile: (id: string, file: File, nodeId?: string) => {
     const form = new FormData();
@@ -226,6 +232,18 @@ export const dataApi = {
   processFile: (id: string, fileId: string) => call<ProcessedFile>('POST', `${ws(id)}/files/${fileId}/process`, {}),
   deleteFile: (id: string, fileId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/files/${fileId}`),
 };
+
+/** «وارد کردن سند»: the preview of the notes a document would become (nothing is saved) and the commit */
+export interface DocumentPreviewInfo {
+  name: string;
+  text: string;
+  hash: string;
+  chars: number;
+  chunks: import('../core/docImportEdit').ImportChunk[];
+  headings: string[];
+  duplicate?: { fileId: string; name: string; importedAt: string; noteCount: number };
+}
+export interface DocumentImportResult { duplicate: boolean; file: StoredFile; notes: Note[]; thoughts: import('../types').Thought[]; nodes: TreeNode[] }
 
 export type { WorkspaceState, ImpactInfo };
 

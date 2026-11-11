@@ -2,7 +2,10 @@
  * Memory of another AI → PROPOSED objects, and extracting an output into proposals.
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
+import multer from 'multer';
 import type { RouteContext } from './context.ts';
+import { DocImportService } from '../../docimport/service.ts';
+import { MAX_FILE_BYTES } from '../../files/extract.ts';
 import { AiError } from '../../ai/errors.ts';
 import { RepoError, newId } from '../repo.ts';
 import { defaultNodeId } from '../../../src/core/nodeTree.ts';
@@ -12,6 +15,32 @@ import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerMemoryRoutes(ctx: RouteContext): void {
   const { repo, ai, router, scopeOf, body, wrap, LOCAL_USER, today } = ctx;
+  const docs = new DocImportService(repo);
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
+
+  /**
+   * «وارد کردن سند»: a pasted text or a txt / md / docx / pdf file → the PREVIEW of the notes it would become (nothing is saved,
+   * no AI). Deterministic: headings, bullets, blank lines and length only. The client sends the text back unchanged with the
+   * chunks the user kept (merged / split) to the commit below.
+   */
+  router.post('/workspaces/:wid/memory/document/preview', upload.single('file'), wrap(async (req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    // browsers send the name as latin1 bytes inside multipart; restore UTF-8 names (Persian file names)
+    const file = req.file ? { name: Buffer.from(req.file.originalname, 'latin1').toString('utf8'), buffer: req.file.buffer } : undefined;
+    res.json(await docs.preview(s, { text: typeof b.text === 'string' ? b.text : undefined, name: typeof b.name === 'string' ? b.name : undefined, file }));
+  }));
+  router.post('/workspaces/:wid/memory/document', wrap((req, res) => {
+    const s = scopeOf(req);
+    const b = body(req);
+    res.json(docs.commit(s, { name: typeof b.name === 'string' ? b.name : undefined, text: String(b.text ?? ''), chunks: Array.isArray(b.chunks) ? b.chunks : [] }));
+  }));
+  router.get('/workspaces/:wid/notes/:id/source', wrap((req, res) => {
+    const r = docs.sourceOf(scopeOf(req), req.params.id);
+    if (!r) throw new RepoError('not_found', 'این یادداشت منبعی ندارد.');
+    res.json(r);
+  }));
+
   router.post('/workspaces/:wid/memory/import', wrap(async (req, res) => {
     const s = scopeOf(req);
     const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;

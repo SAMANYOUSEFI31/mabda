@@ -60,7 +60,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
                 <div className="flex flex-wrap justify-center gap-inline-md">
                   <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
                   <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
-                  <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن حافظه از ابزار دیگر</Button>
+                  <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
                 </div>
               )}
             />

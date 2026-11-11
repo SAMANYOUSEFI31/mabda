@@ -92,7 +92,7 @@ export function KnowledgeDialogs({ archiveOpen, attempt, compare, currentWorkspa
     /></Deferred>
     <Deferred when={!!readNodeId}><NodeReaderDialog nodeId={readNodeId} nodes={nodes} objects={workspaceContexts} relationships={data?.relationships ?? []} onClose={() => setReadNodeId(null)} /></Deferred>
     <Deferred when={isBatchOpen}><KnowledgeBatchDialog open={isBatchOpen} onClose={() => setIsBatchOpen(false)} nodes={nodes} onPropose={handleProposeBatch} /></Deferred>
-    <Deferred when={isMemoryOpen}><MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} /></Deferred>
+    <Deferred when={isMemoryOpen}><MemoryImportDialog open={isMemoryOpen} workspaceId={wid} onClose={() => setIsMemoryOpen(false)} onDocumentImported={() => void reload(wid)} onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))} /></Deferred>
     </>
   );
 }

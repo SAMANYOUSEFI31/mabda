@@ -708,6 +708,20 @@ export const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 26,
+    name: 'document import: files keep a content hash (a re-import is detected), notes point to their place in the source file',
+    up(db) {
+      // the hash is of the NORMALISED text, so pasting a document and uploading the same document are the same document
+      db.exec('ALTER TABLE files ADD COLUMN content_hash TEXT');
+      db.exec('CREATE INDEX idx_files_hash ON files(workspace_id, user_id, content_hash)');
+      // a note made from a document: which file, and the character range of the passage in the file's stored text (null = could not be located)
+      db.exec('ALTER TABLE notes ADD COLUMN source_file_id TEXT');
+      db.exec('ALTER TABLE notes ADD COLUMN source_start INTEGER');
+      db.exec('ALTER TABLE notes ADD COLUMN source_end INTEGER');
+      db.exec('CREATE INDEX idx_notes_source ON notes(source_file_id)');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
