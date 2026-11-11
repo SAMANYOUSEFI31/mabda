@@ -128,7 +128,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
             );
           })}
         </div>
-        <p className="body-sm text-text-subtle">↑ ↓ برای حرکت · Enter برای باز کردن (یا نمایش بیشتر) · Esc برای بستن</p>
+        <p className="kbd-hint body-sm text-text-subtle">↑ ↓ برای حرکت · Enter برای باز کردن (یا نمایش بیشتر) · Esc برای بستن</p>
       </div>
     </Dialog>
   );

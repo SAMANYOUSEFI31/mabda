@@ -82,7 +82,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
       {items.map((it) => {
         const done = !!convertedTo(it, objects);
         return (
-          <li key={it.key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
+          <li key={it.key} data-knowledge={done ? 'past' : 'thought'} className="mb-knowledge flex flex-col gap-stack-sm p-inset-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-inline-sm">
             <span className="flex min-w-space-0 flex-1 flex-wrap items-center gap-inline-sm">
               <ThinkingBadge kind={it.kind} />
               <span className="body-md whitespace-pre-wrap text-text-default">{stripAbout(it.text) || it.text}</span>
@@ -95,14 +95,14 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
             </span>
             <span className="flex flex-wrap items-center gap-inline-xs">
               {onToggleSelection && it.id && <Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} />}
-              {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به گره</Button>}
+              {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به بخش</Button>}
               {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="Layers" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
               {!done && onToSection && it.noteId && <Button size="sm" variant="ghost" iconStart="Network" onClick={() => onToSection(it)}>ساخت بخش</Button>}
               {!done && promotionTypesForThought(it.kind).length > 0 && (
                 <Menu
                   label="انتقال فکر به دانش"
                   align="end"
-                  trigger={<Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === it.key}>به دانش ببر</Button>}
+                  trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>به دانش ببر</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
                     label: `قلم پیشنهادی: ${type === 'Fact' ? 'واقعیت' : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}`,
                     icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Shield',

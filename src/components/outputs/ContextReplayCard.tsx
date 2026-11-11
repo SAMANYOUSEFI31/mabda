@@ -87,7 +87,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-inline-xs">
-          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="Sparkles" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
+          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
           <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
           <Menu
             label="بیشتر دربارهٔ این خروجی"
@@ -136,11 +136,11 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
 
       {/* the trail (what it was built from) and the criteria: a closed section */}
       <div className="flex flex-col gap-stack-sm">
-        <div>
+        <div className="flex flex-wrap items-center gap-inline-sm">
           <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
             ردپای دانش و معیارها
           </Button>
-          <span className="body-sm ms-inline-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
+          <span className="body-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
         </div>
         {traceOpen && (
           <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

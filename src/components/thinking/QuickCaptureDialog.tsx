@@ -101,6 +101,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
     } finally { setBusy(false); }
   };
 
+  const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   return (
     <Dialog
       open={open} onClose={onClose} size="md" title="ثبت سریع"
@@ -116,7 +117,9 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
           <MentionTextarea
             label="چه چیزی به ذهنت رسید؟" rows={4} value={text} onValueChange={onTextChange} objects={objects}
             placeholder="هر طولی، هر شکلی؛ مرتب نبودنش مشکلی نیست."
-            hint={split ? 'Enter: فکر بعدی · Shift+Enter: خط تازه در همین فکر · Ctrl/⌘+Enter: ثبت' : 'Ctrl/⌘+Enter: ثبت · متنی که با ؟ تمام شود «سؤال» می‌شود.'}
+            // a keyboard hint only where there is a keyboard; Persian first so the line reads in order (Latin keys sit at the end of each part)
+            hint={touch ? (split ? 'هر خط یک فکر جدا می‌شود.' : 'متنی که با ؟ تمام شود «سؤال» می‌شود.')
+              : split ? 'فکر بعدی با Enter · خط تازه در همین فکر با Shift+Enter · ثبت با Ctrl/⌘+Enter' : 'ثبت با Ctrl/⌘+Enter · متنی که با ؟ تمام شود «سؤال» می‌شود.'}
           />
           <div className="flex flex-wrap items-center gap-inline-sm">
             {several && <Checkbox label="هر خط یک فکر جدا" checked={perLine} onChange={(e) => setPerLine(e.target.checked)} />}
