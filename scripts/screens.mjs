@@ -31,7 +31,11 @@ const audit = () => {
   const over = (top, bot) => ({ r: top.r * top.a + bot.r * (1 - top.a), g: top.g * top.a + bot.g * (1 - top.a), b: top.b * top.a + bot.b * (1 - top.a), a: 1 });
   const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   const bgOf = (el) => { const chain = []; for (let e = el; e; e = e.parentElement) chain.push(e); let bg = { r: 255, g: 255, b: 255, a: 1 }; for (const e of chain.reverse()) { const c = parse(getComputedStyle(e).backgroundColor); if (c && c.a > 0) bg = over(c, bg); } return bg; };
-  out.primaries = [...document.querySelectorAll('.mb-btn--primary')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[inert]'); }).length;
+  // lapis actions actually painted: primary buttons that still wear the brand fill, plus «افزودن» in the bottom bar
+  const lapis = getComputedStyle(document.documentElement).getPropertyValue('--button-primary-bg').trim();
+  const probe = document.createElement('i'); probe.style.background = lapis; document.body.append(probe);
+  const lapisRgb = getComputedStyle(probe).backgroundColor; probe.remove();
+  out.primaries = [...document.querySelectorAll('.mb-btn--primary, .mb-bottomnav .is-action .mb-bottomnav__icon')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('[inert]') && getComputedStyle(e).backgroundColor === lapisRgb; }).length;
   const de = document.documentElement;
   if (de.scrollWidth > de.clientWidth + 1) {
     const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
@@ -63,7 +67,7 @@ const audit = () => {
       if (!seen.has(key)) {
         seen.add(key);
         if (fs < 12) out.tiny.push(`${fs}px "${own.slice(0, 40)}"`);
-        else if (own.length > 45 && fs < 14) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
+        else if (own.length > 45 && fs < 14 && !el.closest('pre, code')) out.smallBody.push(`${fs}px "${own.slice(0, 40)}"`);
       }
     }
     if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {
@@ -102,7 +106,8 @@ const audit = () => {
     }
     return { left, top, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
   };
-  const boxes = pieces.filter((e) => !deco(e)).map((e) => ({ e, r: shown(e), pin: pinned(e) })).filter((b) => b.r.width > 0 && b.r.height > 0);
+  // a run of inline text that wraps onto several lines has one box over all of them: it is laid out, not overlapping
+  const boxes = pieces.filter((e) => !deco(e) && !(getComputedStyle(e).display === 'inline' && e.getClientRects().length > 1)).map((e) => ({ e, r: shown(e), pin: pinned(e) })).filter((b) => b.r.width > 0 && b.r.height > 0);
   for (let i = 0; i < boxes.length && out.overlap.length < 12; i++) for (let j = i + 1; j < boxes.length; j++) {
     const A = boxes[i], B = boxes[j];
     if (A.e.contains(B.e) || B.e.contains(A.e)) continue;
