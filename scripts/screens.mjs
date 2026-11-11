@@ -14,7 +14,8 @@ mkdirSync(OUT, { recursive: true });
 
 const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
-  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }];
+  // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
+  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }];
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
@@ -116,7 +117,9 @@ const audit = () => {
     const r = e.getBoundingClientRect();
     for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
       const cs = getComputedStyle(a);
-      if (!/hidden|clip/.test(cs.overflowX + cs.overflowY) || /auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
+      // inside a scrolling box the user can reach it: what clips that box above it does not cut this element
+      if (/auto|scroll/.test(cs.overflowX + cs.overflowY)) break;
+      if (!/hidden|clip/.test(cs.overflowX + cs.overflowY)) continue;
       const ar = a.getBoundingClientRect();
       if (r.top < ar.top - 2 || r.bottom > ar.bottom + 2 || r.left < ar.left - 2 || r.right > ar.right + 2) { out.clipped.push(`${label(e)} cut by <${a.tagName.toLowerCase()}.${String(a.className).split(' ')[0]}>`); }
       break;
@@ -248,6 +251,16 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     await page.waitForTimeout(250);
   };
   await openAccount(); await shoot(mobile ? 'drawer-account' : 'menu-account'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+  // the space picker (head of the bar / top bar on phones)
+  const spaceItem = async (name) => { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await page.getByRole('menuitem', { name }).first().click(); await page.waitForTimeout(250); };
+  await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await shoot('menu-space'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+  if (!mobile) {
+    // the narrow (hidden) sidebar: the account menu opens from the peek panel and must still sit fully inside the window
+    await page.getByRole('button', { name: 'پنهان کردن نوار کناری' }).click(); await page.waitForTimeout(200);
+    await page.getByRole('button', { name: 'جا دادن نوار کناری' }).hover(); await page.getByTestId('sidebar-peek').waitFor();
+    await page.getByTestId('sidebar-peek').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
+    await page.keyboard.press('Escape'); await page.getByTestId('sidebar-peek').getByRole('button', { name: 'جا دادن نوار کناری' }).click(); await page.mouse.move(size.width / 2, size.height / 2); await page.waitForTimeout(300);
+  }
   await accountItem('مصرف و دفتر کل'); await shoot('ledger');
   // plan / economics tabs exist only when MABDA_MANAGED_AI is on
   const maybe = async (loc, fn) => { if (await loc.count()) await fn(loc.first()); };
@@ -256,10 +269,10 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await maybe(page.getByRole('tab', { name: /مصرف و سهمیه/ }), async (l) => { await l.click(); await shoot('ledger-usage'); });
 
   await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
-  await accountItem('شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
+  await accountItem('راهنما و شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   // the truth overview, its focused lineage view, and the free thinking canvas
-  await accountItem('بازسازی فضای نمونه');
+  await spaceItem('بازسازی فضای نمونه');
   await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 2500 }).catch(() => {});
   await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
   await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});

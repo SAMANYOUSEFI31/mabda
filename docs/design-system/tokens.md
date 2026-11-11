@@ -17,7 +17,7 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 
 `bun run tokens` از این‌ها `src/ui/tokens/build/` (CSS و تم Tailwind) را می‌سازد. `tokens.test.ts` این‌ها را اجبار می‌کند: هم‌خوانی خروجی با منبع، کامل‌بودن هر تم، نبود ارجاع جزء به پله، و کف‌های کنتراست [color.md](./color.md) در هر تم.
 
-> **خروجی build باید پس از کلون تازه وجود داشته باشد.** اکنون `build/` در `.gitignore` است و `bun run dev` بدون اجرای دستی `bun run tokens` با صفحهٔ بی‌سبک بالا می‌آید. راه‌حل در [implementation-plan.md](./implementation-plan.md)، گام ۰.
+> **خروجی build در ریپو است** (`src/ui/tokens/build/`، استثنا در `.gitignore`) تا کلون تازه بی‌سبک بالا نیاید؛ `bun run build` با `--check` کهنه‌بودنش را رد می‌کند ([implementation-plan.md](./implementation-plan.md)، ۰٫۱).
 
 ## نام‌گذاری
 
