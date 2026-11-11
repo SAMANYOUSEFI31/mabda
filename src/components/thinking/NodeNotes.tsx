@@ -16,7 +16,7 @@ interface Props {
   /** for «@»: the knowledge a note can name (a note itself holds no relationship) */
   objects: ContextObject[];
   extractingId: string | null;
-  onAdd: (nodeId: string, content: string) => Promise<void>;
+  onAdd: (nodeId: string, content: string) => Promise<unknown>;
   onUpdate: (noteId: string, content: string) => Promise<void>;
   onDelete: (noteId: string) => Promise<void>;
   /** «استخراج»: the note becomes Proposed objects (never facts) */
@@ -34,7 +34,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
   const add = async () => {
     if (!draft.trim()) return;
     setBusy(true);
-    try { await onAdd(nodeId, draft.trim()); setDraft(''); } finally { setBusy(false); }
+    try { if ((await onAdd(nodeId, draft.trim())) !== false) setDraft(''); } finally { setBusy(false); }
   };
 
   return (
