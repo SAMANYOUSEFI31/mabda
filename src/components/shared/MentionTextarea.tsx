@@ -17,6 +17,9 @@ interface Props {
   selfId?: string;
   rows?: number;
   required?: boolean;
+  /** a Persian message beside the field (aria-invalid + aria-describedby come from Textarea) */
+  error?: React.ReactNode;
+  id?: string;
   placeholder?: string;
   hint?: React.ReactNode;
 }
@@ -26,7 +29,7 @@ interface Props {
  * no relationship is made here (the save step only SUGGESTS one; src/core/mentions.ts).
  * Keys while the list is open: ↑ ↓ move, Enter or Tab choose. The list closes when the caret leaves the `@word`.
  */
-export const MentionTextarea: React.FC<Props> = ({ label, value, onValueChange, objects, selfId, rows, required, placeholder, hint }) => {
+export const MentionTextarea: React.FC<Props> = ({ label, value, onValueChange, objects, selfId, rows, required, placeholder, hint, error, id }) => {
   const uid = useId();
   const ta = useRef<HTMLTextAreaElement | null>(null);
   const [caret, setCaret] = useState(0);
@@ -49,7 +52,7 @@ export const MentionTextarea: React.FC<Props> = ({ label, value, onValueChange, 
   return (
     <div className="flex flex-col gap-stack-xs">
       <Textarea
-        label={label} required={required} rows={rows} value={value} placeholder={placeholder} hint={hint ?? 'با @ نام یک دانش را بیاور؛ فقط ارجاع می‌نویسد و خودش رابطه نمی‌سازد.'}
+        id={id} label={label} required={required} error={error} rows={rows} value={value} placeholder={placeholder} hint={hint ?? 'با @ نام یک دانش را بیاور؛ فقط ارجاع می‌نویسد و خودش رابطه نمی‌سازد.'}
         onChange={(e) => { onValueChange(e.target.value); sync(e.target); setPos(0); setMuted(null); }}
         onSelect={(e) => sync(e.currentTarget)}
         onKeyUp={(e) => sync(e.currentTarget)}

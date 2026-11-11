@@ -514,7 +514,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
             <Card padding="md" className="flex flex-col gap-stack-sm">
               <div className="flex items-center justify-between gap-inline-sm">
                 <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
-                  <Icon name="Zap" size="md" className="text-icon-subtle" />
+                  <Icon name="Compass" size="md" className="text-icon-subtle" />
                   پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی
                 </span>
                 <span className="caption text-text-subtle">یک انتخاب برای آغاز</span>
@@ -615,7 +615,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           <span className="caption text-text-subtle">{fairUse.isSoftExceeded ? 'امروز زیاد گفتگو کردی؛ تا فردا پاسخ‌ها سریع‌تر و سبک‌تر است و حالت عمیق متوقف است.' : ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت خودکار رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت خودکار')}</span>
         </div>
 
-        <form onSubmit={handleSend} className="flex items-start gap-inline-sm">
+        <form noValidate onSubmit={handleSend} className="flex items-start gap-inline-sm">
           <div className="flex-1">
             <TextField
               aria-label="پیام شما"

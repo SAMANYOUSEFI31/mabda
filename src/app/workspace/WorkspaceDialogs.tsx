@@ -5,6 +5,7 @@
 
 /** The dialogs of workspace: plans, account, usage, the demo workspace, a new workspace. Each lazy dialog loads the first time it is opened. */
 
+import { useState } from 'react';
 import { DangerDialog } from '../../components/shared/Removal';
 import { Button, Dialog, TextField } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
@@ -18,6 +19,7 @@ const UsageDialog = lazyNamed(() => import('../../components/workspace/UsageDial
 export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoBusy' | 'demoConfirm' | 'demoDelete' | 'handleArchiveWorkspace' | 'handleChangePlan' | 'handleCreateWorkspace' | 'handleDeleteDemo' | 'handleDeleteEverything' | 'handleDeleteWorkspace' | 'handleExportAllData' | 'handleResetDemo' | 'isAccountModalOpen' | 'isNewWorkspaceModalOpen' | 'isPlanModalOpen' | 'newWsName' | 'setArchiveOpen' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsPlanModalOpen' | 'setNewWsName' | 'setUsageOpen' | 'usageOpen'>;
 
 export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleChangePlan, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, isPlanModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setIsPlanModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
+  const [nameError, setNameError] = useState('');
   return (
     <>
     <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
@@ -55,7 +57,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
     {/* New workspace dialog */}
     <Dialog
       open={isNewWorkspaceModalOpen}
-      onClose={() => setIsNewWorkspaceModalOpen(false)}
+      onClose={() => { setIsNewWorkspaceModalOpen(false); setNameError(''); }}
       size="sm"
       title="ایجاد فضای کاری جدید"
       description="هر فضای کاری داده‌های منبع حقیقت، دارایی‌ها و تاریخچهٔ جداگانه‌ای دارد."
@@ -66,13 +68,15 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
         </>
       }
     >
-      <form id="new-workspace-form" onSubmit={handleCreateWorkspace}>
+      <form id="new-workspace-form" noValidate onSubmit={(e) => { if (!newWsName.trim()) { e.preventDefault(); setNameError('نام فضا را بنویس تا ساخته شود.'); document.getElementById('new-workspace-name')?.focus(); return; } void handleCreateWorkspace(e); }}>
         <TextField
           label="نام فضای کاری یا نام برند"
+          id="new-workspace-name"
           required
           placeholder="مثلاً: استودیو دیزاین نوین"
           value={newWsName}
-          onChange={(e) => setNewWsName(e.target.value)}
+          error={nameError || undefined}
+          onChange={(e) => { setNewWsName(e.target.value); if (nameError && e.target.value.trim()) setNameError(''); }}
         />
       </form>
     </Dialog>

@@ -48,11 +48,11 @@ export function TextField({ label, hint, error, required, disabled, id, forceSta
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className}>
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
       <span className={cx('mb-inputwrap', iconStart && 'has-start', iconEnd && 'has-end')}>
         {iconStart && <Icon name={iconStart} size="md" className="mb-inputwrap__icon is-start" />}
         <input
-          id={fid} type={type} disabled={disabled} required={required} data-force={forceState}
+          id={fid} type={type} disabled={disabled} aria-required={required || undefined} data-force={forceState}
           aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
           className={cx('mb-field__input', 'body-md', SIZE_CLS[size])} {...rest}
         />
@@ -73,9 +73,9 @@ export function Textarea({ label, hint, error, required, disabled, id, rows = 4,
   const [len, setLen] = useState(String(value ?? defaultValue ?? '').length);
   const counter = maxLength ? <span className="mb-field__count caption" aria-live="polite">{formatNumber(len)} / {formatNumber(maxLength)}</span> : null;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
       <textarea
-        id={fid} rows={rows} maxLength={maxLength} value={value} defaultValue={defaultValue} disabled={disabled} required={required}
+        id={fid} rows={rows} maxLength={maxLength} value={value} defaultValue={defaultValue} disabled={disabled} aria-required={required || undefined}
         data-force={forceState} aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
         onChange={(e) => { setLen(e.target.value.length); onChange?.(e); }}
         className="mb-field__input mb-field__input--multi body-md" {...rest}
@@ -95,10 +95,10 @@ export function Select({ label, hint, error, required, disabled, id, options, pl
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className}>
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
       <span className="mb-select">
         <select
-          id={fid} disabled={disabled} required={required} value={value}
+          id={fid} disabled={disabled} aria-required={required || undefined} value={value}
           defaultValue={value === undefined ? (defaultValue ?? (placeholder ? '' : undefined)) : undefined}
           onChange={onChange} data-force={forceState} aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
           className={cx('mb-field__input', 'mb-select__input', 'body-md', SIZE_CLS[size])} {...rest}

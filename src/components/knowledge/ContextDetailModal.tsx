@@ -138,6 +138,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   // opening a knowledge that has a draft continues the DRAFT (the approved text is shown next to it, below)
   const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
   const [content, setContent] = useState(object?.draft?.content ?? object?.content ?? '');
+  const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   // the kind and the title are guessed from the text until the user picks / writes her own (src/core/knowledgeGuess.ts)
@@ -220,7 +221,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalTitle = title.trim() || guessTitle(content);
-    if (!content.trim()) return;
+    if (!content.trim()) { setContentError('آنچه درست است را بنویس تا ثبت شود.'); document.getElementById('context-content')?.focus(); return; }
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
 
     if (isSupersedingMode && object) {
@@ -328,7 +329,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       {tab === 'history' && isEditing && (
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
-      <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+      <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
@@ -336,11 +337,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         )}
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
         <MentionTextarea
+          id="context-content"
           label="چه چیزی دربارهٔ کسب‌وکارت درست است؟"
           required
+          error={contentError || undefined}
           rows={isEditing ? 5 : 6}
           value={content}
-          onValueChange={setContent}
+          onValueChange={(v) => { setContent(v); if (contentError && v.trim()) setContentError(''); }}
           objects={allObjects}
           selfId={object?.id}
           placeholder="مثلاً: مخاطب اصلی ما فریلنسرهای طراح‌اند. / تخفیف نداریم. / تصمیم گرفتیم اینستاگرام کانال اصلی باشد."

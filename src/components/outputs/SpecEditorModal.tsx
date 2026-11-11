@@ -169,7 +169,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         </>
       }
     >
-      <form id="spec-editor-form" onSubmit={submit} className="flex flex-col gap-stack-lg">
+      <form id="spec-editor-form" noValidate onSubmit={submit} className="flex flex-col gap-stack-lg">
         {!initial && (
           <Card padding="md" className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
             <div className="sm:flex-1">
