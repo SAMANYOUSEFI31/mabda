@@ -2,6 +2,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
 import { cx } from './cx.ts';
+import { Nuqta } from './Nuqta.tsx';
+import type { NuqtaState } from './Nuqta.tsx';
 import { Link } from './Button.tsx';
 
 import type { HeadingAnchor } from './Markdown.tsx';
@@ -42,7 +44,7 @@ const compact: Components = {
   li: ({ children }) => <li className="ps-inset-xs">{children}</li>,
   strong: ({ children }) => <strong className="font-bold text-text-default">{children}</strong>,
   em: ({ children }) => <span className="font-semibold">{children}</span>, // no italics in Persian typography
-  blockquote: ({ children }) => <blockquote dir="auto" className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
+  blockquote: ({ children }) => <blockquote className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
   hr: () => <hr className="mb-divider" />,
   a: ({ href, children }) => <Link href={href} external>{children}</Link>,
   code: ({ children }) => <code dir="ltr" className="code rounded-indicator bg-bg-neutral-subtle px-inset-xs">{children}</code>,
@@ -61,15 +63,23 @@ const document: Components = {
   ...compact,
   h1: ({ children, id }) => <h2 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-lg border-b border-border-default pb-inset-md text-text-default">{children}</h2>,
   h2: ({ children, id }) => <h3 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-md mt-stack-xl border-b border-border-subtle pb-inset-sm text-text-default">{children}</h3>,
-  h3: ({ children, id }) => <h4 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-sm mt-stack-lg text-text-default">{children}</h4>,
+  h3: ({ children, id }) => <h4 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor headline mt-stack-lg text-text-default">{children}</h4>,
   h4: ({ children, id }) => <h5 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor heading-xs mt-stack-md text-text-default">{children}</h5>,
   h5: ({ children, id }) => <h5 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor title mt-stack-sm text-text-default">{children}</h5>,
   h6: ({ children, id }) => <h6 id={id} tabIndex={id ? -1 : undefined} dir="auto" className="doc-anchor label-md text-text-subtle">{children}</h6>,
   p: ({ children }) => <p dir="auto" className="body-md text-text-default">{children}</p>,
   // a line written _like this_ is document metadata (type · status · version): quiet, not body text
-  em: ({ children }) => <span className="label-sm text-text-subtle">{children}</span>,
-  blockquote: ({ children }) => <blockquote dir="auto" className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
+  // the status word becomes the item's Nuqta (shape + readable name); truth is the calm default, so its word is dropped
+  em: ({ children }) => {
+    const text = typeof children === 'string' ? children : Array.isArray(children) && children.every((c) => typeof c === 'string') ? children.join('') : null;
+    const hit = text ? DOC_STATES.find(([w]) => text.includes(w)) : undefined;
+    if (!text || !hit) return <span className="body-sm text-text-subtle">{children}</span>;
+    const rest = hit[1] === 'truth' ? text.replace(` · ${hit[0]}`, '') : text;
+    return <span className="body-sm inline-flex items-center gap-inline-sm text-text-subtle"><Nuqta state={hit[1]} size="sm" />{rest}</span>;
+  },
+  blockquote: ({ children }) => <blockquote className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
 };
+const DOC_STATES: Array<[string, NuqtaState]> = [['تأییدشده', 'truth'], ['پیشنهادی', 'proposed'], ['نیازمند بازبینی', 'stale'], ['جایگزین‌شده', 'past'], ['بایگانی', 'past']];
 
 export function MarkdownImpl({ children, className, variant = 'compact', anchors }: { children: string; className?: string; variant?: 'compact' | 'document'; anchors?: HeadingAnchor[] }) {
   return (

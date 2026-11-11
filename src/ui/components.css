@@ -440,19 +440,14 @@
 }
 @keyframes mb-settle{from{scale:.4;opacity:0}}
 
-/* «مورد دانش» (components.md): no box; a hanging nuqta says the state (iconography.md «نقطه»). Proposals sit in a neutral block,
- * samples too (they are not the user's knowledge). Shapes are masks over currentColor-free fills so the colour is the nuqta-* token. */
+/* «مورد دانش» (components.md): no box; the Nuqta component (src/ui/Nuqta.tsx) hangs in the 24px at the inline start and says
+ * the state in shape and in words for screen readers. Proposals and samples sit in a neutral block. */
 @layer components{
 .mb-knowledge{position:relative;background:transparent;border:0;box-shadow:none;border-radius:var(--radius-container);padding-inline-start:var(--space-8)!important}
-.mb-knowledge::before{content:"";position:absolute;inset-inline-start:var(--space-3);inset-block-start:calc(var(--space-3) + 0.5rem);inline-size:var(--nuqta-size-md);block-size:var(--nuqta-size-md);background:var(--nuqta-pending);-webkit-mask:var(--nuqta-shape) center/contain no-repeat;mask:var(--nuqta-shape) center/contain no-repeat}
+.mb-knowledge__nuqta{position:absolute;inset-inline-start:var(--space-3);inset-block-start:calc(var(--space-3) + 0.5rem)}
 .mb-knowledge[data-knowledge=proposed],.mb-knowledge[data-knowledge=sample]{background:var(--bg-neutral-subtle)}
-.mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}.mb-knowledge[data-knowledge=sample]::before{content:none}
+.mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
-.mb-knowledge[data-knowledge=truth]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 .6 11.4 6 6 11.4.6 6z'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=truth]::before{background:var(--nuqta-truth)}
-.mb-knowledge[data-knowledge=thought]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1.4 10.6 6 6 10.6 1.4 6z' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=thought]::before{background:var(--nuqta-pending)}
-.mb-knowledge[data-knowledge=proposed]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1.4 10.6 6 6 10.6 1.4 6z' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M1.4 6h9.2L6 10.6z'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=proposed]::before{background:var(--nuqta-pending)}
-.mb-knowledge[data-knowledge=stale]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 .6 10.5 5.1h-9z'/%3E%3Cpath d='M1.5 6.9h9L6 11.4z'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=stale]::before{background:var(--nuqta-stale)}
-.mb-knowledge[data-knowledge=past]{--nuqta-shape:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 1.4 10.6 6 6 10.6 1.4 6z' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'/%3E%3Cpath d='M3.9 6h4.2' stroke='black' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E")}.mb-knowledge[data-knowledge=past]::before{background:var(--nuqta-pending)}
 }
 
 @layer components{.mb-navlabel::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}}

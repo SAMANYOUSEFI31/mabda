@@ -126,6 +126,7 @@ const THINKING: Record<'idea' | 'question' | 'assumption' | 'open_decision', Ent
 export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING; className?: string }) {
   return <MabdaBadge entry={THINKING[kind]} className={className} />;
 }
+export const THINKING_LABEL = Object.fromEntries(Object.entries(THINKING).map(([k, v]) => [k, v.label])) as Record<keyof typeof THINKING, string>;
 
 /** an example that came with a starter / template: grey, «نمونه». It is never knowledge and no AI or engine sees it. */
 const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default' };

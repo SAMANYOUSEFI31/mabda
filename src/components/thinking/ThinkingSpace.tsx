@@ -12,7 +12,7 @@ import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
 import { flatten, subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { AssumptionBadge, Badge, Button, Card, Dialog, EmptyState, SegmentedControl, Select, StatusBadge, Textarea, TypeBadge, ThinkingBadge, formatNumber } from '../../ui';
+import { AssumptionBadge, Badge, Button, Card, Dialog, EmptyState, SegmentedControl, Select, StatusBadge, Textarea, TypeBadge, ThinkingBadge, formatNumber, Nuqta, TYPE_META } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -157,7 +157,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {drafts.map((o) => (
             <Card key={o.id} padding="lg" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><Badge intent="warning" icon={false}>۱ تغییر در انتظار تأیید</Badge><span className="caption text-text-subtle">{nodeLabel(o.nodeId)}</span></span>
+                <span className="flex flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">تغییرِ {TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span></span>
               </div>
               {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
@@ -175,6 +175,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
                 <li key={o.id} data-knowledge="stale" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
+            <Nuqta state="stale" className="mb-knowledge__nuqta" />
                   <span className="flex flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs"><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>{reasonOf(o.id) && <span className="body-sm text-text-subtle">{reasonOf(o.id)}</span>}</span>
                   <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
                 </li>
@@ -219,6 +220,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (
               <li key={o.id} data-knowledge="truth" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
+            <Nuqta state="truth" className="mb-knowledge__nuqta" />
                 <span className="flex flex-wrap items-center gap-inline-xs"><ThinkingBadge kind="assumption" /><span className="body-md text-text-default">{o.title}</span><span className="caption text-text-subtle">· {nodeLabel(o.nodeId)}</span></span>
                 <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
               </li>

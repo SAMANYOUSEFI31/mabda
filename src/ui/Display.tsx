@@ -94,12 +94,14 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
 
 /** thought (light, temporary) · proposed (on its way) · truth (seated) · stale (aged, needs a look) · past (replaced or archived) */
 /** sample: an example Mabda wrote to show the shape of things; not the user's knowledge, not a thought of theirs */
-export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'past' | 'sample';
+export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'conflict' | 'past' | 'gap' | 'sample';
 
 export function Card({ interactive = false, href, selected, knowledge, padding = 'lg', className, children, onClick, ...rest }: CardProps) {
   const isInteractive = interactive || Boolean(href) || Boolean(onClick);
   const cls = cx('mb-card', knowledge && 'mb-knowledge', padding !== 'none' && `mb-card--pad-${padding}`, isInteractive && 'mb-card--interactive', selected && 'is-selected', className);
   if (knowledge) (rest as Record<string, unknown>)['data-knowledge'] = knowledge;
+  // «مورد دانش»: one Nuqta component (shape + readable name) hangs at the inline start; samples are not knowledge, so none
+  if (knowledge && knowledge !== 'sample') children = <><Nuqta state={knowledge} className="mb-knowledge__nuqta" />{children}</>;
   if (href) return <a href={href} className={cls} onClick={onClick} data-knowledge={knowledge}>{children}</a>;
   if (isInteractive) {
     return (

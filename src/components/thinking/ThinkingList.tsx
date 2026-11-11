@@ -9,7 +9,7 @@ import { convertedTo } from '../../core/thinkingMarkers';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { promotionTypesForThought, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { aboutTargets, stripAbout } from '../../core/thoughtAbout';
-import { Badge, Button, Checkbox, Dialog, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, formatNumber } from '../../ui';
+import { Badge, Button, Checkbox, Dialog, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
 
@@ -83,12 +83,13 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
         const done = !!convertedTo(it, objects);
         return (
           <li key={it.key} data-knowledge={done ? 'past' : 'thought'} className="mb-knowledge flex flex-col gap-stack-sm p-inset-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-inline-sm">
-            <span className="flex min-w-space-0 flex-1 flex-wrap items-center gap-inline-sm">
-              <ThinkingBadge kind={it.kind} />
-              <span className="body-md whitespace-pre-wrap text-text-default">{stripAbout(it.text) || it.text}</span>
-              {nodes && <span className="caption text-text-subtle">· {label(it.nodeId)}</span>}
-              {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? <span className="caption text-text-subtle">· دربارهٔ {t.map((x) => x.label).join('، ')}</span> : null; })()}
-              {done && <Badge intent="success" icon="Check">تبدیل شد ✓</Badge>}
+            <Nuqta state={done ? 'past' : 'thought'} className="mb-knowledge__nuqta" />
+            <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
+              <span className={`body-md whitespace-pre-wrap ${done ? 'text-text-subtle line-through' : 'text-text-default'}`}>{stripAbout(it.text) || it.text}</span>
+              <span className="body-sm text-text-subtle">
+                {THINKING_LABEL[it.kind]}{done ? ' · به منبع رفت' : ''}{nodes ? ` · ${label(it.nodeId)}` : ''}
+                {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? ` · دربارهٔ ${t.map((x) => x.label).join('، ')}` : ''; })()}
+              </span>
               {it.sourceState === 'line_deleted' && <Badge intent="neutral" icon="Info">خط از یادداشت حذف شد؛ فکر می‌ماند</Badge>}
               {it.sourceState === 'note_deleted' && <Badge intent="neutral" icon="Info">یادداشتش حذف شد؛ فکر می‌ماند</Badge>}
               {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
