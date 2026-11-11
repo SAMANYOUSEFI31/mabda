@@ -26,9 +26,9 @@ interface Props {
   nodeId?: string;
   initialKind?: ThinkingKind;
   initialAbout?: AboutTarget[];
-  onSave: (nodeId: string, content: string) => Promise<void>;
+  onSave: (nodeId: string, content: string) => Promise<unknown>;
   /** several thoughts at once: one note per section */
-  onSaveMany?: (notes: NotePayload[], count: number) => Promise<void>;
+  onSaveMany?: (notes: NotePayload[], count: number) => Promise<unknown>;
 }
 
 /**

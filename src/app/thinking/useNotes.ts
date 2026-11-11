@@ -37,9 +37,11 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     patch((d) => ({ ...d, thoughts: d.thoughts.map((x) => x.id === t.id ? r.thought : x) }));
     toast.show({ intent: 'success', message: `بخش «${label}» ساخته شد. فکر حل شد و یادداشت اصلی بدون تغییر ماند.` });
   };
-  const handleSaveThought = async (nodeId: string, content: string) => {
-    await handleAddNote(nodeId, content);
-    toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش و فقط با انتخاب صریح تو به AI می‌رسد.' });
+  /** returns false when saving failed (the error toast is already shown): a caller that keeps a draft must not clear it. `quiet`: the caller shows its own confirmation (ثبت سریع) */
+  const handleSaveThought = async (nodeId: string, content: string, quiet = false): Promise<boolean> => {
+    if (!(await handleAddNote(nodeId, content))) return false;
+    if (!quiet) toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش و فقط با انتخاب صریح تو به AI می‌رسد.' });
+    return true;
   };
   const handleSaveAiThought = async (parentIds: string[], nodeId: string, text: string): Promise<boolean> => {
     if (!text.trim() || !parentIds.length) return false;
@@ -49,9 +51,11 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     toast.show({ intent: 'success', message: 'پاسخ به‌عنوان فکر بازِ مشتق‌شده ذخیره شد؛ فکرهای مبدأ دست‌نخورده ماندند.' });
     return true;
   };
-  const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number) => {
-    for (const n of notes) await handleAddNote(n.nodeId, n.content);
+  const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number, quiet = false): Promise<boolean> => {
+    for (const n of notes) if (!(await handleAddNote(n.nodeId, n.content))) return false;
+    if (quiet) return true;
     toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان و فقط با انتخاب صریح تو به AI می‌رسند.` });
+    return true;
   };
   // «گزینه‌های تصمیم باز»: the options are lines under the decision in its note; choosing makes a PROPOSED decision, the others stay in its record
   const [optionsItemKey, setOptionsItemKey] = useState<string | null>(null);
@@ -68,9 +72,10 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     patch((d) => ({ ...d, objects: [r.object, ...d.objects], thoughts: r.thoughts }));
     toast.show({ intent: 'success', message: `تصمیم ثبت شد؛ ${formatNumber(p.others.length)} گزینهٔ دیگر با دلیل ماندند. در «فکر» منتظر تأیید توست.` });
   };
-  const handleAddNote = async (nodeId: string, content: string) => {
+  const handleAddNote = async (nodeId: string, content: string): Promise<boolean> => {
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
     if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes], thoughts: r.thoughts }));
+    return !!r;
   };
   const handleUpdateNote = async (id: string, content: string) => {
     const r = await attempt(() => dataApi.updateNote(wid, id, content));
