@@ -46,8 +46,8 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`یادداشت ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`یادداشت ${width}`);
+    await page.getByRole('button', { name: 'ساختن فضا' }).click();
     await page.getByText(`خانه: یادداشت ${width}`).waitFor({ timeout: 10000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `یادداشت ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);

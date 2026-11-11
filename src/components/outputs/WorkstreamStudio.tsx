@@ -489,7 +489,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 {isGenerating ? (
                   <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>
                 ) : (
-                  <Button variant="primary" size="lg" iconStart="Sparkles" disabled={previewState !== 'ready' || lock.locked} onClick={() => handleGenerate(false)}>
+                  <Button variant="primary" size="lg" iconStart="Package" disabled={previewState !== 'ready' || lock.locked} onClick={() => handleGenerate(false)}>
                     ساخت دارایی
                   </Button>
                 )}

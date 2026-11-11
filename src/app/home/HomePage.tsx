@@ -33,7 +33,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               <p className="text-body-sm text-text-subtle mt-stack-xs">فقط آنچه الان ارزش دارد؛ بقیه یک کلیک پایین‌تر است.</p>
             </div>
             <div className="flex flex-wrap items-center gap-inline-sm">
-              {workspaceContexts.length > 0 && <Button variant="primary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>آماده‌سازی درخواست</Button>}
+              {workspaceContexts.length > 0 && <Button variant="primary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>آماده‌سازی درخواست</Button>}
               {/* on phones the page action of the top bar does not exist: recording knowledge must still be one tap away */}
               {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>}
               {workspaceContexts.length > 0 && <Menu
@@ -58,7 +58,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               description="یک جمله دربارهٔ کسب‌وکارت بنویس یا یک متن بچسبان؛ بقیه‌اش را مبدأ مرتب می‌کند. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
               action={(
                 <div className="flex flex-wrap justify-center gap-inline-md">
-                  <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                  <Button variant="primary" iconStart="Zap" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
                   <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
                   <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
                 </div>

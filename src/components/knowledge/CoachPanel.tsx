@@ -87,7 +87,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
       )}
       {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={ask}>دوباره</Button>}>{error}</Alert>}
       <div>
-        <Button variant="secondary" iconStart="Sparkles" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
+        <Button variant="secondary" iconStart="MessageSquare" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
           {result ? 'پرسش دوباره با پاسخ‌هایم' : 'از مربی دانش بپرس'}
         </Button>
       </div>

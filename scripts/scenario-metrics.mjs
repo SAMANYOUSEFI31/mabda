@@ -40,7 +40,7 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     const had = (await api('/workspaces')).workspaces.some((w) => w.id === 'ws_demo');
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     if (had) await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
 

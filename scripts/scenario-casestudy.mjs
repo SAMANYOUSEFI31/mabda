@@ -45,7 +45,7 @@ try {
     const listBefore = (await api('/workspaces')).workspaces;
     const hadDemo = listBefore.some((w) => w.id === 'ws_demo');
     const before = listBefore.length - (hadDemo ? 1 : 0);
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     if (hadDemo) { await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click(); }
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
     const list = (await api('/workspaces')).workspaces;
@@ -124,7 +124,7 @@ try {
     step(`[${width}] reset twice = the same state`);
     const a = JSON.stringify(await api('/workspaces/ws_demo/state'));
     await nav('منبع حقیقت', 'منبع');
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByRole('dialog').getByText('بازنشانی فضای نمونه؟').waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();
     await page.getByRole('dialog').waitFor({ state: 'detached' });

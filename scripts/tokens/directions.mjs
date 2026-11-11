@@ -60,7 +60,7 @@ for (const [id, d] of Object.entries(DIRECTIONS)) {
     for (const scheme of ['light', 'dark']) {
       const page = await browser.newPage({ viewport: { width: w, height: h }, colorScheme: scheme, locale: 'fa-IR' });
       await page.goto(BASE, { waitUntil: 'networkidle' });
-      // the sample workspace (made with «ساخت یا بازنشانی فضای نمونه» beforehand): a page with real content
+      // the sample workspace (made with «بازسازی فضای نمونه» beforehand): a page with real content
       if (w < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: /\(نمونه\)/ }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: /\(نمونه\)/ }).first().click(); }
       await page.waitForTimeout(1200);

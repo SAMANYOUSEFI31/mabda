@@ -107,7 +107,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
           icon="Package"
           title={deliverables.length === 0 ? (managedEnabled ? 'هنوز دارایی‌ای نساخته‌ای' : 'هنوز خروجی‌ای نداری') : 'دارایی‌ای با این فیلتر نیست'}
           description={managedEnabled ? 'در جریان‌های کار، اولین دارایی را از دانش تأییدشده‌ات بساز.' : 'در جریان‌های کار، بستهٔ دانش تأییدشده‌ات را برای هر ابزار آماده کن.'}
-          action={<Button variant="secondary" iconStart={managedEnabled ? 'Sparkles' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساخت دارایی' : 'آماده‌سازی خروجی'}</Button>}
+          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساخت دارایی' : 'آماده‌سازی خروجی'}</Button>}
         />
       ) : (
         <div className="flex flex-col gap-stack-lg">
@@ -124,7 +124,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 onDelete={onDelete}
               />
               <div className="flex flex-wrap items-center justify-end">
-                <Button variant="secondary" size="sm" iconStart="Wand2" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
+                <Button variant="secondary" size="sm" iconStart="FolderInput" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
                   پیشنهاد دانش از این خروجی
                 </Button>
               </div>

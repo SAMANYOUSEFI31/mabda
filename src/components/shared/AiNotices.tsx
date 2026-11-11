@@ -62,7 +62,7 @@ export const PlanLine: React.FC<{ plan?: AiPlan; usage?: UsageSummary; credits?:
   return (
     <div className={className}>
       <div className="flex flex-wrap items-center gap-x-inline-sm text-text-subtle caption">
-        <Icon name="Sparkles" size="xs" />
+        <Icon name="Info" size="xs" />
         <span>
           با حالت «{TIER_FA[finalTier]}» ساخته شد · effort {EFFORT_FA[plan.effort]} · الگوی {PATTERN_FA[plan.pattern]}
           {managedEnabled && typeof credits === 'number' && <> · {`${formatNumber(credits)} اعتبار`}</>}

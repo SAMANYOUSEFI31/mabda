@@ -43,7 +43,7 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 1500 }).catch(() => {});
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
     const objs = (await api('/workspaces/ws_demo/state')).objects;

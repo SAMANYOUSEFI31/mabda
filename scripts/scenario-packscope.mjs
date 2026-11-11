@@ -50,7 +50,7 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor({ timeout: 15000 });
     const wid = 'ws_demo';
     const api = (p) => call('GET', `/workspaces/${wid}${p}`);

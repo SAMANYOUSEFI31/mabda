@@ -38,7 +38,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
                         <span className="label-md text-text-default">{sp.title}</span>
                         <p className="body-sm text-text-subtle">{sp.description}</p>
                       </div>
-                      <div><Button size="sm" variant="secondary" iconStart="Sparkles" data-testid={`build-${sp.id}`} aria-label={`${verb}: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>{verb}</Button></div>
+                      <div><Button size="sm" variant="secondary" iconStart="Package" data-testid={`build-${sp.id}`} aria-label={`${verb}: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>{verb}</Button></div>
                     </Card>
                   </li>
                 ))}

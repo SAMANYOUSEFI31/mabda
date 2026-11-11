@@ -152,7 +152,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
                   {p.counts.assumptions > 0 && <Badge intent="neutral" icon={false}>{formatNumber(p.counts.assumptions)} فرض</Badge>}
                 </span>
               </div>
-              {p.kind && <p className="body-sm text-text-subtle"><Badge intent="neutral" icon="Sparkles">درخواست: {KIND_LABEL[p.kind]}</Badge> {p.template}</p>}
+              {p.kind && <p className="body-sm text-text-subtle"><Badge intent="neutral" icon="PackageOpen">درخواست: {KIND_LABEL[p.kind]}</Badge> {p.template}</p>}
               {p.instruction && <p className="body-sm text-text-subtle">{p.instruction}</p>}
               <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} گره${p.selection.withChildren ? ' + زیربخش‌ها' : ''}` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
               <div className="flex flex-wrap gap-inline-xs">

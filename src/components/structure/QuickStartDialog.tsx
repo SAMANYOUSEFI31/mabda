@@ -143,7 +143,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
             <Button variant="ghost" onClick={() => { setStep('choose'); setError(null); }}>بازگشت</Button>
             {path === 'questions'
               ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>ثبت و ساخت بسته</Button>
-              : <Button variant="primary" iconStart="Wand2" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
+              : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
           </>
         )
         : step === 'review' ? (
@@ -246,7 +246,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                   <p className="body-sm text-text-subtle">این خروجی از {formatNumber(sample.usedContext.length)} قلم دانش ساخته شد؛ اگر یکی را عوض کنی، خروجی «نیاز به بازبینی» می‌گیرد.</p>
                 </div>
               ) : (
-                <div><Button variant="secondary" iconStart="Sparkles" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
+                <div><Button variant="secondary" iconStart="Eye" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
               )}
             </section>}
           </div>

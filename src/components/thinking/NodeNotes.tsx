@@ -68,7 +68,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="caption text-text-subtle">{formatJalaliDate(n.updatedAt)}</span>
                     <div className="flex items-center gap-inline-xs">
-                      <Button size="sm" variant="secondary" iconStart="Wand2" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
+                      <Button size="sm" variant="secondary" iconStart="FolderInput" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
                         استخراج
                       </Button>
                       <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => setEditing({ id: n.id, text: n.content })} />

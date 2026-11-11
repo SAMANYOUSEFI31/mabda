@@ -53,8 +53,8 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`سرنخ ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`سرنخ ${width}`);
+    await page.getByRole('button', { name: 'ساختن فضا' }).click();
     await page.getByText(`خانه: سرنخ ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `سرنخ ${width}`).id;
     /** a reload forgets the chosen workspace (the app does not remember it): come back to it */

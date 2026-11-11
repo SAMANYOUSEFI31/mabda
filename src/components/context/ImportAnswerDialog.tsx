@@ -124,7 +124,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
           <div className="sm:flex-1">
             <Select label="از کدام بستهٔ دانش؟ (اصالت)" value={packId} onChange={(e) => setPackId(e.target.value)} options={[{ value: '', label: 'بدون بسته (اصالت ثبت نمی‌شود)' }, ...packs.map((p) => ({ value: p.id, label: p.title }))]} hint="اگر پاسخ نشانهٔ بسته را دارد، همان بسته خودکار انتخاب می‌شود." />
           </div>
-          <Button variant="primary" loading={busy} disabled={!text.trim()} iconStart="Wand2" onClick={parse}>تبدیل به بلوک</Button>
+          <Button variant="primary" loading={busy} disabled={!text.trim()} iconStart="FolderInput" onClick={parse}>تبدیل به بلوک</Button>
         </div>
         {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={parse}>دوباره</Button>}>{error}</Alert>}
 

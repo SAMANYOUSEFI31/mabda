@@ -171,7 +171,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             ]}
           />
           {/* internal AI is frozen (MABDA_MANAGED_AI): «همین‌جا جواب بده» exists only with the flag on; otherwise the copy is the only action */}
-          {ai.managedEnabled && <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>}
+          {ai.managedEnabled && <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Send" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>}
           <Button variant={ai.managedEnabled && ai.available ? 'secondary' : 'primary'} iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای استفاده در هر ابزار'}</Button>
         </>
       }

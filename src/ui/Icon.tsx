@@ -3,12 +3,13 @@ import {
   Check, X, TriangleAlert, OctagonAlert, Info, CircleCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   LoaderCircle, Minus, ArrowLeft, ArrowRight, Plus, Flame, Search, Trash2, Bell, House, CalendarDays, ChartColumn,
   User, Settings, Ellipsis, Copy, Inbox, Pencil, Share2, LogOut, ExternalLink,
-  // Extra names the Mabda app needs (same lucide set the Bushido bundle is built from).
+  // Extra names the Mabda app needs (all from lucide).
   Menu, Download, Building2, MessageSquare, Lightbulb, Zap, Network, Palette, Tag as TagIcon, Shield, BookOpen,
   CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Sparkles, Eye, Lock, Layers, Table2,
   Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive, CircleDot,
   ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
+  SunMoon, FolderInput, PackageOpen, RotateCcw,
 } from 'lucide-react';
 import { cx } from './cx.ts';
 
@@ -21,6 +22,7 @@ const ICONS = {
   Layers, Table2, Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Wand2, Link2, Brain, Archive,
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
+  SunMoon, FolderInput, PackageOpen, RotateCcw,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -59,7 +59,7 @@ const Importer: React.FC<Props & { onSwitch: () => void }> = ({ workspaceId, onC
       size="lg"
       title="وارد کردن حافظه از ابزار دیگر"
       description="حافظهٔ ChatGPT یا Claude (یا هر متنی دربارهٔ کسب‌وکارت) را بچسبان. مبدأ آن را به «پیشنهاد» تبدیل می‌کند و برای هر مورد، همان بخش متن را نقل می‌کند. تا تأیید نکنی هیچ‌چیز واقعیت نیست."
-      footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="ghost" onClick={onSwitch}>وارد کردن سند خودم</Button><Button variant="primary" iconStart="Wand2" loading={busy} disabled={!text.trim()} onClick={run}>استخراج پیشنهادها</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="ghost" onClick={onSwitch}>وارد کردن سند خودم</Button><Button variant="primary" iconStart="FolderInput" loading={busy} disabled={!text.trim()} onClick={run}>استخراج پیشنهادها</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">

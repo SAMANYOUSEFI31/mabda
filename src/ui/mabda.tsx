@@ -62,7 +62,7 @@ export function ReadinessBadge({ value, className, iconOnly }: { value: Readines
 
 export const MODE_META: Record<ExecutionMode, Entry> = {
   fast: { label: 'سریع', icon: 'Zap', cls: 'bg-mabda-mode-fast-bg text-mabda-mode-fast-fg border-mabda-mode-fast-border' },
-  auto: { label: 'متعادل (خودکار)', icon: 'Sparkles', cls: 'bg-mabda-mode-auto-bg text-mabda-mode-auto-fg border-mabda-mode-auto-border' },
+  auto: { label: 'متعادل (خودکار)', icon: 'CircleDot', cls: 'bg-mabda-mode-auto-bg text-mabda-mode-auto-fg border-mabda-mode-auto-border' },
   critique: { label: 'عمیق (نقد)', icon: 'Eye', cls: 'bg-mabda-mode-critique-bg text-mabda-mode-critique-fg border-mabda-mode-critique-border' },
   sensitive: { label: 'اجرای حساس', icon: 'Shield', cls: 'bg-mabda-mode-sensitive-bg text-mabda-mode-sensitive-fg border-mabda-mode-sensitive-border' },
 };

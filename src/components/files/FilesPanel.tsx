@@ -107,7 +107,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
                 </div>
                 <div className="flex items-center gap-inline-xs">
                   {managed && (f.status === 'uploaded' || f.status === 'failed') && (
-                    <Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
+                    <Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
                       {f.status === 'failed' ? 'دوباره' : 'پردازش'}
                     </Button>
                   )}
