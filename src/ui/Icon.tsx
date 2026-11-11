@@ -37,7 +37,7 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'ref'>
 export function Icon({ name, size = 'md', className, ...rest }: IconProps) {
   const Cmp = ICONS[name];
   if (!Cmp) return null;
-  return <Cmp size={SIZE_PX[size]} strokeWidth={2} aria-hidden="true" className={cx('bsh-icon', className)} {...rest} />;
+  return <Cmp size={SIZE_PX[size]} strokeWidth={2} aria-hidden="true" className={cx('mb-icon', className)} {...rest} />;
 }
 
 /** Status intent -> icon, mirrors the DS (icon + words, never color alone). */

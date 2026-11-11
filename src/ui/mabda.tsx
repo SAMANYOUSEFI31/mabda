@@ -2,9 +2,10 @@ import type { ContextObject, ContextProvenance, ContextStatus, ContextType, Exec
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
+import type { KnowledgeState } from './Display.tsx';
 
 /**
- * Mabda domain badges. Colors come ONLY from the semantic aliases in mabda-tokens.css
+ * Mabda domain badges. Colors come ONLY from the mabda.* semantic aliases in src/ui/tokens/semantic.json
  * (which in turn point at Bushido intents). Each value also carries an icon + Persian label,
  * so meaning never depends on color alone.
  * Class strings are written out in full so Tailwind can see them.
@@ -130,4 +131,14 @@ export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING
 const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default border-dashed' };
 export function SampleBadge({ className }: { className?: string }) {
   return <MabdaBadge entry={SAMPLE} className={className} />;
+}
+
+/** a knowledge object's visual state (docs/ux/domain-patterns.md §۱): one mapping for every view */
+export function knowledgeState(object: Pick<ContextObject, 'status'>): KnowledgeState {
+  switch (object.status) {
+    case 'Confirmed': return 'truth';
+    case 'Needs Review': return 'stale';
+    case 'Proposed': return 'proposed';
+    default: return 'past';
+  }
 }

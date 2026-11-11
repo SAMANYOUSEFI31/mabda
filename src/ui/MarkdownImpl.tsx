@@ -43,13 +43,13 @@ const compact: Components = {
   strong: ({ children }) => <strong className="font-bold text-text-default">{children}</strong>,
   em: ({ children }) => <span className="font-semibold">{children}</span>, // no italics in Persian typography
   blockquote: ({ children }) => <blockquote dir="auto" className="border-s-2 border-border-bold ps-inset-lg text-text-subtle">{children}</blockquote>,
-  hr: () => <hr className="bsh-divider" />,
+  hr: () => <hr className="mb-divider" />,
   a: ({ href, children }) => <Link href={href} external>{children}</Link>,
   code: ({ children }) => <code dir="ltr" className="code rounded-indicator bg-bg-neutral-subtle px-inset-xs">{children}</code>,
   pre: ({ children }) => <pre dir="ltr" className="code overflow-x-auto rounded-control-sm bg-surface-sunken p-inset-md">{children}</pre>,
   table: ({ children }) => (
-    <div className="bsh-table-wrap" role="region" tabIndex={0} aria-label="جدول">
-      <table className="bsh-table">{children}</table>
+    <div className="mb-table-wrap" role="region" tabIndex={0} aria-label="جدول">
+      <table className="mb-table">{children}</table>
     </div>
   ),
   th: ({ children }) => <th scope="col" className="label-sm">{children}</th>,

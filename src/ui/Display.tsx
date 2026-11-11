@@ -23,8 +23,8 @@ export function Badge({ intent = 'neutral', emphasis = 'subtle', icon, dot = fal
   const auto = intent in STATUS_ICON && emphasis === 'subtle' ? STATUS_ICON[intent as StatusIntent] : null;
   const name = icon === false ? null : icon || auto;
   return (
-    <span className={cx('bsh-badge', 'label-sm', `bsh-badge--${intent}`, `bsh-badge--${emphasis}`, className)} {...rest}>
-      {dot && <span className="bsh-badge__dot" aria-hidden="true" />}
+    <span className={cx('mb-badge', 'label-sm', `mb-badge--${intent}`, `mb-badge--${emphasis}`, className)} {...rest}>
+      {dot && <span className="mb-badge__dot" aria-hidden="true" />}
       {name && <Icon name={name} size="xs" />}
       {children}
     </span>
@@ -49,7 +49,7 @@ export function Tag({ children, selected, onToggle, onRemove, removeLabel = 'ح�
         aria-pressed={Boolean(selected)}
         disabled={disabled}
         onClick={() => onToggle(!selected)}
-        className={cx('bsh-tag', 'bsh-tag--toggle', 'label-md', selected && 'is-selected', className)}
+        className={cx('mb-tag', 'mb-tag--toggle', 'label-md', selected && 'is-selected', className)}
       >
         {selected && <Icon name="Check" size="sm" />}
         {children}
@@ -57,10 +57,10 @@ export function Tag({ children, selected, onToggle, onRemove, removeLabel = 'ح�
     );
   }
   return (
-    <span className={cx('bsh-tag', 'label-md', className)}>
+    <span className={cx('mb-tag', 'label-md', className)}>
       {children}
       {onRemove && (
-        <button type="button" className="bsh-tag__remove" aria-label={`${removeLabel} ${typeof children === 'string' ? children : ''}`.trim()} onClick={onRemove} disabled={disabled}>
+        <button type="button" className="mb-tag__remove" aria-label={`${removeLabel} ${typeof children === 'string' ? children : ''}`.trim()} onClick={onRemove} disabled={disabled}>
           <Icon name="X" size="sm" />
         </button>
       )}
@@ -73,7 +73,7 @@ const AVATAR_TEXT = { xs: 'label-sm', sm: 'label-sm', md: 'label-md', lg: 'title
 export function Avatar({ name, size = 'md', className }: { name: string; size?: 'xs' | 'sm' | 'md' | 'lg'; className?: string }) {
   const initials = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('‌');
   return (
-    <span className={cx('bsh-avatar', `bsh-avatar--${size}`, AVATAR_TEXT[size], className)} role="img" aria-label={name}>
+    <span className={cx('mb-avatar', `mb-avatar--${size}`, AVATAR_TEXT[size], className)} role="img" aria-label={name}>
       <span aria-hidden="true">{initials}</span>
     </span>
   );
@@ -86,13 +86,19 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
   href?: string;
   onClick?: (e: React.SyntheticEvent) => void;
   selected?: boolean;
+  /** the knowledge state this card shows (edge, corner, surface change together; docs/ux/domain-patterns.md). Words still come from a badge. */
+  knowledge?: KnowledgeState;
   children: ReactNode;
 }
 
-export function Card({ interactive = false, href, selected, padding = 'lg', className, children, onClick, ...rest }: CardProps) {
+/** thought (light, temporary) · proposed (on its way) · truth (seated) · stale (aged, needs a look) · past (replaced or archived) */
+export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'past';
+
+export function Card({ interactive = false, href, selected, knowledge, padding = 'lg', className, children, onClick, ...rest }: CardProps) {
   const isInteractive = interactive || Boolean(href) || Boolean(onClick);
-  const cls = cx('bsh-card', padding !== 'none' && `bsh-card--pad-${padding}`, isInteractive && 'bsh-card--interactive', selected && 'is-selected', className);
-  if (href) return <a href={href} className={cls} onClick={onClick}>{children}</a>;
+  const cls = cx('mb-card', knowledge && 'mb-knowledge', padding !== 'none' && `mb-card--pad-${padding}`, isInteractive && 'mb-card--interactive', selected && 'is-selected', className);
+  if (knowledge) (rest as Record<string, unknown>)['data-knowledge'] = knowledge;
+  if (href) return <a href={href} className={cls} onClick={onClick} data-knowledge={knowledge}>{children}</a>;
   if (isInteractive) {
     return (
       <div
@@ -114,20 +120,20 @@ export function Card({ interactive = false, href, selected, padding = 'lg', clas
 }
 
 export function Divider({ orientation = 'horizontal', label, className }: { orientation?: 'horizontal' | 'vertical'; label?: ReactNode; className?: string }) {
-  if (orientation === 'vertical') return <span role="separator" aria-orientation="vertical" className={cx('bsh-divider', 'bsh-divider--v', className)} />;
-  if (label) return <div role="separator" className={cx('bsh-divider--label', 'caption', className)}><span>{label}</span></div>;
-  return <hr className={cx('bsh-divider', className)} />;
+  if (orientation === 'vertical') return <span role="separator" aria-orientation="vertical" className={cx('mb-divider', 'mb-divider--v', className)} />;
+  if (label) return <div role="separator" className={cx('mb-divider--label', 'caption', className)}><span>{label}</span></div>;
+  return <hr className={cx('mb-divider', className)} />;
 }
 
 export interface StatProps { label: ReactNode; value: ReactNode; delta?: ReactNode; trend?: 'up' | 'down'; className?: string }
 export function Stat({ label, value, delta, trend, className }: StatProps) {
   const t = trend === 'up' ? 'success' : trend === 'down' ? 'danger' : null;
   return (
-    <div className={cx('bsh-stat', className)}>
-      <span className="bsh-stat__label label-md">{label}</span>
-      <span className="bsh-stat__value numeric-md">{value}</span>
+    <div className={cx('mb-stat', className)}>
+      <span className="mb-stat__label label-md">{label}</span>
+      <span className="mb-stat__value numeric-md">{value}</span>
       {delta && (
-        <span className={cx('bsh-stat__delta', 'body-sm', t && `is-${t}`)}>
+        <span className={cx('mb-stat__delta', 'body-sm', t && `is-${t}`)}>
           {t && <Icon name={t === 'success' ? 'CircleCheck' : 'OctagonAlert'} size="sm" />}
           {delta}
         </span>
@@ -139,11 +145,11 @@ export function Stat({ label, value, delta, trend, className }: StatProps) {
 export interface EmptyStateProps { icon?: IconName; title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }
 export function EmptyState({ icon = 'Inbox', title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cx('bsh-empty', className)}>
-      <span className="bsh-empty__icon"><Icon name={icon} size="2xl" /></span>
-      <p className="bsh-empty__title heading-xs">{title}</p>
-      {description && <p className="bsh-empty__desc body-sm">{description}</p>}
-      {action && <div className="bsh-empty__action">{action}</div>}
+    <div className={cx('mb-empty', className)}>
+      <span className="mb-empty__icon"><Icon name={icon} size="2xl" /></span>
+      <p className="mb-empty__title heading-xs">{title}</p>
+      {description && <p className="mb-empty__desc body-sm">{description}</p>}
+      {action && <div className="mb-empty__action">{action}</div>}
     </div>
   );
 }
@@ -152,14 +158,14 @@ export function EmptyState({ icon = 'Inbox', title, description, action, classNa
 export interface AlertProps { intent?: StatusIntent; title?: ReactNode; children?: ReactNode; action?: ReactNode; onClose?: () => void; className?: string }
 export function Alert({ intent = 'info', title, children, action, onClose, className }: AlertProps) {
   return (
-    <div role={intent === 'danger' || intent === 'warning' ? 'alert' : 'status'} className={cx('bsh-alert', `bsh-alert--${intent}`, className)}>
-      <Icon name={STATUS_ICON[intent]} size="lg" className="bsh-alert__icon" />
-      <div className="bsh-alert__content">
-        {title && <p className="bsh-alert__title title">{title}</p>}
-        {children && <div className="bsh-alert__text body-sm">{children}</div>}
-        {action && <div className="bsh-alert__action">{action}</div>}
+    <div role={intent === 'danger' || intent === 'warning' ? 'alert' : 'status'} className={cx('mb-alert', `mb-alert--${intent}`, className)}>
+      <Icon name={STATUS_ICON[intent]} size="lg" className="mb-alert__icon" />
+      <div className="mb-alert__content">
+        {title && <p className="mb-alert__title title">{title}</p>}
+        {children && <div className="mb-alert__text body-sm">{children}</div>}
+        {action && <div className="mb-alert__action">{action}</div>}
       </div>
-      {onClose && <IconButton icon="X" label="بستن" size="sm" onClick={onClose} className="bsh-alert__close" />}
+      {onClose && <IconButton icon="X" label="بستن" size="sm" onClick={onClose} className="mb-alert__close" />}
     </div>
   );
 }
@@ -173,15 +179,15 @@ export function Progress({ value = 0, max = 100, label, intent = 'neutral', show
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   const showVal = showValue && !indeterminate;
   return (
-    <div className={cx('bsh-progress', className)}>
+    <div className={cx('mb-progress', className)}>
       {(label || showVal) && (
-        <div className="bsh-progress__head body-sm">
+        <div className="mb-progress__head body-sm">
           <span>{label}</span>
-          {showVal && <span className="bsh-progress__val">{formatPercentValue(Math.round(pct))}</span>}
+          {showVal && <span className="mb-progress__val">{formatPercentValue(Math.round(pct))}</span>}
         </div>
       )}
       <div
-        className="bsh-progress__track"
+        className="mb-progress__track"
         role="progressbar"
         aria-label={label}
         aria-valuemin={indeterminate ? undefined : 0}
@@ -189,7 +195,7 @@ export function Progress({ value = 0, max = 100, label, intent = 'neutral', show
         aria-valuenow={indeterminate ? undefined : value}
         aria-valuetext={indeterminate ? 'در حال انجام' : `${formatPercentValue(Math.round(pct))}`}
       >
-        <span className={cx('bsh-progress__bar', `is-${intent}`, indeterminate && 'is-indeterminate')} style={indeterminate ? undefined : { inlineSize: `${pct}%` }} />
+        <span className={cx('mb-progress__bar', `is-${intent}`, indeterminate && 'is-indeterminate')} style={indeterminate ? undefined : { inlineSize: `${pct}%` }} />
       </div>
     </div>
   );
@@ -197,9 +203,9 @@ export function Progress({ value = 0, max = 100, label, intent = 'neutral', show
 
 export function Spinner({ size = 'md', label = 'در حال بارگذاری' }: { size?: 'sm' | 'md' | 'lg' | 'xl'; label?: string }) {
   return (
-    <span role="status" className="bsh-spinner">
-      <Icon name="LoaderCircle" size={size} className="bsh-spin" />
-      <span className="bsh-sr">{label}</span>
+    <span role="status" className="mb-spinner">
+      <Icon name="LoaderCircle" size={size} className="mb-spin" />
+      <span className="mb-sr">{label}</span>
     </span>
   );
 }
@@ -208,14 +214,14 @@ export interface SkeletonProps { variant?: 'text' | 'circle' | 'rect'; width?: s
 export function Skeleton({ variant = 'text', width, height, lines = 1, className }: SkeletonProps) {
   if (variant === 'text') {
     return (
-      <span className={cx('bsh-skel-group', className)} aria-hidden="true">
+      <span className={cx('mb-skel-group', className)} aria-hidden="true">
         {Array.from({ length: lines }).map((_, i) => (
-          <span key={i} className="bsh-skel bsh-skel--text" style={{ inlineSize: i === lines - 1 && lines > 1 ? '60%' : width || '100%' }} />
+          <span key={i} className="mb-skel mb-skel--text" style={{ inlineSize: i === lines - 1 && lines > 1 ? '60%' : width || '100%' }} />
         ))}
       </span>
     );
   }
-  return <span aria-hidden="true" className={cx('bsh-skel', `bsh-skel--${variant}`, className)} style={{ inlineSize: width, blockSize: height }} />;
+  return <span aria-hidden="true" className={cx('mb-skel', `mb-skel--${variant}`, className)} style={{ inlineSize: width, blockSize: height }} />;
 }
 
 /* ---------------- Tooltip ---------------- */
@@ -224,7 +230,7 @@ export function Tooltip({ content, children, side = 'top', forceOpen = false }: 
   const id = useId();
   return (
     <span
-      className="bsh-tooltip-anchor"
+      className="mb-tooltip-anchor"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
@@ -232,7 +238,7 @@ export function Tooltip({ content, children, side = 'top', forceOpen = false }: 
       onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
     >
       {cloneElement(children, { 'aria-describedby': id })}
-      <span role="tooltip" id={id} className={cx('bsh-tooltip', 'body-sm', side === 'bottom' && 'is-bottom', (open || forceOpen) && 'is-open')}>{content}</span>
+      <span role="tooltip" id={id} className={cx('mb-tooltip', 'body-sm', side === 'bottom' && 'is-bottom', (open || forceOpen) && 'is-open')}>{content}</span>
     </span>
   );
 }

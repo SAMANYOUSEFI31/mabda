@@ -1,19 +1,19 @@
 /*
- * Layer order matters: /ds/bundle.css is unlayered upstream, which would beat every Tailwind utility
- * (a `flex` on a Card would lose to `.bsh-card{display:block}`). It is imported into the `ds` layer,
- * above Tailwind's preflight (base) and below utilities, so component classes style the kit and
- * utilities can still adjust layout on top. The file itself is read-only and never edited.
+ * Mabda styles: generated tokens (src/ui/tokens/build) -> Tailwind theme -> Mabda components (src/ui/components.css).
+ * Layer order: Tailwind preflight (base) < components < utilities, so a utility can always adjust a component's layout.
+ * No raw values here: every colour, size and duration is a token (bun run check:design).
  */
-@layer theme, base, ds, components, utilities;
-@import "../public/ds/bundle.css" layer(ds);
+@layer theme, base, components, utilities;
 @import "tailwindcss";
-@import "./ui/bushido-theme.css";
-@import "./ui/mabda-tokens.css";
+@import "./ui/fonts.css";
+@import "./ui/tokens/build/tokens.css";
+@import "./ui/tokens/build/theme.css";
+@import "./ui/components.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  html { font-family: var(--font-sans); background: var(--surface-page); color: var(--text-default); }
+  html { font-family: var(--font-sans); background: var(--surface-page); color: var(--text-default); font-variant-numeric: proportional-nums; }
   body {
     font-family: var(--font-sans);
     font-size: var(--font-size-16);
@@ -22,12 +22,13 @@
     color: var(--text-default);
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
   h1, h2, h3, h4, h5, h6, p { margin: 0; }
-  /* one focus ring, same as bundle.css controls */
+  /* one focus ring everywhere (same as the components) */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
     outline: var(--focus-width) solid var(--border-focus);
     outline-offset: var(--focus-offset);
@@ -37,14 +38,6 @@
 
 /* Scrollbars use semantic tokens too. */
 * { scrollbar-width: thin; scrollbar-color: var(--border-bold) transparent; }
-
-/* Overrides for two physical-direction rules in /ds/bundle.css (that file is read-only). */
-.bsh-tooltip { inset-inline: 0; margin-inline: auto; transform: none; }
-
-/* Wider dialog for multi-column content (plans). Same breakpoint as bundle.css dialogs (640px). */
-@media (min-width: 640px) {
-  .bsh-dialog--xl { max-inline-size: var(--container-lg); }
-}
 
 /* Chat panel height: viewport minus app chrome on phones, a fixed comfortable height from md up (built from space tokens). */
 @utility h-chat {
@@ -58,26 +51,8 @@
   padding-block-end: max(var(--inset-md), var(--safe-bottom));
 }
 
-/* ---- Kit adjustments on top of /ds/bundle.css (read-only) ---- */
-/* icon buttons never shrink inside flex rows (keeps the 44px target) */
-.bsh-iconbtn { flex: none; }
-/* tabs wrapper must be allowed to shrink so tab lists scroll instead of widening the page */
-.bsh-tabs-wrap { min-inline-size: 0; max-inline-size: 100%; }
-/* toggle tags are interactive controls: full touch target */
-.bsh-tag--toggle { min-block-size: var(--touch-target-min); }
-
-/* Dialog as a side panel (used by the focused per-node thread). Logical properties only. */
-@media (min-width: 640px) {
-  .bsh-dialog-layer.is-side { align-items: stretch; justify-content: flex-end; padding: 0; }
-  .bsh-dialog-layer.is-side .bsh-dialog {
-    max-block-size: none; block-size: 100%; max-inline-size: var(--overlay-width-lg);
-    border-radius: 0; border-block-end: 0; display: flex; flex-direction: column;
-  }
-  .bsh-dialog-layer.is-side .bsh-dialog__body { flex: 1 1 auto; min-block-size: 0; overflow: auto; }
-}
-
 /* Board cards: a gentle lift while dragging; no movement for people who ask for less motion. */
-.canvas-card { transition: box-shadow var(--duration-fast, 120ms) ease, border-color var(--duration-fast, 120ms) ease, opacity var(--duration-fast, 120ms) ease; }
+.canvas-card { transition: box-shadow var(--duration-fast) var(--ease-move), border-color var(--duration-fast) var(--ease-move), opacity var(--duration-fast) var(--ease-move); }
 .canvas-card.is-lifted { opacity: 0.35; }
 .canvas-card.is-ghost { box-shadow: var(--shadow-overlay); cursor: grabbing; }
 .canvas-card:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
@@ -103,13 +78,13 @@
 .doc-outline { position: sticky; inset-block-start: var(--space-16, 64px); max-block-size: calc(100dvh - var(--space-24, 96px)); overflow-y: auto; }
 /* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
 .doc-bar { position: sticky; inset-block-start: var(--space-16); z-index: 5; padding-block: var(--space-2); background: var(--surface-page); }
-.doc-bar .bsh-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
+.doc-bar .mb-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
 
 /* the command palette: the result list scrolls inside the dialog, the input stays put */
 .palette-list { max-block-size: 55dvh; overflow-y: auto; }
 
 /* a menu with many items (the tree's sections) scrolls instead of running off the screen */
-.scroll-menu .bsh-menu { max-block-size: 50dvh; overflow-y: auto; }
+.scroll-menu .mb-menu { max-block-size: 50dvh; overflow-y: auto; }
 
 /* a note line: its «علامت بزن» button shows on hover / focus (and stays reachable by long-press on touch) */
 .note-line .note-mark { opacity: 0; transition: opacity 120ms; }

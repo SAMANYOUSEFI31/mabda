@@ -33,19 +33,19 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div className={cx('bsh-tabs-wrap', className)}>
-      <div role="tablist" aria-label={label} ref={list} className={cx('bsh-tabs', fullWidth && 'bsh-tabs--full')}>
+    <div className={cx('mb-tabs-wrap', className)}>
+      <div role="tablist" aria-label={label} ref={list} className={cx('mb-tabs', fullWidth && 'mb-tabs--full')}>
         {items.map((it, i) => (
           <button
             key={it.id} ref={(n) => { refs.current[it.id] = n; }} role="tab" type="button" id={`${uid}-t-${it.id}`}
             aria-selected={current === it.id} aria-controls={renderPanel ? `${uid}-p-${it.id}` : undefined}
-            tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="bsh-tab label-md"
+            tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="mb-tab label-md"
             onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)}
           >{it.label}</button>
         ))}
       </div>
       {renderPanel && (
-        <div role="tabpanel" id={`${uid}-p-${current}`} aria-labelledby={`${uid}-t-${current}`} className="bsh-tabpanel body-sm" tabIndex={0}>
+        <div role="tabpanel" id={`${uid}-p-${current}`} aria-labelledby={`${uid}-t-${current}`} className="mb-tabpanel body-sm" tabIndex={0}>
           {renderPanel(current as string)}
         </div>
       )}
@@ -78,11 +78,11 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} ref={root} className={cx('bsh-tabs', 'bsh-seg', fullWidth && 'bsh-tabs--full', className)}>
+    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth && 'mb-tabs--full', className)}>
       {items.map((it, i) => (
         <button
           key={it.id} ref={(n) => { refs.current[it.id] = n; }} type="button" role="radio" aria-checked={current === it.id}
-          tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="bsh-tab label-md"
+          tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="mb-tab label-md"
           onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)}
         >
           {it.icon && <Icon name={it.icon} size="sm" />}
@@ -102,14 +102,14 @@ export interface TableProps<Row extends Record<string, unknown>> {
 export function Table<Row extends Record<string, unknown>>({ caption, columns, rows, onRowClick, empty, className }: TableProps<Row>) {
   const clickable = Boolean(onRowClick);
   return (
-    <div className={cx('bsh-table-wrap', className)} role="region" aria-label={caption} tabIndex={0}>
-      <table className="bsh-table">
-        {caption && <caption className="bsh-table__caption label-md">{caption}</caption>}
+    <div className={cx('mb-table-wrap', className)} role="region" aria-label={caption} tabIndex={0}>
+      <table className="mb-table">
+        {caption && <caption className="mb-table__caption label-md">{caption}</caption>}
         <thead>
           <tr>{columns.map((c) => <th key={c.key} scope="col" className={cx('label-sm', c.numeric && 'is-num')}>{c.label}</th>)}</tr>
         </thead>
         <tbody>
-          {rows.length === 0 && empty && <tr><td colSpan={columns.length} className="bsh-table__empty">{empty}</td></tr>}
+          {rows.length === 0 && empty && <tr><td colSpan={columns.length} className="mb-table__empty">{empty}</td></tr>}
           {rows.map((row, i) => (
             <tr
               key={(row.id as string) || i}
@@ -131,7 +131,7 @@ export function Table<Row extends Record<string, unknown>>({ caption, columns, r
 
 /* ---------------- List / ListItem ---------------- */
 export function List({ children, label, className }: { children: ReactNode; label?: string; className?: string }) {
-  return <ul role="list" aria-label={label} className={cx('bsh-list', className)}>{children}</ul>;
+  return <ul role="list" aria-label={label} className={cx('mb-list', className)}>{children}</ul>;
 }
 
 export interface ListItemProps {
@@ -142,20 +142,20 @@ export interface ListItemProps {
 export function ListItem({ leading, title, description, trailing, chevron = false, href, onClick, selected, disabled = false, className }: ListItemProps) {
   const inner = (
     <>
-      {leading && <span className="bsh-li__lead">{leading}</span>}
-      <span className="bsh-li__text">
-        <span className="bsh-li__title body-md">{title}</span>
-        {description && <span className="bsh-li__desc body-sm">{description}</span>}
+      {leading && <span className="mb-li__lead">{leading}</span>}
+      <span className="mb-li__text">
+        <span className="mb-li__title body-md">{title}</span>
+        {description && <span className="mb-li__desc body-sm">{description}</span>}
       </span>
-      {trailing && <span className="bsh-li__trail">{trailing}</span>}
-      {chevron && <Icon name="ChevronLeft" size="md" className="bsh-li__chev bsh-flip" />}
+      {trailing && <span className="mb-li__trail">{trailing}</span>}
+      {chevron && <Icon name="ChevronLeft" size="md" className="mb-li__chev mb-flip" />}
     </>
   );
   let row: ReactNode;
-  if (href && !disabled) row = <a href={href} className="bsh-li__row" aria-current={selected ? 'page' : undefined}>{inner}</a>;
-  else if (onClick) row = <button type="button" className="bsh-li__row" disabled={disabled} aria-current={selected ? 'true' : undefined} onClick={onClick}>{inner}</button>;
-  else row = <div className="bsh-li__row">{inner}</div>;
-  return <li className={cx('bsh-li', (href || onClick) && 'is-interactive', selected && 'is-selected', disabled && 'is-disabled', className)}>{row}</li>;
+  if (href && !disabled) row = <a href={href} className="mb-li__row" aria-current={selected ? 'page' : undefined}>{inner}</a>;
+  else if (onClick) row = <button type="button" className="mb-li__row" disabled={disabled} aria-current={selected ? 'true' : undefined} onClick={onClick}>{inner}</button>;
+  else row = <div className="mb-li__row">{inner}</div>;
+  return <li className={cx('mb-li', (href || onClick) && 'is-interactive', selected && 'is-selected', disabled && 'is-disabled', className)}>{row}</li>;
 }
 
 /* ---------------- BottomNav (mobile primary navigation) ---------------- */
@@ -169,19 +169,19 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
   const [inner, setInner] = useState(defaultValue || items[0]?.id);
   const current = value !== undefined ? value : inner;
   return (
-    <nav aria-label={label} className={cx('bsh-bottomnav', fixed && 'is-fixed', className)}>
+    <nav aria-label={label} className={cx('mb-bottomnav', fixed && 'is-fixed', className)}>
       {items.map((it) => (
         <button
           key={it.id} type="button" aria-current={current === it.id ? 'page' : undefined}
-          className={cx('bsh-bottomnav__item', current === it.id && 'is-active')}
+          className={cx('mb-bottomnav__item', current === it.id && 'is-active')}
           onClick={() => { setInner(it.id); onChange?.(it.id); }}
         >
-          <span className="bsh-bottomnav__icon">
+          <span className="mb-bottomnav__icon">
             <Icon name={it.icon} size="xl" />
             {it.badge ? (
               <>
-                <span className="bsh-bottomnav__badge label-sm" aria-hidden="true">{formatNumber(it.badge)}</span>
-                <span className="bsh-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
+                <span className="mb-bottomnav__badge label-sm" aria-hidden="true">{formatNumber(it.badge)}</span>
+                <span className="mb-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
               </>
             ) : null}
           </span>
@@ -230,7 +230,7 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
       {icon && <Icon name={icon} size="lg" className="text-icon-subtle" />}
       {compact ? (trailing != null && <span aria-hidden="true" className="absolute end-space-2 top-space-2 rounded-pill bg-bg-neutral-bold" style={{ inlineSize: 8, blockSize: 8 }} />) : (<>
         <span className="min-w-space-0 flex-1 break-words">{label}</span>
-        {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtlest">{trailing}</span>}
+        {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtle">{trailing}</span>}
       </>)}
     </button>
   );
@@ -239,16 +239,16 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
 /* ---------------- Breadcrumb ---------------- */
 export function Breadcrumb({ items, label = 'مسیر صفحه', className }: { items: Array<{ label: ReactNode; href?: string }>; label?: string; className?: string }) {
   return (
-    <nav aria-label={label} className={cx('bsh-crumbs', className)}>
+    <nav aria-label={label} className={cx('mb-crumbs', className)}>
       <ol>
         {items.map((it, i) => {
           const last = i === items.length - 1;
           return (
             <li key={i}>
-              {last ? <span className="bsh-crumbs__cur body-sm" aria-current="page">{it.label}</span>
-                : it.href ? <a className="bsh-crumbs__link body-sm" href={it.href}>{it.label}</a>
-                : <span className="bsh-crumbs__link body-sm">{it.label}</span>}
-              {!last && <Icon name="ChevronLeft" size="sm" className="bsh-crumbs__sep bsh-flip" />}
+              {last ? <span className="mb-crumbs__cur body-sm" aria-current="page">{it.label}</span>
+                : it.href ? <a className="mb-crumbs__link body-sm" href={it.href}>{it.label}</a>
+                : <span className="mb-crumbs__link body-sm">{it.label}</span>}
+              {!last && <Icon name="ChevronLeft" size="sm" className="mb-crumbs__sep mb-flip" />}
             </li>
           );
         })}

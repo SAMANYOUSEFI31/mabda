@@ -41,7 +41,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     const items = () => el.querySelectorAll<HTMLElement>(FOCUSABLE);
     (items()[0] || el).focus();
     // make the rest of the page inert while the dialog is open
-    const siblings = Array.from(document.body.children).filter((n) => n !== layer.current && !n.hasAttribute('inert') && !n.matches('.bsh-toast-stack'));
+    const siblings = Array.from(document.body.children).filter((n) => n !== layer.current && !n.hasAttribute('inert') && !n.matches('.mb-toast-stack'));
     siblings.forEach((n) => n.setAttribute('inert', ''));
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -67,8 +67,8 @@ export function Dialog({ open, onClose, title, description, children, footer, in
 
   if (!open) return null;
   const node = (
-    <div ref={layer} className={cx('bsh-dialog-layer', inline && 'is-inline', side && 'is-side')}>
-      <div className="bsh-scrim" onClick={alert ? undefined : onClose} aria-hidden="true" />
+    <div ref={layer} className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side')}>
+      <div className="mb-scrim" onClick={alert ? undefined : onClose} aria-hidden="true" />
       <div
         ref={panel}
         role={alert ? 'alertdialog' : 'dialog'}
@@ -76,16 +76,16 @@ export function Dialog({ open, onClose, title, description, children, footer, in
         aria-labelledby={`${id}-t`}
         aria-describedby={description ? `${id}-d` : undefined}
         tabIndex={-1}
-        className={cx('bsh-dialog', `bsh-dialog--${size}`)}
+        className={cx('mb-dialog', `mb-dialog--${size}`)}
       >
-        <span className="bsh-dialog__grab" aria-hidden="true" />
-        <div className="bsh-dialog__head">
+        <span className="mb-dialog__grab" aria-hidden="true" />
+        <div className="mb-dialog__head">
           <h2 id={`${id}-t`} className="heading-md">{title}</h2>
           {onClose && <IconButton icon="X" label="بستن" onClick={onClose} />}
         </div>
-        {description && <p id={`${id}-d`} className="bsh-dialog__desc body-sm">{description}</p>}
-        {children && <div className="bsh-dialog__body">{children}</div>}
-        {footer && <div className="bsh-dialog__foot">{footer}</div>}
+        {description && <p id={`${id}-d`} className="mb-dialog__desc body-sm">{description}</p>}
+        {children && <div className="mb-dialog__body">{children}</div>}
+        {footer && <div className="mb-dialog__foot">{footer}</div>}
       </div>
     </div>
   );
@@ -103,9 +103,9 @@ export interface ToastProps {
 
 export function Toast({ intent = 'info', children, action, onClose, className, ...rest }: ToastProps & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div role={intent === 'danger' ? 'alert' : 'status'} className={cx('bsh-toast', `bsh-toast--${intent}`, className)} {...rest}>
-      <Icon name={STATUS_ICON[intent]} size="lg" className="bsh-toast__icon" />
-      <span className="bsh-toast__text body-sm">{children}</span>
+    <div role={intent === 'danger' ? 'alert' : 'status'} className={cx('mb-toast', `mb-toast--${intent}`, className)} {...rest}>
+      <Icon name={STATUS_ICON[intent]} size="lg" className="mb-toast__icon" />
+      <span className="mb-toast__text body-sm">{children}</span>
       {action && <Button size="sm" variant="ghost" onClick={action.onClick}>{action.label}</Button>}
       {onClose && <IconButton icon="X" label="بستن" size="sm" onClick={onClose} />}
     </div>
@@ -140,7 +140,7 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
     <ToastCtx.Provider value={{ show, dismiss }}>
       {children}
       {createPortal(
-      <div className="bsh-toast-stack" role="region" aria-label="اعلان‌ها">
+      <div className="mb-toast-stack" role="region" aria-label="اعلان‌ها">
         {items.map((t) => (
           <Toast
             key={t.id}
@@ -197,11 +197,11 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
   const id = useId();
   useDismiss(open, [root], (esc) => { setOpen(false); if (esc) btn.current?.focus(); });
   return (
-    <span className={cx('bsh-popover', className)} ref={root}>
+    <span className={cx('mb-popover', className)} ref={root}>
       {cloneElement(trigger, {
         ref: btn, 'aria-expanded': open, 'aria-controls': `${id}-p`, 'aria-haspopup': 'dialog', onClick: () => setOpen((o) => !o),
       })}
-      {open && <div id={`${id}-p`} role="dialog" aria-label={label} className={cx('bsh-popover__panel', `is-${align}`, side === 'top' && 'is-top')}>{children}</div>}
+      {open && <div id={`${id}-p`} role="dialog" aria-label={label} className={cx('mb-popover__panel', `is-${align}`, side === 'top' && 'is-top')}>{children}</div>}
     </span>
   );
 }
@@ -238,7 +238,7 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     if (e.key === 'Tab') close(false);
   };
   return (
-    <span className={cx('bsh-popover', className)} ref={root}>
+    <span className={cx('mb-popover', className)} ref={root}>
       {cloneElement(trigger, {
         ref: btn, id: `${id}-b`, 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-controls': `${id}-m`,
         onClick: () => setOpen((o) => !o),
@@ -246,10 +246,10 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
       })}
       {open && (
         <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} style={{ maxBlockSize: 'min(70dvh, 32rem)', overflowY: 'auto' }}
-          className={cx('bsh-popover__panel', 'bsh-menu', `is-${align}`, side === 'top' && 'is-top')}>
-          {items.map((it, i) => it.divider ? <div key={i} role="separator" className="bsh-menu__sep" /> : (
+          className={cx('mb-popover__panel', 'mb-menu', `is-${align}`, side === 'top' && 'is-top')}>
+          {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}
-              className={cx('bsh-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}
+              className={cx('mb-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}
               onClick={() => { it.onSelect?.(); close(true); }}>
               {it.icon && <Icon name={it.icon} size="md" />}
               <span>{it.label}</span>
