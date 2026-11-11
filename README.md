@@ -1,6 +1,6 @@
 # Mabda (مبدأ)
 
-منبع حقیقت کسب‌وکار: دانش را به Context ساختاریافته تبدیل می‌کند، خروجی‌ها از آن ساخته می‌شوند و با تغییر Context «قدیمی» می‌خورند.
+منبع حقیقت تو، برای کار، پروژه و زندگی شخصی: دانش را به Context ساختاریافته تبدیل می‌کند، خروجی‌ها از آن ساخته می‌شوند و با تغییر Context «قدیمی» می‌خورند.
 
 ```bash
 bun install
@@ -18,4 +18,4 @@ AI داخلی Mabda فقط با پیکربندی پلتفرم اجرا می‌ش
 
 ## ساختار
 
-`CLAUDE.md` قوانین ثابت، `docs/ai-architecture.md` معماری AI و ذخیره‌سازی، `docs/decisions-v3.1.md` تصمیم‌ها، `docs/pricing-entitlements.md` پلن‌ها.
+`CLAUDE.md` قوانین ثابت، `docs/ux/identity.md` هویت، `docs/ux/audience.md` مخاطب، `docs/design-system/` سیستم طراحی، `docs/ai-architecture.md` معماری AI و ذخیره‌سازی، `docs/decisions-v3.1.md` تصمیم‌ها، `docs/pricing-entitlements.md` پلن‌ها.
