@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ENTITLEMENTS_CONFIG } from './entitlements.config';
-import { can, cheapestPlanWith, entitlementsOf, meters, objectsRemaining, PLAN_IDS } from './entitlements';
+import { can, cheapestPlanWith, entitlementsOf, hasIntelligenceCapability, INTELLIGENCE_CAPABILITIES, meters, objectsRemaining, PLAN_IDS } from './entitlements';
 import { PLANS, FILE_QUOTA_TOKENS } from './creditEngine';
 import { categoryOf, costReport, heavyUseCost, isOurCost } from './costReport';
 import { ENTITLEMENTS_CONFIG as C } from './entitlements.config';
 
 test('every plan has every entitlement and plans only grow (Starter ≤ Pro ≤ Max)', () => {
-  const keys = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'engines', 'contextPack', 'decisionJudgmentsPerDay', 'coachPerDay', 'customSpecs'];
+  const keys = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'engines', 'contextPack', 'decisionJudgmentsPerDay', 'coachPerDay', 'customSpecs', 'intelligence'];
   for (const p of PLAN_IDS) for (const k of keys) assert.ok(k in entitlementsOf(p), `${p}.${k}`);
   const nums = ['priceMonthlyUsd', 'workspaces', 'maxObjects', 'fileTokensPerMonth', 'decisionJudgmentsPerDay', 'coachPerDay'] as const;
   for (const k of nums) {
@@ -54,6 +54,13 @@ test('usage meters: ratio, near-limit and exceeded', () => {
   assert.equal(m[1].exceeded, true);
   assert.equal(m[2].nearLimit, false);
   assert.equal(m[3].exceeded, true);
+});
+
+test('intelligence capabilities: every plan states every capability (rule 5: the plan is decided only in entitlements.config)', () => {
+  for (const p of PLAN_IDS) {
+    assert.deepEqual(Object.keys(entitlementsOf(p).intelligence).sort(), [...INTELLIGENCE_CAPABILITIES].sort(), p);
+    for (const c of INTELLIGENCE_CAPABILITIES) assert.equal(typeof hasIntelligenceCapability(p, c), 'boolean', `${p}.${c}`);
+  }
 });
 
 const e = (mode: string, cost: number, byok?: boolean) => ({ mode: mode as never, estimatedAiCostUsd: cost, byok });

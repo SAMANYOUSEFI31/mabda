@@ -7,6 +7,7 @@ import { cosine, normalizeForHash, rrf, sha1, toFloat32, type Ranked } from './m
 import type { EmbeddingKey, EmbeddingStore, JudgmentAnswer, JudgmentQuestion, ModelEntry, Specialists, TranscriptionInput } from './types.ts';
 import { embeddingKeyId } from './types.ts';
 import type { PlanId } from '../../src/types/index.ts';
+import { hasIntelligenceCapability } from '../../src/core/entitlements.ts';
 
 /**
  * اجرای دستورپخت‌ها. هیچ مدل یا آستانه‌ای در این فایل نیست: هرچه هست از `config/recipes.json` و `models.json` می‌آید.
@@ -49,7 +50,7 @@ const recipeOf = <K extends RecipeConfig['kind']>(cfg: IntelligenceConfig, name:
 };
 
 function gate(r: RecipeConfig, plan: PlanId | undefined): void {
-  if (plan && r.plans !== 'all' && !r.plans.includes(plan)) throw new IntelligenceError('disabled');
+  if (plan && !hasIntelligenceCapability(plan, r.capability)) throw new IntelligenceError('disabled');
 }
 
 const modelOf = (cfg: IntelligenceConfig, key: string): ModelEntry => {

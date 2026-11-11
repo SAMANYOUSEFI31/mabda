@@ -1,12 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
+import { readFileSync } from 'node:fs';
+import { ENTITLEMENTS_CONFIG } from '../../src/core/entitlements.config.ts';
+import { INTELLIGENCE_CAPABILITIES } from '../../src/core/entitlements.ts';
 import { migrate } from '../db/migrations.ts';
 import { Repo } from '../db/repo.ts';
 import { purgeObject } from '../db/removal.ts';
 import { MemoryCallLog } from './callLog.ts';
 import { charMeter, chunkByStructure } from './chunker.ts';
-import { loadIntelligenceConfig, modelRefs, validateConfig, withRecipe, type FindRelatedRecipe, type IntelligenceConfig, type WhereToRecipe, type WhatIsThisRecipe } from './config.ts';
+import { loadIntelligenceConfig, modelRefs, RECIPES_FILE, validateConfig, withRecipe, type FindRelatedRecipe, type IntelligenceConfig, type WhereToRecipe, type WhatIsThisRecipe } from './config.ts';
 import { MemoryEmbeddingStore, SqliteEmbeddingStore } from './embeddingStore.ts';
 import { IntelligenceError } from './errors.ts';
 import { createIntelligence, createSuggestionStore } from './index.ts';
@@ -227,9 +230,18 @@ test('createIntelligence with injected specialists runs a recipe end-to-end and 
   const ai = createIntelligence({ specialists, store: new MemoryEmbeddingStore(), log: new MemoryCallLog() });
   const t = await ai.transcribe({ audio: { data: new Uint8Array([1, 2, 3]), fileName: 'a.wav', mimeType: 'audio/wav' } });
   assert.equal(t.text, 'سلام دنیا');
-  const cfg = withRecipe(baseCfg(), 'transcribe', (r: { plans: unknown }) => { r.plans = ['max']; });
-  const gated = createIntelligence({ cfg, specialists, store: new MemoryEmbeddingStore(), log: new MemoryCallLog() });
-  await assert.rejects(() => gated.transcribe({ plan: 'starter', audio: { data: new Uint8Array([1]), fileName: 'a.wav', mimeType: 'audio/wav' } }), (e: unknown) => e instanceof IntelligenceError && e.kind === 'disabled');
+  // which plan has the capability is decided ONLY in entitlements.config (rule 5): the recipe carries just the capability key
+  const raw = JSON.parse(readFileSync(RECIPES_FILE, 'utf8')).recipes as Record<string, Record<string, unknown>>;
+  for (const [name, r] of Object.entries(raw)) { assert.ok(!('plans' in r), `${name}: no plans field in the recipe`); assert.ok(INTELLIGENCE_CAPABILITIES.includes(r.capability as never), `${name}: capability`); }
+  const flags = ENTITLEMENTS_CONFIG.plans.starter.intelligence;
+  flags.voiceNote = false;
+  try {
+    const gated = createIntelligence({ specialists, store: new MemoryEmbeddingStore(), log: new MemoryCallLog() });
+    await assert.rejects(() => gated.transcribe({ plan: 'starter', audio: { data: new Uint8Array([1]), fileName: 'a.wav', mimeType: 'audio/wav' } }), (e: unknown) => e instanceof IntelligenceError && e.kind === 'disabled');
+    const ok = await gated.transcribe({ plan: 'pro', audio: { data: new Uint8Array([1]), fileName: 'a.wav', mimeType: 'audio/wav' } });
+    assert.equal(ok.text, 'سلام دنیا');
+  } finally { flags.voiceNote = true; }
+  assert.throws(() => withRecipe(baseCfg(), 'transcribe', (r: { capability: unknown }) => { r.capability = 'nope'; }), /capability/);
 });
 
 // ───────────── مدل داده ─────────────

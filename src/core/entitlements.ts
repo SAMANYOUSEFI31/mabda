@@ -4,14 +4,19 @@
  */
 
 import { ENTITLEMENTS_CONFIG } from './entitlements.config';
-import type { PlanEntitlements, PlanKey } from './entitlements.config';
+import { INTELLIGENCE_CAPABILITIES } from './entitlements.config';
+import type { IntelligenceCapability, PlanEntitlements, PlanKey } from './entitlements.config';
 import type { PlanId } from '../types';
 
-export type { PlanEntitlements, PlanKey };
+export type { IntelligenceCapability, PlanEntitlements, PlanKey };
+export { INTELLIGENCE_CAPABILITIES };
 export const PLAN_IDS: PlanId[] = ['starter', 'pro', 'max'];
 export const COST_WARN_RATIO = ENTITLEMENTS_CONFIG.costWarnRatio;
 
 export const entitlementsOf = (plan: PlanId): PlanEntitlements => ENTITLEMENTS_CONFIG.plans[plan] ?? ENTITLEMENTS_CONFIG.plans.starter;
+
+/** does the plan include an intelligence-layer capability (a recipe's `capability` key)? */
+export const hasIntelligenceCapability = (plan: PlanId, capability: IntelligenceCapability): boolean => entitlementsOf(plan).intelligence[capability] === true;
 
 export type Feature = 'changeImpact' | 'semanticContradiction' | 'contextPack' | 'customSpecs';
 

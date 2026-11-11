@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { PlanId } from '../../src/types/index.ts';
+import { INTELLIGENCE_CAPABILITIES } from '../../src/core/entitlements.config.ts';
+import type { IntelligenceCapability } from '../../src/core/entitlements.config.ts';
 import type { JudgmentQuestion, ModelEntry } from './types.ts';
 
 /**
@@ -11,7 +12,8 @@ import type { JudgmentQuestion, ModelEntry } from './types.ts';
  * عوض کردن مدل یا حذف یک مرحله فقط تغییر همین دو فایل است.
  */
 
-export type PlanScope = 'all' | PlanId[];
+/** «کدام پلن» فقط در src/core/entitlements.config.ts (قانون ۵)؛ دستورپخت فقط کلید قابلیت می‌آورد */
+export type { IntelligenceCapability };
 
 export interface FinderConfig {
   specialist: 'lexical' | 'embedding';
@@ -27,7 +29,8 @@ export interface FindRelatedRecipe {
   kind: 'findRelated';
   description: string;
   version: number;
-  plans: PlanScope;
+  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  capability: IntelligenceCapability;
   finders: FinderConfig[];
   fusion: { method: 'rrf'; k: number };
   /** چند نامزد از یابنده به مرتب‌کننده می‌رسد (سقف هزینه/تأخیر مرتب‌کننده، نه سقف نمایش) */
@@ -47,7 +50,8 @@ export interface WhatIsThisRecipe {
   kind: 'whatIsThis';
   description: string;
   version: number;
-  plans: PlanScope;
+  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  capability: IntelligenceCapability;
   judge: { model: string };
   questions: JudgmentQuestion[];
   /** زیر این اطمینان پاسخ «مطمئن نبود» علامت می‌خورد؛ null = هنوز سنجیده نشده */
@@ -58,7 +62,8 @@ export interface WhereToRecipe {
   kind: 'whereTo';
   description: string;
   version: number;
-  plans: PlanScope;
+  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  capability: IntelligenceCapability;
   /** نام دستورپخت «مرتبط‌ها» که نامزدها را می‌سازد */
   related: string;
   /** null = بدون داور: بخشِ بهترین مورد مرتبط برگزیده می‌شود (خط پایهٔ ارزیابی) */
@@ -80,7 +85,8 @@ export interface TranscribeRecipe {
   kind: 'transcribe';
   description: string;
   version: number;
-  plans: PlanScope;
+  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  capability: IntelligenceCapability;
   model: string;
   language: string;
 }
@@ -97,7 +103,6 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const MODELS_FILE = path.join(here, '..', 'ai', 'config', 'models.json');
 export const RECIPES_FILE = path.join(here, 'config', 'recipes.json');
 
-const PLAN_IDS: PlanId[] = ['starter', 'pro', 'max'];
 const KINDS: ModelEntry['kind'][] = ['embedding', 'rerank', 'judgment', 'transcription'];
 
 /** همهٔ کلیدهای مدلی که یک دستورپخت به آن‌ها اشاره می‌کند، با نوع لازم */
@@ -122,7 +127,7 @@ export function validateConfig(cfg: IntelligenceConfig): string[] {
     if (m.kind === 'embedding' && !m.maxInputTokens) bad.push(`مدل ${key}: maxInputTokens لازم است`);
   }
   for (const [name, r] of Object.entries(cfg.recipes)) {
-    if (r.plans !== 'all' && !(Array.isArray(r.plans) && r.plans.every((p) => PLAN_IDS.includes(p)))) bad.push(`دستورپخت ${name}: plans نامعتبر`);
+    if (!INTELLIGENCE_CAPABILITIES.includes(r.capability)) bad.push(`دستورپخت ${name}: capability نامعتبر یا ناموجود در entitlements.config`);
     for (const ref of modelRefs(r)) {
       const m = cfg.models[ref.key];
       if (!m) bad.push(`دستورپخت ${name}: مدل «${ref.key}» در models.json نیست`);
