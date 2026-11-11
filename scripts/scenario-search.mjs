@@ -70,7 +70,8 @@ try {
     step(`[${width}] a note, an asset and a node are found too; a command runs`);
     await openPalette(); await type('هدیه');
     assert.ok((await page.locator('[role=dialog] [role=group][aria-label="یادداشت‌ها"]').count()) === 1, 'the note group');
-    await page.keyboard.press('Enter');
+    // a thought made from the same line is found in its own group (thoughts are a kind now): pick the NOTE row
+    await page.locator('[role=dialog] [role=group][aria-label="یادداشت‌ها"] [role=option]').first().click();
     await page.getByLabel('یادداشت تازه').waitFor();
     const assetTitle = (await api('/workspaces/ws_demo/state')).deliverables[0].title;
     await openPalette(); await type(assetTitle.split(' ').slice(0, 2).join(' '));
