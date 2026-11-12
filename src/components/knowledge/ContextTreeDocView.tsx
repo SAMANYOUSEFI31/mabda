@@ -135,7 +135,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
           <div className="flex flex-wrap items-center gap-inline-xs">
             {/* one main action; everything else is under «⋯» */}
-            <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
+            <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button>
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>باز کردن</Button>}
             <Menu
               label={`عملیات بخش ${node.label}`}
@@ -166,7 +166,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
         {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && nodeSamples.length === 0 && !notesOpen ? (
           // an empty branch inside the tree is a quiet dashed row (patterns.md «جای خالی درون محتوا»), not a page-sized empty
-          // state: the branch's own row above already has «افزودن دانش»
+          // state: the branch's own row above already has «افزودن»
           <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-dashed border-border-default px-inset-md py-inset-sm">
             <p className="body-sm text-text-subtle">هنوز چیزی در این شاخه نیست.</p>
             <Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button>
@@ -258,7 +258,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const path = pathTo(nodes, focusNode.id);
     const above = fromAbove(nodes, objects, props.relationships ?? [], focusNode.id, new Date());
     return (
-      <section className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
+      <section className="focus-scope flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
         <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
         <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
           {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}

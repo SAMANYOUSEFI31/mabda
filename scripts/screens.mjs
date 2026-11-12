@@ -249,12 +249,12 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await closeDialog();
   await goTab(TABS[1]); await shoot('context-doc');
   // table view
-  await page.getByRole('button', { name: 'نماهای بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'جدول' }).click(); await shoot('context-table');
-  await page.getByRole('button', { name: 'نماهای بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'خواندن به‌صورت سند' }).click(); await shoot('context-read');
+  await page.locator('main .mb-seg [role=radio]', { hasText: 'جدول' }).first().click(); await page.waitForTimeout(600); await shoot('context-table');
+  await page.locator('main .mb-seg [role=radio]', { hasText: 'سند' }).first().click(); await page.waitForTimeout(600); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
-  await page.getByRole('button', { name: /افزودن دانش/ }).first().click(); await shoot('dialog-context'); await closeDialog();
+  await page.getByRole('button', { name: /^افزودن به / }).first().click(); await shoot('dialog-context'); await closeDialog();
 
   await goTab(TABS[2]); await shoot('workstreams-create');
   await page.getByRole("tab", { name: /چه چیزی کم است/ }).click(); await shoot('workstreams-gap');

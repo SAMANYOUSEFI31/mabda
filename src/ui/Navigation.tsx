@@ -57,7 +57,7 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
 export interface SegmentItem { id: string; label: ReactNode; icon?: IconName; disabled?: boolean }
 export interface SegmentedControlProps {
   items: SegmentItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
-  label: string; fullWidth?: boolean; className?: string;
+  label: string; fullWidth?: boolean | 'phone'; className?: string;
 }
 
 export function SegmentedControl({ items, value, defaultValue, onChange, label, fullWidth = false, className }: SegmentedControlProps) {
@@ -78,7 +78,7 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth && 'mb-tabs--full', className)}>
+    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
       {items.map((it, i) => (
         <button
           key={it.id} ref={(n) => { refs.current[it.id] = n; }} type="button" role="radio" aria-checked={current === it.id}

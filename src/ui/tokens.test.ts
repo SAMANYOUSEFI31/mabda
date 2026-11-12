@@ -97,3 +97,12 @@ for (const mode of ['light', 'dark']) {
     assert.deepEqual(fails, []);
   });
 }
+
+// identity.md «نقطه»: knowledge state is told by the nuqta's SHAPE (hollow, half, solid, split, double, struck, dashed). Below 12px at 1x
+// half / split and hollow / struck / dashed blur together, so no nuqta size may go under it
+test('every nuqta size is large enough to tell its seven shapes apart (≥ 12px)', () => {
+  const css = readFileSync(join(OUT_DIR, 'tokens.css'), 'utf8');
+  const sizes = [...css.matchAll(/--nuqta-size-(\w+):\s*(\d+(?:\.\d+)?)px/g)];
+  assert.ok(sizes.length >= 3, 'nuqta sizes not found');
+  for (const [, name, px] of sizes) assert.ok(Number(px) >= 12, `--nuqta-size-${name} is ${px}px; under 12 the state shapes cannot be told apart`);
+});

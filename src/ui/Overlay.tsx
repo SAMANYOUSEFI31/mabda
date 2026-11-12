@@ -278,6 +278,69 @@ function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | n
   }, [active]);
 }
 
+/* ---------------- where a floating layer may sit ---------------- */
+/** overlays.md «جای لایه‌های شناور»: a menu or popover sits below the bars pinned at the top (the app bar, a page bar that is
+ *  stuck), above the phone's bottom bar, and inside the content's own side margins, so it is never nearer the screen's edge
+ *  than the text it belongs to. A trigger inside one of those bars is measured against the rest of the window. */
+export function floatArea(trigger: Element): { top: number; bottom: number; left: number; right: number } { // check:design-ignore: viewport geometry is physical (getBoundingClientRect)
+  const vw = document.documentElement.clientWidth, vh = window.innerHeight, gap = 8;
+  const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--inset-lg')) || 16;
+  let top = gap, bottom = vh - gap, left = gutter, right = vw - gutter;
+  for (const bar of document.querySelectorAll<HTMLElement>('[data-pin], .mb-bottomnav.is-fixed')) {
+    if (bar.contains(trigger)) continue;
+    const pos = getComputedStyle(bar).position;
+    if (pos !== 'fixed' && pos !== 'sticky') continue;
+    const r = bar.getBoundingClientRect();
+    if (!r.width || !r.height || r.bottom <= 0 || r.top >= vh) continue;
+    if (r.top < vh / 3) top = Math.max(top, r.bottom + gap); else bottom = Math.min(bottom, r.top - gap);
+  }
+  const main = trigger.closest('main');
+  if (main && !trigger.closest('[role=dialog], .mb-dialog-layer')) {
+    const r = main.getBoundingClientRect(), cs = getComputedStyle(main);
+    left = Math.max(left, r.left + parseFloat(cs.paddingLeft)); // check:design-ignore: measured box, not a style
+    right = Math.min(right, r.right - parseFloat(cs.paddingRight)); // check:design-ignore: measured box, not a style
+  }
+  return { top, bottom, left, right };
+}
+
+/** place a floating panel against its trigger inside floatArea: preferred side, flips when there is no room, slides to fit,
+ *  scrolls itself only when taller than the room there is */
+function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', side: 'top' | 'bottom', fill = false): CSSProperties {
+  const tr = t.getBoundingClientRect();
+  const a = floatArea(t), gap = 8;
+  const vw = document.documentElement.clientWidth;
+  const kept = m.scrollTop;
+  requestAnimationFrame(() => { m.scrollTop = kept; });
+  m.style.maxBlockSize = '';
+  m.style.minInlineSize = fill ? `${Math.min(Math.max(tr.width, 240), 320)}px` : '';
+  const room = a.right - a.left;
+  const mw = Math.min(m.offsetWidth, room);
+  const above = tr.top - gap - a.top, below = a.bottom - tr.bottom - gap;
+  const natural = m.scrollHeight + 2;
+  const up = side === 'top' ? above >= natural || above > below : !(below >= natural || below > above);
+  const mh = Math.max(Math.min(natural, up ? above : below), Math.min(natural, 160));
+  let y = up ? tr.top - gap - mh : tr.bottom + gap;
+  y = Math.max(a.top, Math.min(y, a.bottom - mh));
+  const rtl = getComputedStyle(t).direction === 'rtl';
+  let x = rtl === (align === 'start') ? tr.right - mw : tr.left;
+  x = Math.max(a.left, Math.min(x, a.right - mw));
+  // the height was freed by hand above; React does not write a style it believes unchanged, so put it back here too
+  m.style.maxBlockSize = `${mh}px`;
+  return { position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: room, overflowY: 'auto' };
+}
+
+/** follow the trigger while open: the page or a container scrolled, or the window changed; the panel's own scroll is not a move */
+function useFollow(open: boolean, panel: React.RefObject<HTMLElement | null>, place: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const on = (e?: Event) => { if (e && e.type === 'scroll' && e.target instanceof Node && panel.current?.contains(e.target)) return; place(); };
+    window.addEventListener('resize', on);
+    window.addEventListener('scroll', on, true);
+    window.visualViewport?.addEventListener('resize', on);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); window.visualViewport?.removeEventListener('resize', on); };
+  }, [open, place, panel]);
+}
+
 /* ---------------- Popover ---------------- */
 export interface PopoverProps {
   trigger: ReactElement<Record<string, unknown>>;
@@ -292,14 +355,24 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const btn = useRef<HTMLElement | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<CSSProperties | null>(null);
   const id = useId();
-  useDismiss(open, [root], (esc) => { setOpen(false); if (esc) btn.current?.focus(); });
+  // in the document's overlay layer (a portal), like a menu: no container of the trigger (a canvas, a scrolling card) can
+  // clip it or draw over it, and it obeys the same placement rule
+  const place = useCallback(() => { if (btn.current && panel.current) setPos(placeAgainst(btn.current, panel.current, align, side)); }, [align, side]);
+  useLayoutEffect(() => { if (open) place(); else setPos(null); }, [open, place]);
+  useFollow(open, panel, place);
+  useDismiss(open, [root, panel], (esc) => { setOpen(false); if (esc) btn.current?.focus(); });
   return (
     <span className={cx('mb-popover', className)} ref={root}>
       {cloneElement(trigger, {
         ref: btn, 'aria-expanded': open, 'aria-controls': `${id}-p`, 'aria-haspopup': 'dialog', onClick: () => setOpen((o) => !o),
       })}
-      {open && <div id={`${id}-p`} role="dialog" aria-label={label} className={cx('mb-popover__panel', `is-${align}`, side === 'top' && 'is-top')}>{children}</div>}
+      {open && createPortal(
+        <div id={`${id}-p`} ref={panel} role="dialog" aria-label={label}
+          style={pos ?? { position: 'fixed', insetBlockStart: 0, insetInlineStart: 0, visibility: 'hidden' }}
+          className={cx('mb-popover__panel', 'is-portal', side === 'top' && 'is-top')}>{children}</div>, document.body)}
     </span>
   );
 }
@@ -358,43 +431,16 @@ export function Menu({ trigger, items: allItems, label = 'منو', align = 'star
   useDismiss(open, [root, menu], (esc) => close(esc));
   const enabled = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled),[role="menuitemradio"]') ?? []);
   // The panel lives in the document's overlay layer (a portal), never inside the trigger's container (a scrolling
-  // sidebar would clip it). Placed against the trigger: preferred side, flips when there is no room, slides inside
-  // the viewport with 8px to spare, and scrolls itself only when it is taller than the viewport (navigation.md «منوی حساب»).
+  // sidebar would clip it). Placed by placeAgainst inside floatArea: below the pinned bars, above the bottom bar, within
+  // the content margins; scrolls itself only when taller than the room there is (overlays.md «جای لایه‌های شناور»).
   const place = useCallback(() => {
     const t = btn.current, m = menu.current;
     if (!t || !m) return;
-    const tr = t.getBoundingClientRect();
-    const vw = document.documentElement.clientWidth, vh = window.innerHeight, edge = 8, gap = 8;
-    const fill = root.current?.classList.contains('w-full');
-    // measuring frees the height for a moment, which would throw a long menu back to its top: keep where she had scrolled it
-    const kept = m.scrollTop;
-    requestAnimationFrame(() => { if (menu.current) menu.current.scrollTop = kept; });
-    m.style.maxBlockSize = '';
-    m.style.minInlineSize = fill ? `${Math.min(Math.max(tr.width, 240), 320)}px` : '';
-    const mw = Math.min(m.offsetWidth, vw - 2 * edge);
-    const mh = Math.min(m.scrollHeight + 2, vh - 2 * edge);
-    const above = tr.top - gap - edge, below = vh - tr.bottom - gap - edge;
-    const up = side === 'top' ? above >= mh || above > below : !(below >= mh || below > above);
-    let y = up ? tr.top - gap - mh : tr.bottom + gap;
-    y = Math.max(edge, Math.min(y, vh - edge - mh));
-    const rtl = getComputedStyle(t).direction === 'rtl';
-    // align start: the panel's inline-start edge meets the trigger's (its right edge in RTL); end: the opposite edges
-    let x = rtl === (align === 'start') ? tr.right - mw : tr.left;
-    x = Math.max(edge, Math.min(x, vw - edge - mw));
-    // the height was freed by hand above; React does not write a style it believes unchanged, so put it back here too
-    m.style.maxBlockSize = `${mh}px`;
-    setPos({ position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: vw - 2 * edge, overflowY: 'auto' });
+    setPos(placeAgainst(t, m, align, side, !!root.current?.classList.contains('w-full')));
   }, [align, side]);
   useLayoutEffect(() => { if (open) place(); }, [open, place, items.length]);
   useEffect(() => { if (!presence.mounted) setPos(null); }, [presence.mounted]);
-  useEffect(() => {
-    if (!open) return;
-    // the page or a container scrolled: follow the trigger; the menu's own scroll (a long menu in a short window) is not a move
-    const on = (e?: Event) => { if (e && e.type === 'scroll' && e.target instanceof Node && menu.current?.contains(e.target)) return; place(); };
-    window.addEventListener('resize', on);
-    window.addEventListener('scroll', on, true);
-    return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };
-  }, [open, place]);
+  useFollow(open, menu, place);
   useEffect(() => { if (open && pos) (searchable ? search.current : enabled()[0])?.focus(); }, [open, pos !== null]);
   useEffect(() => { if (!open) setQuery(''); }, [open]);
   const onKey = (e: React.KeyboardEvent) => {

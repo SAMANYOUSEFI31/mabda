@@ -19,10 +19,15 @@ const countsText = (c: { knowledge: number; redLines: number; stale: number; ope
  *                  counters and, for a row that has deeper sections rolled into it, a button to open them;
  *  · OverviewFar — zoomed out, a row is ONE summary (counters) and the lines between rows are ONE line with a count.
  */
+/** the stage width under which a row label is a small tab; and the room the labels take at the END edge (their width + gap),
+ *  kept free by the first view and «متناسب‌سازی» so no card starts under a label */
+const COMPACT_BELOW = 560;
+export const railInset = (stageW: number) => (stageW < COMPACT_BELOW ? 96 : 168) + 12;
+
 export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: Set<string>; onToggleRow: (nodeId: string) => void; onEnterRow?: (nodeId: string) => void; /** the order of rows is display only */ onMoveRow?: (nodeId: string, dir: -1 | 1) => void }> = ({ scene, view, size, opened, onToggleRow, onEnterRow, onMoveRow }) => {
   const rows = scene.overview?.rows ?? [];
   // on a phone the label is a small tab; a tap opens its counters and buttons (the labels must not cover the cards)
-  const compact = size.w < 560;
+  const compact = size.w < COMPACT_BELOW;
   const [openRow, setOpenRow] = useState<string | null>(null);
   return (
     <div className="pointer-events-none absolute top-space-0 bottom-space-0 end-space-0 start-space-0 overflow-hidden">

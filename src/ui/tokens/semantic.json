@@ -1482,22 +1482,22 @@
   },
   "nuqta-size": {
     "$type": "dimension",
-    "$description": "nuqta sizes: beside 14px text and in tables / beside an item headline / timeline and sidebar",
+    "$description": "nuqta sizes: beside 14px text and in tables / beside an item headline / timeline and sidebar. 12 is the floor at which all seven state shapes (hollow, half, solid, split, double, struck, dashed) are told apart at 1x",
     "sm": {
       "$value": {
-        "value": 8,
+        "value": 12,
         "unit": "px"
       }
     },
     "md": {
       "$value": {
-        "value": 10,
+        "value": 14,
         "unit": "px"
       }
     },
     "lg": {
       "$value": {
-        "value": 14,
+        "value": 16,
         "unit": "px"
       }
     },

@@ -215,9 +215,9 @@
   --mabda-edge-supersedes: var(--text-warning);
   --mabda-edge-halo: var(--surface-sunken);
   --mabda-edge-chip-bg: var(--surface-raised);
-  --nuqta-size-sm: 8px;
-  --nuqta-size-md: 10px;
-  --nuqta-size-lg: 14px;
+  --nuqta-size-sm: 12px;
+  --nuqta-size-md: 14px;
+  --nuqta-size-lg: 16px;
   --nuqta-size-xl: 28px;
   --effect-bar-blur: 16px;
   --sidebar-width: 264px;

@@ -104,11 +104,11 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   const nothingYet = !p.nodeId && Object.values(view.counts).every((n) => !n);
   const count = (k: SpaceKind | 'all') => (k === 'all' ? Object.values(view.counts).reduce((a, b) => a + b, 0) : view.counts[k]);
 
-  // the toolbar stays quiet: one filter row, the section, and «⋯» for what is used now and then (nothing is approved by these)
-  const toolItems = [
-    ...(selectableCount > 0 && !selectMode ? [{ label: 'انتخاب چند فکر', icon: 'Check' as const, onSelect: () => { setSelectMode(true); setSelectedIds([]); } }] : []),
-    ...(view.waiting.length > 0 && p.onPreviewTruth ? [{ label: 'اگر همه را تأیید کنم: نمای کلی', icon: 'Workflow' as const, onSelect: p.onPreviewTruth }] : []),
-    ...(view.waiting.length > 0 && p.onCompareIfApproved ? [{ label: 'اگر همه را تأیید کنم: فهرست تغییرها', icon: 'Layers' as const, onSelect: p.onCompareIfApproved }] : []),
+  // patterns.md «نماها و «…»»: nothing here hides behind «…». Choosing several thoughts is a plain button; «if I approve them all»
+  // sits on the «منتظر تصمیم تو» heading it is about, and only when something is waiting
+  const previewItems = [
+    ...(p.onPreviewTruth ? [{ label: 'نمای کلی حقیقت', icon: 'Workflow' as const, onSelect: p.onPreviewTruth }] : []),
+    ...(p.onCompareIfApproved ? [{ label: 'فهرست تغییرها', icon: 'Layers' as const, onSelect: p.onCompareIfApproved }] : []),
   ];
 
   return (
@@ -124,8 +124,8 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         </div>
         <div className="flex items-end gap-inline-xs sm:ms-auto">
           {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
-          {toolItems.length > 0 && <Menu label="کارهای بیشتر در فکر" align="end" trigger={<IconButton icon="Ellipsis" label="کارهای بیشتر در فکر" size="sm" />} items={toolItems} />}
-          <div className="w-overlay-xs max-w-full"><Select label="بخش" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
+          {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
+          <div className="w-overlay-xs max-w-full"><Select label="دربارهٔ" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
         </div>
       </div>}
 
@@ -159,7 +159,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
-          <h2 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h2>
+          <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+            <h2 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h2>
+            {previewItems.length > 0 && <Menu label="اگر همه را تأیید کنم" align="end" trigger={<Button size="sm" variant="ghost" iconStart="Eye">اگر همه را تأیید کنم</Button>} items={previewItems} />}
+          </div>
           {drafts.map((o) => (
             <Card key={o.id} padding="md" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
