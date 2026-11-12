@@ -61,7 +61,7 @@ try {
   step('Context Coach right after creating a node');
   await nav('منبع حقیقت');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
-  await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
+  await page.getByRole('menuitem', { name: 'افزودن زیربخش' }).click();
   await page.getByLabel('نام گره').fill('کمپین عرضه');
   await page.getByLabel('توضیح کوتاه (اختیاری)').fill('مشتری خوب می‌خواهیم');
   await page.getByRole('button', { name: 'ساخت گره' }).click();
@@ -70,7 +70,7 @@ try {
   await page.getByText('سؤال‌های روشن‌کننده').waitFor({ timeout: 20000 });
   await page.getByText('ابهام‌ها').waitFor();
   await shot('1-coach');
-  await page.getByRole('button', { name: 'ثبت به‌عنوان پیشنهادی' }).click();
+  await page.getByRole('button', { name: 'افزودن به‌عنوان پیشنهاد' }).click();
   await page.getByText(/مورد پیشنهادی ثبت شد/).waitFor();
   await page.keyboard.press('Escape');
 

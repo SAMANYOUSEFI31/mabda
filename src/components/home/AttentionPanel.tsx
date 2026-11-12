@@ -163,7 +163,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
                     onChange={(e) => setDraft({ ...draft, [g.key]: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') submit(g); }}
                   />
-                  <Button variant="secondary" disabled={!draft[g.key]?.trim()} onClick={() => submit(g)}>ثبت</Button>
+                  <Button variant="secondary" disabled={!draft[g.key]?.trim()} onClick={() => submit(g)}>افزودن</Button>
                 </div>
               </li>
             ))}

@@ -412,7 +412,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <div className="flex-1">
                       <TextField label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
                     </div>
-                    <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>ثبت</Button>
+                    <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>افزودن</Button>
                   </div>
                 ))}
               </div>
@@ -548,7 +548,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         <div className="flex flex-col gap-stack-lg">
           <div className="flex items-center justify-between gap-inline-md border-b border-border-default pb-inset-md">
             <h3 className="title text-text-default">{managed ? 'دارایی‌های تولیدشده' : 'خروجی‌های ثبت‌شده'} در این جریان کار ({formatNumber(workstreamDeliverables.length)})</h3>
-            <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>{managed ? 'تولید مورد جدید' : 'آماده‌سازی مورد جدید'}</Button>
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={() => setActiveTab('create')}>{managed ? 'تولید مورد دیگر' : 'آماده‌سازی مورد دیگر'}</Button>
           </div>
 
           {managed && genError && !isGenerating && activeTab === 'history' && (

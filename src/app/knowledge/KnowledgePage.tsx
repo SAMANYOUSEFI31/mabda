@@ -34,7 +34,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
 
             <div className="flex flex-wrap items-center gap-inline-sm">
               {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
-              <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>
+              <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}

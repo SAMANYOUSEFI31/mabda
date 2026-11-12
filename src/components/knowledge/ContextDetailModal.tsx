@@ -26,6 +26,8 @@ import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
+import { takePendingAddText } from '../../core/addRequest';
+import { AddKindSwitch } from '../shared/AddKindSwitch';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
 import { MX } from '../../core/metricsText';
@@ -138,7 +140,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   // opening a knowledge that has a draft continues the DRAFT (the approved text is shown next to it, below)
   const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
-  const [content, setContent] = useState(object?.draft?.content ?? object?.content ?? '');
+  // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳)
+  const [content, setContent] = useState(() => object?.draft?.content ?? object?.content ?? (object ? '' : takePendingAddText()));
   const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -149,6 +152,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [type, setType] = useState<ContextType>(object?.type || 'Fact');
   const [status, setStatus] = useState<ContextStatus>(object?.status || 'Confirmed');
   const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeIdProp || defaultNodeId(nodes));
+  /** switching to «فکر» carries the section only when she picked it here; otherwise the thought keeps its own default («تازه‌ها») */
+  const [nodePicked, setNodePicked] = useState(false);
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );
@@ -281,14 +286,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     ? 'جایگزینی تصمیم — حفظ تاریخچه'
     : isEditing
     ? 'ویرایش دانش'
-    : 'ثبت دانش';
+    : 'افزودن';
 
   return (
     <Dialog
       open
       onClose={onClose}
       size="md"
-      dirty={content !== (object?.draft?.content ?? object?.content ?? '') || title !== (object?.draft?.title ?? object?.title ?? '')}
+      dirty={content.trim() !== (object?.draft?.content ?? object?.content ?? '').trim() || title !== (object?.draft?.title ?? object?.title ?? '')}
       title={title_}
       description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
       footer={
@@ -310,7 +315,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             )}
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             <Button variant="primary" type="submit" form="context-detail-form">
-              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ذخیره'}
+              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'افزودن'}
             </Button>
           </>
         )
@@ -339,6 +344,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
       <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+        {!object && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
@@ -374,7 +380,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             label="این دانش در کدام بخش باشد؟"
             className="scroll-menu"
             trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? 'کسب‌وکار'}</Button>}
-            items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => setNodeId(node.id) }))}
+            items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => { setNodeId(node.id); setNodePicked(true); } }))}
           />
         </div>
         {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
@@ -526,7 +532,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                   <Select label="این دانش در کدام بخش خانه دارد؟" value={promote.to} onChange={(e) => setPromote({ ...promote, to: e.target.value })} options={[{ value: 'global', label: 'همه‌جا' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === object.nodeId && object.reach !== 'global' ? ' (الان)' : ''}` }))]} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
                   <p className="body-sm text-text-default" aria-live="polite" data-testid="scope-effect">{unchanged ? 'همین‌جاست؛ چیزی عوض نمی‌شود.' : eff.sentence}</p>
                   <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
-                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>ثبت جای تازه</Button></div>
+                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>انتقال به این جا</Button></div>
                 </div>
               );
             })()}

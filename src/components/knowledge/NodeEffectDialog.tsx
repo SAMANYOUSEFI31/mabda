@@ -78,7 +78,7 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
             ))}
           </section>
         ))}
-        {mine.length === 0 && <div><Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToNode(nodeId)}>ثبت تصمیم در این گره</Button></div>}
+        {mine.length === 0 && <div><Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToNode(nodeId)}>افزودن تصمیم به این بخش</Button></div>}
         {setAside && (
           <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="کنار گذاشتن برای این بخش">
             <p className="label-md text-text-default">«{setAside.object.title}» برای «{node?.label}» و زیرشاخه‌هایش کنار می‌رود. جای دیگر همچنان اثر دارد.</p>

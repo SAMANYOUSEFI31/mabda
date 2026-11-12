@@ -173,7 +173,7 @@ try {
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill('طراحی کمپین محتوا');
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کسب‌وکارهای کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     const made = page.getByTestId('quickstart-made');
     await made.waitFor();
     assert.match(await made.innerText(), /تأییدشده/);

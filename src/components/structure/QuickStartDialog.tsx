@@ -142,7 +142,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <>
             <Button variant="ghost" onClick={() => { setStep('choose'); setError(null); }}>بازگشت</Button>
             {path === 'questions'
-              ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>ثبت و ساخت بسته</Button>
+              ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>آماده‌سازی بسته</Button>
               : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
           </>
         )

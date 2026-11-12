@@ -85,10 +85,10 @@ try {
     step(`[${width}] the 5-question path`);
     await account('شروع سریع');
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
-    assert.equal(await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).isDisabled(), true, 'two answers needed');
+    assert.equal(await page.getByRole('button', { name: 'آماده‌سازی بسته' }).isDisabled(), true, 'two answers needed');
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill(`طراحی هویت ${width}`);
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('استارتاپ‌های کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     assert.ok((await api('/workspaces/ws_studio/state')).objects.some((o) => o.content === `طراحی هویت ${width}` && o.status === 'Confirmed'));
     assert.deepEqual(errors, [], 'no page errors');

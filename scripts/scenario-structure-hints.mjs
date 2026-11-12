@@ -58,7 +58,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
     await account('فضای کاری تازه');
     await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`سرنخ ${width}`);
-    await page.getByRole('button', { name: 'ساختن فضا' }).click();
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: سرنخ ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `سرنخ ${width}`).id;
     /** a reload forgets the chosen workspace (the app does not remember it): come back to it */
@@ -130,7 +130,7 @@ try {
     // ── ج
     step(`[${width}] ج: a new price decision in «بستهٔ هدیه» → "depends on" is suggested, not made`);
     await nav('منبع حقیقت', 'منبع');
-    await page.getByRole('button', { name: /^(ثبت دانش|افزودن دانش|ثبت اولین دانش)$/ }).first().click();
+    await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');
     await dlg.getByLabel('عنوان').fill('قیمت بستهٔ هدیه نهایی');

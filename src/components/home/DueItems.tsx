@@ -84,7 +84,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                     {suggested && <p className="body-sm w-full text-text-subtle">علامت ✓ فقط خوانش حسابی اعداد است؛ داوری با توست.</p>}
                   </div>
                 ) : (
-                  <div><Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>ثبت نتیجه</Button></div>
+                  <div><Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>افزودن نتیجه</Button></div>
                 )}
               </div>
             );

@@ -78,19 +78,26 @@ try {
     }
 
     // ── ب: the NEW way, from the same pages ──
-    const open = () => act(() => (mobile ? page.getByTestId('quick-capture-fab').click() : page.keyboard.press('Control+KeyJ')));
+    // phones: the bar's «افزودن» opens what fits the page (a truth on «منبع»); one tap on «فکر» switches, the text kept
+    const open = async () => {
+      if (!mobile) return act(() => page.keyboard.press('Control+KeyJ'));
+      await act(() => page.getByTestId('quick-capture-fab').click());
+      const thought = page.getByRole('dialog', { name: 'افزودن' }).getByRole('radio', { name: 'فکر' });
+      await thought.waitFor();
+      if ((await thought.getAttribute('aria-checked')) !== 'true') await act(() => thought.click());
+    };
     const quick = async (text, { save = 'click' } = {}) => {
-      const dlg = page.getByRole('dialog', { name: 'ثبت سریع' });
+      const dlg = page.getByRole('dialog', { name: 'افزودن' });
       await act(() => dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(text));
       if (save === 'keys' && !mobile) await act(() => page.keyboard.press('Control+Enter'));
-      else await act(() => dlg.getByRole('button', { name: /^ثبت/ }).click());
+      else await act(() => dlg.getByRole('button', { name: /^افزودن/ }).click());
     };
     for (const k of ['home', 'tree', 'canvas', 'thinkingCanvas']) {
       step(`[${width}] ثبت سریع، شروع از ${label[k]}`);
       await start[k]();
       steps = 0;
       await open();
-      const dlg = page.getByRole('dialog', { name: 'ثبت سریع' });
+      const dlg = page.getByRole('dialog', { name: 'افزودن' });
       await dlg.waitFor();
       assert.equal(await dlg.getByLabel('کجا برود؟ (اختیاری)').inputValue(), '', 'at the top level no section is preselected: it goes to «تازه‌ها»');
       const t = `سریع ${k} ${uniq()}`;
@@ -104,7 +111,9 @@ try {
       assert.equal(note.nodeId, rootId, 'no place chosen → the default (top) section, shown in «تازه‌ها» until she places it');
       assert.ok((await state()).thoughts.some((x) => x.text.includes(t) && x.status === 'open'), 'a Thought was made');
       table.push({ from: `${label[k]} — ${where}`, after: steps });
-      assert.ok(steps <= 3, `quick capture takes at most 3 steps (${steps})`);
+      // on «منبع» the phone bar's «افزودن» opens a truth (the page's own thing), so a thought there costs one tap on «فکر»
+      const cap = mobile && (k === 'tree' || k === 'canvas') ? 4 : 3;
+      assert.ok(steps <= cap, `quick capture takes at most ${cap} steps (${steps})`);
       assert.equal(page.url(), url, 'she did not leave the page');
       // continuous: the dialog is still open, the box is empty and focused: the next item is write + save
       assert.equal(await dlg.getByLabel('چه چیزی به ذهنت رسید؟').inputValue(), '');
@@ -124,17 +133,17 @@ try {
     step(`[${width}] متن بلند و نامرتب: همان‌طور که هست یک فکر می‌شود؛ «هر خط یک فکر» جدا می‌کند`);
     await home();
     await open();
-    let dlg = page.getByRole('dialog', { name: 'ثبت سریع' });
+    let dlg = page.getByRole('dialog', { name: 'افزودن' });
     const long = Array.from({ length: 12 }, (_, i) => `خط ${i + 1} از متن بلند ${width}`).join('\n') + '\n\n   ```نامرتب```  ';
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(long);
-    await dlg.getByRole('button', { name: /^ثبت$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('۱ مورد ثبت شد'));
     assert.ok((await state()).notes.some((n) => n.content.includes(`خط 12 از متن بلند ${width}`)), 'nothing of a long text is lost');
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(`الف ${width}\nب ${width}\nج ${width}`);
     await dlg.getByLabel('هر خط یک فکر جدا').check();
     await shot('2-per-line');
     const before = (await state()).thoughts.length;
-    await dlg.getByRole('button', { name: /^ثبت ۳ فکر$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن ۳ فکر$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('۴ مورد ثبت شد'));
     assert.equal((await state()).thoughts.length - before, 3, 'three lines → three thoughts');
 
@@ -150,16 +159,16 @@ try {
     }
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(`پیش‌نویس ${width}`);
     await page.keyboard.press('Escape');
-    await page.getByRole('dialog', { name: 'ثبت سریع' }).waitFor({ state: 'detached' });
+    await page.getByRole('dialog', { name: 'افزودن' }).waitFor({ state: 'detached' });
     await open();
-    dlg = page.getByRole('dialog', { name: 'ثبت سریع' });
+    dlg = page.getByRole('dialog', { name: 'افزودن' });
     assert.equal(await dlg.getByLabel('چه چیزی به ذهنت رسید؟').inputValue(), `پیش‌نویس ${width}`, 'the unsent draft came back');
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill('');
 
     step(`[${width}] تکراریِ دقیقاً یکسان (نرمال‌سازی فارسی) هشدار می‌دهد، ثبت را نمی‌بندد؛ لایهٔ هوش خاموش = هیچ اثری`);
     const dupText = `قيمت اشتراك را بالا ببريم ${width}`;
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(dupText);
-    await dlg.getByRole('button', { name: /^ثبت$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('مورد ثبت شد'));
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(`قیمت اشتراک را بالا ببریم ${width}`);
     await dlg.getByText('تکراری است').waitFor();
@@ -180,12 +189,12 @@ try {
     await page.evaluate((id) => { window.location.hash = `#node=${id}`; window.dispatchEvent(new PopStateEvent('popstate')); }, nodeId);
     await page.waitForTimeout(400);
     await open();
-    dlg = page.getByRole('dialog', { name: 'ثبت سریع' });
+    dlg = page.getByRole('dialog', { name: 'افزودن' });
     assert.equal(await dlg.getByLabel('کجا برود؟ (اختیاری)').inputValue(), nodeId, 'inside a section, that section is the default');
     await shot('4-in-section');
     const t3 = `داخل بخش ${uniq()}`;
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(t3);
-    await dlg.getByRole('button', { name: /^ثبت$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('مورد ثبت شد'));
     assert.equal((await state()).notes.find((n) => n.content.includes(t3)).nodeId, nodeId);
     void nodeBtn;

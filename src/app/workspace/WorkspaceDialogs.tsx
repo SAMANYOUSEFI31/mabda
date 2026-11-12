@@ -67,7 +67,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       footer={
         <>
           <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
-          <Button variant="primary" type="submit" form="new-workspace-form">ساختن فضا</Button>
+          <Button variant="primary" type="submit" form="new-workspace-form">افزودن فضا</Button>
         </>
       }
     >

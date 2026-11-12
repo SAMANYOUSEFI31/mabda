@@ -108,7 +108,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
           icon="Package"
           title={deliverables.length === 0 ? 'هنوز چیزی نساخته‌ای' : 'با این فیلتر چیزی نیست'}
           description={managedEnabled ? 'از یکی از موارد بالا، اولین را از حقیقت‌هایت بساز.' : 'از یکی از موارد بالا، حقیقت‌هایت را برای هر ابزاری آماده کن.'}
-          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساختن' : 'آماده‌سازی'}</Button>}
+          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'تولید' : 'آماده‌سازی'}</Button>}
         />
       ) : (
         <div className="flex flex-col gap-stack-lg">

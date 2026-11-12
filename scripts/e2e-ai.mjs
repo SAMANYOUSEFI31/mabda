@@ -42,11 +42,11 @@ step('platform-managed AI: streamed structured blocks');
 await askHere('می‌خواهیم روی فریلنسرها تمرکز کنیم');
 await page.getByText('تصمیم نمونه').waitFor({ timeout: 20000 });
 await shot('3-chat-answer');
-assert.ok(await page.getByRole('button', { name: 'به دانش اضافه کن' }).count(), 'the response remains a Proposed Knowledge action');
+assert.ok(await page.getByRole('button', { name: 'افزودن به دانش' }).count(), 'the response remains a Proposed Knowledge action');
 
 step('block → Context: opens a Proposed draft in the Context dialog');
-await page.getByRole('button', { name: 'به دانش اضافه کن' }).first().click();
-const draftDialog = page.getByRole('dialog', { name: 'ثبت دانش' });
+await page.getByRole('button', { name: 'افزودن به دانش' }).first().click();
+const draftDialog = page.getByRole('dialog', { name: 'افزودن' });
 await draftDialog.waitFor();
 await draftDialog.getByRole('button', { name: 'بیشتر' }).click();
 assert.equal(await draftDialog.getByLabel('وضعیت').inputValue(), 'Proposed');

@@ -147,7 +147,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
-                { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
+                { label: 'افزودن زیربخش', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
                 ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Target' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
@@ -168,7 +168,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <EmptyState
             icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
-            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>ثبت اولین مورد</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
+            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
           />
         ) : (
           <>
@@ -229,7 +229,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
             <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
               {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" onClick={() => props.onNewThought(node.id)}>فکر تازه‌ای داری؟ بنویس</Button>}
-              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>فایل یا متنی داری؟ اضافه کن</Button>
+              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>افزودن فایل یا متن</Button>
               <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
             </div>
 

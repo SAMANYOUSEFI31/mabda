@@ -116,7 +116,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
                   <p className="body-sm text-text-default">{p.content}</p>
                 </div>
               ))}
-              <div><Button variant="secondary" iconStart="Plus" loading={saving} disabled={picked.size === 0} onClick={save}>ثبت به‌عنوان پیشنهادی</Button></div>
+              <div><Button variant="secondary" iconStart="Plus" loading={saving} disabled={picked.size === 0} onClick={save}>افزودن به‌عنوان پیشنهاد</Button></div>
             </div>
           )}
           {saved > 0 && <Alert intent="success">{formatNumber(saved)} مورد پیشنهادی ثبت شد؛ در منبع حقیقت منتظر تأیید توست.</Alert>}

@@ -35,7 +35,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             <div className="flex flex-wrap items-center gap-inline-sm">
               {workspaceContexts.length > 0 && <Button variant="primary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>آماده‌سازی درخواست</Button>}
               {/* on phones the page action of the top bar does not exist: recording knowledge must still be one tap away */}
-              {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>}
+              {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>}
               {workspaceContexts.length > 0 && <Menu
                 label="بیشتر"
                 align="end"
@@ -59,7 +59,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               action={(
                 <div className="flex flex-wrap justify-center gap-inline-md">
                   <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
+                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
                   <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
                 </div>
               )}

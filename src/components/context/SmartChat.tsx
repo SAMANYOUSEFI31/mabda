@@ -408,7 +408,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-inline-sm">
-            <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی جدید</Button>
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی دیگر</Button>
           </div>
         </div>
 
@@ -451,7 +451,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <IconButton icon="X" label="بستن فهرست گفتگوها" size="sm" onClick={() => setIsSidebarOpen(false)} />
             </div>
 
-            <Button variant="secondary" fullWidth iconStart="Plus" onClick={handleCreateNewSession}>شروع گفتگوی جدید</Button>
+            <Button variant="secondary" fullWidth iconStart="Plus" onClick={handleCreateNewSession}>شروع گفتگو</Button>
 
             <ul className="flex flex-1 flex-col gap-stack-xs overflow-y-auto" aria-label="نشست‌های گفتگو">
               {sessions.map((sess) => {

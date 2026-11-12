@@ -600,7 +600,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   );
 
   if (!hasContent) {
-    return <EmptyState icon="Workflow" title="بوم هنوز خالی است" description="با ثبت اولین دانش، کارت‌ها و خط‌ها اینجا ساخته می‌شوند." action={<Button variant="secondary" iconStart="Plus" onClick={p.onAddKnowledge}>ثبت دانش</Button>} />;
+    return <EmptyState icon="Workflow" title="بوم هنوز خالی است" description="با ثبت اولین دانش، کارت‌ها و خط‌ها اینجا ساخته می‌شوند." action={<Button variant="secondary" iconStart="Plus" onClick={p.onAddKnowledge}>افزودن</Button>} />;
   }
 
   const stageEmpty = scene.items.length === 0;
@@ -720,7 +720,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
                   <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ یادداشت‌های آزاد را اینجا بچین و از «فهرست فکرها» برای ایده‌ها و سؤال‌های باز استفاده کن.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
-                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت آزاد تازه' : onlyReview ? 'نمایش همه' : 'ثبت دانش'}</Button>
+                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت آزاد تازه' : onlyReview ? 'نمایش همه' : 'افزودن'}</Button>
                 </div>
               </div>
             )}

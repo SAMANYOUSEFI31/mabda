@@ -71,7 +71,7 @@ async function scenario(width, tag) {
 
   step('tree: user node under «محتوا», rename a node of the default start, a note and «استخراج»');
   await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
-  await page.getByRole('menuitem', { name: 'زیرگرهٔ جدید' }).click();
+  await page.getByRole('menuitem', { name: 'افزودن زیربخش' }).click();
   await page.getByLabel('نام گره').fill('کمپین پاییز');
   await page.getByRole('button', { name: 'ساخت گره' }).click();
   await page.getByRole('dialog').getByText('مربی دانش').first().waitFor(); // the Coach opens for the new node
@@ -111,7 +111,7 @@ async function scenario(width, tag) {
   await dlg.getByLabel('درخواستت را در یک خط بنویس').fill('بودجه کمپین چقدر است؟');
   await dlg.getByRole('button', { name: 'همین‌جا جواب بده' }).click();
   await page.getByText('تصمیم نمونه').waitFor({ timeout: 20000 });
-  await dlg.getByRole('button', { name: 'به دانش اضافه کن' }).first().waitFor();
+  await dlg.getByRole('button', { name: 'افزودن به دانش' }).first().waitFor();
   await shot('3-node-chat');
   await page.keyboard.press('Escape');
 

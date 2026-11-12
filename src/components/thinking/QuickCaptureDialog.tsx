@@ -33,6 +33,8 @@ interface Props {
   /** the SAME save path as «فکر تازه» (useNotes); both return false when saving failed, so the draft is kept */
   onSave: (nodeId: string, content: string, quiet?: boolean) => Promise<boolean>;
   onSaveMany: (notes: NotePayload[], count: number, quiet?: boolean) => Promise<boolean>;
+  /** «فکر · حقیقت · فایل» at the top (patterns.md §۳) */
+  switcher?: React.ReactNode;
 }
 
 /** a connection point of the intelligence layer: nothing at all (no space, no placeholder) while it has no provider or no answer */
@@ -53,7 +55,7 @@ function useSlot(slot: 'place' | 'duplicate', text: string, node: string, enable
  * It saves through the same path as «فکر تازه» (a note with a marker → a Thought); there is no second way to store anything.
  * Enter: new line · Shift+Enter: a line inside the same thought (matters when «هر خط یک فکر») · Ctrl/⌘+Enter: save.
  */
-export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, objects, thoughts, text, onTextChange, node, onNodeChange, continuous, onContinuousChange, onSave, onSaveMany }) => {
+export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, objects, thoughts, text, onTextChange, node, onNodeChange, continuous, onContinuousChange, onSave, onSaveMany, switcher }) => {
   const [perLine, setPerLine] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(0);
@@ -104,15 +106,16 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   return (
     <Dialog
-      open={open} onClose={onClose} size="md" title="ثبت سریع"
+      open={open} onClose={onClose} size="md" title="افزودن"
       description="جایش را لازم نیست الان بدانی."
-      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `ثبت ${formatNumber(count)} فکر` : 'ثبت'}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {
         if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
         if (e.ctrlKey || e.metaKey) { e.preventDefault(); void save(); return; }
         if (e.shiftKey && box.current?.contains(e.target as Node)) { e.preventDefault(); softBreak(); }
       }}>
+        {switcher}
         <div ref={box} className="flex flex-col gap-stack-xs">
           <MentionTextarea
             label="چه چیزی به ذهنت رسید؟" rows={4} value={text} onValueChange={onTextChange} objects={objects}

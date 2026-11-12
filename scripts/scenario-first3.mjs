@@ -67,7 +67,7 @@ try {
     step(`[${width}] an EMPTY workspace: a warm start, one main action`);
     await account('فضای کاری تازه');
     await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`کافهٔ من ${width}`);
-    await page.getByRole('button', { name: 'ساختن فضا' }).click();
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: کافهٔ من ${width}`).waitFor({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: '/tmp/first3-fail.png' }); throw e; });
     await page.getByText('از همین‌جا شروع کن').waitFor();
     assert.equal(await page.getByRole('button', { name: 'شروع سریع' }).count() >= 1, true);
@@ -82,7 +82,7 @@ try {
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کارمندان نزدیک محل');
     await noMachineWords('quick start');
     await shot('2-quickstart');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     await page.getByRole('button', { name: 'تمام شد' }).click();
 
@@ -98,7 +98,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] the first knowledge in ONE box: kind and title are guessed, Ctrl+Enter saves`);
-    await page.getByRole('button', { name: 'ثبت دانش' }).first().click();
+    await page.getByRole('button', { name: 'افزودن' }).first().click();
     const box = page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟');
     await box.fill('تخفیف نداریم.');
     assert.equal(await page.getByRole('dialog').getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true', 'a red line was guessed');

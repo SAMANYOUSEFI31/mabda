@@ -69,7 +69,7 @@ try {
     await page.getByRole('dialog').getByRole('button', { name: 'حذف', exact: true }).click();
     await page.waitForTimeout(500);
     assert.ok(!(await nodes()).some((n) => n.id === 'offer'));
-    await nodeOp('محصول و خدمت', 'زیرگرهٔ جدید');
+    await nodeOp('محصول و خدمت', 'افزودن زیربخش');
     await page.getByLabel('نام گره').fill('بسته‌های خدمت');
     await page.getByRole('button', { name: 'ساخت گره' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
@@ -80,7 +80,7 @@ try {
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill('طراحی کمپین محتوا');
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کسب‌وکارهای کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     await page.getByRole('button', { name: 'تمام شد' }).click();
     const st = await api(`/workspaces/${wid}/state`);

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { defaultAddKind, requestAdd } from '../../core/addRequest';
 import type { PageAction } from '../../components/shell/TopStatusBar';
 import { Button, Icon, formatNumber } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
@@ -207,7 +208,8 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
 
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
-    activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    // «افزودن» (patterns.md §۳): one word; the kind it opens with follows the page
+    activeTab === 'context' || activeTab === 'home' || activeTab === 'thinking' ? { label: 'افزودن', icon: 'Plus', onClick: () => requestAdd({ kind: defaultAddKind(activeTab) }) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
     : undefined;
   return { demoDelete, setDemoDelete, handleArchiveWorkspace, handleDeleteWorkspace, handleDeleteEverything, handleArchiveDeliverable, handleDeleteDeliverable, handleDeleteDemo, addSpec, openSpecEditor, handleJudge, handleSaveProposals, handleAcceptProposal, handleRejectProposal, handleReplaceWithProposal, handleProposeFromImport, handleProposeBatch, handleDraftFromImport, setLedger, thinkingBadge, scopeChip, renderCanvas, pageAction };

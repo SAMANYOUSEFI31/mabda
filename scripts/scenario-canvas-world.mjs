@@ -80,7 +80,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
     await account('فضای کاری تازه');
     await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`دنیا ${width}`);
-    await page.getByRole('button', { name: 'ساختن فضا' }).click();
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: دنیا ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `دنیا ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);

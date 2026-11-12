@@ -9,7 +9,7 @@ import { PLANS } from '../../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
-import { requestQuickCapture } from '../../core/quickCapture';
+import { defaultAddKind, requestAdd } from '../../core/addRequest';
 
 type ContextView = 'doc' | 'read' | 'table' | 'canvas';
 
@@ -315,7 +315,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         className="md:hidden"
         label="منوی پایینی موبایل"
         value={activeTab === 'workstreams' ? 'assets' : activeTab}
-        onChange={(id) => (id === 'capture' ? requestQuickCapture() : onTabChange(id))}
+        onChange={(id) => (id === 'capture' ? requestAdd({ kind: defaultAddKind(activeTab) }) : onTabChange(id))}
         items={[
           { id: 'home', label: 'خانه', icon: 'House' },
           { id: 'thinking', label: 'فکر', icon: 'Lightbulb' },
