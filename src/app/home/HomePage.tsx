@@ -56,11 +56,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               title="از همین‌جا شروع کن"
               description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
               action={(
-                <div className="flex flex-wrap gap-inline-md">
-                  <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
-                  <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
-                </div>
+                <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
               )}
             />
           )}

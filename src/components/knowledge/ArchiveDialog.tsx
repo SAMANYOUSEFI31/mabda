@@ -62,8 +62,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
         footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
         <div className="flex flex-col gap-stack-md">
           <SegmentedControl label="بخش بایگانی" value={section} onChange={(v) => setSection(v as Section)} items={[
-            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌های حذف‌شده') },
-            { id: 'outputs', label: label('outputs', 'خروجی‌ها') }, { id: 'workspaces', label: label('workspaces', 'فضاهای کاری') },
+            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌ها') },
+            { id: 'outputs', label: label('outputs', 'خروجی‌ها') }, { id: 'workspaces', label: label('workspaces', 'فضاها') },
           ]} />
           {error && <Alert intent="danger">{error}</Alert>}
           {!data && !error && <div className="flex justify-center p-inset-xl"><Spinner /></div>}

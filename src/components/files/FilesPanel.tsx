@@ -94,7 +94,8 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
       )}
 
       {files.length === 0 ? (
-        <EmptyState title="هنوز فایلی بارگذاری نشده" description={managed ? 'سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد.' : 'سند یا برندبوکت را بگذار تا کنار دانشت نگه داشته شود.'} />
+        // the upload button is right above; an empty file list is one quiet line, not a third empty state on the page
+        <p className="body-sm text-text-subtle">هنوز فایلی نگذاشته‌ای.</p>
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="فایل‌های بارگذاری‌شده">
           {files.map((f) => (

@@ -165,10 +165,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
 
         {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && nodeSamples.length === 0 && !notesOpen ? (
-          <EmptyState
-            title="هنوز موردی در این شاخه ثبت نشده"
-            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
-          />
+          // an empty branch inside the tree is a quiet dashed row (patterns.md «جای خالی درون محتوا»), not a page-sized empty
+          // state: the branch's own row above already has «افزودن دانش»
+          <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-dashed border-border-default px-inset-md py-inset-sm">
+            <p className="body-sm text-text-subtle">هنوز چیزی در این شاخه نیست.</p>
+            <Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button>
+          </div>
         ) : (
           <>
             {/* وضعیت فعلی: what is established here */}
@@ -276,7 +278,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
-          <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>
+          {activeObjects.length > 0 && <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>}
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
       </div>
