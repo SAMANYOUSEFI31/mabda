@@ -234,7 +234,7 @@ test('Context Coach: separate daily cap per plan, counted only after a successfu
     assert.match(sixth.json.error.message, /سقف روزانه/);
     // the coach only proposes: nothing was written to the tree
     const st = (await t.call('GET', '/workspaces/ws_course/state')).json;
-    assert.equal(st.objects.length, 0);
+    assert.ok(!st.objects.some((o: any) => o.title === 'الف'), 'no coach proposal became an object');
     assert.ok(st.ledger.some((l: any) => l.mode === 'coach'));
     assert.equal((await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'onboarding', nodeId: 'business', text: 'متن' })).status, 200, 'the other workspace has its own cap');
   } finally { t.close(); }
@@ -273,7 +273,9 @@ test('plan limits over the API: object cap (403 with a Persian message) and work
     }
     assert.deepEqual(created, ['403', '403', '403'], 'the user already has 2 workspaces; a Starter workspace allows 1');
     const cap = ENTITLEMENTS_CONFIG.plans.starter.maxObjects;
-    ENTITLEMENTS_CONFIG.plans.starter.maxObjects = 1;
+    // the personal sample already holds some objects: the cap leaves room for exactly one more
+    const held = (await t.call('GET', '/workspaces/ws_course/state')).json.objects.filter((o: any) => o.status !== 'Archived' && o.status !== 'Superseded').length;
+    ENTITLEMENTS_CONFIG.plans.starter.maxObjects = held + 1;
     try {
       const ok = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'me' });
       assert.equal(ok.status, 200);

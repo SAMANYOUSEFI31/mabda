@@ -259,6 +259,8 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // the space picker (head of the bar / top bar on phones)
   const spaceItem = async (name) => { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await page.getByRole('menuitem', { name }).first().click(); await page.waitForTimeout(250); };
   await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await shoot('menu-space'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+  // the personal sample («زندگی من», docs/ux/audience.md): its truth and its thoughts
+  await spaceItem(/زندگی من/); await goTab(TABS[1]); await page.waitForTimeout(300); await shoot('life-truth'); await goTab(TABS[4]); await page.waitForTimeout(300); await shoot('life-thinking'); await goTab(TABS[0]);
   if (!mobile) {
     // the narrow (hidden) sidebar: the account menu opens from the peek panel and must still sit fully inside the window
     await page.getByRole('button', { name: 'پنهان کردن نوار کناری' }).click(); await page.waitForTimeout(200);
