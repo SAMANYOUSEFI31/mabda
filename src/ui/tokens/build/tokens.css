@@ -216,6 +216,10 @@
   --nuqta-size-lg: 14px;
   --nuqta-size-xl: 28px;
   --effect-bar-blur: 16px;
+  --sidebar-width: 264px;
+  --sidebar-width-min: 232px;
+  --sidebar-width-max: 360px;
+  --sidebar-rail: 64px;
   --surface-page: #f9f8f5;
   --surface-sunken: #f3f2ee;
   --surface-raised: #ffffff;

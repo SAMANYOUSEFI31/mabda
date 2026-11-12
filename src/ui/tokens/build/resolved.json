@@ -4004,6 +4004,46 @@
    "dark": "16px"
   },
   {
+   "token": "sidebar.width",
+   "css": "--sidebar-width",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "264px",
+   "dark": "264px"
+  },
+  {
+   "token": "sidebar.width-min",
+   "css": "--sidebar-width-min",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "232px",
+   "dark": "232px"
+  },
+  {
+   "token": "sidebar.width-max",
+   "css": "--sidebar-width-max",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "360px",
+   "dark": "360px"
+  },
+  {
+   "token": "sidebar.rail",
+   "css": "--sidebar-rail",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "64px",
+   "dark": "64px"
+  },
+  {
    "token": "surface.page",
    "css": "--surface-page",
    "level": "semantic",

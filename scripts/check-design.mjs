@@ -39,7 +39,7 @@ const rules = [
   { id: 'ai-icon', line: true, re: /\b(?:Sparkles?|Wand2?|WandSparkles|Zap|Brain|BrainCircuit|Bot|Stars)\b/g, msg: 'AI-magic icon — forbidden (docs/design-system/iconography.md, «ممنوع»); say it in words' },
   { id: 'motion', line: true, re: /\b(?:transition|animation)(?:-duration|-delay|-timing-function)?\s*:[^;}]*?(?:(?<![\w-])\d+(?:\.\d+)?m?s\b|(?<![\w-])(?:ease|ease-in|ease-out|ease-in-out)(?![\w-]))/g, msg: 'raw duration or easing — use --duration-* / --ease-* (docs/design-system/motion.md)' },
   // ---- token (class) rules ----
-  { id: 'motion', tok: /^(?:duration|delay)-\d+$|^ease-(?:in|out|in-out)$/, msg: 'Tailwind duration/easing scale — use duration-fast / duration-base (motion.md)' },
+  { id: 'motion', tok: /^(?:duration|delay)-(?:\d+|\[.*\])$|^ease-(?:in|out|in-out|linear|\[.*\])$|^animate-(?:spin|ping|pulse|bounce|\[.*\])$/, msg: 'Tailwind duration/easing scale — use duration-fast / duration-base (motion.md)' },
   { id: 'brand', ctx: /./, notIn: /^src\/ui\//, tok: /(?:^|-)(?:bg|text|border|icon)-brand(?:-\S+)?$/, msg: 'brand color outside src/ui — brand is only for the primary Button / BrandMark (never error, warning, selection or link)' },
   { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },
   { id: 'palette', tok: /^(?:bg|text|border|fill|stroke)-(?:white|black)(?:\/\d+)?$/, msg: 'white/black — use a semantic token' },

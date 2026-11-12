@@ -400,15 +400,6 @@
 .mb-dialog-layer.is-side .mb-dialog:dir(ltr){animation-name:mb-panel-ltr}
 @keyframes mb-panel-ltr{from{opacity:0;translate:var(--distance-lg) 0}}
 
-/* «کاهش حرکت» (motion.md), in one place: from the device, or data-motion="reduced" on <html>. Nothing travels or grows; every
- * entry is a fade at `fast`, the skeleton holds still, the spinner keeps turning (it is the only sign of work). Components write no
- * conditions of their own. */
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]){--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}}
-:root[data-motion=reduced]{--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-dialog,.mb-skel){animation-name:mb-fade}:root:not([data-motion=full]) .mb-skel{animation:none}:root:not([data-motion=full]) .mb-nuqta[data-settle]{animation-name:mb-fade}:root:not([data-motion=full]){scroll-behavior:auto}}
-:root[data-motion=reduced] :is(.mb-dialog){animation-name:mb-fade}:root[data-motion=reduced] .mb-skel{animation:none}:root[data-motion=reduced] .mb-nuqta[data-settle]{animation-name:mb-fade}
-/* theme switch: no motion — every transition is off for one frame so hundreds of things do not recolour together (src/ui/theme.ts) */
-:root[data-theme-switching] *,:root[data-theme-switching] *::before,:root[data-theme-switching] *::after{transition:none!important}
 
 /* static rendering of the pressed state for documentation (data-force=active) */
 .mb-tab[data-force~=active]:not(:disabled),.mb-menu__item[data-force~=active]{background:var(--interaction-pressed)}
@@ -480,3 +471,30 @@
   .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) var(--container-margin);column-gap:var(--space-12)}
   .mb-margin__note{padding-inline-start:0;padding-block-start:calc(var(--space-3) + var(--space-0\.5))}
 }
+
+/* exits (motion.md «قاعدهٔ خروج»: one step below the entry; src/ui/presence.ts unmounts on animationend) */
+@layer components{
+.mb-popover__panel[data-state=closed]{pointer-events:none;animation:mb-out var(--duration-instant) var(--ease-exit) forwards}
+.mb-dialog-layer[data-state=closed]{pointer-events:none}
+.mb-dialog-layer[data-state=closed] .mb-scrim{animation:mb-out var(--duration-base) var(--ease-exit) forwards}
+.mb-dialog-layer[data-state=closed] .mb-dialog{animation:mb-sheet-out var(--duration-moderate) var(--ease-exit) forwards}
+@media (min-width:640px){
+  .mb-dialog-layer[data-state=closed] .mb-dialog{animation:mb-pop-out var(--duration-base) var(--ease-exit) forwards}
+  .mb-dialog-layer.is-side[data-state=closed] .mb-dialog{animation:mb-panel-out var(--duration-base) var(--ease-exit) forwards}
+}
+}
+@keyframes mb-out{to{opacity:0}}
+@keyframes mb-sheet-out{to{translate:0 100%}}
+@keyframes mb-pop-out{to{opacity:0;scale:var(--scale-enter)}}
+@keyframes mb-panel-out{to{opacity:0;translate:calc(var(--distance-lg) * -1) 0}}
+
+/* Unlayered on purpose: these overrides must beat the generated :root tokens (tokens.css is unlayered too). */
+/* «کاهش حرکت» (motion.md), in one place: from the device, or data-motion="reduced" on <html>. Nothing travels or grows; every
+ * entry is a fade at `fast`, the skeleton holds still, the spinner keeps turning (it is the only sign of work). Components write no
+ * conditions of their own. */
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]){--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}}
+:root[data-motion=reduced]{--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-dialog,.mb-skel){animation-name:mb-fade}:root:not([data-motion=full]) .mb-skel{animation:none}:root:not([data-motion=full]) .mb-nuqta[data-settle]{animation-name:mb-fade}:root:not([data-motion=full]) .mb-dialog-layer[data-state=closed] .mb-dialog{animation-name:mb-out}:root:not([data-motion=full]){scroll-behavior:auto}}
+:root[data-motion=reduced] :is(.mb-dialog){animation-name:mb-fade}:root[data-motion=reduced] .mb-skel{animation:none}:root[data-motion=reduced] .mb-nuqta[data-settle]{animation-name:mb-fade}:root[data-motion=reduced] .mb-dialog-layer[data-state=closed] .mb-dialog{animation-name:mb-out}
+/* theme switch: no motion — every transition is off for one frame so hundreds of things do not recolour together (src/ui/theme.ts) */
+:root[data-theme-switching] *,:root[data-theme-switching] *::before,:root[data-theme-switching] *::after{transition:none!important}

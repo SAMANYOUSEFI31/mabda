@@ -1,6 +1,7 @@
 import { cloneElement, createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { usePresence } from './presence.ts';
 import { cx } from './cx.ts';
 import { Icon, STATUS_ICON } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
@@ -25,6 +26,25 @@ export interface DialogProps {
 }
 
 const FOCUSABLE = 'button:not(:disabled),[href],input:not(:disabled),select,textarea,[tabindex]:not([tabindex="-1"])';
+
+/**
+ * The dialog's exit (motion.md «دیالوگ»: 200 exit, the sheet 280): a static, inert, aria-hidden copy of the closing layer plays
+ * `data-state="closed"` and is removed on animationend — never on a timer. Nothing can be clicked or read in it.
+ */
+function ghostExit(el: HTMLElement | null) {
+  if (!el || typeof document === 'undefined') return;
+  const g = el.cloneNode(true) as HTMLElement;
+  g.setAttribute('data-state', 'closed');
+  g.setAttribute('aria-hidden', 'true');
+  g.setAttribute('inert', '');
+  g.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+  document.body.appendChild(g);
+  const panel = g.querySelector<HTMLElement>('.mb-dialog');
+  if (!panel || typeof panel.getAnimations !== 'function' || panel.getAnimations().length === 0) { g.remove(); return; }
+  const done = (e: AnimationEvent) => { if (e.target === panel) g.remove(); };
+  panel.addEventListener('animationend', done);
+  panel.addEventListener('animationcancel', done);
+}
 
 export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
@@ -66,9 +86,17 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     };
   }, [open, inline]);
 
+  // exit: most dialogs are unmounted by their owner (`open ? <X/> : null`), so the exit plays on an inert copy (ghostExit)
+  useLayoutEffect(() => {
+    if (!open || inline) return;
+    const el = layer.current;
+    // after the commit: a layer still in the document was not closed (React's StrictMode re-run), so nothing plays
+    return () => queueMicrotask(() => { if (el && !el.isConnected) ghostExit(el); });
+  }, [open, inline]);
+
   if (!open) return null;
   const node = (
-    <div ref={layer} className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side')}>
+    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side')}>
       <div className="mb-scrim" onClick={alert ? undefined : onClose} aria-hidden="true" />
       <div
         ref={panel}
@@ -246,7 +274,9 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
   const menu = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<CSSProperties | null>(null);
   const id = useId();
-  const close = (refocus?: boolean) => { setOpen(false); setPos(null); if (refocus) btn.current?.focus(); };
+  const presence = usePresence(open, menu);
+  // the position is kept while the menu fades out; it is measured again on the next open
+  const close = (refocus?: boolean) => { setOpen(false); if (refocus) btn.current?.focus(); };
   useDismiss(open, [root, menu], (esc) => close(esc));
   const enabled = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled),[role="menuitemradio"]') ?? []);
   // The panel lives in the document's overlay layer (a portal), never inside the trigger's container (a scrolling
@@ -273,6 +303,7 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     setPos({ position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: vw - 2 * edge, overflowY: 'auto' });
   }, [align, side]);
   useLayoutEffect(() => { if (open) place(); }, [open, place, items.length]);
+  useEffect(() => { if (!presence.mounted) setPos(null); }, [presence.mounted]);
   useEffect(() => {
     if (!open) return;
     const on = () => place();
@@ -298,8 +329,8 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
         onClick: () => (open ? close() : setOpen(true)),
         onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } },
       })}
-      {open && createPortal(
-        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey}
+      {presence.mounted && createPortal(
+        <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} data-state={presence.state}
           style={pos ?? { position: 'fixed', insetBlockStart: 0, insetInlineStart: 0, visibility: 'hidden' }}
           className={cx('mb-popover__panel', 'mb-menu', 'is-portal')}>
           {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (

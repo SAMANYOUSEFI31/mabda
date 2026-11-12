@@ -179,6 +179,7 @@ ${shadow.join('\n')}
   --container-content: var(--container-lg);
   --container-wide: var(--container-xl);
   --container-reading: var(--container-prose);
+  --container-sidebar: var(--sidebar-width);
   --container-overlay-xs: var(--overlay-width-xs);
   --container-overlay-sm: var(--overlay-width-sm);
   --container-overlay-md: var(--overlay-width-md);
@@ -197,6 +198,9 @@ ${shadow.join('\n')}
   --tracking-code: var(--letter-spacing-code);
 ${type.join('\n')}
 ${ease.join('\n')}
+  /* transition / transition-colors without a duration class: motion tokens, never Tailwind's 150ms and its own curve */
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-standard);
 }
 ${layers.join('\n')}
 @utility duration-fast { transition-duration: var(--duration-fast); }

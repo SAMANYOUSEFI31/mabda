@@ -302,6 +302,7 @@
   --container-content: var(--container-lg);
   --container-wide: var(--container-xl);
   --container-reading: var(--container-prose);
+  --container-sidebar: var(--sidebar-width);
   --container-overlay-xs: var(--overlay-width-xs);
   --container-overlay-sm: var(--overlay-width-sm);
   --container-overlay-md: var(--overlay-width-md);
@@ -352,6 +353,9 @@
   --ease-exit: var(--ease-exit);
   --ease-linear: var(--ease-linear);
   --ease-settle: var(--ease-settle);
+  /* transition / transition-colors without a duration class: motion tokens, never Tailwind's 150ms and its own curve */
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-standard);
 }
 @utility z-base { z-index: var(--layer-base); }
 @utility z-raised { z-index: var(--layer-raised); }
