@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { detectContradictions } from '../../core/contextEngine';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, Nuqta, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -74,22 +75,33 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
   // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
   // What the engines say about it (needs review, an assumption, where it applies) goes to the margin as one sentence, not a chip.
+  // the deterministic contradiction engine (same topic, different amounts…): both sides carry the conflict dot and say who the other is
+  const conflictWith = useMemo(() => {
+    const m = new Map<string, ContextObject>();
+    for (const c of detectContradictions(objects.filter((o) => !o.sample))) { if (!m.has(c.itemA.id)) m.set(c.itemA.id, c.itemB); if (!m.has(c.itemB.id)) m.set(c.itemB.id, c.itemA); }
+    return m;
+  }, [objects]);
+  const nodeName = (id: string) => nodes.find((n) => n.id === id)?.label ?? '';
   const marginFor = (obj: ContextObject) => {
     const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');
     const notes: React.ReactNode[] = [];
     if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="TriangleAlert">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
     else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="Lightbulb">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
     else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="History">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
-    if (obj.assumption) notes.push(<MarginNote key="a" icon="Lightbulb">فرض است، نه واقعیتِ ثابت‌شده.</MarginNote>);
+    const other = conflictWith.get(obj.id);
+    if (other) notes.push(<MarginNote key="c" lead={<Nuqta state="conflict" size="sm" />}>با «{other.title}» در بخش «{nodeName(other.nodeId)}» نمی‌خواند؛ یکی را نگه دار.</MarginNote>);
+    // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
+    const before = objects.filter((o) => o.supersededById === obj.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
     if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
     return notes.length ? <>{notes}</> : undefined;
   };
   const card = (obj: ContextObject) => (
     <MarginItem key={obj.id} margin={marginFor(obj)}>
-      <Card padding="md" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
+      <Card padding="md" knowledge={conflictWith.has(obj.id) ? 'conflict' : knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
         <h4 className="headline text-balance text-text-default">{obj.title}</h4>
         <p className="body-reading text-pretty text-text-default">{obj.content}</p>
-        <p className="body-sm text-text-subtle">{TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
+        <p className="body-sm text-text-subtle">{obj.assumption ? 'فرض' : TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
       </Card>
     </MarginItem>
   );
@@ -112,7 +124,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const kids = childrenOf(nodes, node.id);
     const notesOpen = openNotes.has(node.id);
     // the truth: approved knowledge only (a confirmed assumption stays, with its badge — it IS approved and the AI reads it in its own section)
-    const established = nodeObjects.filter((o) => o.status === 'Confirmed');
+    // what holds here now: the truth, and truth that needs a look (stale) — it is still what the tools see until it is reviewed
+    const established = nodeObjects.filter((o) => o.status === 'Confirmed' || o.status === 'Needs Review');
     const nodeSamples = props.samples.filter((o) => o.nodeId === node.id);
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
@@ -170,7 +183,10 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                   <h4 className="label-md text-text-default">الان درست است</h4>
                   <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button>
                 </div>
-                {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
+                {established.length === 0 ? (
+                  // «جای خالی»: a hollow gap dot and why the slot matters, not a bare «nothing yet»
+                  <p className="flex items-start gap-inline-sm body-md text-text-subtle"><Nuqta state="gap" className="mt-space-1" /><span>هنوز حقیقتی اینجا نیست{node.description ? `: ${node.description}` : ''}.</span></p>
+                ) : (
                   <>
                     <MarginList>{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}

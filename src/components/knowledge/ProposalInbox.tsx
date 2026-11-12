@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, Menu, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
+import { Badge, Button, Card, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
   mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
@@ -115,7 +115,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             {o.source?.reason && <p className="body-sm text-text-subtle">دلیل پیشنهاد: {o.source.reason}</p>}
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
               <span className="body-sm text-text-subtle">
-                منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `پیشنهاد AI · ${formatJalaliDate(o.createdAt)}`}
+                منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
               </span>
               <div className="flex flex-wrap items-center gap-inline-xs">
                 {(() => {

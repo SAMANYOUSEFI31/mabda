@@ -221,7 +221,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     await page.locator(sel).first().click();
     if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
   };
-  const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(150); };
+  const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(350); };
 
   await goTab(TABS[0]); await shoot('home');
   // weekly review: three sections one after another, then the summary

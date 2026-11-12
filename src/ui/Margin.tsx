@@ -21,11 +21,11 @@ export function MarginItem({ children, margin }: { children: ReactNode; margin?:
   );
 }
 
-/** an engine note: an icon, one sentence, at most one link (patterns.md §۲). */
-export function MarginNote({ icon, children, action }: { icon: IconName; children: ReactNode; action?: ReactNode }) {
+/** an engine note: an icon (or a Nuqta as `lead`), one sentence, at most one link (patterns.md §۲). */
+export function MarginNote({ icon, lead, children, action }: { icon?: IconName; lead?: ReactNode; children: ReactNode; action?: ReactNode }) {
   return (
     <p className="mb-margin__line body-sm text-text-subtle">
-      <Icon name={icon} size="sm" className="mb-margin__icon" />
+      {lead ? <span className="mb-margin__icon">{lead}</span> : icon ? <Icon name={icon} size="sm" className="mb-margin__icon" /> : null}
       <span>{children}{action ? <> {action}</> : null}</span>
     </p>
   );
