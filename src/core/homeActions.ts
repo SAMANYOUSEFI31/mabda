@@ -45,7 +45,8 @@ function allActions(input: HomeInput): HomeAction[] {
     const recent = input.now.getTime() - new Date(d.createdAt).getTime() <= RECENT_DAYS * 86_400_000;
     all.push({ id: `stale:${d.id}`, kind: 'stale', text: `خروجی ${q(d.title)} دیگر به‌روز نیست${s.reasons[0] ? `: ${s.reasons[0].message}` : '.'}`, button: 'ببین', target: { type: 'asset', id: d.id }, score: recent ? 95 : 70 });
   }
-  for (const c of input.contradictions) all.push({ id: `contradiction:${c.id}`, kind: 'contradiction', text: `${q(c.titleA)} و ${q(c.titleB)} با هم نمی‌خوانند.`, button: 'بررسی', target: { type: 'contradictions' }, score: 85 });
+  // two items often share a title («اجارهٔ ماهانه» written twice with different amounts): then the sentence names it once
+  for (const c of input.contradictions) all.push({ id: `contradiction:${c.id}`, kind: 'contradiction', text: c.titleA.trim() === c.titleB.trim() ? `دو مورد ${q(c.titleA)} با هم نمی‌خوانند.` : `${q(c.titleA)} و ${q(c.titleB)} با هم نمی‌خوانند.`, button: 'بررسی', target: { type: 'contradictions' }, score: 85 });
   for (const r of input.reviews) all.push({ id: `review:${r.id}`, kind: 'review', text: `${q(r.title)} به‌خاطر تغییر ${r.because.map(q).join('، ')} نیاز به نگاه دارد.`, button: 'باز کن', target: { type: 'object', id: r.id }, score: 80 });
   for (const d of input.ready) all.push({ id: `ready:${d.id}`, kind: 'ready', text: `تصمیم ${q(d.title)} آماده است؛ هرچه به آن تکیه دارد تأیید شده.`, button: 'تصمیم بگیر', target: { type: 'object', id: d.id }, score: 70 });
   if (input.proposedCount > 0) all.push({ id: 'proposals', kind: 'proposals', text: `${fa(input.proposedCount)} پیشنهاد منتظر تأیید توست.`, button: 'مرور کن', target: { type: 'proposals' }, score: 60 });

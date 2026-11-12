@@ -82,12 +82,12 @@
 .bidi-plain textarea { unicode-bidi: plaintext; }
 
 /* The reading document: a heading reached from the outline or a permalink stops below the top edge and shows where it landed. */
-.doc-anchor { scroll-margin-block-start: var(--space-24, 96px); }
+.doc-anchor { scroll-margin-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-4)); }
 .doc-anchor:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
 /* the outline rail stays in view while the long document scrolls (desktop); on phones it is a menu instead */
-.doc-outline { position: sticky; inset-block-start: var(--space-16, 64px); max-block-size: calc(100dvh - var(--space-24, 96px)); overflow-y: auto; }
+.doc-outline { position: sticky; inset-block-start: calc(var(--pin-top, 0px) + var(--space-4)); max-block-size: calc(100dvh - var(--pin-top, 0px) - var(--space-8)); overflow-y: auto; }
 /* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
-.doc-bar { position: sticky; inset-block-start: var(--space-16); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
+.doc-bar { position: sticky; inset-block-start: var(--pin-top, 0px); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
 .doc-bar .mb-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
 
 /* the command palette: the result list scrolls inside the dialog, the input stays put */
@@ -113,6 +113,12 @@
 .focus-enter { animation: focus-in var(--duration-moderate) var(--ease-enter); }
 @media (prefers-reduced-motion: reduce) { .focus-enter { animation: none; } }
 
-/* the path bar of a section we are inside stays at the top while the section scrolls; on a phone it sits under the sticky top bar */
-.focus-bar { position: sticky; top: 0; z-index: var(--layer-sticky, 10); background: var(--surface-raised); padding-block: var(--inset-xs, 4px); }
-@media (max-width: 767px) { .focus-bar { top: 61px; } }
+/* the path bar of a section we are inside stays in view while the section scrolls: UNDER the app's bar, never in its place
+   (layout.md «چه چیزی بالا می‌ماند»; --pin-top is measured in src/ui/pinned.ts) */
+.focus-bar { position: sticky; inset-block-start: var(--pin-top, 0px); z-index: var(--layer-sticky, 10); background: var(--surface-raised); padding-block: var(--inset-xs, 4px); }
+/* a short window (a phone or a small tablet on its side): only the app's bar pins; a second pinned bar would take a third of the
+   height that is left for reading */
+@media (max-height: 559px) { .focus-bar, .doc-bar { position: static; } }
+/* keyboard focus and «jump to» stop below whatever is pinned, never under it (WCAG 2.4.11), and above the phone's bottom bar */
+html { scroll-padding-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-2)); }
+@media (max-width: 767px) { html { scroll-padding-block-end: calc(var(--space-20) + var(--safe-bottom)); } }

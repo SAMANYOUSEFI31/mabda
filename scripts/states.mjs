@@ -71,6 +71,16 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.waitForTimeout(800);
   await views('partial');
 
+  // all clear: the same space after its weekly review, nothing waits, nothing is missing → «همه‌چیز به‌روز است.» and the latest changes
+  await page.evaluate(async (n) => {
+    const { workspaces } = await (await fetch('/api/workspaces')).json();
+    const w = workspaces.find((x) => x.name === n);
+    if (w) await fetch(`/api/workspaces/${w.id}/weekly-review/done`, { method: 'POST' });
+  }, name);
+  await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(800);
+  await page.getByText('همه‌چیز به‌روز است.').first().waitFor({ timeout: 6000 }).catch(() => {});
+  await shot('clear-home');
+
   // «افزودن»: its three kinds, the date picker inside «حقیقت», and the question before her words are thrown away
   const palette = async (q) => { await page.keyboard.press('Control+KeyK'); await page.getByRole('combobox').fill(q); await page.waitForTimeout(250); await page.getByRole('option').first().click(); await page.waitForTimeout(700); };
   const kind = async (k) => { await page.locator('[role=dialog]:not([inert] *)').getByRole('radio', { name: k, exact: true }).click(); await page.waitForTimeout(800); };

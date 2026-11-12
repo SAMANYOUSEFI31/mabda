@@ -496,7 +496,11 @@
 .mb-drawer{animation:mb-panel-ltr var(--duration-moderate) var(--ease-enter)}
 [dir=ltr] .mb-drawer{animation-name:mb-panel}
 .mb-drawer-scrim{animation:mb-fade var(--duration-base) var(--ease-standard)}
-.mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2)}
+.mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2);padding-block:var(--inset-lg);gap:var(--stack-md)}
+.mb-rail__nav{gap:var(--stack-xs)}
+/* a short window (a phone or a tablet on its side): all seven rail controls fit without the destinations scrolling under the search
+   button (layout.md «چرخش و قد کوتاه»): tighter gaps and padding, never smaller targets */
+@media (max-height:559px){.mb-rail{gap:var(--space-1);padding-block:var(--space-2)}.mb-rail__nav{gap:var(--space-1)}}
 .mb-sidebar__nav{overflow-y:auto;overflow-x:clip;margin-inline:calc(var(--space-1) * -1);padding-inline:var(--space-1)}
 .mb-sidebar-handle{position:absolute;inset-block:0;inset-inline-end:calc((var(--space-2) + var(--border-width-thin)) / -2);inline-size:calc(var(--space-2) + var(--border-width-thin));cursor:col-resize;touch-action:none;z-index:var(--layer-raised)}
 .mb-sidebar-handle::after{content:"";position:absolute;inset-block:0;inset-inline:0;margin-inline:auto;inline-size:var(--border-width-thick);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
@@ -571,6 +575,14 @@
 /* «افزودن»: فکر · حقیقت · فایل are one box. Wide screens: one height for all three (the body scrolls inside); a switch between them has no motion */
 @layer components{
 @media (min-width:768px){.mb-dialog-layer.is-steady .mb-dialog{block-size:min(85dvh, calc(var(--space-40) * 4))}}
+/* a short window (a phone or tablet on its side, a small laptop window): the dialog takes the whole height so its body, not its
+   frame, gets the room; the head is tighter and the description is not repeated under the title (layout.md «چرخش و قد کوتاه») */
+@media (min-width:768px) and (max-height:559px){
+  .mb-dialog-layer:not(.is-alert){padding-block:var(--space-2)}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog,.mb-dialog-layer.is-steady .mb-dialog{max-block-size:calc(100dvh - var(--space-4));block-size:calc(100dvh - var(--space-4))}
+  .mb-dialog__top{padding-block:var(--space-3) var(--space-2)}
+  .mb-dialog__top .mb-dialog__desc{display:none}
+}
 /* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
    switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
 @media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(100dvh - var(--safe-top) - var(--space-3));max-block-size:none}}

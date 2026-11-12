@@ -255,11 +255,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />
         </aside>
       ) : (
-        <aside data-testid="sidebar-rail" className="mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center gap-stack-md border-e border-border-default bg-surface-sunken py-inset-lg md:flex" aria-label="نوار کناری باریک">
+        <aside data-testid="sidebar-rail" className="mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex" aria-label="نوار کناری باریک">
           <Menu label="فضاها" trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
           {toggleButton}
           <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />
-          <nav className="flex min-h-space-0 w-full flex-1 flex-col gap-stack-xs overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
+          <nav className="mb-rail__nav flex min-h-space-0 w-full flex-1 flex-col overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
             <NavItem compact icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
             <NavItem compact icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
             <NavItem compact icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />
@@ -279,7 +279,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       )}
 
       {/* Mobile top bar: brand + current workspace. The plan is NOT repeated here. */}
-      <header data-under={under.top || undefined} className="mb-glass sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default px-inset-lg py-inset-sm md:hidden">
+      <header data-pin="app" data-under={under.top || undefined} className="mb-glass sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default px-inset-lg py-inset-sm md:hidden">
         <span className="flex min-w-space-0 flex-1 items-center">{workspacePicker(true)}</span>
         <span className="flex items-center gap-inline-xs">
           <IconButton icon="Search" label="جستجو" variant="secondary" onClick={p.onOpenSearch} />

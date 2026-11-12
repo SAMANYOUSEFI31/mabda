@@ -98,3 +98,8 @@ test('answering a gap from home opens a new truth bound to that gap, in its plac
   assert.equal(d.status, 'Confirmed');
   assert.equal(d.type, 'Fact', 'a gap does not say it is a decision');
 });
+
+test('a contradiction between two items with the same title names it once', () => {
+  const r = homeActions(base({ contradictions: [{ id: 'c1', titleA: 'اجارهٔ ماهانه', titleB: 'اجارهٔ ماهانه', idA: 'o1' }] }));
+  assert.equal(r.top[0].text, 'دو مورد «اجارهٔ ماهانه» با هم نمی‌خوانند.');
+});

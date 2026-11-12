@@ -126,7 +126,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
         </div>
       </div>
       {withOutline && (
-        <div className="doc-bar flex items-center gap-inline-sm lg:hidden">
+        <div data-pin="sub" className="doc-bar flex items-center gap-inline-sm lg:hidden">
           <Menu
             label="فهرست سند"
             align="start"

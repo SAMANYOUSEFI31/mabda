@@ -15,7 +15,11 @@
 import { chromium } from 'playwright';
 
 const BASE = process.argv[2] || 'http://localhost:3100';
-const WIDTHS = (process.env.WIDTHS || '390,768,1024,1280,1440').split(',').map(Number);
+// sizes: width x height, «t» = a touch device (layout.md «چرخش و قد کوتاه»): the five widths standing, then a phone on its side,
+// a tablet on its side and a short laptop window. WIDTHS=… still picks plain widths at the usual height.
+const SIZES = (process.env.WIDTHS ? process.env.WIDTHS.split(',').map((w) => `${w}x${Number(w) < 768 ? 844 : 900}${Number(w) < 768 ? 't' : ''}`)
+  : (process.env.SIZES || '390x844t,768x900,1024x900,1280x900,1440x900,844x390t,1024x768t,1280x600').split(','))
+  .map((s) => { const m = /^(\d+)x(\d+)(t?)$/.exec(s); return { width: Number(m[1]), height: Number(m[2]), touch: !!m[3] }; });
 
 const measure = (userText = '') => {
   const MEANT = '.mb-table-wrap, [data-testid=canvas-stage], pre, code, [data-scroll-x]';
@@ -45,7 +49,11 @@ const measure = (userText = '') => {
     const el = t.parentElement;
     if (!el || el.closest('[dir=ltr], code, pre, kbd, svg, script, style, [inert], [aria-hidden=true], [data-testid=canvas-stage]')) continue;
     // her own words keep the digits she typed: only the app's own text is held to Persian digits
-    if (userText && v.trim().length > 1 && userText.includes(v.trim())) continue;
+    if (userText && /[^\s0-9.,٫/()]{2}/.test(v) && userText.includes(v.trim())) continue;
+    // …also when her words sit inside an app sentence («"Plan 2" با هم نمی‌خوانند»): every word that has a Latin digit is hers
+    const words = (v.match(/[^\s«»"'،؛:()]*[0-9][^\s«»"'،؛:()]*/g) || []).map((x) => x.replace(/[.,!?؟]+$/, ''));
+    // a bare number is the app's own (a count, a date), never excused: only words with letters in them can be hers
+    if (userText && words.length && words.every((x) => /[^0-9.,٫/]/.test(x) && userText.includes(x))) continue;
     const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
     out.push(`Latin digits: «${v.trim().slice(0, 40)}» in ${name(el)}`);
   }
@@ -56,9 +64,12 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const found = new Map(); // problem → where
 const note = (where, list) => { for (const p of list) if (!found.has(p)) found.set(p, where); };
 
-for (const width of WIDTHS) {
+for (const { width: w0, height, touch } of SIZES) {
+  // a size is named by its width, and by width×height when it is not the usual standing one
+  const width = w0;
+  const label = (height === (w0 < 768 ? 844 : 900)) ? `${w0}` : `${w0}×${height}`;
   // a phone is a phone: touch, and the system's overlay scrollbars that take no room (a desktop window keeps its classic bar)
-  const ctx = await browser.newContext({ viewport: { width, height: width < 768 ? 844 : 900 }, locale: 'fa-IR', ...(width < 768 ? { isMobile: true, hasTouch: true } : {}) });
+  const ctx = await browser.newContext({ viewport: { width, height }, locale: 'fa-IR', ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate((wide) => { localStorage.clear(); if (wide) localStorage.setItem('mabda.sidebar', 'docked'); }, width >= 1024);
@@ -75,11 +86,43 @@ for (const width of WIDTHS) {
   let base = null; // where the body and the main column sit on the first page; every later check must match it
   const place = () => page.evaluate(() => { const b = document.body.getBoundingClientRect(), m = document.querySelector('main')?.getBoundingClientRect(); return { b: [b.left, b.right], m: m ? [m.left, m.right] : null }; });
   const check = async (where) => {
-    note(`${width} ${where}`, await page.evaluate(measure, userText));
+    note(`${label} ${where}`, await page.evaluate(measure, userText));
     const at = await place();
     if (!base) { base = at; return; }
     const moved = [['body', at.b, base.b], ['main', at.m, base.m]].filter(([, a, z]) => a && z && (Math.abs(a[0] - z[0]) > 0.5 || Math.abs(a[1] - z[1]) > 0.5));
-    note(`${width} ${where}`, moved.map(([n, a, z]) => `layout moved sideways: ${n} ${Math.round(z[0])}–${Math.round(z[1])} → ${Math.round(a[0])}–${Math.round(a[1])}`));
+    note(`${label} ${where}`, moved.map(([n, a, z]) => `layout moved sideways: ${n} ${Math.round(z[0])}–${Math.round(z[1])} → ${Math.round(a[0])}–${Math.round(a[1])}`));
+  };
+  // after scrolling: nothing that stays pinned (the app's bar, a page's own bar, the phone's bottom bar) covers another pinned thing,
+  // and every control inside a pinned bar can still be reached where it is drawn (layout.md «چه چیزی بالا می‌ماند»)
+  const pinCheck = async (where) => {
+    const tall = await page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 200);
+    if (!tall) return;
+    await page.evaluate(() => window.scrollTo(0, Math.floor((document.documentElement.scrollHeight - innerHeight) * 0.6)));
+    await page.waitForTimeout(400);
+    note(`${label} ${where} (scrolled)`, await page.evaluate(() => {
+      const out = [];
+      const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.pin ? `[pin=${e.dataset.pin}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
+      const pinned = [...document.querySelectorAll('body *')].filter((e) => {
+        if (e.closest('[inert], [role=dialog], .mb-toast-stack, .mb-dialog-layer')) return false;
+        const cs = getComputedStyle(e); if (cs.position !== 'sticky' && cs.position !== 'fixed') return false;
+        const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && cs.visibility !== 'hidden';
+      });
+      // the bars themselves: two pinned bars that are not one inside the other must not share any pixel
+      for (let i = 0; i < pinned.length; i++) for (let j = i + 1; j < pinned.length; j++) {
+        const a = pinned[i], b = pinned[j]; if (a.contains(b) || b.contains(a)) continue;
+        const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+        const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+        if (w > 1 && h > 1) out.push(`pinned ${name(a)} and ${name(b)} overlap by ${Math.round(h)}px`);
+      }
+      // every control in a pinned bar answers a tap at its own center
+      for (const bar of pinned) for (const c of bar.querySelectorAll('button, a[href], input, [role=button], [role=tab]')) {
+        const r = c.getBoundingClientRect(); if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight) continue;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (hit && !c.contains(hit) && !hit.contains(c)) out.push(`${name(c)} is covered by ${name(hit.closest('[data-pin], .mb-bottomnav, aside, header') || hit)}`);
+      }
+      return out;
+    }));
+    await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
   };
   const escAll = async () => { for (let i = 0; i < 4 && await page.locator('[role=dialog]:not([inert] *), [role=alertdialog], [role=menu]').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); } };
   // inside an open dialog: every tab and every segment, one after another
@@ -100,7 +143,7 @@ for (const width of WIDTHS) {
         const label = (await t.textContent())?.trim();
         await t.click().catch(() => {}); await settle(); await still(); await check(`${where} › ${label}`);
         const y = await top();
-        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${width} ${where} › ${label}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
+        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${label} ${where} › ${label}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
       }
     }
   };
@@ -108,10 +151,10 @@ for (const width of WIDTHS) {
   for (const [id, label] of PAGES) {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
     await nav.getByRole('button', { name: label, exact: true }).first().click().catch(() => {});
-    await settle(); await check(id);
+    await settle(); await check(id); await pinCheck(id);
     // every view of the page
     const segs = page.locator('main .mb-seg [role=radio]');
-    for (let i = 0; i < await segs.count(); i++) { await segs.nth(i).click().catch(() => {}); await settle(); await check(`${id} › ${(await segs.nth(i).textContent())?.trim()}`); }
+    for (let i = 0; i < await segs.count(); i++) { await segs.nth(i).click().catch(() => {}); await settle(); const v = `${id} › ${(await segs.nth(i).textContent())?.trim()}`; await check(v); await pinCheck(v); }
     if (await segs.count()) { await segs.first().click().catch(() => {}); await settle(); }
     // every item of the page's menus that opens a dialog
     const menus = page.locator('main [aria-haspopup=menu]');
@@ -128,6 +171,15 @@ for (const width of WIDTHS) {
       }
     }
   }
+  // inside a section of the structure view: its path bar pins under the app's bar
+  {
+    const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
+    await nav.getByRole('button', { name: width < 768 ? 'منبع' : 'منبع حقیقت', exact: true }).first().click().catch(() => {}); await settle();
+    await page.locator('main .mb-seg [role=radio]').filter({ hasText: 'ساختار' }).first().click().catch(() => {}); await settle();
+    await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click({ timeout: 3000 }).catch(() => {}); await settle();
+    if (await page.getByTestId('focus-bar').count()) await pinCheck('context › section'); else note(`${label} context › section`, ['walk could not enter a section']);
+    await page.getByTestId('focus-bar').getByRole('button', { name: /^برگشت/ }).first().click().catch(() => {}); await settle();
+  }
   // the knowledge edit dialog (it has tabs: «ویرایش · نسخه‌ها · اطراف این مورد»), opened from the first row of the table view
   {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
@@ -138,7 +190,7 @@ for (const width of WIDTHS) {
     // wide: the row's «ویرایش»; phone: the rows are cards, each one opens its knowledge
     const edit = width < 768 ? page.locator('main .md\\:hidden [role=button][data-knowledge]') : page.locator('main').getByRole('button', { name: 'ویرایش', exact: true });
     await edit.first().click({ timeout: 3000 }).catch(() => {}); await settle();
-    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else note(`${width} knowledge edit`, ['walk could not open the knowledge edit dialog']);
+    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else note(`${label} knowledge edit`, ['walk could not open the knowledge edit dialog']);
     await escAll();
   }
   // every command of the palette

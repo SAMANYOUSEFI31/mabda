@@ -353,6 +353,9 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     const tr = t.getBoundingClientRect();
     const vw = document.documentElement.clientWidth, vh = window.innerHeight, edge = 8, gap = 8;
     const fill = root.current?.classList.contains('w-full');
+    // measuring frees the height for a moment, which would throw a long menu back to its top: keep where she had scrolled it
+    const kept = m.scrollTop;
+    requestAnimationFrame(() => { if (menu.current) menu.current.scrollTop = kept; });
     m.style.maxBlockSize = '';
     m.style.minInlineSize = fill ? `${Math.min(Math.max(tr.width, 240), 320)}px` : '';
     const mw = Math.min(m.offsetWidth, vw - 2 * edge);
@@ -365,13 +368,16 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     // align start: the panel's inline-start edge meets the trigger's (its right edge in RTL); end: the opposite edges
     let x = rtl === (align === 'start') ? tr.right - mw : tr.left;
     x = Math.max(edge, Math.min(x, vw - edge - mw));
+    // the height was freed by hand above; React does not write a style it believes unchanged, so put it back here too
+    m.style.maxBlockSize = `${mh}px`;
     setPos({ position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: vw - 2 * edge, overflowY: 'auto' });
   }, [align, side]);
   useLayoutEffect(() => { if (open) place(); }, [open, place, items.length]);
   useEffect(() => { if (!presence.mounted) setPos(null); }, [presence.mounted]);
   useEffect(() => {
     if (!open) return;
-    const on = () => place();
+    // the page or a container scrolled: follow the trigger; the menu's own scroll (a long menu in a short window) is not a move
+    const on = (e?: Event) => { if (e && e.type === 'scroll' && e.target instanceof Node && menu.current?.contains(e.target)) return; place(); };
     window.addEventListener('resize', on);
     window.addEventListener('scroll', on, true);
     return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };

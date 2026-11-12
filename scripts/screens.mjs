@@ -16,7 +16,7 @@ const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
   // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
   // plus 768 (day and night, for the gallery) and 1440 (light only): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
-  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
+  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true, lightOnly: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
@@ -147,7 +147,7 @@ const audit = () => {
     if (out.clipped.length > 8) break;
   }
   // the last content must be able to scroll clear of a bar pinned to the bottom (no floating control may cover it for good)
-  const bottomBar = [...document.querySelectorAll('nav, [data-testid]')].find((e) => vis(e) && getComputedStyle(e).position === 'fixed' && Math.abs(e.getBoundingClientRect().bottom - innerHeight) < 2 && e.getBoundingClientRect().width > innerWidth / 2);
+  const bottomBar = [...document.querySelectorAll('nav, [data-testid]')].find((e) => vis(e) && getComputedStyle(e).position === 'fixed' && Math.abs(e.getBoundingClientRect().bottom - innerHeight) < 2 && e.getBoundingClientRect().width > innerWidth / 2 && e.getBoundingClientRect().height < innerHeight / 3);
   if (bottomBar && de.scrollHeight > innerHeight) {
     const room = parseFloat(getComputedStyle(document.querySelector('#root > div') || document.body).paddingBottom) || 0;
     if (room + 1 < bottomBar.getBoundingClientRect().height) out.clipped.push(`page end has ${room}px under a ${Math.round(bottomBar.getBoundingClientRect().height)}px bottom bar`);
@@ -212,7 +212,7 @@ const SCHEMES = (process.env.SCHEMES || 'light,dark').split(',');
 for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   if (scheme === 'dark' && baseSize.lightOnly) continue;
   const size = { ...baseSize, name: baseSize.name + (scheme === 'dark' ? '-dark' : '') };
-  const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR', colorScheme: scheme });
+  const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR', colorScheme: scheme, ...(size.touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
