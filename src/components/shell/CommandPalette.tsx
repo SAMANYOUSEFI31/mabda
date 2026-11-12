@@ -76,7 +76,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
   return (
     <Dialog open onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.">
       <div className="flex flex-col gap-stack-md" onKeyDown={onKey}>
-        <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md">
+        <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md focus-within:focus-ring">
           <Icon name="Search" size="md" />
           <input
             id={`${uid}-q`} ref={input} autoFocus type="search" role="combobox" aria-expanded="true" aria-controls={`${uid}-l`} aria-autocomplete="list"

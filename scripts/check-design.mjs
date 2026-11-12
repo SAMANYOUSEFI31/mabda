@@ -9,6 +9,8 @@
  *   palette    Tailwind default palette / white / black bg-zinc-900  text-white  border-red-500
  *   raw-var    raw DS palette variables                 var(--neutral-800)  var(--crimson-600)  var(--white-a8)
  *   physical   left/right instead of logical props      ml-2  pr-4  text-right  left-0  marginLeft  border-l
+ *   z-index    raw z-index / z-10 (layers come from --layer-*)
+ *   outline    outline: none / outline-none with no focus-within or :focus-visible replacement nearby
  *   motion     raw ms / ease keywords in transition or animation; duration-150, ease-out
  *   scale      non-token scales                         p-4  gap-2  w-8  text-xs  font-medium  italic  shadow-md
  *
@@ -37,6 +39,8 @@ const rules = [
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
   { id: 'ai-icon', line: true, re: /\b(?:Sparkles?|Wand2?|WandSparkles|Zap|Brain|BrainCircuit|Bot|Stars)\b/g, msg: 'AI-magic icon — forbidden (docs/design-system/iconography.md, «ممنوع»); say it in words' },
+  { id: 'z-index', line: true, re: /\bz-index\s*:\s*-?\d|\bzIndex\s*:\s*-?\d|(?<![\w-])-?z-\d+(?![\w-])/g, msg: 'raw z-index — use var(--layer-*) / z-dropdown, z-overlay … (shape-elevation.md «لایه‌ها»)' },
+  { id: 'outline', line: true, near: /focus-within|:focus-visible|focus-visible:/, re: /\boutline\s*:\s*(?:none|0)\b|(?<![\w-])outline-(?:none|hidden)(?![\w-])/g, msg: 'outline removed with no focus replacement nearby (focus-within / :focus-visible within 6 lines) — accessibility.md «حلقهٔ فوکوس»' },
   { id: 'motion', line: true, re: /\b(?:transition|animation)(?:-duration|-delay|-timing-function)?\s*:[^;}]*?(?:(?<![\w-])\d+(?:\.\d+)?m?s\b|(?<![\w-])(?:ease|ease-in|ease-out|ease-in-out)(?![\w-]))/g, msg: 'raw duration or easing — use --duration-* / --ease-* (docs/design-system/motion.md)' },
   // ---- token (class) rules ----
   { id: 'motion', tok: /^(?:duration|delay)-(?:\d+|\[.*\])$|^ease-(?:in|out|in-out|linear|\[.*\])$|^animate-(?:spin|ping|pulse|bounce|\[.*\])$/, msg: 'Tailwind duration/easing scale — use duration-fast / duration-base (motion.md)' },
@@ -88,6 +92,7 @@ for (const target of TARGETS) {
         if (rule.line) {
           if (exempt) continue;
           rule.re.lastIndex = 0;
+          if (rule.near && rule.near.test(lines.slice(Math.max(0, i - 6), i + 7).join('\n'))) continue;
           let m;
           while ((m = rule.re.exec(line))) {
             findings.push({ rel, line: i + 1, col: m.index + 1, id: rule.id, msg: rule.msg, snippet: m[0].trim() });

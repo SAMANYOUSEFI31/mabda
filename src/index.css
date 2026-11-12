@@ -77,7 +77,7 @@
 /* the outline rail stays in view while the long document scrolls (desktop); on phones it is a menu instead */
 .doc-outline { position: sticky; inset-block-start: var(--space-16, 64px); max-block-size: calc(100dvh - var(--space-24, 96px)); overflow-y: auto; }
 /* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
-.doc-bar { position: sticky; inset-block-start: var(--space-16); z-index: 5; padding-block: var(--space-2); background: var(--surface-page); }
+.doc-bar { position: sticky; inset-block-start: var(--space-16); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
 .doc-bar .mb-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
 
 /* the command palette: the result list scrolls inside the dialog, the input stays put */
