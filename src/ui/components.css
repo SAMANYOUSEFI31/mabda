@@ -136,9 +136,17 @@
 .mb-stat__delta{display:inline-flex;align-items:center;gap:var(--inline-xs);color:var(--text-subtle)}
 .mb-stat__delta.is-success{color:var(--text-success)}.mb-stat__delta.is-danger{color:var(--text-danger)}
 /* empty state: a quiet invitation, never a dead end. No dashed edge: dashed means only «جای خالی» (patterns.md §۵) */
-.mb-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--stack-sm);padding:var(--inset-2xl) var(--inset-xl);
+.mb-empty{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:var(--stack-sm);padding:var(--inset-xl) 0;
   border-radius:var(--card-radius)}
-.mb-empty__icon{display:grid;place-items:center;inline-size:var(--icon-3xl);block-size:var(--icon-3xl);color:var(--icon-subtle)}
+.mb-empty__dot{margin-block-end:var(--stack-xs)}
+.mb-error__icon{color:var(--icon-danger);margin-block-end:var(--stack-xs)}
+.mb-error__details{color:var(--text-subtle);max-inline-size:100%}
+.mb-error__details summary{cursor:pointer;min-block-size:var(--touch-target-min);display:flex;align-items:center;gap:var(--inline-xs);list-style:none}
+.mb-error__details summary::-webkit-details-marker{display:none}
+.mb-error__details:not([open]) .mb-error__chev{transform:rotate(90deg)}
+.mb-error__code{display:block;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;padding:var(--inset-sm);border-radius:var(--radius-md);background:var(--bg-neutral-subtle);margin-block:var(--stack-xs)}
+.mb-pageskel{display:flex;flex-direction:column;gap:var(--stack-md);inline-size:100%}
+.mb-pageskel__lead{display:block;max-inline-size:var(--overlay-width-sm);margin-block-end:var(--stack-sm)}
 .mb-empty__title{margin:0;color:var(--text-default)}
 .mb-empty__desc{margin:0;color:var(--text-subtle);max-inline-size:var(--overlay-width-sm)}
 .mb-empty__action{margin-block-start:var(--stack-xs)}

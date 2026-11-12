@@ -1,10 +1,10 @@
-import { cloneElement, useId, useState } from 'react';
+import { cloneElement, useEffect, useId, useState } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Nuqta } from './Nuqta.tsx';
 import { Icon, STATUS_ICON } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
-import { IconButton } from './Button.tsx';
+import { Button, IconButton } from './Button.tsx';
 import { formatPercentValue } from './format.ts';
 
 export type Intent = 'neutral' | 'brand' | 'info' | 'success' | 'warning' | 'danger';
@@ -156,14 +156,56 @@ export function Stat({ label, value, delta, trend, className }: StatProps) {
   );
 }
 
-export interface EmptyStateProps { icon?: IconName; title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }
-export function EmptyState({ icon = 'Inbox', title, description, action, className }: EmptyStateProps) {
+/** patterns.md §5: start-aligned where the content would be; the «جای خالی» dot (28), a title that says what lives here, a sentence or two, one action. No picture.
+ *  kind: 'none' (nothing yet: the main action) · 'filtered' (nothing with this filter: clear the filters) · 'done' (all done: no action, no celebration). */
+export interface EmptyStateProps { kind?: 'none' | 'filtered' | 'done'; title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }
+export function EmptyState({ kind = 'none', title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cx('mb-empty', className)}>
-      <span className="mb-empty__icon"><Icon name={icon} size="2xl" /></span>
-      <p className="mb-empty__title heading-xs">{title}</p>
-      {description && <p className="mb-empty__desc body-sm">{description}</p>}
-      {action && <div className="mb-empty__action">{action}</div>}
+    <div className={cx('mb-empty', className)} data-empty={kind}>
+      <Nuqta state={kind === 'done' ? 'truth' : 'gap'} size="xl" label={false} className="mb-empty__dot" />
+      <p className="mb-empty__title title-3">{title}</p>
+      {description && <p className="mb-empty__desc body-md">{description}</p>}
+      {action && kind !== 'done' && <div className="mb-empty__action">{action}</div>}
+    </div>
+  );
+}
+
+/** patterns.md §5 «خطا»: in the place the content was coming, never the whole screen. What happened, what is safe, what to do;
+ *  the technical text only under «جزئیات», copyable. Never a bare «خطایی رخ داد», never her fault. */
+export interface ErrorStateProps { title: ReactNode; description?: ReactNode; onRetry?: () => void; retrying?: boolean; details?: string; className?: string }
+export function ErrorState({ title, description, onRetry, retrying, details, className }: ErrorStateProps) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div role="alert" className={cx('mb-empty mb-error', className)}>
+      <Icon name="OctagonAlert" size="xl" className="mb-error__icon" />
+      <p className="mb-empty__title title-3">{title}</p>
+      {description && <p className="mb-empty__desc body-md">{description}</p>}
+      {onRetry && <div className="mb-empty__action"><Button variant="secondary" iconStart="RotateCcw" onClick={onRetry} disabled={retrying}>{retrying ? 'در حال تلاش…' : 'تلاش دوباره'}</Button></div>}
+      {details && (
+        <details className="mb-error__details body-sm">
+          <summary><Icon name="ChevronDown" size="sm" className="mb-error__chev" />جزئیات</summary>
+          <code dir="auto" className="mb-error__code">{details}</code>
+          <Button size="sm" variant="ghost" iconStart={copied ? 'Check' : 'Copy'} onClick={() => { void navigator.clipboard?.writeText(details).then(() => setCopied(true), () => {}); }}>{copied ? 'کپی شد' : 'کپی'}</Button>
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** patterns.md §5 «در حال آمدن»: nothing for the first 300ms, then a skeleton shaped like the page that is coming. */
+export function PageSkeleton({ label = 'در حال آوردن', delay = 300, className }: { label?: string; delay?: number; className?: string }) {
+  const [show, setShow] = useState(delay <= 0);
+  useEffect(() => { if (show) return; const t = setTimeout(() => setShow(true), delay); return () => clearTimeout(t); }, [delay, show]);
+  return (
+    <div role="status" aria-busy="true" aria-label={label} className={cx('mb-pageskel', className)}>
+      <span className="sr-only">{label}</span>
+      {show && (
+        <>
+          <Skeleton width="40%" />
+          <span className="mb-pageskel__lead"><Skeleton lines={2} /></span>
+          {[0, 1, 2].map((i) => <Skeleton key={i} variant="rect" width="100%" height="var(--space-24)" />)}
+        </>
+      )}
     </div>
   );
 }
