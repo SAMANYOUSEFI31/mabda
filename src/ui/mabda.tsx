@@ -7,12 +7,24 @@ import { Nuqta, type NuqtaState } from './Nuqta.tsx';
 
 /**
  * Mabda domain badges. Colors come ONLY from the mabda.* semantic aliases in src/ui/tokens/semantic.json
- * (which in turn point at Bushido intents). Each value also carries an icon + Persian label,
+ * (roles in the Mabda palette). Each value also carries an icon + Persian label,
  * so meaning never depends on color alone.
  * Class strings are written out in full so Tailwind can see them.
  */
 interface Entry { label: string; icon: IconName; cls: string }
 const BASE = 'inline-flex items-center gap-inline-xs rounded-pill border px-inset-sm min-h-space-6 whitespace-nowrap label-sm';
+
+/** a kind, not a state (plan 2.6): its name and its sign as plain text — no pill, no colour; only the red-line lock keeps its tint */
+const PLAIN = 'inline-flex items-center gap-inline-xs whitespace-nowrap label-sm text-text-subtle';
+function MabdaLabel({ entry, className, iconOnly = false }: { entry: Entry; className?: string; iconOnly?: boolean }) {
+  const tint = entry.cls.includes('type-constraint-icon') ? '[&_svg]:text-mabda-type-constraint-icon' : '';
+  return (
+    <span className={cx(PLAIN, tint, className)} {...(iconOnly ? { role: 'img', 'aria-label': entry.label } : {})}>
+      <Icon name={entry.icon} size="xs" />
+      {!iconOnly && entry.label}
+    </span>
+  );
+}
 
 function MabdaBadge({ entry, className, iconOnly = false }: { entry: Entry; className?: string; iconOnly?: boolean }) {
   return (
@@ -29,7 +41,7 @@ export const TYPE_META: Record<ContextType, Entry> = {
   Constraint: { label: 'خط قرمز', icon: 'Lock', cls: 'bg-bg-neutral-subtle text-text-default border-border-default [&_svg]:text-mabda-type-constraint-icon' },
 };
 export function TypeBadge({ value, className, iconOnly }: { value: ContextType; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={TYPE_META[value]} className={className} iconOnly={iconOnly} />;
+  return <MabdaLabel entry={TYPE_META[value]} className={className} iconOnly={iconOnly} />;
 }
 
 export const STATUS_META: Record<ContextStatus, Entry> = {
@@ -103,7 +115,7 @@ const REACH_POSITION: Entry = { label: 'فقط این بخش', icon: 'Target', c
 export function ReachBadge({ object, className }: { object: Pick<ContextObject, 'type' | 'reach'>; className?: string }) {
   const reach = object.reach ?? (object.type === 'Constraint' ? 'global' : 'position');
   if (object.type !== 'Constraint' && reach === 'position') return null;
-  return <MabdaBadge entry={reach === 'global' ? REACH_GLOBAL : REACH_POSITION} className={className} />;
+  return <MabdaLabel entry={reach === 'global' ? REACH_GLOBAL : REACH_POSITION} className={className} />;
 }
 
 /** why an object is (or is not) in force at a node — src/core/effectiveContext.ts. Label + icon, never colour alone. */
@@ -115,13 +127,13 @@ export const ORIGIN_META: Record<'own' | 'inherited' | 'global' | 'overridden' |
   expired: { label: 'منقضی', icon: 'History', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
 };
 export function OriginBadge({ value, className }: { value: keyof typeof ORIGIN_META; className?: string }) {
-  return <MabdaBadge entry={ORIGIN_META[value]} className={className} />;
+  return <MabdaLabel entry={ORIGIN_META[value]} className={className} />;
 }
 
 /** a working assumption: «فرض» — never shown as fact. Label + icon, never colour alone. */
 const ASSUMPTION: Entry = { label: 'فرض', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' };
 export function AssumptionBadge({ object, className }: { object: Pick<ContextObject, 'assumption'>; className?: string }) {
-  return object.assumption ? <MabdaBadge entry={ASSUMPTION} className={className} /> : null;
+  return object.assumption ? <MabdaLabel entry={ASSUMPTION} className={className} /> : null;
 }
 
 /** the kinds of a thinking item (derived from a note line): idea, question, assumption, open decision */
@@ -132,14 +144,14 @@ const THINKING: Record<'idea' | 'question' | 'assumption' | 'open_decision', Ent
   open_decision: { label: 'تصمیم باز', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
 };
 export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING; className?: string }) {
-  return <MabdaBadge entry={THINKING[kind]} className={className} />;
+  return <MabdaLabel entry={THINKING[kind]} className={className} />;
 }
 export const THINKING_LABEL = Object.fromEntries(Object.entries(THINKING).map(([k, v]) => [k, v.label])) as Record<keyof typeof THINKING, string>;
 
 /** an example that came with a starter / template: grey, «نمونه». It is never knowledge and no AI or engine sees it. */
 const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default' };
 export function SampleBadge({ className }: { className?: string }) {
-  return <MabdaBadge entry={SAMPLE} className={className} />;
+  return <MabdaLabel entry={SAMPLE} className={className} />;
 }
 
 /** a knowledge object's visual state (docs/ux/domain-patterns.md §۱): one mapping for every view */
