@@ -98,7 +98,6 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
               {onToggleSelection && it.id && <Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} />}
               {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به بخش</Button>}
               {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="Layers" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
-              {!done && onToSection && it.noteId && <Button size="sm" variant="ghost" iconStart="Network" onClick={() => onToSection(it)}>ساخت بخش</Button>}
               {!done && promotionTypesForThought(it.kind).length > 0 && (
                 <Menu
                   label="انتقال فکر به دانش"
@@ -111,13 +110,15 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   }))}
                 />
               )}
-              {it.id && (
+              {(it.id || (!done && onToSection && it.noteId)) && (
                 <Menu
                   label="کارهای بیشتر برای فکر"
                   align="end"
                   trigger={<Button size="sm" variant="ghost">بیشتر</Button>}
                   items={[
-                    { label: 'دیدن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) },
+                    // «ساخت بخش» is used now and then: under «بیشتر», not on every row
+                    ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),
+                    ...(it.id ? [{ label: 'دیدن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
                     ...(!done && onRevise ? [{ label: 'بازنگری متن یا نوع', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setManage({ item: it, mode: 'revise' }); } }] : []),
                     ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'Network' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
                   ]}

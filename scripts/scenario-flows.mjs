@@ -76,7 +76,7 @@ try {
       await page.waitForTimeout(500);
       await nav('فکر', 'فکر');
       await page.getByTestId('thinking-space').waitFor();
-      await page.getByTestId('thinking-space').locator('li', { hasText: text }).getByRole('button', { name: 'ساخت بخش' }).click();
+      await page.getByTestId('thinking-space').locator('li', { hasText: text }).getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'ساخت بخش از این فکر' }).click();
       const dlg = page.getByRole('dialog');
       assert.ok((await dlg.getByLabel('نام گره').inputValue()).length > 3, 'a name is suggested from the thought');
       await dlg.getByLabel('زیر کدام بخش؟').selectOption(parentValue);
