@@ -44,7 +44,7 @@ const measure = (userText = '') => {
   // …nor spills past its own control (a one-word label wider than its column at 200% text, WCAG 1.4.4): every label of a phone bar
   // item, a tab, a segment, a button or a sidebar place stays inside the control that owns it
   for (const lab of document.querySelectorAll('.mb-bottomnav__label, .mb-tab__label, .mb-btn__label, nav button span')) {
-    if (lab.closest('[inert], [aria-hidden=true], .mb-sr')) continue;
+    if (lab.closest('[inert], .mb-sr')) continue;
     const own = lab.closest('.mb-bottomnav__item, .mb-tab, .mb-btn, button'); if (!own) continue;
     const r = lab.getBoundingClientRect(), o = own.getBoundingClientRect(); if (!r.width || !o.width) continue;
     const range = document.createRange(); range.selectNodeContents(lab); const t = range.getBoundingClientRect();

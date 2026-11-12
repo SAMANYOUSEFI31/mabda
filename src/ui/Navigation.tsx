@@ -188,7 +188,10 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
               </>
             ) : null}
           </span>
-          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{typeof it.label === 'string' ? softBreaks(it.label) : it.label}</span>
+          {/* the drawn label may carry a break point at a ZWNJ, which a screen reader would read as a gap: it hears the plain word */}
+          {typeof it.label === 'string' && !it.action && it.label.includes('\u200c')
+            ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true">{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
+            : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>}
         </button>
       ))}
     </nav>
