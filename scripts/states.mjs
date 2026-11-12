@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * The five states of each main view (patterns.md §5, implementation-plan 4.4): empty, coming (skeleton), full, partial, error.
- * At 390 and 1280 it shoots home, «منبع», «فکر» and «خروجی‌ها» in a full space (the sample), in a new empty space, and in the same
+ * At 390, 768 and 1280 it shoots home, «منبع», «فکر» and «خروجی‌ها» in a full space (the sample), in a new empty space, and in the same
  * space with one truth (partial); then the coming and failed states, which the app draws once for every view (before the first
  * space arrives, and in place when another space does not arrive). Pictures: docs/screens/state-*.png; list: docs/screens/states.md.
  * It starts its own server on an empty database (a new space would hit the plan's space cap on a used one).
@@ -29,7 +29,7 @@ const VIEWS = [['home', 'خانه', 'خانه'], ['context', 'منبع', 'منب
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const STATE = /\/api\/workspaces\/[^/]+\/state/;
 
-for (const width of (process.env.WIDTHS || '390,1280').split(',').map(Number)) {
+for (const width of (process.env.WIDTHS || '390,768,1280').split(',').map(Number)) {
   const mobile = width < 768;
   const BASE = await start();
   const ctx = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, locale: 'fa-IR' });
