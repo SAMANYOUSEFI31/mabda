@@ -73,41 +73,42 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     dlAnchor.setAttribute('href', dataStr);
     dlAnchor.setAttribute('download', `mabda_assets_${currentWorkspace.slug}.json`);
     dlAnchor.click();
-    toast.show({ intent: 'success', message: 'فایل JSON تمام دارایی‌ها دانلود شد.' });
+    toast.show({ intent: 'success', message: 'فایل JSON همهٔ ساخته‌ها دانلود شد.' });
   };
 
   return (
     <div className="flex flex-col gap-stack-lg">
-      <div className="flex items-start justify-between gap-inline-md">
-        <div>
+      <div className="flex flex-col gap-stack-xs">
+        <div className="flex items-center gap-inline-xs">
           <h2 className="heading-sm text-text-default">خروجی‌های تو</h2>
-          <p className="body-sm mt-stack-xs text-text-subtle">از متن هر خروجی می‌توانی دانش پیشنهادی بگیری؛ خود خروجی هرگز دانش نیست.</p>
-        </div>
-        <Menu
-          label="بیشتر دربارهٔ کتابخانه"
-          align="end"
-          trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ کتابخانه" variant="secondary" />}
+          {/* the «⋯» sits with the heading it belongs to, quiet, never floating at the far edge */}
+          <Menu
+          label="بیشتر دربارهٔ ساخته‌ها"
+          align="start"
+          trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ ساخته‌ها" size="sm" />}
           items={[{ label: 'خروجی گرفتن JSON', icon: 'Download', onSelect: handleExportJson }, ...(onOpenArchive ? [{ label: 'خروجی‌های بایگانی‌شده', icon: 'Archive' as const, onSelect: onOpenArchive }] : [])]}
-        />
+          />
+        </div>
+        <p className="body-sm text-text-subtle">از متن هر کدام می‌توانی دانش پیشنهادی بگیری؛ خودشان هرگز دانش نیستند.</p>
       </div>
 
-      <Tabs
-        label="فیلتر دارایی‌ها"
+      {deliverables.length > 0 && (stale.length > 0 || workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).length > 1) && <Tabs
+        label="فیلتر ساخته‌ها"
         value={filter}
         onChange={setFilter}
         items={[
-          { id: 'all', label: `تمام دارایی‌ها (${formatNumber(deliverables.length)})` },
+          { id: 'all', label: `همه (${formatNumber(deliverables.length)})` },
           ...(stale.length > 0 ? [{ id: 'stale', label: `به‌روز نیست (${formatNumber(stale.length)})` }] : []),
           ...workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).map((w) => ({ id: w.id, label: w.title })),
         ]}
-      />
+      />}
 
       {filtered.length === 0 ? (
         <EmptyState
           icon="Package"
-          title={deliverables.length === 0 ? (managedEnabled ? 'هنوز دارایی‌ای نساخته‌ای' : 'هنوز خروجی‌ای نداری') : 'دارایی‌ای با این فیلتر نیست'}
-          description={managedEnabled ? 'در جریان‌های کار، اولین دارایی را از دانش تأییدشده‌ات بساز.' : 'در جریان‌های کار، بستهٔ دانش تأییدشده‌ات را برای هر ابزار آماده کن.'}
-          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساخت دارایی' : 'آماده‌سازی خروجی'}</Button>}
+          title={deliverables.length === 0 ? 'هنوز چیزی نساخته‌ای' : 'با این فیلتر چیزی نیست'}
+          description={managedEnabled ? 'از یکی از موارد بالا، اولین را از حقیقت‌هایت بساز.' : 'از یکی از موارد بالا، حقیقت‌هایت را برای هر ابزاری آماده کن.'}
+          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'ساختن' : 'آماده‌سازی'}</Button>}
         />
       ) : (
         <div className="flex flex-col gap-stack-lg">

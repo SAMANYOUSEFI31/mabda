@@ -334,6 +334,10 @@ const defaultSpecs = (purpose: WorkspacePurpose | undefined): WorkstreamSpec[] =
   purpose === undefined || purpose === 'work' ? WORKSTREAM_SPECS.filter((s) => LEGACY_SPEC_IDS.includes(s.id))
     : purpose === 'empty' ? [] : LIBRARY.filter((s) => s.purposes?.includes(purpose));
 
+/** what a NEW space is created with: the workstreams written for its kind (a work or empty space starts with none and picks) */
+export const starterSpecIds = (purpose: WorkspacePurpose): string[] =>
+  purpose === 'personal' || purpose === 'project' ? LIBRARY.filter((s) => s.purposes?.includes(purpose)).map((s) => s.id) : [];
+
 /** the library workstreams the workspace has taken (absent `enabledSpecIds` = the defaults for its kind) */
 export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds' | 'purpose'> | undefined): WorkstreamSpec[] =>
   !ws || ws.enabledSpecIds === undefined ? defaultSpecs(ws?.purpose) : LIBRARY.filter((s) => ws.enabledSpecIds!.includes(s.id));

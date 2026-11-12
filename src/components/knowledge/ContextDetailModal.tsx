@@ -25,13 +25,14 @@ import { suggestUpstreamLinks } from '../../core/upstreamLinks';
 import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
+import { conflictPartners, displayState } from '../../core/displayState';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
 import { MX } from '../../core/metricsText';
 import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../../core/redlineExamples';
 import { parseNumber } from '../../core/metrics';
 import { dataApi } from '../../services/dataApi';
-import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -213,6 +214,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const addFacet = (raw: string) => { const f = raw.replace(/\s+/g, ' ').trim().slice(0, 40); if (f) setFacets((l) => (l.includes(f) || l.length >= 8 ? l : [...l, f])); setFacetDraft(''); };
   const facetsFinal = () => { const f = facetDraft.replace(/\s+/g, ' ').trim().slice(0, 40); return f && !facets.includes(f) && facets.length < 8 ? [...facets, f] : facets; };
+  const partners = useMemo(() => conflictPartners(allObjects), [allObjects]);
+  const conflictWith = object ? partners.get(object.id) : undefined;
+  const shownState = object ? displayState(object, partners) : 'truth';
   const knownFacets = useMemo(() => [...new Set(allObjects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [allObjects]);
 
   // editing the TEXT of confirmed knowledge: the user chooses — keep it as a draft (nothing downstream sees it) or replace the text now
@@ -313,7 +317,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     >
       {isEditing && object && (
         <div className="mb-stack-md flex flex-col gap-stack-sm">
-          <ApprovalBadge history={history} />
+          <ApprovalBadge history={history} state={shownState} />
+          {conflictWith && (
+            // no margin column in a dialog: the contradiction is one short inline sentence beside its dot (meaning-map.md)
+            <p className="inline-flex items-start gap-inline-xs body-sm text-text-default">
+              <Nuqta state="conflict" size="sm" className="mt-stack-xs" />
+              <span>تناقض: با «{conflictWith.title}» در بخش «{nodes.find((n) => n.id === conflictWith.nodeId)?.label ?? '—'}» نمی‌خواند؛ یکی را نگه دار.</span>
+            </p>
+          )}
           <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'around')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `نسخه‌ها (${formatNumber(history.entries.length)})` }, { id: 'around', label: 'اطراف این مورد' }]} />
         </div>
       )}

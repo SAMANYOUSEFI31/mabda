@@ -154,7 +154,7 @@ async function scenario(width, tag) {
   await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
   const staleAfter = await page.getByText('این خروجی به‌روز نیست').count();
   console.log(`[${tag}]   stale before=${staleBefore} after=${staleAfter}`);
-  await page.getByRole('tab', { name: /^تمام دارایی‌ها/ }).click();
+  await page.getByRole('tab', { name: /^همه \(/ }).click();
   for (const b of await page.getByRole('button', { name: 'ردپای دانش و معیارها' }).all()) await b.click(); // the trail is a closed section
   await page.getByText(/نسخهٔ ۲/).first().waitFor();
   await shot('8-after-rebuild', true);

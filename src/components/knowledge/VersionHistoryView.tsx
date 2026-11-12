@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { NuqtaState } from '../../ui';
 import React, { useMemo, useState } from 'react';
 import type { ContextChange } from '../../types';
 import { ACTOR_FA } from '../../core/changeLog';
@@ -16,10 +17,11 @@ import { ClosedSection } from '../shared/ClosedSection';
 interface Lookups { titleOf?: (id: string) => string; nodeLabel?: (id: string) => string }
 
 /** «آخرین تأیید: نسخهٔ N» (+ how many drafts came after it). Nothing for an object that was never approved. */
-export const ApprovalBadge: React.FC<{ history: VersionHistory }> = ({ history: h }) => (
+/** `state`: the item's shown state now (displayState), so a contradicting or stale truth never wears the solid dot here */
+export const ApprovalBadge: React.FC<{ history: VersionHistory; state?: NuqtaState }> = ({ history: h, state = 'truth' }) => (
   <span className="flex flex-wrap items-center gap-inline-xs">
     {h.lastApproval
-      ? <span className="inline-flex items-center gap-inline-xs body-sm text-text-default"><Nuqta state="truth" size="sm" />آخرین تأیید: نسخهٔ {formatNumber(h.lastApproval.version)} · {formatJalaliDate(h.lastApproval.at)}</span>
+      ? <span className="inline-flex items-center gap-inline-xs body-sm text-text-default"><Nuqta state={state} size="sm" />آخرین تأیید: نسخهٔ {formatNumber(h.lastApproval.version)} · {formatJalaliDate(h.lastApproval.at)}</span>
       : <span className="inline-flex items-center gap-inline-xs body-sm text-text-subtle"><Nuqta state="proposed" size="sm" />هنوز تأیید نشده</span>}
     {h.draftsSinceApproval > 0 && <span className="inline-flex items-center gap-inline-xs body-sm text-text-subtle"><Nuqta state="proposed" size="sm" />{formatNumber(h.draftsSinceApproval)} پیش‌نویس {h.lastApproval ? 'پس از آن' : ''}</span>}
   </span>

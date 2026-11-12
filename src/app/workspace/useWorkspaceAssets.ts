@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from '../../types';
 import { GeneratedDeliverable, LedgerEntry, PlanId, Workspace } from '../../types';
 import { PLANS, chatCountToday, tehranDay } from '../../core/creditEngine';
-import { currentSpecIds } from '../../core/specs';
+import { currentSpecIds, starterSpecIds } from '../../core/specs';
 import { dataApi } from '../../services/dataApi';
 import { formatNumber } from '../../ui';
 import { ledgerEntryFromUsage } from '../../core/ledger';
@@ -152,7 +152,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       planId: currentWorkspace?.planId ?? 'pro',
       creditsRemaining: 150,
       todayChatCount: 0,
-      enabledSpecIds: [], // a new workspace starts with no library workstreams: «شروع سریع» or «افزودن از کتابخانه» brings them in
+      enabledSpecIds: starterSpecIds(purpose), // personal / project: the ones written for it; work / empty: none, «شروع سریع» or the library brings them in
       createdAt: new Date().toISOString(),
     };
     const saved = await attempt(() => dataApi.saveWorkspace(newWs));

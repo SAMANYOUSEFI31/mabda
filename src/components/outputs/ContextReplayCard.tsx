@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable } from '../../types';
 import { versionTexts } from '../../core/versionHistory';
 import { BeforeAfter } from '../shared/BeforeAfter';
-import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution } from '../../ui';
+import { Alert, Badge, Button, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution } from '../../ui';
 import { PlanLine } from '../shared/AiNotices';
 import { useAiStatus } from '../../services/aiStatus';
 import { halfPriceRebuildAvailable } from '../../core/impactEngine';
@@ -71,7 +71,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const traceId = `trace-${deliverable.id}`;
 
   return (
-    <Card padding="lg" className="flex flex-col gap-stack-md" aria-label={deliverable.title}>
+    // on the paper, not in a box: a hairline under each one, like the rows of «ساختار»
+    <article className="flex flex-col gap-stack-md border-b border-border-subtle pb-inset-lg" aria-label={deliverable.title}>
       {/* the same anatomy as a canvas card: title · a row of badges · a short line · one action (+ «⋯») */}
       <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
         <div className="flex min-w-space-0 flex-col gap-stack-xs">
@@ -226,6 +227,6 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           </div>
         )}
       </div>
-    </Card>
+    </article>
   );
 };

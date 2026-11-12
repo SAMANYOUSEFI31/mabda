@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORKSTREAM_SPECS, currentSpecIds, enabledBuiltInSpecs } from './specs';
+import { WORKSTREAM_SPECS, currentSpecIds, enabledBuiltInSpecs, starterSpecIds } from './specs';
 
 test('workstream library: absent enabledSpecIds = every built-in (old workspaces unchanged); a list picks; an empty list shows none', () => {
   assert.equal(enabledBuiltInSpecs({}).length, WORKSTREAM_SPECS.length);
@@ -47,4 +47,11 @@ test('a space starts with workstreams written for its kind: a personal space nev
   assert.deepEqual(enabledBuiltInSpecs({ purpose: 'work' }).map((s) => s.id), LEGACY_SPEC_IDS);
   assert.ok(!specFits(LIBRARY.find((s) => s.id === 'instagram_foundation')!, 'personal'));
   assert.deepEqual(enabledBuiltInSpecs({ purpose: 'personal', enabledSpecIds: ['lib_icp'] }).map((s) => s.id), ['lib_icp'], 'a choice still wins');
+});
+
+test('a new space is created with the workstreams for its kind', () => {
+  assert.deepEqual(starterSpecIds('project'), ['lib_project_brief']);
+  assert.deepEqual(starterSpecIds('personal'), ['lib_health_brief', 'lib_trip_plan']);
+  assert.deepEqual(starterSpecIds('work'), []);
+  assert.deepEqual(starterSpecIds('empty'), []);
 });

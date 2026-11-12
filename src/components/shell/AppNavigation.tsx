@@ -129,14 +129,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
           <NavItem icon="Lightbulb" label="فکر" trailing={p.thinkingCount ? formatNumber(p.thinkingCount) : undefined} selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" trailing={formatNumber(p.contextCount)} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
+          <NavItem icon="BookOpen" label="منبع حقیقت" trailing={p.contextCount ? formatNumber(p.contextCount) : undefined} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               {VIEWS.map((v) => <NavItem nested key={v.id} label={v.label} selected={p.contextViewMode === v.id} onClick={() => p.onChangeContextViewMode(v.id)} />)}
             </div>
           )}
 
-          <NavItem icon="Package" label="خروجی‌ها" trailing={formatNumber(p.deliverablesCount)} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
+          <NavItem icon="Package" label="خروجی‌ها" trailing={p.deliverablesCount ? formatNumber(p.deliverablesCount) : undefined} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
           {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
