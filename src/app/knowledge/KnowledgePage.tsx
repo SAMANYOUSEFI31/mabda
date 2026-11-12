@@ -67,7 +67,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
               relationships={data.relationships}
               approvals={approvals}
               fileName={currentWorkspace.name}
-              empty={<EmptyState icon="Inbox" title="هنوز دانشی ثبت نشده است" />}
+              empty={<EmptyState title="هنوز دانشی ثبت نشده است" />}
             /></PageSuspense>
           ) : contextViewMode === 'doc' ? (
             <ContextTreeDocView

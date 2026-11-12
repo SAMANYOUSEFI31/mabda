@@ -94,7 +94,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
       )}
 
       {files.length === 0 ? (
-        <EmptyState icon="Upload" title="هنوز فایلی بارگذاری نشده" description={managed ? 'سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد.' : 'سند یا برندبوکت را بگذار تا کنار دانشت نگه داشته شود.'} action={<Button variant="secondary" iconStart="Upload" onClick={() => input.current?.click()}>بارگذاری فایل</Button>} />
+        <EmptyState title="هنوز فایلی بارگذاری نشده" description={managed ? 'سند یا برندبوکت را بگذار تا مبدأ از آن دانش پیشنهادی بسازد.' : 'سند یا برندبوکت را بگذار تا کنار دانشت نگه داشته شود.'} />
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="فایل‌های بارگذاری‌شده">
           {files.map((f) => (

@@ -31,6 +31,8 @@ interface Props {
   /** open from a node's counter: only that node (and below) */
   nodeId?: string;
   onNodeChange: (nodeId: string | undefined) => void;
+  /** the empty space's one action: open «افزودن» on «فکر» (in this section when one is picked) */
+  onNewThought?: () => void;
   /** the truth map with the suggestions shown: «اگر همه را تأیید کنم؟» */
   onPreviewTruth?: () => void;
   /** a thought becomes a SECTION of the tree */
@@ -99,6 +101,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   const reasonOf = (id: string) => (view.structure[id] ? `${STRUCTURE_REASON} (${formatNumber(view.structure[id])} مورد در زیربخش‌ها هم منتظر است)` : undefined);
   const proposalHints = Object.fromEntries(proposalsHere.map((o) => [o.id, reasonOf(o.id)]).filter(([, r]) => r)) as Record<string, string>;
   const empty = view.waiting.length + view.thoughts.length + view.assumptions.length === 0;
+  const nothingYet = !p.nodeId && Object.values(view.counts).every((n) => !n);
   const count = (k: SpaceKind | 'all') => (k === 'all' ? Object.values(view.counts).reduce((a, b) => a + b, 0) : view.counts[k]);
 
   // the toolbar stays quiet: one filter row, the section, and «⋯» for what is used now and then (nothing is approved by these)
@@ -110,7 +113,8 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
   return (
     <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
-      <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
+      {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
+      {nothingYet ? null : <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
         <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
           {CHIPS.map((c) => (
             <Button key={c.id} size="sm" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
@@ -123,7 +127,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {toolItems.length > 0 && <Menu label="کارهای بیشتر در فکر" align="end" trigger={<IconButton icon="Ellipsis" label="کارهای بیشتر در فکر" size="sm" />} items={toolItems} />}
           <div className="w-overlay-xs max-w-full"><Select label="بخش" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
         </div>
-      </div>
+      </div>}
 
       {p.nodeId && truthAnchors.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="دانش مرتبط برای فکر کردن">
@@ -149,7 +153,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         </section>
       )}
 
-      {empty && <EmptyState icon="Lightbulb" title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." />}
+      {empty && (nothingYet || (kind === 'all' && !p.nodeId)
+        ? <EmptyState title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={p.onNewThought && <Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>فکر تازه</Button>} />
+        : empty && <EmptyState kind="filtered" title="با این فیلتر فکری نیست" action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">

@@ -139,7 +139,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
       ) : packs === null ? (
         <div className="flex justify-center p-inset-xl"><Spinner /></div>
       ) : packs.length === 0 ? (
-        <EmptyState icon="Package" title="هنوز بسته‌ای نساخته‌ای" description="یک بسته بساز: انتخاب بخش‌ها، بُعدها و یک دستور کوتاه؛ بعد فقط «کپی» را بزن." />
+        <EmptyState title="هنوز بسته‌ای نساخته‌ای" description="یک بسته بساز: انتخاب بخش‌ها، بُعدها و یک دستور کوتاه؛ بعد فقط «کپی» را بزن." />
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="بسته‌های ذخیره‌شده">
           {packs.map((p) => (

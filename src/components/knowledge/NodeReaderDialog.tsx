@@ -35,7 +35,7 @@ export const NodeReaderDialog: React.FC<Props> = ({ nodeId, nodes, objects, rela
         markdown={markdown}
         fileName={node?.label ?? 'context'}
         refs={{ checked: refs, onChange: setRefs }}
-        empty={<EmptyState icon="Inbox" title="این بخش هنوز دانشی ندارد" />}
+        empty={<EmptyState title="این بخش هنوز دانشی ندارد" />}
       />
     </Dialog>
   );

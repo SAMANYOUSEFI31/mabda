@@ -104,12 +104,15 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
       />}
 
       {filtered.length === 0 ? (
-        <EmptyState
-          icon="Package"
-          title={deliverables.length === 0 ? 'هنوز چیزی نساخته‌ای' : 'با این فیلتر چیزی نیست'}
-          description={managedEnabled ? 'از یکی از موارد بالا، اولین را از حقیقت‌هایت بساز.' : 'از یکی از موارد بالا، حقیقت‌هایت را برای هر ابزاری آماده کن.'}
-          action={<Button variant="secondary" iconStart={managedEnabled ? 'Package' : 'Copy'} onClick={onGoToWorkstreams}>{managedEnabled ? 'تولید' : 'آماده‌سازی'}</Button>}
-        />
+        deliverables.length === 0 ? (
+          // the way to build is right above (one action per view): here only what this place is for
+          <EmptyState
+            title="هنوز چیزی نساخته‌ای"
+            description={workstreams.length === 0 ? 'هر چه بسازی اینجا می‌ماند و اگر دانسته‌ات عوض شود، می‌گوید.' : managedEnabled ? 'از یکی از موارد بالا، اولین را از حقیقت‌هایت بساز.' : 'از یکی از موارد بالا، حقیقت‌هایت را برای هر ابزاری آماده کن.'}
+          />
+        ) : (
+          <EmptyState kind="filtered" title="با این فیلتر چیزی نیست" action={<Button variant="secondary" onClick={() => setFilter('all')}>پاک‌کردن فیلترها</Button>} />
+        )
       ) : (
         <div className="flex flex-col gap-stack-lg">
           {filtered.map((del) => (

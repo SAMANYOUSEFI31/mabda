@@ -19,7 +19,6 @@ export function WorkstreamsPage({ currentWorkspace, data, deliverables, handleJu
     <>
         {specs.length === 0 && (
           <EmptyState
-            icon="Layers"
             title="هنوز چیزی برای ساختن انتخاب نکرده‌ای"
             description="از کتابخانه یک جریان آماده بردار یا خودت یکی بساز."
             action={<div className="flex flex-wrap justify-center gap-inline-md"><Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button><Button variant="secondary" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button></div>}

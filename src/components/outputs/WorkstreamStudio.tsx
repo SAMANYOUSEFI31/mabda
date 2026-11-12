@@ -558,7 +558,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
 
           {workstreamDeliverables.length === 0 ? (
             <EmptyState
-              icon="Package"
               title={managed ? 'هنوز خروجی‌ای برای این جریان کار تولید نشده' : 'هنوز خروجی‌ای برای این جریان کار ثبت نشده'}
               action={<Button variant="primary" onClick={() => setActiveTab('create')}>{managed ? 'تولید اولین دارایی' : 'آماده‌سازی اولین خروجی'}</Button>}
             />

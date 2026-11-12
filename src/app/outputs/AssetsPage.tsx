@@ -28,7 +28,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
           <section className="flex flex-col gap-stack-md" aria-label={verb} data-testid="outputs-build">
             <h2 className="heading-sm text-text-default">{verb}</h2>
             {specs.length === 0 ? (
-              <EmptyState icon="Layers" title="هنوز چیزی برای ساختن انتخاب نکرده‌ای" description="از کتابخانه یکی را بردار یا خودت یکی بنویس." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
+              <EmptyState title="هنوز چیزی برای ساختن انتخاب نکرده‌ای" description="از کتابخانه یکی را بردار یا خودت یکی بنویس." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
             ) : (
               // borderless rows on the paper, a hairline between them: the same language as «ساختار»
               <ul className="flex flex-col" aria-label="جریان‌های کار">
@@ -45,7 +45,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
             )}
             <div className="flex flex-wrap gap-inline-sm">
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button>
-              <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>
+              {specs.length > 0 && <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>}
             </div>
           </section>
         <PageSuspense><AssetLibrary

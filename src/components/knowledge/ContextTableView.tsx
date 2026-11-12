@@ -98,7 +98,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       </div>
 
       {filteredObjects.length === 0 && (
-        <EmptyState icon="Search" title="دادهای با این فیلترها پیدا نشد" description="فیلترها را کم کن یا عبارت جستجو را تغییر بده." />
+        <EmptyState kind="filtered" title="با این فیلترها چیزی نیست" description="عبارت جستجو را عوض کن یا فیلترها را پاک کن." action={<Button variant="secondary" onClick={() => { setSearch(''); setSelectedType('all'); setSelectedStatus('all'); setSelectedNode('all'); setSelectedFacet('all'); }}>پاک‌کردن فیلترها</Button>} />
       )}
 
       {/* Mobile: card list */}

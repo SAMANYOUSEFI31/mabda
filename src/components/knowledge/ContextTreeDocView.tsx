@@ -166,7 +166,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
         {nodeObjects.length === 0 && nodeNotes.length === 0 && kids.length === 0 && nodeSamples.length === 0 && !notesOpen ? (
           <EmptyState
-            icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
             action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
           />

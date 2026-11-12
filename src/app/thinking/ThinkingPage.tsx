@@ -6,6 +6,7 @@
 /** Thinking: notes and thoughts. */
 
 import { optionsOf } from '../../core/decisionOptions';
+import { requestAdd } from '../../core/addRequest';
 import { Button, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -45,6 +46,7 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
         thoughts={thinking}
         nodeId={spaceNode}
         onNodeChange={setSpaceNode}
+        onNewThought={() => requestAdd({ kind: 'thought', nodeId: spaceNode })}
         onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
         onOptions={(item) => setOptionsItemKey(item.key)}
         optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).length}
