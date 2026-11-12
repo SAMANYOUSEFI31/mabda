@@ -99,7 +99,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
         {batch && (
           <div className="flex flex-col gap-stack-sm" data-testid="thought-batch-preview">
             <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} فکر پیدا شد. نوع هر خط را می‌توانی عوض کنی یا خطی را برداری؛ چیزی ذخیره نشده است.</p>
-            <ul className="flex flex-col gap-stack-sm overflow-auto" style={{ maxBlockSize: '40vh' }}>
+            <ul className="flex flex-col gap-stack-sm">
               {lines.map((l) => (
                 <li key={l.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-sm">
                   <div className="flex items-start justify-between gap-inline-sm">
