@@ -88,6 +88,16 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.getByRole('dialog').getByRole('button', { name: 'بستن' }).first().click(); await page.waitForTimeout(500);
   await shot('add-discard');
   await page.getByRole('button', { name: /دور بریز/ }).first().click().catch(() => {}); await page.waitForTimeout(400);
+  // a toast while the sheet stays open: the save does not reach the server, so the message comes and her words stay; on a phone
+  // it sits above the sheet's footer, never on the title or the main button
+  await palette('افزودن فکر');
+  await page.getByLabel('چه چیزی به ذهنت رسید؟').fill('یک فکر برای دیدن جای پیام');
+  await page.route(/\/api\//, (r) => (r.request().method() === 'GET' ? r.continue() : r.abort()));
+  await page.keyboard.press('Control+Enter'); await page.locator('.mb-toast').first().waitFor({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(400);
+  await shot('add-toast', true);
+  await page.unroute(/\/api\//);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /دور بریز/ }).first().click({ timeout: 800 }).catch(() => {}); await page.waitForTimeout(300);
 
   // error in place: the next space does not arrive; the shell stays and says so where the page was
   await page.route(STATE, (r) => r.abort());

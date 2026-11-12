@@ -13,8 +13,9 @@ export const AddKindSwitch: React.FC<{ value: AddKind; text?: string; nodeId?: s
       if (id === value) return;
       // one box, not three: no exit or enter while she switches (components.css «is-steady»)
       const root = document.documentElement;
+      // the next box clears this mark when it opens (Overlay.tsx); the timer is only a safety if it never does
       root.dataset.addSwitch = '1';
-      setTimeout(() => { delete root.dataset.addSwitch; }, 600);
+      setTimeout(() => { delete root.dataset.addSwitch; }, 3000);
       const words = carryAddText(value, id as AddKind, text);
       onLeave(id as AddKind);
       // after this dialog has closed, so the next one is not refused as «a dialog is open»

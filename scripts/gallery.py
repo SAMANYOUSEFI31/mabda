@@ -31,7 +31,7 @@ TITLE = {
   'sidebar-narrow': 'نوار کناری باریک', 'drawer-account': 'کشوی حساب (گوشی)', 'drawer-menu': 'کشوی منو (گوشی)', 'ledger': 'مصرف', 'ledger-usage': 'مصرف و سهمیه',
   'ledger-plans': 'پلن‌ها و اعتبار', 'ledger-economics': 'اقتصاد',
   'add-thought': 'افزودن: فکر', 'add-file': 'افزودن: فایل', 'add-truth': 'افزودن: حقیقت (متن از «فکر» آمده)', 'add-date': 'افزودن: تقویم خورشیدی',
-  'add-discard': 'افزودن: پرسش پیش از دور ریختن متن',
+  'add-discard': 'افزودن: پرسش پیش از دور ریختن متن', 'add-toast': 'افزودن: پیام «ثبت شد» با برگهٔ باز',
 }
 STATE = {'empty': 'خالی', 'loading': 'در حال آمدن', 'full': 'کامل', 'partial': 'ناقص', 'error': 'خطا (در جای صفحه)', 'error-boot': 'خطا (پیش از آمدن فضا)'}
 VIEW = {'home': 'خانه', 'context': 'منبع', 'thinking': 'فکر', 'assets': 'خروجی‌ها'}

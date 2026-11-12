@@ -101,11 +101,11 @@ const STATUS_OPTIONS = [
   { value: 'Archived', label: 'گذشته (بایگانی)' },
 ];
 const PROVENANCE_OPTIONS = [
-  { value: 'User Input', label: 'ورودی مستقیم کاربر' },
-  { value: 'Onboarding', label: 'فرم شروع سریع' },
-  { value: 'AI Suggested', label: 'پیشنهاد تأییدشدهٔ هوش مصنوعی' },
-  { value: 'Asset Derived', label: 'استخراج‌شده از خروجی' },
-  { value: 'Imported', label: 'منبع واردشده' },
+  { value: 'User Input', label: 'نوشتهٔ خودت' },
+  { value: 'Onboarding', label: 'شروع سریع' },
+  { value: 'AI Suggested', label: 'پیشنهاد هوش مصنوعی که تأیید کردی' },
+  { value: 'Asset Derived', label: 'برگرفته از یک خروجی' },
+  { value: 'Imported', label: 'وارد شده از بیرون' },
 ];
 
 const ContextDetailForm: React.FC<ContextDetailModalProps> = ({

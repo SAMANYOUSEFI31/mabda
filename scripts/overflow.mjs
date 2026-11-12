@@ -17,7 +17,7 @@ import { chromium } from 'playwright';
 const BASE = process.argv[2] || 'http://localhost:3100';
 const WIDTHS = (process.env.WIDTHS || '390,768,1024,1280,1440').split(',').map(Number);
 
-const measure = () => {
+const measure = (userText = '') => {
   const MEANT = '.mb-table-wrap, [data-testid=canvas-stage], pre, code, [data-scroll-x]';
   const name = (e) => `${e.tagName.toLowerCase()}${typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}${e.getAttribute('role') ? `[${e.getAttribute('role')}]` : ''}"${(e.getAttribute('aria-label') || '').slice(0, 24)}"`;
   const widest = (box) => [...box.querySelectorAll('*')].filter((c) => c.getBoundingClientRect().width > 0 && (c.getBoundingClientRect().left < box.getBoundingClientRect().left - 1 || c.getBoundingClientRect().right > box.getBoundingClientRect().right + 1)).slice(-1).map(name)[0] ?? '';
@@ -44,6 +44,8 @@ const measure = () => {
     if (!/[0-9]/.test(v) || !/[\u0600-\u06FF]|^\s*\(?[0-9]+\)?\s*$/.test(v)) continue;
     const el = t.parentElement;
     if (!el || el.closest('[dir=ltr], code, pre, kbd, svg, script, style, [inert], [aria-hidden=true], [data-testid=canvas-stage]')) continue;
+    // her own words keep the digits she typed: only the app's own text is held to Persian digits
+    if (userText && v.trim().length > 1 && userText.includes(v.trim())) continue;
     const r = el.getBoundingClientRect(); if (!r.width || !r.height) continue;
     out.push(`Latin digits: «${v.trim().slice(0, 40)}» in ${name(el)}`);
   }
@@ -63,10 +65,17 @@ for (const width of WIDTHS) {
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
   const settle = () => page.waitForTimeout(450);
+  // everything she wrote (titles, texts, notes, thoughts, names) in every space, to tell her words from the app's
+  const userText = await page.evaluate(async () => {
+    const boot = await (await fetch('/api/workspaces')).json().catch(() => ({}));
+    const ids = (boot.workspaces ?? []).map((w) => w.id);
+    const all = await Promise.all(ids.map((id) => fetch(`/api/workspaces/${id}/state`).then((r) => r.text()).catch(() => '')));
+    return all.map((t) => { try { return JSON.stringify(JSON.parse(t)); } catch { return ''; } }).join('\n');
+  });
   let base = null; // where the body and the main column sit on the first page; every later check must match it
   const place = () => page.evaluate(() => { const b = document.body.getBoundingClientRect(), m = document.querySelector('main')?.getBoundingClientRect(); return { b: [b.left, b.right], m: m ? [m.left, m.right] : null }; });
   const check = async (where) => {
-    note(`${width} ${where}`, await page.evaluate(measure));
+    note(`${width} ${where}`, await page.evaluate(measure, userText));
     const at = await place();
     if (!base) { base = at; return; }
     const moved = [['body', at.b, base.b], ['main', at.m, base.m]].filter(([, a, z]) => a && z && (Math.abs(a[0] - z[0]) > 0.5 || Math.abs(a[1] - z[1]) > 0.5));
@@ -118,6 +127,19 @@ for (const width of WIDTHS) {
         await escAll();
       }
     }
+  }
+  // the knowledge edit dialog (it has tabs: «ویرایش · نسخه‌ها · اطراف این مورد»), opened from the first row of the table view
+  {
+    const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
+    await nav.getByRole('button', { name: width < 768 ? 'منبع' : 'منبع حقیقت', exact: true }).first().click().catch(() => {}); await settle();
+    const views = page.locator('main [aria-haspopup=menu]').first();
+    await views.click().catch(() => {}); await settle();
+    await page.getByRole('menuitem', { name: 'جدول', exact: true }).first().click().catch(() => page.keyboard.press('Escape')); await settle();
+    // wide: the row's «ویرایش»; phone: the rows are cards, each one opens its knowledge
+    const edit = width < 768 ? page.locator('main .md\\:hidden [role=button][data-knowledge]') : page.locator('main').getByRole('button', { name: 'ویرایش', exact: true });
+    await edit.first().click({ timeout: 3000 }).catch(() => {}); await settle();
+    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else note(`${width} knowledge edit`, ['walk could not open the knowledge edit dialog']);
+    await escAll();
   }
   // every command of the palette
   await page.keyboard.press('Control+KeyK'); await settle();

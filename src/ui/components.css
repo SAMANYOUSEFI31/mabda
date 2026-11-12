@@ -574,8 +574,10 @@
 /* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
    switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
 @media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(100dvh - var(--safe-top) - var(--space-3));max-block-size:none}}
-:root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim){animation:none!important}
-:root[data-add-switch] .mb-dialog-layer.is-steady[data-state=closed]{display:none}
+/* a switch between kinds: the last box is held still until the next is in place, which then arrives without motion (Overlay.tsx) */
+:root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim),
+.mb-dialog-layer[data-hold] :is(.mb-dialog,.mb-scrim),
+.mb-dialog-layer[data-noenter]:not([data-state=closed]) :is(.mb-dialog,.mb-scrim){animation:none!important}
 }
 /* phones: every control is at least 44 tall (and an icon button 44 wide) by its own box, not only by an invisible hit area (accessibility.md) */
 @layer components{
@@ -593,3 +595,6 @@
 /* while a dialog or sheet is open the toast moves to the top edge: at the bottom it would cover the sheet's footer and its main
    button (on a phone) or the dialog's footer (on a short laptop); the dialog hangs below a fixed top gap, so the toast fits above it */
 @layer components{html:has(.mb-dialog-layer:not([data-state=closed]):not(.is-inline)) .mb-toast-stack{inset-block-end:auto;inset-block-start:calc(var(--inset-md) + var(--safe-top))}}
+/* a phone sheet reaches the top (a form opens at the «full» stop), so there the toast sits just above the sheet's footer: over the
+   end of the body, which scrolls, never over the title, the × or the main button. --dialog-foot is the footer's height (Overlay.tsx) */
+@layer components{@media (max-width:767px){html:has(.mb-dialog-layer:not([data-state=closed]):not(.is-inline):not(.is-alert)) .mb-toast-stack{inset-block-start:auto;inset-block-end:calc(var(--dialog-foot, var(--safe-bottom)) + var(--inset-md))}}}

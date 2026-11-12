@@ -13,7 +13,9 @@ import { KnowledgePage } from './knowledge/KnowledgePage';
 import { LedgerPage } from './workspace/LedgerPage';
 import { ThinkingPage } from './thinking/ThinkingPage';
 import { WorkstreamsPage } from './outputs/WorkstreamsPage';
+import { useEffect } from 'react';
 import { ErrorState } from '../ui';
+import { flashScrollbar } from '../ui/scrollbars';
 import type { AppScope, ReadyScope } from './shared';
 
 /**
@@ -22,6 +24,9 @@ import type { AppScope, ReadyScope } from './shared';
  * and asks for exactly the props it uses; every piece of state and every handler comes from the hooks.
  */
 export function AppView(p: AppScope) {
+  // a page opened: its bar shows for a moment, so a long page says so (layout.md «اسکرول و نوار اسکرول», goal 2)
+  const shown = p.data ? `${p.activeTab}:${p.currentWorkspace?.id}` : '';
+  useEffect(() => { if (shown) flashScrollbar(); }, [shown]);
   if (p.boot.status === 'ready' && p.liveWorkspaces.length === 0) return <FirstRunScreen {...p} />;
   if (p.boot.status !== 'ready' || !p.currentWorkspace || !p.data) return <BootScreen {...p} />;
   const ready: ReadyScope = { ...p, data: p.data, currentWorkspace: p.currentWorkspace };

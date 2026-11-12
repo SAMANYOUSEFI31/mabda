@@ -13,7 +13,7 @@ import type { ReadyScope } from '../shared';
 
 export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsPlanModalOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
 
-/** the places under «منبع»: the top level; when the tree has one root (as the work tree «بنیان» does), the level under it */
+/** the places under «منبع»: the top level; when the tree has one root (as the work tree «کسب‌وکار» does), the level under it */
 const topSections = (nodes: ReadyScope['nodes']) => {
   const kids = (pid: string | undefined) => nodes.filter((n) => (n.parentId ?? undefined) === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const roots = kids(undefined);
