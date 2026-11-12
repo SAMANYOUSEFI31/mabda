@@ -30,13 +30,15 @@ TITLE = {
   'dialog-account': 'حساب و داده‌ها', 'menu-account': 'منوی حساب', 'menu-account-narrow': 'منوی حساب در نوار باریک', 'menu-space': 'انتخاب فضا',
   'sidebar-narrow': 'نوار کناری باریک', 'drawer-account': 'کشوی حساب (گوشی)', 'drawer-menu': 'کشوی منو (گوشی)', 'ledger': 'مصرف', 'ledger-usage': 'مصرف و سهمیه',
   'ledger-plans': 'پلن‌ها و اعتبار', 'ledger-economics': 'اقتصاد',
+  'add-thought': 'افزودن: فکر', 'add-file': 'افزودن: فایل', 'add-truth': 'افزودن: حقیقت (متن از «فکر» آمده)', 'add-date': 'افزودن: تقویم خورشیدی',
+  'add-discard': 'افزودن: پرسش پیش از دور ریختن متن',
 }
 STATE = {'empty': 'خالی', 'loading': 'در حال آمدن', 'full': 'کامل', 'partial': 'ناقص', 'error': 'خطا (در جای صفحه)', 'error-boot': 'خطا (پیش از آمدن فضا)'}
 VIEW = {'home': 'خانه', 'context': 'منبع', 'thinking': 'فکر', 'assets': 'خروجی‌ها'}
 GROUPS = [
   ('home', 'خانه', r'^(home|weekly)'), ('context', 'منبع حقیقت', r'^(context|canvas-(relations|inspector|lineage)|life-truth)'),
   ('thinking', 'فکر', r'^(thinking|canvas-free|canvas-fullscreen|life-thinking)'), ('assets', 'خروجی‌ها', r'^(assets|workstreams)'),
-  ('dialogs', 'پنجره‌ها', r'^dialog-'), ('nav', 'منوها و نوار کناری', r'^(menu|sidebar|drawer)'), ('ledger', 'مصرف', r'^ledger'),
+  ('add', 'افزودن', r'^add-'), ('dialogs', 'پنجره‌ها', r'^dialog-'), ('nav', 'منوها و نوار کناری', r'^(menu|sidebar|drawer)'), ('ledger', 'مصرف', r'^ledger'),
   ('states', 'پنج حالت هر نما', r'^state-'),
 ]
 
@@ -48,7 +50,7 @@ def title(name):
     return TITLE.get(name, name)
 
 files = set(os.listdir(DIR))
-names = sorted({re.sub(r'-(390|768|1280)(-dark)?\.png$', '', f) for f in files if re.search(r'-(768|1024)\.png$', f) or f.startswith('state-')})
+names = sorted({re.sub(r'-(390|768|1280)(-dark)?\.png$', '', f) for f in files if re.search(r'-(768|1024)\.png$', f) or f.startswith(('state-', 'add-'))})
 names = [n for n in names if not n.endswith('.png')]
 old = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {}
 new, changed = {}, set()

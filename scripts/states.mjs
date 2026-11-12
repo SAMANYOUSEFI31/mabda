@@ -29,12 +29,15 @@ const VIEWS = [['home', 'خانه', 'خانه'], ['context', 'منبع', 'منب
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const STATE = /\/api\/workspaces\/[^/]+\/state/;
 
-for (const width of (process.env.WIDTHS || '390,768,1280').split(',').map(Number)) {
+for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (const width of (process.env.WIDTHS || '390,768,1280').split(',').map(Number)) {
   const mobile = width < 768;
   const BASE = await start();
-  const ctx = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, locale: 'fa-IR' });
+  const sfx = scheme === 'dark' ? '-dark' : '';
+  const ctx = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, locale: 'fa-IR', colorScheme: scheme });
   const page = await ctx.newPage();
-  const shot = async (name) => { await page.waitForTimeout(700); await page.screenshot({ path: `${OUT}/state-${name}-${width}.png` }); };
+  // a toast left from the step before is not part of the state being shown: wait it out (or close it)
+  const quiet = async () => { for (let i = 0; i < 3 && await page.locator('.mb-toast').count(); i++) { await page.locator('.mb-toast').getByRole('button', { name: 'بستن' }).first().click({ timeout: 1000 }).catch(() => {}); await page.waitForTimeout(400); } };
+  const shot = async (name, keepToast = false) => { if (!keepToast) await quiet(); await page.waitForTimeout(700); await page.screenshot({ path: `${OUT}/${name.startsWith('add-') ? '' : 'state-'}${name}-${width}${sfx}.png` }); };
   const go = async (m, d) => {
     const nav = page.getByRole('navigation', { name: mobile ? 'منوی پایینی موبایل' : 'بخش‌های اصلی نرم‌افزار' });
     await nav.getByRole('button', { name: mobile ? m : d, exact: true }).first().click({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: `${OUT}/fail.png` }); throw e; });
@@ -67,6 +70,24 @@ for (const width of (process.env.WIDTHS || '390,768,1280').split(',').map(Number
   await page.getByRole('dialog').getByRole('button', { name: 'افزودن', exact: true }).evaluate((b) => b.click());
   await page.waitForTimeout(800);
   await views('partial');
+
+  // «افزودن»: its three kinds, the date picker inside «حقیقت», and the question before her words are thrown away
+  const palette = async (q) => { await page.keyboard.press('Control+KeyK'); await page.getByRole('combobox').fill(q); await page.waitForTimeout(250); await page.getByRole('option').first().click(); await page.waitForTimeout(700); };
+  const kind = async (k) => { await page.locator('[role=dialog]:not([inert] *)').getByRole('radio', { name: k, exact: true }).click(); await page.waitForTimeout(800); };
+  await palette('افزودن فکر');
+  await page.getByLabel('چه چیزی به ذهنت رسید؟').fill('شاید جلسه را به سه‌شنبه ببریم؟', { timeout: 6000 }).catch(async (e) => { await page.screenshot({ path: `${OUT}/fail.png` }); throw e; });
+  await shot('add-thought');
+  await kind('فایل'); await shot('add-file');
+  await kind('حقیقت'); await shot('add-truth');
+  await page.getByRole('dialog').getByRole('button', { name: /جزئیات بیشتر/ }).first().click().catch(() => {}); await page.waitForTimeout(300);
+  await page.getByRole('dialog').getByRole('button', { name: 'تقویم' }).first().click(); await page.waitForTimeout(500);
+  await page.locator('.mb-cal').scrollIntoViewIfNeeded().catch(() => {});
+  await shot('add-date');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+  await kind('فکر');
+  await page.getByRole('dialog').getByRole('button', { name: 'بستن' }).first().click(); await page.waitForTimeout(500);
+  await shot('add-discard');
+  await page.getByRole('button', { name: /دور بریز/ }).first().click().catch(() => {}); await page.waitForTimeout(400);
 
   // error in place: the next space does not arrive; the shell stays and says so where the page was
   await page.route(STATE, (r) => r.abort());
