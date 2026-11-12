@@ -60,8 +60,9 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
         <p className="body-sm mt-stack-xs text-text-subtle">جستجو کن، بر اساس نوع، وضعیت یا بخش فیلتر کن و ببین هر مورد از کجا آمده.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-inline-md lg:grid-cols-4">
         <TextField
+          className="col-span-2 lg:col-span-1"
           label="جستجو"
           iconStart="Search"
           placeholder="عنوان یا متن…"
