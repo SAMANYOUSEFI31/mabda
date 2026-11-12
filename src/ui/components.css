@@ -306,6 +306,8 @@
 .mb-toast__icon{color:var(--toast-fg)}
 .mb-toast-stack{position:fixed;inset-block-end:calc(var(--inset-lg) + var(--safe-bottom));inset-inline:var(--inset-lg);z-index:var(--layer-toast);display:flex;flex-direction:column;align-items:center;gap:var(--stack-sm);pointer-events:none}
 .mb-toast-stack>*{pointer-events:auto}
+/* phones: above the bottom bar (its height is the comfortable target + 8), never on top of it */
+@media (max-width:767px){.mb-toast-stack{inset-block-end:calc(var(--touch-target-comfortable) + var(--space-2) + var(--inset-md) + var(--safe-bottom))}}
 @keyframes mb-in{from{opacity:0;translate:0 var(--distance-sm)}}
 .mb-popover__panel.is-top{animation-name:mb-in-up}
 @keyframes mb-in-up{from{opacity:0;translate:0 calc(var(--distance-sm) * -1)}}
@@ -375,6 +377,7 @@
 /* the panel takes focus only when it has nothing focusable; then the keyboard still sees where focus is */
 .mb-dialog:focus-visible{outline:var(--focus-width) solid var(--border-focus);outline-offset:calc(var(--focus-width) * -1)}
 .mb-dialog__top{flex:none;padding:var(--space-5) var(--dialog-padding) var(--space-4);border-block-end:var(--border-width-thin) solid transparent;transition:border-color var(--duration-fast) var(--ease-standard)}
+@media (max-width:767px){.mb-dialog__top{touch-action:none;cursor:grab}}
 .mb-dialog__top.is-scrolled{border-block-end-color:var(--border-default)}
 .mb-dialog__grab{display:block;inline-size:var(--space-10);block-size:var(--space-1);margin:calc(var(--space-3) * -1) auto var(--stack-md);border-radius:var(--radius-pill);background:var(--border-bold)}
 .mb-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-md)}
@@ -383,11 +386,12 @@
 .mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
 .mb-dialog__foot{flex:none;display:flex;flex-direction:column-reverse;gap:var(--stack-sm);padding:var(--space-3) var(--dialog-padding);border-block-start:var(--border-width-thin) solid var(--border-default)}
 .mb-dialog--sm .mb-dialog__foot,.mb-dialog__top+.mb-dialog__foot{border-block-start-color:transparent}
-@media (min-width:640px){
+@media (min-width:768px){
   .mb-dialog-layer{align-items:center;padding:var(--space-6)}
+  .mb-dialog-layer.is-top{align-items:flex-start;padding-block-start:12dvh}
   .mb-dialog{max-block-size:min(85dvh, calc(var(--space-40) * 5));border-radius:var(--dialog-radius);border-block-end:var(--border-width-thin) solid var(--border-default);padding-block-end:0;animation:mb-pop var(--duration-moderate) var(--ease-enter)}
   .mb-dialog-layer.is-side .mb-dialog{animation:mb-panel var(--duration-moderate) var(--ease-enter)}
-  .mb-dialog--sm{max-inline-size:var(--overlay-width-sm)}.mb-dialog--md{max-inline-size:var(--overlay-width-md)}.mb-dialog--lg{max-inline-size:var(--overlay-width-lg)}.mb-dialog--xl{max-inline-size:var(--container-lg)}
+  .mb-dialog--sm{max-inline-size:var(--dialog-width-sm)}.mb-dialog--md{max-inline-size:var(--dialog-width-md)}.mb-dialog--lg{max-inline-size:var(--dialog-width-lg)}.mb-dialog--xl{max-inline-size:var(--dialog-width-xl)}
   .mb-dialog__grab{display:none}
   .mb-dialog__foot{flex-direction:row;justify-content:flex-end}
   /* side panel (the focused per-section thread) */
@@ -458,6 +462,12 @@
 
 /* sidebar (navigation.md): only the nav scrolls, never sideways; the inner edge is a 9-wide grip that shows a 2px focus-coloured line */
 @layer components{
+.mb-glass{--bar-solid:var(--surface-sunken);background:var(--bar-solid)}
+.mb-bottomnav.mb-glass{--bar-solid:var(--nav-surface)}
+.mb-glass[data-under]{background:var(--surface-bar);-webkit-backdrop-filter:blur(var(--effect-bar-blur));backdrop-filter:blur(var(--effect-bar-blur))} /* check:design-ignore: the blur is the token effect.bar-blur, a CSS property value, not a Tailwind blur-* class */
+/* less transparency or more contrast asked for: the bar stays solid (shape-elevation.md «کاغذ کالک») */
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more){.mb-glass[data-under]{background:var(--bar-solid);-webkit-backdrop-filter:none;backdrop-filter:none}}
+.mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2)}
 .mb-sidebar__nav{overflow-y:auto;overflow-x:clip;margin-inline:calc(var(--space-1) * -1);padding-inline:var(--space-1)}
 .mb-sidebar-handle{position:absolute;inset-block:0;inset-inline-end:calc((var(--space-2) + var(--border-width-thin)) / -2);inline-size:calc(var(--space-2) + var(--border-width-thin));cursor:col-resize;touch-action:none;z-index:var(--layer-raised)}
 .mb-sidebar-handle::after{content:"";position:absolute;inset-block:0;inset-inline:0;margin-inline:auto;inline-size:var(--border-width-thick);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
@@ -489,7 +499,7 @@
 .mb-dialog-layer[data-state=closed]{pointer-events:none}
 .mb-dialog-layer[data-state=closed] .mb-scrim{animation:mb-out var(--duration-base) var(--ease-exit) forwards}
 .mb-dialog-layer[data-state=closed] .mb-dialog{animation:mb-sheet-out var(--duration-moderate) var(--ease-exit) forwards}
-@media (min-width:640px){
+@media (min-width:768px){
   .mb-dialog-layer[data-state=closed] .mb-dialog{animation:mb-pop-out var(--duration-base) var(--ease-exit) forwards}
   .mb-dialog-layer.is-side[data-state=closed] .mb-dialog{animation:mb-panel-out var(--duration-base) var(--ease-exit) forwards}
 }

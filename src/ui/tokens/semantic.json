@@ -282,6 +282,34 @@
       }
     }
   },
+  "dialog-width": {
+    "$type": "dimension",
+    "$description": "the four dialog widths (overlays.md «چهار پهنا»): confirm, single-column form, browse/compare, two columns",
+    "sm": {
+      "$value": {
+        "value": 400,
+        "unit": "px"
+      }
+    },
+    "md": {
+      "$value": {
+        "value": 520,
+        "unit": "px"
+      }
+    },
+    "lg": {
+      "$value": {
+        "value": 720,
+        "unit": "px"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 960,
+        "unit": "px"
+      }
+    }
+  },
   "avatar": {
     "$type": "dimension",
     "xs": {

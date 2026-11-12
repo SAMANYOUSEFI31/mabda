@@ -202,7 +202,8 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text() + ' ' + (m.location().url || '')); });
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.evaluate(() => localStorage.clear());
+  // the same open sidebar at 1024 as at 1280 for the regular shots (1024 defaults to the rail; the rail has its own shots)
+  await page.evaluate((wide) => { localStorage.clear(); if (wide) localStorage.setItem('mabda.sidebar', 'docked'); }, size.width >= 1024);
   await page.reload({ waitUntil: 'networkidle' });
 
   const shoot = async (name) => {
@@ -262,11 +263,10 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // the personal sample («زندگی من», docs/ux/audience.md): its truth and its thoughts
   await spaceItem(/زندگی من/); await goTab(TABS[1]); await page.waitForTimeout(300); await shoot('life-truth'); await goTab(TABS[4]); await page.waitForTimeout(300); await shoot('life-thinking'); await goTab(TABS[0]);
   if (!mobile) {
-    // the narrow (hidden) sidebar: the account menu opens from the peek panel and must still sit fully inside the window
-    await page.getByRole('button', { name: 'پنهان کردن نوار کناری' }).click(); await page.waitForTimeout(200);
-    await page.getByRole('button', { name: 'جا دادن نوار کناری' }).hover(); await page.getByTestId('sidebar-peek').waitFor();
-    await page.getByTestId('sidebar-peek').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
-    await page.keyboard.press('Escape'); await page.getByTestId('sidebar-peek').getByRole('button', { name: 'جا دادن نوار کناری' }).click(); await page.mouse.move(size.width / 2, size.height / 2); await page.waitForTimeout(300);
+    // the narrow rail (icons only): its account menu must sit fully inside the window; then open the bar again
+    await page.getByRole('button', { name: 'باریک کردن نوار کناری' }).click(); await page.waitForTimeout(200); await shoot('sidebar-narrow');
+    await page.getByTestId('sidebar-rail').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
+    await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'باز کردن نوار کناری' }).click(); await page.waitForTimeout(300);
   }
   await accountItem('مصرف و دفتر کل'); await shoot('ledger');
   // plan / economics tabs exist only when MABDA_MANAGED_AI is on

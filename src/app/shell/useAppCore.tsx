@@ -136,7 +136,7 @@ export function useAppCore() {
 
   // ── notes ──────────────────────────────────────────────────────────────────────────────────────
   // «فضای فکر» (thoughts that are not truth yet) and «فکر تازه»
-  const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string; initialKind?: ThoughtKind; initialAbout?: AboutTarget[] } | null>(null);
+  const [thoughtDialog, setThoughtDialog] = useState<{ nodeId?: string; initialKind?: ThoughtKind; initialAbout?: AboutTarget[]; initialText?: string } | null>(null);
   const [spaceNode, setSpaceNode] = useState<string | undefined>(undefined);
   const openThinkingSpace = (nodeId?: string) => { setSpaceNode(nodeId); setThinkingView('list'); setActiveTab('thinking'); };
 

@@ -16,7 +16,7 @@ import { ancestorIds } from './nodeTree';
 import { normalizeText, tokenize } from './retrieval';
 
 export type SearchKind = 'command' | 'node' | 'object' | 'thought' | 'note' | 'asset' | 'file';
-export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'گره‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'دارایی‌ها', file: 'فایل‌ها' };
+export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'گره‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'خروجی‌ها', file: 'فایل‌ها' };
 export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 'thought', 'note', 'asset', 'file'];
 
 /**
@@ -265,3 +265,19 @@ export const totalHits = (g: SearchGroups): number => flattenGroups(g).length;
 export const FIRST_SHOWN = 5;
 export const MORE_STEP = 10;
 export const shownCount = (expanded: number | undefined): number => FIRST_SHOWN + (expanded ?? 0) * MORE_STEP;
+
+/**
+ * «آخرین‌ها» (navigation.md «جست‌وجو و فرمان»: empty box = the latest): the ids last opened, newest first, read back
+ * against the CURRENT index so a deleted or archived item never comes back. Commands are not remembered.
+ */
+export function recentHits(index: SearchIndex, recent: Array<{ kind: SearchKind; id: string }>, max = 5): SearchHit[] {
+  const out: SearchHit[] = [];
+  for (const r of recent) {
+    const d = index.docs.find((x) => x.kind === r.kind && x.id === r.id);
+    if (d) out.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(d.state ? { state: d.state } : {}), score: 0 });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+export const pushRecent = (recent: Array<{ kind: SearchKind; id: string }>, hit: Pick<SearchHit, 'kind' | 'id'>, max = 8) =>
+  hit.kind === 'command' ? recent : [{ kind: hit.kind, id: hit.id }, ...recent.filter((r) => !(r.kind === hit.kind && r.id === hit.id))].slice(0, max);

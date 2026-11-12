@@ -8,12 +8,12 @@
 import { CommandPalette } from '../../components/shell/CommandPalette';
 import type { ReadyScope } from '../shared';
 
-export type ShellDialogsProps = Pick<ReadyScope, 'handlePick' | 'paletteOpen' | 'searchIdx' | 'setPaletteOpen'>;
+export type ShellDialogsProps = Pick<ReadyScope, 'handlePick' | 'paletteOpen' | 'searchIdx' | 'setPaletteOpen' | 'setThoughtDialog'>;
 
-export function ShellDialogs({ handlePick, paletteOpen, searchIdx, setPaletteOpen }: ShellDialogsProps) {
+export function ShellDialogs({ handlePick, paletteOpen, searchIdx, setPaletteOpen, setThoughtDialog }: ShellDialogsProps) {
   return (
     <>
-    <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} />
+    <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} onAddThought={(text) => setThoughtDialog({ initialText: text })} />
     </>
   );
 }

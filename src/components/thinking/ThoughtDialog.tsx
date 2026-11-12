@@ -25,6 +25,8 @@ interface Props {
   /** the node it is opened from (a node page): chosen for her; empty = no particular place */
   nodeId?: string;
   initialKind?: ThinkingKind;
+  /** text to start with (search «افزودن به‌عنوان فکر») */
+  initialText?: string;
   initialAbout?: AboutTarget[];
   onSave: (nodeId: string, content: string) => Promise<unknown>;
   /** several thoughts at once: one note per section */
@@ -35,7 +37,7 @@ interface Props {
  * «فکر تازه»: one box, four chips (ایده by default; a text that ends with «؟» becomes a سؤال by itself, and she can change it).
  * No bracket to learn: the marker is written FOR her. A Thought is never Knowledge; it reaches AI only when explicitly selected for a request.
  */
-export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', initialKind, initialAbout, onSave, onSaveMany }) => {
+export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, nodeId = '', initialKind, initialAbout, initialText, onSave, onSaveMany }) => {
   const [text, setText] = useState('');
   const [kind, setKind] = useState<ThinkingKind>('idea');
   const [touched, setTouched] = useState(false);
@@ -57,7 +59,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   const [lineKind, setLineKind] = useState<Record<number, ThinkingKind>>({});
   const [lineNode, setLineNode] = useState<Record<number, string>>({});
   const [dropped, setDropped] = useState<Set<number>>(new Set());
-  useEffect(() => { if (open) { setText(''); setKind(initialKind ?? 'idea'); setTouched(!!initialKind); setNode(nodeId); setDefKind('idea'); setAbout(initialAbout ?? []); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId, initialKind, initialAbout]);
+  useEffect(() => { if (open) { setText(initialText ?? ''); setKind(initialKind ?? 'idea'); setTouched(!!initialKind); setNode(nodeId); setDefKind('idea'); setAbout(initialAbout ?? []); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId, initialKind, initialAbout, initialText]);
   const batch = !!onSaveMany && isBatch(text);
   const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
   const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];

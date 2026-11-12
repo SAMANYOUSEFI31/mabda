@@ -52,6 +52,10 @@
   --overlay-width-sm: 400px;
   --overlay-width-md: 480px;
   --overlay-width-lg: 640px;
+  --dialog-width-sm: 400px;
+  --dialog-width-md: 520px;
+  --dialog-width-lg: 720px;
+  --dialog-width-xl: 960px;
   --avatar-xs: 24px;
   --avatar-sm: 32px;
   --avatar-md: 40px;

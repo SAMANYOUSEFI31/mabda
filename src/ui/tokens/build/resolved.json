@@ -1292,6 +1292,46 @@
    "dark": "640px"
   },
   {
+   "token": "dialog-width.sm",
+   "css": "--dialog-width-sm",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "400px",
+   "dark": "400px"
+  },
+  {
+   "token": "dialog-width.md",
+   "css": "--dialog-width-md",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "520px",
+   "dark": "520px"
+  },
+  {
+   "token": "dialog-width.lg",
+   "css": "--dialog-width-lg",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "720px",
+   "dark": "720px"
+  },
+  {
+   "token": "dialog-width.xl",
+   "css": "--dialog-width-xl",
+   "level": "semantic",
+   "type": "dimension",
+   "description": null,
+   "alias": null,
+   "light": "960px",
+   "dark": "960px"
+  },
+  {
    "token": "avatar.xs",
    "css": "--avatar-xs",
    "level": "semantic",

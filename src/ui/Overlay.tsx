@@ -23,6 +23,10 @@ export interface DialogProps {
   alert?: boolean;
   /** side panel (full-height, anchored to the inline-end edge on wide screens; a bottom sheet on phones) */
   side?: boolean;
+  /** the form has unsaved changes: scrim, Esc and × first ask «تغییرها دور ریخته شود؟» (overlays.md «رفتار») */
+  dirty?: boolean;
+  /** search and commands: pinned 12% from the top so the list grows downward without the box moving (overlays.md) */
+  top?: boolean;
 }
 
 const FOCUSABLE = 'button:not(:disabled),[href],input:not(:disabled),select,textarea,[tabindex]:not([tabindex="-1"])';
@@ -46,13 +50,15 @@ function ghostExit(el: HTMLElement | null) {
   panel.addEventListener('animationcancel', done);
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
   const id = useId();
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  const [asking, setAsking] = useState(false);
+  const requestClose = onClose ? () => { if (dirty) setAsking(true); else onClose(); } : undefined;
+  const closeRef = useRef(requestClose);
+  closeRef.current = asking ? undefined : requestClose;
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -94,10 +100,27 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     return () => queueMicrotask(() => { if (el && !el.isConnected) ghostExit(el); });
   }, [open, inline]);
 
+  // phones: the sheet follows a drag down from its head; a quarter of its height (or a quick flick) closes it, like × (overlays.md «برگه»)
+  const drag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = panel.current;
+    if (!p || inline || side || alert || !requestClose || !window.matchMedia('(max-width: 767px)').matches) return;
+    if ((e.target as HTMLElement).closest('button,a,input,select,textarea')) return;
+    const y0 = e.clientY, t0 = performance.now();
+    let dy = 0;
+    const move = (ev: PointerEvent) => { dy = Math.max(0, ev.clientY - y0); p.style.transform = `translateY(${dy}px)`; };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      const flick = dy > 40 && dy / Math.max(1, performance.now() - t0) > 0.5;
+      p.style.transform = '';
+      if (dy > p.offsetHeight / 4 || flick) requestClose();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  };
+
   if (!open) return null;
   const node = (
-    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side')}>
-      <div className="mb-scrim" onClick={alert ? undefined : onClose} aria-hidden="true" />
+    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top')}>
+      <div className="mb-scrim" onClick={alert ? undefined : requestClose} aria-hidden="true" />
       <div
         ref={panel}
         role={alert ? 'alertdialog' : 'dialog'}
@@ -107,11 +130,11 @@ export function Dialog({ open, onClose, title, description, children, footer, in
         tabIndex={-1}
         className={cx('mb-dialog', `mb-dialog--${size}`)}
       >
-        <div className={cx('mb-dialog__top', scrolled && 'is-scrolled')}>
+        <div className={cx('mb-dialog__top', scrolled && 'is-scrolled')} onPointerDown={drag}>
           <span className="mb-dialog__grab" aria-hidden="true" />
           <div className="mb-dialog__head">
             <h2 id={`${id}-t`} className="heading-md">{title}</h2>
-            {onClose && <IconButton icon="X" label="بستن" onClick={onClose} />}
+            {requestClose && <IconButton icon="X" label="بستن" onClick={requestClose} />}
           </div>
           {description && <p id={`${id}-d`} className="mb-dialog__desc body-sm">{description}</p>}
         </div>
@@ -120,7 +143,11 @@ export function Dialog({ open, onClose, title, description, children, footer, in
       </div>
     </div>
   );
-  return inline ? node : createPortal(node, document.body);
+  const discard = dirty && onClose ? (
+    <Dialog open={asking} onClose={() => setAsking(false)} alert size="sm" title="تغییرها دور ریخته شود؟" description="آنچه نوشته‌ای و ذخیره نشده از دست می‌رود."
+      footer={<><Button variant="ghost" onClick={() => { setAsking(false); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
+  ) : null;
+  return inline ? node : <>{createPortal(node, document.body)}{discard}</>;
 }
 
 /* ---------------- Toast ---------------- */
@@ -161,7 +188,8 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
   const arm = useCallback((id: string, ms: number) => { if (ms) timers.current[id] = setTimeout(() => dismiss(id), ms); }, [dismiss]);
   const show = useCallback<ToastApi['show']>(({ intent = 'info', message, action, duration }) => {
     const id = `${Date.now()}-${Math.random()}`;
-    const ms = duration !== undefined ? duration : intent === 'danger' || action ? 0 : 4000;
+    // overlays.md «پیام گذرا»: 5s, 8s with an action («واگرد»); an error never leaves by itself
+    const ms = intent === 'danger' ? 0 : duration !== undefined ? duration : action ? 8000 : 5000;
     setItems((list) => [...list, { id, intent, message, action, ms }].slice(-max));
     arm(id, ms);
     return id;
@@ -180,6 +208,8 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
             onClose={() => dismiss(t.id)}
             onMouseEnter={() => clear(t.id)}
             onMouseLeave={() => arm(t.id, t.ms)}
+            onFocus={() => clear(t.id)}
+            onBlur={(e: React.FocusEvent<HTMLDivElement>) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) arm(t.id, t.ms); }}
           >
             {t.message}
           </Toast>
@@ -321,6 +351,12 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     if (e.key === 'Home') { e.preventDefault(); list[0].focus(); }
     if (e.key === 'End') { e.preventDefault(); list[list.length - 1].focus(); }
     if (e.key === 'Tab') close(false);
+    // type the first letter of a row to move to it (overlays.md «منو»)
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const k = e.key.toLocaleLowerCase('fa');
+      const next = [...list.slice(i + 1), ...list.slice(0, i + 1)].find((el) => (el.textContent ?? '').trim().toLocaleLowerCase('fa').startsWith(k));
+      if (next) { e.preventDefault(); next.focus(); }
+    }
   };
   return (
     <span className={cx('mb-popover', className)} ref={root}>

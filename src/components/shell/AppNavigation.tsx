@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
 import { PLANS } from '../../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
@@ -58,24 +58,44 @@ const VIEWS: Array<{ id: ContextView; label: string }> = [
  * its section is active (accordion, aria-expanded). Everything that is not daily work lives in the one «حساب کاربری» menu,
  * which is also the only place the plan is shown.
  */
+/** each space says what kind it is in the picker (navigation.md «انتخابگر فضا») */
+const PURPOSE_FA = { personal: 'شخصی', work: 'کاری', project: 'پروژه', empty: 'خالی' } as const;
+
+/** a media query as state (navigation.md breakpoints) */
+function useMedia(q: string): boolean {
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => { const mq = window.matchMedia(q); const f = () => setM(mq.matches); f(); mq.addEventListener('change', f); return () => mq.removeEventListener('change', f); }, [q]);
+  return m;
+}
+
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const { currentWorkspace, allWorkspaces, activeTab, onTabChange } = p;
   const [drawer, setDrawer] = useState(false);
-  // desktop sidebar: «docked» takes a column; «hidden» leaves only the toggle, and hovering it slides the bar OVER the page (the page never moves);
-  // pressing the toggle docks it again. Where there is no hover (touch / keyboard) the toggle alone switches between the two. Remembered.
-  const [docked, setDocked] = useState(() => { try { return localStorage.getItem('mabda.sidebar') !== 'hidden'; } catch { return true; } });
-  const [peek, setPeek] = useState(false);
-  const peekTimer = React.useRef<number | undefined>(undefined);
-  const showPeek = () => { window.clearTimeout(peekTimer.current); setPeek(true); };
-  const hidePeek = () => { window.clearTimeout(peekTimer.current); peekTimer.current = window.setTimeout(() => setPeek(false), 220); };
-  const toggleDock = () => setDocked((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } setPeek(false); return n; });
+  // navigation.md «رفتار در هر پهنا»: ≥1280 open, 1024–1279 narrow (icons only) unless the person opened it, 768–1023 always narrow
+  // and «open» means a drawer OVER the page with a scrim (closes on a destination or Esc). The person's choice wins; remembered per device.
+  const wide = useMedia('(min-width: 1280px)');
+  const roomy = useMedia('(min-width: 1024px)');
+  const [pref, setPref] = useState<'docked' | 'hidden' | null>(() => { try { const v = localStorage.getItem('mabda.sidebar'); return v === 'docked' || v === 'hidden' ? v : null; } catch { return null; } });
+  const docked = roomy && (pref ? pref === 'docked' : wide);
+  const [overlay, setOverlay] = useState(false);
+  // «کاغذ کالک» only while content passes under a bar: the top bar once scrolled, the bottom bar until the end (navigation.md)
+  const [under, setUnder] = useState({ top: false, bottom: true });
+  useEffect(() => {
+    const on = () => { const d = document.documentElement; const y = window.scrollY; const next = { top: y > 0, bottom: d.scrollHeight - window.innerHeight - y > 1 }; setUnder((u) => (u.top === next.top && u.bottom === next.bottom ? u : next)); };
+    on(); window.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on);
+    const ro = new ResizeObserver(on); ro.observe(document.body);
+    return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); ro.disconnect(); };
+  }, []);
+  const setDock = (n: boolean) => { setPref(n ? 'docked' : 'hidden'); setOverlay(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
+  const toggleDock = () => { if (!roomy) setOverlay((v) => !v); else setDock(!docked); };
+  const go = (tab: Parameters<typeof onTabChange>[0]) => { setOverlay(false); onTabChange(tab); };
+  useEffect(() => { if (!overlay) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOverlay(false); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [overlay]);
   // navigation.md «تغییر اندازه»: the inner edge is a separator; 232–360 (tokens), a drag under 200 snaps to the rail,
   // double-click returns to the default, arrows move 8, Home/End, Enter docks/undocks, Ctrl/⌘+\ toggles. Remembered per device.
   const token = (name: string, fallback: number) => { try { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || fallback; } catch { return fallback; } };
   const [width, setWidth] = useState<number | null>(() => { try { const v = Number(localStorage.getItem('mabda.sidebar.width')); return v > 0 ? v : null; } catch { return null; } });
   const bounds = () => ({ min: token('--sidebar-width-min', 232), max: token('--sidebar-width-max', 360), def: token('--sidebar-width', 264) });
   const saveWidth = (w: number | null) => { setWidth(w); try { if (w === null) localStorage.removeItem('mabda.sidebar.width'); else localStorage.setItem('mabda.sidebar.width', String(w)); } catch { /* optional */ } };
-  const setDock = (n: boolean) => { setDocked(n); setPeek(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
   const SNAP = 200; // below this a drag means «narrow», not «narrower» (navigation.md)
   const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
     const aside = e.currentTarget.parentElement; if (!aside) return;
@@ -103,13 +123,16 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     else if (e.key === 'End') { e.preventDefault(); saveWidth(max); }
     else if (e.key === 'Enter') { e.preventDefault(); setDock(false); }
   };
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === '\\') { e.preventDefault(); setDocked((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } return n; }); setPeek(false); } };
+  useEffect(() => {
+    // the physical key (event.code), so it works on a Persian layout too (navigation.md «میان‌برها»)
+    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.code === 'Backslash') { e.preventDefault(); toggleRef.current(); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  const toggleRef = React.useRef(toggleDock);
+  toggleRef.current = toggleDock;
   const toggleButton = (
-    <IconButton icon="PanelRight" label={docked ? 'پنهان کردن نوار کناری' : 'جا دادن نوار کناری'} aria-expanded={docked} aria-keyshortcuts={"Control+\\ Meta+\\"} variant="ghost" onClick={toggleDock} />
+    <IconButton icon="PanelRight" label={docked || overlay ? 'باریک کردن نوار کناری' : 'باز کردن نوار کناری'} aria-expanded={docked || overlay} aria-keyshortcuts={"Control+\\ Meta+\\"} variant="ghost" onClick={toggleDock} />
   );
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
@@ -119,7 +142,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const [theme, setTheme] = useTheme();
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
-    ...allWorkspaces.map((w): MenuItem => ({ label: w.isDemo ? `${w.name} (نمونه)` : w.name, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
+    ...allWorkspaces.map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
     { divider: true },
     { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory },
@@ -168,20 +191,20 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
 
       {/* the only part that scrolls (navigation.md): vertical only, never sideways */}
       <nav className="mb-sidebar__nav flex min-h-space-0 flex-1 flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
-          <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
+          <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
           {/* counters only for «منتظر تو» (navigation.md): a destination never shows how much it holds */}
-          <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
+          <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
+          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => go('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               {VIEWS.map((v) => <NavItem nested key={v.id} label={v.label} selected={p.contextViewMode === v.id} onClick={() => p.onChangeContextViewMode(v.id)} />)}
             </div>
           )}
 
-          <NavItem icon="Package" label="خروجی‌ها" selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
+          <NavItem icon="Package" label="خروجی‌ها" selected={inOutputs} expanded={inOutputs} onClick={() => go('assets')} />
           {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
-              <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
+              <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => go('assets')} />
               {p.specs.map((s) => <NavItem nested key={s.id} label={`${ai.managedEnabled ? 'بساز' : 'آماده‌سازی'}: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
               <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
               <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
@@ -221,7 +244,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
 
   return (
     <>
-      {/* Desktop persistent sidebar (inline-start edge) */}
+      {/* Desktop sidebar (inline-start edge): open, or a narrow icons-only rail */}
       {docked ? (
         <aside className="sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col" style={width ? { inlineSize: `${width}px` } : undefined}>
           {sidebar}
@@ -229,18 +252,30 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />
         </aside>
       ) : (
-        <div className="sticky top-space-0 z-dropdown hidden h-screen shrink-0 md:block" style={{ inlineSize: "var(--sidebar-rail)" }} onMouseEnter={showPeek} onMouseLeave={hidePeek} onFocus={showPeek} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hidePeek(); }}>
-          <div className="flex justify-center p-inset-lg" style={{ paddingInline: 0 }}>{toggleButton}</div>
-          {peek && (
-            <aside data-testid="sidebar-peek" className="fixed bottom-space-0 top-space-0 start-space-0 z-overlay flex w-sidebar flex-col overflow-y-auto border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
-              {sidebar}
-            </aside>
-          )}
+        <aside data-testid="sidebar-rail" className="mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center gap-stack-md border-e border-border-default bg-surface-sunken py-inset-lg md:flex" aria-label="نوار کناری باریک">
+          <Menu label="فضاها" trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
+          {toggleButton}
+          <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />
+          <nav className="flex min-h-space-0 w-full flex-1 flex-col gap-stack-xs overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
+            <NavItem compact icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
+            <NavItem compact icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
+            <NavItem compact icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />
+            <NavItem compact icon="Package" label="خروجی‌ها" selected={inOutputs} onClick={() => go('assets')} />
+          </nav>
+          <Menu label="حساب کاربری" side="top" trigger={<IconButton icon="User" label={`حساب کاربری، پلن ${planName}`} variant="ghost" />} items={accountItems} />
+        </aside>
+      )}
+      {overlay && !docked && (
+        <div className="fixed inset-space-0 z-overlay hidden md:block">
+          <button type="button" aria-label="بستن نوار کناری" tabIndex={-1} className="absolute inset-space-0 bg-bg-scrim" onClick={() => setOverlay(false)} />
+          <aside data-testid="sidebar-overlay" className="absolute bottom-space-0 top-space-0 start-space-0 flex w-sidebar flex-col border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
+            {sidebar}
+          </aside>
         </div>
       )}
 
       {/* Mobile top bar: brand + current workspace. The plan is NOT repeated here. */}
-      <header className="sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default bg-surface-sunken px-inset-lg py-inset-sm md:hidden">
+      <header data-under={under.top || undefined} className="mb-glass sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default px-inset-lg py-inset-sm md:hidden">
         <span className="flex min-w-space-0 flex-1 items-center">{workspacePicker(true)}</span>
         <span className="flex items-center gap-inline-xs">
           <IconButton icon="Search" label="جستجو" variant="secondary" onClick={p.onOpenSearch} />
@@ -256,6 +291,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       {/* Mobile bottom navigation: four destinations and «ثبت» in the middle (the account drawer is the button in the top bar) */}
       <BottomNav
         fixed
+        under={under.bottom}
         className="md:hidden"
         label="منوی پایینی موبایل"
         value={activeTab === 'workstreams' ? 'assets' : activeTab}

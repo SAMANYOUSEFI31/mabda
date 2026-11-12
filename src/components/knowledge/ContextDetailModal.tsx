@@ -288,6 +288,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       open
       onClose={onClose}
       size="lg"
+      dirty={content !== (object?.draft?.content ?? object?.content ?? '') || title !== (object?.draft?.title ?? object?.title ?? '')}
       title={title_}
       description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
       footer={

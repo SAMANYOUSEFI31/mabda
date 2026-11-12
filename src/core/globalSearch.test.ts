@@ -114,3 +114,16 @@ test('a rule contradiction reads «تناقض» in search, not a solid truth dot
   const hits = searchIndex(buildSearchIndex({ nodes, objects: [mk('a', 'اجاره ۲۲ میلیون است'), mk('b', 'اجاره ۱۸ میلیون است')] }), 'اجاره').object;
   assert.ok(hits.length === 2 && hits.every((h) => h.state === 'conflict' && /تناقض/.test(h.subtitle ?? '')));
 });
+
+test('recent: newest first, no duplicates, no commands, and only what still exists', async () => {
+  const { recentHits, pushRecent } = await import('./globalSearch');
+  const nodes = [{ id: 'r', label: 'ریشه', description: '', order: 0 }] as unknown as TreeNode[];
+  const o = (id: string) => ({ id, nodeId: 'r', type: 'Fact', status: 'Confirmed', title: `مورد ${id}`, content: 'x', provenance: 'User Input', version: 1 }) as unknown as ContextObject;
+  let rec = pushRecent([], { kind: 'object', id: 'a' });
+  rec = pushRecent(rec, { kind: 'object', id: 'gone' });
+  rec = pushRecent(rec, { kind: 'command', id: 'record' });
+  rec = pushRecent(rec, { kind: 'object', id: 'a' });
+  assert.deepEqual(rec.map((r) => r.id), ['a', 'gone']);
+  const hits = recentHits(buildSearchIndex({ nodes, objects: [o('a')] }), rec);
+  assert.deepEqual(hits.map((h) => h.id), ['a']);
+});

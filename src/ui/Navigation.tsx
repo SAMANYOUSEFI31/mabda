@@ -164,13 +164,15 @@ export interface BottomNavItem { id: string; label: ReactNode; icon: IconName; b
 export interface BottomNavProps {
   items: BottomNavItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
   label?: string; fixed?: boolean; className?: string;
+  /** content passes under the bar: «کاغذ کالک» (shape-elevation.md); opaque otherwise */
+  under?: boolean;
 }
 
-export function BottomNav({ items, value, defaultValue, onChange, label = 'ناوبری اصلی', fixed = false, className }: BottomNavProps) {
+export function BottomNav({ items, value, defaultValue, onChange, label = 'ناوبری اصلی', fixed = false, className, under = false }: BottomNavProps) {
   const [inner, setInner] = useState(defaultValue || items[0]?.id);
   const current = value !== undefined ? value : inner;
   return (
-    <nav aria-label={label} className={cx('mb-bottomnav', fixed && 'is-fixed', className)}>
+    <nav aria-label={label} data-under={under || undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
       {items.map((it) => (
         <button
           key={it.id} type="button" aria-current={!it.action && current === it.id ? 'page' : undefined} data-testid={it.testId}
