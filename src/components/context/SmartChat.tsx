@@ -433,7 +433,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               ]}
             />
           </div>
-          <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} قلم دانش</Badge>
+          <Badge icon="Link2">متصل به {formatNumber(groundedCount)} قلم دانش</Badge>
         </div>
         {scope && (
           <p className="body-sm text-text-subtle">
@@ -554,8 +554,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                   >
                     {m.role === 'assistant' && !m.streaming && m.groundedCount !== undefined && m.groundedCount > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
-                        <Badge intent="success" icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
-                        {m.executionMode === 'deep' && <Badge intent="info" icon={false}>تحلیل چندوجهی</Badge>}
+                        <Badge icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
+                        {m.executionMode === 'deep' && <Badge icon={false}>تحلیل چندوجهی</Badge>}
                       </div>
                     )}
 

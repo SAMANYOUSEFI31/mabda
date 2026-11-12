@@ -13,7 +13,7 @@ import type { BlockMapping, MapAction } from '../../core/answerMapping';
 import { PACK_MARKER_RE } from '../../core/contextPack';
 import { flatten } from '../../core/nodeTree';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
 
 const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
@@ -133,7 +133,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge intent="neutral" icon={false}>{METHOD_FA[res.method]}</Badge>
               <Badge intent="neutral" icon={false}>{formatNumber(blocks.length)} بلوک</Badge>
-              {res.packId ? <Badge intent="success" icon="Link2">اصالت: {formatNumber(res.usedContext.length)} قلم دانش از «{res.packTitle}»</Badge> : <Badge intent="warning" icon={false}>بدون بستهٔ مبدأ: شباهت در همهٔ دانش دیده می‌شود</Badge>}
+              {res.packId ? <Badge icon="Link2">اصالت: {formatNumber(res.usedContext.length)} قلم دانش از «{res.packTitle}»</Badge> : <Caution>بدون بستهٔ مبدأ: شباهت در همهٔ دانش دیده می‌شود</Caution>}
             </div>
             {res.warning && <Alert intent="warning">{res.warning}</Alert>}
             {ready.length > 1 && (
@@ -148,10 +148,10 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                 <div key={b.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg" data-testid="answer-block">
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <div className="flex flex-wrap items-center gap-inline-sm">
-                      <Badge intent={b.kind === 'asset' ? 'info' : b.kind === 'question' ? 'warning' : 'neutral'} icon={false}>{KIND_FA[b.kind]}</Badge>
+                      <Badge icon={false}>{KIND_FA[b.kind]}</Badge>
                       <span className="label-md text-text-default">{b.title}</span>
                     </div>
-                    {b.done ? <Badge intent="success" icon="Check">{b.done}</Badge> : (
+                    {b.done ? <Badge icon="Check">{b.done}</Badge> : (
                       <div className="flex flex-wrap items-center gap-inline-xs">
                         {ctx && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
                         {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" onClick={() => toAsset(b)}>ذخیره به‌عنوان دارایی</Button>}

@@ -8,7 +8,7 @@ import { dataApi, DataApiError } from '../../services/dataApi';
 import type { DocumentImportResult, DocumentPreviewInfo } from '../../services/dataApi';
 import { mergeWithNext, splitAt } from '../../core/docImportEdit';
 import type { ImportChunk } from '../../core/docImportEdit';
-import { Alert, Badge, Button, Checkbox, Dialog, Switch, Textarea, formatJalaliDate, formatNumber, useToast } from '../../ui';
+import { Alert, Badge, Button, Checkbox, Dialog, Switch, Textarea, formatJalaliDate, formatNumber, useToast, Caution } from '../../ui';
 
 interface Props {
   workspaceId: string;
@@ -102,8 +102,8 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
           <div className="flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge intent="neutral" icon={false}>{preview.name}</Badge>
-              <Badge intent="info" icon={false}>{formatNumber(chunks.length)} تکه از {formatNumber(preview.chars)} نویسه</Badge>
-              {left.size > 0 && <Badge intent="warning" icon={false}>{formatNumber(left.size)} تکه کنار گذاشته شد</Badge>}
+              <Badge icon={false}>{formatNumber(chunks.length)} تکه از {formatNumber(preview.chars)} نویسه</Badge>
+              {left.size > 0 && <Caution>{formatNumber(left.size)} تکه کنار گذاشته شد</Caution>}
             </div>
             {preview.duplicate && (
               <Alert intent="warning" title="این سند قبلاً وارد شده است">
@@ -130,7 +130,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                       <Checkbox checked={!off} onChange={(e) => setLeft((p) => { const n = new Set(p); if (e.target.checked) n.delete(c.id); else n.add(c.id); return n; })} label={`تکهٔ ${formatNumber(i + 1)}`} />
                       <span className="flex flex-wrap items-center gap-inline-xs">
-                        {withSections && c.sectionHint && <Badge intent="info" icon={false}>بخش: {c.sectionHint}</Badge>}
+                        {withSections && c.sectionHint && <Badge icon={false}>بخش: {c.sectionHint}</Badge>}
                         {c.suggestions?.map((sg, k) => <Badge key={k} intent="neutral" icon={false}>پیشنهاد: {sg.label}</Badge>)}
                       </span>
                     </div>

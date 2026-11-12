@@ -369,7 +369,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                       title={
                         <span className="flex flex-wrap items-center gap-inline-sm">
                           {del.title}
-                          {builtIds.has(del.id) && <Badge intent="success">تولیدشده</Badge>}
+                          {builtIds.has(del.id) && <Badge>تولیدشده</Badge>}
                           {dl.locked && <Badge intent="neutral" icon="Lock">قفل</Badge>}
                         </span>
                       }

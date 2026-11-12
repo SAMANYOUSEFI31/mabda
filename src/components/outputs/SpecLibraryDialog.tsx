@@ -42,7 +42,7 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
             <div key={s.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <span className="label-md text-text-default">{s.title}</span>
-                {on && <Badge intent="success" icon="Check">در این فضا</Badge>}
+                {on && <Badge icon="Check">در این فضا</Badge>}
               </div>
               <p className="body-sm text-text-subtle">{s.description} · {formatNumber(s.deliverables.length)} خروجی</p>
               {s.reference && <p className="caption text-text-subtle">منبع: {s.reference}</p>}

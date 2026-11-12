@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../../types';
 import type { TreeNode } from '../../types';
 import { useAiStatus } from '../../services/aiStatus';
-import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber } from '../../ui';
+import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber, Caution } from '../../ui';
 
 interface GapEnginePanelProps {
   spec: WorkstreamSpec;
@@ -64,7 +64,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
         <p className="body-sm text-text-subtle">
           شناسایی شکاف‌ها و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
         </p>
-        <Badge intent="success">۰ اعتبار</Badge>
+        <Badge>۰ اعتبار</Badge>
       </div>}
 
       {/* Gaps */}
@@ -97,7 +97,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                         <span className="flex flex-wrap items-center gap-inline-sm">
                           <span className="title text-text-default">{gap.label}</span>
                           <GapBadge value={gap.importance} />
-                          {gap.status === 'ambiguous' && <Badge intent="warning">مبهم</Badge>}
+                          {gap.status === 'ambiguous' && <Caution>مبهم</Caution>}
                         </span>
                         <span className="body-sm text-text-subtle">{gap.question}</span>
                       </span>

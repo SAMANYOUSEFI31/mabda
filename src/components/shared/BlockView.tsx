@@ -32,7 +32,7 @@ export const BlockView: React.FC<BlockViewProps> = ({ block, onAddToContext, onS
   return (
     <div className="flex flex-col gap-stack-xs" data-block-kind={block.kind}>
       {(type || block.kind === 'question') && (
-        <div>{type ? <TypeBadge value={type} /> : <Badge intent="info" icon="Info">سؤال</Badge>}</div>
+        <div>{type ? <TypeBadge value={type} /> : <Badge icon="Info">سؤال</Badge>}</div>
       )}
       <Markdown>{block.markdown}</Markdown>
 

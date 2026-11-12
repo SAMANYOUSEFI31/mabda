@@ -12,7 +12,6 @@ import { Nuqta, type NuqtaState } from './Nuqta.tsx';
  * Class strings are written out in full so Tailwind can see them.
  */
 interface Entry { label: string; icon: IconName; cls: string }
-const BASE = 'inline-flex items-center gap-inline-xs rounded-pill border px-inset-sm min-h-space-6 whitespace-nowrap label-sm';
 
 /** a kind, not a state (plan 2.6): its name and its sign as plain text — no pill, no colour; only the red-line lock keeps its tint */
 const PLAIN = 'inline-flex items-center gap-inline-xs whitespace-nowrap label-sm text-text-subtle';
@@ -26,14 +25,6 @@ function MabdaLabel({ entry, className, iconOnly = false }: { entry: Entry; clas
   );
 }
 
-function MabdaBadge({ entry, className, iconOnly = false }: { entry: Entry; className?: string; iconOnly?: boolean }) {
-  return (
-    <span className={cx(BASE, entry.cls, className)}>
-      <Icon name={entry.icon} size="xs" />
-      {!iconOnly && entry.label}
-    </span>
-  );
-}
 
 export const TYPE_META: Record<ContextType, Entry> = {
   Fact: { label: 'واقعیت', icon: 'FileText', cls: 'bg-bg-neutral-subtle text-text-subtle border-border-default' },
@@ -71,7 +62,7 @@ export const GAP_META: Record<GapItem['importance'], Entry> = {
   optional: { label: 'اختیاری', icon: 'Minus', cls: 'bg-mabda-gap-optional-bg text-mabda-gap-optional-fg border-mabda-gap-optional-border' },
 };
 export function GapBadge({ value, className, iconOnly }: { value: GapItem['importance']; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={GAP_META[value]} className={className} iconOnly={iconOnly} />;
+  return <MabdaLabel entry={GAP_META[value]} className={className} iconOnly={iconOnly} />;
 }
 
 export const READY_META: Record<ReadinessResult['status'], Entry> = {
@@ -80,7 +71,7 @@ export const READY_META: Record<ReadinessResult['status'], Entry> = {
   blocked: { label: 'مسدود', icon: 'OctagonAlert', cls: 'bg-mabda-ready-blocked-bg text-mabda-ready-blocked-fg border-mabda-ready-blocked-border' },
 };
 export function ReadinessBadge({ value, className, iconOnly }: { value: ReadinessResult['status']; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={READY_META[value]} className={className} iconOnly={iconOnly} />;
+  return <MabdaLabel entry={READY_META[value]} className={className} iconOnly={iconOnly} />;
 }
 
 export const MODE_META: Record<ExecutionMode, Entry> = {
@@ -90,7 +81,7 @@ export const MODE_META: Record<ExecutionMode, Entry> = {
   sensitive: { label: 'اجرای حساس', icon: 'Shield', cls: 'bg-mabda-mode-sensitive-bg text-mabda-mode-sensitive-fg border-mabda-mode-sensitive-border' },
 };
 export function ModeBadge({ value, className, iconOnly }: { value: ExecutionMode; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={MODE_META[value]} className={className} iconOnly={iconOnly} />;
+  return <MabdaLabel entry={MODE_META[value]} className={className} iconOnly={iconOnly} />;
 }
 
 export const LEDGER_META: Record<LedgerEntry['status'], Entry> = {
@@ -98,7 +89,7 @@ export const LEDGER_META: Record<LedgerEntry['status'], Entry> = {
   refunded: { label: 'بازگشت اعتبار', icon: 'Undo2', cls: 'bg-mabda-ledger-refunded-bg text-mabda-ledger-refunded-fg border-mabda-ledger-refunded-border' },
 };
 export function LedgerStatusBadge({ value, className, iconOnly }: { value: LedgerEntry['status']; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={LEDGER_META[value]} className={className} iconOnly={iconOnly} />;
+  return <MabdaLabel entry={LEDGER_META[value]} className={className} iconOnly={iconOnly} />;
 }
 
 export const PROVENANCE_LABEL: Record<ContextProvenance, string> = {

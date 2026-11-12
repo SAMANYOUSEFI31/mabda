@@ -110,7 +110,7 @@ const Body: React.FC<Props> = ({ onClose, metrics, measurements, objects, change
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                       <span className="label-md text-text-default">{r.decision.title}</span>
                       <span className="flex items-center gap-inline-xs">
-                        {r.verdict ? <Badge intent={r.verdict === 'met' ? 'success' : r.verdict === 'partial' ? 'warning' : 'neutral'} icon={false}>{VERDICT_FA[r.verdict]}</Badge> : <Badge intent="neutral" icon={false}>{r.reading.state === 'due' ? 'موعدش رسیده' : 'باز'}</Badge>}
+                        {r.verdict ? <Badge icon={false}>{VERDICT_FA[r.verdict]}</Badge> : <Badge intent="neutral" icon={false}>{r.reading.state === 'due' ? 'موعدش رسیده' : 'باز'}</Badge>}
                         <Button size="sm" variant="ghost" onClick={() => onOpenObject(r.decision)}>باز کن</Button>
                       </span>
                     </div>

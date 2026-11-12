@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import type { PackInfo } from '../../types/state';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { Alert, Badge, Button, Dialog, Spinner, Textarea, formatNumber, useToast } from '../../ui';
+import { Alert, Badge, Button, Dialog, Spinner, Textarea, formatNumber, useToast, Caution } from '../../ui';
 
 export interface PackTarget { specId?: string; deliverableId?: string; title: string }
 
@@ -65,9 +65,9 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
           <div className="flex flex-wrap items-center gap-inline-sm">
             <Badge intent="neutral" icon="FileText">حدود {formatNumber(pack.tokens)} توکن</Badge>
             <Badge intent="neutral" icon={false}>{formatNumber(pack.chars)} نویسه</Badge>
-            <Badge intent="success" icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
-            {pack.counts.proposed > 0 && <Badge intent="warning" icon={false}>{formatNumber(pack.counts.proposed)} پیشنهادی (تأییدنشده)</Badge>}
-            {pack.counts.gaps > 0 && <Badge intent="warning" icon={false}>{formatNumber(pack.counts.gaps)} شکاف</Badge>}
+            <Badge icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
+            {pack.counts.proposed > 0 && <Caution>{formatNumber(pack.counts.proposed)} پیشنهادی (تأییدنشده)</Caution>}
+            {pack.counts.gaps > 0 && <Caution>{formatNumber(pack.counts.gaps)} شکاف</Caution>}
             {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} خط قرمز</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />

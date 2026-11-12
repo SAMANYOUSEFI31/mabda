@@ -7,7 +7,7 @@ import React, { useMemo } from 'react';
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../../types';
 import { buildChangeDigest, DEFAULT_DAYS } from '../../core/changeDigest';
 import { ACTOR_FA } from '../../core/changeLog';
-import { Badge, Button, Card, formatNumber } from '../../ui';
+import { Badge, Button, Card, formatNumber, Caution } from '../../ui';
 import { ChangeEntry } from './ChangeEntry';
 
 interface Props {
@@ -44,7 +44,7 @@ export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects
         <div className="flex flex-col gap-stack-lg">
           <div className="flex flex-wrap items-center gap-inline-sm">
             <Badge intent="neutral" icon={false}>{formatNumber(digest.total)} تغییر</Badge>
-            <Badge intent={digest.assetsToReview ? 'warning' : 'success'} icon={false}>{digest.assetsToReview ? `${formatNumber(digest.assetsToReview)} خروجی نیاز به بازبینی` : 'خروجی‌ای نیاز به بازبینی ندارد'}</Badge>
+            {digest.assetsToReview ? <Caution>{formatNumber(digest.assetsToReview)} خروجی نیاز به بازبینی</Caution> : <Badge icon={false}>خروجی‌ای نیاز به بازبینی ندارد</Badge>}
           </div>
           {digest.groups.map((g) => (
             <section key={g.key} className="flex flex-col gap-stack-sm" aria-label={`تغییرهای ${ACTOR_FA[g.actor]}${g.label ? ` (${g.label})` : ''}`}>

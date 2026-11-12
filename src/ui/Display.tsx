@@ -32,6 +32,16 @@ export function Badge({ intent = 'neutral', emphasis = 'subtle', icon, dot = fal
   );
 }
 
+/** a warning said as a quiet sentence, not a coloured pill (plan 2.6): the sign carries the tone, the words stay ink */
+export function Caution({ tone = 'warning', children, className }: { tone?: 'warning' | 'danger'; children: ReactNode; className?: string }) {
+  return (
+    <span className={cx('inline-flex items-center gap-inline-xs body-sm text-text-default', className)}>
+      <Icon name={tone === 'danger' ? 'OctagonAlert' : 'TriangleAlert'} size="xs" className={tone === 'danger' ? 'text-icon-danger' : 'text-icon-warning'} />
+      {children}
+    </span>
+  );
+}
+
 export interface TagProps {
   children: ReactNode;
   selected?: boolean;

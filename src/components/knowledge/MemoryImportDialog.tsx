@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import type { ContextObject } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { DocumentImportDialog } from './DocumentImportDialog';
-import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber, useToast } from '../../ui';
+import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber, useToast, Caution } from '../../ui';
 
 const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
 
@@ -74,9 +74,9 @@ const Importer: React.FC<Props & { onSwitch: () => void }> = ({ workspaceId, onC
         {result && (
           <div className="flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm">
-              <Badge intent={result.created.length ? 'success' : 'neutral'} icon={false}>{formatNumber(result.created.length)} پیشنهاد در صندوق</Badge>
-              {result.skipped > 0 && <Badge intent="warning" icon={false}>{formatNumber(result.skipped)} مورد به‌خاطر سقف پلن ثبت نشد</Badge>}
-              {result.truncated && <Badge intent="warning" icon={false}>فقط بخش ابتدایی متن خوانده شد</Badge>}
+              <Badge icon={false}>{formatNumber(result.created.length)} پیشنهاد در صندوق</Badge>
+              {result.skipped > 0 && <Caution>{formatNumber(result.skipped)} مورد به‌خاطر سقف پلن ثبت نشد</Caution>}
+              {result.truncated && <Caution>فقط بخش ابتدایی متن خوانده شد</Caution>}
             </div>
             {result.created.length === 0 && <p className="body-md text-text-subtle">چیزی که به کسب‌وکار مربوط باشد در این متن پیدا نشد.</p>}
             {result.created.map((o) => (

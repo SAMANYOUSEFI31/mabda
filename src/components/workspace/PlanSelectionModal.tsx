@@ -87,7 +87,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                 </div>
 
                 {isCurrent ? (
-                  <Badge intent="success" icon="CircleCheck" className="justify-center">پلن فعلی شما</Badge>
+                  <Badge icon="CircleCheck" className="justify-center">پلن فعلی شما</Badge>
                 ) : (
                   <Button variant="secondary" fullWidth onClick={() => { onSelectPlan(pid); onClose(); }}>
                     فعال‌سازی پلن {p.title.split(' ')[0]}

@@ -6,7 +6,7 @@
 import React from 'react';
 import type { SceneItem } from '../../core/canvasScene';
 import type { Lod } from '../../core/canvasLod';
-import { Badge, Icon, IconButton, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Icon, IconButton, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 
 export const FACET_TINT = ['border-border-info-subtle bg-bg-info-subtle', 'border-border-success-subtle bg-bg-success-subtle', 'border-border-warning-subtle bg-bg-warning-subtle', 'border-border-default bg-bg-neutral-subtle'];
 
@@ -15,7 +15,7 @@ function Marks({ item }: { item: SceneItem }) {
   const small = 'inline-flex items-center justify-center rounded-pill border border-border-default bg-surface-raised text-icon-subtle min-w-space-6 min-h-space-6';
   return (
     <>
-      {item.review && <Badge intent="warning" icon={false}>بازبینی</Badge>}
+      {item.review && <Caution>بازبینی</Caution>}
       {item.assumption && <span className={small} title="فرض: واقعیت نیست" role="img" aria-label="فرض"><Icon name="CircleHelp" size="xs" /></span>}
       {item.expired && <span className={small} title="منقضی شده" role="img" aria-label="منقضی"><Icon name="Clock" size="xs" /></span>}
       {item.global && <span className={small} title="برای کل درخت" role="img" aria-label="دامنهٔ کل"><Icon name="Globe" size="xs" /></span>}
@@ -107,7 +107,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
           </span>
         )}
         {(item.kind === 'asset' || item.kind === 'assets') && (
-          <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Badge intent="warning" icon={false}>قدیمی</Badge>}</span>
+          <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Caution>قدیمی</Caution>}</span>
         )}
         {item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
         <span data-card-title="" className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} ${p.dimmed ? 'text-text-subtle' : 'text-text-default'} ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>

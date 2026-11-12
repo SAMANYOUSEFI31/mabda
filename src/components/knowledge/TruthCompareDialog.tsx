@@ -153,7 +153,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                                   <li key={d.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-md">
                                     <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                                       <span className="flex min-w-space-0 flex-wrap items-center gap-inline-xs">
-                                        {d.kinds.map((k) => <Badge key={k} intent={KIND_INTENT[k]} icon={false}>{KIND_FA[k]}</Badge>)}
+                                        {d.kinds.map((k) => <Badge key={k} icon={false}>{KIND_FA[k]}</Badge>)}
                                         <span className="label-md text-text-default">{it.title}</span><TypeBadge value={it.type} iconOnly />
                                       </span>
                                       {byId.has(d.id) && <Button size="sm" variant="ghost" onClick={() => open(d)}>جزئیات و تاریخچه</Button>}

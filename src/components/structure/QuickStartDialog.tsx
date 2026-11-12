@@ -225,7 +225,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
               <section className="flex flex-col gap-stack-sm" aria-label="بستهٔ دانش">
                 <h3 className="title text-text-default">بستهٔ دانش تو آماده است</h3>
                 <div className="flex flex-wrap items-center gap-inline-sm">
-                  <Badge intent="success" icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
+                  <Badge icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
                   <Badge intent="neutral" icon={false}>حدود {formatNumber(pack.tokens)} توکن</Badge>
                 </div>
                 <ol className="body-md flex list-persian list-decimal flex-col gap-stack-xs ps-inset-xl text-text-default">

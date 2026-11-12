@@ -41,7 +41,7 @@ const Usage: React.FC<Props> = ({ onClose }) => {
           <section aria-label="بدون استفاده" className="flex flex-col gap-stack-xs">
             <h3 className="label-md text-text-default">هنوز استفاده نشده ({formatNumber(s.unused.length)})</h3>
             <ul className="flex flex-wrap gap-inline-xs">
-              {s.unused.map((r) => <li key={r.key}><Badge intent={r.level === 1 ? 'warning' : 'neutral'} icon={false}>{r.label} · سطح {formatNumber(r.level)}</Badge></li>)}
+              {s.unused.map((r) => <li key={r.key}><Badge icon={false}>{r.label} · سطح {formatNumber(r.level)}</Badge></li>)}
             </ul>
           </section>
         </div>

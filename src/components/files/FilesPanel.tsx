@@ -102,7 +102,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <div className="flex min-w-space-0 flex-wrap items-center gap-inline-sm">
                   <span className="label-md text-text-default">{f.name}</span>
-                  {managed && <Badge intent={STATUS[f.status].intent} icon={false}>{STATUS[f.status].label}</Badge>}
+                  {managed && <Badge icon={false}>{STATUS[f.status].label}</Badge>}
                   <span className="caption text-text-subtle">{kb(f.sizeBytes)} · حدود {formatNumber(f.tokens)} توکن{f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}</span>
                 </div>
                 <div className="flex items-center gap-inline-xs">

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import type { Contradiction, ContextObject, TreeNode } from '../../types';
 import { flatten } from '../../core/nodeTree';
-import { Badge, Button, Card, Select, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Button, Card, Select, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 
 interface Props {
   contradictions: Contradiction[];
@@ -40,7 +40,7 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
       <div className="flex flex-col gap-stack-xs border-b border-border-default pb-inset-lg">
         <div className="flex items-center gap-inline-sm">
           <h2 className="heading-sm text-text-default">تناقض‌ها</h2>
-          <Badge intent="warning" icon="TriangleAlert">{formatNumber(contradictions.length)} مورد</Badge>
+          <Caution>{formatNumber(contradictions.length)} مورد</Caution>
         </div>
         <p className="body-sm text-text-subtle">دو مورد با هم نمی‌خوانند. یکی را نگه دار تا دیگری «جایگزین‌شده» شود، یا اگر هر دو درست‌اند آن‌ها را در گره‌های جدا بگذار. چیزی پاک نمی‌شود.</p>
       </div>

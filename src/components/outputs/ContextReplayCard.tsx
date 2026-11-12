@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable } from '../../types';
 import { versionTexts } from '../../core/versionHistory';
 import { BeforeAfter } from '../shared/BeforeAfter';
-import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution } from '../../ui';
 import { PlanLine } from '../shared/AiNotices';
 import { useAiStatus } from '../../services/aiStatus';
 import { halfPriceRebuildAvailable } from '../../core/impactEngine';
@@ -78,9 +78,9 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           <h3 className="title text-text-default">{deliverable.title}</h3>
           <div className="flex flex-wrap items-center gap-inline-xs">
             {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
-            {stale && <Badge intent="warning" icon="TriangleAlert">به‌روز نیست</Badge>}
-            {deliverable.rebuildCount > 0 && <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
-            {deliverable.checks && deliverable.checks.length > 0 && <Badge intent={passedAll ? 'success' : 'warning'} icon={false}>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Badge>}
+            {stale && <Caution>به‌روز نیست</Caution>}
+            {deliverable.rebuildCount > 0 && <Badge icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
+            {deliverable.checks && deliverable.checks.length > 0 && (passedAll ? <Badge icon={false}>{formatNumber(deliverable.checks.length)} معیار برقرار</Badge> : <Caution>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Caution>)}
           </div>
           <span className="caption text-text-subtle">
             {formatJalaliDate(deliverable.createdAt)}{ai.managedEnabled ? ` · مصرف اعتبار: ${formatNumber(deliverable.creditCost)}` : ''}
@@ -196,7 +196,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                 <ul className="flex flex-col gap-stack-xs">
                   {deliverable.checks.map((c, i) => (
                     <li key={i} className="flex items-start gap-inline-sm">
-                      <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
+                      {c.passed ? <Badge icon="Check">برقرار</Badge> : <Caution tone="danger">نقض</Caution>}
                       <div className="flex min-w-space-0 flex-col">
                         <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'خط قرمز: ' : ''}{c.text}</span>
                         <span className="caption text-text-subtle">{c.reason}</span>

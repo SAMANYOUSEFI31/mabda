@@ -8,7 +8,7 @@ import type { CostReportRowInfo } from '../../types/state';
 import { CATEGORY_LABEL } from '../../core/costReport';
 import { COST_WARN_RATIO } from '../../core/entitlements';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { Alert, Badge, Button, Card, Table, formatNumber, formatUsd } from '../../ui';
+import { Alert, Badge, Button, Card, Table, formatNumber, formatUsd, Caution } from '../../ui';
 import { PLANS } from '../../core/creditEngine';
 
 const pct = (r: number) => `${formatNumber(Math.round(r * 1000) / 10)}٪`;
@@ -46,7 +46,7 @@ export const ManagerLedger: React.FC = () => {
           { key: 'plan', label: 'پلن', render: (r) => PLANS[r.planId].title.split(' ')[0] },
           { key: 'price', label: 'قیمت پلن', numeric: true, render: (r) => formatUsd(r.priceUsd, 0) },
           { key: 'cost', label: 'هزینهٔ واقعی ما', numeric: true, render: (r) => formatUsd(r.ourCostUsd, 4) },
-          { key: 'ratio', label: 'سهم از قیمت', numeric: true, render: (r) => (r.warn ? <Badge intent="danger" icon="TriangleAlert">{pct(r.ratio)}</Badge> : <span className="text-text-success">{pct(r.ratio)}</span>) },
+          { key: 'ratio', label: 'سهم از قیمت', numeric: true, render: (r) => (r.warn ? <Caution tone="danger">{pct(r.ratio)}</Caution> : <span className="text-text-success">{pct(r.ratio)}</span>) },
           {
             key: 'lines',
             label: 'بابت',
