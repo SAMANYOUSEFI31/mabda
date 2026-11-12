@@ -41,6 +41,16 @@ const measure = (userText = '') => {
     const cs = getComputedStyle(el);
     if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && el.getBoundingClientRect().width > 0) out.push(`label cut short: «${(el.textContent || '').trim().slice(0, 30)}» in ${name(el)}`);
   }
+  // …nor spills past its own control (a one-word label wider than its column at 200% text, WCAG 1.4.4): every label of a phone bar
+  // item, a tab, a segment, a button or a sidebar place stays inside the control that owns it
+  for (const lab of document.querySelectorAll('.mb-bottomnav__label, .mb-tab__label, .mb-btn__label, nav button span')) {
+    if (lab.closest('[inert], [aria-hidden=true], .mb-sr')) continue;
+    const own = lab.closest('.mb-bottomnav__item, .mb-tab, .mb-btn, button'); if (!own) continue;
+    const r = lab.getBoundingClientRect(), o = own.getBoundingClientRect(); if (!r.width || !o.width) continue;
+    const range = document.createRange(); range.selectNodeContents(lab); const t = range.getBoundingClientRect();
+    const L = Math.min(r.left, t.width ? t.left : r.left), R = Math.max(r.right, t.width ? t.right : r.right);
+    if (L < o.left - 1 || R > o.right + 1) out.push(`label spills out of its control: «${(lab.textContent || '').trim().slice(0, 30)}» ${Math.round(R - L)}px in ${Math.round(o.width)}px (${name(own)})`);
+  }
   // at most two layers over the page (overlays.md): a dialog and one thing on it (a menu, a calendar, a confirmation)
   const layers = [...document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]), [role=menu]')].filter((l) => !l.closest('[inert]') && l.getBoundingClientRect().height > 0);
   if (layers.length > 2) out.push(`${layers.length} layers open at once: ${layers.map(name).join(' › ')}`);
@@ -152,10 +162,10 @@ for (const { width: w0, height, touch } of SIZES) {
       for (let i = 0; i < n; i++) {
         const t = dlg.locator(sel).nth(i);
         if (!(await t.isVisible() && await t.isEnabled())) continue;
-        const label = (await t.textContent())?.trim();
-        await t.click().catch(() => {}); await settle(); await still(); await check(`${where} › ${label}`);
+        const tab = (await t.textContent())?.trim();
+        await t.click().catch(() => {}); await settle(); await still(); await check(`${where} › ${tab}`);
         const y = await top();
-        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${label} ${where} › ${label}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
+        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${label} ${where} › ${tab}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
       }
     }
   };
@@ -184,7 +194,8 @@ for (const { width: w0, height, touch } of SIZES) {
         if (harm) { if (await page.locator('[role=dialog], [role=alertdialog]').count()) await check(`${id} › ${it} (confirm)`); }
         else if (await page.locator('[role=dialog]').count()) await walkDialog(`${id} › ${it}`); else await check(`${id} › ${it}`);
         await escAll();
-        if (harm) await page.unrouteAll({ behavior: 'ignoreErrors' });
+        // the refused writes leave «could not reach the server» notes; they are the walk's own doing, so they are cleared
+        if (harm) { await page.unrouteAll({ behavior: 'ignoreErrors' }); for (const x of await page.locator('.mb-toast button').all()) await x.click().catch(() => {}); await settle(); }
       }
     }
   }
@@ -207,7 +218,7 @@ for (const { width: w0, height, touch } of SIZES) {
     // wide: the row's «ویرایش»; phone: the rows are cards, each one opens its knowledge
     const edit = width < 768 ? page.locator('main .md\\:hidden [role=button][data-knowledge]') : page.locator('main').getByRole('button', { name: 'ویرایش', exact: true });
     await edit.first().click({ timeout: 3000 }).catch(() => {}); await settle();
-    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else note(`${label} knowledge edit`, ['walk could not open the knowledge edit dialog']);
+    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else { note(`${label} knowledge edit`, ['walk could not open the knowledge edit dialog']); }
     await escAll();
   }
   // every command of the palette

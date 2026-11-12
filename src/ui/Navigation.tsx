@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { Fragment, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
@@ -188,7 +188,7 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
               </>
             ) : null}
           </span>
-          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>
+          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{typeof it.label === 'string' ? softBreaks(it.label) : it.label}</span>
         </button>
       ))}
     </nav>
@@ -211,6 +211,9 @@ export interface NavItemProps {
   compact?: boolean;
   className?: string;
 }
+
+/** a narrow label (the phone bar at 200% text) may break where Persian joins a suffix with a ZWNJ («خروجی‌|ها»), never inside a letter run */
+const softBreaks = (t: string): ReactNode => (t.includes('\u200c') ? t.split('\u200c').flatMap((part, i) => (i ? [<Fragment key={i}>{'\u200c'}<wbr /></Fragment>, part] : [part])) : t);
 
 export function NavItem({ label, icon, trailing, selected, expanded, nested = false, compact = false, onClick, className }: NavItemProps) {
   return (

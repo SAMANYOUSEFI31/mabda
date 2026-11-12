@@ -16,7 +16,7 @@ const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
   // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
   // plus 768 (day and night, for the gallery) and 1440 (light only): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
-  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true, lightOnly: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
+  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
@@ -42,7 +42,8 @@ const audit = () => {
     const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
     out.overflow = `${de.scrollWidth} > ${de.clientWidth} ← ${wide.join(' | ')}`;
   }
-  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  // above the page's top edge (a skip link parked out of sight until it has focus) can never be seen by scrolling, so it is not measured
+  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && (cs.position === 'fixed' ? r.bottom > 0 : r.bottom + scrollY > 0) && cs.visibility !== 'hidden' && cs.display !== 'none'; };
   // sideways scroll inside the page: any box that can scroll (or clips) and is wider inside than outside, except the few places made to
   // scroll sideways on purpose (a wide table, the canvas, code). A tab bar never scrolls up and down.
   out.scrollX = [];
