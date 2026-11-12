@@ -535,3 +535,23 @@
 :root[data-motion=reduced] :is(.mb-dialog){animation-name:mb-fade}:root[data-motion=reduced] .mb-skel{animation:none}:root[data-motion=reduced] .mb-nuqta[data-settle]{animation-name:mb-fade}:root[data-motion=reduced] .mb-dialog-layer[data-state=closed] :is(.mb-dialog,.mb-scrim){animation-name:mb-out;animation-duration:var(--duration-instant)}
 /* theme switch: no motion — every transition is off for one frame so hundreds of things do not recolour together (src/ui/theme.ts) */
 :root[data-theme-switching] *,:root[data-theme-switching] *::before,:root[data-theme-switching] *::after{transition:none!important}
+/* the solar date field (components.md «تقویم»): Saturday first, Friday quieter, today ringed, the chosen day in ink */
+@layer components{
+.mb-datefield{display:flex;align-items:center;gap:var(--inline-xs)}
+.mb-datefield .mb-field__input{flex:1;min-inline-size:0}
+.mb-field{position:relative}
+.mb-cal{inline-size:max-content;max-inline-size:none;padding:var(--inset-md);display:flex;flex-direction:column;gap:var(--stack-sm)}
+.mb-cal__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-sm)}
+.mb-cal__grid{display:flex;flex-direction:column;gap:var(--space-1)}
+.mb-cal__row{display:grid;grid-template-columns:repeat(7,var(--touch-target-min))}
+.mb-cal__wd{text-align:center;color:var(--text-subtle)}
+.mb-cal__wd.is-friday,.mb-cal__day.is-friday{color:var(--text-subtlest)}
+.mb-cal__day{inline-size:var(--touch-target-min);block-size:var(--touch-target-min);border-radius:var(--radius-md);border:var(--border-width-thin) solid transparent;background:transparent;color:var(--text-default);font-variant-numeric:tabular-nums;cursor:pointer}
+@media (hover:hover){.mb-cal__day:hover:not(:disabled),.mb-cal__quick:hover:not(:disabled){background:var(--bg-neutral-subtle)}}
+.mb-cal__day.is-today{border-color:var(--border-bold)}
+.mb-cal__day.is-selected{background:var(--bg-selected);border-color:var(--border-selected)}
+.mb-cal__day:disabled,.mb-cal__quick:disabled{color:var(--text-disabled);cursor:not-allowed}
+.mb-cal__day:focus-visible,.mb-cal__quick:focus-visible{outline:var(--focus-width) solid var(--border-focus);outline-offset:var(--focus-offset)}
+.mb-cal__foot{display:flex;flex-wrap:wrap;gap:var(--inline-xs);border-block-start:var(--border-width-thin) solid var(--border-subtle);padding-block-start:var(--stack-sm)}
+.mb-cal__quick{display:inline-flex;align-items:center;gap:var(--inline-xs);min-block-size:var(--touch-target-min);padding-inline:var(--inset-sm);border-radius:var(--radius-md);border:0;background:transparent;color:var(--text-default);cursor:pointer}
+}

@@ -34,7 +34,7 @@ import { MX } from '../../core/metricsText';
 import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../../core/redlineExamples';
 import { parseNumber } from '../../core/metrics';
 import { dataApi } from '../../services/dataApi';
-import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
+import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -472,7 +472,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {isEditing && !isSupersedingMode && reasonAllowed(object!.status) && (
           <TextField label="دلیل این ویرایش (اختیاری)" value={editReason} onChange={(e) => setEditReason(e.target.value)} hint="فقط برای ویرایش دانش تأییدشده است؛ در مسیر نسخه‌ها ثبت می‌شود، نه در متن. پیش‌نویس دلیل نمی‌گیرد." />
         )}
-        <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
+        <DateField label="اعتبار تا (اختیاری)" value={validUntil} onValueChange={(v) => setValidUntil(v)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
         <div className="flex flex-col gap-stack-xs" role="group" aria-label="بُعدها">
           <TextField label="بُعد (اختیاری)" value={facetDraft} onChange={(e) => setFacetDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addFacet(facetDraft); } }} hint="یک برچسب آزاد که از میان درخت می‌گذرد: «مخاطب سازمانی»، «فصل پاییز». Enter بزن." />
           {facets.length > 0 && <div className="flex flex-wrap gap-inline-xs">{facets.map((f) => <Button key={f} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`حذف بُعد ${f}`} onClick={() => setFacets((l) => l.filter((x) => x !== f))}>{f}</Button>)}</div>}
@@ -482,7 +482,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
             <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />
             <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت به AI داده نمی‌شود (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» با دستور صریح می‌رود.</p>
-            {assumption && <TextField label="بازبینی تا (اختیاری)" type="date" value={reviewBy} onChange={(e) => setReviewBy(e.target.value)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
+            {assumption && <DateField label="بازبینی تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
           </div>
         )}
         {type === 'Decision' && (
@@ -503,7 +503,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                   <div><Button type="button" size="sm" variant="secondary" iconStart="Plus" onClick={() => setOptions((l) => [...l, { title: '', rejectedReason: '' }])}>افزودن گزینه</Button></div>
                 </div>
                 <TextField label="چه انتظاری داریم؟" value={expectation} onChange={(e) => setExpectation(e.target.value)} />
-                <TextField label="تاریخ بازبینی" type="date" value={reviewOn} onChange={(e) => setReviewOn(e.target.value)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
+                <DateField label="تاریخ بازبینی" value={reviewOn} onValueChange={(v) => setReviewOn(v)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
                 {metrics.length > 0 && (
                   <div className="flex flex-col gap-stack-sm" role="group" aria-label={MX.expectationField}>
                     <span className="label-md text-text-default">{MX.expectationField}</span>
@@ -512,7 +512,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                       <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-3">
                         <Select label="جهت" value={expDir} onChange={(e) => setExpDir(e.target.value as MetricDirection)} options={[{ value: 'up', label: 'بالا برود' }, { value: 'down', label: 'پایین بیاید' }]} />
                         <TextField label={MX.expectationTarget} inputMode="decimal" value={expTarget} onChange={(e) => setExpTarget(e.target.value)} error={expTarget.trim() && expTargetNum === null ? 'عدد معتبر بنویس.' : undefined} />
-                        <TextField label={MX.expectationBy} type="date" value={expBy} onChange={(e) => setExpBy(e.target.value)} error={!expBy ? 'تاریخ لازم است.' : undefined} />
+                        <DateField label={MX.expectationBy} value={expBy} onValueChange={(v) => setExpBy(v)} error={!expBy ? 'تاریخ لازم است.' : undefined} />
                       </div>
                     )}
                   </div>

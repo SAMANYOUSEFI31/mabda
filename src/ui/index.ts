@@ -5,6 +5,8 @@ export { Button, IconButton, Link } from './Button.tsx';
 export type { ButtonProps, IconButtonProps, LinkProps } from './Button.tsx';
 export { BrandMark, Badge, Caution, Tag, Avatar, Card, Divider, Stat, EmptyState, Alert, Progress, Spinner, Skeleton, Tooltip } from './Display.tsx';
 export type { Intent, StatusIntent, BadgeProps, TagProps, CardProps, AlertProps, ProgressProps, KnowledgeState } from './Display.tsx';
+export { DateField } from './DateField.tsx';
+export type { DateFieldProps } from './DateField.tsx';
 export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard } from './Forms.tsx';
 export type { TextFieldProps, TextareaProps, SelectProps, SelectOption } from './Forms.tsx';
 export { Dialog, Toast, ToastProvider, useToast, Popover, Menu, MenuChoiceRow } from './Overlay.tsx';
