@@ -69,7 +69,7 @@ try {
     const toolbar = page.getByTestId('canvas-toolbar');
     const lod = () => stage.getAttribute('data-lod');
     const zoomOnce = async (name) => {
-      if (mobile) { await toolbar.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name, exact: true }).click(); }
+      if (mobile) { await toolbar.getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name, exact: true }).click(); }
       else await toolbar.getByRole('button', { name }).click();
     };
     const zoomTo = async (want) => { for (let i = 0; i < 14 && (await lod()) !== want; i++) { await zoomOnce(want === 'far' ? 'کوچک‌نمایی' : 'بزرگ‌نمایی'); await page.waitForTimeout(60); } };
@@ -250,7 +250,7 @@ try {
     const pos = async (noteId) => (await call('GET', `/workspaces/${wid}/state`)).canvas.free.find((i) => i.itemRef === `note:${noteId}`);
     const before0 = await pos(nA.id);
     if (mobile) { // a phone: the same thing from the «⋯» menu, in 44px buttons (the in-stage header scales with the zoom)
-      await toolbar.getByRole('button', { name: 'بیشتر' }).click();
+      await toolbar.getByRole('button', { name: 'بیشتر', exact: true }).click();
       await page.getByRole('menuitem', { name: 'جابه‌جا کردن یک بخش…' }).click();
       await page.getByTestId('frame-dialog').getByRole('combobox').first().selectOption(ship);
       await page.getByTestId('frame-dialog').getByRole('button', { name: 'پایین‌تر' }).click();

@@ -86,7 +86,7 @@ const TIPS = [
 const TIPS_THINKING = [
   'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «فکر تازه» در فهرست فکرها استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
 ];
-const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'برگرداندن / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
+const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
 // three looks, one engine: the overview and «دور یک مورد» (the truth canvas), the free canvas (thinking). «تابلو» is gone: see docs/canvas-design.md
 const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['overview'], thinking: ['free'] };
@@ -291,7 +291,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         await p.onMoveNoteNode(item.noteId, nodeId);
         if (at) p.onMoveNote(item.noteId, at.x, at.y);
         push({ label: 'بخشِ یادداشت', undo: [{ type: 'moveNoteNode', noteId: item.noteId, nodeId: from }, ...(at ? [{ type: 'moveNote', noteId: item.noteId, x: item.x, y: item.y } as CanvasAction] : [])], redo: [{ type: 'moveNoteNode', noteId: item.noteId, nodeId }, ...(at ? [{ type: 'moveNote', noteId: item.noteId, x: at.x, y: at.y } as CanvasAction] : [])] });
-        toast.show({ intent: 'success', message: `این فکر حالا در بخش «${labelOfNode(nodeId)}» است. با «برگرداندن» برمی‌گردد.` });
+        toast.show({ intent: 'success', message: `این فکر حالا در بخش «${labelOfNode(nodeId)}» است. با «واگرد» برمی‌گردد.` });
       } else if (item.objectId) {
         const o = objectById.get(item.objectId);
         if (!o) return;
@@ -435,7 +435,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         await p.onOverride(opt.fromId, opt.toId, why || undefined);
         push({ label: 'کنار گذاشتن', undo: [{ type: 'removeOverride', objectId: opt.fromId, targetId: opt.toId }], redo: [{ type: 'addOverride', objectId: opt.fromId, targetId: opt.toId }] });
       }
-      toast.show({ intent: 'success', message: opt.type === 'supersedes' ? 'جایگزین شد؛ مورد قبلی در تاریخچه می‌ماند.' : 'وصل شد. با «برگرداندن» برمی‌گردد.' });
+      toast.show({ intent: 'success', message: opt.type === 'supersedes' ? 'جایگزین شد؛ مورد قبلی در تاریخچه می‌ماند.' : 'وصل شد. با «واگرد» برمی‌گردد.' });
       setConnect(null); setConnectFrom(null); setConnectMode(false);
       setTimeout(() => box.current?.focus({ preventScroll: true }), 50); // so Ctrl+Z works right away
     } finally { setBusy(false); }
@@ -570,8 +570,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {!lineage && (isMobile
         ? <IconButton icon="Link2" label="وصل کن (دو کارت را پشت‌سرهم بزن)" aria-pressed={connectMode} onClick={toggleConnect} />
         : <Button size="sm" variant={connectMode ? 'secondary' : 'ghost'} iconStart="Link2" aria-pressed={connectMode} onClick={toggleConnect}>وصل کن</Button>)}
-      <span className="flex items-center gap-inline-xs" role="group" aria-label="برگرداندن و از نو">
-        <IconButton icon="Undo2" label="برگرداندن (Ctrl+Z)" disabled={!canUndo(hist) || busy} onClick={() => void doUndo()} />
+      <span className="flex items-center gap-inline-xs" role="group" aria-label="واگرد و از نو">
+        <IconButton icon="Undo2" label="واگرد (Ctrl+Z)" disabled={!canUndo(hist) || busy} onClick={() => void doUndo()} />
         <IconButton icon="Redo2" label="از نو (Ctrl+Shift+Z)" disabled={!canRedo(hist) || busy} onClick={() => void doRedo()} />
       </span>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
@@ -821,7 +821,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
       <ConnectDialog open={!!connect} from={connect ? objectById.get(connect.fromId)?.title : undefined} to={connect ? objectById.get(connect.toId)?.title : undefined} options={connectOpts} busy={busy} onClose={() => { setConnect(null); setConnectFrom(null); }} onConfirm={(o, why) => void confirmConnect(o, why)} />
 
-      <Dialog open={!!frameDlg} onClose={() => setFrameDlg(null)} size="sm" title="جابه‌جا کردن یک بخش" description="همهٔ کارت‌ها و فکرهای آن بخش با هم جابه‌جا می‌شوند؛ با «برگرداندن» برمی‌گردد.">
+      <Dialog open={!!frameDlg} onClose={() => setFrameDlg(null)} size="sm" title="جابه‌جا کردن یک بخش" description="همهٔ کارت‌ها و فکرهای آن بخش با هم جابه‌جا می‌شوند؛ با «واگرد» برمی‌گردد.">
         {frameDlg && (() => {
           const f = frames.find((x) => x.nodeId === frameDlg);
           if (!f) return null;
@@ -840,7 +840,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         })()}
       </Dialog>
 
-      <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «برگرداندن» برمی‌گردد."
+      <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «واگرد» برمی‌گردد."
         footer={<><Button variant="ghost" onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
         {moveTo && <Select label="بخش" value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
       </Dialog>

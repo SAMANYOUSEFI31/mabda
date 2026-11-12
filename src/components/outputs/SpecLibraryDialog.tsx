@@ -72,7 +72,7 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
                   <span className="label-md text-text-default">{t.name} <Badge intent="neutral" icon={false}>{t.kind === 'node' ? 'بخش' : 'جریان کار'}</Badge></span>
                   <span className="flex gap-inline-xs">
                     <Button size="sm" variant="secondary" iconStart="Plus" loading={busy === t.id} onClick={async () => { setBusy(t.id); try { await onApplyTemplate(t.id, parent || undefined); } finally { setBusy(null); } }}>افزودن به این فضا</Button>
-                    <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف قالب ${t.name}`} onClick={async () => { const r = await dataApi.deleteTemplate(t.id); setTemplates((l) => l.filter((x) => x.id !== t.id)); const gone = r.template; toast.show({ intent: 'success', message: `قالب «${t.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'برگرداندن', onClick: () => { void dataApi.restoreTemplate(workspace.id, gone).then(() => dataApi.listTemplates()).then((x) => setTemplates(x.templates)); } } } : {}) }); }}>حذف</Button>
+                    <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف قالب ${t.name}`} onClick={async () => { const r = await dataApi.deleteTemplate(t.id); setTemplates((l) => l.filter((x) => x.id !== t.id)); const gone = r.template; toast.show({ intent: 'success', message: `قالب «${t.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'واگرد', onClick: () => { void dataApi.restoreTemplate(workspace.id, gone).then(() => dataApi.listTemplates()).then((x) => setTemplates(x.templates)); } } } : {}) }); }}>حذف</Button>
                   </span>
                 </div>
               ))}

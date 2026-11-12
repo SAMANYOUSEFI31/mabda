@@ -180,7 +180,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
       onClose={onClose}
       size="md"
       title={`حذف «${node.label}»`}
-      description={empty ? undefined : 'چیزی بی‌صدا گم نمی‌شود: هر دو حالت برگشت‌پذیرند و بعد از حذف «برگرداندن» می‌آید.'}
+      description={empty ? undefined : 'چیزی بی‌صدا گم نمی‌شود: هر دو حالت برگشت‌پذیرند و بعد از حذف «واگرد» می‌آید.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>

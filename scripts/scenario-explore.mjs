@@ -91,7 +91,7 @@ try {
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش)$/ }).first().click();
     const rec = page.getByRole('dialog');
     await rec.getByLabel('چه چیزی درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');
-    await rec.getByRole('button', { name: 'بیشتر' }).click();
+    await rec.getByRole('button', { name: 'بیشتر', exact: true }).click();
     const rel = rec.getByTestId('relations');
     await rel.waitFor();
     await rel.getByRole('group', { name: 'بر چه تکیه دارد؟' }).getByLabel('جستجوی دانش').fill('تخفیف');

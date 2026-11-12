@@ -31,7 +31,7 @@ export const ConnectDialog: React.FC<Props> = ({ open, from, to, options, busy, 
           options={options.map((o) => ({ value: o.choice, label: <span className="flex flex-col"><span>{o.label}</span>{o.blocked && <span className="body-sm text-text-subtle">{o.blocked}</span>}</span>, disabled: !!o.blocked }))} />
         {cur && !cur.blocked && (
           <Alert intent={cur.type === 'supersedes' ? 'warning' : 'info'}>
-            {cur.note ? `${cur.note} ` : ''}{cur.type === 'supersedes' ? 'این کار با «برگرداندن» برنمی‌گردد.' : 'با «برگرداندن» (Ctrl+Z) برمی‌گردد.'}
+            {cur.note ? `${cur.note} ` : ''}{cur.type === 'supersedes' ? 'این کار با «واگرد» برنمی‌گردد.' : 'با «واگرد» (Ctrl+Z) برمی‌گردد.'}
           </Alert>
         )}
         <TextField label="دلیل (اختیاری)" value={reason} onChange={(e) => setReason(e.target.value)} hint="در تاریخچهٔ تغییرها ثبت می‌شود." />

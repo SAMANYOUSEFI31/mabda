@@ -60,7 +60,7 @@ try {
     const api = (p) => call('GET', `/workspaces/${wid}${p}`);
 
     step(`[${width}] open «بسته‌های دانش» and start a pack for «پاسخ به مشتری»: the sections of «پشتیبانی» and «اشتراک ماهانه»`);
-    await page.getByRole('button', { name: 'بیشتر' }).first().click();
+    await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
     await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
     const dlg = page.getByRole('dialog');
@@ -103,7 +103,7 @@ try {
     step(`[${width}] «ببین و ویرایش»: the rule opens where its reach («محدودهٔ اثر») is decided, with a sentence of where it will come`);
     await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش خط قرمز/ }).click();
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بیشتر' }).click(); // the reach of a rule is a detail: under «بیشتر»
+    await detail.getByRole('button', { name: 'بیشتر', exact: true }).click(); // the reach of a rule is a detail: under «بیشتر»
     await detail.getByTestId('reach-sentence').waitFor();
     assert.match(await detail.getByTestId('reach-sentence').innerText(), /همهٔ بسته‌ها و درخواست‌های AI/);
     await shot('4-rule-reach');

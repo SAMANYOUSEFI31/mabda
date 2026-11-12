@@ -58,8 +58,8 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضا تازه');
-    await page.getByLabel('نام فضا یا نام برند').fill(`فکر ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضا' }).click();
+    await page.getByLabel('نام فضا', { exact: true }).fill(`فکر ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: فکر ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `فکر ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);
@@ -76,7 +76,7 @@ try {
       await page.waitForTimeout(500);
       await nav('فکر', 'فکر');
       await page.getByTestId('thinking-space').waitFor();
-      await page.getByTestId('thinking-space').locator('li', { hasText: text }).getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'ساخت بخش از این فکر' }).click();
+      await page.getByTestId('thinking-space').locator('li', { hasText: text }).getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name: 'ساخت بخش از این فکر' }).click();
       const dlg = page.getByRole('dialog');
       assert.ok((await dlg.getByLabel('نام بخش').inputValue()).length > 3, 'a name is suggested from the thought');
       await dlg.getByLabel('زیر کدام بخش؟').selectOption(parentValue);
@@ -111,7 +111,7 @@ try {
     assert.ok((await page.locator('[data-item-id^="note:"]').count()) >= 3, 'the three thoughts are in the «تازه‌ها» tray');
     assert.ok((await page.locator('[data-pending]').count()) >= 2, 'the suggestions are drawn as suggestions');
     // bring the truth card next to the thoughts: «⋯» → the dialog; then drag one thought beside it
-    await page.getByTestId('canvas-toolbar').getByRole('button', { name: 'بیشتر' }).evaluate((n) => n.click());
+    await page.getByTestId('canvas-toolbar').getByRole('button', { name: 'بیشتر', exact: true }).evaluate((n) => n.click());
     await page.getByRole('menuitem', { name: /کارت حقیقت را کنار فکرها بیاور/ }).click();
     await page.getByRole('dialog').getByLabel('کدام کارت؟').selectOption({ label: 'تخفیف نداریم' });
     await page.getByRole('dialog').getByRole('button', { name: 'بگذار روی بوم فکر' }).click();

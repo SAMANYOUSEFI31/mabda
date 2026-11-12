@@ -79,7 +79,7 @@ try {
     assert.ok(marker, 'the pack marker links the answer');
     assert.ok((await api(`/workspaces/${wid}/packs`)).packs.some((p) => p.id === marker), 'the request is recorded');
 
-    await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
     const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن متن آماده' });
     await imp.waitFor();
     await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با خط قرمز «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);

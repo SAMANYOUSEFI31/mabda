@@ -159,7 +159,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
                 <Button size="sm" variant="secondary" iconStart="Copy" loading={busy === `c${p.id}`} onClick={() => copy(p)}>کپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, kind: p.kind, template: p.template })}>ویرایش</Button>
                 <Button size="sm" variant="ghost" iconStart="FileText" loading={busy === `p${p.id}`} onClick={() => print(p)}>نسخهٔ چاپی</Button>
-                <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { try { const r = await dataApi.deleteSavedPack(workspaceId, p.id); await load(); const gone = r.pack; toast.show({ intent: 'success', message: `بستهٔ «${p.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'برگرداندن', onClick: () => { void dataApi.restoreSavedPack(workspaceId, gone).then(load); } } } : {}) }); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'حذف نشد؛ دوباره.' }); } }}>حذف</Button>
+                <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { try { const r = await dataApi.deleteSavedPack(workspaceId, p.id); await load(); const gone = r.pack; toast.show({ intent: 'success', message: `بستهٔ «${p.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'واگرد', onClick: () => { void dataApi.restoreSavedPack(workspaceId, gone).then(load); } } } : {}) }); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'حذف نشد؛ دوباره.' }); } }}>حذف</Button>
               </div>
             </li>
           ))}

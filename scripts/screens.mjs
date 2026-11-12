@@ -226,7 +226,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
 
   await goTab(TABS[0]); await shoot('home');
   // weekly review: three sections one after another, then the summary
-  await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بازبینی هفتگی' }).click(); await page.waitForTimeout(200); await shoot('weekly-1');
+  await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'بازبینی هفتگی' }).click(); await page.waitForTimeout(200); await shoot('weekly-1');
   for (const n of [2, 3, 4]) { await page.getByRole('dialog').getByRole('button', { name: /دیدم؛ بعدی|جمع‌بندی/ }).click(); await page.waitForTimeout(150); await shoot(`weekly-${n}`); }
   await closeDialog();
   await goTab(TABS[1]); await shoot('context-doc');
@@ -329,7 +329,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await shoot('dialog-request'); await closeDialog();
   // «بسته‌های دانش»: a pack being built, with the live preview (what comes, from where, what did not and why)
   await goTab(TABS[0]);
-  await page.getByRole('button', { name: 'بیشتر' }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
+  await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
   await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
   await page.getByRole('dialog').getByLabel('نام بسته').fill('پاسخ به مشتری');
   await page.getByRole('dialog').getByRole('checkbox', { name: /^(— )*پشتیبانی و پس از فروش$/ }).evaluate((n) => n.click());

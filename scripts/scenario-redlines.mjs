@@ -51,8 +51,8 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضا تازه');
-    await page.getByLabel('نام فضا یا نام برند').fill(`باشگاه ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضا' }).click();
+    await page.getByLabel('نام فضا', { exact: true }).fill(`باشگاه ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: باشگاه ${width}`).waitFor({ timeout: 8000 });
     const wid = (await api('/workspaces')).workspaces.find((w) => w.name === `باشگاه ${width}`).id;
 
@@ -62,7 +62,7 @@ try {
     await dlg.getByLabel('چه چیزی درست است؟').fill('هرگز وعدهٔ سود قطعی نده.');
     assert.equal(await dlg.getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true');
     assert.equal(await dlg.getByRole('button', { name: 'افزودن مثال' }).count(), 0, 'no example field in the first view');
-    await dlg.getByRole('button', { name: 'بیشتر' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر', exact: true }).click();
     await dlg.getByRole('button', { name: 'افزودن مثال' }).click();
     await dlg.getByRole('button', { name: 'افزودن مثال' }).click();
     const texts = dlg.getByLabel('متن کوتاه مثال');

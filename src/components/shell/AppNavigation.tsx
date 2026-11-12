@@ -166,7 +166,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { divider: true },
     { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory },
     { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo },
-    ...(p.onDeleteDemo ? [{ label: 'پاک کردن فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
+    ...(p.onDeleteDemo ? [{ label: 'حذف فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
   ];
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },

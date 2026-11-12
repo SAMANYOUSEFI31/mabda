@@ -82,7 +82,7 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
   };
   /**
-   * A small, throwaway removal: it happens at once and offers «برگرداندن» (the note comes back with its text, its section and its place).
+   * A small, throwaway removal: it happens at once and offers «واگرد» (the note comes back with its text, its section and its place).
    * Only when the note holds OPEN thoughts does a short dialog ask first: they stay by default («یادداشت حذف شد» on each), and the user
    * can send them away with the note — the one choice that cannot be undone by the toast.
    */
@@ -93,7 +93,7 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     const note = r.note;
     if (!note) return;
     const msg = r.removedThoughts ? `یادداشت و ${formatNumber(r.removedThoughts)} فکر باز آن حذف شد.` : r.keptThoughts ? `یادداشت حذف شد؛ ${formatNumber(r.keptThoughts)} فکر باز مانده است.` : 'یادداشت حذف شد.';
-    toast.show({ intent: 'success', message: msg, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreNote(wid, note, r.position)).then((x) => { if (x) patch((d) => ({ ...d, notes: [x.note, ...d.notes], thoughts: x.thoughts, canvas: r.position ? { ...d.canvas, free: [...d.canvas.free.filter((i) => i.itemRef !== `note:${note.id}`), { itemRef: `note:${note.id}`, ...r.position }] } : d.canvas })); }); } } });
+    toast.show({ intent: 'success', message: msg, duration: 10000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.restoreNote(wid, note, r.position)).then((x) => { if (x) patch((d) => ({ ...d, notes: [x.note, ...d.notes], thoughts: x.thoughts, canvas: r.position ? { ...d.canvas, free: [...d.canvas.free.filter((i) => i.itemRef !== `note:${note.id}`), { itemRef: `note:${note.id}`, ...r.position }] } : d.canvas })); }); } } });
   };
   const [noteDeleteAsk, setNoteDeleteAsk] = useState<{ id: string; open: number } | null>(null);
   const [noteDeleteWithThoughts, setNoteDeleteWithThoughts] = useState(false);

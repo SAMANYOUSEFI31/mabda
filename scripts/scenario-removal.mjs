@@ -55,8 +55,9 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضا تازه');
-    await page.getByLabel('نام فضا یا نام برند').fill(`حذف ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضا' }).click();
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click();
+    await page.getByLabel('نام فضا', { exact: true }).fill(`حذف ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: حذف ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `حذف ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);
@@ -74,9 +75,9 @@ try {
     await radio('ساختار');
     await page.getByRole('button', { name: 'شمارهٔ کارت اشتباهی' }).first().click().catch(async () => { await page.getByText('شمارهٔ کارت اشتباهی').first().click(); });
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بیشتر' }).click();
+    await detail.getByRole('button', { name: 'بیشتر', exact: true }).click();
     await page.getByRole('menuitem', { name: 'بایگانی' }).click();
-    await page.getByRole('button', { name: 'برگرداندن' }).first().waitFor();
+    await page.getByRole('button', { name: 'واگرد' }).first().waitFor();
     assert.equal((await state()).objects.find((o) => o.id === obj.id).status, 'Archived', 'archived first: nothing is erased by one click');
     await palette('بایگانی', 'رفتن به بایگانی');
     const arch = page.getByRole('dialog').last();
@@ -123,7 +124,7 @@ try {
     await page.getByText(/«کارگاه» حذف شد/).first().waitFor();
     assert.ok(!(await state()).nodes.some((n) => n.id === ws1.id), 'it is gone');
     assert.equal((await state()).nodes.find((n) => n.id === sub1.id).parentId, product.id);
-    await page.getByRole('button', { name: 'برگرداندن' }).first().click();
+    await page.getByRole('button', { name: 'واگرد' }).first().click();
     await page.getByText('برگشت؛ همه‌چیز همان‌طور که بود.').first().waitFor();
     const after = await state();
     assert.equal(after.nodes.find((n) => n.id === ws1.id)?.parentId, product.id, 'the section is back where it was');
@@ -132,12 +133,12 @@ try {
     await shot('4-node-undone');
 
     step(`[${width}] ج: the showcase is wiped with one confirm`);
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor({ timeout: 15000 });
-    await account('پاک کردن فضای نمونه');
+    await account('حذف فضای نمونه');
     const dc = page.getByRole('alertdialog');
-    await dc.getByRole('button', { name: 'پاک کن' }).click();
-    await page.getByText('فضای نمونه پاک شد.').first().waitFor();
+    await dc.getByRole('button', { name: 'حذف فضای نمونه' }).click();
+    await page.getByText('فضای نمونه حذف شد.').first().waitFor();
     assert.ok(!(await call('GET', '/workspaces')).workspaces.some((w) => w.isDemo), 'the showcase is gone');
     await shot('5-demo-gone');
 

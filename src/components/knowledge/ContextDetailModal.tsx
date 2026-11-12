@@ -439,7 +439,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
         <div>
-          <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>بیشتر</Button>
+          <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>جزئیات بیشتر</Button>
         </div>
         {moreOpen && (
           <div id="context-more" className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">

@@ -47,7 +47,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
         if (!r) throw new Error('node delete failed');
         patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, thoughts: r.thoughts, files: r.files, stale: r.stale }));
         void reload(wid);
-        toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
+        toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
       }}
       onThoughtSectioned={handleThoughtSectioned}
     /></Deferred>

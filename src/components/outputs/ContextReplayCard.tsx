@@ -25,7 +25,7 @@ interface ContextReplayCardProps {
   stale?: StaleAsset;
   /** the change log: with it, a piece of knowledge that moved on since this output was built shows WHAT changed */
   changes?: ContextChange[];
-  /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «برگرداندن») */
+  /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «واگرد») */
   onArchive?: (deliverable: GeneratedDeliverable) => void;
   onDelete?: (deliverable: GeneratedDeliverable) => void;
 }

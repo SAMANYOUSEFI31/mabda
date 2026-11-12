@@ -48,7 +48,7 @@ step('block → Context: opens a Proposed draft in the Context dialog');
 await page.getByRole('button', { name: 'افزودن به دانش' }).first().click();
 const draftDialog = page.getByRole('dialog', { name: 'افزودن' });
 await draftDialog.waitFor();
-await draftDialog.getByRole('button', { name: 'بیشتر' }).click();
+await draftDialog.getByRole('button', { name: 'بیشتر', exact: true }).click();
 assert.equal(await draftDialog.getByLabel('وضعیت').inputValue(), 'Proposed');
 await shot('4-add-to-context-draft');
 await page.keyboard.press('Escape');

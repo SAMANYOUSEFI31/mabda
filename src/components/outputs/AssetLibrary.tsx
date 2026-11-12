@@ -22,7 +22,7 @@ interface AssetLibraryProps {
   stale: StaleAsset[];
   changes?: ContextChange[];
   onGoToWorkstreams: () => void;
-  /** «بایگانی» and «حذف» of one output (the page offers «برگرداندن») */
+  /** «بایگانی» and «حذف» of one output (the page offers «واگرد») */
   onArchive?: (d: GeneratedDeliverable) => void;
   onDelete?: (d: GeneratedDeliverable) => void;
   /** opens the archive on its outputs */

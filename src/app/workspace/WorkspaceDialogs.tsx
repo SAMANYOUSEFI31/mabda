@@ -25,7 +25,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
   const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
   return (
     <>
-    <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="پاک کردن فضای نمونه؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="پاک کن" onConfirm={handleDeleteDemo} />
+    <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="فضای نمونه حذف شود؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="حذف فضای نمونه" onConfirm={handleDeleteDemo} />
     {/* Plan Selection Modal (Starter / Pro / Max - F6) */}
     <Deferred when={isPlanModalOpen}><PlanSelectionModal
       isOpen={isPlanModalOpen}

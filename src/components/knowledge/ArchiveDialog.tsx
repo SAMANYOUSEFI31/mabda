@@ -36,6 +36,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   const [busy, setBusy] = useState<string | null>(null);
   const [purge, setPurge] = useState<ContextObject | null>(null);
   const [deleteWs, setDeleteWs] = useState<Workspace | null>(null);
+  /** an archived output to erase for good: asked once, with the exact action on the button (patterns.md §۴) */
+  const [dropOut, setDropOut] = useState<GeneratedDeliverable | null>(null);
   const load = useCallback(async () => { try { setData(await dataApi.archive(workspaceId)); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); } }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? 'بخش حذف‌شده';
@@ -88,7 +90,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
               {data.deliverables.map((d: GeneratedDeliverable) => row(d.id, <span className="body-md text-text-default">{d.title}</span>, formatJalaliDate(d.archivedAt ?? d.createdAt),
                 <>
                   <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === d.id} onClick={() => run(d.id, () => dataApi.restoreDeliverable(workspaceId, d.id), `«${d.title}» برگشت.`)}>برگردان</Button>
-                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف «${d.title}»`} onClick={() => run(`x${d.id}`, () => dataApi.deleteDeliverable(workspaceId, d.id), `«${d.title}» حذف شد.`)}>حذف</Button>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف دائمی «${d.title}»`} onClick={() => setDropOut(d)}>حذف دائمی</Button>
                 </>))}
             </ul>)}
           {section === 'workspaces' && (archivedWs.length === 0
@@ -102,6 +104,11 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
             </ul>)}
         </div>
       </Dialog>
+      <Dialog
+        open={!!dropOut} onClose={() => setDropOut(null)} size="sm" alert title={dropOut ? `«${dropOut.title}» برای همیشه حذف شود؟` : ''}
+        description="این کار برگشت ندارد. اگر شاید دوباره لازمش داری، در بایگانی بماند."
+        footer={<><Button variant="ghost" onClick={() => setDropOut(null)}>بماند</Button><Button variant="danger" loading={!!dropOut && busy === `x${dropOut.id}`} onClick={async () => { const d = dropOut!; await run(`x${d.id}`, () => dataApi.deleteDeliverable(workspaceId, d.id), `«${d.title}» حذف شد.`); setDropOut(null); }}>حذف دائمی</Button></>}
+      />
       <PurgeDialog workspaceId={workspaceId} object={purge} onClose={() => setPurge(null)} onDone={(r) => { setPurge(null); toast.show({ intent: 'success', message: `برای همیشه حذف شد${r.scrubbed.thoughts ? `؛ ${formatNumber(r.scrubbed.thoughts)} فکر هم پاک شد` : ''}.` }); void load(); onChanged(); }} />
       <DangerDialog
         open={!!deleteWs} onClose={() => setDeleteWs(null)} title={`حذف دائمی «${deleteWs?.name ?? ''}»`}
