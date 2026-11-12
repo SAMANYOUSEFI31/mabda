@@ -49,7 +49,7 @@ export interface SearchCommand { id: string; title: string; keywords?: string[];
 /** the shortcuts of the palette; the UI binds each id to an action */
 export const COMMANDS: SearchCommand[] = [
   { id: 'compare', title: 'مقایسهٔ منبع در دو لحظه', keywords: ['چه عوض شد', 'تغییر', 'هفتهٔ پیش', 'قبل و بعد', 'اگر تأیید کنم'] },
-  { id: 'thought', title: 'فکر تازه', keywords: ['ایده', 'سؤال', 'فرض', 'تصمیم باز', 'یادداشت', 'فکر خام'] },
+  { id: 'thought', title: 'افزودن فکر', keywords: ['فکر تازه', 'ایده', 'سؤال', 'فرض', 'تصمیم باز', 'یادداشت', 'فکر خام', 'فوری', 'Ctrl+J'] },
   { id: 'go-thinking', title: 'رفتن به فکر', keywords: ['فضای فکر', 'فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
   { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },

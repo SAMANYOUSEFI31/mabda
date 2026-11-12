@@ -28,6 +28,7 @@ import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
+import { ADD_DESCRIPTION } from '../../core/addRequest';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
 import { MX } from '../../core/metricsText';
@@ -297,7 +298,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       steady={!object}
       dirty={content.trim() !== (object?.draft?.content ?? object?.content ?? '').trim() || title !== (object?.draft?.title ?? object?.title ?? '')}
       title={title_}
-      description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
+      description={isEditing ? undefined : object ? 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.' : ADD_DESCRIPTION}
       footer={
         isEditing && tab !== 'edit' ? (
           // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button

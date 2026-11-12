@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { SegmentedControl } from '../../ui';
-import { ADD_KINDS, requestAdd } from '../../core/addRequest';
+import { ADD_KINDS, carryAddText, requestAdd } from '../../core/addRequest';
 import type { AddKind } from '../../core/addRequest';
 
 export const AddKindSwitch: React.FC<{ value: AddKind; text?: string; nodeId?: string; onLeave: (to: AddKind) => void }> = ({ value, text, nodeId, onLeave }) => (
@@ -15,9 +15,10 @@ export const AddKindSwitch: React.FC<{ value: AddKind; text?: string; nodeId?: s
       const root = document.documentElement;
       root.dataset.addSwitch = '1';
       setTimeout(() => { delete root.dataset.addSwitch; }, 600);
+      const words = carryAddText(value, id as AddKind, text);
       onLeave(id as AddKind);
       // after this dialog has closed, so the next one is not refused as «a dialog is open»
-      setTimeout(() => requestAdd({ kind: id as AddKind, ...(text?.trim() ? { text } : {}), ...(nodeId ? { nodeId } : {}) }), 0);
+      setTimeout(() => requestAdd({ kind: id as AddKind, ...(words.trim() ? { text: words } : {}), ...(nodeId ? { nodeId } : {}) }), 0);
     }}
   />
 );

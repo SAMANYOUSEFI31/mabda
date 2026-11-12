@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QUICK_CAPTURE_EVENT, defaultSectionFor } from '../../core/quickCapture';
-import { ADD_EVENT, defaultAddKind, dialogOpen, requestAdd, setPendingAddText } from '../../core/addRequest';
+import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, requestAdd, setPendingAddText } from '../../core/addRequest';
 import type { AddRequest } from '../../core/addRequest';
 import { AddKindSwitch } from '../../components/shared/AddKindSwitch';
 import { Button, Dialog, Select } from '../../ui';
@@ -39,8 +39,6 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
     if (prefill?.trim()) setText((t) => (t.trim() ? `${t}\n${prefill}` : prefill));
     setOpen(true);
   };
-  // «ثبت سریع» در پالت فرمان هم پیدا شود (Ctrl+K)
-  useEffect(() => registerPaletteCommand({ id: 'quick-capture', title: 'افزودن فکر', keywords: ['فکر', 'یادداشت', 'فوری', 'ثبت سریع', 'Ctrl+J'], run: () => requestAdd({ kind: 'thought' }) }), []);
   // «افزودن» (patterns.md §۳): one event for every entry; `N` opens it with the kind that fits this page
   const [fileOpen, setFileOpen] = useState<{ nodeId: string } | null>(null);
   const tab = useRef(activeTab); tab.current = activeTab;
@@ -85,7 +83,7 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
           text={text} onTextChange={setText} node={node} onNodeChange={setNode}
           continuous={continuous} onContinuousChange={(on) => { setContinuous(on); try { localStorage.setItem(PREF, on ? 'on' : 'off'); } catch { /* a per-viewer convenience only */ } }}
           onSave={handleSaveThought} onSaveMany={handleSaveThoughts}
-          switcher={<AddKindSwitch value="thought" text={text} nodeId={node} onLeave={(to) => { setOpen(false); if (to !== 'file') setText(''); /* a file has no text: the words wait here for her return */ }} />}
+          switcher={<AddKindSwitch value="thought" text={text} nodeId={node} onLeave={() => { setOpen(false); setText(''); /* the words travel with the switch (carryAddText), also across «فایل» */ }} />}
         />
       </Deferred>
       {fileOpen && <FileAdd nodeId={fileOpen.nodeId} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} />}
@@ -102,8 +100,8 @@ function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: 
   const [err, setErr] = useState('');
   const add = async () => { if (!file) { setErr('هنوز فایلی انتخاب نکرده‌ای.'); return; } setBusy(true); try { await onUpload(file, node); onClose(); } finally { setBusy(false); } };
   return (
-    <Dialog open onClose={onClose} size="md" title="افزودن" dirty={!!file} steady
-      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} onClick={add}>افزودن</Button></>}>
+    <Dialog open onClose={onClose} size="md" title="افزودن" description={ADD_DESCRIPTION} dirty={!!file} steady
+      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن</Button></>}>
       <div className="flex flex-col gap-stack-md">
         <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />
         {/* the browser's own picker says «No file chosen» in English: a Persian row instead, the real input stays for the keyboard */}
