@@ -3,6 +3,7 @@ import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import type { KnowledgeState } from './Display.tsx';
+import { Nuqta, type NuqtaState } from './Nuqta.tsx';
 
 /**
  * Mabda domain badges. Colors come ONLY from the mabda.* semantic aliases in src/ui/tokens/semantic.json
@@ -38,8 +39,15 @@ export const STATUS_META: Record<ContextStatus, Entry> = {
   Superseded: { label: 'جایگزین‌شده', icon: 'History', cls: 'bg-mabda-status-superseded-bg text-mabda-status-superseded-fg border-mabda-status-superseded-border' },
   Archived: { label: 'بایگانی‌شده', icon: 'Archive', cls: 'bg-mabda-status-archived-bg text-mabda-status-archived-fg border-mabda-status-archived-border' },
 };
+/** a status is the knowledge-state dot and its word — one state, one sign, everywhere (plan 2.2); no coloured pill */
+const STATUS_NUQTA: Record<ContextStatus, NuqtaState> = { Confirmed: 'truth', Proposed: 'proposed', 'Needs Review': 'stale', Superseded: 'past', Archived: 'past' };
 export function StatusBadge({ value, className, iconOnly }: { value: ContextStatus; className?: string; iconOnly?: boolean }) {
-  return <MabdaBadge entry={STATUS_META[value]} className={className} iconOnly={iconOnly} />;
+  return (
+    <span className={cx('inline-flex items-center gap-inline-xs whitespace-nowrap body-sm text-text-default', className)}>
+      <Nuqta state={STATUS_NUQTA[value]} size="sm" label={iconOnly ? STATUS_META[value].label : false} />
+      {!iconOnly && STATUS_META[value].label}
+    </span>
+  );
 }
 
 export const GAP_META: Record<GapItem['importance'], Entry> = {

@@ -24,12 +24,15 @@ export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 't
  */
 const fold = (s: string): string => normalizeText(s).replace(/\s+/g, ' ').trim();
 
+export type HitState = 'truth' | 'proposed' | 'stale' | 'thought' | 'past';
 export interface SearchHit {
   kind: SearchKind;
   id: string;
   title: string;
   /** where it lives (node path) or a short type · status line */
   subtitle?: string;
+  /** knowledge state of an object or thought: the result row shows its dot (plan 2.2) */
+  state?: HitState;
   /** a piece of the text around the match, when the match is not in the title */
   snippet?: string;
   score: number;
@@ -72,7 +75,7 @@ export const allCommands = (): SearchCommand[] => [...COMMANDS, ...extraCommands
 /** the action of a command registered from outside, if this id is one */
 export const registeredCommand = (id: string): SearchCommand | undefined => extraCommands.get(id);
 
-interface Doc { kind: Exclude<SearchKind, 'command'>; id: string; title: string; text: string; subtitle?: string; content: string; ftitle: string; tf: Map<string, number>; len: number }
+interface Doc { kind: Exclude<SearchKind, 'command'>; id: string; title: string; text: string; subtitle?: string; state?: HitState; content: string; ftitle: string; tf: Map<string, number>; len: number }
 /** `postings`: word → [doc, count, doc, count …] — a keystroke only walks the lists of the words it matches, never every text */
 export interface SearchIndex { docs: Doc[]; vocab: string[]; df: Map<string, number>; avg: number; postings: Map<string, number[]> }
 
@@ -102,11 +105,11 @@ export function buildSearchIndex(input: {
   for (const o of input.objects) {
     if (o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
     const sub = [TYPE_FA[o.type], STATUS_FA[o.status], path(o.nodeId)].filter(Boolean).join(' · ');
-    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub });
+    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub, state: o.status === 'Confirmed' ? 'truth' : o.status === 'Proposed' ? 'proposed' : 'stale' });
   }
   for (const t of input.thoughts ?? []) {
     const title = clip(firstLine(t.text), 90);
-    raw.push({ kind: 'thought', id: t.id, title, content: t.text, text: `${title} ${t.text}`, subtitle: [t.status === 'resolved' ? 'حل‌شده' : '', path(t.nodeId)].filter(Boolean).join(' · ') });
+    raw.push({ kind: 'thought', id: t.id, title, content: t.text, text: `${title} ${t.text}`, subtitle: [t.status === 'resolved' ? 'حل‌شده' : '', path(t.nodeId)].filter(Boolean).join(' · '), state: t.status === 'resolved' ? 'past' : 'thought' });
   }
   for (const d of input.deliverables ?? []) raw.push({ kind: 'asset', id: d.id, title: d.title, content: d.content, text: `${d.title} ${d.title} ${d.title} ${d.content}` });
   for (const f of input.files ?? []) raw.push({ kind: 'file', id: f.id, title: f.name, content: f.summary ?? '', text: `${f.name} ${f.name} ${f.name} ${f.summary ?? ''}`, ...(f.nodeId ? { subtitle: path(f.nodeId) } : {}) });
@@ -234,7 +237,7 @@ export function searchIndex(index: SearchIndex, query: string, opts: { limitPerG
     const inTitle = typed.some((t) => d.ftitle.includes(t));
     const wantsSnippet = !inTitle || d.kind === 'note' || d.kind === 'thought';
     const snippet = wantsSnippet && g.length < EAGER_SNIPPETS ? snippetOf(d.content, typed) : undefined;
-    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(snippet ? { snippet } : {}), ...(wantsSnippet ? { wantsSnippet } : {}), score: sc, covered: cv });
+    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(d.state ? { state: d.state } : {}), ...(snippet ? { snippet } : {}), ...(wantsSnippet ? { wantsSnippet } : {}), score: sc, covered: cv });
   }
   return out;
 }

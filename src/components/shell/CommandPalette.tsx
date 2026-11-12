@@ -6,7 +6,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { MORE_STEP, SEARCH_GROUP_LABEL, groupOrder, registeredCommand, searchIndex, shownCount, snippetFor } from '../../core/globalSearch';
 import type { SearchHit, SearchIndex, SearchKind } from '../../core/globalSearch';
-import { Dialog, Icon, formatNumber } from '../../ui';
+import { Dialog, Icon, Nuqta, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
 
 const ICON: Record<SearchHit['kind'], IconName> = { command: 'CornerDownLeft', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
@@ -102,7 +102,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
                       onMouseMove={() => setActive(i)} onClick={() => pick(rows[i])}
                       className={`flex min-h-touch cursor-pointer items-start gap-inline-sm rounded-control-sm px-inset-sm py-inset-xs ${i === active ? 'bg-bg-neutral-subtle' : ''}`}
                     >
-                      <span className="mt-stack-xs text-text-subtle"><Icon name={ICON[h.kind]} size="md" /></span>
+                      <span className="mt-stack-xs text-text-subtle">{h.state ? <Nuqta state={h.state} /> : <Icon name={ICON[h.kind]} size="md" />}</span>
                       <span className="flex min-w-space-0 flex-1 flex-col">
                         <span className="body-md text-text-default">{h.title}</span>
                         {snippet && <span className="body-sm text-text-subtle">{snippet}</span>}
