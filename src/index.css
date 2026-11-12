@@ -42,7 +42,7 @@
    the system's own bars. */
 :root { --scroll-thumb: transparent; }
 :root[data-scrolling], :root[data-scroll-near] { --scroll-thumb: var(--border-input); }
-@media (min-width: 768px) { html { scrollbar-gutter: stable; } } /* phones draw overlay bars that take no room */
+@media (min-width: 768px), (pointer: fine) { html { scrollbar-gutter: stable; } } /* phones draw overlay bars that take no room; a narrow desk window (or 200% zoom) still has a classic bar */
 * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
 :where(.mb-dialog__body, .mb-sidebar__nav, .mb-table-wrap, pre, [data-scroll-x], [role=listbox], [role=menu]):hover { --scroll-thumb: var(--border-input); }
 .mb-dialog__body, .mb-sidebar__nav { scrollbar-gutter: stable; }

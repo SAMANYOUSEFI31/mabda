@@ -252,7 +252,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <>
       {/* Desktop sidebar (inline-start edge): open, or a narrow icons-only rail */}
       {docked ? (
-        <aside className={`sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col${moved.current ? ' mb-side-open' : ''}`} style={width ? { inlineSize: `${width}px` } : undefined}>
+        <aside aria-label="نوار کناری" className={`sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col${moved.current ? ' mb-side-open' : ''}`} style={width ? { inlineSize: `${width}px` } : undefined}>
           {sidebar}
           <div role="separator" tabIndex={0} aria-orientation="vertical" aria-label="پهنای نوار کناری" aria-valuemin={bounds().min} aria-valuemax={bounds().max} aria-valuenow={width ?? bounds().def}
             className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />

@@ -47,7 +47,7 @@ function Section<T>({ id, title, items, render }: { id: string; title: string; i
   return (
     <section aria-labelledby={id} className="flex flex-col">
       <h2 id={id} className="heading-sm text-text-default">{title}</h2>
-      <ul className="flex flex-col divide-y divide-border-subtle">{shown.map(render)}</ul>
+      <ul className="mb-stagger flex flex-col divide-y divide-border-subtle">{shown.map(render)}</ul>
       {items.length > FIRST && (
         <div className="pt-stack-xs">
           <Button size="sm" variant="ghost" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>

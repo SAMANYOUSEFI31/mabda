@@ -111,16 +111,18 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
             className="body-md min-h-touch-comfortable w-full min-w-space-0 bg-transparent text-text-default outline-none"
           />
         </div>
-        <div ref={listRef} id={`${uid}-l`} role="listbox" aria-label="نتیجه‌ها" className="palette-list flex flex-col gap-stack-md">
-          {flat.length === 0 && (
+        {flat.length === 0 && (
             <div className="flex flex-col items-start gap-stack-sm" role="status">
               <p className="body-md text-text-subtle">{query.trim() ? `چیزی با «${query.trim()}» پیدا نشد.` : 'شروع به نوشتن کن.'}</p>
               {query.trim() && onAddThought && <Button size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => { onAddThought(query.trim()); onClose(); }}>افزودن به‌عنوان فکر</Button>}
             </div>
           )}
+        {/* the number of results is announced as she types (accessibility.md «اعلام‌های زنده») */}
+        <span className="sr-only" role="status">{query.trim() && flat.length ? `${formatNumber(flat.length)} نتیجه` : ''}</span>
+        <div ref={listRef} id={`${uid}-l`} role="listbox" aria-label="نتیجه‌ها" className="palette-list flex flex-col gap-stack-md">
           {recent.length > 0 && (
             <div role="group" aria-label="آخرین‌ها" className="flex flex-col gap-stack-xs">
-              <h3 className="label-sm text-text-subtle">آخرین‌ها</h3>
+              <div role="presentation" aria-hidden="true" className="label-sm text-text-subtle">آخرین‌ها</div>
               {recent.map(option)}
             </div>
           )}
@@ -129,7 +131,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
             const remaining = groups[k].length - shown;
             return (
               <div key={k} role="group" aria-label={SEARCH_GROUP_LABEL[k]} className="flex flex-col gap-stack-xs">
-                <h3 className="label-sm text-text-subtle">{SEARCH_GROUP_LABEL[k]} ({formatNumber(groups[k].length)})</h3>
+                <div role="presentation" aria-hidden="true" className="label-sm text-text-subtle">{SEARCH_GROUP_LABEL[k]} ({formatNumber(groups[k].length)})</div>
                 {groups[k].slice(0, shown).map(option)}
                 {remaining > 0 && (() => {
                   const i = n++;

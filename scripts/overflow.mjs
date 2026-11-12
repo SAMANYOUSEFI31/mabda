@@ -44,6 +44,13 @@ const measure = (userText = '') => {
   // at most two layers over the page (overlays.md): a dialog and one thing on it (a menu, a calendar, a confirmation)
   const layers = [...document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]), [role=menu]')].filter((l) => !l.closest('[inert]') && l.getBoundingClientRect().height > 0);
   if (layers.length > 2) out.push(`${layers.length} layers open at once: ${layers.map(name).join(' › ')}`);
+  // what a dialog says it will do is seen before she decides (layout.md «چرخش و قد کوتاه»): a description is never hidden or cut off
+  for (const d of document.querySelectorAll('.mb-dialog-layer:not([data-state=closed]) .mb-dialog__desc')) {
+    if (d.closest('[inert]')) continue;
+    const r = d.getBoundingClientRect(), frame = d.closest('.mb-dialog')?.getBoundingClientRect();
+    const seen = getComputedStyle(d).display !== 'none' && getComputedStyle(d).visibility !== 'hidden' && r.height > 0 && (!frame || (r.top >= frame.top - 1 && r.bottom <= frame.bottom + 1)) && r.top >= 0 && r.bottom <= innerHeight;
+    if (!seen) out.push(`dialog description not visible: «${(d.textContent || '').trim().slice(0, 30)}»`);
+  }
   // Latin digits in Persian text: every number a person reads goes through formatNumber (a key or a code is marked dir=ltr)
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let t = w.nextNode(); t; t = w.nextNode()) {
@@ -74,6 +81,8 @@ for (const { width: w0, height, touch } of SIZES) {
   // a phone is a phone: touch, and the system's overlay scrollbars that take no room (a desktop window keeps its classic bar)
   const ctx = await browser.newContext({ viewport: { width, height }, locale: 'fa-IR', ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage();
+  // TEXT=200: the browser's own text size at 200% (WCAG 1.4.4); the page zoom at 200% is the 640×450 size (a 1280×900 window)
+  if (process.env.TEXT) await page.addInitScript((p) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${p}%`; }); }, Number(process.env.TEXT));
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate((wide) => { localStorage.clear(); if (wide) localStorage.setItem('mabda.sidebar', 'docked'); }, width >= 1024);
   await page.reload({ waitUntil: 'networkidle' });
@@ -166,11 +175,16 @@ for (const { width: w0, height, touch } of SIZES) {
       const items = await page.locator('[role=menu] [role=menuitem]').allTextContents();
       await page.keyboard.press('Escape');
       for (const it of items.map((t) => t.trim()).filter(Boolean)) {
-        if (/حذف|بایگانی|خروج|بازسازی|پاک/.test(it)) continue; // nothing destructive in a walk
+        // a destructive item is opened only to read its confirmation (what it will do must be visible), never confirmed; every write
+        // to the server is refused meanwhile, so even an item that acts at once changes nothing
+        const harm = /حذف|بایگانی|خروج|بازسازی|پاک/.test(it);
+        if (harm) await page.route((u) => u.pathname.startsWith('/api/'), (r) => (r.request().method() === 'GET' ? r.continue() : r.abort()));
         await menus.nth(m).click().catch(() => {}); await settle();
         await page.getByRole('menuitem', { name: it, exact: true }).first().click().catch(() => {}); await settle();
-        if (await page.locator('[role=dialog]').count()) await walkDialog(`${id} › ${it}`); else await check(`${id} › ${it}`);
+        if (harm) { if (await page.locator('[role=dialog], [role=alertdialog]').count()) await check(`${id} › ${it} (confirm)`); }
+        else if (await page.locator('[role=dialog]').count()) await walkDialog(`${id} › ${it}`); else await check(`${id} › ${it}`);
         await escAll();
+        if (harm) await page.unrouteAll({ behavior: 'ignoreErrors' });
       }
     }
   }

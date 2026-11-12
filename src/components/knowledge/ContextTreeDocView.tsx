@@ -175,7 +175,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <>
             {/* وضعیت فعلی: what is established here */}
             {(established.length > 0 || nodeObjects.length > 0) && (
-              <section className="flex flex-col gap-stack-sm" aria-label="الان درست است">
+              <div role="group" className="flex flex-col gap-stack-sm" aria-label="الان درست است">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h4 className="label-md text-text-default">الان درست است</h4>
                   <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button>
@@ -189,7 +189,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}
-              </section>
+              </div>
             )}
 
             {/* the truth stays clean: what is still a thought or a suggestion is NOT listed here — one calm counter opens it in the thinking space,
