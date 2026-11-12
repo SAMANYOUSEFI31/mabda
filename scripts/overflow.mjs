@@ -41,6 +41,16 @@ const measure = (userText = '') => {
     const cs = getComputedStyle(el);
     if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && el.getBoundingClientRect().width > 0) out.push(`label cut short: «${(el.textContent || '').trim().slice(0, 30)}» in ${name(el)}`);
   }
+  // …nor spills past its own control (a one-word label wider than its column at 200% text, WCAG 1.4.4): every label of a phone bar
+  // item, a tab, a segment, a button or a sidebar place stays inside the control that owns it
+  for (const lab of document.querySelectorAll('.mb-bottomnav__label, .mb-tab__label, .mb-btn__label, nav button span')) {
+    if (lab.closest('[inert], [aria-hidden=true], .mb-sr')) continue;
+    const own = lab.closest('.mb-bottomnav__item, .mb-tab, .mb-btn, button'); if (!own) continue;
+    const r = lab.getBoundingClientRect(), o = own.getBoundingClientRect(); if (!r.width || !o.width) continue;
+    const range = document.createRange(); range.selectNodeContents(lab); const t = range.getBoundingClientRect();
+    const L = Math.min(r.left, t.width ? t.left : r.left), R = Math.max(r.right, t.width ? t.right : r.right);
+    if (L < o.left - 1 || R > o.right + 1) out.push(`label spills out of its control: «${(lab.textContent || '').trim().slice(0, 30)}» ${Math.round(R - L)}px in ${Math.round(o.width)}px (${name(own)})`);
+  }
   // at most two layers over the page (overlays.md): a dialog and one thing on it (a menu, a calendar, a confirmation)
   const layers = [...document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]), [role=menu]')].filter((l) => !l.closest('[inert]') && l.getBoundingClientRect().height > 0);
   if (layers.length > 2) out.push(`${layers.length} layers open at once: ${layers.map(name).join(' › ')}`);

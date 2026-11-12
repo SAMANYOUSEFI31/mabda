@@ -270,7 +270,7 @@
 .mb-bottomnav__item.is-active{color:var(--text-default)}
 .mb-bottomnav__item.is-active>.mb-bottomnav__label{font-weight:600}
 .mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon svg{stroke-width:1.75}.mb-bottomnav__item.is-active .mb-bottomnav__icon svg{stroke-width:2.25;color:var(--icon-default)}
-.mb-bottomnav__label::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}
+.mb-bottomnav__label::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600;overflow-wrap:anywhere}
 .mb-bottomnav__item.is-active::before{background:var(--bg-selected)}
 .mb-bottomnav__label{display:flex;flex-direction:column;align-items:center;font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;white-space:normal;overflow-wrap:break-word;text-align:center}
 .mb-bottomnav__icon{position:relative;display:grid;place-items:center;inline-size:var(--icon-xl);block-size:var(--icon-xl)}
@@ -457,6 +457,8 @@
   .mb-switch__input:checked+.mb-switch__track .mb-switch__thumb{background:HighlightText}
   .mb-progress__track{border:var(--border-width-thin) solid ButtonText}
   .mb-progress__bar{forced-color-adjust:none;background:Highlight}
+  /* «where am I» without colour: the current place in the sidebar, the rail and the phone bar */
+  :is(.mb-bottomnav__item,button,a)[aria-current]:not([aria-current=false]),
   .mb-tab:is([aria-selected=true],[aria-checked=true]),.mb-tag--toggle.is-selected,.mb-li.is-selected .mb-li__row,.mb-card.is-selected,.mb-iconbtn.is-selected{outline:var(--border-width-thick) solid Highlight;outline-offset:calc(var(--border-width-thick) * -1)}
 }
 }
