@@ -123,6 +123,8 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     const el = layer.current;
     // the next kind of «افزودن» is in place: it arrives without motion, and the held copy of the last one goes (see ghostExit)
     const root = document.documentElement;
+    // overlays.md: at most two layers. A third is a design error in the caller, said out loud while developing (the walk fails on it)
+    if (import.meta.env?.DEV && document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]):not([data-hold])').length > 2) console.warn('[Mabda] a third layer opened over the page (overlays.md: at most two)');
     if (steady && el && root.hasAttribute('data-add-switch')) {
       el.setAttribute('data-noenter', '');
       document.querySelectorAll('.mb-dialog-layer[data-hold]').forEach((h) => h.remove());
@@ -305,7 +307,7 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
 /* ---------------- Menu ---------------- */
 /** choice: a row of mutually exclusive options shown together (e.g. appearance); choosing one does not close the menu */
 export interface MenuChoice { value: string; label: string }
-export interface MenuItem { label?: ReactNode; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean; choice?: { options: MenuChoice[]; value: string; onChoose: (value: string) => void } }
+export interface MenuItem { label?: ReactNode; /** plain text the menu's search matches (when `label` is not a string) */ text?: string; /** never hidden by the search */ keep?: boolean; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean; choice?: { options: MenuChoice[]; value: string; onChoose: (value: string) => void } }
 
 /** a labelled group of radio items; used inside Menu and in drawers so both read the same */
 export function MenuChoiceRow({ item, labelId }: { item: MenuItem; labelId: string }) {
@@ -326,14 +328,25 @@ export function MenuChoiceRow({ item, labelId }: { item: MenuItem; labelId: stri
 export interface MenuProps {
   trigger: ReactElement<Record<string, unknown>>;
   items: MenuItem[];
+  /** a search field above the rows once there are more than `over` of them (navigation.md «انتخابگر فضا»: more than 7 spaces);
+   *  rows with `keep` (e.g. «فضای تازه…») always stay */
+  filter?: { label: string; over?: number };
   label?: string;
   align?: 'start' | 'end';
   side?: 'bottom' | 'top';
   className?: string;
 }
 
-export function Menu({ trigger, items, label = 'منو', align = 'start', side = 'bottom', className }: MenuProps) {
+export function Menu({ trigger, items: allItems, label = 'منو', align = 'start', side = 'bottom', className, filter }: MenuProps) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const searchable = !!filter && allItems.filter((it) => it.onSelect && !it.keep).length > (filter.over ?? 7);
+  const norm = (t: string) => t.replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/\u200c/g, ' ').toLocaleLowerCase('fa').trim();
+  const q = norm(query);
+  const items = searchable && q
+    ? allItems.filter((it) => it.keep || (!it.divider && !it.choice && norm(it.text ?? (typeof it.label === 'string' ? it.label : '')).includes(q)))
+    : allItems;
+  const search = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLSpanElement>(null);
   const btn = useRef<HTMLElement | null>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -382,11 +395,20 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
     window.addEventListener('scroll', on, true);
     return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };
   }, [open, place]);
-  useEffect(() => { if (open && pos) enabled()[0]?.focus(); }, [open, pos !== null]);
+  useEffect(() => { if (open && pos) (searchable ? search.current : enabled()[0])?.focus(); }, [open, pos !== null]);
+  useEffect(() => { if (!open) setQuery(''); }, [open]);
   const onKey = (e: React.KeyboardEvent) => {
     const list = enabled();
+    // in the search field: typing filters, ↓ goes to the first row, Enter takes the only (or first) match
+    if (e.target === search.current) {
+      if (e.key === 'ArrowDown' && list.length) { e.preventDefault(); list[0].focus(); }
+      if (e.key === 'Enter' && list.length) { e.preventDefault(); list[0].click(); }
+      if (e.key === 'Tab') close(false);
+      return;
+    }
     if (!list.length) return;
     const i = list.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'ArrowUp' && i === 0 && search.current) { e.preventDefault(); search.current.focus(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
     if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
     if (e.key === 'Home') { e.preventDefault(); list[0].focus(); }
@@ -410,6 +432,14 @@ export function Menu({ trigger, items, label = 'منو', align = 'start', side =
         <div id={`${id}-m`} role="menu" aria-label={label} aria-labelledby={`${id}-b`} ref={menu} onKeyDown={onKey} data-state={presence.state}
           style={pos ?? { position: 'fixed', insetBlockStart: 0, insetInlineStart: 0, visibility: 'hidden' }}
           className={cx('mb-popover__panel', 'mb-menu', 'is-portal')}>
+          {searchable && (
+            // the field is not a row: role «none» keeps the menu's own rows the only thing a screen reader lists in it
+            <div role="none" className="mb-menu__search">
+              <input ref={search} type="text" role="searchbox" dir="auto" aria-label={filter!.label} placeholder={filter!.label} value={query}
+                onChange={(e) => setQuery(e.target.value)} className="mb-field__input body-md" />
+            </div>
+          )}
+          {searchable && q && items.every((it) => it.keep || it.divider) && <p role="none" className="mb-menu__empty body-sm">چیزی پیدا نشد.</p>}
           {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}
               className={cx('mb-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}

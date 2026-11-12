@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
 import { PLANS } from '../../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
@@ -77,7 +77,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     const ro = new ResizeObserver(on); ro.observe(document.body);
     return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); ro.disconnect(); };
   }, []);
-  const setDock = (n: boolean) => { setPref(n ? 'docked' : 'hidden'); setOverlay(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
+  // the width moves only when she opens or narrows it, never on load (motion.md «نوار کناری»)
+  const moved = useRef(false);
+  const setDock = (n: boolean) => { moved.current = true; setPref(n ? 'docked' : 'hidden'); setOverlay(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
   const toggleDock = () => { if (!roomy) setOverlay((v) => !v); else setDock(!docked); };
   const go = (tab: Parameters<typeof onTabChange>[0]) => { setOverlay(false); onTabChange(tab); };
   // the drawer is modal: focus goes in, Tab stays in, Esc closes, and focus returns to what opened it (overlays.md «رفتار»)
@@ -153,11 +155,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
     ...allWorkspaces.map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
-    { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace },
-    { divider: true },
-    { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory },
-    { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo },
-    ...(p.onDeleteDemo ? [{ label: 'حذف فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo }] : []),
+    { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace, keep: true },
+    { divider: true, keep: true },
+    { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory, keep: true },
+    { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo, keep: true },
+    ...(p.onDeleteDemo ? [{ label: 'حذف فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo, keep: true }] : []),
   ];
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
@@ -181,6 +183,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         </button>
       )}
       items={workspaceItems}
+      filter={{ label: 'جست‌وجوی فضا' }}
     />
   );
 
@@ -249,14 +252,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <>
       {/* Desktop sidebar (inline-start edge): open, or a narrow icons-only rail */}
       {docked ? (
-        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col" style={width ? { inlineSize: `${width}px` } : undefined}>
+        <aside className={`sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col${moved.current ? ' mb-side-open' : ''}`} style={width ? { inlineSize: `${width}px` } : undefined}>
           {sidebar}
           <div role="separator" tabIndex={0} aria-orientation="vertical" aria-label="پهنای نوار کناری" aria-valuemin={bounds().min} aria-valuemax={bounds().max} aria-valuenow={width ?? bounds().def}
             className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />
         </aside>
       ) : (
-        <aside data-testid="sidebar-rail" className="mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex" aria-label="نوار کناری باریک">
-          <Menu label="فضاها" trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
+        <aside data-testid="sidebar-rail" className={`mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex${moved.current ? ' mb-side-close' : ''}`} style={{ '--side-from': width ? `${width}px` : 'var(--sidebar-width)' } as React.CSSProperties} aria-label="نوار کناری باریک">
+          <Menu label="فضاها" filter={{ label: 'جست‌وجوی فضا' }} trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
           {toggleButton}
           <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />
           <nav className="mb-rail__nav flex min-h-space-0 w-full flex-1 flex-col overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">

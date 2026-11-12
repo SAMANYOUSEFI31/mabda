@@ -41,6 +41,9 @@ const measure = (userText = '') => {
     const cs = getComputedStyle(el);
     if (cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1 && el.getBoundingClientRect().width > 0) out.push(`label cut short: «${(el.textContent || '').trim().slice(0, 30)}» in ${name(el)}`);
   }
+  // at most two layers over the page (overlays.md): a dialog and one thing on it (a menu, a calendar, a confirmation)
+  const layers = [...document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]), [role=menu]')].filter((l) => !l.closest('[inert]') && l.getBoundingClientRect().height > 0);
+  if (layers.length > 2) out.push(`${layers.length} layers open at once: ${layers.map(name).join(' › ')}`);
   // Latin digits in Persian text: every number a person reads goes through formatNumber (a key or a code is marked dir=ltr)
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let t = w.nextNode(); t; t = w.nextNode()) {

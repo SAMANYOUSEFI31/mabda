@@ -285,6 +285,9 @@
 .mb-popover__panel.is-end{inset-inline-start:auto;inset-inline-end:0}
 .mb-popover__panel.is-top{inset-block-start:auto;inset-block-end:calc(100% + var(--space-2))}
 .mb-menu{display:flex;flex-direction:column;padding:var(--inset-xs);min-inline-size:var(--overlay-width-xs)}
+.mb-menu__search{position:sticky;inset-block-start:calc(var(--inset-xs) * -1);padding:var(--inset-xs);margin:calc(var(--inset-xs) * -1) calc(var(--inset-xs) * -1) var(--inset-xs);background:inherit;z-index:var(--layer-raised)}.mb-menu__search .mb-field__input{inline-size:100%}
+.mb-kbd{display:inline-flex;align-items:center;justify-content:center;min-inline-size:var(--space-6);padding:0 var(--space-1);border:var(--border-width-thin) solid var(--border-default);border-block-end-width:var(--border-width-thick, 2px);border-radius:var(--radius-sm);background:var(--surface-raised);color:var(--text-default);font:inherit;font-size:var(--text-caption);line-height:var(--text-caption--line-height)}
+.mb-menu__empty{margin:0;padding:var(--inset-sm) var(--inset-md);color:var(--text-subtle)}
 .mb-menu__item{display:flex;align-items:center;gap:var(--inline-sm);min-block-size:var(--touch-target-min);padding-inline:var(--inset-md);border:0;border-radius:var(--menu-item-radius);background:transparent;color:var(--text-default);text-align:start;cursor:pointer}
 .mb-menu__item[data-force~=hover]{background:var(--interaction-hover)}
 .mb-menu__item:active:not(:disabled){background:var(--interaction-pressed)}
@@ -501,6 +504,16 @@
 /* a short window (a phone or a tablet on its side): all seven rail controls fit without the destinations scrolling under the search
    button (layout.md «چرخش و قد کوتاه»): tighter gaps and padding, never smaller targets */
 @media (max-height:559px){.mb-rail{gap:var(--space-1);padding-block:var(--space-2)}.mb-rail__nav{gap:var(--space-1)}}
+/* opening and narrowing (motion.md «نوار کناری»): the width moves first and the labels come after it, so no label is ever seen cut;
+   narrowing starts from the open width. Only on her toggle, never on load; with «کاهش حرکت» the width does not move, labels only fade */
+.mb-side-open{animation:mb-side-grow var(--duration-slow) var(--ease-standard);overflow:clip}
+.mb-side-open>*{animation:mb-fade var(--duration-fast) var(--ease-standard) var(--duration-fast) backwards}
+.mb-side-close{animation:mb-side-shrink var(--duration-slow) var(--ease-standard);overflow:clip}
+.mb-side-close>*{animation:mb-fade var(--duration-fast) var(--ease-standard) var(--duration-instant) backwards}
+@keyframes mb-side-grow{from{inline-size:var(--sidebar-rail)}}
+@keyframes mb-side-shrink{from{inline-size:var(--side-from)}}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-side-open,.mb-side-close){animation:none}}
+:root[data-motion=reduced] :is(.mb-side-open,.mb-side-close){animation:none}
 .mb-sidebar__nav{overflow-y:auto;overflow-x:clip;margin-inline:calc(var(--space-1) * -1);padding-inline:var(--space-1)}
 .mb-sidebar-handle{position:absolute;inset-block:0;inset-inline-end:calc((var(--space-2) + var(--border-width-thin)) / -2);inline-size:calc(var(--space-2) + var(--border-width-thin));cursor:col-resize;touch-action:none;z-index:var(--layer-raised)}
 .mb-sidebar-handle::after{content:"";position:absolute;inset-block:0;inset-inline:0;margin-inline:auto;inline-size:var(--border-width-thick);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
