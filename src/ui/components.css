@@ -233,7 +233,10 @@
 
 /* ---------- Tabs / Segmented: a sunken track, the chosen one is a raised key ---------- */
 .mb-tabs-wrap{min-inline-size:0;max-inline-size:100%}
-.mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;overflow-x:auto;scrollbar-width:none}
+.mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;min-inline-size:0}
+/* a tab bar never scrolls (either way): overflow-x would turn overflow-y into «auto» and each tab's 44px hit area (::after) would scroll it
+   up and down. Tabs shrink instead and a long label ends with «…» (its full name is the title) */
+.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{overflow:hidden;text-overflow:ellipsis;min-inline-size:0}
 .mb-tabs:not(.mb-tabs--full){inline-size:max-content}
 .mb-tabs--full{display:flex;inline-size:100%}.mb-tabs--full .mb-tab{flex:1}
 .mb-tab{display:inline-flex;align-items:center;justify-content:center;gap:var(--inline-xs);min-block-size:var(--control-sm);padding-inline:var(--inset-md);border:0;border-radius:var(--tabs-tab-radius);background:transparent;color:var(--text-subtle);cursor:pointer;white-space:nowrap;
@@ -396,7 +399,7 @@
 .mb-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-md)}
 .mb-dialog__head h2{margin:0;min-inline-size:0}
 .mb-dialog__desc{margin:var(--stack-xs) 0 0;color:var(--text-subtle)}
-.mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
+.mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overflow-wrap:anywhere;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
 .mb-dialog__foot{flex:none;display:flex;flex-direction:column-reverse;gap:var(--stack-sm);padding:var(--space-3) var(--dialog-padding);border-block-start:var(--border-width-thin) solid var(--border-default)}
 .mb-dialog--sm .mb-dialog__foot,.mb-dialog__top+.mb-dialog__foot{border-block-start-color:transparent}
 @media (min-width:768px){
@@ -543,15 +546,34 @@
 .mb-cal{inline-size:max-content;max-inline-size:none;padding:var(--inset-md);display:flex;flex-direction:column;gap:var(--stack-sm)}
 .mb-cal__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-sm)}
 .mb-cal__grid{display:flex;flex-direction:column;gap:var(--space-1)}
-.mb-cal__row{display:grid;grid-template-columns:repeat(7,var(--touch-target-min))}
+.mb-cal__row{display:grid;grid-template-columns:repeat(7,minmax(0,var(--touch-target-min)))}
 .mb-cal__wd{text-align:center;color:var(--text-subtle)}
 .mb-cal__wd.is-friday,.mb-cal__day.is-friday{color:var(--text-subtlest)}
-.mb-cal__day{inline-size:var(--touch-target-min);block-size:var(--touch-target-min);border-radius:var(--radius-md);border:var(--border-width-thin) solid transparent;background:transparent;color:var(--text-default);font-variant-numeric:tabular-nums;cursor:pointer}
+.mb-cal__day{inline-size:100%;max-inline-size:var(--touch-target-min);block-size:var(--touch-target-min);border-radius:var(--radius-md);border:var(--border-width-thin) solid transparent;background:transparent;color:var(--text-default);font-variant-numeric:tabular-nums;cursor:pointer}
 @media (hover:hover){.mb-cal__day:hover:not(:disabled),.mb-cal__quick:hover:not(:disabled){background:var(--bg-neutral-subtle)}}
 .mb-cal__day.is-today{border-color:var(--border-bold)}
 .mb-cal__day.is-selected{background:var(--bg-selected);border-color:var(--border-selected)}
 .mb-cal__day:disabled,.mb-cal__quick:disabled{color:var(--text-disabled);cursor:not-allowed}
 .mb-cal__day:focus-visible,.mb-cal__quick:focus-visible{outline:var(--focus-width) solid var(--border-focus);outline-offset:var(--focus-offset)}
 .mb-cal__foot{display:flex;flex-wrap:wrap;gap:var(--inline-xs);border-block-start:var(--border-width-thin) solid var(--border-subtle);padding-block-start:var(--stack-sm)}
-.mb-cal__quick{display:inline-flex;align-items:center;gap:var(--inline-xs);min-block-size:var(--touch-target-min);padding-inline:var(--inset-sm);border-radius:var(--radius-md);border:0;background:transparent;color:var(--text-default);cursor:pointer}
+.mb-cal__quick{display:inline-flex;align-items:center;justify-content:center;min-inline-size:var(--touch-target-min);gap:var(--inline-xs);min-block-size:var(--touch-target-min);padding-inline:var(--inset-sm);border-radius:var(--radius-md);border:0;background:transparent;color:var(--text-default);cursor:pointer}
 }
+/* «افزودن»: فکر · حقیقت · فایل are one box. Wide screens: one height for all three (the body scrolls inside); a switch between them has no motion */
+@layer components{
+@media (min-width:768px){.mb-dialog-layer.is-steady .mb-dialog{block-size:min(85dvh, calc(var(--space-40) * 4))}}
+:root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim){animation:none!important}
+:root[data-add-switch] .mb-dialog-layer.is-steady[data-state=closed]{display:none}
+}
+/* phones: every control is at least 44 tall (and an icon button 44 wide) by its own box, not only by an invisible hit area (accessibility.md) */
+@layer components{
+@media (max-width:767px){
+  .mb-btn,.mb-tab{min-block-size:var(--touch-target-min)}
+  .mb-iconbtn{inline-size:var(--touch-target-min);block-size:var(--touch-target-min)}
+}
+}
+/* the month opens IN the flow under its field, never floating: a dialog's body scrolls and its footer would cut a floating panel */
+@layer components{
+.mb-cal.mb-popover__panel{position:static;padding:var(--inset-sm);margin-block-start:var(--stack-xs);inline-size:max-content;max-inline-size:100%;box-shadow:none;border:var(--border-width-thin) solid var(--border-default);animation:none}
+}
+/* on a phone the month sits inside the field's own width: no side frame, so seven days stay as close to 44px as the field allows */
+@layer components{@media (max-width:767px){.mb-cal.mb-popover__panel{padding-inline:0;border-inline:0;border-radius:0}}}
