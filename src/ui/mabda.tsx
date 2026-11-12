@@ -45,19 +45,22 @@ export function TypeBadge({ value, className, iconOnly }: { value: ContextType; 
 }
 
 export const STATUS_META: Record<ContextStatus, Entry> = {
-  Confirmed: { label: 'تأییدشده', icon: 'CircleCheck', cls: 'bg-mabda-status-confirmed-bg text-mabda-status-confirmed-fg border-mabda-status-confirmed-border' },
-  Proposed: { label: 'پیشنهادی', icon: 'Lightbulb', cls: 'bg-mabda-status-proposed-bg text-mabda-status-proposed-fg border-mabda-status-proposed-border' },
-  'Needs Review': { label: 'نیازمند بررسی', icon: 'TriangleAlert', cls: 'bg-mabda-status-needs-review-bg text-mabda-status-needs-review-fg border-mabda-status-needs-review-border' },
-  Superseded: { label: 'جایگزین‌شده', icon: 'History', cls: 'bg-mabda-status-superseded-bg text-mabda-status-superseded-fg border-mabda-status-superseded-border' },
-  Archived: { label: 'بایگانی‌شده', icon: 'Archive', cls: 'bg-mabda-status-archived-bg text-mabda-status-archived-fg border-mabda-status-archived-border' },
+  Confirmed: { label: 'حقیقت', icon: 'CircleCheck', cls: 'bg-mabda-status-confirmed-bg text-mabda-status-confirmed-fg border-mabda-status-confirmed-border' },
+  Proposed: { label: 'پیشنهاد', icon: 'Lightbulb', cls: 'bg-mabda-status-proposed-bg text-mabda-status-proposed-fg border-mabda-status-proposed-border' },
+  'Needs Review': { label: 'قدیمی', icon: 'TriangleAlert', cls: 'bg-mabda-status-needs-review-bg text-mabda-status-needs-review-fg border-mabda-status-needs-review-border' },
+  Superseded: { label: 'گذشته (جایگزین شد)', icon: 'History', cls: 'bg-mabda-status-superseded-bg text-mabda-status-superseded-fg border-mabda-status-superseded-border' },
+  Archived: { label: 'گذشته (بایگانی)', icon: 'Archive', cls: 'bg-mabda-status-archived-bg text-mabda-status-archived-fg border-mabda-status-archived-border' },
 };
 /** a status is the knowledge-state dot and its word — one state, one sign, everywhere (plan 2.2); no coloured pill */
 const STATUS_NUQTA: Record<ContextStatus, NuqtaState> = { Confirmed: 'truth', Proposed: 'proposed', 'Needs Review': 'stale', Superseded: 'past', Archived: 'past' };
-export function StatusBadge({ value, className, iconOnly }: { value: ContextStatus; className?: string; iconOnly?: boolean }) {
+/** `conflict`: the contradiction engine's verdict (src/core/displayState.ts) wins over the stored status */
+export function StatusBadge({ value, className, iconOnly, conflict }: { value: ContextStatus; className?: string; iconOnly?: boolean; conflict?: boolean }) {
+  const shown = conflict && value !== 'Superseded' && value !== 'Archived';
+  const label = shown ? 'تناقض' : STATUS_META[value].label;
   return (
     <span className={cx('inline-flex items-center gap-inline-xs whitespace-nowrap body-sm text-text-default', className)}>
-      <Nuqta state={STATUS_NUQTA[value]} size="sm" label={iconOnly ? STATUS_META[value].label : false} />
-      {!iconOnly && STATUS_META[value].label}
+      <Nuqta state={shown ? 'conflict' : STATUS_NUQTA[value]} size="sm" label={iconOnly ? label : false} />
+      {!iconOnly && label}
     </span>
   );
 }

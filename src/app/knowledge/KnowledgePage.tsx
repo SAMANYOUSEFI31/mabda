@@ -113,7 +113,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
               objects={workspaceContexts}
               nodes={nodes}
               onSelectObject={(obj) => openContext(obj)}
-              onAddNew={() => openContext(null)}
               samples={data.samples ?? []}
             /></PageSuspense>
           )}

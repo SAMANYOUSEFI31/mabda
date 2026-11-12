@@ -90,11 +90,11 @@ const TYPE_OPTIONS = [
   { value: 'Constraint', label: 'خط قرمز' },
 ];
 const STATUS_OPTIONS = [
-  { value: 'Confirmed', label: 'تأییدشده و فعال' },
-  { value: 'Proposed', label: 'پیشنهادی (وارد خروجی نمی‌شود)' },
-  { value: 'Needs Review', label: 'نیازمند بازبینی' },
-  { value: 'Superseded', label: 'منسوخ با جایگزین' },
-  { value: 'Archived', label: 'بایگانی' },
+  { value: 'Confirmed', label: 'حقیقت (فعال)' },
+  { value: 'Proposed', label: 'پیشنهاد (وارد خروجی نمی‌شود)' },
+  { value: 'Needs Review', label: 'قدیمی (باید دوباره دیده شود)' },
+  { value: 'Superseded', label: 'گذشته (جایگزین شد)' },
+  { value: 'Archived', label: 'گذشته (بایگانی)' },
 ];
 const PROVENANCE_OPTIONS = [
   { value: 'User Input', label: 'ورودی مستقیم کاربر' },

@@ -48,7 +48,7 @@ test('groups: nodes, knowledge, assets and notes each come back; samples, archiv
   const all = flattenGroups(g).map((h) => h.id);
   for (const hidden of ['d', 'e', 's']) assert.ok(!all.includes(hidden), hidden);
   assert.equal(searchIndex(idx(), 'پاییز').asset[0].id, 'dl1');
-  assert.ok(searchIndex(idx(), 'تلگرام').object.some((h) => h.id === 'p' && /پیشنهادی/.test(h.subtitle ?? '')), 'a Proposed item is found and labelled');
+  assert.ok(searchIndex(idx(), 'تلگرام').object.some((h) => h.id === 'p' && /پیشنهاد/.test(h.subtitle ?? '') && h.state === 'proposed'), 'a Proposed item is found and labelled');
 });
 
 test('a note is found by its text and shows where it lives; the match inside the text is shown as a snippet', () => {
@@ -106,4 +106,11 @@ test('the group with the best hit comes first, so the thing you named is the fir
   assert.deepEqual(groupOrder(g).slice(0, 2), ['object', 'node']);
   const c = searchIndex(ix, 'ثبت');
   assert.equal(groupOrder(c)[0], 'command');
+});
+
+test('a rule contradiction reads «تناقض» in search, not a solid truth dot', () => {
+  const nodes: TreeNode[] = [{ id: 'r', label: 'ریشه', description: '', order: 0 } as TreeNode];
+  const mk = (id: string, content: string) => ({ id, nodeId: 'r', type: 'Fact', status: 'Confirmed', title: 'اجارهٔ ماهانه', content, provenance: 'User Input', version: 1 }) as unknown as ContextObject;
+  const hits = searchIndex(buildSearchIndex({ nodes, objects: [mk('a', 'اجاره ۲۲ میلیون است'), mk('b', 'اجاره ۱۸ میلیون است')] }), 'اجاره').object;
+  assert.ok(hits.length === 2 && hits.every((h) => h.state === 'conflict' && /تناقض/.test(h.subtitle ?? '')));
 });

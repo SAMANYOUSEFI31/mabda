@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { detectContradictions } from '../../core/contextEngine';
+import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
@@ -76,11 +76,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
   // What the engines say about it (needs review, an assumption, where it applies) goes to the margin as one sentence, not a chip.
   // the deterministic contradiction engine (same topic, different amounts…): both sides carry the conflict dot and say who the other is
-  const conflictWith = useMemo(() => {
-    const m = new Map<string, ContextObject>();
-    for (const c of detectContradictions(objects.filter((o) => !o.sample))) { if (!m.has(c.itemA.id)) m.set(c.itemA.id, c.itemB); if (!m.has(c.itemB.id)) m.set(c.itemB.id, c.itemA); }
-    return m;
-  }, [objects]);
+  const conflictWith = useMemo(() => conflictPartners(objects), [objects]);
   const nodeName = (id: string) => nodes.find((n) => n.id === id)?.label ?? '';
   const marginFor = (obj: ContextObject) => {
     const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');
@@ -98,7 +94,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   };
   const card = (obj: ContextObject) => (
     <MarginItem key={obj.id} margin={marginFor(obj)}>
-      <Card padding="md" knowledge={conflictWith.has(obj.id) ? 'conflict' : knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
+      <Card padding="md" knowledge={displayState(obj, conflictWith)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
         <h4 className="headline text-balance text-text-default">{obj.title}</h4>
         <p className="body-reading text-pretty text-text-default">{obj.content}</p>
         <p className="body-sm text-text-subtle">{obj.assumption ? 'فرض' : TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>

@@ -9,6 +9,7 @@
  * Pure.
  */
 
+import { conflictPartners, displayState, DISPLAY_LABEL } from './displayState';
 import type { ContextObject, Note, TreeNode } from '../types';
 import type { StoredFile, Thought } from '../types';
 import { ancestorIds } from './nodeTree';
@@ -24,7 +25,7 @@ export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 't
  */
 const fold = (s: string): string => normalizeText(s).replace(/\s+/g, ' ').trim();
 
-export type HitState = 'truth' | 'proposed' | 'stale' | 'thought' | 'past';
+export type HitState = 'truth' | 'proposed' | 'stale' | 'conflict' | 'thought' | 'past';
 export interface SearchHit {
   kind: SearchKind;
   id: string;
@@ -82,7 +83,6 @@ export interface SearchIndex { docs: Doc[]; vocab: string[]; df: Map<string, num
 /** Okapi BM25 (same formula and constants as `retrieval.bm25Rank`) over the pre-counted words of the index */
 const K1 = 1.5, B = 0.75;
 
-const STATUS_FA: Partial<Record<ContextObject['status'], string>> = { Proposed: 'پیشنهادی', 'Needs Review': 'نیازمند بازبینی' };
 const TYPE_FA: Record<ContextObject['type'], string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'خط قرمز' };
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const firstLine = (s: string) => s.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
@@ -102,10 +102,12 @@ export function buildSearchIndex(input: {
   type Raw = Omit<Doc, 'tf' | 'len' | 'ftitle'>;
   const raw: Raw[] = [];
   for (const n of input.nodes) raw.push({ kind: 'node', id: n.id, title: n.label, content: n.description, text: `${n.label} ${n.label} ${n.label} ${n.description}`, subtitle: path(n.id) });
+  const partners = conflictPartners(input.objects);
   for (const o of input.objects) {
     if (o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
-    const sub = [TYPE_FA[o.type], STATUS_FA[o.status], path(o.nodeId)].filter(Boolean).join(' · ');
-    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub, state: o.status === 'Confirmed' ? 'truth' : o.status === 'Proposed' ? 'proposed' : 'stale' });
+    const state = displayState(o, partners);
+    const sub = [TYPE_FA[o.type], state === 'truth' ? '' : DISPLAY_LABEL[state], path(o.nodeId)].filter(Boolean).join(' · ');
+    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub, state });
   }
   for (const t of input.thoughts ?? []) {
     const title = clip(firstLine(t.text), 90);
