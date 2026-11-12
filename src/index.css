@@ -122,3 +122,7 @@
 /* keyboard focus and «jump to» stop below whatever is pinned, never under it (WCAG 2.4.11), and above the phone's bottom bar */
 html { scroll-padding-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-2)); }
 @media (max-width: 767px) { html { scroll-padding-block-end: calc(var(--space-20) + var(--safe-bottom)); } }
+
+/* a short window (phone on its side): the page's own top padding shrinks so the first section starts higher; no text is hidden
+   (layout.md «چرخش و قد کوتاه»: what orients her stays, only spacing gives way) */
+@media (max-height: 559px) { #main { padding-block-start: var(--inset-md); } }

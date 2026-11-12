@@ -12,9 +12,9 @@ from PIL import Image
 DIR = 'docs/screens'
 OUT = sys.argv[1] if len(sys.argv) > 1 else f'{DIR}/gallery.html'
 MANIFEST = f'{DIR}/gallery-manifest.json'
-SIZES = [('390', 'گوشی ۳۹۰'), ('768', 'تبلت ۷۶۸'), ('1280', 'لپ‌تاپ ۱۲۸۰'), ('844l', 'گوشی افقی ۸۴۴×۳۹۰')]
+SIZES = [('390', 'گوشی ۳۹۰'), ('768', 'تبلت ۷۶۸'), ('1024', 'تبلت افقی ۱۰۲۴×۷۶۸'), ('1280', 'لپ‌تاپ ۱۲۸۰'), ('844l', 'گوشی افقی ۸۴۴×۳۹۰')]
 THEMES = [('', 'روز'), ('-dark', 'شب')]
-SCALE = {'390': 1.0, '768': 0.6, '1280': 0.55, '844l': 0.6}
+SCALE = {'390': 1.0, '768': 0.6, '1024': 0.55, '1280': 0.55, '844l': 0.6}
 
 TITLE = {
   'home': 'خانه', 'home-all': 'خانه: همهٔ کارها', 'home-demo': 'خانه در فضای نمونه', 'weekly-1': 'بازبینی هفتگی، بخش ۱', 'weekly-2': 'بازبینی هفتگی، بخش ۲',
@@ -50,7 +50,7 @@ def title(name):
     return TITLE.get(name, name)
 
 files = set(os.listdir(DIR))
-names = sorted({re.sub(r'-(390|768|1280|844l)(-dark)?\.png$', '', f) for f in files if re.search(r'-(768|1024)\.png$', f) or f.startswith(('state-', 'add-'))})
+names = sorted({re.sub(r'-(390|768|1024|1280|844l)(-dark)?\.png$', '', f) for f in files if re.search(r'-(768|1024)\.png$', f) or f.startswith(('state-', 'add-'))})
 names = [n for n in names if not n.endswith('.png')]
 old = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {}
 new, changed = {}, set()
@@ -104,11 +104,11 @@ main{{padding-block:16px;max-width:1800px;margin:0 auto}}h2{{font-size:18px;marg
 article{{margin:0 0 28px}}h3{{font-size:15px;margin:0 0 8px;display:flex;gap:8px;align-items:center}}
 .row{{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;padding-bottom:6px}}
 figure{{margin:0;flex:none;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px}}
-figure img{{display:block;height:auto;border-radius:4px}}.s390 img{{width:260px}}.s768 img{{width:340px}}.s1280 img{{width:560px}}.s844l img{{width:420px}}
+figure img{{display:block;height:auto;border-radius:4px}}.s390 img{{width:260px}}.s768 img{{width:340px}}.s1280 img{{width:560px}}.s844l img{{width:420px}}.s1024 img{{width:460px}}
 figcaption{{font-size:12px;color:var(--sub);margin-top:4px}}
 .new{{font-size:11px;font-weight:600;color:var(--mark);border:1px solid var(--mark);border-radius:999px;padding:0 8px}}
 body.no-dark figure:has(img[alt$="شب"]),body.no-light figure:has(img[alt$="روز"]){{display:none}}
-body.no-390 .s390,body.no-768 .s768,body.no-1280 .s1280,body.no-844l .s844l{{display:none}}
+body.no-390 .s390,body.no-768 .s768,body.no-1280 .s1280,body.no-844l .s844l,body.no-1024 .s1024{{display:none}}
 body.only-changed article:not(:has(.new)){{display:none}}
 @media (max-width:600px){{.s1280 img{{width:300px}}.s768 img{{width:240px}}.s390 img{{width:200px}}}}
 </style></head><body>
@@ -116,7 +116,7 @@ body.only-changed article:not(:has(.new)){{display:none}}
 <p class="meta">کامیت <code>{html.escape(commit)}</code> · ساخته‌شده {built} · {len(names)} صفحه و حالت{f" · {len(changed)} مورد تغییر کرده از نسخهٔ قبل" if changed else ""}</p>
 <nav aria-label="پرش به بخش">{"".join(toc)}</nav>
 <div class="filters" role="group" aria-label="نمایش">
-<label><input type="checkbox" data-f="390" checked>گوشی</label><label><input type="checkbox" data-f="768" checked>تبلت</label><label><input type="checkbox" data-f="1280" checked>لپ‌تاپ</label><label><input type="checkbox" data-f="844l" checked>گوشی افقی</label>
+<label><input type="checkbox" data-f="390" checked>گوشی</label><label><input type="checkbox" data-f="768" checked>تبلت</label><label><input type="checkbox" data-f="1024" checked>تبلت افقی</label><label><input type="checkbox" data-f="1280" checked>لپ‌تاپ</label><label><input type="checkbox" data-f="844l" checked>گوشی افقی</label>
 <label><input type="checkbox" data-f="light" checked>روز</label><label><input type="checkbox" data-f="dark" checked>شب</label>
 <label><input type="checkbox" data-f="changed">فقط تغییرکرده‌ها</label></div></header>
 <main>{"".join(sections)}</main></div>
