@@ -8,6 +8,7 @@
  * One item per kind goes to the top (three different kinds beat three stale outputs); the rest are listed in «همه».
  */
 
+import type { ContextObject, GapItem } from '../types';
 import { formatNumber } from '../ui/format';
 
 export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking';
@@ -35,7 +36,7 @@ const RECENT_DAYS = 30;
 const q = (t: string) => `«${t}»`;
 const fa = (n: number) => formatNumber(n);
 
-export function homeActions(input: HomeInput): { top: HomeAction[]; rest: HomeAction[]; total: number } {
+function allActions(input: HomeInput): HomeAction[] {
   const all: HomeAction[] = [];
   const titleOfAsset = new Map(input.deliverables.map((d) => [d.id, d]));
   for (const s of input.stale) {
@@ -54,9 +55,38 @@ export function homeActions(input: HomeInput): { top: HomeAction[]; rest: HomeAc
   if ((input.openThinking ?? 0) > 0) all.push({ id: 'thinking', kind: 'thinking', text: `${fa(input.openThinking!)} سؤال یا تصمیم باز در یادداشت‌هایت مانده است.`, button: 'ببین', target: { type: 'thinking' }, score: 45 });
 
   all.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  return all;
+}
+
+export function homeActions(input: HomeInput): { top: HomeAction[]; rest: HomeAction[]; total: number } {
+  const all = allActions(input);
   const seen = new Set<HomeActionKind>();
   const top: HomeAction[] = [];
   for (const a of all) { if (top.length < HOME_TOP && !seen.has(a.kind)) { top.push(a); seen.add(a.kind); } }
   const rest = all.filter((a) => !top.includes(a));
   return { top, rest, total: all.length };
+}
+
+/**
+ * The home page in the order of patterns.md §۸: «منتظر تو» (what waits for her decision: proposals, contradictions, reviews,
+ * ready decisions, due items, open questions, the weekly review), «چه چیزی کم است» (the required gaps), «قدیمی‌شده‌ها» (outputs
+ * that are no longer up to date). Each list is ranked best first; a section with nothing in it is not shown.
+ */
+export interface HomeSections { waiting: HomeAction[]; missing: Array<Pick<GapItem, 'key' | 'label' | 'question' | 'nodeId' | 'importance'>>; stale: HomeAction[]; empty: boolean }
+
+export function homeSections(input: HomeInput, gaps: Array<Pick<GapItem, 'key' | 'label' | 'question' | 'nodeId' | 'importance' | 'status'>>): HomeSections {
+  const all = allActions(input);
+  const waiting = all.filter((a) => a.kind !== 'stale');
+  const stale = all.filter((a) => a.kind === 'stale');
+  const missing = gaps.filter((g) => g.status !== 'confirmed').map(({ key, label, question, nodeId, importance }) => ({ key, label, question, nodeId, importance }));
+  return { waiting, missing, stale, empty: waiting.length + missing.length + stale.length === 0 };
+}
+
+/** answering a gap from home: a new truth already bound to that gap (its slot), in its place, for her to write and save. A gap
+ *  says nothing about its kind («حساسیت‌ها» is not a decision), so it starts as «واقعیت», the plainest; she can change it there */
+export function gapDraft(gap: Pick<GapItem, 'key' | 'label' | 'nodeId'>, workspaceId: string, now = new Date().toISOString()): ContextObject {
+  return {
+    id: '', workspaceId, type: 'Fact', status: 'Confirmed', provenance: 'User Input',
+    title: gap.label, content: '', nodeId: gap.nodeId, slotKey: gap.key, version: 1, createdAt: now, updatedAt: now,
+  };
 }

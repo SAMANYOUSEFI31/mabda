@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HOME_TOP, homeActions } from './homeActions';
+import { HOME_TOP, gapDraft, homeActions, homeSections } from './homeActions';
 import type { HomeInput } from './homeActions';
 
 const NOW = new Date('2026-06-01T10:00:00Z');
@@ -72,4 +72,29 @@ test('open questions / decisions written in notes: one calm line, below every en
   const busy = homeActions(base({ openThinking: 1, proposedCount: 2, dueCount: 1, weekly: { due: true, changes: 1 } }));
   assert.deepEqual(busy.top.map((a) => a.kind), ['proposals', 'weekly', 'due']);
   assert.deepEqual(busy.rest.map((a) => a.kind), ['thinking']);
+});
+
+test('home sections follow patterns.md §۸: waiting, then missing, then out of date; empty only when all three are', () => {
+  assert.equal(homeSections(base(), []).empty, true);
+  const r = homeSections(base({
+    deliverables: [dl('a1', 'متن تبلیغ', 3)], stale: [{ deliverableId: 'a1', reasons: [{ message: 'x' }] }],
+    contradictions: [{ id: 'c1', titleA: 'الف', titleB: 'ب', idA: 'o1' }], proposedCount: 2,
+  }), [
+    { key: 'price', label: 'قیمت', question: 'قیمت چقدر است؟', nodeId: 'n1', importance: 'required', status: 'missing' },
+    { key: 'tone', label: 'لحن', question: 'لحن؟', nodeId: 'n1', importance: 'required', status: 'confirmed' },
+  ]);
+  assert.deepEqual(r.waiting.map((a) => a.kind), ['contradiction', 'proposals']);
+  assert.deepEqual(r.stale.map((a) => a.id), ['stale:a1']);
+  assert.deepEqual(r.missing.map((g) => g.key), ['price'], 'a gap already answered is not missing');
+  assert.equal(r.empty, false);
+});
+
+test('answering a gap from home opens a new truth bound to that gap, in its place', () => {
+  const d = gapDraft({ key: 'price', label: 'قیمت', nodeId: 'n1' }, 'w1');
+  assert.equal(d.id, '');
+  assert.equal(d.slotKey, 'price');
+  assert.equal(d.nodeId, 'n1');
+  assert.equal(d.title, 'قیمت');
+  assert.equal(d.status, 'Confirmed');
+  assert.equal(d.type, 'Fact', 'a gap does not say it is a decision');
 });
