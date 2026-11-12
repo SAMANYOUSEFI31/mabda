@@ -8,7 +8,7 @@ import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { dataApi } from '../../services/dataApi';
 import { expectationRows, expectationsDue, metricsWithoutRecentNumber, verdictTally } from '../../core/metrics';
-import { homeActions } from '../../core/homeActions';
+import { homeActions, homeSections } from '../../core/homeActions';
 import { track } from '../../services/usage';
 import { useEffect, useMemo } from 'react';
 import { visibleFeatures } from '../../core/visibleFeatures';
@@ -21,7 +21,7 @@ import type { SearchAndFocusScope } from '../shell/useSearchAndFocus';
 export type HomeScope = ReturnType<typeof useHome>;
 
 export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScope & KnowledgeScope & SearchAndFocusScope) {
-  const { aiRequest, attempt, contradictions, currentWorkspace, data, dueAssumptions, dueDecisions, handlePatchObject, isPacksOpen, nodes, openContext, openThinkingSpace, patch, revealWhenThere, reviewNeeds, savedPackCount, setActiveTab, setFocusAsset, setHomeAllOpen, setSavedPackCount, setWeeklyOpen, stale, thinking, toast, waiting, weekly, weeklyDue, wid, workspaceContexts } = p;
+  const { aiRequest, attentionGaps, attempt, contradictions, currentWorkspace, data, dueAssumptions, dueDecisions, handlePatchObject, isPacksOpen, nodes, openContext, openThinkingSpace, patch, revealWhenThere, reviewNeeds, savedPackCount, setActiveTab, setFocusAsset, setHomeAllOpen, setSavedPackCount, setWeeklyOpen, stale, thinking, toast, waiting, weekly, weeklyDue, wid, workspaceContexts } = p;
   // ── home: what is worth doing now (three things) and which level-2 features have something in them ──
   const savedPacksWid = currentWorkspace?.id;
   useEffect(() => {
@@ -32,7 +32,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     now: new Date(), changes: data?.changes ?? [], relationships: data?.relationships ?? [], contradictions: contradictions.length,
     metrics: (data?.metrics ?? []).filter((m) => !m.archived).length, savedPacks: savedPackCount, proposed: workspaceContexts.filter((o) => o.status === 'Proposed').length,
   });
-  const homePlan = useMemo(() => homeActions({
+  const homeInput = useMemo(() => ({
     now: new Date(),
     stale: stale.map((x) => ({ deliverableId: x.deliverableId, reasons: x.reasons })),
     deliverables: (data?.deliverables ?? []).map((d) => ({ id: d.id, title: d.title, createdAt: d.createdAt })),
@@ -45,6 +45,9 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     openThinking: thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)).length,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts, thinking]);
+  const homePlan = useMemo(() => homeActions(homeInput), [homeInput]);
+  // patterns.md §۸: «منتظر تو» › «چه چیزی کم است» › «قدیمی‌شده‌ها»
+  const homeView = useMemo(() => homeSections(homeInput, attentionGaps), [homeInput, attentionGaps]);
   const handleHomeAct = (a: HomeAction) => {
     track('action.home-todo');
     const reveal = (id: string) => { setHomeAllOpen(true); revealWhenThere(id); };
@@ -75,5 +78,5 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     },
     expectations: expRows,
   };
-  return { vf, homePlan, handleHomeAct, metrics, measurements, expRows, tally, quietMetrics, expectationsDueCount, dueProps };
+  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, tally, quietMetrics, expectationsDueCount, dueProps };
 }

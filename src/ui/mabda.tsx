@@ -93,11 +93,11 @@ export function LedgerStatusBadge({ value, className, iconOnly }: { value: Ledge
 }
 
 export const PROVENANCE_LABEL: Record<ContextProvenance, string> = {
-  Onboarding: 'راه‌اندازی اولیه',
-  'User Input': 'ورودی کاربر',
+  Onboarding: 'شروع سریع',
+  'User Input': 'نوشتهٔ خودت',
   'AI Suggested': 'پیشنهاد هوش مصنوعی',
-  'Asset Derived': 'برگرفته از دارایی',
-  Imported: 'واردشده',
+  'Asset Derived': 'برگرفته از یک خروجی',
+  Imported: 'وارد شده از بیرون',
 };
 
 export const CONTEXT_TYPE_OPTIONS = (Object.keys(TYPE_META) as ContextType[]).map((value) => ({ value, label: TYPE_META[value].label }));

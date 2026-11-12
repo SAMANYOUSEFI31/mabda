@@ -15,3 +15,4 @@ server/data/
 scripts/eval-intelligence/audio/*
 !scripts/eval-intelligence/audio/README.md
 !scripts/eval-intelligence/audio/.gitkeep
+docs/screens/gallery.html

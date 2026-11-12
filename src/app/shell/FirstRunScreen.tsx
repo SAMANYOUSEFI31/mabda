@@ -22,7 +22,7 @@ export function FirstRunScreen({ attempt, data, handleCreateWorkspace, newWsName
     <div className="flex min-h-screen items-center justify-center bg-surface-page p-inset-lg" data-testid="first-run">
       <div className="flex w-full max-w-overlay-xs flex-col gap-stack-lg text-center">
         <BrandMark size="lg" word className="self-center" />
-        <EmptyState icon="House" title="هنوز فضایی نداری" description="یک فضا بساز تا آنچه درباره‌اش می‌دانی جایی بنشیند. هرچه کنار گذاشته بودی هم در بایگانی مانده است." />
+        <EmptyState title="هنوز فضایی نداری" description="یک فضا بساز تا آنچه درباره‌اش می‌دانی جایی بنشیند. هرچه کنار گذاشته بودی هم در بایگانی مانده است." />
         <form noValidate onSubmit={(e) => { if (!newWsName.trim()) { e.preventDefault(); setNameError('نام فضا را بنویس تا ساخته شود.'); document.getElementById('first-workspace-name')?.focus(); return; } void handleCreateWorkspace(e); }} className="flex flex-col gap-stack-sm text-start">
           <PurposeField onChange={setPurpose} />
           <TextField id="first-workspace-name" label="نام فضا" required placeholder={NAME_EXAMPLE[purpose]} value={newWsName} error={nameError || undefined} onChange={(e) => { setNewWsName(e.target.value); if (nameError && e.target.value.trim()) setNameError(''); }} />

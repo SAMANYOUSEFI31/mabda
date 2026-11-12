@@ -600,7 +600,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   );
 
   if (!hasContent) {
-    return <EmptyState icon="Workflow" title="بوم هنوز خالی است" description="با ثبت اولین دانش، کارت‌ها و خط‌ها اینجا ساخته می‌شوند." action={<Button variant="secondary" iconStart="Plus" onClick={p.onAddKnowledge}>افزودن</Button>} />;
+    return <EmptyState title="بوم هنوز خالی است" description="با ثبت اولین دانش، کارت‌ها و خط‌ها اینجا ساخته می‌شوند." action={<Button variant="secondary" iconStart="Plus" onClick={p.onAddKnowledge}>افزودن</Button>} />;
   }
 
   const stageEmpty = scene.items.length === 0;

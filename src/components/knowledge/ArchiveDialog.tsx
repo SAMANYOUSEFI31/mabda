@@ -47,7 +47,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   };
   const archivedWs = workspaces.filter((w) => w.archivedAt);
   const counts = { knowledge: data?.objects.length ?? 0, removals: data?.removals.length ?? 0, outputs: data?.deliverables.length ?? 0, workspaces: archivedWs.length };
-  const label = (k: Section, t: string) => (counts[k] ? `${t} (${counts[k]})` : t);
+  const label = (k: Section, t: string) => (counts[k] ? `${t} (${formatNumber(counts[k])})` : t);
 
   const row = (key: string, main: React.ReactNode, sub: React.ReactNode, actions: React.ReactNode) => (
     <li key={key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
@@ -62,13 +62,13 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
         footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
         <div className="flex flex-col gap-stack-md">
           <SegmentedControl label="بخش بایگانی" value={section} onChange={(v) => setSection(v as Section)} items={[
-            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌های حذف‌شده') },
-            { id: 'outputs', label: label('outputs', 'خروجی‌ها') }, { id: 'workspaces', label: label('workspaces', 'فضاهای کاری') },
+            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌ها') },
+            { id: 'outputs', label: label('outputs', 'خروجی‌ها') }, { id: 'workspaces', label: label('workspaces', 'فضاها') },
           ]} />
           {error && <Alert intent="danger">{error}</Alert>}
           {!data && !error && <div className="flex justify-center p-inset-xl"><Spinner /></div>}
           {data && section === 'knowledge' && (data.objects.length === 0
-            ? <EmptyState icon="Archive" title="بایگانی دانش خالی است" description="دانشی که بایگانی می‌کنی اینجا می‌ماند؛ تاریخچه و منشأش سالم است." />
+            ? <EmptyState title="بایگانی دانش خالی است" description="دانشی که بایگانی می‌کنی اینجا می‌ماند؛ تاریخچه و منشأش سالم است." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="دانش بایگانی‌شده" data-testid="archive-knowledge">
               {data.objects.map((o) => row(o.id,
                 <><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></>,
@@ -79,13 +79,13 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
                 </>))}
             </ul>)}
           {data && section === 'removals' && (data.removals.length === 0
-            ? <EmptyState icon="Archive" title="حذف تازه‌ای نیست" description="بخشی که حذف یا با شاخه‌اش بایگانی کنی تا وقتی برنگردانی اینجا می‌ماند." />
+            ? <EmptyState title="حذف تازه‌ای نیست" description="بخشی که حذف یا با شاخه‌اش بایگانی کنی تا وقتی برنگردانی اینجا می‌ماند." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="حذف‌های اخیر">
               {data.removals.map((r) => row(r.id, <span className="body-md text-text-default">{r.label}</span>, formatJalaliDate(r.createdAt),
                 <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === r.id} onClick={() => run(r.id, () => dataApi.undoRemoval(workspaceId, r.id), 'برگشت؛ بخش‌ها و دانش‌شان همان‌طور که بودند.')}>برگردان</Button>))}
             </ul>)}
           {data && section === 'outputs' && (data.deliverables.length === 0
-            ? <EmptyState icon="Archive" title="خروجی بایگانی‌شده‌ای نیست" description="خروجی‌ای که بایگانی کنی از فهرست و از شمار «قدیمی» بیرون می‌رود و اینجا می‌ماند." />
+            ? <EmptyState title="خروجی بایگانی‌شده‌ای نیست" description="خروجی‌ای که بایگانی کنی از فهرست و از شمار «قدیمی» بیرون می‌رود و اینجا می‌ماند." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="خروجی‌های بایگانی‌شده">
               {data.deliverables.map((d: GeneratedDeliverable) => row(d.id, <span className="body-md text-text-default">{d.title}</span>, formatJalaliDate(d.archivedAt ?? d.createdAt),
                 <>
@@ -94,7 +94,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
                 </>))}
             </ul>)}
           {section === 'workspaces' && (archivedWs.length === 0
-            ? <EmptyState icon="Archive" title="فضا بایگانی‌شده‌ای نیست" description="فضایی که بایگانی کنی از منو بیرون می‌رود و همهٔ داده‌اش می‌ماند." />
+            ? <EmptyState title="فضا بایگانی‌شده‌ای نیست" description="فضایی که بایگانی کنی از منو بیرون می‌رود و همهٔ داده‌اش می‌ماند." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="فضاهای کاری بایگانی‌شده">
               {archivedWs.map((w) => row(w.id, <><span className="body-md text-text-default">{w.name}</span>{w.isDemo && <Badge intent="neutral" icon={false}>نمونه</Badge>}</>, w.archivedAt ? formatJalaliDate(w.archivedAt) : '',
                 <>

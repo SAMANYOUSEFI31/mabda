@@ -6,6 +6,7 @@
 /** Thinking: notes and thoughts. */
 
 import { optionsOf } from '../../core/decisionOptions';
+import { requestAdd } from '../../core/addRequest';
 import { Button, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -30,7 +31,7 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
                 onChange={(id) => setThinkingView(id as 'list' | 'canvas')}
                 items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
               />
-              <Button variant="primary" iconStart="Plus" onClick={() => setThoughtDialog({ nodeId: spaceNode })}>فکر تازه</Button>
+              {/* adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳) */}
             </div>
           </div>
           <div id="thinking-view" />
@@ -45,6 +46,7 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
         thoughts={thinking}
         nodeId={spaceNode}
         onNodeChange={setSpaceNode}
+        onNewThought={() => requestAdd({ kind: 'thought', nodeId: spaceNode })}
         onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
         onOptions={(item) => setOptionsItemKey(item.key)}
         optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).length}

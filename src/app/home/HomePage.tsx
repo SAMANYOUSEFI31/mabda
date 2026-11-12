@@ -7,7 +7,7 @@
 
 import { AttentionPanel } from '../../components/home/AttentionPanel';
 import { DueItems } from '../../components/home/DueItems';
-import { HomeTodo } from '../../components/home/HomeTodo';
+import { HomeSections } from '../../components/home/HomeSections';
 import { InheritNoticeList } from '../../components/home/InheritNoticeList';
 import { ContradictionPanel } from '../../components/knowledge/ContradictionPanel';
 import { ProposalInbox } from '../../components/knowledge/ProposalInbox';
@@ -15,6 +15,8 @@ import { ThinkingList } from '../../components/thinking/ThinkingList';
 import { entitlementsOf } from '../../core/entitlements';
 import { MX } from '../../core/metricsText';
 import { convertedTo } from '../../core/thinkingMarkers';
+import { gapDraft } from '../../core/homeActions';
+import { CHANGE_KIND_FA } from '../../core/changeLog';
 import { Button, Card, EmptyState, IconButton, Menu, formatNumber } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -22,9 +24,9 @@ import type { ReadyScope } from '../shared';
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const ChangesPanel = lazyNamed(() => import('../../components/knowledge/ChangesPanel'), 'ChangesPanel');
 
-export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' | 'canJudge' | 'changesOpen' | 'contradictions' | 'currentWorkspace' | 'data' | 'deliverables' | 'dueAssumptions' | 'dueDecisions' | 'dueProps' | 'expRows' | 'expectationsDueCount' | 'flips' | 'focusNodeId' | 'goFocus' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleCheckContradictions' | 'handleConvertItem' | 'handleDeriveThought' | 'handleHomeAct' | 'handleKeepContradiction' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSaveContextObject' | 'handleSeparateContradiction' | 'homeAllOpen' | 'homePlan' | 'inheritNotices' | 'judgedToday' | 'judging' | 'markInheritSeen' | 'nodes' | 'openContext' | 'quietMetrics' | 'reviewNeeds' | 'setActiveTab' | 'setAiRequest' | 'setChangesOpen' | 'setCompare' | 'setContextViewMode' | 'setHomeAllOpen' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsPacksOpen' | 'setMetricsOpen' | 'setPackTarget' | 'setWeeklyOpen' | 'stale' | 'tally' | 'thinking' | 'vf' | 'waiting' | 'waitingOrdered' | 'weekly' | 'weeklyDue' | 'wid' | 'workspaceContexts'>;
+export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' | 'canJudge' | 'changesOpen' | 'contradictions' | 'currentWorkspace' | 'data' | 'deliverables' | 'dueAssumptions' | 'dueDecisions' | 'dueProps' | 'expRows' | 'expectationsDueCount' | 'flips' | 'focusNodeId' | 'goFocus' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleCheckContradictions' | 'handleConvertItem' | 'handleDeriveThought' | 'handleHomeAct' | 'handleKeepContradiction' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSaveContextObject' | 'handleSeparateContradiction' | 'homeAllOpen' | 'homePlan' | 'homeView' | 'openThinkingSpace' | 'inheritNotices' | 'judgedToday' | 'judging' | 'markInheritSeen' | 'nodes' | 'openContext' | 'quietMetrics' | 'reviewNeeds' | 'setActiveTab' | 'setAiRequest' | 'setChangesOpen' | 'setCompare' | 'setContextViewMode' | 'setHomeAllOpen' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsPacksOpen' | 'setMetricsOpen' | 'setPackTarget' | 'setWeeklyOpen' | 'stale' | 'tally' | 'thinking' | 'vf' | 'waiting' | 'waitingOrdered' | 'weekly' | 'weeklyDue' | 'wid' | 'workspaceContexts'>;
 
-export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
+export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
   return (
         <div className="space-y-stack-lg">
           <div className="flex flex-row items-start justify-between gap-inline-md">
@@ -53,20 +55,25 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           </div>
           {workspaceContexts.length === 0 && (
             <EmptyState
-              icon="House"
               title="از همین‌جا شروع کن"
               description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
               action={(
-                <div className="flex flex-wrap justify-center gap-inline-md">
-                  <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
-                  <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
-                </div>
+                <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
               )}
             />
           )}
           {(workspaceContexts.length > 0 || homePlan.total > 0) && (
-            <HomeTodo top={homePlan.top} total={homePlan.total} onAct={handleHomeAct} allOpen={homeAllOpen} onToggleAll={() => setHomeAllOpen((v) => !v)} />
+            <HomeSections
+              sections={homeView}
+              onAct={handleHomeAct}
+              onAnswerGap={(g) => openContext(gapDraft(g, wid), g.nodeId)}
+              truthCount={workspaceContexts.filter((o) => o.status === 'Confirmed').length}
+              thoughts={(data?.thoughts ?? []).filter((t) => t.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
+              onOpenThinking={() => openThinkingSpace()}
+              recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
+              allOpen={homeAllOpen}
+              onToggleAll={() => setHomeAllOpen((v) => !v)}
+            />
           )}
           {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
           {inheritNotices.length > 0 && <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} />}

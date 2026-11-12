@@ -3,7 +3,7 @@ export { Icon, STATUS_ICON } from './Icon.tsx';
 export type { IconName, IconSize } from './Icon.tsx';
 export { Button, IconButton, Link } from './Button.tsx';
 export type { ButtonProps, IconButtonProps, LinkProps } from './Button.tsx';
-export { BrandMark, Badge, Caution, Tag, Avatar, Card, Divider, Stat, EmptyState, Alert, Progress, Spinner, Skeleton, Tooltip } from './Display.tsx';
+export { BrandMark, Badge, Caution, Tag, Avatar, Card, Divider, Stat, EmptyState, ErrorState, PageSkeleton, Alert, Progress, Spinner, Skeleton, Tooltip } from './Display.tsx';
 export type { Intent, StatusIntent, BadgeProps, TagProps, CardProps, AlertProps, ProgressProps, KnowledgeState } from './Display.tsx';
 export { DateField } from './DateField.tsx';
 export type { DateFieldProps } from './DateField.tsx';

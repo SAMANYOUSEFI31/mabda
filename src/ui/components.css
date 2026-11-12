@@ -136,9 +136,17 @@
 .mb-stat__delta{display:inline-flex;align-items:center;gap:var(--inline-xs);color:var(--text-subtle)}
 .mb-stat__delta.is-success{color:var(--text-success)}.mb-stat__delta.is-danger{color:var(--text-danger)}
 /* empty state: a quiet invitation, never a dead end. No dashed edge: dashed means only «جای خالی» (patterns.md §۵) */
-.mb-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--stack-sm);padding:var(--inset-2xl) var(--inset-xl);
+.mb-empty{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:var(--stack-sm);padding:var(--inset-xl) 0;
   border-radius:var(--card-radius)}
-.mb-empty__icon{display:grid;place-items:center;inline-size:var(--icon-3xl);block-size:var(--icon-3xl);color:var(--icon-subtle)}
+.mb-empty__dot{margin-block-end:var(--stack-xs)}
+.mb-error__icon{color:var(--icon-danger);margin-block-end:var(--stack-xs)}
+.mb-error__details{color:var(--text-subtle);max-inline-size:100%}
+.mb-error__details summary{cursor:pointer;min-block-size:var(--touch-target-min);display:flex;align-items:center;gap:var(--inline-xs);list-style:none}
+.mb-error__details summary::-webkit-details-marker{display:none}
+.mb-error__details:not([open]) .mb-error__chev{transform:rotate(90deg)}
+.mb-error__code{display:block;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;padding:var(--inset-sm);border-radius:var(--radius-md);background:var(--bg-neutral-subtle);margin-block:var(--stack-xs)}
+.mb-pageskel{display:flex;flex-direction:column;gap:var(--stack-md);inline-size:100%}
+.mb-pageskel__lead{display:block;max-inline-size:var(--overlay-width-sm);margin-block-end:var(--stack-sm)}
 .mb-empty__title{margin:0;color:var(--text-default)}
 .mb-empty__desc{margin:0;color:var(--text-subtle);max-inline-size:var(--overlay-width-sm)}
 .mb-empty__action{margin-block-start:var(--stack-xs)}
@@ -233,7 +241,10 @@
 
 /* ---------- Tabs / Segmented: a sunken track, the chosen one is a raised key ---------- */
 .mb-tabs-wrap{min-inline-size:0;max-inline-size:100%}
-.mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;overflow-x:auto;scrollbar-width:none}
+.mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;min-inline-size:0}
+/* a tab bar never scrolls (either way): overflow-x would turn overflow-y into «auto» and each tab's 44px hit area (::after) would scroll it
+   up and down. Tabs shrink instead and a long label ends with «…» (its full name is the title) */
+.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{overflow:hidden;text-overflow:ellipsis;min-inline-size:0}
 .mb-tabs:not(.mb-tabs--full){inline-size:max-content}
 .mb-tabs--full{display:flex;inline-size:100%}.mb-tabs--full .mb-tab{flex:1}
 .mb-tab{display:inline-flex;align-items:center;justify-content:center;gap:var(--inline-xs);min-block-size:var(--control-sm);padding-inline:var(--inset-md);border:0;border-radius:var(--tabs-tab-radius);background:transparent;color:var(--text-subtle);cursor:pointer;white-space:nowrap;
@@ -371,7 +382,7 @@
 /* ---------- Dialog: a sheet from below on phones, a centred card from 640px ---------- */
 .mb-dialog-layer{position:fixed;inset:0;z-index:var(--layer-dialog);display:flex;align-items:flex-end;justify-content:center}
 .mb-dialog-layer.is-inline{position:relative;inset:auto;min-block-size:100%;z-index:auto;padding-block-start:var(--space-6)}
-.mb-scrim{position:absolute;inset:0;background:var(--bg-scrim);animation:mb-fade var(--duration-moderate) var(--ease-enter)}
+.mb-scrim{position:absolute;inset-block:0;inset-inline:calc(var(--space-6) * -1);background:var(--bg-scrim);animation:mb-fade var(--duration-moderate) var(--ease-enter)}
 /* spec overlays.md «یک ساختار برای همه»: head and foot stay, only the body scrolls */
 .mb-dialog{position:relative;inline-size:100%;max-block-size:90dvh;display:flex;flex-direction:column;overflow:hidden;padding:0;padding-block-end:var(--safe-bottom);
   background:var(--dialog-surface);border:var(--border-width-thin) solid var(--border-default);border-block-end:0;border-start-start-radius:var(--dialog-radius);border-start-end-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);color:var(--text-default);outline:none;
@@ -396,11 +407,13 @@
 .mb-dialog__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-md)}
 .mb-dialog__head h2{margin:0;min-inline-size:0}
 .mb-dialog__desc{margin:var(--stack-xs) 0 0;color:var(--text-subtle)}
-.mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
+.mb-dialog__body{flex:1 1 auto;min-block-size:0;overflow:auto;overflow-wrap:anywhere;overscroll-behavior:contain;padding:var(--space-1) var(--dialog-padding) var(--dialog-padding)}
 .mb-dialog__foot{flex:none;display:flex;flex-direction:column-reverse;gap:var(--stack-sm);padding:var(--space-3) var(--dialog-padding);border-block-start:var(--border-width-thin) solid var(--border-default)}
 .mb-dialog--sm .mb-dialog__foot,.mb-dialog__top+.mb-dialog__foot{border-block-start-color:transparent}
 @media (min-width:768px){
-  .mb-dialog-layer{align-items:center;padding:var(--space-6)}
+  /* a dialog hangs from a fixed top edge and grows downward: switching a tab or opening a section never moves its title (layout.md «اسکرول») */
+  .mb-dialog-layer{align-items:flex-start;padding:var(--space-6);padding-block-start:min(10dvh, var(--space-20))}
+  .mb-dialog-layer.is-alert{align-items:center;padding-block-start:var(--space-6)}
   .mb-dialog-layer.is-top{align-items:flex-start;padding-block-start:12dvh}
   .mb-dialog{max-block-size:min(85dvh, calc(var(--space-40) * 5));border-radius:var(--dialog-radius);border-block-end:var(--border-width-thin) solid var(--border-default);padding-block-end:0;animation:mb-pop var(--duration-moderate) var(--ease-enter)}
   .mb-dialog-layer.is-side .mb-dialog{animation:mb-panel var(--duration-moderate) var(--ease-enter)}
@@ -543,15 +556,45 @@
 .mb-cal{inline-size:max-content;max-inline-size:none;padding:var(--inset-md);display:flex;flex-direction:column;gap:var(--stack-sm)}
 .mb-cal__head{display:flex;align-items:center;justify-content:space-between;gap:var(--inline-sm)}
 .mb-cal__grid{display:flex;flex-direction:column;gap:var(--space-1)}
-.mb-cal__row{display:grid;grid-template-columns:repeat(7,var(--touch-target-min))}
+.mb-cal__row{display:grid;grid-template-columns:repeat(7,minmax(0,var(--touch-target-min)))}
 .mb-cal__wd{text-align:center;color:var(--text-subtle)}
 .mb-cal__wd.is-friday,.mb-cal__day.is-friday{color:var(--text-subtlest)}
-.mb-cal__day{inline-size:var(--touch-target-min);block-size:var(--touch-target-min);border-radius:var(--radius-md);border:var(--border-width-thin) solid transparent;background:transparent;color:var(--text-default);font-variant-numeric:tabular-nums;cursor:pointer}
+.mb-cal__day{inline-size:100%;max-inline-size:var(--touch-target-min);block-size:var(--touch-target-min);border-radius:var(--radius-md);border:var(--border-width-thin) solid transparent;background:transparent;color:var(--text-default);font-variant-numeric:tabular-nums;cursor:pointer}
 @media (hover:hover){.mb-cal__day:hover:not(:disabled),.mb-cal__quick:hover:not(:disabled){background:var(--bg-neutral-subtle)}}
 .mb-cal__day.is-today{border-color:var(--border-bold)}
 .mb-cal__day.is-selected{background:var(--bg-selected);border-color:var(--border-selected)}
 .mb-cal__day:disabled,.mb-cal__quick:disabled{color:var(--text-disabled);cursor:not-allowed}
 .mb-cal__day:focus-visible,.mb-cal__quick:focus-visible{outline:var(--focus-width) solid var(--border-focus);outline-offset:var(--focus-offset)}
 .mb-cal__foot{display:flex;flex-wrap:wrap;gap:var(--inline-xs);border-block-start:var(--border-width-thin) solid var(--border-subtle);padding-block-start:var(--stack-sm)}
-.mb-cal__quick{display:inline-flex;align-items:center;gap:var(--inline-xs);min-block-size:var(--touch-target-min);padding-inline:var(--inset-sm);border-radius:var(--radius-md);border:0;background:transparent;color:var(--text-default);cursor:pointer}
+.mb-cal__quick{display:inline-flex;align-items:center;justify-content:center;min-inline-size:var(--touch-target-min);gap:var(--inline-xs);min-block-size:var(--touch-target-min);padding-inline:var(--inset-sm);border-radius:var(--radius-md);border:0;background:transparent;color:var(--text-default);cursor:pointer}
 }
+/* «افزودن»: فکر · حقیقت · فایل are one box. Wide screens: one height for all three (the body scrolls inside); a switch between them has no motion */
+@layer components{
+@media (min-width:768px){.mb-dialog-layer.is-steady .mb-dialog{block-size:min(85dvh, calc(var(--space-40) * 4))}}
+/* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
+   switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
+@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(100dvh - var(--safe-top) - var(--space-3));max-block-size:none}}
+/* a switch between kinds: the last box is held still until the next is in place, which then arrives without motion (Overlay.tsx) */
+:root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim),
+.mb-dialog-layer[data-hold] :is(.mb-dialog,.mb-scrim),
+.mb-dialog-layer[data-noenter]:not([data-state=closed]) :is(.mb-dialog,.mb-scrim){animation:none!important}
+}
+/* phones: every control is at least 44 tall (and an icon button 44 wide) by its own box, not only by an invisible hit area (accessibility.md) */
+@layer components{
+@media (max-width:767px){
+  .mb-btn,.mb-tab{min-block-size:var(--touch-target-min)}
+  .mb-iconbtn{inline-size:var(--touch-target-min);block-size:var(--touch-target-min)}
+}
+}
+/* the month opens IN the flow under its field, never floating: a dialog's body scrolls and its footer would cut a floating panel */
+@layer components{
+.mb-cal.mb-popover__panel{position:static;padding:var(--inset-sm);margin-block-start:var(--stack-xs);inline-size:max-content;max-inline-size:100%;box-shadow:none;border:var(--border-width-thin) solid var(--border-default);animation:none}
+}
+/* on a phone the month sits inside the field's own width: no side frame, so seven days stay as close to 44px as the field allows */
+@layer components{@media (max-width:767px){.mb-cal.mb-popover__panel{padding-inline:0;border-inline:0;border-radius:0}}}
+/* while a dialog or sheet is open the toast moves to the top edge: at the bottom it would cover the sheet's footer and its main
+   button (on a phone) or the dialog's footer (on a short laptop); the dialog hangs below a fixed top gap, so the toast fits above it */
+@layer components{html:has(.mb-dialog-layer:not([data-state=closed]):not(.is-inline)) .mb-toast-stack{inset-block-end:auto;inset-block-start:calc(var(--inset-md) + var(--safe-top))}}
+/* a phone sheet reaches the top (a form opens at the «full» stop), so there the toast sits just above the sheet's footer: over the
+   end of the body, which scrolls, never over the title, the × or the main button. --dialog-foot is the footer's height (Overlay.tsx) */
+@layer components{@media (max-width:767px){html:has(.mb-dialog-layer:not([data-state=closed]):not(.is-inline):not(.is-alert)) .mb-toast-stack{inset-block-start:auto;inset-block-end:calc(var(--dialog-foot, var(--safe-bottom)) + var(--inset-md))}}}

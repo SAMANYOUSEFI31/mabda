@@ -89,7 +89,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
         if (e.shiftKey && box.current?.contains(e.target as Node)) { e.preventDefault(); softBreak(); }
       }}>
         <div ref={box} className="flex flex-col gap-stack-xs">
-        <MentionTextarea label="فکرت را بنویس" rows={batch ? 4 : 3} value={text} onValueChange={(v) => { setText(v); setDropped(new Set()); }} objects={objects} placeholder="مثلاً: قیمت اشتراک سه‌ماهه چقدر باشد؟" hint="Enter: فکر بعدی · Shift+Enter: خط تازه در همین فکر · Ctrl/⌘+Enter: ذخیره. متنی که با ؟ تمام شود «سؤال» می‌شود؛ می‌توانی عوضش کنی." />
+        <MentionTextarea label="فکرت را بنویس" rows={batch ? 4 : 3} value={text} onValueChange={(v) => { setText(v); setDropped(new Set()); }} objects={objects} placeholder="مثلاً: آیا این کار تا آخر ماه تمام می‌شود؟" hint="Enter: فکر بعدی · Shift+Enter: خط تازه در همین فکر · Ctrl/⌘+Enter: ذخیره. متنی که با ؟ تمام شود «سؤال» می‌شود؛ می‌توانی عوضش کنی." />
         <div><Button type="button" size="sm" variant="ghost" iconStart="CornerDownLeft" onClick={softBreak}>خط تازه در همین فکر</Button></div>
         </div>
         {!batch && <SegmentedControl label="این یک…" value={kind} onChange={(v) => { setKind(v as ThinkingKind); setTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
@@ -99,7 +99,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
         {batch && (
           <div className="flex flex-col gap-stack-sm" data-testid="thought-batch-preview">
             <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} فکر پیدا شد. نوع هر خط را می‌توانی عوض کنی یا خطی را برداری؛ چیزی ذخیره نشده است.</p>
-            <ul className="flex flex-col gap-stack-sm overflow-auto" style={{ maxBlockSize: '40vh' }}>
+            <ul className="flex flex-col gap-stack-sm">
               {lines.map((l) => (
                 <li key={l.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-sm">
                   <div className="flex items-start justify-between gap-inline-sm">

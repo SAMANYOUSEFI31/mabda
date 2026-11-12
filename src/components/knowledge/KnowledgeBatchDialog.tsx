@@ -60,7 +60,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
         {lines.length > 0 && (
           <div className="flex flex-col gap-stack-sm" data-testid="knowledge-batch-preview">
             <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} دانش پیشنهادی پیدا شد؛ هنوز چیزی ذخیره نشده.</p>
-            <ul className="flex flex-col gap-stack-sm overflow-auto" style={{ maxBlockSize: '40vh' }}>
+            <ul className="flex flex-col gap-stack-sm">
               {lines.map((l) => (
                 <li key={l.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-sm">
                   <div className="flex items-start justify-between gap-inline-sm">

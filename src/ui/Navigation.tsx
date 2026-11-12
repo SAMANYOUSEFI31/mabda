@@ -40,8 +40,8 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
             key={it.id} ref={(n) => { refs.current[it.id] = n; }} role="tab" type="button" id={`${uid}-t-${it.id}`}
             aria-selected={current === it.id} aria-controls={renderPanel ? `${uid}-p-${it.id}` : undefined}
             tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="mb-tab label-md"
-            onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)}
-          >{it.label}</button>
+            onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)} title={typeof it.label === 'string' ? it.label : undefined}
+          ><span className="mb-tab__label">{it.label}</span></button>
         ))}
       </div>
       {renderPanel && (
@@ -86,7 +86,7 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
           onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)}
         >
           {it.icon && <Icon name={it.icon} size="sm" />}
-          {it.label}
+          <span className="mb-tab__label">{it.label}</span>
         </button>
       ))}
     </div>

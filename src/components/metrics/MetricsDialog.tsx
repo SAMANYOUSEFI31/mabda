@@ -57,7 +57,7 @@ const Body: React.FC<Props> = ({ onClose, metrics, measurements, objects, change
     >
       <div className="flex flex-col gap-stack-lg">
         {active.length === 0 && !adding && (
-          <EmptyState icon="TrendingUp" title={MX.emptyTitle} description={MX.emptyBody} action={<Button variant="secondary" iconStart="Plus" onClick={() => setAdding(true)}>{MX.newMetric}</Button>} />
+          <EmptyState title={MX.emptyTitle} description={MX.emptyBody} action={<Button variant="secondary" iconStart="Plus" onClick={() => setAdding(true)}>{MX.newMetric}</Button>} />
         )}
 
         {active.length > 0 && <MetricQuickEntry metrics={metrics} measurements={measurements} onSubmit={onRecord} onCsv={onCsv} />}

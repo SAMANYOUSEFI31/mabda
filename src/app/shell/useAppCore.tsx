@@ -46,18 +46,23 @@ export function useAppCore() {
   }, [setWs]);
   useEffect(() => { void startup(); }, [startup]);
 
+  // the last space asked for: an answer for a space she has already left is dropped
+  const wanted = useRef('');
   const reload = useCallback(async (id: string) => {
+    wanted.current = id;
     setLoadError(null);
     try {
       const st = await dataApi.state(id);
+      if (wanted.current !== id) return;
       setData(st);
       setWs(workspacesRef.current.map((w) => (w.id === id ? st.workspace : w)));
       dataApi.fileQuota(id).then(setQuota).catch(() => setQuota(null));
     } catch (e) {
-      setLoadError(errText(e));
+      if (wanted.current === id) setLoadError(errText(e));
     }
   }, [setWs]);
-  useEffect(() => { if (currentWorkspaceId) { setData(null); void reload(currentWorkspaceId); } }, [currentWorkspaceId, reload]);
+  // switching spaces keeps the page she was on until the new one arrives (patterns.md §5: nothing jumps, no full-screen wait)
+  useEffect(() => { if (currentWorkspaceId) void reload(currentWorkspaceId); }, [currentWorkspaceId, reload]);
 
   /** archived workspaces are out of the menu (nothing is deleted); the list the app works with is the live one */
   const liveWorkspaces = workspaces.filter((w) => !w.archivedAt);

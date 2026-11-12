@@ -27,6 +27,11 @@ export interface DialogProps {
   dirty?: boolean;
   /** search and commands: pinned 12% from the top so the list grows downward without the box moving (overlays.md) */
   top?: boolean;
+  /** «دور بریز» was chosen: the caller drops the draft it keeps (called before onClose) */
+  onDiscard?: () => void;
+  /** one of a family of dialogs she switches between (the three kinds of «افزودن»): the same height on wide screens, so switching
+   *  never moves or resizes the box; a switch (marked on <html data-add-switch>) plays no exit or enter */
+  steady?: boolean;
 }
 
 const FOCUSABLE = 'button:not(:disabled),[href],input:not(:disabled),select,textarea,[tabindex]:not([tabindex="-1"])';
@@ -43,6 +48,13 @@ function ghostExit(el: HTMLElement | null) {
   g.setAttribute('inert', '');
   g.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
   document.body.appendChild(g);
+  // «افزودن» switching kinds: the copy stays still, as it is, until the next kind's box is in place (the next one may be a lazy
+  // chunk that takes a moment); then it goes without motion, so on a phone the sheet never leaves the screen and comes back
+  if (g.classList.contains('is-steady') && document.documentElement.hasAttribute('data-add-switch')) {
+    g.setAttribute('data-hold', '');
+    window.setTimeout(() => g.remove(), 3000); // safety only: the next box removes it as soon as it opens
+    return;
+  }
   const panel = g.querySelector<HTMLElement>('.mb-dialog');
   if (!panel || typeof panel.getAnimations !== 'function' || panel.getAnimations().length === 0) { g.remove(); return; }
   const done = (e: AnimationEvent) => { if (e.target === panel) g.remove(); };
@@ -50,7 +62,7 @@ function ghostExit(el: HTMLElement | null) {
   panel.addEventListener('animationcancel', done);
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false, onDiscard, steady = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
@@ -94,12 +106,31 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     };
   }, [open, inline]);
 
+  // the footer's height, for a toast that has to sit just above it on a phone (components.css, «--dialog-foot»)
+  useEffect(() => {
+    if (!open || inline || typeof ResizeObserver === 'undefined') return;
+    const foot = panel.current?.querySelector<HTMLElement>('.mb-dialog__foot');
+    const root = document.documentElement;
+    if (!foot) { root.style.removeProperty('--dialog-foot'); return; }
+    const ro = new ResizeObserver(() => root.style.setProperty('--dialog-foot', `${Math.round(foot.getBoundingClientRect().height)}px`));
+    ro.observe(foot);
+    return () => { ro.disconnect(); root.style.removeProperty('--dialog-foot'); };
+  }, [open, inline]);
+
   // exit: most dialogs are unmounted by their owner (`open ? <X/> : null`), so the exit plays on an inert copy (ghostExit)
   useLayoutEffect(() => {
     if (!open || inline) return;
     const el = layer.current;
+    // the next kind of «افزودن» is in place: it arrives without motion, and the held copy of the last one goes (see ghostExit)
+    const root = document.documentElement;
+    if (steady && el && root.hasAttribute('data-add-switch')) {
+      el.setAttribute('data-noenter', '');
+      document.querySelectorAll('.mb-dialog-layer[data-hold]').forEach((h) => h.remove());
+      root.removeAttribute('data-add-switch');
+    }
     // after the commit: a layer still in the document was not closed (React's StrictMode re-run), so nothing plays
     return () => queueMicrotask(() => { if (el && !el.isConnected) ghostExit(el); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, inline]);
 
   // phones: the sheet follows a drag down from its head; a quarter of its height (or a quick flick) closes it, like × (overlays.md «برگه»)
@@ -123,7 +154,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
 
   if (!open) return null;
   const node = (
-    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top', alert && 'is-alert')}>
+    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top', alert && 'is-alert', steady && 'is-steady')}>
       <div className="mb-scrim" onClick={alert ? undefined : requestClose} aria-hidden="true" />
       <div
         ref={panel}
@@ -149,7 +180,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   );
   const discard = dirty && onClose ? (
     <Dialog open={asking} onClose={() => setAsking(false)} alert size="sm" title="تغییرها دور ریخته شود؟" description="آنچه نوشته‌ای و ذخیره نشده از دست می‌رود."
-      footer={<><Button variant="danger" onClick={() => { setAsking(false); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
+      footer={<><Button variant="danger" onClick={() => { setAsking(false); onDiscard?.(); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
   ) : null;
   return inline ? node : <>{createPortal(node, document.body)}{discard}</>;
 }

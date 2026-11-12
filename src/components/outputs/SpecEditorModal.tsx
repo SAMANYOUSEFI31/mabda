@@ -181,7 +181,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
 
         <Card padding="lg" className="flex flex-col gap-stack-md">
           <h4 className="title text-text-default">مشخصات کلی</h4>
-          <TextField label="عنوان جریان کار" required value={draft.title} onChange={(e) => set({ title: e.target.value })} placeholder="مثلاً: کتابچهٔ برند، پروپوزال پروژه…" />
+          <TextField label="عنوان جریان کار" required value={draft.title} onChange={(e) => set({ title: e.target.value })} placeholder="مثلاً: برنامهٔ سفر، خلاصهٔ پروژه…" />
           <TextField label="هدف" required value={draft.target} onChange={(e) => set({ target: e.target.value })} placeholder="چه نتیجه‌ای ساخته شود؟" />
           <Textarea label="توضیح (اختیاری)" rows={2} value={draft.description} onChange={(e) => set({ description: e.target.value })} />
         </Card>

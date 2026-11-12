@@ -61,7 +61,7 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
       description={chosen ? `«${chosen.title}» انتخاب می‌شود. برای هر گزینهٔ دیگر یک دلیل کوتاه بنویس؛ با تصمیم می‌ماند.` : question}
       footer={chosen
         ? <><Button variant="ghost" onClick={() => setChosen(null)}>برگشت</Button><Button variant="primary" loading={busy} disabled={!ready} onClick={confirm}>انتخاب این گزینه</Button></>
-        : <><Button variant="ghost" iconStart="PackageOpen" disabled={options.length < 2} onClick={() => p.onAskAi(askText(question, options))}>درخواست برای ابزار دیگر نظر</Button><Button variant="secondary" onClick={p.onClose}>بستن</Button></>}
+        : <><Button variant="ghost" iconStart="PackageOpen" disabled={options.length < 2} onClick={() => p.onAskAi(askText(question, options))}>پرسیدن نظر از ابزار دیگر</Button><Button variant="secondary" onClick={p.onClose}>بستن</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
         {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void (chosen ? confirm() : add())}>دوباره</Button>}>{error}</Alert>}
@@ -87,7 +87,7 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
               </ul>
             )}
             <div className="flex flex-col gap-stack-xs">
-              <MentionTextarea label="گزینهٔ تازه" rows={2} value={draft} onValueChange={setDraft} objects={p.objects} placeholder="مثلاً: فروش از راه اینستاگرام" hint="با @ نام دانشی را بیاور که این گزینه روی آن تکیه دارد." />
+              <MentionTextarea label="گزینهٔ تازه" rows={2} value={draft} onValueChange={setDraft} objects={p.objects} placeholder="مثلاً: اول با یک نمونهٔ کوچک امتحان کنیم" hint="با @ نام دانشی را بیاور که این گزینه روی آن تکیه دارد." />
               <div><Button size="sm" variant="secondary" iconStart="Plus" loading={busy} disabled={!draft.trim()} onClick={add}>افزودن گزینه</Button></div>
             </div>
           </>

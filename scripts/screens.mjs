@@ -15,7 +15,8 @@ mkdirSync(OUT, { recursive: true });
 const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
   // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
-  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }];
+  // plus 768 (day and night, for the gallery) and 1440 (light only): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
+  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768 }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
@@ -42,6 +43,19 @@ const audit = () => {
     out.overflow = `${de.scrollWidth} > ${de.clientWidth} ← ${wide.join(' | ')}`;
   }
   const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  // sideways scroll inside the page: any box that can scroll (or clips) and is wider inside than outside, except the few places made to
+  // scroll sideways on purpose (a wide table, the canvas, code). A tab bar never scrolls up and down.
+  out.scrollX = [];
+  const MEANT = '.mb-table-wrap, [data-testid=canvas-stage], pre, code, [data-scroll-x]';
+  const name = (e) => `${e.tagName.toLowerCase()}${typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}${e.getAttribute('role') ? `[${e.getAttribute('role')}]` : ''}"${(e.getAttribute('aria-label') || '').slice(0, 24)}"`;
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.closest('[inert]') || el.closest(MEANT)) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const ox = cs.overflowX;
+    if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) out.scrollX.push(`${name(el)} ${el.scrollWidth}>${el.clientWidth}`);
+    if (el.matches('[role=tablist], [role=radiogroup].mb-seg, .mb-tabs') && /auto|scroll/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1 && el.clientHeight > 0) out.scrollX.push(`tab bar scrolls up/down: ${name(el)} ${el.scrollHeight}>${el.clientHeight}`);
+  }
   const seen = new Set();
   for (const el of document.querySelectorAll('body *')) {
     if (!vis(el)) continue;
@@ -72,7 +86,8 @@ const audit = () => {
     }
     if (el.matches('button, a[href], input, select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], summary') && !el.matches('input[type=file]')) {
       const r = el.getBoundingClientRect();
-      const hitPseudo = /mb-btn--sm|mb-iconbtn--sm|mb-tab\b|mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className);
+      // phones: a button, icon button or tab is 44 by its own box; an invisible hit area counts only on wider screens
+      const hitPseudo = innerWidth >= 768 ? /mb-btn--sm|mb-iconbtn--sm|mb-tab\b|mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className) : /mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className);
       // controls INSIDE the canvas stage scale with the zoom by design (docs/canvas-design.md); every one has a ≥ 44px equivalent in the inspector / menu
       if (el.closest('[data-testid=canvas-stage]')) continue;
       if ((r.height < 43.5 || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
@@ -195,6 +210,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 let problems = 0;
 const SCHEMES = (process.env.SCHEMES || 'light,dark').split(',');
 for (const scheme of SCHEMES) for (const baseSize of SIZES) {
+  if (scheme === 'dark' && baseSize.lightOnly) continue;
   const size = { ...baseSize, name: baseSize.name + (scheme === 'dark' ? '-dark' : '') };
   const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, locale: 'fa-IR', colorScheme: scheme });
   const page = await ctx.newPage();
@@ -213,13 +229,14 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     await page.screenshot({ path: `${OUT}/${name}-${size.name}.png`, fullPage: false });
     const r = await page.evaluate(audit);
     if (r.dimmedChecked) console.log(`  [${size.name}] ${name}: ${r.dimmedChecked} dimmed card titles measured`);
-    const bad = r.overflow || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.canvas.length || r.overlap.length || r.clipped.length || r.primaries > 1;
-    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['tiny', 'smallBody', 'touch', 'contrast', 'edges', 'canvas', 'overlap', 'clipped']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
+    const bad = r.overflow || r.scrollX.length || r.tiny.length || r.smallBody.length || r.touch.length || r.contrast.length || r.edges.length || r.canvas.length || r.overlap.length || r.clipped.length || r.primaries > 1;
+    if (bad) { problems++; console.log(`\n[${size.name}] ${name}`); if (r.overflow) console.log('  overflow-x:', r.overflow); if (r.primaries > 1) console.log('  primary buttons visible:', r.primaries); for (const k of ['scrollX', 'tiny', 'smallBody', 'touch', 'contrast', 'edges', 'canvas', 'overlap', 'clipped']) if (r[k].length) console.log(`  ${k}:`, [...new Set(r[k])].slice(0, 8).join(' | ')); }
   };
   const goTab = async (t) => {
     const mobile = size.width < 768;
-    const sel = mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${t.label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${t.desktopLabel || t.label}")`;
-    await page.locator(sel).first().click();
+    // by accessible name: at 768 the sidebar is the rail, whose buttons show only an icon
+    const nav = page.getByRole('navigation', { name: mobile ? 'منوی پایینی موبایل' : 'بخش‌های اصلی نرم‌افزار' });
+    await nav.getByRole('button', { name: mobile ? t.label : t.desktopLabel || t.label, exact: true }).first().click();
     if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(350); };
@@ -262,7 +279,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await shoot('menu-space'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
   // the personal sample («زندگی من», docs/ux/audience.md): its truth and its thoughts
   await spaceItem(/زندگی من/); await goTab(TABS[1]); await page.waitForTimeout(300); await shoot('life-truth'); await goTab(TABS[4]); await page.waitForTimeout(300); await shoot('life-thinking'); await goTab(TABS[0]);
-  if (!mobile) {
+  if (size.width >= 1024) {
     // the narrow rail (icons only): its account menu must sit fully inside the window; then open the bar again
     await page.getByRole('button', { name: 'باریک کردن نوار کناری' }).click(); await page.waitForTimeout(200); await shoot('sidebar-narrow');
     await page.getByTestId('sidebar-rail').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');

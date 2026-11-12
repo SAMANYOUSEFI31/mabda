@@ -48,7 +48,10 @@ try {
     const oldWay = async (text, onThinking = false) => {
       steps = 0;
       if (!onThinking) await nav('فکر', 'فکر');
-      await act(() => page.getByRole('button', { name: 'فکر تازه' }).first().click());
+      // the page's own «فکر تازه» button is gone (one «افزودن»): the old dialog is still reachable from the palette
+      await act(() => page.keyboard.press('Control+KeyK'));
+      await page.getByRole('combobox', { name: 'جستجو' }).fill('فکر تازه');
+      await act(() => page.locator('[role=dialog] [role=option]').filter({ hasText: 'فکر تازه' }).first().click());
       const dlg = page.getByRole('dialog');
       await act(() => dlg.getByLabel('فکرت را بنویس').fill(text));
       await act(() => dlg.getByRole('button', { name: 'ذخیره' }).click());

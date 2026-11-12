@@ -6,14 +6,15 @@
 /** The dialogs of shell: the command palette. Each lazy dialog loads the first time it is opened. */
 
 import { CommandPalette } from '../../components/shell/CommandPalette';
+import { requestAdd } from '../../core/addRequest';
 import type { ReadyScope } from '../shared';
 
-export type ShellDialogsProps = Pick<ReadyScope, 'handlePick' | 'paletteOpen' | 'searchIdx' | 'setPaletteOpen' | 'setThoughtDialog'>;
+export type ShellDialogsProps = Pick<ReadyScope, 'handlePick' | 'paletteOpen' | 'searchIdx' | 'setPaletteOpen'>;
 
-export function ShellDialogs({ handlePick, paletteOpen, searchIdx, setPaletteOpen, setThoughtDialog }: ShellDialogsProps) {
+export function ShellDialogs({ handlePick, paletteOpen, searchIdx, setPaletteOpen }: ShellDialogsProps) {
   return (
     <>
-    <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} onAddThought={(text) => setThoughtDialog({ initialText: text })} />
+    <CommandPalette open={paletteOpen} index={searchIdx} onClose={() => setPaletteOpen(false)} onPick={handlePick} onAddThought={(text) => setTimeout(() => requestAdd({ kind: 'thought', text }), 120)} />
     </>
   );
 }

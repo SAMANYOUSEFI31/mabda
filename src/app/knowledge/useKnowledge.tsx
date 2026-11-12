@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { requestAdd } from '../../core/addRequest';
 import type { SearchHit } from '../../core/globalSearch';
 import { ContextDraft, ContextObject } from '../../types';
 import { dataApi } from '../../services/dataApi';
@@ -35,7 +36,8 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
     if (hit.kind === 'file') { const nodeId = (data?.files ?? []).find((x) => x.id === hit.id)?.nodeId; setActiveTab('context'); setContextViewMode('doc'); if (nodeId) { goFocus(nodeId); revealWhenThere(`node-${nodeId}`); } return; }
     switch (hit.id) {
       case 'record': openContext(null); break;
-      case 'thought': setThoughtDialog({}); break;
+      // the same «افزودن» as the top bar (فکر · حقیقت · فایل), after the palette has closed
+      case 'thought': setTimeout(() => requestAdd({ kind: 'thought' }), 120); break;
       case 'compare': setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }); break;
       case 'batch-knowledge': setIsBatchOpen(true); break;
       case 'go-thinking': openThinkingSpace(); break;

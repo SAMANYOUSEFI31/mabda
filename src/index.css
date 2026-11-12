@@ -36,8 +36,18 @@
   .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
-/* Scrollbars use semantic tokens too. */
-* { scrollbar-width: thin; scrollbar-color: var(--border-bold) transparent; }
+/* Scrollbars (layout.md «اسکرول و نوار اسکرول»): the place of a bar is always kept, so it never moves the layout; the bar itself is
+   thin and shows while something scrolls, when the pointer is over a scrolling box or near the page's bar, and for a moment after
+   a page opens (src/ui/scrollbars.ts). Its color is the input border (3:1 on the paper, both themes). Touch and forced colors keep
+   the system's own bars. */
+:root { --scroll-thumb: transparent; }
+:root[data-scrolling], :root[data-scroll-near] { --scroll-thumb: var(--border-input); }
+@media (min-width: 768px) { html { scrollbar-gutter: stable; } } /* phones draw overlay bars that take no room */
+* { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+:where(.mb-dialog__body, .mb-sidebar__nav, .mb-table-wrap, pre, [data-scroll-x], [role=listbox], [role=menu]):hover { --scroll-thumb: var(--border-input); }
+.mb-dialog__body, .mb-sidebar__nav { scrollbar-gutter: stable; }
+@media (hover: none) { * { scrollbar-color: auto; } }
+@media (forced-colors: active) { * { scrollbar-color: auto; } }
 
 /* Chat panel height: viewport minus app chrome on phones, a fixed comfortable height from md up (built from space tokens). */
 @utility h-chat {

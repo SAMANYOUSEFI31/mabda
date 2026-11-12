@@ -46,7 +46,9 @@ export function DateField({ label, value, onValueChange, hint, error, min, max, 
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
-  useEffect(() => { if (open) requestAnimationFrame(() => grid.current?.querySelector<HTMLButtonElement>('[tabindex="0"]')?.focus()); }, [open, cursor]);
+  useEffect(() => { if (open) requestAnimationFrame(() => grid.current?.querySelector<HTMLButtonElement>('[tabindex="0"]')?.focus({ preventScroll: true })); }, [open, cursor]);
+  // in the flow: bring the whole month into view once, when it opens
+  useEffect(() => { if (open) requestAnimationFrame(() => grid.current?.closest('.mb-cal')?.scrollIntoView({ block: 'nearest' })); }, [open]);
 
   const commit = (raw: string) => {
     setText(null);
