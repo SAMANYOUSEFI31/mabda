@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
 import { PLANS } from '../../core/creditEngine';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, formatNumber, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { requestQuickCapture } from '../../core/quickCapture';
@@ -69,8 +69,47 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const showPeek = () => { window.clearTimeout(peekTimer.current); setPeek(true); };
   const hidePeek = () => { window.clearTimeout(peekTimer.current); peekTimer.current = window.setTimeout(() => setPeek(false), 220); };
   const toggleDock = () => setDocked((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } setPeek(false); return n; });
+  // navigation.md «تغییر اندازه»: the inner edge is a separator; 232–360 (tokens), a drag under 200 snaps to the rail,
+  // double-click returns to the default, arrows move 8, Home/End, Enter docks/undocks, Ctrl/⌘+\ toggles. Remembered per device.
+  const token = (name: string, fallback: number) => { try { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || fallback; } catch { return fallback; } };
+  const [width, setWidth] = useState<number | null>(() => { try { const v = Number(localStorage.getItem('mabda.sidebar.width')); return v > 0 ? v : null; } catch { return null; } });
+  const bounds = () => ({ min: token('--sidebar-width-min', 232), max: token('--sidebar-width-max', 360), def: token('--sidebar-width', 264) });
+  const saveWidth = (w: number | null) => { setWidth(w); try { if (w === null) localStorage.removeItem('mabda.sidebar.width'); else localStorage.setItem('mabda.sidebar.width', String(w)); } catch { /* optional */ } };
+  const setDock = (n: boolean) => { setDocked(n); setPeek(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
+  const SNAP = 200; // below this a drag means «narrow», not «narrower» (navigation.md)
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    const aside = e.currentTarget.parentElement; if (!aside) return;
+    e.preventDefault();
+    const rtl = getComputedStyle(aside).direction === 'rtl';
+    const rect = aside.getBoundingClientRect();
+    const { min, max } = bounds();
+    const move = (ev: PointerEvent) => {
+      const w = rtl ? rect.right - ev.clientX : ev.clientX - rect.left;
+      if (w < SNAP) { stop(); setDock(false); return; }
+      setWidth(Math.round(Math.min(max, Math.max(min, w))));
+    };
+    const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); setWidth((w) => { try { if (w) localStorage.setItem('mabda.sidebar.width', String(w)); } catch { /* optional */ } return w; }); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  };
+  const keyResize = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const { min, max, def } = bounds();
+    const now = width ?? def;
+    const rtl = getComputedStyle(e.currentTarget).direction === 'rtl';
+    // the edge moves the way the arrow points: in RTL the inner edge is on the left, so ← widens
+    const grow = e.key === (rtl ? 'ArrowLeft' : 'ArrowRight') ? 8 : e.key === (rtl ? 'ArrowRight' : 'ArrowLeft') ? -8 : 0;
+    if (grow) { e.preventDefault(); saveWidth(Math.min(max, Math.max(min, now + grow))); }
+    else if (e.key === 'Home') { e.preventDefault(); saveWidth(min); }
+    else if (e.key === 'End') { e.preventDefault(); saveWidth(max); }
+    else if (e.key === 'Enter') { e.preventDefault(); setDock(false); }
+  };
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === '\\') { e.preventDefault(); setDocked((v) => { const n = !v; try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } return n; }); setPeek(false); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const toggleButton = (
-    <IconButton icon="PanelRight" label={docked ? 'پنهان کردن نوار کناری' : 'جا دادن نوار کناری'} aria-expanded={docked} variant="ghost" onClick={toggleDock} />
+    <IconButton icon="PanelRight" label={docked ? 'پنهان کردن نوار کناری' : 'جا دادن نوار کناری'} aria-expanded={docked} aria-keyshortcuts={"Control+\\ Meta+\\"} variant="ghost" onClick={toggleDock} />
   );
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
   const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
@@ -113,8 +152,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   );
 
   const sidebar = (
-    <div className="flex h-full flex-col justify-between gap-stack-lg select-none">
-      <div className="flex flex-col gap-stack-lg">
+    <div className="flex h-full min-h-space-0 flex-col gap-stack-lg select-none">
+      <div className="flex shrink-0 flex-col gap-stack-lg">
         <div className="flex items-center justify-between gap-inline-xs">
           {workspacePicker(false)}
           {toggleButton}
@@ -125,18 +164,21 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <span className="flex-1">جستجو</span>
           <span className="caption text-text-subtlest" dir="ltr">Ctrl K</span>
         </button>
+      </div>
 
-        <nav className="flex flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
+      {/* the only part that scrolls (navigation.md): vertical only, never sideways */}
+      <nav className="mb-sidebar__nav flex min-h-space-0 flex-1 flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => onTabChange('home')} />
-          <NavItem icon="Lightbulb" label="فکر" trailing={p.thinkingCount ? formatNumber(p.thinkingCount) : undefined} selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" trailing={p.contextCount ? formatNumber(p.contextCount) : undefined} selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
+          {/* counters only for «منتظر تو» (navigation.md): a destination never shows how much it holds */}
+          <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => onTabChange('thinking')} />
+          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => onTabChange('context')} />
           {activeTab === 'context' && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               {VIEWS.map((v) => <NavItem nested key={v.id} label={v.label} selected={p.contextViewMode === v.id} onClick={() => p.onChangeContextViewMode(v.id)} />)}
             </div>
           )}
 
-          <NavItem icon="Package" label="خروجی‌ها" trailing={p.deliverablesCount ? formatNumber(p.deliverablesCount) : undefined} selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
+          <NavItem icon="Package" label="خروجی‌ها" selected={inOutputs} expanded={inOutputs} onClick={() => onTabChange('assets')} />
           {inOutputs && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
               <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => onTabChange('assets')} />
@@ -145,10 +187,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
               <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
             </div>
           )}
-        </nav>
-      </div>
+      </nav>
 
-      <div className="border-t border-border-default pt-inset-lg">
+      <div className="shrink-0 border-t border-border-default pt-inset-lg">
         <Menu
           label="حساب کاربری"
           side="top"
@@ -182,8 +223,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <>
       {/* Desktop persistent sidebar (inline-start edge) */}
       {docked ? (
-        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
+        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col" style={width ? { inlineSize: `${width}px` } : undefined}>
           {sidebar}
+          <div role="separator" tabIndex={0} aria-orientation="vertical" aria-label="پهنای نوار کناری" aria-valuemin={bounds().min} aria-valuemax={bounds().max} aria-valuenow={width ?? bounds().def}
+            className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />
         </aside>
       ) : (
         <div className="sticky top-space-0 z-dropdown hidden h-screen shrink-0 md:block" style={{ inlineSize: "var(--sidebar-rail)" }} onMouseEnter={showPeek} onMouseLeave={hidePeek} onFocus={showPeek} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hidePeek(); }}>

@@ -456,6 +456,15 @@
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
 }
 
+/* sidebar (navigation.md): only the nav scrolls, never sideways; the inner edge is a 9-wide grip that shows a 2px focus-coloured line */
+@layer components{
+.mb-sidebar__nav{overflow-y:auto;overflow-x:clip;margin-inline:calc(var(--space-1) * -1);padding-inline:var(--space-1)}
+.mb-sidebar-handle{position:absolute;inset-block:0;inset-inline-end:calc((var(--space-2) + var(--border-width-thin)) / -2);inline-size:calc(var(--space-2) + var(--border-width-thin));cursor:col-resize;touch-action:none;z-index:var(--layer-raised)}
+.mb-sidebar-handle::after{content:"";position:absolute;inset-block:0;inset-inline:0;margin-inline:auto;inline-size:var(--border-width-thick);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
+.mb-sidebar-handle:hover::after,.mb-sidebar-handle:focus-visible::after{background:var(--border-focus)}
+.mb-sidebar-handle:focus-visible{outline:none}
+}
+
 @layer components{.mb-navlabel::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}}
 
 /* ---------- «متن و حاشیه» (layout.md «ستون حاشیه»; src/ui/Margin.tsx) ----------
