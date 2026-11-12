@@ -379,7 +379,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <Menu
             label="این دانش در کدام بخش باشد؟"
             className="scroll-menu"
-            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? 'کسب‌وکار'}</Button>}
+            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>}
             items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => { setNodeId(node.id); setNodePicked(true); } }))}
           />
         </div>

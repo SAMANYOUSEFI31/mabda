@@ -372,7 +372,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const parts = [
     ...(input.packId ? [`<!-- mabda-pack:${input.packId} -->`] : []),
     `# درخواست برای AI — ${KIND_LABEL[kind]} — ${input.workspaceName}`,
-    '> اسناد زیر منبع حقیقت کسب‌وکار من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
+    '> اسناد زیر منبع حقیقت من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
     dataText,
     ...(thoughtSection ? [thoughtSection] : []),
     `## قواعد این کار (${KIND_LABEL[kind]})\n${rules.map((r) => `- ${r}`).join('\n')}`,

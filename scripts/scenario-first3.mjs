@@ -66,7 +66,7 @@ try {
 
     step(`[${width}] an EMPTY workspace: a warm start, one main action`);
     await account('فضا تازه');
-    await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`کافهٔ من ${width}`);
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`کافهٔ من ${width}`);
     await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: کافهٔ من ${width}`).waitFor({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: '/tmp/first3-fail.png' }); throw e; });
     await page.getByText('از همین‌جا شروع کن').waitFor();
@@ -99,7 +99,9 @@ try {
 
     step(`[${width}] the first knowledge in ONE box: kind and title are guessed, Ctrl+Enter saves`);
     await page.getByRole('button', { name: 'افزودن' }).first().click();
-    const box = page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟');
+    // «خانه» opens «فکر» (patterns.md §۳: the default follows the page); one tap on «حقیقت», the text kept
+    await page.getByRole('dialog').getByRole('radio', { name: 'حقیقت' }).click();
+    const box = page.getByRole('dialog').getByLabel('چه چیزی درست است؟');
     await box.fill('تخفیف نداریم.');
     assert.equal(await page.getByRole('dialog').getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true', 'a red line was guessed');
     assert.equal(await page.getByRole('dialog').getByLabel('عنوان').inputValue(), 'تخفیف نداریم');

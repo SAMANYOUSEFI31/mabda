@@ -188,7 +188,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
       specs,
       exportedAt: new Date().toISOString(),
-      platform: 'مبدأ — منبع حقیقت کسب‌وکار',
+      platform: 'مبدأ · منبع حقیقت تو',
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));

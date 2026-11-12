@@ -12,7 +12,7 @@ import { Alert, Badge, Button, Dialog, Select, Textarea, TypeBadge, formatNumber
 const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
 
 /** Ask the other AI for what it remembers about you — the user copies this prompt there and pastes the answer back here. */
-const EXPORT_PROMPT = 'هر چیزی که تا حالا دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس: کسب‌وکار، مخاطب، محصول و قیمت، لحن، تصمیم‌ها و خط قرمزها. فقط چیزهایی که واقعاً می‌دانی؛ حدس نزن.';
+const EXPORT_PROMPT = 'هر چیزی که تا حالا دربارهٔ من یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس: کسب‌وکار، مخاطب، محصول و قیمت، لحن، تصمیم‌ها و خط قرمزها. فقط چیزهایی که واقعاً می‌دانی؛ حدس نزن.';
 
 interface Props {
   open: boolean;
@@ -78,7 +78,7 @@ const Importer: React.FC<Props & { onSwitch: () => void }> = ({ workspaceId, onC
               {result.skipped > 0 && <Caution>{formatNumber(result.skipped)} مورد به‌خاطر سقف پلن ثبت نشد</Caution>}
               {result.truncated && <Caution>فقط بخش ابتدایی متن خوانده شد</Caution>}
             </div>
-            {result.created.length === 0 && <p className="body-md text-text-subtle">چیزی که به کسب‌وکار مربوط باشد در این متن پیدا نشد.</p>}
+            {result.created.length === 0 && <p className="body-md text-text-subtle">چیز قابل‌استفاده‌ای در این متن پیدا نشد.</p>}
             {result.created.map((o) => (
               <div key={o.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
                 <span className="flex flex-wrap items-center gap-inline-sm"><TypeBadge value={o.type} /><span className="label-md text-text-default">{o.title}</span></span>

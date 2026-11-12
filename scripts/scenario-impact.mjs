@@ -128,7 +128,7 @@ async function scenario(width, tag) {
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
   await goTab('منبع حقیقت', 'منبع');
   await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
-  await page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
+  await page.getByRole('dialog').getByLabel('چه چیزی درست است؟').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('dialog').getByRole('radio', { name: 'همین حالا جایگزین شود' }).click(); // approved knowledge: an edit is a DRAFT unless she replaces it now
   await page.getByRole('button', { name: 'ذخیرهٔ تغییرات' }).click();
   const toastEl = page.getByText(/این تغییر روی .* دارایی اثر دارد/);

@@ -150,7 +150,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
           onClose={() => setHistoryItem(null)}
           size="md"
           title="تاریخچهٔ فکر"
-          description="مسیر تغییرات، بازنگری‌ها و منشأ این فکر؛ بدون اثر روی حقیقت کسب‌وکار."
+          description="مسیر تغییرات، بازنگری‌ها و منشأ این فکر؛ بدون اثر روی منبع."
           footer={<Button variant="ghost" onClick={() => setHistoryItem(null)}>بستن</Button>}
         >
           {historyLoading ? (

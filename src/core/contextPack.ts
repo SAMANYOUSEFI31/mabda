@@ -123,7 +123,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   const parts: string[] = [
     PACK_MARKER(input.packId),
     `# بستهٔ Context مبدأ — ${input.workspaceName}`,
-    '> این بسته منبع حقیقت کسب‌وکار من است. فقط «واقعیت‌های تأییدشده» را واقعیت بدان. بخش «پیشنهادی» هنوز تأیید نشده و واقعیت نیست. چیزی را از خودت اختراع نکن؛ اگر اطلاعات کم است، سؤال بپرس.',
+    '> این بسته منبع حقیقت من است. فقط «واقعیت‌های تأییدشده» را واقعیت بدان. بخش «پیشنهادی» هنوز تأیید نشده و واقعیت نیست. چیزی را از خودت اختراع نکن؛ اگر اطلاعات کم است، سؤال بپرس.',
   ];
 
   if (input.instruction?.trim()) parts.push(`## دستور\n${input.instruction.trim()}`);

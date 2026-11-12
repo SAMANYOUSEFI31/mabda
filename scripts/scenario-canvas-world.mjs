@@ -79,7 +79,7 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضا تازه');
-    await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`دنیا ${width}`);
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`دنیا ${width}`);
     await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: دنیا ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `دنیا ${width}`).id;

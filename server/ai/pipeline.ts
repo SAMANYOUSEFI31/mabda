@@ -25,7 +25,7 @@ const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is 
 
 /** A check passes only when the decision layer says so AND is at least this sure (otherwise it is reported as failed, honestly). */
 export const CHECK_PASS_PROBABILITY = 0.6;
-export const CONSISTENCY_LABEL = 'سازگاری با دانش تأییدشدهٔ کسب‌وکار';
+export const CONSISTENCY_LABEL = 'سازگاری با دانش تأییدشده';
 /** the context prefix says this when the workspace has no Confirmed knowledge (see context.ts) */
 const NO_KNOWLEDGE_MARK = 'هنوز دانش تأییدشده‌ای ثبت نشده است';
 
@@ -91,9 +91,9 @@ export async function runChecks(input: Pick<PipelineInput, 'decisions' | 'accept
   const questions: DecisionQuestion[] = [
     ...criteria.map((c, i): DecisionQuestion => ({ id: `c${i}`, question: `آیا خروجی این معیار پذیرش را برآورده می‌کند؟ «${c}»`, options: ['pass', 'fail'], reason: true })),
     ...guardrails.map((g, i): DecisionQuestion => ({ id: `g${i}`, question: `آیا خروجی این خط قرمز را رعایت می‌کند؟ «${g}»`, options: ['ok', 'violated'], reason: true })),
-    ...(hasKnowledge ? [{ id: 'k0', question: 'آیا خروجی با «دانش تأییدشدهٔ کسب‌وکار» بالا سازگار است؟ فقط اگر ادعایی صریحاً با آن دانش نمی‌خواند یا چیزی در تضاد با آن می‌سازد، conflict بده؛ ادعاهای تازه‌ای که دانش دربارهٔ آن‌ها ساکت است تناقض نیستند.', options: ['consistent', 'conflict'], reason: true } satisfies DecisionQuestion] : []),
+    ...(hasKnowledge ? [{ id: 'k0', question: 'آیا خروجی با «دانش تأییدشده» بالا سازگار است؟ فقط اگر ادعایی صریحاً با آن دانش نمی‌خواند یا چیزی در تضاد با آن می‌سازد، conflict بده؛ ادعاهای تازه‌ای که دانش دربارهٔ آن‌ها ساکت است تناقض نیستند.', options: ['consistent', 'conflict'], reason: true } satisfies DecisionQuestion] : []),
   ];
-  const res = await input.decisions.decide({ text: `${hasKnowledge ? `## دانش تأییدشدهٔ کسب‌وکار\n${knowledge}\n\n` : ''}## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
+  const res = await input.decisions.decide({ text: `${hasKnowledge ? `## دانش تأییدشده\n${knowledge}\n\n` : ''}## خروجی برای بازبینی\n${blocksToMarkdown(blocks)}`, stage: 'validate' }, questions);
   if (res.usage) stages.push(res.usage);
   const checks: CheckResult[] = res.answers.map((a) => {
     const kind: CheckResult['kind'] = a.id.startsWith('g') ? 'guardrail' : a.id.startsWith('k') ? 'consistency' : 'criterion';

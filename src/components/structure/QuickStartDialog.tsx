@@ -167,7 +167,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
         {step === 'input' && path !== 'questions' && (
           <div className="flex flex-col gap-stack-md">
             {path === 'memory' && <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />}
-            {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
+            {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
             <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint="هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست." />
           </div>
         )}
@@ -183,7 +183,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'review' && (
           <div className="flex flex-col gap-stack-md">
-            {created.length === 0 ? <p className="body-md text-text-subtle">چیزی که به کسب‌وکار مربوط باشد در این متن پیدا نشد؛ بازگرد و متن دیگری بچسبان.</p> : (
+            {created.length === 0 ? <p className="body-md text-text-subtle">چیز قابل‌استفاده‌ای در این متن پیدا نشد؛ بازگرد و متن دیگری بچسبان.</p> : (
               <>
                 <p className="body-md text-text-default">مبدأ این‌ها را فهمید. هرکدام را که درست است نگه دار؛ باقی را بردار.</p>
                 <ul className="flex flex-col gap-stack-sm">

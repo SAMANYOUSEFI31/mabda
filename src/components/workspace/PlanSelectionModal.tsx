@@ -18,7 +18,7 @@ interface PlanSelectionModalProps {
 }
 
 const WHO: Record<PlanId, string> = {
-  starter: 'برای یک کسب‌وکار که تازه منبع حقیقتش را می‌سازد',
+  starter: 'برای شروع',
   pro: 'برای اپراتور روزانه‌ای که چند پروژه و جریان کار سفارشی دارد',
   max: 'برای مشاور یا آژانس با چند مشتری',
 };
@@ -35,7 +35,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
       open={isOpen}
       onClose={onClose}
       size="xl"
-      title={managed ? 'منبع حقیقت کسب‌وکار، همراه با هوش مصنوعی مبدأ' : 'منبع حقیقت کسب‌وکار'}
+      title={managed ? 'منبع حقیقت تو، همراه با هوش مصنوعی مبدأ' : 'منبع حقیقت تو'}
       description={managed ? 'اشتراک مبدأ برای ساختار، موتورها و استفاده از هوش مصنوعی است: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.' : 'اشتراک مبدأ برای ساختار و موتورهاست: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.'}
     >
       <div className="flex flex-col gap-stack-lg">
@@ -45,7 +45,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
             const p = PLANS[pid];
             const isCurrent = currentWorkspace.planId === pid;
             const rows: Array<{ ok: boolean; text: string }> = [
-              { ok: true, text: `${formatNumber(e.workspaces)} فضا برای کسب‌وکارها یا مشتری‌هایت` },
+              { ok: true, text: `${formatNumber(e.workspaces)} فضا (شخصی، کاری یا برای هر مشتری)` },
               { ok: true, text: `تا ${formatNumber(e.maxObjects)} قلم دانش فعال در درخت منبع حقیقت` },
               ...(managed ? [{ ok: true, text: `فایل‌هایت را بخوان: حدود ${k(e.fileTokensPerMonth)} توکن پردازش در ماه` }] : []),
               { ok: e.engines.changeImpact, text: 'بفهم کدام دارایی با تغییر دانش نیاز به بازبینی پیدا کرد' },

@@ -90,7 +90,7 @@ try {
     step(`[${width}] ج: «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش)$/ }).first().click();
     const rec = page.getByRole('dialog');
-    await rec.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');
+    await rec.getByLabel('چه چیزی درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');
     await rec.getByRole('button', { name: 'بیشتر' }).click();
     const rel = rec.getByTestId('relations');
     await rel.waitFor();

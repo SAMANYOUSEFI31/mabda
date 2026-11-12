@@ -59,7 +59,7 @@ try {
     step(`[${width}] a red line: «افزودن مثال» is behind «بیشتر»; two examples are written and saved with the rule`);
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('هرگز وعدهٔ سود قطعی نده.');
+    await dlg.getByLabel('چه چیزی درست است؟').fill('هرگز وعدهٔ سود قطعی نده.');
     assert.equal(await dlg.getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true');
     assert.equal(await dlg.getByRole('button', { name: 'افزودن مثال' }).count(), 0, 'no example field in the first view');
     await dlg.getByRole('button', { name: 'بیشتر' }).click();

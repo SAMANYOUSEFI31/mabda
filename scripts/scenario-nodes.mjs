@@ -98,7 +98,7 @@ try {
     await shot('3-service-start');
 
     step(`[${width}] the only root cannot be deleted; with a second main section the old root goes — its content moves, with a reason on record`);
-    await nodeOp('کسب‌وکار و بنیان', 'حذف');
+    await nodeOp('بنیان', 'حذف');
     await page.getByRole('dialog').getByText(/آخرین بخش اصلی/).waitFor();
     assert.equal(await page.getByRole('dialog').getByRole('button', { name: /^حذف/ }).last().isDisabled(), true);
     await shot('4-last-root');
@@ -107,7 +107,7 @@ try {
     await page.getByLabel('نام بخش').fill('خدمات');
     await page.getByRole('button', { name: 'افزودن بخش' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
-    await nodeOp('کسب‌وکار و بنیان', 'حذف');
+    await nodeOp('بنیان', 'حذف');
     await page.getByRole('dialog').getByText(/با محتوای این بخش چه کنیم/).waitFor();
     await shot('5-delete-with-content');
     await page.getByRole('dialog').getByRole('button', { name: 'حذف و بردن محتوا' }).click();

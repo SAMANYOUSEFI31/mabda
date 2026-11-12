@@ -57,7 +57,7 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
     await account('فضا تازه');
-    await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`سرنخ ${width}`);
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`سرنخ ${width}`);
     await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: سرنخ ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `سرنخ ${width}`).id;
@@ -132,7 +132,7 @@ try {
     await nav('منبع حقیقت', 'منبع');
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');
+    await dlg.getByLabel('چه چیزی درست است؟').fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');
     await dlg.getByLabel('عنوان').fill('قیمت بستهٔ هدیه نهایی');
     await dlg.getByRole('button', { name: /^در:/ }).click();
     await page.getByRole('menuitem', { name: /بستهٔ هدیه/ }).first().click();

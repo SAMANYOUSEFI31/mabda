@@ -85,7 +85,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const hasMissingThoughts = selectedThoughts.length !== thoughtIds.length;
   const options = useMemo(() => [
     ...(thoughtIds.length ? [{ value: THOUGHT_SECTIONS_SCOPE, label: `بخش‌های فکرهای انتخاب‌شده (${formatNumber(thoughtScopeNodeIds.length)})` }] : []),
-    { value: '', label: 'کل کسب‌وکار' },
+    { value: '', label: 'کل این فضا' },
     ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` })),
   ], [nodes, thoughtIds.length, thoughtScopeNodeIds.length]);
   const requestScope = usesThoughtSections ? { scopeNodeIds: thoughtScopeNodeIds, withChildren: false } : { scopeNodeId: scope || undefined, withChildren };

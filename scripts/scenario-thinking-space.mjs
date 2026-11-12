@@ -93,8 +93,8 @@ try {
     await space.getByRole('radio', { name: /^همه/ }).click();
     await space.locator('li', { hasText: 'قیمت اشتراک سه‌ماهه چقدر' }).getByRole('button', { name: 'به دانش ببر' }).click();
     const form = page.getByRole('dialog');
-    assert.equal(await form.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').inputValue(), 'قیمت اشتراک سه‌ماهه چقدر باشد؟', 'the text is prefilled');
-    await form.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.');
+    assert.equal(await form.getByLabel('چه چیزی درست است؟').inputValue(), 'قیمت اشتراک سه‌ماهه چقدر باشد؟', 'the text is prefilled');
+    await form.getByLabel('چه چیزی درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.');
     await form.getByRole('button', { name: 'ذخیره' }).first().click();
     await page.waitForTimeout(700);
     let objs = (await state()).objects;
@@ -114,7 +114,7 @@ try {
     step(`[${width}] ه: edit an APPROVED price without approving: it stays a draft and the request for an AI still carries the approved price`);
     await page.getByText('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.').first().click();
     const edit = page.getByRole('dialog');
-    await edit.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.');
+    await edit.getByLabel('چه چیزی درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.');
     await edit.getByTestId('draft-choice').waitFor();
     assert.equal(await edit.getByRole('radio', { name: 'پیش‌نویس بماند' }).getAttribute('aria-checked'), 'true', 'the safe choice is the default');
     await shot('4-draft-choice');

@@ -16,7 +16,7 @@ import type { ContextObject, TreeNode } from '../types';
 
 const NOW = new Date('2026-03-10T08:00:00Z');
 
-/** the showcase workspace with the tree CHANGED by the user: «کسب‌وکار و بنیان» (the old root) is deleted — its knowledge and children moved to a new root «خدمات» — and «آفر و قیمت‌گذاری» is renamed */
+/** the showcase workspace with the tree CHANGED by the user: «بنیان» (the old root) is deleted — its knowledge and children moved to a new root «خدمات» — and «آفر و قیمت‌گذاری» is renamed */
 function changed() {
   const d = buildDemo(NOW);
   const base: TreeNode[] = [
@@ -72,7 +72,7 @@ test('the order of the knowledge in a request follows the tree: the node that is
   const { d, tree, objects } = changed();
   const r = buildAiRequest({ kind: 'question', request: 'x', workspaceName: 'x', nodes: tree, objects, relationships: d.relationships, now: NOW });
   assert.ok(r.markdown.includes('خدمات'), 'the new root is named by the workspace\'s own tree, not by a table in the code');
-  assert.ok(!r.markdown.includes('کسب‌وکار و بنیان'), 'the deleted root is nowhere');
+  assert.ok(!r.markdown.includes('بنیان'), 'the deleted root is nowhere');
 });
 
 test('no source file reads a node by a fixed id: «business / brand / product / offer / content» appear only in data (the starting tree, hints, the demo), never in logic', async () => {

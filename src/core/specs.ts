@@ -16,7 +16,7 @@ import type { StartTemplate } from './startTemplate';
 export const DEFAULT_START: StartTemplate = {
   schema: TEMPLATE_SCHEMA, id: 'default', version: 1, title: 'کسب‌وکار و محصول', description: 'ساختار پیش‌فرض برای کسب‌وکار محصولی؛ هر بخش‌اش را می‌شود عوض کرد.',
   nodes: [{
-    key: 'business', label: 'کسب‌وکار و بنیان', description: 'هویت، مأموریت، چشم‌انداز و مدل کلی درآمدی',
+    key: 'business', label: 'بنیان', description: 'هویت، مأموریت، چشم‌انداز و مدل کلی درآمدی',
     children: [
       { key: 'brand', label: 'برند و پیام', description: 'لحن، موقعیت‌یابی، تمایزها و ارزش‌های اساسی', children: [
         { key: 'content', label: 'محتوا و بازاریابی', description: 'ستون‌های محتوایی، کانال‌های توزیع و تقویم ایده‌ها' },

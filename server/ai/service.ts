@@ -340,7 +340,7 @@ export class AiService {
       const questions: DecisionQuestion[] = items.map((it, i) => ({
         id: `o${i}`, question: `آیا این Context برای ساختن خروجی به‌اندازهٔ کافی روشن و مشخص است یا مبهم؟ «${it.title}»: ${it.content}`, options: ['clear', 'ambiguous'], reason: true,
       }));
-      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش کسب‌وکار (نه طول متن؛ معنا)', stage: 'decision' }, questions);
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش (نه طول متن؛ معنا)', stage: 'decision' }, questions);
       const judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }> = {};
       res.answers.forEach((a, i) => { judgments[items[i].id] = { ambiguous: a.choice === 'ambiguous', reason: a.reason ?? '', probability: a.probability }; });
       return { judgments, usage: res.usage ? usageSummary([res.usage]) : undefined };
@@ -396,7 +396,7 @@ export class AiService {
         id: `p${i}`, options: ['conflict', 'compatible'], reason: true,
         question: `آیا این دو ادعا با هم نمی‌خوانند؟ فقط اگر نمی‌توانند هم‌زمان دربارهٔ یک چیز درست باشند conflict بده؛ اگر مربوط به بخش‌ها یا زمان‌های متفاوت‌اند compatible.\nادعای الف — «${p.a.title}»: ${p.a.content}\nادعای ب — «${p.b.title}»: ${p.b.content}`,
       }));
-      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شدهٔ کسب‌وکار', stage: 'decision' }, questions);
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شده', stage: 'decision' }, questions);
       const results: Record<string, { conflict: boolean; reason: string }> = {};
       res.answers.forEach((a, i) => { results[pairs[i].key] = { conflict: a.choice === 'conflict', reason: a.reason ?? '' }; });
       return { results, usage: res.usage ? usageSummary([res.usage]) : undefined };
@@ -413,7 +413,7 @@ export class AiService {
       const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const user = [
-        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر بخش «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح بخش: ${req.nodeDescription}` : ''}`,
+        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی این فضا را می‌نویسد.' : `## موقعیت\nکاربر بخش «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح بخش: ${req.nodeDescription}` : ''}`,
         `## بخش‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nبخش پیش‌فرض: ${req.nodeId}`,
         req.existing?.length ? `## دانش تأییدشدهٔ موجود\n${req.existing.map((c) => `- ${c}`).join('\n')}` : '',
         req.history?.length ? `## گفتگوی قبلی با Coach\n${req.history.map((m) => `${m.role === 'user' ? 'کاربر' : 'Coach'}: ${m.content}`).join('\n')}` : '',
