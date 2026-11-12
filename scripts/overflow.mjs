@@ -152,10 +152,10 @@ for (const { width: w0, height, touch } of SIZES) {
       for (let i = 0; i < n; i++) {
         const t = dlg.locator(sel).nth(i);
         if (!(await t.isVisible() && await t.isEnabled())) continue;
-        const label = (await t.textContent())?.trim();
-        await t.click().catch(() => {}); await settle(); await still(); await check(`${where} › ${label}`);
+        const tab = (await t.textContent())?.trim();
+        await t.click().catch(() => {}); await settle(); await still(); await check(`${where} › ${tab}`);
         const y = await top();
-        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${label} ${where} › ${label}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
+        if (top0 !== null && y !== null && Math.abs(y - top0) > 0.5) note(`${label} ${where} › ${tab}`, [`dialog moved up/down on a tab switch: top ${Math.round(top0)} → ${Math.round(y)}`]);
       }
     }
   };
