@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp } from './server/app.ts';
 import { openDatabase } from './server/db/database.ts';
+import { resolveAccessGate } from './server/access.ts';
 import { decommissionLegacyByok } from './server/ai/decommission.ts';
 
 dotenv.config();
@@ -21,7 +22,10 @@ const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-const { app, aiSessions } = createApp(openDatabase());
+const access = resolveAccessGate(process.env);
+if (access.fatal) { console.error(`[access] ${access.fatal}`); process.exit(1); }
+
+const { app, aiSessions } = createApp(openDatabase(), { gate: access.gate });
 
 /** At start-up, verify the configured model ids against the managed key's model list. Never guesses. */
 async function verifyManagedModels() {
