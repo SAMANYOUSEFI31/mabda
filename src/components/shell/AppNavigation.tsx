@@ -182,14 +182,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <>
       {/* Desktop persistent sidebar (inline-start edge) */}
       {docked ? (
-        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-overlay-xs shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
+        <aside className="sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 overflow-y-auto border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col">
           {sidebar}
         </aside>
       ) : (
-        <div className="sticky top-space-0 z-dropdown hidden h-screen shrink-0 md:block" style={{ inlineSize: 64 }} onMouseEnter={showPeek} onMouseLeave={hidePeek} onFocus={showPeek} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hidePeek(); }}>
+        <div className="sticky top-space-0 z-dropdown hidden h-screen shrink-0 md:block" style={{ inlineSize: "var(--sidebar-rail)" }} onMouseEnter={showPeek} onMouseLeave={hidePeek} onFocus={showPeek} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) hidePeek(); }}>
           <div className="flex justify-center p-inset-lg" style={{ paddingInline: 0 }}>{toggleButton}</div>
           {peek && (
-            <aside data-testid="sidebar-peek" className="fixed bottom-space-0 top-space-0 start-space-0 z-overlay flex w-overlay-xs flex-col overflow-y-auto border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
+            <aside data-testid="sidebar-peek" className="fixed bottom-space-0 top-space-0 start-space-0 z-overlay flex w-sidebar flex-col overflow-y-auto border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
               {sidebar}
             </aside>
           )}

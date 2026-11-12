@@ -1489,5 +1489,33 @@
       },
       "$description": "backdrop blur of surface-bar («کاغذ کالک»)"
     }
+  },
+  "sidebar": {
+    "$type": "dimension",
+    "$description": "the side bar (navigation.md): default, narrowest, widest, rail",
+    "width": {
+      "$value": {
+        "value": 264,
+        "unit": "px"
+      }
+    },
+    "width-min": {
+      "$value": {
+        "value": 232,
+        "unit": "px"
+      }
+    },
+    "width-max": {
+      "$value": {
+        "value": 360,
+        "unit": "px"
+      }
+    },
+    "rail": {
+      "$value": {
+        "value": 64,
+        "unit": "px"
+      }
+    }
   }
 }
