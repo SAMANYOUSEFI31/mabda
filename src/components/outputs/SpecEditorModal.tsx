@@ -116,7 +116,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
 
   if (!allowed) {
     return (
-      <Dialog open onClose={onClose} size="sm" title="جریان کار سفارشی از پلن Pro" description={`پلن فعلی این فضای کاری ${PLANS[planId].title} است.`}
+      <Dialog open onClose={onClose} size="sm" title="جریان کار سفارشی از پلن Pro" description={`پلن فعلی این فضا ${PLANS[planId].title} است.`}
         footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" onClick={() => { onClose(); onUpgrade(); }}>ارتقای پلن</Button></>}>
         <p className="body-md text-text-default">ساخت و ویرایش جریان کار با خروجی‌های وابسته، معیار پذیرش و خط قرمز در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
       </Dialog>
@@ -138,7 +138,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
             <TextField label="نام قلم دانش" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
             <Select label="شاخه" value={it.nodeId} onChange={(e) => patch({ nodeId: e.target.value })} options={nodeOptions} />
-            <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش شکاف)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
+            <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش جای خالی)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
           </div>
         )}
       />
@@ -159,7 +159,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
     <Dialog
       open
       onClose={onClose}
-      size="xl"
+      size="lg"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
       description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
       footer={
@@ -169,7 +169,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
         </>
       }
     >
-      <form id="spec-editor-form" onSubmit={submit} className="flex flex-col gap-stack-lg">
+      <form id="spec-editor-form" noValidate onSubmit={submit} className="flex flex-col gap-stack-lg">
         {!initial && (
           <Card padding="md" className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
             <div className="sm:flex-1">
@@ -186,7 +186,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
           <Textarea label="توضیح (اختیاری)" rows={2} value={draft.description} onChange={(e) => set({ description: e.target.value })} />
         </Card>
 
-        {ctxEditor('required', 'دانش لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ رادار شکاف دنبالشان می‌گردد.')}
+        {ctxEditor('required', 'دانش لازم', 'بدون این‌ها خروجی قابل‌اعتماد نیست؛ رادار جای خالی دنبالشان می‌گردد.')}
         {ctxEditor('suggested', 'دانش پیشنهادی', 'کیفیت را بالا می‌برند.')}
         {ctxEditor('optional', 'دانش اختیاری', 'اگر باشد استفاده می‌شود.')}
 

@@ -208,7 +208,7 @@ export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: Removal
     } else {
       for (const x of objects.filter((x) => ownNodes.has(x.nodeId) && x.status !== 'Archived' && x.status !== 'Superseded')) {
         batch.archived[x.id] = x.status;
-        repo.updateObject(s, x.id, { status: 'Archived' }, { actor: 'user', reason: `گرهٔ «${here.label}» با شاخه‌اش بایگانی شد` });
+        repo.updateObject(s, x.id, { status: 'Archived' }, { actor: 'user', reason: `بخش «${here.label}» با شاخه‌اش بایگانی شد` });
       }
       for (const x of notes.filter((x) => ownNodes.has(x.nodeId))) { batch.notes[x.id] = x.nodeId; repo.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(plan.target, x.id, s.workspaceId); }
       for (const x of thoughts.filter((x) => ownNodes.has(x.nodeId))) { batch.thoughts[x.id] = x.nodeId; repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(plan.target, x.id, s.workspaceId, s.userId); }
@@ -216,7 +216,7 @@ export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: Removal
       for (const smp of repo.listSampleObjects(s).filter((x) => ownNodes.has(x.nodeId))) { batch.samples.push(smp as unknown as Record<string, unknown>); }
       repo.deleteSamples(s, [...ownNodes]);
       // the branch's sections go, deepest first (its knowledge stays, archived, with the section it was in)
-      repo.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: `گرهٔ «${here.label}» با ${batch.nodes.length - 1} زیربخشش بایگانی شد؛ ${Object.keys(batch.archived).length} دانش بایگانی شد.` } });
+      repo.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: `بخش «${here.label}» با ${batch.nodes.length - 1} زیربخشش بایگانی شد؛ ${Object.keys(batch.archived).length} دانش بایگانی شد.` } });
       for (const n of [...batch.nodes].reverse()) repo.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND id = ?').run(s.workspaceId, n.id);
     }
     const removalId = newId('rm');
@@ -253,7 +253,7 @@ export function undoRemoval(repo: Repo, s: Scope, batchId: string): { nodes: Tre
     for (const c of b.children) repo.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(c.parentId ?? null, c.order, s.workspaceId, c.id);
     for (const [oid, status] of Object.entries(b.archived)) {
       const cur = repo.getObjectAny(s, oid);
-      if (cur && cur.status === 'Archived') repo.updateObject(s, oid, { status: status as ContextObject['status'] }, { actor: 'user', reason: 'حذف گره برگردانده شد' });
+      if (cur && cur.status === 'Archived') repo.updateObject(s, oid, { status: status as ContextObject['status'] }, { actor: 'user', reason: 'حذف بخش برگردانده شد' });
     }
     for (const smp of b.samples) repo.createSample(s, smp as never);
     repo.recordChange(s, { objectId: `node:${b.rootId}`, fromVersion: 0, toVersion: 0, kind: 'node_restored', meta: { actor: 'user', reason: `${row.label} — برگردانده شد.` } });
@@ -288,7 +288,7 @@ const tablesWith = (repo: Repo, column: string): string[] => rows<{ name: string
 
 export function archiveWorkspace(repo: Repo, userId: string, id: string, archive: boolean): Workspace {
   const ws = repo.getWorkspace(userId, id);
-  if (!ws) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+  if (!ws) throw new RepoError('not_found', 'فضا پیدا نشد.');
   const next: Workspace = archive ? { ...ws, archivedAt: now() } : { ...ws, archivedAt: undefined };
   if (!archive) delete next.archivedAt;
   repo.db.prepare('UPDATE workspaces SET data = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(next), id, userId);
@@ -297,7 +297,7 @@ export function archiveWorkspace(repo: Repo, userId: string, id: string, archive
 
 /** a workspace and every row that belongs to it, in every table (the schema decides which) */
 export function deleteWorkspace(repo: Repo, userId: string, id: string): { removed: number } {
-  if (!repo.getWorkspace(userId, id)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+  if (!repo.getWorkspace(userId, id)) throw new RepoError('not_found', 'فضا پیدا نشد.');
   let removed = 0;
   repo.db.transaction(() => {
     for (const t of tablesWith(repo, 'workspace_id')) removed += repo.db.prepare(`DELETE FROM ${t} WHERE workspace_id = ? AND user_id = ?`).run(id, userId).changes;

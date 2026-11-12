@@ -87,7 +87,7 @@ const Thread: React.FC<Props & { node: TreeNode }> = ({ workspaceId, node, onClo
             {t.role === 'user' ? <p className="body-md whitespace-pre-wrap text-text-default">{t.content}</p> : <Markdown>{t.content}</Markdown>}
             {t.created && t.created.length > 0 && (
               <div className="flex flex-col gap-stack-xs">
-                <Badge intent="info" icon={false}>{formatNumber(t.created.length)} پیشنهاد برای این بخش در صندوق</Badge>
+                <Badge icon={false}>{formatNumber(t.created.length)} پیشنهاد برای این بخش در صندوق</Badge>
                 {t.created.map((o) => (
                   <span key={o.id} className="flex flex-wrap items-center gap-inline-sm"><TypeBadge value={o.type} /><span className="body-sm text-text-default">{o.title}</span></span>
                 ))}

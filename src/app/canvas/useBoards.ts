@@ -104,12 +104,12 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     return r.impact;
   };
 
-  /** «بایگانی» is the default way to take knowledge away: history, versions and sources stay; «برگرداندن» puts it back as it was */
+  /** «بایگانی» is the default way to take knowledge away: history, versions and sources stay; «واگرد» puts it back as it was */
   const handleArchiveContext = async (id: string) => {
     const o0 = workspaceContexts.find((x) => x.id === id);
     const impact = await setStatus(id, 'Archived');
     if (impact) showImpact(impact);
-    if (o0) toast.show({ intent: 'success', message: `«${o0.title}» بایگانی شد؛ تاریخچه‌اش می‌ماند.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreObject(wid, id)).then((r) => { if (r) patch((d) => ({ ...d, objects: d.objects.map((x) => (x.id === id ? r.object : x)), stale: r.stale })); }); } } });
+    if (o0) toast.show({ intent: 'success', message: `«${o0.title}» بایگانی شد؛ تاریخچه‌اش می‌ماند.`, duration: 10000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.restoreObject(wid, id)).then((r) => { if (r) patch((d) => ({ ...d, objects: d.objects.map((x) => (x.id === id ? r.object : x)), stale: r.stale })); }); } } });
   };
 
   /** conflict: keep one (the other becomes Superseded) */
@@ -126,7 +126,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     if (!r) return;
     patch((d) => ({ ...d, objects: r.objects, pairJudgments: r.pairJudgments, stale: r.stale }));
     showImpact(r.impact);
-    toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
+    toast.show({ intent: 'success', message: 'بخش‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
   };
 
   // semantic contradictions (Pro and above, needs an AI key). The judge NEVER runs because a workspace was opened, built or

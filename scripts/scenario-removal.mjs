@@ -36,8 +36,12 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}-${width}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).evaluate((n) => n.click()); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).evaluate((n) => n.click()); };
     const radio = (name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click());
@@ -50,9 +54,10 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`حذف ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click();
+    await page.getByLabel('نام فضا', { exact: true }).fill(`حذف ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: حذف ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `حذف ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);
@@ -70,8 +75,9 @@ try {
     await radio('ساختار');
     await page.getByRole('button', { name: 'شمارهٔ کارت اشتباهی' }).first().click().catch(async () => { await page.getByText('شمارهٔ کارت اشتباهی').first().click(); });
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بایگانی' }).click();
-    await page.getByRole('button', { name: 'برگرداندن' }).first().waitFor();
+    await detail.getByRole('button', { name: 'بیشتر', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'بایگانی' }).click();
+    await page.getByRole('button', { name: 'واگرد' }).first().waitFor();
     assert.equal((await state()).objects.find((o) => o.id === obj.id).status, 'Archived', 'archived first: nothing is erased by one click');
     await palette('بایگانی', 'رفتن به بایگانی');
     const arch = page.getByRole('dialog').last();
@@ -105,7 +111,7 @@ try {
     await reselect();
     await nav('منبع حقیقت', 'منبع');
     await radio('ساختار');
-    await page.getByRole('button', { name: 'عملیات گرهٔ کارگاه' }).click();
+    await page.getByRole('button', { name: 'عملیات بخش کارگاه' }).click();
     await page.getByRole('menuitem', { name: 'حذف' }).click();
     const dd = page.getByRole('dialog').last();
     await dd.getByTestId('node-delete').waitFor();
@@ -118,7 +124,7 @@ try {
     await page.getByText(/«کارگاه» حذف شد/).first().waitFor();
     assert.ok(!(await state()).nodes.some((n) => n.id === ws1.id), 'it is gone');
     assert.equal((await state()).nodes.find((n) => n.id === sub1.id).parentId, product.id);
-    await page.getByRole('button', { name: 'برگرداندن' }).first().click();
+    await page.getByRole('button', { name: 'واگرد' }).first().click();
     await page.getByText('برگشت؛ همه‌چیز همان‌طور که بود.').first().waitFor();
     const after = await state();
     assert.equal(after.nodes.find((n) => n.id === ws1.id)?.parentId, product.id, 'the section is back where it was');
@@ -127,12 +133,12 @@ try {
     await shot('4-node-undone');
 
     step(`[${width}] ج: the showcase is wiped with one confirm`);
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor({ timeout: 15000 });
-    await account('پاک کردن فضای نمونه');
+    await account('حذف فضای نمونه');
     const dc = page.getByRole('alertdialog');
-    await dc.getByRole('button', { name: 'پاک کن' }).click();
-    await page.getByText('فضای نمونه پاک شد.').first().waitFor();
+    await dc.getByRole('button', { name: 'حذف فضای نمونه' }).click();
+    await page.getByText('فضای نمونه حذف شد.').first().waitFor();
     assert.ok(!(await call('GET', '/workspaces')).workspaces.some((w) => w.isDemo), 'the showcase is gone');
     await shot('5-demo-gone');
 

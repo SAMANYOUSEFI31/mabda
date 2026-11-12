@@ -60,8 +60,8 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
       open={p.open} onClose={p.onClose} size="xl" title={chosen ? 'چرا بقیه کنار رفتند؟' : 'گزینه‌های این تصمیم'}
       description={chosen ? `«${chosen.title}» انتخاب می‌شود. برای هر گزینهٔ دیگر یک دلیل کوتاه بنویس؛ با تصمیم می‌ماند.` : question}
       footer={chosen
-        ? <><Button variant="ghost" onClick={() => setChosen(null)}>برگشت</Button><Button variant="primary" loading={busy} disabled={!ready} onClick={confirm}>ثبت تصمیم</Button></>
-        : <><Button variant="ghost" iconStart="Sparkles" disabled={options.length < 2} onClick={() => p.onAskAi(askText(question, options))}>آماده‌سازی درخواست نظر</Button><Button variant="secondary" onClick={p.onClose}>بستن</Button></>}
+        ? <><Button variant="ghost" onClick={() => setChosen(null)}>برگشت</Button><Button variant="primary" loading={busy} disabled={!ready} onClick={confirm}>انتخاب این گزینه</Button></>
+        : <><Button variant="ghost" iconStart="PackageOpen" disabled={options.length < 2} onClick={() => p.onAskAi(askText(question, options))}>درخواست برای ابزار دیگر نظر</Button><Button variant="secondary" onClick={p.onClose}>بستن</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
         {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" iconStart="RefreshCw" onClick={() => void (chosen ? confirm() : add())}>دوباره</Button>}>{error}</Alert>}

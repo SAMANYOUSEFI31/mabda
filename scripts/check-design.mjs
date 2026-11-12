@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check:design — fails when UI source bypasses the Bushido semantic tokens.
+ * check:design — fails when UI source bypasses Mabda's semantic tokens (src/ui/tokens, docs/design-system/tokens.md).
  *
  * Flags (in src/** and index.html):
  *   hex        raw hex colors                           #09090b
@@ -9,9 +9,13 @@
  *   palette    Tailwind default palette / white / black bg-zinc-900  text-white  border-red-500
  *   raw-var    raw DS palette variables                 var(--neutral-800)  var(--crimson-600)  var(--white-a8)
  *   physical   left/right instead of logical props      ml-2  pr-4  text-right  left-0  marginLeft  border-l
+ *   z-index    raw z-index / z-10 (layers come from --layer-*)
+ *   outline    outline: none / outline-none with no focus-within or :focus-visible replacement nearby
+ *   motion     raw ms / ease keywords in transition or animation; duration-150, ease-out
  *   scale      non-token scales                         p-4  gap-2  w-8  text-xs  font-medium  italic  shadow-md
  *
- * Only `public/ds` may contain raw values; it is never scanned.
+ * Only the generated token files (src/ui/tokens/build/) contain raw values; they are never scanned (src/ui/tokens.test.ts
+ * proves they equal the DTCG source). Primitive palette names (ink, lapis, …) exist only in JSON, never as CSS variables.
  * Usage: node scripts/check-design.mjs [--list-rules]
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -21,8 +25,9 @@ const ROOT = process.cwd();
 const TARGETS = ['src', 'index.html'];
 const EXT = new Set(['.ts', '.tsx', '.css', '.html']);
 const SKIP_DIR = new Set(['node_modules', 'dist']);
+const SKIP_PATH = /^src\/ui\/tokens\/build\//;
 
-const PALETTE = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|crimson|vermilion)';
+const PALETTE = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|crimson|vermilion|ink|lapis|verdigris|ochre|brick|petrol)';
 const COLOR_PREFIX = '(?:bg|text|border|border-[xytblrse]|divide|ring|ring-offset|outline|fill|stroke|from|via|to|shadow|decoration|accent|caret|placeholder)';
 const SPACING_PREFIX = '(?:p|px|py|pt|pb|ps|pe|m|mx|my|mt|mb|ms|me|gap|gap-x|gap-y|space-x|space-y|w|h|size|min-w|min-h|max-w|max-h|inset|inset-x|inset-y|top|bottom|start|end|basis)';
 
@@ -30,10 +35,15 @@ const rules = [
   // ---- raw-line rules ----
   { id: 'hex', line: true, re: /(?<![\w&/])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b(?!-)/g, msg: 'raw hex color — use a semantic token' },
   { id: 'color-fn', line: true, re: /\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/g, msg: 'color function — use a semantic token' },
-  { id: 'raw-var', line: true, re: /var\(--(?:neutral|crimson|vermilion|amber|emerald|sky)-(?:\d+|a\d+)\)|var\(--white(?:-a\d+)?\)|var\(--neutral-950-a88\)/g, msg: 'raw palette variable — use surface-*/bg-*/text-*/border-* tokens' },
+  { id: 'raw-var', line: true, re: /var\(--(?:neutral|crimson|vermilion|amber|emerald|sky|ink|lapis|verdigris|ochre|brick|petrol)-(?:\d+|a\d+)\)|var\(--white(?:-a\d+)?\)/g, msg: 'raw palette variable — use surface-*/bg-*/text-*/border-* tokens' },
   { id: 'arbitrary', line: true, re: /(?<![\w-])!?-?[a-z][a-z0-9-]*-\[(?![^\]]*var\(--)[^\]\s]+\]/g, msg: 'Tailwind arbitrary value — use a token utility' },
   { id: 'physical', line: true, re: /\b(?:margin|padding)(?:Left|Right)\b|\bborder(?:Left|Right)\b|\b(?:left|right)\s*:\s*[^;,}]|(?:^|[;{\s])(?:margin|padding|border)-(?:left|right)\s*:|text-align\s*:\s*(?:left|right)|float\s*:\s*(?:left|right)|\btextAlign\s*:\s*['"](?:left|right)['"]|(?<![\w-])(?:left|right)\s*:\s*\d/g, msg: 'physical left/right — use logical properties' },
+  { id: 'ai-icon', line: true, re: /\b(?:Sparkles?|Wand2?|WandSparkles|Zap|Brain|BrainCircuit|Bot|Stars)\b/g, msg: 'AI-magic icon — forbidden (docs/design-system/iconography.md, «ممنوع»); say it in words' },
+  { id: 'z-index', line: true, re: /\bz-index\s*:\s*-?\d|\bzIndex\s*:\s*-?\d|(?<![\w-])-?z-\d+(?![\w-])/g, msg: 'raw z-index — use var(--layer-*) / z-dropdown, z-overlay … (shape-elevation.md «لایه‌ها»)' },
+  { id: 'outline', line: true, near: /focus-within|:focus-visible|focus-visible:/, re: /\boutline\s*:\s*(?:none|0)\b|(?<![\w-])outline-(?:none|hidden)(?![\w-])/g, msg: 'outline removed with no focus replacement nearby (focus-within / :focus-visible within 6 lines) — accessibility.md «حلقهٔ فوکوس»' },
+  { id: 'motion', line: true, re: /\b(?:transition|animation)(?:-duration|-delay|-timing-function)?\s*:[^;}]*?(?:(?<![\w-])\d+(?:\.\d+)?m?s\b|(?<![\w-])(?:ease|ease-in|ease-out|ease-in-out)(?![\w-]))/g, msg: 'raw duration or easing — use --duration-* / --ease-* (docs/design-system/motion.md)' },
   // ---- token (class) rules ----
+  { id: 'motion', tok: /^(?:duration|delay)-(?:\d+|\[.*\])$|^ease-(?:in|out|in-out|linear|\[.*\])$|^animate-(?:spin|ping|pulse|bounce|\[.*\])$/, msg: 'Tailwind duration/easing scale — use duration-fast / duration-base (motion.md)' },
   { id: 'brand', ctx: /./, notIn: /^src\/ui\//, tok: /(?:^|-)(?:bg|text|border|icon)-brand(?:-\S+)?$/, msg: 'brand color outside src/ui — brand is only for the primary Button / BrandMark (never error, warning, selection or link)' },
   { id: 'palette', tok: new RegExp(`^${COLOR_PREFIX}-(?:${PALETTE}-\\d{2,3}|white|black)(?:/\\d+)?$`), msg: 'Tailwind palette color — use a semantic token' },
   { id: 'palette', tok: /^(?:bg|text|border|fill|stroke)-(?:white|black)(?:\/\d+)?$/, msg: 'white/black — use a semantic token' },
@@ -41,7 +51,7 @@ const rules = [
   { id: 'scale', tok: new RegExp(`^-?${SPACING_PREFIX}-(?:\\d+(?:\\.\\d+)?|px)$`), msg: 'numeric scale — use space-*/inset-*/stack-*/inline-*/control-*/icon-* tokens' },
   { id: 'scale', tok: /^text-(?:xs|sm|base|lg|xl|[2-9]xl)$/, msg: 'Tailwind text size — use text-body-md / label-md / heading-* etc.' },
   { id: 'scale', ctx: /class|@apply/, tok: /^(?:shadow|rounded)$/, msg: 'bare shadow/rounded — use shadow-raised|overflow|overlay and rounded-control|container|overlay|pill' },
-  { id: 'scale', tok: /^(?:font-(?:thin|extralight|light|medium|extrabold|black)|italic|not-italic|text-justify|tracking-(?:tighter|tight|normal|wide|wider|widest)|leading-(?:\d+|none|loose))$/, msg: 'type rule: weights 400/600/700 only, no italics, no justify, letter-spacing 0' },
+  { id: 'scale', tok: /^(?:font-(?:thin|extralight|light|extrabold|black)|italic|not-italic|text-justify|tracking-(?:tighter|tight|normal|wide|wider|widest)|leading-(?:\d+|none|loose))$/, msg: 'type rule: weights 400/500/600/700 only, no italics, no justify, letter-spacing 0' },
   { id: 'scale', tok: /^(?:shadow-(?:xs|sm|md|lg|xl|2xl|inner|none)|backdrop-blur(?:-\S+)?|blur(?:-\S+)?|drop-shadow(?:-\S+)?|z-\d+)$/, msg: 'non-token shadow/radius/blur/z-index — use shadow-raised|overflow|overlay, rounded-*, z-dialog …' },
 ];
 
@@ -72,6 +82,7 @@ for (const target of TARGETS) {
   try { statSync(abs); } catch { continue; }
   for (const file of walk(abs)) {
     const rel = relative(ROOT, file).replaceAll(sep, '/'); // one path style on every OS (the rules match «src/ui/»)
+    if (SKIP_PATH.test(rel)) continue;
     const lines = readFileSync(file, 'utf8').split('\n');
     lines.forEach((line, i) => {
       // `theme-color` meta cannot use var(); it is the one documented raw value (same as the DS brief).
@@ -81,6 +92,7 @@ for (const target of TARGETS) {
         if (rule.line) {
           if (exempt) continue;
           rule.re.lastIndex = 0;
+          if (rule.near && rule.near.test(lines.slice(Math.max(0, i - 6), i + 7).join('\n'))) continue;
           let m;
           while ((m = rule.re.exec(line))) {
             findings.push({ rel, line: i + 1, col: m.index + 1, id: rule.id, msg: rule.msg, snippet: m[0].trim() });

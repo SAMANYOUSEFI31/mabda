@@ -65,7 +65,7 @@ export function splitSupersedeReason(content: string): { content: string; reason
 
 export const CHANGE_KIND_FA: Record<ContextChangeKind, string> = {
   created: 'ثبت شد', edited: 'ویرایش شد', status_changed: 'وضعیت عوض شد', superseded: 'جایگزین شد', archived: 'بایگانی شد',
-  proposal_accepted: 'پیشنهاد تأیید شد', proposal_rejected: 'پیشنهاد رد شد', contradiction_resolved: 'تناقض حل شد', imported: 'وارد شد', review_accepted: 'بدون تغییر پذیرفته شد', outcome_noted: 'نتیجه ثبت شد', node_from_note: 'گره از یادداشت ساخته شد', node_restored: 'گره برگشت', purged: 'یک مورد حذف دائمی شد', node_deleted: 'گره حذف شد', node_moved: 'گره جابه‌جا شد',
+  proposal_accepted: 'پیشنهاد تأیید شد', proposal_rejected: 'پیشنهاد رد شد', contradiction_resolved: 'تناقض حل شد', imported: 'وارد شد', review_accepted: 'بدون تغییر پذیرفته شد', outcome_noted: 'نتیجه ثبت شد', node_from_note: 'بخش از یادداشت ساخته شد', node_restored: 'بخش برگشت', purged: 'یک مورد حذف دائمی شد', node_deleted: 'بخش حذف شد', node_moved: 'بخش جابه‌جا شد',
   metric_created: 'شاخص ثبت شد', metric_edited: 'شاخص ویرایش شد', metric_archived: 'شاخص بایگانی شد', measurement_added: 'عدد ثبت شد', measurement_proposed: 'عدد پیشنهاد شد', measurement_removed: 'عدد حذف شد',
 };
 export const ACTOR_FA: Record<ContextChangeActor, string> = { user: 'خودت', mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', import: 'ورود', system: 'سامانه' };

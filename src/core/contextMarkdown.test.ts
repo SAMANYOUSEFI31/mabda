@@ -12,7 +12,7 @@ const o = (over: Partial<ContextObject>): ContextObject => ({
 test('whole tree: title is H1, nodes H2, objects H3; labels are Persian', () => {
   const md = contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: [o({})], title: 'کارگاه' });
   assert.match(md, /^# کارگاه\n/);
-  assert.match(md, /\n## کسب‌وکار و بنیان\n/);
+  assert.match(md, /\n## بنیان\n/);
   assert.match(md, /\n### مخاطب اصلی\n\n_تصمیم · تأییدشده · نسخهٔ ۲_\n\nفریلنسرها/);
   assert.match(md, /#### برند و پیام|### برند و پیام/);
 });

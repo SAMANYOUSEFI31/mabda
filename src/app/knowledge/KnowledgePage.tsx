@@ -28,13 +28,13 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
                 منبع حقیقت: {currentWorkspace.name}
               </h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">
-                «مبدأ منبع حقیقت کسب‌وکار توست. هر کار از اون شروع می‌شه و هر خروجی به اون برمی‌گرده.»
+                «مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد.»
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-inline-sm">
               {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
-              <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>
+              <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
               <SegmentedControl
                 label="نمای منبع حقیقت"
                 value={contextViewMode}
@@ -113,7 +113,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
               objects={workspaceContexts}
               nodes={nodes}
               onSelectObject={(obj) => openContext(obj)}
-              onAddNew={() => openContext(null)}
               samples={data.samples ?? []}
             /></PageSuspense>
           )}

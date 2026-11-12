@@ -46,7 +46,7 @@ export function registerStartersRoutes(ctx: RouteContext): void {
     const b = body(req);
     if (b.kind === 'node') {
       const t = nodeTemplateOf(String(b.sourceId ?? ''), repo.listNodes(s), repo.listObjects(s));
-      if (!t) throw new RepoError('not_found', 'گره پیدا نشد.');
+      if (!t) throw new RepoError('not_found', 'بخش پیدا نشد.');
       res.json({ id: repo.saveTemplate(s, 'node', String(b.name ?? t.root.label), t) });
     } else if (b.kind === 'workstream') {
       const spec = repo.listSpecs(s).find((x) => x.id === b.sourceId);

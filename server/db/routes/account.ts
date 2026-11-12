@@ -11,9 +11,9 @@ export function registerAccountRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/archive', wrap((req, res) => { archiveWorkspace(repo, LOCAL_USER, req.params.wid, body(req).archive !== false); res.json({ workspaces: repo.listWorkspaces(LOCAL_USER) }); }));
   router.delete('/workspaces/:wid', wrap((req, res) => {
     const ws = repo.getWorkspace(LOCAL_USER, req.params.wid);
-    if (!ws) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+    if (!ws) throw new RepoError('not_found', 'فضا پیدا نشد.');
     // the showcase is a sample: one clear yes is enough; a real workspace needs its name typed
-    if (!ws.isDemo && body(req).confirmName !== ws.name) throw new RepoError('invalid', 'برای حذف، نام فضای کاری را دقیقاً بنویس.');
+    if (!ws.isDemo && body(req).confirmName !== ws.name) throw new RepoError('invalid', 'برای حذف، نام فضا را دقیقاً بنویس.');
     const r = deleteWorkspace(repo, LOCAL_USER, req.params.wid);
     res.json({ ...r, workspaces: repo.listWorkspaces(LOCAL_USER) });
   }));

@@ -27,26 +27,26 @@ export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' |
 export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
   return (
         <div className="space-y-stack-lg">
-          <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-row items-start justify-between gap-inline-md">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">فقط آنچه الان ارزش دارد؛ بقیه یک کلیک پایین‌تر است.</p>
             </div>
             <div className="flex flex-wrap items-center gap-inline-sm">
-              {workspaceContexts.length > 0 && <Button variant="primary" iconStart="Sparkles" onClick={() => setAiRequest({ scopeNodeId: '' })}>آماده‌سازی درخواست</Button>}
-              {/* on phones the page action of the top bar does not exist: recording knowledge must still be one tap away */}
-              {workspaceContexts.length > 0 && <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت دانش</Button>}
+              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's);
+                  taking the truth to another tool is one of the occasional things, so it sits in «بیشتر» */}
               {workspaceContexts.length > 0 && <Menu
                 label="بیشتر"
                 align="end"
                 trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
                 items={[
                   { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
+                  { label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => setAiRequest({ scopeNodeId: '' }) },
                   { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
                   { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
                   { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                   { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                  { label: 'شروع سریع', icon: 'Zap', onSelect: () => setIsOnboardingOpen(true) },
+                  { label: 'شروع سریع', icon: 'Compass', onSelect: () => setIsOnboardingOpen(true) },
                 ]}
               />}
             </div>
@@ -55,11 +55,11 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             <EmptyState
               icon="House"
               title="از همین‌جا شروع کن"
-              description="یک جمله دربارهٔ کسب‌وکارت بنویس یا یک متن بچسبان؛ بقیه‌اش را مبدأ مرتب می‌کند. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
+              description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
               action={(
                 <div className="flex flex-wrap justify-center gap-inline-md">
-                  <Button variant="primary" iconStart="Sparkles" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>ثبت اولین دانش</Button>
+                  <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                  <Button variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
                   <Button variant="ghost" iconStart="Download" onClick={() => setIsMemoryOpen(true)}>وارد کردن سند یا حافظه</Button>
                 </div>
               )}
@@ -118,7 +118,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
             <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-lg" aria-label="سؤال‌ها و تصمیم‌های باز">
               <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
-              <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ گره‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز به AI داده نمی‌شوند.</p>
+              <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز به AI داده نمی‌شوند.</p>
               <ThinkingList
                 items={thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts))}
                 objects={workspaceContexts}

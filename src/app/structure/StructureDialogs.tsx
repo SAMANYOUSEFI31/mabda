@@ -47,7 +47,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
         if (!r) throw new Error('node delete failed');
         patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, thoughts: r.thoughts, files: r.files, stale: r.stale }));
         void reload(wid);
-        toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
+        toast.show({ intent: 'success', message: `${r.removal.label}.`, duration: 12000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.undoRemoval(wid, r.removal.id)).then((u) => { if (u) { patch((d) => ({ ...d, nodes: u.nodes, objects: u.objects, notes: u.notes, thoughts: u.thoughts, files: u.files, samples: u.samples, changes: u.changes, stale: u.stale })); toast.show({ intent: 'success', message: 'برگشت؛ همه‌چیز همان‌طور که بود.' }); } }); } } });
       }}
       onThoughtSectioned={handleThoughtSectioned}
     /></Deferred>
@@ -81,7 +81,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
     >
       <div className="flex flex-col gap-stack-sm">
         <TextField label="نام قالب" value={templateDraft?.name ?? ''} onChange={(e) => setTemplateDraft((d) => (d ? { ...d, name: e.target.value } : d))} />
-        <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'گره، زیرگره‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
+        <p className="body-sm text-text-subtle">{templateDraft?.kind === 'node' ? 'بخش، زیربخش‌ها و دانش تأییدشدهٔ داخلش ذخیره می‌شود؛ هر جا بیاوری، دانش‌ها «نمونهٔ خاکستری» می‌شوند.' : 'خودِ جریان کار (هدف، موارد لازم و خروجی‌ها) ذخیره می‌شود.'}</p>
       </div>
     </Dialog>
     </>

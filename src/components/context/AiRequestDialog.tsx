@@ -50,7 +50,7 @@ const THOUGHT_SECTIONS_SCOPE = '__selected_thought_sections__';
 const newPackId = () => `rq_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /**
- * «آماده‌سازی درخواست» (was «درخواست برای AI»): pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
+ * «درخواست برای ابزار دیگر» (was «درخواست برای AI»): pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
  * (src/core/aiRequest.ts); the preview is the exact text that is copied. Nothing is generated here — no AI is called.
  */
 export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner {...props} /> : null);
@@ -85,7 +85,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const hasMissingThoughts = selectedThoughts.length !== thoughtIds.length;
   const options = useMemo(() => [
     ...(thoughtIds.length ? [{ value: THOUGHT_SECTIONS_SCOPE, label: `بخش‌های فکرهای انتخاب‌شده (${formatNumber(thoughtScopeNodeIds.length)})` }] : []),
-    { value: '', label: 'کل کسب‌وکار' },
+    { value: '', label: 'کل این فضا' },
     ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` })),
   ], [nodes, thoughtIds.length, thoughtScopeNodeIds.length]);
   const requestScope = usesThoughtSections ? { scopeNodeIds: thoughtScopeNodeIds, withChildren: false } : { scopeNodeId: scope || undefined, withChildren };
@@ -156,7 +156,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
 
   return (
     <Dialog
-      open onClose={onClose} size="xl" title="آماده‌سازی درخواست" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
+      open onClose={onClose} size="xl" title="درخواست برای ابزار دیگر" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -171,7 +171,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             ]}
           />
           {/* internal AI is frozen (MABDA_MANAGED_AI): «همین‌جا جواب بده» exists only with the flag on; otherwise the copy is the only action */}
-          {ai.managedEnabled && <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Sparkles" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>}
+          {ai.managedEnabled && <Button variant={ai.available ? 'primary' : 'ghost'} iconStart="Send" disabled={!ready} loading={busy === 'answer'} onClick={answerHere}>همین‌جا جواب بده</Button>}
           <Button variant={ai.managedEnabled && ai.available ? 'secondary' : 'primary'} iconStart={copied ? 'Check' : 'Copy'} disabled={!ready || !result} loading={busy === 'copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی برای استفاده در هر ابزار'}</Button>
         </>
       }
@@ -229,7 +229,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
               <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>
-              <Badge intent="success" icon={false}>شامل شد ({formatNumber(result.included.length)})</Badge>
+              <Badge icon={false}>شامل شد ({formatNumber(result.included.length)})</Badge>
               <Badge intent="neutral" icon={false}>خارج شد ({formatNumber(result.excluded.length)})</Badge>
               {result.counts.assumptions > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.assumptions)} فرض (جدا)</Badge>}
               {result.counts.rejected > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.rejected)} گزینهٔ ردشده</Badge>}

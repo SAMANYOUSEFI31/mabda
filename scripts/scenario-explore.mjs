@@ -2,7 +2,7 @@
 /**
  * The audit scenarios on the showcase workspace (REAL server + temp SQLite), the four cognitive walkthroughs:
  *   الف «قیمت اشتراک چه تغییری کرد و چرا؟»  — the diff, its one-line summary, the newest drafts open, compare two versions
- *   ب «یک فکر خام دربارهٔ گرهٔ ارسال بنویس» — in the structure view, no other view needed
+ *   ب «یک فکر خام دربارهٔ بخش ارسال بنویس» — in the structure view, no other view needed
  *   ج «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — in the record dialog («بیشتر»), both directions, with search
  *   د «در بوم ببین چه چیزی به لحن پاسخ وابسته است» — the inspector says it; lines: halos in their own layer, below every line
  * Screenshots → docs/screens/explore-*.png (1280) and explore-m-*.png (390)
@@ -35,15 +35,19 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}-${width}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).evaluate((n) => n.click()); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).evaluate((n) => n.click()); };
     const radio = (name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click());
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click({ timeout: 1500 }).catch(() => {});
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
     const objs = (await api('/workspaces/ws_demo/state')).objects;
@@ -69,7 +73,7 @@ try {
     assert.ok((await dlg.getByTestId('compare-versions').getByTestId('diff-summary').count()) >= 1, 'two versions compared with a summary');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] ب: «یک فکر خام دربارهٔ گرهٔ ارسال» — in the structure view, one calm invitation in the node itself`);
+    step(`[${width}] ب: «یک فکر خام دربارهٔ بخش ارسال» — in the structure view, one calm invitation in the node itself`);
     const ship = page.locator('section', { has: page.getByRole('heading', { name: 'ارسال و بسته‌بندی' }) }).last();
     await ship.scrollIntoViewIfNeeded();
     // the node's calm invitation opens «فکر تازه» for THIS node; if the node already has thoughts, its counter opens the space and the box is the button there
@@ -84,10 +88,10 @@ try {
     await nav('منبع حقیقت', 'منبع');
 
     step(`[${width}] ج: «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
-    await page.getByRole('button', { name: /^(ثبت دانش|افزودن دانش)$/ }).first().click();
+    await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش)$/ }).first().click();
     const rec = page.getByRole('dialog');
-    await rec.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');
-    await rec.getByRole('button', { name: 'بیشتر' }).click();
+    await rec.getByLabel('چه چیزی درست است؟').fill('جشنوارهٔ پاییز را با هدیه برگزار می‌کنیم، نه با کاهش قیمت.');
+    await rec.getByRole('button', { name: 'بیشتر', exact: true }).click();
     const rel = rec.getByTestId('relations');
     await rel.waitFor();
     await rel.getByRole('group', { name: 'بر چه تکیه دارد؟' }).getByLabel('جستجوی دانش').fill('تخفیف');

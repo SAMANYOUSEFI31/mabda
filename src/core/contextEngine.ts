@@ -201,7 +201,7 @@ export function calculateReadinessAndGaps(
       ? `آمادگی کامل: تمام ${totalRequired} مؤلفه اصلی تأیید شده‌اند. خروجی با حداکثر انسجام تولید خواهد شد.`
       : status === 'needs_work'
       ? `آمادگی متوسط (${score}٪): ${totalRequired - missingReqCount} از ${totalRequired} مؤلفه الزامی آماده است. خروجی قابل تولید است اما با کیفیت کمتر.`
-      : `نیاز به اطلاعات پایه: ${missingReqCount} مؤلفه حیاتی هنوز مشخص نشده است. توصیه می‌شود ابتدا به شکاف‌ها پاسخ دهید.`;
+      : `نیاز به اطلاعات پایه: ${missingReqCount} مؤلفه حیاتی هنوز مشخص نشده است. توصیه می‌شود ابتدا به جاهای خالی پاسخ دهید.`;
 
   return {
     score,

@@ -19,7 +19,7 @@ const live = (o: { status: string }) => o.status !== 'Archived' && o.status !== 
  */
 export function createContextSource(repo: Repo, files: FileService, userId: string, clock: () => Date = () => new Date()): ContextSource {
   const scopeOf = (workspaceId: string): Scope => {
-    if (!repo.getWorkspace(userId, workspaceId)) throw new AiError('bad_request', { message: 'فضای کاری پیدا نشد.', retryable: false });
+    if (!repo.getWorkspace(userId, workspaceId)) throw new AiError('bad_request', { message: 'فضا پیدا نشد.', retryable: false });
     return { userId, workspaceId };
   };
   /** node id → its place in the tree order (depth first); read fresh per call because the tree is the user's to change */

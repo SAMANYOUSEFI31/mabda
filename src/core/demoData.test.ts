@@ -176,7 +176,7 @@ test('thinking: marked note lines give open questions / decisions / ideas / assu
   assert.deepEqual(converted.map((i) => i.text), ['بیشتر مشتری‌ها بعد از سه ماه تمدید می‌کنند'], 'only the assumption was converted ✓');
   const obj = d.objects.find((o) => o.id === convertedTo(converted[0], d.objects))!;
   assert.deepEqual([obj.type, obj.status, obj.assumption, obj.provenance], ['Fact', 'Proposed', true, 'User Input']);
-  assert.ok(d.notes.some((n) => canSplit(n.content)), 'a note with several ## headings suggests «تبدیل به گره»');
+  assert.ok(d.notes.some((n) => canSplit(n.content)), 'a note with several ## headings suggests «تبدیل به بخش»');
 });
 
 test('assumptions and a decision record: one assumption is due, one is later; a Confirmed assumption is still not knowledge; the rejected option is listed; a due decision asks «نتیجه چه شد؟»', () => {

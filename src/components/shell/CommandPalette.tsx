@@ -4,12 +4,12 @@
  */
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { MORE_STEP, SEARCH_GROUP_LABEL, groupOrder, registeredCommand, searchIndex, shownCount, snippetFor } from '../../core/globalSearch';
+import { MORE_STEP, SEARCH_GROUP_LABEL, groupOrder, pushRecent, recentHits, registeredCommand, searchIndex, shownCount, snippetFor } from '../../core/globalSearch';
 import type { SearchHit, SearchIndex, SearchKind } from '../../core/globalSearch';
-import { Dialog, Icon, formatNumber } from '../../ui';
+import { Button, Dialog, Icon, Nuqta, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
 
-const ICON: Record<SearchHit['kind'], IconName> = { command: 'Zap', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
+const ICON: Record<SearchHit['kind'], IconName> = { command: 'CornerDownLeft', node: 'FolderTree', object: 'BookOpen', asset: 'Package', note: 'StickyNote', thought: 'Lightbulb', file: 'FileText' };
 
 type Row = { type: 'hit'; hit: SearchHit } | { type: 'more'; kind: SearchKind; remaining: number };
 
@@ -18,6 +18,8 @@ interface Props {
   index: SearchIndex;
   onClose: () => void;
   onPick: (hit: SearchHit) => void;
+  /** nothing found: keep the words as a thought instead of losing them */
+  onAddThought?: (text: string) => void;
 }
 
 /**
@@ -29,7 +31,10 @@ interface Props {
  */
 export const CommandPalette: React.FC<Props> = (props) => (props.open ? <Palette {...props} /> : null);
 
-const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
+const RECENT_KEY = 'mabda.recent';
+const readRecent = (): Array<{ kind: SearchKind; id: string }> => { try { const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; } };
+
+const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const uid = useId();
@@ -39,16 +44,18 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
   useEffect(() => { input.current?.focus(); const t = setTimeout(() => input.current?.focus(), 60); return () => clearTimeout(t); }, []);
   const [expanded, setExpanded] = useState<Partial<Record<SearchKind, number>>>({});
   const groups = useMemo(() => searchIndex(index, query), [index, query]);
+  // an empty box shows the latest opened as their own group, never a blank list
+  const recent = useMemo(() => (query.trim() ? [] : recentHits(index, readRecent())), [index, query]);
   // the rows in the order they are shown: the visible hits of each group, then its «نمایش بیشتر» row while hits remain
   const rows = useMemo(() => {
-    const out: Row[] = [];
+    const out: Row[] = recent.map((hit) => ({ type: 'hit', hit }));
     for (const k of groupOrder(groups)) {
       const shown = k === 'command' ? groups[k].length : shownCount(expanded[k]);
       for (const hit of groups[k].slice(0, shown)) out.push({ type: 'hit', hit });
       if (groups[k].length > shown) out.push({ type: 'more', kind: k, remaining: groups[k].length - shown });
     }
     return out;
-  }, [groups, expanded]);
+  }, [groups, expanded, recent]);
   const optionId = (i: number) => `${uid}-o${i}`;
 
   useEffect(() => { setActive(0); setExpanded({}); }, [query]);
@@ -60,6 +67,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
     if (r.type === 'more') { more(r.kind); return; } // the focus stays on the row; the next hits appear above it
     const own = r.hit.kind === 'command' ? registeredCommand(r.hit.id) : undefined;
     if (own?.run) own.run(); else onPick(r.hit);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(readRecent(), r.hit))); } catch { /* optional */ }
     onClose();
   };
   const flat = rows;
@@ -72,11 +80,29 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
   };
 
   let n = 0;
+  const option = (h: SearchHit) => {
+    const i = n++;
+    const snippet = snippetOf(h);
+    return (
+      <div
+        key={`${h.kind}:${h.id}`} id={optionId(i)} role="option" aria-selected={i === active} data-kind={h.kind}
+        onMouseMove={() => setActive(i)} onClick={() => pick(rows[i])}
+        className={`flex min-h-touch cursor-pointer items-start gap-inline-sm rounded-control-sm px-inset-sm py-inset-xs ${i === active ? 'bg-bg-neutral-subtle' : ''}`}
+      >
+        <span className="mt-stack-xs text-text-subtle">{h.state ? <Nuqta state={h.state} /> : <Icon name={ICON[h.kind]} size="md" />}</span>
+        <span className="flex min-w-space-0 flex-1 flex-col">
+          <span className="body-md text-text-default">{h.title}</span>
+          {snippet && <span className="body-sm text-text-subtle">{snippet}</span>}
+          {h.subtitle && <span className="body-sm truncate text-text-subtle">{h.subtitle}</span>}
+        </span>
+      </div>
+    );
+  };
   const snippetOf = (h: SearchHit) => h.snippet ?? (h.wantsSnippet ? snippetFor(index, query, h) : undefined);
   return (
-    <Dialog open onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.">
+    <Dialog open top onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.">
       <div className="flex flex-col gap-stack-md" onKeyDown={onKey}>
-        <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md">
+        <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md focus-within:focus-ring">
           <Icon name="Search" size="md" />
           <input
             id={`${uid}-q`} ref={input} autoFocus type="search" role="combobox" aria-expanded="true" aria-controls={`${uid}-l`} aria-autocomplete="list"
@@ -86,31 +112,25 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
           />
         </div>
         <div ref={listRef} id={`${uid}-l`} role="listbox" aria-label="نتیجه‌ها" className="palette-list flex flex-col gap-stack-md">
-          {flat.length === 0 && <p className="body-md text-text-subtle" role="status">{query.trim() ? 'چیزی پیدا نشد. با چند حرف دیگر امتحان کن.' : 'شروع به نوشتن کن.'}</p>}
+          {flat.length === 0 && (
+            <div className="flex flex-col items-start gap-stack-sm" role="status">
+              <p className="body-md text-text-subtle">{query.trim() ? `چیزی با «${query.trim()}» پیدا نشد.` : 'شروع به نوشتن کن.'}</p>
+              {query.trim() && onAddThought && <Button size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => { onAddThought(query.trim()); onClose(); }}>افزودن به‌عنوان فکر</Button>}
+            </div>
+          )}
+          {recent.length > 0 && (
+            <div role="group" aria-label="آخرین‌ها" className="flex flex-col gap-stack-xs">
+              <h3 className="label-sm text-text-subtle">آخرین‌ها</h3>
+              {recent.map(option)}
+            </div>
+          )}
           {groupOrder(groups).map((k) => {
             const shown = k === 'command' ? groups[k].length : shownCount(expanded[k]);
             const remaining = groups[k].length - shown;
             return (
               <div key={k} role="group" aria-label={SEARCH_GROUP_LABEL[k]} className="flex flex-col gap-stack-xs">
                 <h3 className="label-sm text-text-subtle">{SEARCH_GROUP_LABEL[k]} ({formatNumber(groups[k].length)})</h3>
-                {groups[k].slice(0, shown).map((h) => {
-                  const i = n++;
-                  const snippet = snippetOf(h);
-                  return (
-                    <div
-                      key={`${h.kind}:${h.id}`} id={optionId(i)} role="option" aria-selected={i === active} data-kind={h.kind}
-                      onMouseMove={() => setActive(i)} onClick={() => pick(rows[i])}
-                      className={`flex min-h-touch cursor-pointer items-start gap-inline-sm rounded-control-sm px-inset-sm py-inset-xs ${i === active ? 'bg-bg-neutral-subtle' : ''}`}
-                    >
-                      <span className="mt-stack-xs text-text-subtle"><Icon name={ICON[h.kind]} size="md" /></span>
-                      <span className="flex min-w-space-0 flex-1 flex-col">
-                        <span className="body-md text-text-default">{h.title}</span>
-                        {snippet && <span className="body-sm text-text-subtle">{snippet}</span>}
-                        {h.subtitle && <span className="body-sm truncate text-text-subtle">{h.subtitle}</span>}
-                      </span>
-                    </div>
-                  );
-                })}
+                {groups[k].slice(0, shown).map(option)}
                 {remaining > 0 && (() => {
                   const i = n++;
                   return (
@@ -128,7 +148,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick }) => {
             );
           })}
         </div>
-        <p className="body-sm text-text-subtle">↑ ↓ برای حرکت · Enter برای باز کردن (یا نمایش بیشتر) · Esc برای بستن</p>
+        <p className="kbd-hint body-sm text-text-subtle">↑ ↓ برای حرکت · Enter برای باز کردن (یا نمایش بیشتر) · Esc برای بستن</p>
       </div>
     </Dialog>
   );

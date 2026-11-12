@@ -8,7 +8,7 @@ import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } fro
 import { flatten } from '../../core/nodeTree';
 import { affectedOutputs, approvalMoments, compareTruth, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
-import { Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
+import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
 export type CompareMode = 'week' | 'approval' | 'pending' | 'custom';
@@ -103,8 +103,8 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
           </div>
           {more && (
             <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2" data-testid="custom-dates">
-              <TextField label="از روز" type="date" value={from} max={ymd(now.toISOString())} onChange={(e) => { setFrom(e.target.value); setMode('custom'); }} hint={from ? formatJalaliDate(from) : undefined} />
-              <TextField label="تا روز" type="date" value={to} max={ymd(now.toISOString())} min={from || undefined} onChange={(e) => { setTo(e.target.value); setMode('custom'); }} hint={to ? formatJalaliDate(to) : undefined} />
+              <DateField label="از روز" value={from} max={ymd(now.toISOString())} onValueChange={(v) => { setFrom(v); setMode('custom'); }} />
+              <DateField label="تا روز" value={to} max={ymd(now.toISOString())} min={from || undefined} onValueChange={(v) => { setTo(v); setMode('custom'); }} />
             </div>
           )}
           {more && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">زودتر:</span><Button size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(preset.startOfMonth)); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>از اول ماه</Button></div>}
@@ -153,7 +153,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                                   <li key={d.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-md">
                                     <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                                       <span className="flex min-w-space-0 flex-wrap items-center gap-inline-xs">
-                                        {d.kinds.map((k) => <Badge key={k} intent={KIND_INTENT[k]} icon={false}>{KIND_FA[k]}</Badge>)}
+                                        {d.kinds.map((k) => <Badge key={k} icon={false}>{KIND_FA[k]}</Badge>)}
                                         <span className="label-md text-text-default">{it.title}</span><TypeBadge value={it.type} iconOnly />
                                       </span>
                                       {byId.has(d.id) && <Button size="sm" variant="ghost" onClick={() => open(d)}>جزئیات و تاریخچه</Button>}

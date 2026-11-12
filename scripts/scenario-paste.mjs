@@ -29,7 +29,14 @@ try {
   const shot = (n, full = false) => page.screenshot({ path: `docs/screens/paste-${n}.png`, fullPage: full });
   const step = (m) => console.log('•', m);
   const nav = (label) => page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).first().click();
-  const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
+  const account = async (name) => {
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
+    };
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
@@ -64,7 +71,7 @@ try {
     '## Asset: جملهٔ موقعیت‌یابی',
     'برای طراحان فریلنسر که از توضیح دوبارهٔ کسب‌وکارشان خسته‌اند، مبدأ منبع حقیقتی است که هر AI از آن کار می‌کند.',
   ].join('\n');
-  await page.getByRole('button', { name: 'وارد کردن متن آماده' }).click();
+  await page.getByRole('button', { name: 'آوردن یا بردن دانش' }).first().click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
   await page.getByRole('textbox', { name: 'پاسخ AI' }).fill(answer);
   await page.getByRole('button', { name: 'تبدیل به بلوک' }).click();
   await page.getByText('بر اساس سرتیترها').waitFor();

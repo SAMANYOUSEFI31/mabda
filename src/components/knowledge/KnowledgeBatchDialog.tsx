@@ -49,7 +49,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
   return (
     <Dialog
       open={open} onClose={onClose} size="lg" title="چند دانش با هم" description="هر خط یک دانش. همه‌شان «پیشنهادی» می‌شوند و تا تأیید نکنی واقعیت نیستند؛ به AI هم نمی‌رسند."
-      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!lines.length} onClick={save}>{lines.length ? `ثبت ${formatNumber(lines.length)} پیشنهاد` : 'ثبت پیشنهادها'}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!lines.length} onClick={save}>{lines.length ? `افزودن ${formatNumber(lines.length)} پیشنهاد` : 'افزودن پیشنهادها'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => { if (e.key === 'Enter' && e.shiftKey && !e.nativeEvent.isComposing && box.current?.contains(e.target as Node)) { e.preventDefault(); softBreak(); } }}>
         <div ref={box} className="flex flex-col gap-stack-xs">

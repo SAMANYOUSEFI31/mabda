@@ -81,7 +81,7 @@ export function KnowledgeDialogs({ archiveOpen, attempt, compare, currentWorkspa
       onOverride={async (byId, targetId, reason) => {
         const r = await dataApi.setOverride(wid, byId, targetId, reason);
         patch((d) => ({ ...d, relationships: r.relationships, changes: r.changes }));
-        toast.show({ intent: 'success', message: 'کنار گذاشته شد؛ برای این گره و زیرشاخه‌هایش دیگر اثر ندارد.' });
+        toast.show({ intent: 'success', message: 'کنار گذاشته شد؛ برای این بخش و زیرشاخه‌هایش دیگر اثر ندارد.' });
       }}
       onRemoveOverride={async (byId, targetId) => {
         const r = await attempt(() => dataApi.removeOverride(wid, byId, targetId));

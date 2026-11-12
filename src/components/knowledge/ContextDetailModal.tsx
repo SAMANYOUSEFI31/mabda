@@ -25,13 +25,16 @@ import { suggestUpstreamLinks } from '../../core/upstreamLinks';
 import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
+import { conflictPartners, displayState } from '../../core/displayState';
+import { takePendingAddText } from '../../core/addRequest';
+import { AddKindSwitch } from '../shared/AddKindSwitch';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
 import { MX } from '../../core/metricsText';
 import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../../core/redlineExamples';
 import { parseNumber } from '../../core/metrics';
 import { dataApi } from '../../services/dataApi';
-import { Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
+import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface ContextDetailModalProps {
   object: ContextObject | null;
@@ -90,11 +93,11 @@ const TYPE_OPTIONS = [
   { value: 'Constraint', label: 'خط قرمز' },
 ];
 const STATUS_OPTIONS = [
-  { value: 'Confirmed', label: 'تأییدشده و فعال' },
-  { value: 'Proposed', label: 'پیشنهادی (وارد خروجی نمی‌شود)' },
-  { value: 'Needs Review', label: 'نیازمند بازبینی' },
-  { value: 'Superseded', label: 'منسوخ با جایگزین' },
-  { value: 'Archived', label: 'بایگانی' },
+  { value: 'Confirmed', label: 'حقیقت (فعال)' },
+  { value: 'Proposed', label: 'پیشنهاد (وارد خروجی نمی‌شود)' },
+  { value: 'Needs Review', label: 'قدیمی (باید دوباره دیده شود)' },
+  { value: 'Superseded', label: 'گذشته (جایگزین شد)' },
+  { value: 'Archived', label: 'گذشته (بایگانی)' },
 ];
 const PROVENANCE_OPTIONS = [
   { value: 'User Input', label: 'ورودی مستقیم کاربر' },
@@ -137,7 +140,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   // opening a knowledge that has a draft continues the DRAFT (the approved text is shown next to it, below)
   const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
-  const [content, setContent] = useState(object?.draft?.content ?? object?.content ?? '');
+  // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳)
+  const [content, setContent] = useState(() => object?.draft?.content ?? object?.content ?? (object ? '' : takePendingAddText()));
+  const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   // the kind and the title are guessed from the text until the user picks / writes her own (src/core/knowledgeGuess.ts)
@@ -147,6 +152,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [type, setType] = useState<ContextType>(object?.type || 'Fact');
   const [status, setStatus] = useState<ContextStatus>(object?.status || 'Confirmed');
   const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeIdProp || defaultNodeId(nodes));
+  /** switching to «فکر» carries the section only when she picked it here; otherwise the thought keeps its own default («تازه‌ها») */
+  const [nodePicked, setNodePicked] = useState(false);
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );
@@ -212,6 +219,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const addFacet = (raw: string) => { const f = raw.replace(/\s+/g, ' ').trim().slice(0, 40); if (f) setFacets((l) => (l.includes(f) || l.length >= 8 ? l : [...l, f])); setFacetDraft(''); };
   const facetsFinal = () => { const f = facetDraft.replace(/\s+/g, ' ').trim().slice(0, 40); return f && !facets.includes(f) && facets.length < 8 ? [...facets, f] : facets; };
+  const partners = useMemo(() => conflictPartners(allObjects), [allObjects]);
+  const conflictWith = object ? partners.get(object.id) : undefined;
+  const shownState = object ? displayState(object, partners) : 'truth';
   const knownFacets = useMemo(() => [...new Set(allObjects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [allObjects]);
 
   // editing the TEXT of confirmed knowledge: the user chooses — keep it as a draft (nothing downstream sees it) or replace the text now
@@ -220,7 +230,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalTitle = title.trim() || guessTitle(content);
-    if (!content.trim()) return;
+    if (!content.trim()) { setContentError('آنچه درست است را بنویس تا ثبت شود.'); document.getElementById('context-content')?.focus(); return; }
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
 
     if (isSupersedingMode && object) {
@@ -276,46 +286,51 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     ? 'جایگزینی تصمیم — حفظ تاریخچه'
     : isEditing
     ? 'ویرایش دانش'
-    : 'ثبت دانش';
+    : 'افزودن';
 
   return (
     <Dialog
       open
       onClose={onClose}
-      size="lg"
+      size="md"
+      dirty={content.trim() !== (object?.draft?.content ?? object?.content ?? '').trim() || title !== (object?.draft?.title ?? object?.title ?? '')}
       title={title_}
-      description={isEditing ? undefined : 'هر چه دربارهٔ کسب‌وکارت درست است بنویس. بقیه‌اش را خودمان حدس می‌زنیم.'}
+      description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
       footer={
-        <>
-          {isEditing && !isSupersedingMode && (
-            <>
-              <Button variant="secondary" iconStart="History" onClick={() => setIsSupersedingMode(true)}>
-                جایگزینی تصمیم
-              </Button>
-              <Button
-                variant="secondary"
-                iconStart="Archive"
-                onClick={() => {
-                  if (object) {
-                    onArchive(object.id);
-                    onClose();
-                  }
-                }}
-              >
-                بایگانی
-              </Button>
-            </>
-          )}
-          <Button variant="ghost" onClick={onClose}>انصراف</Button>
-          <Button variant="primary" type="submit" form="context-detail-form">
-            {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ذخیره'}
-          </Button>
-        </>
+        isEditing && tab !== 'edit' ? (
+          // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button
+          <Button variant="secondary" onClick={onClose}>بستن</Button>
+        ) : (
+          <>
+            {isEditing && !isSupersedingMode && object && (
+              <Menu
+                label="کارهای دیگر با این دانش"
+                side="top"
+                trigger={<Button type="button" variant="ghost" iconStart="Ellipsis">بیشتر</Button>}
+                items={[
+                  { label: 'جایگزینی تصمیم', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
+                  { label: 'بایگانی', icon: 'Archive', onSelect: () => { onArchive(object.id); onClose(); } },
+                ]}
+              />
+            )}
+            <Button variant="ghost" onClick={onClose}>انصراف</Button>
+            <Button variant="primary" type="submit" form="context-detail-form">
+              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'افزودن'}
+            </Button>
+          </>
+        )
       }
     >
       {isEditing && object && (
         <div className="mb-stack-md flex flex-col gap-stack-sm">
-          <ApprovalBadge history={history} />
+          <ApprovalBadge history={history} state={shownState} />
+          {conflictWith && (
+            // no margin column in a dialog: the contradiction is one short inline sentence beside its dot (meaning-map.md)
+            <p className="inline-flex items-start gap-inline-xs body-sm text-text-default">
+              <Nuqta state="conflict" size="sm" className="mt-stack-xs" />
+              <span>تناقض: با «{conflictWith.title}» در بخش «{nodes.find((n) => n.id === conflictWith.nodeId)?.label ?? '—'}» نمی‌خواند؛ یکی را نگه دار.</span>
+            </p>
+          )}
           <Tabs label="بخش‌های جزئیات" value={tab} onChange={(v) => setTab(v as 'edit' | 'history' | 'around')} items={[{ id: 'edit', label: 'ویرایش' }, { id: 'history', label: `نسخه‌ها (${formatNumber(history.entries.length)})` }, { id: 'around', label: 'اطراف این مورد' }]} />
         </div>
       )}
@@ -328,19 +343,22 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       {tab === 'history' && isEditing && (
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
-      <form id="context-detail-form" onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+      <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+        {!object && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
           </div>
         )}
-        {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
+        {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea
-          label="چه چیزی دربارهٔ کسب‌وکارت درست است؟"
+          id="context-content"
+          label="چه چیزی درست است؟"
           required
+          error={contentError || undefined}
           rows={isEditing ? 5 : 6}
           value={content}
-          onValueChange={setContent}
+          onValueChange={(v) => { setContent(v); if (contentError && v.trim()) setContentError(''); }}
           objects={allObjects}
           selfId={object?.id}
           placeholder="مثلاً: مخاطب اصلی ما فریلنسرهای طراح‌اند. / تخفیف نداریم. / تصمیم گرفتیم اینستاگرام کانال اصلی باشد."
@@ -361,8 +379,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <Menu
             label="این دانش در کدام بخش باشد؟"
             className="scroll-menu"
-            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? 'کسب‌وکار'}</Button>}
-            items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => setNodeId(node.id) }))}
+            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>}
+            items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => { setNodeId(node.id); setNodePicked(true); } }))}
           />
         </div>
         {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
@@ -421,7 +439,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
         <div>
-          <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>بیشتر</Button>
+          <Button type="button" size="sm" variant="ghost" iconStart={moreOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={moreOpen} aria-controls="context-more" onClick={() => setMoreOpen((v) => !v)}>جزئیات بیشتر</Button>
         </div>
         {moreOpen && (
           <div id="context-more" className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
@@ -432,7 +450,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {type === 'Constraint' && (
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این خط قرمز" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
-            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، خط قرمز است.' : 'فقط برای این گره و زیرگره‌هایش خط قرمز است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر بخشی، خط قرمز است.' : 'فقط برای این بخش و زیربخش‌هایش خط قرمز است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
             <p className="body-sm text-text-default" data-testid="reach-sentence">{reachSentence({ nodeId, type, reach }, nodes)}</p>
           </div>
         )}
@@ -454,7 +472,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {isEditing && !isSupersedingMode && reasonAllowed(object!.status) && (
           <TextField label="دلیل این ویرایش (اختیاری)" value={editReason} onChange={(e) => setEditReason(e.target.value)} hint="فقط برای ویرایش دانش تأییدشده است؛ در مسیر نسخه‌ها ثبت می‌شود، نه در متن. پیش‌نویس دلیل نمی‌گیرد." />
         )}
-        <TextField label="اعتبار تا (اختیاری)" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
+        <DateField label="اعتبار تا (اختیاری)" value={validUntil} onValueChange={(v) => setValidUntil(v)} hint="بعد از این روز دیگر به هیچ خروجی و گفتگویی نمی‌رود؛ در تاریخچه می‌ماند." />
         <div className="flex flex-col gap-stack-xs" role="group" aria-label="بُعدها">
           <TextField label="بُعد (اختیاری)" value={facetDraft} onChange={(e) => setFacetDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',' || e.key === '،') { e.preventDefault(); addFacet(facetDraft); } }} hint="یک برچسب آزاد که از میان درخت می‌گذرد: «مخاطب سازمانی»، «فصل پاییز». Enter بزن." />
           {facets.length > 0 && <div className="flex flex-wrap gap-inline-xs">{facets.map((f) => <Button key={f} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`حذف بُعد ${f}`} onClick={() => setFacets((l) => l.filter((x) => x !== f))}>{f}</Button>)}</div>}
@@ -464,7 +482,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
             <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />
             <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت به AI داده نمی‌شود (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» با دستور صریح می‌رود.</p>
-            {assumption && <TextField label="بازبینی تا (اختیاری)" type="date" value={reviewBy} onChange={(e) => setReviewBy(e.target.value)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
+            {assumption && <DateField label="بازبینی تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
           </div>
         )}
         {type === 'Decision' && (
@@ -485,7 +503,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                   <div><Button type="button" size="sm" variant="secondary" iconStart="Plus" onClick={() => setOptions((l) => [...l, { title: '', rejectedReason: '' }])}>افزودن گزینه</Button></div>
                 </div>
                 <TextField label="چه انتظاری داریم؟" value={expectation} onChange={(e) => setExpectation(e.target.value)} />
-                <TextField label="تاریخ بازبینی" type="date" value={reviewOn} onChange={(e) => setReviewOn(e.target.value)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
+                <DateField label="تاریخ بازبینی" value={reviewOn} onValueChange={(v) => setReviewOn(v)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
                 {metrics.length > 0 && (
                   <div className="flex flex-col gap-stack-sm" role="group" aria-label={MX.expectationField}>
                     <span className="label-md text-text-default">{MX.expectationField}</span>
@@ -494,7 +512,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                       <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-3">
                         <Select label="جهت" value={expDir} onChange={(e) => setExpDir(e.target.value as MetricDirection)} options={[{ value: 'up', label: 'بالا برود' }, { value: 'down', label: 'پایین بیاید' }]} />
                         <TextField label={MX.expectationTarget} inputMode="decimal" value={expTarget} onChange={(e) => setExpTarget(e.target.value)} error={expTarget.trim() && expTargetNum === null ? 'عدد معتبر بنویس.' : undefined} />
-                        <TextField label={MX.expectationBy} type="date" value={expBy} onChange={(e) => setExpBy(e.target.value)} error={!expBy ? 'تاریخ لازم است.' : undefined} />
+                        <DateField label={MX.expectationBy} value={expBy} onValueChange={(v) => setExpBy(v)} error={!expBy ? 'تاریخ لازم است.' : undefined} />
                       </div>
                     )}
                   </div>
@@ -514,7 +532,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                   <Select label="این دانش در کدام بخش خانه دارد؟" value={promote.to} onChange={(e) => setPromote({ ...promote, to: e.target.value })} options={[{ value: 'global', label: 'همه‌جا' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === object.nodeId && object.reach !== 'global' ? ' (الان)' : ''}` }))]} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
                   <p className="body-sm text-text-default" aria-live="polite" data-testid="scope-effect">{unchanged ? 'همین‌جاست؛ چیزی عوض نمی‌شود.' : eff.sentence}</p>
                   <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
-                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>ثبت جای تازه</Button></div>
+                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>انتقال به این جا</Button></div>
                 </div>
               );
             })()}

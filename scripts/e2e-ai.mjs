@@ -15,10 +15,17 @@ const BASE = process.argv[2] || 'http://localhost:3100';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR' });
 const page = await ctx.newPage();
-const account = async (name) => { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); };
+const account = async (name) => {
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
+    };
 const askHere = async (text) => {
   await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("خانه")').click();
-  await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+  await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
   await page.getByLabel('درخواستت را در یک خط بنوی').fill(text);
   await page.getByRole('dialog').getByRole('button', { name: 'همین‌جا جواب بده' }).click();
 };
@@ -35,13 +42,13 @@ step('platform-managed AI: streamed structured blocks');
 await askHere('می‌خواهیم روی فریلنسرها تمرکز کنیم');
 await page.getByText('تصمیم نمونه').waitFor({ timeout: 20000 });
 await shot('3-chat-answer');
-assert.ok(await page.getByRole('button', { name: 'به دانش اضافه کن' }).count(), 'the response remains a Proposed Knowledge action');
+assert.ok(await page.getByRole('button', { name: 'افزودن به دانش' }).count(), 'the response remains a Proposed Knowledge action');
 
 step('block → Context: opens a Proposed draft in the Context dialog');
-await page.getByRole('button', { name: 'به دانش اضافه کن' }).first().click();
-const draftDialog = page.getByRole('dialog', { name: 'ثبت دانش' });
+await page.getByRole('button', { name: 'افزودن به دانش' }).first().click();
+const draftDialog = page.getByRole('dialog', { name: 'افزودن' });
 await draftDialog.waitFor();
-await draftDialog.getByRole('button', { name: 'بیشتر' }).click();
+await draftDialog.getByRole('button', { name: 'بیشتر', exact: true }).click();
 assert.equal(await draftDialog.getByLabel('وضعیت').inputValue(), 'Proposed');
 await shot('4-add-to-context-draft');
 await page.keyboard.press('Escape');
@@ -57,8 +64,8 @@ await page.locator('table').first().waitFor({ timeout: 30000 });
 await shot('6-deliverable-markdown');
 
 step('ledger: row with real tokens/cost and model/pattern');
-await account('مصرف و دفتر کل');
-await page.getByText('مصرف و دفتر کل').waitFor();
+await account('مصرف');
+await page.getByText('مصرف').waitFor();
 await shot('7-ledger');
 
 if (process.env.KILL_FAKE_PID) {
@@ -68,7 +75,7 @@ if (process.env.KILL_FAKE_PID) {
   await askHere('پیام آزمایشی دو');
   await page.getByRole('button', { name: 'دوباره' }).first().waitFor({ timeout: 20000 });
   await shot('8-error-retry');
-  const errorDialog = page.getByRole('dialog', { name: 'آماده‌سازی درخواست' });
+  const errorDialog = page.getByRole('dialog', { name: 'درخواست برای ابزار دیگر' });
   assert.equal(await errorDialog.getByText('تصمیم نمونه').count(), 0, 'provider failure does not show a canned answer');
   assert.ok(await page.getByText(/ارتباط|سرویس مدل|به‌موقع/).count(), 'a clear error message is visible');
 }

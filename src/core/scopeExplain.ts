@@ -27,7 +27,7 @@ export interface ExplainItem {
   from: string;
   /** the object's own rule is editable (a Constraint): the link «این خط قرمز را ببین» uses it */
   editable?: boolean;
-  /** a short note: «منقضی می‌شود …»، «بودجه: همیشه می‌آید» */
+  /** a short note: «قدیمی می‌شود …»، «بودجه: همیشه می‌آید» */
   note?: string;
 }
 export interface ExplainSkipped {

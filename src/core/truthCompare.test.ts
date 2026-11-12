@@ -26,7 +26,7 @@ test('حقیقت در گذشته: ویرایش‌های بعدی برگردان�
   assert.deepEqual([...now.keys()].sort(), ['a', 'late']);
 });
 
-test('منقضی و پیشنهادی و نمونه حقیقت نیستند', () => {
+test('قدیمی و پیشنهادی و نمونه حقیقت نیستند', () => {
   const objects = [ob('exp', { validUntil: '2026-03-05' }), ob('prop', { status: 'Proposed' }), ob('s', { sample: true } as never)];
   assert.equal(truthAt({ objects, changes: [] }, T('10')).size, 0);
   assert.ok(truthAt({ objects, changes: [] }, T('03')).has('exp'));

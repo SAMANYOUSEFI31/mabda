@@ -182,14 +182,14 @@ test('extract runs once on the cheap tier and returns sanitised Proposed candida
   const p = new MockProvider((c) => (c.kind === 'structured' ? { summary: 'خلاصه', objects: [
     { type: 'Decision', title: 'مخاطب', content: 'فریلنسرها', nodeId: 'u2' },
     { type: 'Weird', title: 'x', content: 'y' },
-    { type: 'Fact', title: 'بی‌گره', content: 'z', nodeId: 'unknown' },
+    { type: 'Fact', title: 'بی‌بخش', content: 'z', nodeId: 'unknown' },
     { type: 'Fact', title: '', content: 'z' },
   ] } : null));
   const { service } = serviceWith(p);
   const r = await service.extract('user-12345678', { kind: 'file', text: 'متن', nodeId: 'u1', nodes: [{ id: 'u1', label: 'الف' }, { id: 'u2', label: 'ب' }], wantSummary: true });
   assert.equal(p.calls.length, 1);
   assert.equal(p.calls[0].spec.tier.provider, 'gemini');
-  assert.deepEqual(r.objects.map((o) => [o.title, o.nodeId]), [['مخاطب', 'u2'], ['بی‌گره', 'u1']]);
+  assert.deepEqual(r.objects.map((o) => [o.title, o.nodeId]), [['مخاطب', 'u2'], ['بی‌بخش', 'u1']]);
   assert.equal(r.summary, 'خلاصه');
   assert.equal(r.truncated, false);
   assert.equal(r.usage.stages[0].stage, 'extract');
@@ -220,7 +220,7 @@ test('generate: spec guardrails + Confirmed Constraints are both checked; each c
   assert.deepEqual(r.checks?.map((k) => [k.kind, k.text, k.passed]), [
     ['criterion', 'معیار الف', true], ['criterion', 'معیار ب', true],
     ['guardrail', 'از واژهٔ «ارزان» استفاده نکن', false], ['guardrail', 'بدون تخفیف: تخفیف نداریم', true],
-    ['consistency', 'سازگاری با دانش تأییدشدهٔ کسب‌وکار', true],
+    ['consistency', 'سازگاری با دانش تأییدشده', true],
   ]);
   assert.equal(r.checks![2].reason, 'دلیل رد g0');
   assert.equal(r.validationFailed, true);

@@ -6,7 +6,7 @@
 import type { Repo } from './index.ts';
 import { RepoError, Scope, now } from './shared.ts';
 import { can, entitlementsOf, objectsRemaining, workspaceLimitMessage } from '../../../src/core/entitlements.ts';
-import { LIBRARY } from '../../../src/core/specs.ts';
+import { LIBRARY, startTemplateFor } from '../../../src/core/specs.ts';
 import type { Workspace } from '../../../src/types/index.ts';
 
 export const workspacesMethods = {
@@ -29,16 +29,19 @@ export const workspacesMethods = {
       if (!ws.isDemo) delete ws.isDemo;
       // archived is decided by the server only (a client save must not un-archive, nor archive)
       if (stored?.archivedAt) ws.archivedAt = stored.archivedAt; else delete ws.archivedAt;
+      // the purpose is set once, when the space is made (it chose the starting tree); later saves keep it
+      const purpose = stored ? stored.purpose : ws.purpose;
+      if (purpose === 'personal' || purpose === 'work' || purpose === 'project' || purpose === 'empty') ws.purpose = purpose; else delete ws.purpose;
       // only ids of the library survive, once, in library order
       if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = LIBRARY.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
       if (!exists) {
         // the showcase workspace is not counted: it never uses up a plan's workspace allowance
         if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
-        this.seedStartNodes({ userId, workspaceId: ws.id });
+        this.seedStartNodes({ userId, workspaceId: ws.id }, startTemplateFor(ws.purpose));
       } else {
         const r = this.db.prepare('UPDATE workspaces SET data = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(ws), ws.id, userId);
-        if (!r.changes) throw new RepoError('forbidden', 'این فضای کاری مال شما نیست.');
+        if (!r.changes) throw new RepoError('forbidden', 'این فضا مال شما نیست.');
       }
       return ws;
     })();
@@ -59,12 +62,12 @@ export const workspacesMethods = {
         if (cols.includes('workspace_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ?`).run(s.workspaceId);
       }
       this.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(s.userId, `weekly_review:${s.workspaceId}`);
-      this.seedStartNodes(s);
+      this.seedStartNodes(s, startTemplateFor(this.getWorkspace(s.userId, s.workspaceId)?.purpose));
     })();
   },
 
   assertWorkspace(this: Repo, s: Scope) {
-    if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+    if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
   },
 
   planOf(this: Repo, s: Scope) { return this.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter'; },

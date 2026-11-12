@@ -9,13 +9,14 @@
  * Pure.
  */
 
+import { conflictPartners, displayState, DISPLAY_LABEL } from './displayState';
 import type { ContextObject, Note, TreeNode } from '../types';
 import type { StoredFile, Thought } from '../types';
 import { ancestorIds } from './nodeTree';
 import { normalizeText, tokenize } from './retrieval';
 
 export type SearchKind = 'command' | 'node' | 'object' | 'thought' | 'note' | 'asset' | 'file';
-export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'گره‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'دارایی‌ها', file: 'فایل‌ها' };
+export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'بخش‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'خروجی‌ها', file: 'فایل‌ها' };
 export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 'thought', 'note', 'asset', 'file'];
 
 /**
@@ -24,12 +25,15 @@ export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 't
  */
 const fold = (s: string): string => normalizeText(s).replace(/\s+/g, ' ').trim();
 
+export type HitState = 'truth' | 'proposed' | 'stale' | 'conflict' | 'thought' | 'past';
 export interface SearchHit {
   kind: SearchKind;
   id: string;
   title: string;
   /** where it lives (node path) or a short type · status line */
   subtitle?: string;
+  /** knowledge state of an object or thought: the result row shows its dot (plan 2.2) */
+  state?: HitState;
   /** a piece of the text around the match, when the match is not in the title */
   snippet?: string;
   score: number;
@@ -49,7 +53,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
   { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },
   { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'خط قرمز', 'قید'] },
-  { id: 'ai-request', title: 'آماده‌سازی درخواست', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی', 'ابزار'] },
+  { id: 'ai-request', title: 'درخواست برای ابزار دیگر', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی', 'ابزار'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
   { id: 'go-context', title: 'رفتن به منبع حقیقت', keywords: ['دانش', 'درخت', 'ساختار'] },
@@ -72,14 +76,13 @@ export const allCommands = (): SearchCommand[] => [...COMMANDS, ...extraCommands
 /** the action of a command registered from outside, if this id is one */
 export const registeredCommand = (id: string): SearchCommand | undefined => extraCommands.get(id);
 
-interface Doc { kind: Exclude<SearchKind, 'command'>; id: string; title: string; text: string; subtitle?: string; content: string; ftitle: string; tf: Map<string, number>; len: number }
+interface Doc { kind: Exclude<SearchKind, 'command'>; id: string; title: string; text: string; subtitle?: string; state?: HitState; content: string; ftitle: string; tf: Map<string, number>; len: number }
 /** `postings`: word → [doc, count, doc, count …] — a keystroke only walks the lists of the words it matches, never every text */
 export interface SearchIndex { docs: Doc[]; vocab: string[]; df: Map<string, number>; avg: number; postings: Map<string, number[]> }
 
 /** Okapi BM25 (same formula and constants as `retrieval.bm25Rank`) over the pre-counted words of the index */
 const K1 = 1.5, B = 0.75;
 
-const STATUS_FA: Partial<Record<ContextObject['status'], string>> = { Proposed: 'پیشنهادی', 'Needs Review': 'نیازمند بازبینی' };
 const TYPE_FA: Record<ContextObject['type'], string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'خط قرمز' };
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const firstLine = (s: string) => s.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
@@ -99,14 +102,16 @@ export function buildSearchIndex(input: {
   type Raw = Omit<Doc, 'tf' | 'len' | 'ftitle'>;
   const raw: Raw[] = [];
   for (const n of input.nodes) raw.push({ kind: 'node', id: n.id, title: n.label, content: n.description, text: `${n.label} ${n.label} ${n.label} ${n.description}`, subtitle: path(n.id) });
+  const partners = conflictPartners(input.objects);
   for (const o of input.objects) {
     if (o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
-    const sub = [TYPE_FA[o.type], STATUS_FA[o.status], path(o.nodeId)].filter(Boolean).join(' · ');
-    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub });
+    const state = displayState(o, partners);
+    const sub = [TYPE_FA[o.type], state === 'truth' ? '' : DISPLAY_LABEL[state], path(o.nodeId)].filter(Boolean).join(' · ');
+    raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub, state });
   }
   for (const t of input.thoughts ?? []) {
     const title = clip(firstLine(t.text), 90);
-    raw.push({ kind: 'thought', id: t.id, title, content: t.text, text: `${title} ${t.text}`, subtitle: [t.status === 'resolved' ? 'حل‌شده' : '', path(t.nodeId)].filter(Boolean).join(' · ') });
+    raw.push({ kind: 'thought', id: t.id, title, content: t.text, text: `${title} ${t.text}`, subtitle: [t.status === 'resolved' ? 'حل‌شده' : '', path(t.nodeId)].filter(Boolean).join(' · '), state: t.status === 'resolved' ? 'past' : 'thought' });
   }
   for (const d of input.deliverables ?? []) raw.push({ kind: 'asset', id: d.id, title: d.title, content: d.content, text: `${d.title} ${d.title} ${d.title} ${d.content}` });
   for (const f of input.files ?? []) raw.push({ kind: 'file', id: f.id, title: f.name, content: f.summary ?? '', text: `${f.name} ${f.name} ${f.name} ${f.summary ?? ''}`, ...(f.nodeId ? { subtitle: path(f.nodeId) } : {}) });
@@ -234,7 +239,7 @@ export function searchIndex(index: SearchIndex, query: string, opts: { limitPerG
     const inTitle = typed.some((t) => d.ftitle.includes(t));
     const wantsSnippet = !inTitle || d.kind === 'note' || d.kind === 'thought';
     const snippet = wantsSnippet && g.length < EAGER_SNIPPETS ? snippetOf(d.content, typed) : undefined;
-    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(snippet ? { snippet } : {}), ...(wantsSnippet ? { wantsSnippet } : {}), score: sc, covered: cv });
+    g.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(d.state ? { state: d.state } : {}), ...(snippet ? { snippet } : {}), ...(wantsSnippet ? { wantsSnippet } : {}), score: sc, covered: cv });
   }
   return out;
 }
@@ -260,3 +265,19 @@ export const totalHits = (g: SearchGroups): number => flattenGroups(g).length;
 export const FIRST_SHOWN = 5;
 export const MORE_STEP = 10;
 export const shownCount = (expanded: number | undefined): number => FIRST_SHOWN + (expanded ?? 0) * MORE_STEP;
+
+/**
+ * «آخرین‌ها» (navigation.md «جست‌وجو و فرمان»: empty box = the latest): the ids last opened, newest first, read back
+ * against the CURRENT index so a deleted or archived item never comes back. Commands are not remembered.
+ */
+export function recentHits(index: SearchIndex, recent: Array<{ kind: SearchKind; id: string }>, max = 5): SearchHit[] {
+  const out: SearchHit[] = [];
+  for (const r of recent) {
+    const d = index.docs.find((x) => x.kind === r.kind && x.id === r.id);
+    if (d) out.push({ kind: d.kind, id: d.id, title: d.title, ...(d.subtitle ? { subtitle: d.subtitle } : {}), ...(d.state ? { state: d.state } : {}), score: 0 });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+export const pushRecent = (recent: Array<{ kind: SearchKind; id: string }>, hit: Pick<SearchHit, 'kind' | 'id'>, max = 8) =>
+  hit.kind === 'command' ? recent : [{ kind: hit.kind, id: hit.id }, ...recent.filter((r) => !(r.kind === hit.kind && r.id === hit.id))].slice(0, max);

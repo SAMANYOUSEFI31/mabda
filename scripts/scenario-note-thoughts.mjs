@@ -40,14 +40,18 @@ try {
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}.png` });
     const click = (loc) => loc.evaluate((n) => n.click());
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`یادداشت ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`یادداشت ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: یادداشت ${width}`).waitFor({ timeout: 10000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `یادداشت ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);

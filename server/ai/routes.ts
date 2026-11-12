@@ -95,7 +95,7 @@ export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiS
       return out.end();
     }
     if (thoughtIds?.length && (!opts.source || typeof b.workspaceId !== 'string')) {
-      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'برای استفاده از فکرها، فضای کاری باید از منبع معتبر بارگذاری شود.', retryable: false }).toInfo() });
+      out.emit({ type: 'error', error: new AiError('bad_request', { message: 'برای استفاده از فکرها، فضا باید از منبع معتبر بارگذاری شود.', retryable: false }).toInfo() });
       return out.end();
     }
     let chat: ChatRequest = {

@@ -66,5 +66,5 @@ export function meters(plan: PlanId, u: UsageNumbers): Meter[] {
 
 export const objectsRemaining = (plan: PlanId, activeObjects: number) => Math.max(0, entitlementsOf(plan).maxObjects - activeObjects);
 
-export const workspaceLimitMessage = (plan: PlanId) => `سقف فضای کاری این پلن (${entitlementsOf(plan).workspaces} عدد) پر شده است.`;
+export const workspaceLimitMessage = (plan: PlanId) => `سقف فضا این پلن (${entitlementsOf(plan).workspaces} عدد) پر شده است.`;
 export const objectLimitMessage = (plan: PlanId) => `سقف قلم دانش این پلن (${entitlementsOf(plan).maxObjects} قلم فعال) پر شده است؛ موارد قدیمی را بایگانی کن یا پلن را ارتقا بده.`;

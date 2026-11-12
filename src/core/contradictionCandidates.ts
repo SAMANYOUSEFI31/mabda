@@ -154,11 +154,11 @@ export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], li
 }
 
 export const REASON_FA: Record<CandidateReason, string> = {
-  same_slot: 'هر دو یک شکاف را پر می‌کنند',
-  same_node: 'در یک گره و با عنوان نزدیک',
+  same_slot: 'هر دو یک جای خالی را پر می‌کنند',
+  same_node: 'در یک بخش و با عنوان نزدیک',
   linked: 'یکی به دیگری وابسته است',
-  same_node_same_type: 'هم‌نوع در یک گره و با متن نزدیک',
-  inherits_conflict: 'یکی در گرهٔ والدِ دیگری است و موضوعشان یکی است',
+  same_node_same_type: 'هم‌نوع در یک بخش و با متن نزدیک',
+  inherits_conflict: 'یکی در بخش والدِ دیگری است و موضوعشان یکی است',
   number_differs: 'عددهای متفاوت',
   qualifier_differs: 'خط قرمزهای متفاوت',
 };
@@ -183,7 +183,7 @@ export function unresolvedContradictions(objects: ContextObject[], judgments: Pa
     const [aId, bId] = j.key.split('|');
     const a = live.get(aId), b = live.get(bId);
     if (!a || !b || a.version !== j.aVersion || b.version !== j.bVersion) continue; // edited since: it will be judged again
-    out.push({ id: `contra_${aId}_${bId}`, source: 'semantic', itemA: a, itemB: b, reason: j.reason || 'این دو ادعا با هم نمی‌خوانند.', suggestedResolution: 'یکی را نگه دار یا اگر هر دو درست‌اند، گره‌هایشان را جدا کن.' });
+    out.push({ id: `contra_${aId}_${bId}`, source: 'semantic', itemA: a, itemB: b, reason: j.reason || 'این دو ادعا با هم نمی‌خوانند.', suggestedResolution: 'یکی را نگه دار یا اگر هر دو درست‌اند، بخش‌هایشان را جدا کن.' });
   }
   return out;
 }

@@ -198,7 +198,7 @@ export class AiService {
       const task = [
         req.threadGoal ? `${THREAD_INSTRUCTION}\n## هدف این گفتگو\n${req.threadGoal}` : CHAT_MODE_HINT[req.chatMode ?? 'discovery'],
         history ? `## تاریخچهٔ اخیر گفتگو\n${history}` : '',
-        req.allowedNodeIds?.length ? `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین گره‌ها مجاز است.` : '',
+        req.allowedNodeIds?.length ? `## بخش‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین بخش‌ها مجاز است.` : '',
         `## پیام کاربر\n${req.message}`,
       ].filter(Boolean).join('\n\n');
       const prompt = buildPrompt({
@@ -304,7 +304,7 @@ export class AiService {
       const nodes = req.nodes.map((n) => `${n.id}=${n.label}`).join('، ');
       const user = [
         req.kind === 'memory' ? MEMORY_INSTRUCTION : EXTRACT_INSTRUCTION,
-        `## گره‌های مجاز (شناسه=نام)\n${nodes}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        `## بخش‌های مجاز (شناسه=نام)\n${nodes}\nبخش پیش‌فرض: ${req.nodeId}`,
         req.wantSummary ? 'علاوه بر objectها، کلید summary را با خلاصهٔ ۳ تا ۵ جمله‌ای فارسی پر کن.' : 'کلید summary لازم نیست.',
         truncated ? 'توجه: متن بلند است و فقط بخش ابتدایی آن داده شده است.' : '',
         `## متن\n${text}`,
@@ -340,7 +340,7 @@ export class AiService {
       const questions: DecisionQuestion[] = items.map((it, i) => ({
         id: `o${i}`, question: `آیا این Context برای ساختن خروجی به‌اندازهٔ کافی روشن و مشخص است یا مبهم؟ «${it.title}»: ${it.content}`, options: ['clear', 'ambiguous'], reason: true,
       }));
-      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش کسب‌وکار (نه طول متن؛ معنا)', stage: 'decision' }, questions);
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ روشن‌بودن دانش (نه طول متن؛ معنا)', stage: 'decision' }, questions);
       const judgments: Record<string, { ambiguous: boolean; reason: string; probability: number }> = {};
       res.answers.forEach((a, i) => { judgments[items[i].id] = { ambiguous: a.choice === 'ambiguous', reason: a.reason ?? '', probability: a.probability }; });
       return { judgments, usage: res.usage ? usageSummary([res.usage]) : undefined };
@@ -358,7 +358,7 @@ export class AiService {
     await this.chat(userId, {
       message: req.message, contextList: req.contextList, focusNodeIds: [req.nodeId], chatMode: 'discovery', mode: 'auto', history: req.history, plan,
       nodeLabels: req.nodeLabels, allowedNodeIds: [req.nodeId], scopeNodeId: req.nodeId, excerpts: req.excerpts,
-      threadGoal: `ساختن پیش‌نویس بخش «${req.nodeLabel}» (شناسهٔ گره: ${req.nodeId}).`,
+      threadGoal: `ساختن پیش‌نویس بخش «${req.nodeLabel}» (شناسهٔ بخش: ${req.nodeId}).`,
     }, (e) => events.push(e), parent);
     const err = events.find((e): e is Extract<AiStreamEvent, { type: 'error' }> => e.type === 'error');
     if (err) throw new AiError(err.error.kind, { message: err.error.message, retryable: err.error.retryable, stage: err.error.stage });
@@ -396,7 +396,7 @@ export class AiService {
         id: `p${i}`, options: ['conflict', 'compatible'], reason: true,
         question: `آیا این دو ادعا با هم نمی‌خوانند؟ فقط اگر نمی‌توانند هم‌زمان دربارهٔ یک چیز درست باشند conflict بده؛ اگر مربوط به بخش‌ها یا زمان‌های متفاوت‌اند compatible.\nادعای الف — «${p.a.title}»: ${p.a.content}\nادعای ب — «${p.b.title}»: ${p.b.content}`,
       }));
-      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شدهٔ کسب‌وکار', stage: 'decision' }, questions);
+      const res = await this.decisions(runner).decide({ text: 'قضاوت دربارهٔ تناقض بین ادعاهای ثبت‌شده', stage: 'decision' }, questions);
       const results: Record<string, { conflict: boolean; reason: string }> = {};
       res.answers.forEach((a, i) => { results[pairs[i].key] = { conflict: a.choice === 'conflict', reason: a.reason ?? '' }; });
       return { results, usage: res.usage ? usageSummary([res.usage]) : undefined };
@@ -413,8 +413,8 @@ export class AiService {
       const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const user = [
-        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر گرهٔ «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح گره: ${req.nodeDescription}` : ''}`,
-        `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی این فضا را می‌نویسد.' : `## موقعیت\nکاربر بخش «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح بخش: ${req.nodeDescription}` : ''}`,
+        `## بخش‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nبخش پیش‌فرض: ${req.nodeId}`,
         req.existing?.length ? `## دانش تأییدشدهٔ موجود\n${req.existing.map((c) => `- ${c}`).join('\n')}` : '',
         req.history?.length ? `## گفتگوی قبلی با Coach\n${req.history.map((m) => `${m.role === 'user' ? 'کاربر' : 'Coach'}: ${m.content}`).join('\n')}` : '',
         `## متن کاربر\n${req.text}`,

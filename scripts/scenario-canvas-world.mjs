@@ -50,8 +50,12 @@ try {
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}.png` });
     const click = (loc) => loc.evaluate((n) => n.click());
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = (m, d) => click(page.locator(mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`));
     const stage = page.getByTestId('canvas-stage');
@@ -65,7 +69,7 @@ try {
     const toolbar = page.getByTestId('canvas-toolbar');
     const lod = () => stage.getAttribute('data-lod');
     const zoomOnce = async (name) => {
-      if (mobile) { await toolbar.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name, exact: true }).click(); }
+      if (mobile) { await toolbar.getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name, exact: true }).click(); }
       else await toolbar.getByRole('button', { name }).click();
     };
     const zoomTo = async (want) => { for (let i = 0; i < 14 && (await lod()) !== want; i++) { await zoomOnce(want === 'far' ? 'کوچک‌نمایی' : 'بزرگ‌نمایی'); await page.waitForTimeout(60); } };
@@ -74,9 +78,9 @@ try {
     const goCard = async (title) => { const q = page.locator('#canvas-search'); await q.fill(title); await q.press('Enter'); await page.waitForTimeout(450); };
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`دنیا ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`دنیا ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: دنیا ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `دنیا ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);
@@ -246,7 +250,7 @@ try {
     const pos = async (noteId) => (await call('GET', `/workspaces/${wid}/state`)).canvas.free.find((i) => i.itemRef === `note:${noteId}`);
     const before0 = await pos(nA.id);
     if (mobile) { // a phone: the same thing from the «⋯» menu, in 44px buttons (the in-stage header scales with the zoom)
-      await toolbar.getByRole('button', { name: 'بیشتر' }).click();
+      await toolbar.getByRole('button', { name: 'بیشتر', exact: true }).click();
       await page.getByRole('menuitem', { name: 'جابه‌جا کردن یک بخش…' }).click();
       await page.getByTestId('frame-dialog').getByRole('combobox').first().selectOption(ship);
       await page.getByTestId('frame-dialog').getByRole('button', { name: 'پایین‌تر' }).click();

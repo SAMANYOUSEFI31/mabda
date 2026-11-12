@@ -8,7 +8,7 @@ import type { ContextObject, ExpectationVerdict } from '../../types';
 import type { ExpectationRow } from '../../core/metrics';
 import { suggestVerdict } from '../../core/metrics';
 import { afterSentence, expectationSentence, MX, VERDICT_FA } from '../../core/metricsText';
-import { AssumptionBadge, Badge, Button, Textarea, formatJalaliDate, formatNumber } from '../../ui';
+import { AssumptionBadge, Badge, Button, Textarea, formatJalaliDate, formatNumber, Caution } from '../../ui';
 
 interface Props {
   assumptions: ContextObject[];
@@ -41,7 +41,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
             <div key={o.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <span className="label-md text-text-default">{o.title}</span>
-                <span className="flex items-center gap-inline-xs"><AssumptionBadge object={o} /><Badge intent="warning" icon={false}>موعد {formatJalaliDate(o.reviewBy!)}</Badge></span>
+                <span className="flex items-center gap-inline-xs"><AssumptionBadge object={o} /><Caution>موعد {formatJalaliDate(o.reviewBy!)}</Caution></span>
               </div>
               <p className="body-sm text-text-subtle">{titleOfNode(o.nodeId)} · {o.content}</p>
               <div className="flex flex-wrap gap-inline-xs">
@@ -66,7 +66,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
               <div key={o.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <span className="label-md text-text-default">{o.title}</span>
-                  {due && <Badge intent="warning" icon={false}>موعد {formatJalaliDate(due)}</Badge>}
+                  {due && <Caution>موعد {formatJalaliDate(due)}</Caution>}
                 </div>
                 {o.record?.expectation && <p className="body-sm text-text-subtle">انتظار ما: {o.record.expectation}</p>}
                 {ex && m && (
@@ -84,7 +84,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                     {suggested && <p className="body-sm w-full text-text-subtle">علامت ✓ فقط خوانش حسابی اعداد است؛ داوری با توست.</p>}
                   </div>
                 ) : (
-                  <div><Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>ثبت نتیجه</Button></div>
+                  <div><Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>افزودن نتیجه</Button></div>
                 )}
               </div>
             );

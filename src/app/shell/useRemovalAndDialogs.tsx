@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { defaultAddKind, requestAdd } from '../../core/addRequest';
 import type { PageAction } from '../../components/shell/TopStatusBar';
 import { Button, Icon, formatNumber } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
@@ -34,7 +35,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     const r = await attempt(() => dataApi.archiveWorkspace(wid, true));
     if (!r || !ws0) return;
     setWs(r.workspaces);
-    toast.show({ intent: 'success', message: `فضای «${ws0.name}» بایگانی شد؛ همهٔ داده‌اش مانده است.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void dataApi.archiveWorkspace(ws0.id, false).then((x) => { setWs(x.workspaces); setCurrentWorkspaceId(ws0.id); }); } } });
+    toast.show({ intent: 'success', message: `فضای «${ws0.name}» بایگانی شد؛ همهٔ داده‌اش مانده است.`, duration: 10000, action: { label: 'واگرد', onClick: () => { void dataApi.archiveWorkspace(ws0.id, false).then((x) => { setWs(x.workspaces); setCurrentWorkspaceId(ws0.id); }); } } });
   };
   const handleDeleteWorkspace = async () => {
     const ws0 = currentWorkspace;
@@ -52,18 +53,18 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     setData(null); setWs(r.workspaces); setCurrentWorkspaceId('');
     toast.show({ intent: 'success', message: 'همهٔ داده‌ها برای همیشه پاک شد. برنامه خالی است.' });
   };
-  /** an output: «بایگانی» comes back; «حذف» is for the throwaway — the page keeps a copy and offers «برگرداندن» */
+  /** an output: «بایگانی» comes back; «حذف» is for the throwaway — the page keeps a copy and offers «واگرد» */
   const handleArchiveDeliverable = async (d: GeneratedDeliverable) => {
     const r = await attempt(() => dataApi.archiveDeliverable(wid, d.id));
     if (!r) return;
     patch((x) => ({ ...x, deliverables: r.deliverables, stale: r.stale }));
-    toast.show({ intent: 'success', message: `«${d.title}» بایگانی شد؛ از فهرست و از شمار «قدیمی» بیرون رفت.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.restoreDeliverable(wid, d.id)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: u.deliverables, stale: u.stale })); }); } } });
+    toast.show({ intent: 'success', message: `«${d.title}» بایگانی شد؛ از فهرست و از شمار «قدیمی» بیرون رفت.`, duration: 10000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.restoreDeliverable(wid, d.id)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: u.deliverables, stale: u.stale })); }); } } });
   };
   const handleDeleteDeliverable = async (d: GeneratedDeliverable) => {
     const r = await attempt(() => dataApi.deleteDeliverable(wid, d.id));
     if (!r) return;
     patch((x) => ({ ...x, deliverables: r.deliverables, stale: r.stale }));
-    toast.show({ intent: 'success', message: `«${d.title}» حذف شد.`, duration: 10000, action: { label: 'برگرداندن', onClick: () => { void attempt(() => dataApi.saveDeliverable(wid, d)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: [u.deliverable, ...x.deliverables.filter((y) => y.id !== d.id)], stale: u.stale })); }); } } });
+    toast.show({ intent: 'success', message: `«${d.title}» حذف شد.`, duration: 10000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.saveDeliverable(wid, d)).then((u) => { if (u) patch((x) => ({ ...x, deliverables: [u.deliverable, ...x.deliverables.filter((y) => y.id !== d.id)], stale: u.stale })); }); } } });
   };
   const handleDeleteDemo = async () => {
     const demo = workspaces.find((w) => w.isDemo);
@@ -71,7 +72,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     const r = await attempt(() => dataApi.deleteWorkspace(demo.id));
     if (!r) return;
     setWs(r.workspaces); setDemoDelete(false);
-    toast.show({ intent: 'success', message: 'فضای نمونه پاک شد. هر وقت خواستی از منوی حساب دوباره ساخته می‌شود.' });
+    toast.show({ intent: 'success', message: 'فضای نمونه حذف شد. هر وقت خواستی از منوی حساب دوباره ساخته می‌شود.' });
   };
 
   /** create or replace a custom spec (the server enforces Pro+ and refuses dependency cycles) */
@@ -104,7 +105,11 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     const impact = await setStatus(o.id, 'Confirmed', reason);
     if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
   };
-  const handleRejectProposal = async (o: ContextObject, reason?: string) => { await setStatus(o.id, 'Archived', reason); };
+  /** «رد کردن» a proposal: no question first, the message offers «واگرد» (patterns.md §۴) */
+  const handleRejectProposal = async (o: ContextObject, reason?: string) => {
+    if ((await setStatus(o.id, 'Archived', reason)) === undefined) return;
+    toast.show({ intent: 'success', message: `پیشنهاد «${o.title}» رد شد.`, duration: 8000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.restoreObject(wid, o.id)).then((r) => { if (r) patch((d) => ({ ...d, objects: d.objects.map((x) => (x.id === o.id ? r.object : x)), stale: r.stale })); }); } } });
+  };
   /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
   const handleReplaceWithProposal = async (o: ContextObject, replacesId: string, reason?: string) => {
     const r = await attempt(() => dataApi.replaceWith(wid, o.id, { replacesId, ...(reason ? { reason } : {}) }));
@@ -207,7 +212,8 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
 
   /** the one action in the top bar that fits the current page */
   const pageAction: PageAction | undefined =
-    activeTab === 'context' || activeTab === 'home' ? { label: 'ثبت دانش', icon: 'Plus', onClick: () => openContext(null) }
+    // «افزودن» (patterns.md §۳): one word; the kind it opens with follows the page
+    activeTab === 'context' || activeTab === 'home' || activeTab === 'thinking' ? { label: 'افزودن', icon: 'Plus', onClick: () => requestAdd({ kind: defaultAddKind(activeTab) }) }
     : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
     : undefined;
   return { demoDelete, setDemoDelete, handleArchiveWorkspace, handleDeleteWorkspace, handleDeleteEverything, handleArchiveDeliverable, handleDeleteDeliverable, handleDeleteDemo, addSpec, openSpecEditor, handleJudge, handleSaveProposals, handleAcceptProposal, handleRejectProposal, handleReplaceWithProposal, handleProposeFromImport, handleProposeBatch, handleDraftFromImport, setLedger, thinkingBadge, scopeChip, renderCanvas, pageAction };

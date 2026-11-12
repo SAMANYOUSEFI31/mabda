@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../../types';
-import { flatten } from '../../core/nodeTree';
+import { conflictPartners, DISPLAY_LABEL, displayState } from '../../core/displayState';
 import {
   Button, Card, CONTEXT_STATUS_OPTIONS, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, ReachBadge, SampleBadge, Select, StatusBadge, Table, TextField, TypeBadge,
 } from '../../ui';
@@ -14,7 +14,6 @@ interface ContextTableViewProps {
   objects: ContextObject[];
   nodes: TreeNode[];
   onSelectObject: (obj: ContextObject) => void;
-  onAddNew: () => void;
   /** grey examples (starter / template): shown with «نمونه», never part of any engine */
   samples?: ContextObject[];
 }
@@ -23,7 +22,6 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   objects,
   nodes,
   onSelectObject,
-  onAddNew,
   samples = [],
 }) => {
   const [search, setSearch] = useState('');
@@ -31,6 +29,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedNode, setSelectedNode] = useState<string>('all');
   const [selectedFacet, setSelectedFacet] = useState<string>('all');
+  const partners = useMemo(() => conflictPartners(objects), [objects]);
   const facetNames = [...new Set([...objects, ...samples].flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b));
 
   const filteredObjects = [...objects, ...samples].filter((o) => {
@@ -55,19 +54,15 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   const rows = filteredObjects as unknown as Array<Record<string, unknown> & ContextObject>;
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-md">
-      <div className="flex flex-col gap-inline-lg border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="heading-sm text-text-default">جدول پایگاه دانش</h2>
-          <p className="body-sm mt-stack-xs text-text-subtle">
-            مشاهده، فیلتر چندبعدی و جستجو در ردیف‌های Context با ساختار و منشأ شفاف
-          </p>
-        </div>
-        <Button variant="primary" iconStart="Plus" onClick={onAddNew}>دانش جدید</Button>
+    <section className="flex flex-col gap-stack-md">
+      <div>
+        <h2 className="heading-sm text-text-default">همهٔ دانسته‌ها در یک جدول</h2>
+        <p className="body-sm mt-stack-xs text-text-subtle">جستجو کن، بر اساس نوع، وضعیت یا بخش فیلتر کن و ببین هر مورد از کجا آمده.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-inline-md lg:grid-cols-4">
         <TextField
+          className="col-span-2 lg:col-span-1"
           label="جستجو"
           iconStart="Search"
           placeholder="عنوان یا متن…"
@@ -110,16 +105,13 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       {filteredObjects.length > 0 && (
         <div className="flex flex-col gap-stack-sm md:hidden">
           {filteredObjects.map((obj) => (
-            <Card key={obj.id} padding="lg" onClick={() => onSelectObject(obj)} className="flex flex-col gap-stack-sm">
+            <Card key={obj.id} padding="md" knowledge={obj.sample ? 'sample' : displayState(obj, partners)} onClick={() => onSelectObject(obj)} className="flex flex-col gap-stack-xs">
               <div className="flex items-start justify-between gap-inline-sm">
                 <span className="title text-text-default">{obj.title}</span>
                 <span className="flex items-center gap-inline-xs"><TypeBadge value={obj.type} /><ReachBadge object={obj} />{obj.sample && <SampleBadge />}</span>
               </div>
               <p className="body-sm line-clamp-2 text-text-subtle">{obj.content}</p>
-              <div className="flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
-                <span>شاخه: {getNodeLabel(obj.nodeId)}</span>
-                <StatusBadge value={obj.status} />
-              </div>
+              <p className="body-sm text-text-subtle">{obj.sample ? '' : `${DISPLAY_LABEL[displayState(obj, partners)]} · `}{getNodeLabel(obj.nodeId)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
             </Card>
           ))}
         </div>
@@ -135,7 +127,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
             columns={[
               { key: 'title', label: 'عنوان', render: (r) => <span className="label-md text-text-default">{r.title}</span> },
               { key: 'type', label: 'نوع', render: (r) => <span className="flex items-center gap-inline-xs"><TypeBadge value={r.type} /><ReachBadge object={r} />{r.sample && <SampleBadge />}</span> },
-              { key: 'status', label: 'وضعیت', render: (r) => <StatusBadge value={r.status} /> },
+              { key: 'status', label: 'وضعیت', render: (r) => <StatusBadge value={r.status} conflict={!r.sample && partners.has(r.id)} /> },
               { key: 'nodeId', label: 'شاخه', render: (r) => getNodeLabel(r.nodeId) },
               { key: 'provenance', label: 'منبع', render: (r) => PROVENANCE_LABEL[r.provenance] },
               { key: 'content', label: 'محتوا', render: (r) => <span className="line-clamp-1 max-w-overlay-xs text-text-subtle">{r.content}</span> },
@@ -152,6 +144,6 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           />
         </div>
       )}
-    </Card>
+    </section>
   );
 };

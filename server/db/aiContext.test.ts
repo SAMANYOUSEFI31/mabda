@@ -40,7 +40,7 @@ test('a global Constraint is a guardrail everywhere; an expired one nowhere; old
   const t = setup();
   t.add(t.n22, 'سراسری', { reach: 'global' });
   t.add(t.n1, 'قدیمی'); // no reach: the Constraint default
-  t.add(t.n3, 'منقضی', { validUntil: '2026-05-01' });
+  t.add(t.n3, 'قدیمی', { validUntil: '2026-05-01' });
   for (const n of [t.n1, t.n2, t.n3, t.n21, t.n221]) assert.deepEqual(t.rulesAt(n), ['سراسری', 'قدیمی'], n);
   assert.equal(t.repo.listObjects(t.s).find((o) => o.title === 'قدیمی')!.reach, undefined);
 });

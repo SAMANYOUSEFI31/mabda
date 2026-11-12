@@ -6,7 +6,7 @@
 import React from 'react';
 import type { SceneItem } from '../../core/canvasScene';
 import type { Lod } from '../../core/canvasLod';
-import { Badge, Icon, IconButton, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Icon, IconButton, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 
 export const FACET_TINT = ['border-border-info-subtle bg-bg-info-subtle', 'border-border-success-subtle bg-bg-success-subtle', 'border-border-warning-subtle bg-bg-warning-subtle', 'border-border-default bg-bg-neutral-subtle'];
 
@@ -15,17 +15,17 @@ function Marks({ item }: { item: SceneItem }) {
   const small = 'inline-flex items-center justify-center rounded-pill border border-border-default bg-surface-raised text-icon-subtle min-w-space-6 min-h-space-6';
   return (
     <>
-      {item.review && <Badge intent="warning" icon={false}>بازبینی</Badge>}
+      {item.review && <Caution>بازبینی</Caution>}
       {item.assumption && <span className={small} title="فرض: واقعیت نیست" role="img" aria-label="فرض"><Icon name="CircleHelp" size="xs" /></span>}
-      {item.expired && <span className={small} title="منقضی شده" role="img" aria-label="منقضی"><Icon name="Clock" size="xs" /></span>}
+      {item.expired && <span className={small} title="قدیمی شده" role="img" aria-label="قدیمی"><Icon name="Clock" size="xs" /></span>}
       {item.global && <span className={small} title="برای کل درخت" role="img" aria-label="دامنهٔ کل"><Icon name="Globe" size="xs" /></span>}
     </>
   );
 }
 
 const aria = (item: SceneItem) => {
-  if (item.kind === 'object') return `${item.label}${item.review ? '، نیاز به بازبینی' : ''}${item.assumption ? '، فرض' : ''}${item.expired ? '، منقضی' : ''}${item.global ? '، دامنهٔ کل' : ''}`;
-  if (item.kind === 'node') return `گرهٔ ${item.label}، ${formatNumber(item.count ?? 0)} مورد`;
+  if (item.kind === 'object') return `${item.label}${item.review ? '، نیاز به بازبینی' : ''}${item.assumption ? '، فرض' : ''}${item.expired ? '، قدیمی' : ''}${item.global ? '، دامنهٔ کل' : ''}`;
+  if (item.kind === 'node') return `بخش ${item.label}، ${formatNumber(item.count ?? 0)} مورد`;
   if (item.kind === 'assets') return `${formatNumber(item.count ?? 0)} خروجی`;
   if (item.kind === 'note') return `یادداشت آزاد: ${item.label}`;
   return `خروجی ${item.label}${item.review ? '، نیاز به بازبینی' : ''}`;
@@ -59,7 +59,7 @@ interface CardProps {
 export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const { item, lod } = p;
   // focus mode: a card that is not part of the selection gets a quieter BACKGROUND and BORDER — its text is never made transparent, so every title stays readable (contrast ≥ 3:1, measured in screens.mjs)
-  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : item.pending && !p.selected ? 'border-dashed border-border-default bg-surface-sunken' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
+  const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : item.pending && !p.selected ? 'border-border-default bg-bg-neutral-subtle' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
   const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
 
@@ -68,7 +68,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
       <div
         data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-pending={item.pending || undefined} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={aria(item)} aria-pressed={p.selected}
         onClick={(e) => p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)}
-        className={`${common} ${item.kind === 'note' ? 'bg-bg-warning-subtle' : ''} ${item.pending ? 'border-dashed' : ''}`} style={style}
+        className={`${common} ${item.kind === 'note' ? 'bg-bg-warning-subtle' : ''}`} style={style}
       />
     );
   }
@@ -107,7 +107,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
           </span>
         )}
         {(item.kind === 'asset' || item.kind === 'assets') && (
-          <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Badge intent="warning" icon={false}>قدیمی</Badge>}</span>
+          <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Caution>قدیمی</Caution>}</span>
         )}
         {item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
         <span data-card-title="" className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} ${p.dimmed ? 'text-text-subtle' : 'text-text-default'} ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>
@@ -135,7 +135,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
         {p.editing ? (
           <>
             <textarea aria-label="متن یادداشت" value={p.editing.text} onChange={(e) => p.onEditText(e.target.value)} className="body-sm min-h-space-0 flex-1 resize-none rounded-control-sm border border-border-input bg-surface-raised p-inset-xs text-text-default" />
-            <span className="flex gap-inline-xs"><button type="button" onClick={p.onSave} className="bsh-btn bsh-btn--secondary bsh-btn--sm">ذخیره</button><button type="button" onClick={p.onCancel} className="bsh-btn bsh-btn--ghost bsh-btn--sm">انصراف</button></span>
+            <span className="flex gap-inline-xs"><button type="button" onClick={p.onSave} className="mb-btn mb-btn--secondary mb-btn--sm">ذخیره</button><button type="button" onClick={p.onCancel} className="mb-btn mb-btn--ghost mb-btn--sm">انصراف</button></span>
           </>
         ) : (
           <>

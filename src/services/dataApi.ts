@@ -106,7 +106,7 @@ export const dataApi = {
   moveNode: (id: string, nodeId: string, parentId: string, index?: number, reason?: string) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index, ...(reason ? { reason } : {}) }),
   deleteNode: (id: string, nodeId: string, transferTo?: string, mode: 'move' | 'archive' = 'move') =>
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; removal: { id: string; label: string }; stale: StaleAsset[] }>('DELETE', `${ws(id)}/nodes/${nodeId}?mode=${mode}${transferTo ? `&transferTo=${encodeURIComponent(transferTo)}` : ''}`),
-  /** «برگرداندن»: a node removal is undone on the server (the sections, what moved, what was archived) */
+  /** «واگرد»: a node removal is undone on the server (the sections, what moved, what was archived) */
   undoRemoval: (id: string, removalId: string) => call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; samples: ContextObject[]; changes: ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/removals/${removalId}/undo`, {}),
   archive: (id: string) => call<{ objects: ContextObject[]; removals: Array<{ id: string; kind: string; label: string; createdAt: string }>; deliverables: GeneratedDeliverable[] }>('GET', `${ws(id)}/archive`),
   restoreObject: (id: string, objectId: string, nodeId?: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/restore`, nodeId ? { nodeId } : {}),

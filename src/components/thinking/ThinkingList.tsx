@@ -9,7 +9,7 @@ import { convertedTo } from '../../core/thinkingMarkers';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { promotionTypesForThought, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { aboutTargets, stripAbout } from '../../core/thoughtAbout';
-import { Badge, Button, Checkbox, Dialog, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, formatNumber } from '../../ui';
+import { Badge, Button, Checkbox, Dialog, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
 
@@ -82,27 +82,27 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
       {items.map((it) => {
         const done = !!convertedTo(it, objects);
         return (
-          <li key={it.key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-            <span className="flex min-w-space-0 flex-1 flex-wrap items-center gap-inline-sm">
-              <ThinkingBadge kind={it.kind} />
-              <span className="body-md whitespace-pre-wrap text-text-default">{stripAbout(it.text) || it.text}</span>
-              {nodes && <span className="caption text-text-subtle">· {label(it.nodeId)}</span>}
-              {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? <span className="caption text-text-subtle">· دربارهٔ {t.map((x) => x.label).join('، ')}</span> : null; })()}
-              {done && <Badge intent="success" icon="Check">تبدیل شد ✓</Badge>}
+          <li key={it.key} data-knowledge={done ? 'past' : 'thought'} className="mb-knowledge flex flex-col gap-stack-sm p-inset-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-inline-sm">
+            <Nuqta state={done ? 'past' : 'thought'} className="mb-knowledge__nuqta" />
+            <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
+              <span className={`body-md whitespace-pre-wrap ${done ? 'text-text-subtle line-through' : 'text-text-default'}`}>{stripAbout(it.text) || it.text}</span>
+              <span className="body-sm text-text-subtle">
+                {THINKING_LABEL[it.kind]}{done ? ' · به منبع رفت' : ''}{nodes ? ` · ${label(it.nodeId)}` : ''}
+                {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? ` · دربارهٔ ${t.map((x) => x.label).join('، ')}` : ''; })()}
+              </span>
               {it.sourceState === 'line_deleted' && <Badge intent="neutral" icon="Info">خط از یادداشت حذف شد؛ فکر می‌ماند</Badge>}
               {it.sourceState === 'note_deleted' && <Badge intent="neutral" icon="Info">یادداشتش حذف شد؛ فکر می‌ماند</Badge>}
               {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
             </span>
             <span className="flex flex-wrap items-center gap-inline-xs">
               {onToggleSelection && it.id && <Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} />}
-              {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به گره</Button>}
+              {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به بخش</Button>}
               {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="Layers" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
-              {!done && onToSection && it.noteId && <Button size="sm" variant="ghost" iconStart="Network" onClick={() => onToSection(it)}>ساخت بخش</Button>}
               {!done && promotionTypesForThought(it.kind).length > 0 && (
                 <Menu
                   label="انتقال فکر به دانش"
                   align="end"
-                  trigger={<Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === it.key}>به دانش ببر</Button>}
+                  trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>به دانش ببر</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
                     label: `قلم پیشنهادی: ${type === 'Fact' ? 'واقعیت' : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}`,
                     icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Shield',
@@ -110,13 +110,15 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   }))}
                 />
               )}
-              {it.id && (
+              {(it.id || (!done && onToSection && it.noteId)) && (
                 <Menu
                   label="کارهای بیشتر برای فکر"
                   align="end"
                   trigger={<Button size="sm" variant="ghost">بیشتر</Button>}
                   items={[
-                    { label: 'دیدن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) },
+                    // «ساخت بخش» is used now and then: under «بیشتر», not on every row
+                    ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),
+                    ...(it.id ? [{ label: 'دیدن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
                     ...(!done && onRevise ? [{ label: 'بازنگری متن یا نوع', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setManage({ item: it, mode: 'revise' }); } }] : []),
                     ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'Network' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
                   ]}
@@ -148,7 +150,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
           onClose={() => setHistoryItem(null)}
           size="md"
           title="تاریخچهٔ فکر"
-          description="مسیر تغییرات، بازنگری‌ها و منشأ این فکر؛ بدون اثر روی حقیقت کسب‌وکار."
+          description="مسیر تغییرات، بازنگری‌ها و منشأ این فکر؛ بدون اثر روی منبع."
           footer={<Button variant="ghost" onClick={() => setHistoryItem(null)}>بستن</Button>}
         >
           {historyLoading ? (

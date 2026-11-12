@@ -25,7 +25,7 @@ export interface EffectiveItem {
   overriddenBy?: string;
 }
 
-export const ORIGIN_FA: Record<Origin, string> = { own: 'مال این گره', inherited: 'از بخش بالاتر', global: 'همه‌جا', overridden: 'کنار گذاشته‌شده', expired: 'منقضی' };
+export const ORIGIN_FA: Record<Origin, string> = { own: 'مال این بخش', inherited: 'از بخش بالاتر', global: 'همه‌جا', overridden: 'کنار گذاشته‌شده', expired: 'قدیمی' };
 /** origins that are in force */
 export const IN_FORCE: ReadonlySet<Origin> = new Set<Origin>(['own', 'inherited', 'global']);
 
@@ -58,7 +58,7 @@ function validOverrides(objects: ContextObject[], nodes: TreeNode[], relations: 
 export function overrideProblem(by: ContextObject | undefined, target: ContextObject | undefined, nodes: TreeNode[]): string | undefined {
   if (!by || !target) return 'یکی از دو مورد پیدا نشد.';
   if (by.id === target.id) return 'یک مورد را نمی‌شود با خودش کنار گذاشت.';
-  if (by.nodeId === target.nodeId || !ancestorIds(nodes, by.nodeId).includes(target.nodeId)) return 'مورد کنار گذاشته‌شده باید در یکی از گره‌های بالاتر (والد یا اجداد) مورد جایگزین باشد.';
+  if (by.nodeId === target.nodeId || !ancestorIds(nodes, by.nodeId).includes(target.nodeId)) return 'مورد کنار گذاشته‌شده باید در یکی از بخش‌های بالاتر (والد یا اجداد) مورد جایگزین باشد.';
   return undefined;
 }
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildCanvasModel, dropTarget, laneOf, moveEffect, neighboursOf, rankBetween, visibleCards, CARD_H } from './canvasModel';
 import type { ContextObject, TreeNode } from '../types';
 
-const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `گره ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
+const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
 const obj = (id: string, nodeId: string, status: ContextObject['status'], o: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status, provenance: 'User Input', title: id, content: id, nodeId, version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', ...o });
 const nodes = [node('root'), node('a', 'root', 1), node('b', 'root', 2)];
 const none = new Set<string>();

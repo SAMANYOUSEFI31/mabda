@@ -8,7 +8,7 @@ import type { PlanId } from '../../types';
 import type { UsageInfo } from '../../types/state';
 import { meters } from '../../core/entitlements';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { Alert, Badge, Button, Card, Progress, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Card, Progress, formatNumber, Caution } from '../../ui';
 
 interface Props {
   workspaceId: string;
@@ -42,7 +42,7 @@ export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, o
           <Card key={m.key} padding="lg" className="flex flex-col gap-stack-sm">
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <span className="label-md text-text-default">{m.label}</span>
-              {m.exceeded ? <Badge intent="danger" icon="Lock">پر شد</Badge> : m.nearLimit ? <Badge intent="warning" icon="TriangleAlert">نزدیک سقف</Badge> : null}
+              {m.exceeded ? <Caution tone="danger">پر شد</Caution> : m.nearLimit ? <Caution>نزدیک سقف</Caution> : null}
             </div>
             <Progress value={Math.min(m.used, m.limit)} max={m.limit} label={m.label} showValue={false} intent={m.exceeded || m.nearLimit ? 'warning' : 'neutral'} />
             <span className="caption tabular-nums text-text-subtle">{formatNumber(m.used)} از {formatNumber(m.limit)} {m.unit}</span>

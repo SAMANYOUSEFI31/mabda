@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * «بسته و آماده‌سازی درخواست: دقیقاً چه چیزی می‌آورد و چرا» on the showcase (قهوه), a REAL server + temp SQLite:
+ * «بسته و درخواست برای ابزار دیگر: دقیقاً چه چیزی می‌آورد و چرا» on the showcase (قهوه), a REAL server + temp SQLite:
  * build a pack «پاسخ به مشتری» and, BEFORE copying, see which rule came and why; «با زیربخش‌ها»; «چه نیامد و چرا»; the rule opens
  * where its reach is decided; the preview text is the saved text; the request dialog has the same switch.
  * Screenshots → docs/screens/packscope-*.png
@@ -36,8 +36,12 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}-${width}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).evaluate((n) => n.click()); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).evaluate((n) => n.click()); };
     const radio = (name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click());
@@ -50,13 +54,13 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor({ timeout: 15000 });
     const wid = 'ws_demo';
     const api = (p) => call('GET', `/workspaces/${wid}${p}`);
 
     step(`[${width}] open «بسته‌های دانش» and start a pack for «پاسخ به مشتری»: the sections of «پشتیبانی» and «اشتراک ماهانه»`);
-    await page.getByRole('button', { name: 'بیشتر' }).first().click();
+    await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
     await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
     const dlg = page.getByRole('dialog');
@@ -99,7 +103,7 @@ try {
     step(`[${width}] «ببین و ویرایش»: the rule opens where its reach («محدودهٔ اثر») is decided, with a sentence of where it will come`);
     await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش خط قرمز/ }).click();
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بیشتر' }).click(); // the reach of a rule is a detail: under «بیشتر»
+    await detail.getByRole('button', { name: 'جزئیات بیشتر' }).click(); // the reach of a rule is a detail: under «بیشتر»
     await detail.getByTestId('reach-sentence').waitFor();
     assert.match(await detail.getByTestId('reach-sentence').innerText(), /همهٔ بسته‌ها و درخواست‌های AI/);
     await shot('4-rule-reach');
@@ -119,8 +123,8 @@ try {
     assert.ok(rendered.includes('تخفیف نداریم'), 'the rule that was named is in the text');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] «آماده‌سازی درخواست» has the same switch and says where each thing came from`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    step(`[${width}] «درخواست برای ابزار دیگر» has the same switch and says where each thing came from`);
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     const rq = page.getByRole('dialog');
     await rq.getByLabel('درباره کجا؟').selectOption({ label: '— اشتراک ماهانه' }).catch(async () => { await rq.getByLabel('درباره کجا؟').selectOption({ index: 1 }); });
     await rq.getByLabel('درخواستت را در یک خط بنویس').fill('به مشتری ناراضی از ارسال چه بگویم؟');

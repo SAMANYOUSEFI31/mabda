@@ -165,12 +165,12 @@ test('validator sees the confirmed Context and judges consistency with it; a con
   const p = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'اشتراک ۹۰ دلار است')] } : verdict({ failed: ['k0'] })(c)));
   const out = await run(p, plan({ tier: 'frontier' }), { prompt: withCtx });
   const check = p.calls.find((c) => !isBlocks(c.schema))!;
-  assert.match(check.prompt.user, /دانش تأییدشدهٔ کسب‌وکار[\s\S]*اشتراک ماهانه ۹ دلار است/, 'the validator is given the confirmed knowledge');
+  assert.match(check.prompt.user, /دانش تأییدشده[\s\S]*اشتراک ماهانه ۹ دلار است/, 'the validator is given the confirmed knowledge');
   assert.ok(!check.prompt.user.includes('متن پیشنهادی نباید واقعیت شود'), 'Proposed knowledge is never given as fact');
   const k = out.checks!.find((x) => x.kind === 'consistency')!;
   assert.deepEqual([k.passed, k.reason], [false, 'دلیل رد k0']);
   assert.equal(out.validationFailed, true);
-  assert.ok(out.verdict!.failedCriteria.includes('سازگاری با دانش تأییدشدهٔ کسب‌وکار'));
+  assert.ok(out.verdict!.failedCriteria.includes('سازگاری با دانش تأییدشده'));
 
   const none = new MockProvider((c) => (isBlocks(c.schema) ? { blocks: [block('b1', 'x')] } : verdict()(c)));
   const o2 = await run(none, plan({ tier: 'frontier' })); // prompt without any confirmed knowledge

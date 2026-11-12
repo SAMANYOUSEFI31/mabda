@@ -7,7 +7,7 @@ import { formatNumber } from './format.ts';
 
 type ForceState = 'hover' | 'active' | 'focus';
 type Size = 'sm' | 'md' | 'lg';
-const SIZE_CLS: Record<Size, string> = { sm: 'bsh-field__input--sm', md: '', lg: 'bsh-field__input--lg' };
+const SIZE_CLS: Record<Size, string> = { sm: 'mb-field__input--sm', md: '', lg: 'mb-field__input--lg' };
 
 interface FieldShellProps {
   id: string; label?: ReactNode; required?: boolean; hint?: ReactNode; error?: ReactNode;
@@ -16,19 +16,19 @@ interface FieldShellProps {
 
 function FieldShell({ id, label, required, hint, error, disabled, className, children, counter }: FieldShellProps) {
   return (
-    <div className={cx('bsh-field', error && 'is-invalid', disabled && 'is-disabled', className)}>
+    <div className={cx('mb-field', error && 'is-invalid', disabled && 'is-disabled', className)}>
       {label && (
-        <label htmlFor={id} className="bsh-field__label label-md">
+        <label htmlFor={id} className="mb-field__label label-md">
           {label}
-          {required && <span className="bsh-field__req" aria-hidden="true"> *</span>}
+          {required && <span className="mb-field__req" aria-hidden="true"> *</span>}
         </label>
       )}
       {children}
-      <div className="bsh-field__foot">
+      <div className="mb-field__foot">
         {error ? (
-          <span id={`${id}-err`} className="bsh-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
+          <span id={`${id}-err`} className="mb-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
         ) : hint ? (
-          <span id={`${id}-hint`} className="bsh-field__hint body-sm">{hint}</span>
+          <span id={`${id}-hint`} className="mb-field__hint body-sm">{hint}</span>
         ) : <span />}
         {counter}
       </div>
@@ -48,15 +48,15 @@ export function TextField({ label, hint, error, required, disabled, id, forceSta
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className}>
-      <span className={cx('bsh-inputwrap', iconStart && 'has-start', iconEnd && 'has-end')}>
-        {iconStart && <Icon name={iconStart} size="md" className="bsh-inputwrap__icon is-start" />}
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
+      <span className={cx('mb-inputwrap', iconStart && 'has-start', iconEnd && 'has-end')}>
+        {iconStart && <Icon name={iconStart} size="md" className="mb-inputwrap__icon is-start" />}
         <input
-          id={fid} type={type} disabled={disabled} required={required} data-force={forceState}
+          id={fid} type={type} disabled={disabled} aria-required={required || undefined} data-force={forceState}
           aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
-          className={cx('bsh-field__input', 'body-md', SIZE_CLS[size])} {...rest}
+          className={cx('mb-field__input', 'body-md', SIZE_CLS[size])} {...rest}
         />
-        {iconEnd && <Icon name={iconEnd} size="md" className="bsh-inputwrap__icon is-end" />}
+        {iconEnd && <Icon name={iconEnd} size="md" className="mb-inputwrap__icon is-end" />}
       </span>
     </FieldShell>
   );
@@ -71,14 +71,14 @@ export function Textarea({ label, hint, error, required, disabled, id, rows = 4,
   const auto = useId();
   const fid = id || auto;
   const [len, setLen] = useState(String(value ?? defaultValue ?? '').length);
-  const counter = maxLength ? <span className="bsh-field__count caption" aria-live="polite">{formatNumber(len)} / {formatNumber(maxLength)}</span> : null;
+  const counter = maxLength ? <span className="mb-field__count caption" aria-live="polite">{formatNumber(len)} / {formatNumber(maxLength)}</span> : null;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
       <textarea
-        id={fid} rows={rows} maxLength={maxLength} value={value} defaultValue={defaultValue} disabled={disabled} required={required}
+        id={fid} rows={rows} maxLength={maxLength} value={value} defaultValue={defaultValue} disabled={disabled} aria-required={required || undefined}
         data-force={forceState} aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
         onChange={(e) => { setLen(e.target.value.length); onChange?.(e); }}
-        className="bsh-field__input bsh-field__input--multi body-md" {...rest}
+        className="mb-field__input mb-field__input--multi body-md" {...rest}
       />
     </FieldShell>
   );
@@ -95,18 +95,18 @@ export function Select({ label, hint, error, required, disabled, id, options, pl
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} required={required} hint={hint} error={error} disabled={disabled} className={className}>
-      <span className="bsh-select">
+    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
+      <span className="mb-select">
         <select
-          id={fid} disabled={disabled} required={required} value={value}
+          id={fid} disabled={disabled} aria-required={required || undefined} value={value}
           defaultValue={value === undefined ? (defaultValue ?? (placeholder ? '' : undefined)) : undefined}
           onChange={onChange} data-force={forceState} aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
-          className={cx('bsh-field__input', 'bsh-select__input', 'body-md', SIZE_CLS[size])} {...rest}
+          className={cx('mb-field__input', 'mb-select__input', 'body-md', SIZE_CLS[size])} {...rest}
         >
           {placeholder && <option value="" disabled>{placeholder}</option>}
           {options.map((o) => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
         </select>
-        <Icon name="ChevronDown" size="md" className="bsh-select__chev" />
+        <Icon name="ChevronDown" size="md" className="mb-select__chev" />
       </span>
     </FieldShell>
   );
@@ -124,21 +124,21 @@ export function Checkbox({ label, checked, defaultChecked, indeterminate = false
   const id = useId();
   useEffect(() => { if (ref.current) ref.current.indeterminate = indeterminate; }, [indeterminate]);
   return (
-    <div className="bsh-check-wrap">
-      <label className={cx('bsh-check', disabled && 'is-disabled', error && 'is-invalid', className)}>
+    <div className="mb-check-wrap">
+      <label className={cx('mb-check', disabled && 'is-disabled', error && 'is-invalid', className)}>
         <input
-          ref={ref} type="checkbox" className="bsh-check__input" checked={isOn} disabled={disabled} data-force={forceState}
+          ref={ref} type="checkbox" className="mb-check__input" checked={isOn} disabled={disabled} data-force={forceState}
           aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-err` : hint ? `${id}-hint` : undefined}
           onChange={(e) => { setInner(e.target.checked); onChange?.(e); }} {...rest}
         />
-        <span className="bsh-check__box" aria-hidden="true">
+        <span className="mb-check__box" aria-hidden="true">
           {indeterminate ? <Icon name="Minus" size="sm" strokeWidth={3} /> : isOn && <Icon name="Check" size="sm" strokeWidth={3} />}
         </span>
-        {label && <span className="bsh-check__label body-md">{label}</span>}
+        {label && <span className="mb-check__label body-md">{label}</span>}
       </label>
       {error ? (
-        <span id={`${id}-err`} className="bsh-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
-      ) : hint && <span id={`${id}-hint`} className="bsh-field__hint body-sm">{hint}</span>}
+        <span id={`${id}-err`} className="mb-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
+      ) : hint && <span id={`${id}-hint`} className="mb-field__hint body-sm">{hint}</span>}
     </div>
   );
 }
@@ -150,13 +150,13 @@ export function Switch({ label, checked, defaultChecked, disabled, onChange, for
   const [inner, setInner] = useState(Boolean(defaultChecked));
   const on = checked !== undefined ? checked : inner;
   return (
-    <label className={cx('bsh-switch', disabled && 'is-disabled', className)}>
+    <label className={cx('mb-switch', disabled && 'is-disabled', className)}>
       <input
-        type="checkbox" role="switch" className="bsh-switch__input" checked={on} disabled={disabled} data-force={forceState}
+        type="checkbox" role="switch" className="mb-switch__input" checked={on} disabled={disabled} data-force={forceState}
         onChange={(e) => { setInner(e.target.checked); onChange?.(e); }} {...rest}
       />
-      <span className="bsh-switch__track" aria-hidden="true"><span className="bsh-switch__thumb" /></span>
-      {label && <span className="bsh-switch__label body-md">{label}</span>}
+      <span className="mb-switch__track" aria-hidden="true"><span className="mb-switch__thumb" /></span>
+      {label && <span className="mb-switch__label body-md">{label}</span>}
     </label>
   );
 }
@@ -173,27 +173,27 @@ export function RadioGroup({ legend, name, options, value, defaultValue, onChang
   const current = value !== undefined ? value : inner;
   const id = useId();
   return (
-    <div className={cx('bsh-check-wrap', error && 'is-invalid-group', className)}>
+    <div className={cx('mb-check-wrap', error && 'is-invalid-group', className)}>
       <fieldset
-        className={cx('bsh-radiogroup', orientation === 'horizontal' && 'is-horizontal')} disabled={disabled}
+        className={cx('mb-radiogroup', orientation === 'horizontal' && 'is-horizontal')} disabled={disabled}
         aria-required={required || undefined} aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-err` : hint ? `${id}-hint` : undefined}
       >
-        {legend && <legend className="label-md">{legend}{required && <span className="bsh-field__req" aria-hidden="true"> *</span>}</legend>}
+        {legend && <legend className="label-md">{legend}{required && <span className="mb-field__req" aria-hidden="true"> *</span>}</legend>}
         {options.map((o) => (
-          <label key={o.value} className={cx('bsh-radio', o.disabled && 'is-disabled')}>
+          <label key={o.value} className={cx('mb-radio', o.disabled && 'is-disabled')}>
             <input
-              type="radio" className="bsh-radio__input" name={name || id} value={o.value} disabled={o.disabled} checked={current === o.value}
+              type="radio" className="mb-radio__input" name={name || id} value={o.value} disabled={o.disabled} checked={current === o.value}
               onChange={() => { setInner(o.value); onChange?.(o.value); }}
             />
-            <span className="bsh-radio__dot" aria-hidden="true" />
-            <span className="bsh-radio__label body-md">{o.label}</span>
+            <span className="mb-radio__dot" aria-hidden="true" />
+            <span className="mb-radio__label body-md">{o.label}</span>
           </label>
         ))}
       </fieldset>
       {error ? (
-        <span id={`${id}-err`} className="bsh-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
-      ) : hint && <span id={`${id}-hint`} className="bsh-field__hint body-sm">{hint}</span>}
+        <span id={`${id}-err`} className="mb-field__error body-sm"><Icon name="OctagonAlert" size="sm" />{error}</span>
+      ) : hint && <span id={`${id}-hint`} className="mb-field__hint body-sm">{hint}</span>}
     </div>
   );
 }

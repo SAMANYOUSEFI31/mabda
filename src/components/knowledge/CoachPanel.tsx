@@ -75,7 +75,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <div className="flex flex-wrap items-center gap-inline-sm">
           <span className="label-md text-text-default">مربی دانش</span>
-          <Badge intent="neutral" icon="Brain">سطح متعادل</Badge>
+          <Badge intent="neutral" icon="Target">سطح متعادل</Badge>
         </div>
         {quota && <span className="caption text-text-subtle">باقی‌ماندهٔ امروز: {formatNumber(quota.remaining)} از {formatNumber(quota.limit)}</span>}
       </div>
@@ -87,7 +87,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
       )}
       {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={ask}>دوباره</Button>}>{error}</Alert>}
       <div>
-        <Button variant="secondary" iconStart="Sparkles" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
+        <Button variant="secondary" iconStart="MessageSquare" loading={busy} disabled={!ai.judgmentsAvailable || !text.trim() || !!out} onClick={ask}>
           {result ? 'پرسش دوباره با پاسخ‌هایم' : 'از مربی دانش بپرس'}
         </Button>
       </div>
@@ -116,7 +116,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
                   <p className="body-sm text-text-default">{p.content}</p>
                 </div>
               ))}
-              <div><Button variant="secondary" iconStart="Plus" loading={saving} disabled={picked.size === 0} onClick={save}>ثبت به‌عنوان پیشنهادی</Button></div>
+              <div><Button variant="secondary" iconStart="Plus" loading={saving} disabled={picked.size === 0} onClick={save}>افزودن به‌عنوان پیشنهاد</Button></div>
             </div>
           )}
           {saved > 0 && <Alert intent="success">{formatNumber(saved)} مورد پیشنهادی ثبت شد؛ در منبع حقیقت منتظر تأیید توست.</Alert>}

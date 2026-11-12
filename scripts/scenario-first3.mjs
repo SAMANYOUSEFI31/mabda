@@ -52,18 +52,22 @@ try {
       assert.deepEqual(found, [], `${where}: a banned word is visible: ${found.join('، ')}`);
     };
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
-    const primaries = () => page.locator('main button[class*="primary"], main .bsh-btn--primary').evaluateAll((els) => els.filter((e) => e.offsetParent !== null).length);
+    const primaries = () => page.locator('main button[class*="primary"], main .mb-btn--primary').evaluateAll((els) => els.filter((e) => e.offsetParent !== null).length);
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] an EMPTY workspace: a warm start, one main action`);
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`کافهٔ من ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`کافهٔ من ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: کافهٔ من ${width}`).waitFor({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: '/tmp/first3-fail.png' }); throw e; });
     await page.getByText('از همین‌جا شروع کن').waitFor();
     assert.equal(await page.getByRole('button', { name: 'شروع سریع' }).count() >= 1, true);
@@ -78,12 +82,12 @@ try {
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کارمندان نزدیک محل');
     await noMachineWords('quick start');
     await shot('2-quickstart');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     await page.getByRole('button', { name: 'تمام شد' }).click();
 
     step(`[${width}] the first request for an AI: one line, one click, a text ready to paste`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('درخواستت را در یک خط بنویس').fill('مخاطب اصلی ما کیست؟');
     await dlg.getByRole('button', { name: 'کپی برای استفاده در هر ابزار' }).click();
@@ -94,8 +98,10 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] the first knowledge in ONE box: kind and title are guessed, Ctrl+Enter saves`);
-    await page.getByRole('button', { name: 'ثبت دانش' }).first().click();
-    const box = page.getByRole('dialog').getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟');
+    await page.getByRole('button', { name: 'افزودن' }).first().click();
+    // «خانه» opens «فکر» (patterns.md §۳: the default follows the page); one tap on «حقیقت», the text kept
+    await page.getByRole('dialog').getByRole('radio', { name: 'حقیقت' }).click();
+    const box = page.getByRole('dialog').getByLabel('چه چیزی درست است؟');
     await box.fill('تخفیف نداریم.');
     assert.equal(await page.getByRole('dialog').getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true', 'a red line was guessed');
     assert.equal(await page.getByRole('dialog').getByLabel('عنوان').inputValue(), 'تخفیف نداریم');

@@ -31,7 +31,7 @@ export type RequestKind = 'question' | 'audit' | 'draft' | 'decision' | 'change_
 
 export const REQUEST_KINDS: ReadonlyArray<{ kind: RequestKind; label: string; hint: string; example: string }> = [
   { kind: 'question', label: 'سؤال', hint: 'فقط از دانش تأییدشده جواب می‌گیری؛ نبود پاسخ هم گفته می‌شود.', example: 'مخاطب اصلی ما کیست؟' },
-  { kind: 'audit', label: 'ممیزی', hint: 'ایدهٔ تو را با قیدها، فرض‌ها و شکاف‌ها می‌سنجد.', example: 'این طرح قیمت‌گذاری با خط قرمزهای ما جور است؟' },
+  { kind: 'audit', label: 'ممیزی', hint: 'ایدهٔ تو را با خط قرمزها، فرض‌ها و جاهای خالی می‌سنجد.', example: 'این طرح قیمت‌گذاری با خط قرمزهای ما جور است؟' },
   { kind: 'draft', label: 'پیش‌نویس', hint: 'متنی می‌نویسد که به اصول و لحن ثبت‌شده وفادار است.', example: 'متن کوتاه معرفی محصول برای صفحهٔ فرود' },
   { kind: 'decision', label: 'تصمیم', hint: 'گزینه‌ها را می‌سنجد و گزینه‌های ردشده را دوباره پیشنهاد نمی‌دهد.', example: 'کانال اصلی جذب مشتری را کدام بگیریم؟' },
   { kind: 'change_review', label: 'بازبینی تغییر', hint: 'تغییرهای اخیر را (قبل و بعد) با بقیهٔ دانش می‌سنجد.', example: 'تغییرهای این ماه با تصمیم‌های قبلی تناقض دارند؟' },
@@ -57,7 +57,7 @@ export const KIND_RULES: Record<RequestKind, readonly string[]> = {
   audit: [
     'طرح یا ایدهٔ درخواست را یکی‌یکی با «خط قرمزها» بسنج و هر خط قرمز را «رعایت شده / نقض شده / نامشخص» اعلام کن.',
     'فرض‌هایی را که طرح به آن‌ها تکیه دارد جدا فهرست کن و بگو بر پایهٔ فرض است، نه واقعیت.',
-    'شکاف‌های فهرست‌شده را با طرح بسنج: کدام نبودِ اطلاعات خطر دارد؟ آن‌ها را به پرسش تبدیل کن.',
+    'جاهای خالیِ فهرست‌شده را با طرح بسنج: کدام نبودِ اطلاعات خطر دارد؟ آن‌ها را به پرسش تبدیل کن.',
     'تناقض با تصمیم‌های ثبت‌شده را اگر هست نام ببر. جمع‌بندی: آمادهٔ اجرا، نیازمند اصلاح یا ناکافی.',
   ],
   draft: [
@@ -132,7 +132,7 @@ export const INCLUDE_REASON_FA: Record<IncludeReason, string> = {
 export const EXCLUDE_REASON_FA: Record<ExcludeReason, string> = {
   scope: 'خارج از دامنه',
   child: 'زیربخش انتخاب‌نشده',
-  expired: 'منقضی شده',
+  expired: 'قدیمی شده',
   overridden: 'در این بخش اعمال نمی‌شود',
   unconfirmed: 'تأییدنشده (واقعیت نیست)',
   sample: 'نمونه است',
@@ -372,7 +372,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const parts = [
     ...(input.packId ? [`<!-- mabda-pack:${input.packId} -->`] : []),
     `# درخواست برای AI — ${KIND_LABEL[kind]} — ${input.workspaceName}`,
-    '> اسناد زیر منبع حقیقت کسب‌وکار من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
+    '> اسناد زیر منبع حقیقت من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
     dataText,
     ...(thoughtSection ? [thoughtSection] : []),
     `## قواعد این کار (${KIND_LABEL[kind]})\n${rules.map((r) => `- ${r}`).join('\n')}`,
@@ -405,7 +405,7 @@ function renderDoc(o: ContextObject, nodePath: string): string {
 }
 
 function gapsSection(gaps: Array<Pick<GapItem, 'label' | 'status' | 'question' | 'importance'>>): string {
-  return ['## شکاف‌ها (چیزهایی که هنوز ثبت یا روشن نشده)', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}${g.importance === 'required' ? ' (ضروری)' : ''}: **${safe(g.label)}** — ${safe(g.question)}`)].join('\n');
+  return ['## جاهای خالی (چیزهایی که هنوز ثبت یا روشن نشده)', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}${g.importance === 'required' ? ' (ضروری)' : ''}: **${safe(g.label)}** — ${safe(g.question)}`)].join('\n');
 }
 
 const CHANGE_KIND_FA: Partial<Record<string, string>> = { created: 'ساخته شد', edited: 'ویرایش شد', status_changed: 'وضعیت عوض شد', superseded: 'جایگزین شد', archived: 'بایگانی شد', proposal_accepted: 'پیشنهاد پذیرفته شد', imported: 'وارد شد' };

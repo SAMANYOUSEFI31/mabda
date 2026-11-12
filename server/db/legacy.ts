@@ -1,5 +1,5 @@
-import type { ChatSession, ContextObject, ContextRelationship, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
-import { INITIAL_CONTEXT_OBJECTS, INITIAL_DELIVERABLES, INITIAL_LEDGER, INITIAL_RELATIONSHIPS, INITIAL_WORKSPACES } from '../../src/core/seedData.ts';
+import type { ChatSession, ContextObject, Note, ContextRelationship, GeneratedDeliverable, LedgerEntry, Workspace, WorkstreamSpec } from '../../src/types/index.ts';
+import { INITIAL_CONTEXT_OBJECTS, INITIAL_DELIVERABLES, INITIAL_LEDGER, INITIAL_NOTES, INITIAL_RELATIONSHIPS, INITIAL_WORKSPACES } from '../../src/core/seedData.ts';
 import { LIBRARY } from '../../src/core/specs.ts';
 import type { Repo } from './repo.ts';
 
@@ -12,6 +12,8 @@ export interface LegacyPayload {
   ledger?: LedgerEntry[];
   specs?: WorkstreamSpec[];
   sessions?: Record<string, ChatSession[]>;
+  /** raw notes (only the first-run sample sends them) */
+  notes?: Note[];
 }
 
 export interface ImportCounts { workspaces: number; objects: number; deliverables: number; ledger: number; sessions: number; specs: number }
@@ -51,6 +53,7 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
       if (!known.has(wid)) continue;
       for (const c of arr<ChatSession>(list)) { repo.saveSession({ userId, workspaceId: wid }, c); counts.sessions++; }
     }
+    for (const n of arr<Note>(payload.notes)) if (known.has(n.workspaceId)) repo.importNote({ userId, workspaceId: n.workspaceId }, n);
     // custom specs only; built-ins come from code
     const builtIn = new Set(LIBRARY.map((s) => s.id));
     const first = workspaces[0]?.id;
@@ -64,6 +67,6 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
 export function seedPayload(): LegacyPayload {
   return {
     workspaces: INITIAL_WORKSPACES, contextObjects: INITIAL_CONTEXT_OBJECTS, relationships: INITIAL_RELATIONSHIPS,
-    deliverables: INITIAL_DELIVERABLES, ledger: INITIAL_LEDGER,
+    deliverables: INITIAL_DELIVERABLES, ledger: INITIAL_LEDGER, notes: INITIAL_NOTES,
   };
 }

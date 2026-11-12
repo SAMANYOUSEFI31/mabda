@@ -25,10 +25,10 @@ export function ThinkingDialogs({ handleDeleteNote, handleSaveThought, handleSav
     >
       <div className="flex flex-col gap-stack-xs">
         <Checkbox label={`فکرهای باز هم بروند (${formatNumber(noteDeleteAsk?.open ?? 0)} فکر)`} checked={noteDeleteWithThoughts} onChange={(e) => setNoteDeleteWithThoughts(e.target.checked)} />
-        <p className="body-sm text-text-subtle">با «برگرداندن» متن یادداشت برمی‌گردد و فکرها دوباره از روی خط‌هایش ساخته می‌شوند (بی‌تاریخچهٔ قبلی).</p>
+        <p className="body-sm text-text-subtle">با «واگرد» متن یادداشت برمی‌گردد و فکرها دوباره از روی خط‌هایش ساخته می‌شوند (بی‌تاریخچهٔ قبلی).</p>
       </div>
     </Dialog>
-    <Deferred when={!!thoughtDialog}><ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} initialKind={thoughtDialog?.initialKind} initialAbout={thoughtDialog?.initialAbout} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} /></Deferred>
+    <Deferred when={!!thoughtDialog}><ThoughtDialog open={!!thoughtDialog} onClose={() => setThoughtDialog(null)} nodes={nodes} objects={workspaceContexts} nodeId={thoughtDialog?.nodeId} initialKind={thoughtDialog?.initialKind} initialAbout={thoughtDialog?.initialAbout} initialText={thoughtDialog?.initialText} onSave={handleSaveThought} onSaveMany={handleSaveThoughts} /></Deferred>
     </>
   );
 }

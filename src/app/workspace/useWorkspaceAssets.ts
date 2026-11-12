@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from '../../types';
 import { GeneratedDeliverable, LedgerEntry, PlanId, Workspace } from '../../types';
 import { PLANS, chatCountToday, tehranDay } from '../../core/creditEngine';
-import { currentSpecIds } from '../../core/specs';
+import { currentSpecIds, starterSpecIds } from '../../core/specs';
 import { dataApi } from '../../services/dataApi';
 import { formatNumber } from '../../ui';
 import { ledgerEntryFromUsage } from '../../core/ledger';
@@ -93,7 +93,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
 
   const handleChangePlan = (planId: PlanId) => {
     void updateWorkspace((w) => ({ ...w, planId, creditsRemaining: w.creditsRemaining + PLANS[planId].creditsMonthly }));
-    toast.show({ intent: 'success', message: `پلن این فضای کاری به ${PLANS[planId].title} تغییر یافت.` });
+    toast.show({ intent: 'success', message: `پلن این فضا به ${PLANS[planId].title} تغییر یافت.` });
   };
 
   /** the workspace's library workstreams: the explicit list, saved on the workspace */
@@ -106,7 +106,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
 
   const handleAddCredits = (amount: number) => {
     void updateWorkspace((w) => ({ ...w, creditsRemaining: w.creditsRemaining + amount }));
-    toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضای کاری اضافه شد.` });
+    toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضا اضافه شد.` });
   };
 
   // the showcase workspace: the same action builds it and resets it (all of ITS data is rebuilt; other workspaces are untouched)
@@ -135,20 +135,24 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     if (liveWorkspaces.filter((w) => !w.isDemo).length >= currentPlan.workspaceLimit) {
       toast.show({
         intent: 'warning',
-        message: `سقف فضای کاری در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
+        message: `سقف فضا در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
       });
       return;
     }
 
+    // what the space is for travels with the form (PurposeField); it picks the starting tree on the server
+    const raw = new FormData(e.currentTarget as HTMLFormElement).get('purpose');
+    const purpose = raw === 'work' || raw === 'project' || raw === 'empty' ? raw : 'personal';
     const newWs: Workspace = {
+      purpose,
       id: `ws_${Date.now()}`,
       name: newWsName.trim(),
       slug: newWsName.trim().toLowerCase().replace(/\s+/g, '-'),
-      description: 'فضای کاری جدید در مبدأ',
+      description: { personal: 'فضای شخصی در مبدأ', work: 'فضا در مبدأ', project: 'فضای پروژه در مبدأ', empty: 'فضا در مبدأ' }[purpose],
       planId: currentWorkspace?.planId ?? 'pro',
       creditsRemaining: 150,
       todayChatCount: 0,
-      enabledSpecIds: [], // a new workspace starts with no library workstreams: «شروع سریع» or «افزودن از کتابخانه» brings them in
+      enabledSpecIds: starterSpecIds(purpose), // personal / project: the ones written for it; work / empty: none, «شروع سریع» or the library brings them in
       createdAt: new Date().toISOString(),
     };
     const saved = await attempt(() => dataApi.saveWorkspace(newWs));
@@ -184,7 +188,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
       specs,
       exportedAt: new Date().toISOString(),
-      platform: 'مبدأ — منبع حقیقت کسب‌وکار',
+      platform: 'مبدأ · منبع حقیقت تو',
     };
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));

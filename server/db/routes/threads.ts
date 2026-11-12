@@ -14,7 +14,7 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
     const s = scopeOf(req);
     if (!deps.source) throw new RepoError('invalid', 'منبع Context برای گفتگوی متمرکز تنظیم نشده است.');
     const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
-    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    if (!node) throw new RepoError('not_found', 'بخش پیدا نشد.');
     const message = String(body(req).message ?? '').trim();
     if (!message) throw new RepoError('invalid', 'پیام خالی است.');
     const history = (Array.isArray(body(req).history) ? body(req).history : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
@@ -37,7 +37,7 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/threads/:nodeId/finish', wrap(async (req, res) => {
     const s = scopeOf(req);
     const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
-    if (!node) throw new RepoError('not_found', 'گره پیدا نشد.');
+    if (!node) throw new RepoError('not_found', 'بخش پیدا نشد.');
     const transcript = (Array.isArray(body(req).transcript) ? body(req).transcript : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
     if (!transcript.length) throw new RepoError('invalid', 'گفتگویی برای خلاصه کردن نیست.');
     const ctl = new AbortController();

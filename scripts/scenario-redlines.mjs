@@ -2,7 +2,7 @@
 /**
  * «بوم آرام، فکر بدون نحو، مثال برای خط قرمز» on a REAL server + temp SQLite:
  *   1. a red line with two examples (right / wrong) written under «بیشتر»; they are saved with the rule
- *   2. «آماده‌سازی درخواست»: the exact text to copy has the examples next to the rule, labelled
+ *   2. «درخواست برای ابزار دیگر»: the exact text to copy has the examples next to the rule, labelled
  *   3. a note: a line that ends with «؟» is a «سؤال» with no bracket; the line menu «علامت بزن» writes the marker
  *   4. the home says it in one line
  * Screenshots → docs/screens/redlines-*.png (1280) and redlines-m-*.png (390)
@@ -40,25 +40,29 @@ try {
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}.png` });
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click(); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).click(); };
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`باشگاه ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByLabel('نام فضا', { exact: true }).fill(`باشگاه ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: باشگاه ${width}`).waitFor({ timeout: 8000 });
     const wid = (await api('/workspaces')).workspaces.find((w) => w.name === `باشگاه ${width}`).id;
 
     step(`[${width}] a red line: «افزودن مثال» is behind «بیشتر»; two examples are written and saved with the rule`);
-    await page.getByRole('button', { name: /^(ثبت دانش|ثبت اولین دانش)$/ }).first().click();
+    await page.getByRole('button', { name: /^(افزودن|ثبت دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('هرگز وعدهٔ سود قطعی نده.');
+    await dlg.getByLabel('چه چیزی درست است؟').fill('هرگز وعدهٔ سود قطعی نده.');
     assert.equal(await dlg.getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true');
     assert.equal(await dlg.getByRole('button', { name: 'افزودن مثال' }).count(), 0, 'no example field in the first view');
-    await dlg.getByRole('button', { name: 'بیشتر' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر', exact: true }).click();
     await dlg.getByRole('button', { name: 'افزودن مثال' }).click();
     await dlg.getByRole('button', { name: 'افزودن مثال' }).click();
     const texts = dlg.getByLabel('متن کوتاه مثال');
@@ -72,8 +76,8 @@ try {
     assert.deepEqual(rule.examples, [{ kind: 'good', text: 'ممکن است سود کنید' }, { kind: 'bad', text: 'سود تضمینی ۳۰٪' }]);
     await page.keyboard.press('Escape');
 
-    step(`[${width}] «آماده‌سازی درخواست»: the text to copy has the examples next to the rule`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    step(`[${width}] «درخواست برای ابزار دیگر»: the text to copy has the examples next to the rule`);
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     await page.getByRole('dialog').getByLabel('درخواستت را در یک خط بنویس').fill('یک متن تبلیغ برای باشگاه بنویس');
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('مثال درست: ممکن است سود کنید') && t.value.includes('مثال نادرست: سود تضمینی ۳۰٪')), null, { timeout: 15000 });
     await shot('2-request');

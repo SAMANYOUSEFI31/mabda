@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * «آماده‌سازی درخواست» on a REAL server + temp SQLite: the user opens the dialog from Home (default: سؤال, whole tree),
+ * «درخواست برای ابزار دیگر» on a REAL server + temp SQLite: the user opens the dialog from Home (default: سؤال, whole tree),
  * writes ONE line, copies — and the clipboard holds a prompt with the knowledge first, the rules of the kind, the
  * request at the end and the answer template; Proposed and samples are not in it; the answer comes back through import.
  * Screenshots → docs/screens/request-*.png (1280) and request-m-*.png (390)
@@ -47,7 +47,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] one click opens it with «سؤال» chosen; one line later the preview is ready`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     const dlg = page.getByRole('dialog');
     await dlg.waitFor();
     assert.equal(await dlg.locator('[role=radio][aria-checked=true]').innerText(), 'سؤال');
@@ -79,7 +79,7 @@ try {
     assert.ok(marker, 'the pack marker links the answer');
     assert.ok((await api(`/workspaces/${wid}/packs`)).packs.some((p) => p.id === marker), 'the request is recorded');
 
-    await dlg.getByRole('button', { name: 'بیشتر' }).click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
+    await dlg.getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
     const imp = page.getByRole('dialog').filter({ hasText: 'وارد کردن متن آماده' });
     await imp.waitFor();
     await imp.getByLabel('پاسخ AI').fill(`نقل‌قول‌ها: «فریلنسرهای طراح»\n\n## Asset: گزارش ممیزی\nطرح با خط قرمز «بدون تخفیف» جور است.\n\n## Question: بودجه چقدر است؟\nلازم دارم.`);

@@ -41,8 +41,12 @@ try {
     const errors = [];
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText('خانه: استودیو').waitFor();
@@ -81,10 +85,10 @@ try {
     step(`[${width}] the 5-question path`);
     await account('شروع سریع');
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
-    assert.equal(await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).isDisabled(), true, 'two answers needed');
+    assert.equal(await page.getByRole('button', { name: 'آماده‌سازی بسته' }).isDisabled(), true, 'two answers needed');
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill(`طراحی هویت ${width}`);
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('استارتاپ‌های کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     assert.ok((await api('/workspaces/ws_studio/state')).objects.some((o) => o.content === `طراحی هویت ${width}` && o.status === 'Confirmed'));
     assert.deepEqual(errors, [], 'no page errors');

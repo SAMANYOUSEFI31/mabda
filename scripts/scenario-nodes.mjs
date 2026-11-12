@@ -37,17 +37,21 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}-${width}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).evaluate((n) => n.click()); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).evaluate((n) => n.click()); };
-    const nodeOp = async (label, item) => { await page.getByRole('button', { name: `عملیات گرهٔ ${label}` }).first().evaluate((n) => n.click()); await page.getByRole('menuitem', { name: item }).click(); };
+    const nodeOp = async (label, item) => { await page.getByRole('button', { name: `عملیات بخش ${label}` }).first().evaluate((n) => n.click()); await page.getByRole('menuitem', { name: item }).click(); };
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`استودیو ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByLabel('نام فضا', { exact: true }).fill(`استودیو ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: استودیو ${width}`).waitFor({ timeout: 8000 });
     const wid = (await api('/workspaces')).workspaces.find((w) => w.name === `استودیو ${width}`).id;
     const nodes = async () => (await api(`/workspaces/${wid}/state`)).nodes;
@@ -65,9 +69,9 @@ try {
     await page.getByRole('dialog').getByRole('button', { name: 'حذف', exact: true }).click();
     await page.waitForTimeout(500);
     assert.ok(!(await nodes()).some((n) => n.id === 'offer'));
-    await nodeOp('محصول و خدمت', 'زیرگرهٔ جدید');
-    await page.getByLabel('نام گره').fill('بسته‌های خدمت');
-    await page.getByRole('button', { name: 'ساخت گره' }).click();
+    await nodeOp('محصول و خدمت', 'افزودن زیربخش');
+    await page.getByLabel('نام بخش').fill('بسته‌های خدمت');
+    await page.getByRole('button', { name: 'افزودن بخش' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
     await page.getByRole('heading', { name: 'بسته‌های خدمت' }).first().waitFor();
 
@@ -76,7 +80,7 @@ try {
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill('طراحی کمپین محتوا');
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کسب‌وکارهای کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     await page.getByText('بستهٔ دانش تو آماده است').waitFor();
     await page.getByRole('button', { name: 'تمام شد' }).click();
     const st = await api(`/workspaces/${wid}/state`);
@@ -94,16 +98,16 @@ try {
     await shot('3-service-start');
 
     step(`[${width}] the only root cannot be deleted; with a second main section the old root goes — its content moves, with a reason on record`);
-    await nodeOp('کسب‌وکار و بنیان', 'حذف');
-    await page.getByRole('dialog').getByText(/آخرین گرهٔ اصلی/).waitFor();
+    await nodeOp('بنیان', 'حذف');
+    await page.getByRole('dialog').getByText(/آخرین بخش اصلی/).waitFor();
     assert.equal(await page.getByRole('dialog').getByRole('button', { name: /^حذف/ }).last().isDisabled(), true);
     await shot('4-last-root');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'بخش اصلی تازه' }).click();
-    await page.getByLabel('نام گره').fill('خدمات');
-    await page.getByRole('button', { name: 'ساخت گره' }).click();
+    await page.getByLabel('نام بخش').fill('خدمات');
+    await page.getByRole('button', { name: 'افزودن بخش' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' }); // internal AI is frozen: no Coach opens for the new node
-    await nodeOp('کسب‌وکار و بنیان', 'حذف');
+    await nodeOp('بنیان', 'حذف');
     await page.getByRole('dialog').getByText(/با محتوای این بخش چه کنیم/).waitFor();
     await shot('5-delete-with-content');
     await page.getByRole('dialog').getByRole('button', { name: 'حذف و بردن محتوا' }).click();

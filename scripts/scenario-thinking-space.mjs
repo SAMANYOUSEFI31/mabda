@@ -38,8 +38,12 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}-${width}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).evaluate((n) => n.click()); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).evaluate((n) => n.click()); };
     const radio = (name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click());
@@ -52,9 +56,9 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await account('فضای کاری تازه');
-    await page.getByLabel('نام فضای کاری یا نام برند').fill(`فکر ${width}`);
-    await page.getByRole('button', { name: 'ایجاد فضای کاری' }).click();
+    await account('فضا تازه');
+    await page.getByLabel('نام فضا', { exact: true }).fill(`فکر ${width}`);
+    await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: فکر ${width}`).waitFor({ timeout: 8000 });
     const wid = (await call('GET', '/workspaces')).workspaces.find((w) => w.name === `فکر ${width}`).id;
     const state = () => call('GET', `/workspaces/${wid}/state`);
@@ -89,8 +93,8 @@ try {
     await space.getByRole('radio', { name: /^همه/ }).click();
     await space.locator('li', { hasText: 'قیمت اشتراک سه‌ماهه چقدر' }).getByRole('button', { name: 'به دانش ببر' }).click();
     const form = page.getByRole('dialog');
-    assert.equal(await form.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').inputValue(), 'قیمت اشتراک سه‌ماهه چقدر باشد؟', 'the text is prefilled');
-    await form.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.');
+    assert.equal(await form.getByLabel('چه چیزی درست است؟').inputValue(), 'قیمت اشتراک سه‌ماهه چقدر باشد؟', 'the text is prefilled');
+    await form.getByLabel('چه چیزی درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.');
     await form.getByRole('button', { name: 'ذخیره' }).first().click();
     await page.waitForTimeout(700);
     let objs = (await state()).objects;
@@ -110,7 +114,7 @@ try {
     step(`[${width}] ه: edit an APPROVED price without approving: it stays a draft and the request for an AI still carries the approved price`);
     await page.getByText('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.').first().click();
     const edit = page.getByRole('dialog');
-    await edit.getByLabel('چه چیزی دربارهٔ کسب‌وکارت درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.');
+    await edit.getByLabel('چه چیزی درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.');
     await edit.getByTestId('draft-choice').waitFor();
     assert.equal(await edit.getByRole('radio', { name: 'پیش‌نویس بماند' }).getAttribute('aria-checked'), 'true', 'the safe choice is the default');
     await shot('4-draft-choice');
@@ -118,7 +122,7 @@ try {
     await page.getByText(/پیش‌نویس ذخیره شد/).waitFor();
     objs = (await state()).objects;
     assert.deepEqual([objs[0].content, objs[0].draft?.content], ['قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.', 'قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.']);
-    await palette('آماده‌سازی درخواست', 'آماده‌سازی درخواست');
+    await palette('درخواست برای ابزار دیگر', 'درخواست برای ابزار دیگر');
     await page.getByRole('dialog').getByLabel('درخواستت را در یک خط بنویس').fill('قیمت اشتراک چقدر است؟');
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('۱٫۱ میلیون') && !t.value.includes('۱٫۴ میلیون')), null, { timeout: 15000 });
     await shot('5-request-approved-price');
@@ -138,7 +142,7 @@ try {
     await account(`فکر ${width}`);
     await page.getByText(`خانه: فکر ${width}`).waitFor();
     await nav('منبع حقیقت', 'منبع');
-    await page.getByRole('button', { name: 'عملیات گرهٔ کارگاه' }).first().evaluate((n) => n.click());
+    await page.getByRole('button', { name: 'عملیات بخش کارگاه' }).first().evaluate((n) => n.click());
     await page.getByRole('menuitem', { name: 'جابه‌جایی…' }).click();
     await page.getByRole('dialog').getByLabel('کجا برود؟').selectOption({ label: 'سطح اصلی (بخش اصلی)' });
     await page.getByTestId('move-effect').getByText(/«بدون تخفیف آفر»/).waitFor();
@@ -169,7 +173,7 @@ try {
     await page.getByRole('button', { name: /به چند سؤال کوتاه جواب می‌دهم/ }).click();
     await page.getByLabel('روی چه کاری کار می‌کنی؟').fill('طراحی کمپین محتوا');
     await page.getByLabel('مخاطب اصلی تو کیست؟').fill('کسب‌وکارهای کوچک');
-    await page.getByRole('button', { name: 'ثبت و ساخت بسته' }).click();
+    await page.getByRole('button', { name: 'آماده‌سازی بسته' }).click();
     const made = page.getByTestId('quickstart-made');
     await made.waitFor();
     assert.match(await made.innerText(), /تأییدشده/);

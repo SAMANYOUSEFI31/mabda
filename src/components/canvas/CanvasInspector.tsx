@@ -10,7 +10,7 @@ import { EDGE_ABOUT, LAYOUT_ABOUT, LAYOUT_FA } from '../../core/canvasScene';
 import { LOD_FA } from '../../core/canvasLod';
 import type { Lod } from '../../core/canvasLod';
 import { aboutSentence, influenceOf, influenceSummary } from '../../core/influence';
-import { Badge, Button, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Button, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 import { Closed as DetailSection, InfluencePanel } from '../knowledge/InfluencePanel';
 import { provenanceOf } from '../../core/provenance';
 import type { Note } from '../../types';
@@ -131,7 +131,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         </DetailSection>
         <DetailSection title="بیشتر" count={0}>
           <p className="body-md whitespace-pre-wrap text-text-default">{o.content.length > 400 ? `${o.content.slice(0, 400)}…` : o.content}</p>
-          <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}</div>
+          <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>قدیمی</Badge>}</div>
           <div className="flex flex-wrap gap-inline-xs">
             {(item.review || p.onLineage) && moveBtn}
             {item.review && p.onLineage && <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button>}
@@ -142,12 +142,12 @@ export const CanvasInspector: React.FC<Props> = (p) => {
     );
   }
   if (item.kind === 'node') return (
-    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">گره</span><h3 className="heading-xs text-text-default">{item.label}</h3><p className="body-sm text-text-subtle">{formatNumber(item.count ?? 0)} مورد در این گره؛ یک جعبهٔ دامنه است و ترتیب ندارد.</p></div>
+    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">بخش</span><h3 className="heading-xs text-text-default">{item.label}</h3><p className="body-sm text-text-subtle">{formatNumber(item.count ?? 0)} مورد در این بخش؛ یک جعبهٔ دامنه است و ترتیب ندارد.</p></div>
   );
   if (item.kind === 'note') return (
     <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">یادداشت آزاد</span><p className="body-md whitespace-pre-wrap text-text-default">{item.summary}</p><p className="body-sm text-text-subtle">یادداشت دانش نیست و به AI داده نمی‌شود.</p></div>
   );
   return (
-    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">{item.kind === 'assets' ? 'خروجی‌ها' : 'خروجی'}</span><h3 className="heading-xs text-text-default">{item.label}</h3>{item.review && <Badge intent="warning" icon={false}>نیاز به بازبینی</Badge>}<p className="body-sm text-text-subtle">{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی (برای خوانایی یک‌جا جمع شده‌اند).` : 'خروجی ساخته‌شده از Context؛ با تغییر Context قدیمی می‌شود.'}</p><div><Button size="sm" variant="secondary" onClick={p.onOpenAssets}>باز کردن</Button></div></div>
+    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">{item.kind === 'assets' ? 'خروجی‌ها' : 'خروجی'}</span><h3 className="heading-xs text-text-default">{item.label}</h3>{item.review && <Caution>نیاز به بازبینی</Caution>}<p className="body-sm text-text-subtle">{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی (برای خوانایی یک‌جا جمع شده‌اند).` : 'خروجی ساخته‌شده از Context؛ با تغییر Context قدیمی می‌شود.'}</p><div><Button size="sm" variant="secondary" onClick={p.onOpenAssets}>باز کردن</Button></div></div>
   );
 };

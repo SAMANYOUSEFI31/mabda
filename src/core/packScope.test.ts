@@ -31,7 +31,7 @@ const objects: ContextObject[] = [
   o('c_prod', { type: 'Constraint', nodeId: 'prod', reach: 'position', title: 'خط قرمز محصول' }),
   o('a_one', { nodeId: 'prod', assumption: true, title: 'فرض محصول' }),
   o('p_one', { nodeId: 'prod', status: 'Proposed', title: 'پیشنهاد محصول' }),
-  o('x_old', { nodeId: 'prod', validUntil: '2026-01-01', title: 'منقضی' }),
+  o('x_old', { nodeId: 'prod', validUntil: '2026-01-01', title: 'قدیمی' }),
 ];
 const ids = (m: string) => objects.filter((x) => m.includes(`${x.id}@v`)).map((x) => x.id);
 const pack = (p: Partial<Parameters<typeof buildContextPack>[0]> = {}) => buildContextPack({ packId: 'p', workspaceName: 'w', nodes, objects, now: NOW, ...p });

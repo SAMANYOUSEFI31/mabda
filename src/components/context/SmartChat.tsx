@@ -76,9 +76,9 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         id: 'msg_welcome',
         role: 'assistant',
         content: `سلام! من موتور هوشمند «مبدأ» هستم.
-من مستقیماً به درخت منبع حقیقت شما متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
+من مستقیماً به درخت منبع حقیقت تو متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
 
-درباره چه بخشی از کسب‌وکار صحبت کنیم؟`,
+دربارهٔ کدام بخش صحبت کنیم؟`,
         timestamp: new Date().toISOString(),
         executionMode: 'auto',
         creditCost: 0,
@@ -408,7 +408,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-inline-sm">
-            <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی جدید</Button>
+            <Button variant="secondary" size="sm" iconStart="Plus" onClick={handleCreateNewSession}>گفتگوی دیگر</Button>
           </div>
         </div>
 
@@ -433,7 +433,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               ]}
             />
           </div>
-          <Badge intent="success" icon="Link2">متصل به {formatNumber(groundedCount)} قلم دانش</Badge>
+          <Badge icon="Link2">متصل به {formatNumber(groundedCount)} قلم دانش</Badge>
         </div>
         {scope && (
           <p className="body-sm text-text-subtle">
@@ -451,7 +451,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <IconButton icon="X" label="بستن فهرست گفتگوها" size="sm" onClick={() => setIsSidebarOpen(false)} />
             </div>
 
-            <Button variant="secondary" fullWidth iconStart="Plus" onClick={handleCreateNewSession}>شروع گفتگوی جدید</Button>
+            <Button variant="secondary" fullWidth iconStart="Plus" onClick={handleCreateNewSession}>شروع گفتگو</Button>
 
             <ul className="flex flex-1 flex-col gap-stack-xs overflow-y-auto" aria-label="نشست‌های گفتگو">
               {sessions.map((sess) => {
@@ -514,8 +514,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
             <Card padding="md" className="flex flex-col gap-stack-sm">
               <div className="flex items-center justify-between gap-inline-sm">
                 <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
-                  <Icon name="Zap" size="md" className="text-icon-subtle" />
-                  پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی
+                  <Icon name="Compass" size="md" className="text-icon-subtle" />
+                  پیشنهادهای شروع بر اساس جاهای خالیِ دانش فعلی
                 </span>
                 <span className="caption text-text-subtle">یک انتخاب برای آغاز</span>
               </div>
@@ -539,14 +539,14 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-start' : 'items-end'}`}>
                 {isIntro ? (
                   // fixed product intro, not a model answer
-                  <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-prose">{m.content}</div>
+                  <div className="body-sm w-full whitespace-pre-line rounded-control border border-border-default bg-surface-sunken p-inset-lg text-text-subtle sm:max-w-reading">{m.content}</div>
                 ) : m.error ? (
-                  <div className="w-full sm:max-w-prose">
+                  <div className="w-full sm:max-w-reading">
                     <AiErrorNotice error={m.error} onRetry={() => void handleRetry(m.id)} retrying={isLoading} />
                   </div>
                 ) : (
                   <div
-                    className={`flex w-fit max-w-full flex-col gap-stack-md rounded-container border p-inset-lg sm:max-w-prose ${
+                    className={`flex w-fit max-w-full flex-col gap-stack-md rounded-container border p-inset-lg sm:max-w-reading ${
                       m.role === 'user'
                         ? 'rounded-ss-none border-border-bold bg-bg-selected text-text-default'
                         : 'rounded-se-none border-border-default bg-surface-sunken text-text-default'
@@ -554,8 +554,8 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                   >
                     {m.role === 'assistant' && !m.streaming && m.groundedCount !== undefined && m.groundedCount > 0 && (
                       <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
-                        <Badge intent="success" icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
-                        {m.executionMode === 'deep' && <Badge intent="info" icon={false}>تحلیل چندوجهی</Badge>}
+                        <Badge icon="Shield">بررسی و تطبیق با {formatNumber(m.groundedCount)} شیء دانش تأییدشده</Badge>
+                        {m.executionMode === 'deep' && <Badge icon={false}>تحلیل چندوجهی</Badge>}
                       </div>
                     )}
 
@@ -615,10 +615,10 @@ export const SmartChat: React.FC<SmartChatProps> = ({
           <span className="caption text-text-subtle">{fairUse.isSoftExceeded ? 'امروز زیاد گفتگو کردی؛ تا فردا پاسخ‌ها سریع‌تر و سبک‌تر است و حالت عمیق متوقف است.' : ai.managedEnabled ? (isDeepMode ? 'کسر ۵ اعتبار از حساب' : 'حالت خودکار رایگان و بدون کنتور') : (isDeepMode ? 'تحلیل عمیق‌تر؛ کندتر و پرتوکن‌تر' : 'حالت خودکار')}</span>
         </div>
 
-        <form onSubmit={handleSend} className="flex items-start gap-inline-sm">
+        <form noValidate onSubmit={handleSend} className="flex items-start gap-inline-sm">
           <div className="flex-1">
             <TextField
-              aria-label="پیام شما"
+              aria-label="پیام تو"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={ai.available ? 'دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…' : 'هوش مصنوعی فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.'}

@@ -298,6 +298,8 @@ export interface WorkstreamSpec {
   deliverables: Array<DeliverableSpec>;
   /** the public framework this workstream follows (named, never quoted) */
   reference?: string;
+  /** the kinds of space it is written for (audience.md); absent = work */
+  purposes?: Array<'personal' | 'work' | 'project' | 'empty'>;
   /** rules every output of this workstream must obey; Confirmed Constraint objects are applied on top automatically */
   guardrails?: string[];
 }
@@ -501,6 +503,8 @@ export interface SavedPack {
 }
 
 export interface Workspace {
+  /** what the space is for, chosen when it is made: it picks the starting tree and the wording (absent = work, as before) */
+  purpose?: 'personal' | 'work' | 'project' | 'empty';
   /** the workspace is archived: hidden from the menu, nothing deleted; set only by the server («بایگانی») */
   archivedAt?: string;
   id: string;

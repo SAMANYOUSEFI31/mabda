@@ -49,7 +49,7 @@ test('every kind has its own rule text, and the common rules are always there', 
   assert.match(buildAiRequest(base({ kind: 'question' })).markdown, /نمی‌دانم/);
   assert.match(buildAiRequest(base({ kind: 'decision' })).markdown, /ردشده/);
   assert.match(buildAiRequest(base({ kind: 'draft' })).markdown, /اصول و لحنی/);
-  assert.match(buildAiRequest(base({ kind: 'audit' })).markdown, /شکاف/);
+  assert.match(buildAiRequest(base({ kind: 'audit' })).markdown, /جاهای خالی|جای خالی/);
   assert.match(buildAiRequest(base({ kind: 'change_review' })).markdown, /قبل ← بعد/);
 });
 
@@ -192,9 +192,9 @@ test('change_review: before / after of recent changes, the reason text is never 
 test('audit: gaps appear only for the audit', () => {
   const gaps = [{ label: 'بودجهٔ تبلیغات', status: 'missing' as const, question: 'چقدر؟', importance: 'required' as const }];
   const a = buildAiRequest(base({ kind: 'audit', gaps }));
-  assert.match(a.markdown, /## شکاف‌ها[\s\S]*بودجهٔ تبلیغات/);
+  assert.match(a.markdown, /## جاهای خالی[\s\S]*بودجهٔ تبلیغات/);
   assert.equal(a.counts.gaps, 1);
-  assert.ok(!buildAiRequest(base({ kind: 'question', gaps })).markdown.includes('## شکاف‌ها'));
+  assert.ok(!buildAiRequest(base({ kind: 'question', gaps })).markdown.includes('## جاهای خالی'));
 });
 
 test('gapsInScope: only missing / ambiguous, inside the scope, required first', () => {

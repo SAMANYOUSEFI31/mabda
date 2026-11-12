@@ -12,7 +12,7 @@ import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
 import { flatten, subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { AssumptionBadge, Badge, Button, Card, Dialog, EmptyState, SegmentedControl, Select, StatusBadge, Textarea, TypeBadge, ThinkingBadge, formatNumber } from '../../ui';
+import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Select, Textarea, formatNumber, Nuqta, TYPE_META } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -101,29 +101,29 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   const empty = view.waiting.length + view.thoughts.length + view.assumptions.length === 0;
   const count = (k: SpaceKind | 'all') => (k === 'all' ? Object.values(view.counts).reduce((a, b) => a + b, 0) : view.counts[k]);
 
+  // the toolbar stays quiet: one filter row, the section, and «⋯» for what is used now and then (nothing is approved by these)
+  const toolItems = [
+    ...(selectableCount > 0 && !selectMode ? [{ label: 'انتخاب چند فکر', icon: 'Check' as const, onSelect: () => { setSelectMode(true); setSelectedIds([]); } }] : []),
+    ...(view.waiting.length > 0 && p.onPreviewTruth ? [{ label: 'اگر همه را تأیید کنم: نمای کلی', icon: 'Workflow' as const, onSelect: p.onPreviewTruth }] : []),
+    ...(view.waiting.length > 0 && p.onCompareIfApproved ? [{ label: 'اگر همه را تأیید کنم: فهرست تغییرها', icon: 'Layers' as const, onSelect: p.onCompareIfApproved }] : []),
+  ];
+
   return (
     <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
       <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
         <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
           {CHIPS.map((c) => (
-            <Button key={c.id} size="sm" variant={kind === c.id ? 'secondary' : 'ghost'} iconStart={kind === c.id ? 'Check' : undefined} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
+            <Button key={c.id} size="sm" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
               {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
             </Button>
           ))}
         </div>
-        <div className="flex flex-col gap-stack-xs sm:ms-auto sm:w-overlay-xs">
-          {selectableCount > 0 && <Button size="sm" variant="ghost" iconStart={selectMode ? 'X' : 'Check'} onClick={() => { setSelectMode((v) => !v); setSelectedIds([]); }}>{selectMode ? 'پایان انتخاب' : 'انتخاب چند فکر'}</Button>}
-          <Select label="بخش" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} />
+        <div className="flex items-end gap-inline-xs sm:ms-auto">
+          {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
+          {toolItems.length > 0 && <Menu label="کارهای بیشتر در فکر" align="end" trigger={<IconButton icon="Ellipsis" label="کارهای بیشتر در فکر" size="sm" />} items={toolItems} />}
+          <div className="w-overlay-xs max-w-full"><Select label="بخش" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
         </div>
       </div>
-
-      {view.waiting.length > 0 && p.onPreviewTruth && (
-        <div className="flex flex-wrap items-center gap-inline-sm">
-          <Button size="sm" variant="secondary" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نمای کلی حقیقت چه می‌شود؟</Button>
-          {p.onCompareIfApproved && <Button size="sm" variant="secondary" iconStart="Layers" onClick={p.onCompareIfApproved}>فهرست تغییرها</Button>}
-          <span className="body-sm text-text-subtle">نمای کلی یا فهرست؛ چیزی تأیید نمی‌شود.</span>
-        </div>
-      )}
 
       {p.nodeId && truthAnchors.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="دانش مرتبط برای فکر کردن">
@@ -134,11 +134,11 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <ul className="flex flex-col gap-stack-xs">
             {truthAnchors.slice(0, 8).map((o) => (
               <li key={o.id}>
-                <Card padding="md" className="flex flex-wrap items-start justify-between gap-inline-sm">
+                <Card padding="md" knowledge="truth" className="flex flex-wrap items-start justify-between gap-inline-sm">
                   <div className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
-                    <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-sm text-text-default">{o.title}</span><TypeBadge value={o.type} /><AssumptionBadge object={o} /></span>
-                    <p className="body-sm whitespace-pre-wrap text-text-subtle">{o.content}</p>
-                    {o.nodeId !== p.nodeId && <span className="caption text-text-subtle">از بخش «{nodeLabel(o.nodeId)}»</span>}
+                    <span className="headline text-text-default">{o.title}</span>
+                    <p className="body-md whitespace-pre-wrap text-text-default">{o.content}</p>
+                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label}{o.assumption ? ' · فرض' : ''}{o.nodeId !== p.nodeId ? ` · از بخش «${nodeLabel(o.nodeId)}»` : ''}</span>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>دیدن دانش</Button>
                 </Card>
@@ -155,9 +155,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
           <h3 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h3>
           {drafts.map((o) => (
-            <Card key={o.id} padding="lg" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
+            <Card key={o.id} padding="md" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                <span className="flex flex-wrap items-center gap-inline-xs"><span className="label-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><Badge intent="warning" icon={false}>۱ تغییر در انتظار تأیید</Badge><span className="caption text-text-subtle">{nodeLabel(o.nodeId)}</span></span>
+                <span className="flex flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">تغییرِ {TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span></span>
               </div>
               {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
@@ -174,9 +174,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
-                <li key={o.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-                  <span className="flex flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs"><span className="body-md text-text-default">{o.title}</span><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>{reasonOf(o.id) && <span className="body-sm text-text-subtle">{reasonOf(o.id)}</span>}</span>
-                  <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
+                <li key={o.id} data-knowledge="stale" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
+            <Nuqta state="stale" className="mb-knowledge__nuqta" />
+                  <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">{reasonOf(o.id) || 'چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.'}</span><span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span></span>
+                  <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>بازبینی</Button>
                 </li>
               ))}
             </ul>
@@ -191,7 +192,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
-              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="Sparkles" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>آماده‌سازی درخواست</Button>}
+              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="PackageOpen" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>درخواست برای ابزار دیگر</Button>}
             </Card>
           )}
           {selectMode && selectedThoughts.length === 0 && <p className="body-sm text-text-subtle">یک یا چند فکر را انتخاب کن تا بتوانی آن‌ها را ترکیب کنی یا برایشان درخواست آماده کنی.</p>}
@@ -218,8 +219,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <p className="body-sm text-text-subtle">تأییدشده‌اند و AI آن‌ها را در بخش جدای «فرض» می‌بیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-                <span className="flex flex-wrap items-center gap-inline-xs"><ThinkingBadge kind="assumption" /><span className="body-md text-text-default">{o.title}</span><span className="caption text-text-subtle">· {nodeLabel(o.nodeId)}</span></span>
+              <li key={o.id} data-knowledge="truth" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
+            <Nuqta state="truth" className="mb-knowledge__nuqta" />
+                <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">فرض · {nodeLabel(o.nodeId)}</span></span>
                 <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
               </li>
             ))}

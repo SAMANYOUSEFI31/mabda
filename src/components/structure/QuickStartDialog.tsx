@@ -142,8 +142,8 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <>
             <Button variant="ghost" onClick={() => { setStep('choose'); setError(null); }}>بازگشت</Button>
             {path === 'questions'
-              ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>ثبت و ساخت بسته</Button>
-              : <Button variant="primary" iconStart="Wand2" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
+              ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>آماده‌سازی بسته</Button>
+              : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
           </>
         )
         : step === 'review' ? (
@@ -158,7 +158,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'choose' && (
           <div className="flex flex-col gap-stack-sm">
-            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی دربارهٔ کسب‌وکارت" onClick={() => { setPath('text'); setStep('input'); }} />
+            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی، از کار یا زندگی" onClick={() => { setPath('text'); setStep('input'); }} />
             <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه دربارهٔ تو یاد گرفته‌اند" onClick={() => { setPath('memory'); setStep('input'); }} />
             <OptionCard title="به چند سؤال کوتاه جواب می‌دهم" description="حداکثر پنج سؤال کوتاه" onClick={() => { setPath('questions'); setStep('input'); }} />
           </div>
@@ -167,7 +167,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
         {step === 'input' && path !== 'questions' && (
           <div className="flex flex-col gap-stack-md">
             {path === 'memory' && <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />}
-            {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من و کسب‌وکارم یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
+            {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
             <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint="هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست." />
           </div>
         )}
@@ -183,7 +183,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'review' && (
           <div className="flex flex-col gap-stack-md">
-            {created.length === 0 ? <p className="body-md text-text-subtle">چیزی که به کسب‌وکار مربوط باشد در این متن پیدا نشد؛ بازگرد و متن دیگری بچسبان.</p> : (
+            {created.length === 0 ? <p className="body-md text-text-subtle">چیز قابل‌استفاده‌ای در این متن پیدا نشد؛ بازگرد و متن دیگری بچسبان.</p> : (
               <>
                 <p className="body-md text-text-default">مبدأ این‌ها را فهمید. هرکدام را که درست است نگه دار؛ باقی را بردار.</p>
                 <ul className="flex flex-col gap-stack-sm">
@@ -225,7 +225,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
               <section className="flex flex-col gap-stack-sm" aria-label="بستهٔ دانش">
                 <h3 className="title text-text-default">بستهٔ دانش تو آماده است</h3>
                 <div className="flex flex-wrap items-center gap-inline-sm">
-                  <Badge intent="success" icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
+                  <Badge icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
                   <Badge intent="neutral" icon={false}>حدود {formatNumber(pack.tokens)} توکن</Badge>
                 </div>
                 <ol className="body-md flex list-persian list-decimal flex-col gap-stack-xs ps-inset-xl text-text-default">
@@ -246,7 +246,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                   <p className="body-sm text-text-subtle">این خروجی از {formatNumber(sample.usedContext.length)} قلم دانش ساخته شد؛ اگر یکی را عوض کنی، خروجی «نیاز به بازبینی» می‌گیرد.</p>
                 </div>
               ) : (
-                <div><Button variant="secondary" iconStart="Sparkles" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
+                <div><Button variant="secondary" iconStart="Eye" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
               )}
             </section>}
           </div>

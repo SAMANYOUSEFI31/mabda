@@ -32,7 +32,7 @@ export const BlockView: React.FC<BlockViewProps> = ({ block, onAddToContext, onS
   return (
     <div className="flex flex-col gap-stack-xs" data-block-kind={block.kind}>
       {(type || block.kind === 'question') && (
-        <div>{type ? <TypeBadge value={type} /> : <Badge intent="info" icon="Info">سؤال</Badge>}</div>
+        <div>{type ? <TypeBadge value={type} /> : <Badge icon="Info">سؤال</Badge>}</div>
       )}
       <Markdown>{block.markdown}</Markdown>
 
@@ -52,7 +52,7 @@ export const BlockView: React.FC<BlockViewProps> = ({ block, onAddToContext, onS
       )}
 
       <div className="flex flex-wrap items-center gap-inline-xs">
-        {onAddToContext && <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToContext(block)}>به دانش اضافه کن</Button>}
+        {onAddToContext && <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => onAddToContext(block)}>افزودن به دانش</Button>}
         {onSaveAsAsset && <Button size="sm" variant="ghost" iconStart="Package" onClick={() => onSaveAsAsset(block)}>ذخیره به‌عنوان دارایی</Button>}
         <Button size="sm" variant="ghost" iconStart={copied ? 'Check' : 'Copy'} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
       </div>

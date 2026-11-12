@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TypeBadge, formatNumber } from '../../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, Nuqta, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -72,28 +73,37 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const quick = (id: string) => quickMoves(nodes, id);
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
+  // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
+  // What the engines say about it (needs review, an assumption, where it applies) goes to the margin as one sentence, not a chip.
+  // the deterministic contradiction engine (same topic, different amounts…): both sides carry the conflict dot and say who the other is
+  const conflictWith = useMemo(() => conflictPartners(objects), [objects]);
+  const nodeName = (id: string) => nodes.find((n) => n.id === id)?.label ?? '';
+  const marginFor = (obj: ContextObject) => {
+    const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');
+    const notes: React.ReactNode[] = [];
+    if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="TriangleAlert">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
+    else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="Lightbulb">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
+    else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="History">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
+    const other = conflictWith.get(obj.id);
+    if (other) notes.push(<MarginNote key="c" lead={<Nuqta state="conflict" size="sm" />}>با «{other.title}» در بخش «{nodeName(other.nodeId)}» نمی‌خواند؛ یکی را نگه دار.</MarginNote>);
+    // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
+    const before = objects.filter((o) => o.supersededById === obj.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
+    if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
+    return notes.length ? <>{notes}</> : undefined;
+  };
   const card = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm">
-      <div className="flex items-start justify-between gap-inline-sm">
-        <h4 className="title min-w-space-0 flex-1 text-text-default">{obj.title}</h4>
-        <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
-          <TypeBadge value={obj.type} />
-          <AssumptionBadge object={obj} />
-          <ReachBadge object={obj} />
-          <AssumptionBadge object={obj} />
-          <StatusBadge value={obj.status} />
-        </div>
-      </div>
-      <p className="body-md line-clamp-3 text-text-default">{obj.content}</p>
-      <div className="mt-stack-xs flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm caption text-text-subtle">
-        <span>منبع: {PROVENANCE_LABEL[obj.provenance]} · نسخهٔ {formatNumber(obj.version)}</span>
-        <span className="inline-flex items-center gap-inline-xs">ویرایش یا مشاهده</span>
-      </div>
-    </Card>
+    <MarginItem key={obj.id} margin={marginFor(obj)}>
+      <Card padding="md" knowledge={displayState(obj, conflictWith)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
+        <h4 className="headline text-balance text-text-default">{obj.title}</h4>
+        <p className="body-reading text-pretty text-text-default">{obj.content}</p>
+        <p className="body-sm text-text-subtle">{obj.assumption ? 'فرض' : TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
+      </Card>
+    </MarginItem>
   );
 
   const sampleCard = (obj: ContextObject) => (
-    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-sm border-dashed opacity-70">
+    <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} knowledge="sample" className="flex flex-col gap-stack-sm">
       <div className="flex items-start justify-between gap-inline-sm">
         <h4 className="title min-w-space-0 flex-1 text-text-subtle">{obj.title}</h4>
         <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs"><SampleBadge /><TypeBadge value={obj.type} /></div>
@@ -110,7 +120,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const kids = childrenOf(nodes, node.id);
     const notesOpen = openNotes.has(node.id);
     // the truth: approved knowledge only (a confirmed assumption stays, with its badge — it IS approved and the AI reads it in its own section)
-    const established = nodeObjects.filter((o) => o.status === 'Confirmed');
+    // what holds here now: the truth, and truth that needs a look (stale) — it is still what the tools see until it is reviewed
+    const established = nodeObjects.filter((o) => o.status === 'Confirmed' || o.status === 'Needs Review');
     const nodeSamples = props.samples.filter((o) => o.nodeId === node.id);
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
@@ -127,17 +138,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>باز کردن</Button>}
             <Menu
-              label={`عملیات گرهٔ ${node.label}`}
+              label={`عملیات بخش ${node.label}`}
               align="end"
-              trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
+              trigger={<IconButton icon="Ellipsis" label={`عملیات بخش ${node.label}`} size="sm" />}
               items={[
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
-                { label: 'آماده‌سازی درخواست', icon: 'Sparkles', onSelect: () => props.onOpenAiRequest(node.id) },
+                { label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
-                { label: 'زیرگرهٔ جدید', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Brain' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
+                { label: 'افزودن زیربخش', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
+                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Target' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
                 { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
@@ -157,7 +168,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <EmptyState
             icon="Inbox"
             title="هنوز موردی در این شاخه ثبت نشده"
-            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>ثبت اولین مورد</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
+            action={<div className="flex flex-wrap justify-center gap-inline-sm"><Button variant="secondary" size="sm" onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button><Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button></div>}
           />
         ) : (
           <>
@@ -168,9 +179,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                   <h4 className="label-md text-text-default">الان درست است</h4>
                   <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button>
                 </div>
-                {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
+                {established.length === 0 ? (
+                  // «جای خالی»: a hollow gap dot and why the slot matters, not a bare «nothing yet»
+                  <p className="flex items-start gap-inline-sm body-md text-text-subtle"><Nuqta state="gap" className="mt-space-1" /><span>هنوز حقیقتی اینجا نیست{node.description ? `: ${node.description}` : ''}.</span></p>
+                ) : (
                   <>
-                    <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    <MarginList>{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}
@@ -206,7 +220,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <section className="flex flex-col gap-stack-sm" aria-label="نمونه‌ها">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h4 className="label-md text-text-subtle">نمونه‌ها (به AI نمی‌رسند)</h4>
-                  <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این گره</Button>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این بخش</Button>
                 </div>
                 <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{nodeSamples.map(sampleCard)}</div>
               </section>
@@ -215,7 +229,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
             <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
               {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" onClick={() => props.onNewThought(node.id)}>فکر تازه‌ای داری؟ بنویس</Button>}
-              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>فایل یا متنی داری؟ اضافه کن</Button>
+              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>افزودن فایل یا متن</Button>
               <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
             </div>
 
@@ -223,7 +237,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {(nodeFiles.length > 0 || sources.length > 0) && (
               <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
                 <h4 className="label-md text-text-default">از کجا آمده</h4>
-                {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>}
+                {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این بخش: {nodeFiles.map((f) => f.name).join('، ')}</p>}
                 {sources.length > 0 && <p className="body-sm text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
               </section>
             )}
@@ -243,22 +257,23 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const path = pathTo(nodes, focusNode.id);
     const above = fromAbove(nodes, objects, props.relationships ?? [], focusNode.id, new Date());
     return (
-      <Card padding="xl" className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
+      <section className="flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
         <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
         <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
           {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
           {renderNode(focusNode, '', 0, true)}
         </div>
-      </Card>
+      </section>
     );
   }
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-xl">
+    // no frame around the tree: the knowledge cards are the only raised surface, so «raised = recorded» reads at a glance
+    <section className="flex flex-col gap-stack-xl" aria-label="ساختار منبع حقیقت">
       <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="heading-sm text-text-default">ساختار منبع حقیقت</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            هر بخش یک گره است و هر کارت یک قلم دانش. برای خواندن به‌صورت یک سند زیبا، «خواندن سند» را بزن.
+            هر بخش شاخه‌ای از درخت است و هر کارت یک قلم دانش. برای خواندن پیوسته، «خواندن سند» را بزن.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
@@ -267,7 +282,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
       </div>
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
-    </Card>
+    </section>
   );
 };
 

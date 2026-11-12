@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable } from '../../types';
 import { versionTexts } from '../../core/versionHistory';
 import { BeforeAfter } from '../shared/BeforeAfter';
-import { Alert, Badge, Button, Card, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber } from '../../ui';
+import { Alert, Badge, Button, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution } from '../../ui';
 import { PlanLine } from '../shared/AiNotices';
 import { useAiStatus } from '../../services/aiStatus';
 import { halfPriceRebuildAvailable } from '../../core/impactEngine';
@@ -25,7 +25,7 @@ interface ContextReplayCardProps {
   stale?: StaleAsset;
   /** the change log: with it, a piece of knowledge that moved on since this output was built shows WHAT changed */
   changes?: ContextChange[];
-  /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «برگرداندن») */
+  /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «واگرد») */
   onArchive?: (deliverable: GeneratedDeliverable) => void;
   onDelete?: (deliverable: GeneratedDeliverable) => void;
 }
@@ -71,23 +71,24 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const traceId = `trace-${deliverable.id}`;
 
   return (
-    <Card padding="lg" className="flex flex-col gap-stack-md" aria-label={deliverable.title}>
+    // on the paper, not in a box: a hairline under each one, like the rows of «ساختار»
+    <article className="flex flex-col gap-stack-md border-b border-border-subtle pb-inset-lg" aria-label={deliverable.title}>
       {/* the same anatomy as a canvas card: title · a row of badges · a short line · one action (+ «⋯») */}
       <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
         <div className="flex min-w-space-0 flex-col gap-stack-xs">
           <h3 className="title text-text-default">{deliverable.title}</h3>
           <div className="flex flex-wrap items-center gap-inline-xs">
             {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
-            {stale && <Badge intent="warning" icon="TriangleAlert">به‌روز نیست</Badge>}
-            {deliverable.rebuildCount > 0 && <Badge intent="success" icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
-            {deliverable.checks && deliverable.checks.length > 0 && <Badge intent={passedAll ? 'success' : 'warning'} icon={false}>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Badge>}
+            {stale && <Caution>به‌روز نیست</Caution>}
+            {deliverable.rebuildCount > 0 && <Badge icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
+            {deliverable.checks && deliverable.checks.length > 0 && (passedAll ? <Badge icon={false}>{formatNumber(deliverable.checks.length)} معیار برقرار</Badge> : <Caution>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Caution>)}
           </div>
           <span className="caption text-text-subtle">
             {formatJalaliDate(deliverable.createdAt)}{ai.managedEnabled ? ` · مصرف اعتبار: ${formatNumber(deliverable.creditCost)}` : ''}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-inline-xs">
-          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="Sparkles" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
+          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت با AI</Button>}
           <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
           <Menu
             label="بیشتر دربارهٔ این خروجی"
@@ -136,11 +137,11 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
 
       {/* the trail (what it was built from) and the criteria: a closed section */}
       <div className="flex flex-col gap-stack-sm">
-        <div>
+        <div className="flex flex-wrap items-center gap-inline-sm">
           <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
             ردپای دانش و معیارها
           </Button>
-          <span className="body-sm ms-inline-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
+          <span className="body-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
         </div>
         {traceOpen && (
           <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
@@ -196,7 +197,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                 <ul className="flex flex-col gap-stack-xs">
                   {deliverable.checks.map((c, i) => (
                     <li key={i} className="flex items-start gap-inline-sm">
-                      <Badge intent={c.passed ? 'success' : 'danger'} icon={c.passed ? 'Check' : 'X'}>{c.passed ? 'برقرار' : 'نقض'}</Badge>
+                      {c.passed ? <Badge icon="Check">برقرار</Badge> : <Caution tone="danger">نقض</Caution>}
                       <div className="flex min-w-space-0 flex-col">
                         <span className="body-md text-text-default">{c.kind === 'guardrail' ? 'خط قرمز: ' : ''}{c.text}</span>
                         <span className="caption text-text-subtle">{c.reason}</span>
@@ -226,6 +227,6 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           </div>
         )}
       </div>
-    </Card>
+    </article>
   );
 };

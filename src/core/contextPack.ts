@@ -123,7 +123,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   const parts: string[] = [
     PACK_MARKER(input.packId),
     `# بستهٔ Context مبدأ — ${input.workspaceName}`,
-    '> این بسته منبع حقیقت کسب‌وکار من است. فقط «واقعیت‌های تأییدشده» را واقعیت بدان. بخش «پیشنهادی» هنوز تأیید نشده و واقعیت نیست. چیزی را از خودت اختراع نکن؛ اگر اطلاعات کم است، سؤال بپرس.',
+    '> این بسته منبع حقیقت من است. فقط «واقعیت‌های تأییدشده» را واقعیت بدان. بخش «پیشنهادی» هنوز تأیید نشده و واقعیت نیست. چیزی را از خودت اختراع نکن؛ اگر اطلاعات کم است، سؤال بپرس.',
   ];
 
   if (input.instruction?.trim()) parts.push(`## دستور\n${input.instruction.trim()}`);
@@ -147,7 +147,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now) : null;
   if (metricsSection) parts.push(metricsSection);
   if (gaps.length) {
-    parts.push(['## شکاف‌ها (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));
+    parts.push(['## جاهای خالی (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));
   }
   parts.push(RESPONSE_FORMAT);
 

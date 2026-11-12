@@ -102,12 +102,12 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                 <div className="flex min-w-space-0 flex-wrap items-center gap-inline-sm">
                   <span className="label-md text-text-default">{f.name}</span>
-                  {managed && <Badge intent={STATUS[f.status].intent} icon={false}>{STATUS[f.status].label}</Badge>}
+                  {managed && <Badge icon={false}>{STATUS[f.status].label}</Badge>}
                   <span className="caption text-text-subtle">{kb(f.sizeBytes)} · حدود {formatNumber(f.tokens)} توکن{f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}</span>
                 </div>
                 <div className="flex items-center gap-inline-xs">
                   {managed && (f.status === 'uploaded' || f.status === 'failed') && (
-                    <Button size="sm" variant="secondary" iconStart="Wand2" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
+                    <Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
                       {f.status === 'failed' ? 'دوباره' : 'پردازش'}
                     </Button>
                   )}
@@ -145,7 +145,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
               «{confirm.file.name}» حدود {formatNumber(confirm.file.tokens)} توکن است و {formatNumber(confirm.charge.excessTokens)} توکنش از سهمیهٔ ماهانه بیشتر می‌شود.
             </p>
             <p className="body-md text-text-default">هزینه: {formatNumber(confirm.charge.credits)} اعتبار (موجودی: {formatNumber(credits)}).</p>
-            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از دفتر کل اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
+            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از «مصرف» اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
           </div>
         )}
       </Dialog>

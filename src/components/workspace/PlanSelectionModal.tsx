@@ -18,7 +18,7 @@ interface PlanSelectionModalProps {
 }
 
 const WHO: Record<PlanId, string> = {
-  starter: 'برای یک کسب‌وکار که تازه منبع حقیقتش را می‌سازد',
+  starter: 'برای شروع',
   pro: 'برای اپراتور روزانه‌ای که چند پروژه و جریان کار سفارشی دارد',
   max: 'برای مشاور یا آژانس با چند مشتری',
 };
@@ -35,7 +35,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
       open={isOpen}
       onClose={onClose}
       size="xl"
-      title={managed ? 'منبع حقیقت کسب‌وکار، همراه با هوش مصنوعی مبدأ' : 'منبع حقیقت کسب‌وکار'}
+      title={managed ? 'منبع حقیقت تو، همراه با هوش مصنوعی مبدأ' : 'منبع حقیقت تو'}
       description={managed ? 'اشتراک مبدأ برای ساختار، موتورها و استفاده از هوش مصنوعی است: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.' : 'اشتراک مبدأ برای ساختار و موتورهاست: دانشت منظم می‌ماند و تغییرها دیده می‌شوند. ذخیرهٔ Context و دارایی در همهٔ پلن‌ها آزاد است.'}
     >
       <div className="flex flex-col gap-stack-lg">
@@ -45,7 +45,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
             const p = PLANS[pid];
             const isCurrent = currentWorkspace.planId === pid;
             const rows: Array<{ ok: boolean; text: string }> = [
-              { ok: true, text: `${formatNumber(e.workspaces)} فضای کاری برای کسب‌وکارها یا مشتری‌هایت` },
+              { ok: true, text: `${formatNumber(e.workspaces)} فضا (شخصی، کاری یا برای هر مشتری)` },
               { ok: true, text: `تا ${formatNumber(e.maxObjects)} قلم دانش فعال در درخت منبع حقیقت` },
               ...(managed ? [{ ok: true, text: `فایل‌هایت را بخوان: حدود ${k(e.fileTokensPerMonth)} توکن پردازش در ماه` }] : []),
               { ok: e.engines.changeImpact, text: 'بفهم کدام دارایی با تغییر دانش نیاز به بازبینی پیدا کرد' },
@@ -69,7 +69,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
 
                   <ul className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-md body-sm">
                     {rows.map((r) => (
-                      <li key={r.text} className={`flex items-start gap-inline-sm ${r.ok ? 'text-text-default' : 'text-text-subtlest'}`}>
+                      <li key={r.text} className={`flex items-start gap-inline-sm ${r.ok ? 'text-text-default' : 'text-text-subtle'}`}>
                         <Icon name={r.ok ? 'Check' : 'Minus'} size="sm" className="mt-stack-xs shrink-0" />
                         <span><span className="sr-only">{r.ok ? 'شامل: ' : 'شامل نیست: '}</span>{r.text}</span>
                       </li>
@@ -87,7 +87,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                 </div>
 
                 {isCurrent ? (
-                  <Badge intent="success" icon="CircleCheck" className="justify-center">پلن فعلی شما</Badge>
+                  <Badge icon="CircleCheck" className="justify-center">پلن فعلی تو</Badge>
                 ) : (
                   <Button variant="secondary" fullWidth onClick={() => { onSelectPlan(pid); onClose(); }}>
                     فعال‌سازی پلن {p.title.split(' ')[0]}

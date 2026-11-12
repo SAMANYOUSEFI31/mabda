@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, TextField, TypeBadge, formatJalaliDate, formatNumber } from '../../ui';
+import { Badge, Button, Card, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
   mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
@@ -36,12 +36,18 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
+  // tools used now and then sit under one quiet trigger; the inbox itself is the content (thinking page stays calm)
   const actions = (
-    <div className="flex flex-wrap items-center gap-inline-sm">
-      <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای استفاده در هر ابزار</Button>
-      <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن متن آماده</Button>
-      <Button variant="secondary" size="sm" iconStart="Brain" onClick={onOpenMemory}>وارد کردن سند یا حافظه</Button>
-    </div>
+    <Menu
+      label="آوردن یا بردن دانش"
+      align="end"
+      trigger={<Button variant="ghost" size="sm" iconEnd="ChevronDown">آوردن یا بردن دانش</Button>}
+      items={[
+        { label: 'کپی کل دانش برای استفاده در هر ابزار', icon: 'Copy', onSelect: onOpenPack },
+        { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: onOpenImport },
+        { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: onOpenMemory },
+      ]}
+    />
   );
 
   // nothing waiting: one sentence and the ways to bring AI suggestions in — no big empty card
@@ -55,12 +61,12 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   }
 
   return (
-    <Card padding="xl" id="proposal-inbox" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
+    <section id="proposal-inbox" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
       <div className="flex flex-col justify-between gap-inline-md border-b border-border-default pb-inset-lg md:flex-row md:items-center">
         <div className="flex flex-col gap-stack-xs">
           <div className="flex items-center gap-inline-sm">
             <h2 className="heading-sm text-text-default">صندوق پیشنهادها</h2>
-            <Badge intent="warning" icon={false}>{formatNumber(pending.length)} منتظر تأیید</Badge>
+            <span className="body-sm text-text-subtle">{formatNumber(pending.length)} منتظر تأیید</span>
           </div>
           <p className="body-sm text-text-subtle">پیشنهادها، فایل‌ها و متن‌های واردشده اینجا می‌مانند. تا تأیید نکنی واقعیت نیستند و به‌عنوان واقعیت به هیچ ابزاری داده نمی‌شوند.</p>
         </div>
@@ -69,13 +75,13 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
 
       <ul className="flex flex-col gap-stack-md">
         {pending.map((o) => (
-          <li key={o.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+          <li key={o.id} data-knowledge="proposed" className="mb-knowledge flex flex-col gap-stack-sm p-inset-lg">
+            <Nuqta state="proposed" className="mb-knowledge__nuqta" />
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-              <div className="flex flex-wrap items-center gap-inline-sm">
-                <TypeBadge value={o.type} />
-                <span className="label-md text-text-default">{o.title}</span>
+              <div className="flex flex-col gap-stack-xs">
+                <span className="headline text-text-default">{o.title}</span>
+                <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {label(o.nodeId)}</span>
               </div>
-              <span className="body-sm text-text-subtle">{label(o.nodeId)}</span>
             </div>
             {hints?.[o.id] && <p className="body-sm text-text-subtle">{hints[o.id]}</p>}
             {(() => {
@@ -109,7 +115,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             {o.source?.reason && <p className="body-sm text-text-subtle">دلیل پیشنهاد: {o.source.reason}</p>}
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
               <span className="body-sm text-text-subtle">
-                منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `پیشنهاد AI · ${formatJalaliDate(o.createdAt)}`}
+                منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
               </span>
               <div className="flex flex-wrap items-center gap-inline-xs">
                 {(() => {
@@ -132,6 +138,6 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
           </li>
         ))}
       </ul>
-    </Card>
+    </section>
   );
 };

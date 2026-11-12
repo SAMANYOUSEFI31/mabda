@@ -77,7 +77,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
       }
     >
       <ol className="mb-stack-md flex flex-wrap gap-inline-xs" aria-label="گام‌های بازبینی">
-        {STEPS.map((s, i) => <li key={s}><Badge intent={i === step ? 'info' : i < step ? 'success' : 'neutral'} icon={false}>{formatNumber(i + 1)}. {s}</Badge></li>)}
+        {STEPS.map((s, i) => <li key={s}><Badge icon={false} aria-current={i === step ? 'step' : undefined} className={i === step ? 'text-text-default' : undefined}>{formatNumber(i + 1)}. {s}</Badge></li>)}
       </ol>
 
       {step === 0 && (

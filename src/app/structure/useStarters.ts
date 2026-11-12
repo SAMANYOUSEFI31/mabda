@@ -34,7 +34,7 @@ export function useStarters(p: AppCoreScope) {
     if (!r) return;
     if (r.nodes) patch((d) => ({ ...d, nodes: r.nodes!, samples: r.samples ?? d.samples }));
     if (r.spec) { patch((d) => ({ ...d, specs: [r.spec!, ...d.specs] })); }
-    toast.show({ intent: 'success', message: r.spec ? 'جریان کار به این فضا آمد.' : `گره‌ها آمدند و ${formatNumber(r.added ?? 0)} نمونهٔ خاکستری اضافه شد.` });
+    toast.show({ intent: 'success', message: r.spec ? 'جریان کار به این فضا آمد.' : `بخش‌ها آمدند و ${formatNumber(r.added ?? 0)} نمونهٔ خاکستری اضافه شد.` });
   };
 
   const handleCreateObjects = async (drafts: ContextDraft[]): Promise<ContextObject[]> => {

@@ -32,8 +32,12 @@ try {
     page.on('pageerror', (e) => { if (!/WebSocket closed without opened/.test(e.message)) errors.push(e.message); });
     const shot = (n) => page.screenshot({ path: `docs/screens/${tag}-${n}.png` });
     const account = async (name) => {
-      if (mobile) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name }).first().click(); }
-      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name }).first().click(); }
+      // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
+      const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
+      if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
+      if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
+      else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
     };
     const radio = (name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().click();
     const nav = async (d, m) => { if (mobile) await page.locator(`nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")`).click(); else await page.locator(`nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`).first().click(); };
@@ -45,7 +49,7 @@ try {
     const listBefore = (await api('/workspaces')).workspaces;
     const hadDemo = listBefore.some((w) => w.id === 'ws_demo');
     const before = listBefore.length - (hadDemo ? 1 : 0);
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     if (hadDemo) { await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click(); }
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
     const list = (await api('/workspaces')).workspaces;
@@ -124,7 +128,7 @@ try {
     step(`[${width}] reset twice = the same state`);
     const a = JSON.stringify(await api('/workspaces/ws_demo/state'));
     await nav('منبع حقیقت', 'منبع');
-    await account('ساخت یا بازنشانی فضای نمونه');
+    await account('بازسازی فضای نمونه');
     await page.getByRole('dialog').getByText('بازنشانی فضای نمونه؟').waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();
     await page.getByRole('dialog').waitFor({ state: 'detached' });

@@ -31,20 +31,20 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <Tag
       ref={ref}
-      className={cx('bsh-btn', `bsh-btn--${variant}`, `bsh-btn--${size}`, size === 'lg' ? 'label-lg' : 'label-md',
-        fullWidth && 'bsh-btn--full', glow && variant === 'primary' && 'bsh-btn--glow', loading && 'is-loading', className)}
+      className={cx('mb-btn', `mb-btn--${variant}`, `mb-btn--${size}`, size === 'lg' ? 'label-lg' : 'label-md',
+        fullWidth && 'mb-btn--full', glow && variant === 'primary' && 'mb-btn--glow', loading && 'is-loading', className)}
       aria-busy={loading || undefined}
       data-force={forceState}
       {...tagProps}
       {...rest}
     >
-      <span className="bsh-btn__content">
+      <span className="mb-btn__content">
         {iconStart && <Icon name={iconStart} size="md" />}
-        <span className="bsh-btn__label">{children}</span>
-        {iconEnd && <Icon name={iconEnd} size="md" className="bsh-flip" />}
+        <span className="mb-btn__label">{children}</span>
+        {iconEnd && <Icon name={iconEnd} size="md" className="mb-flip" />}
       </span>
       {loading && (
-        <span className="bsh-btn__spin" aria-hidden="true"><Icon name="LoaderCircle" size="md" className="bsh-spin" /></span>
+        <span className="mb-btn__spin" aria-hidden="true"><Icon name="LoaderCircle" size="md" className="mb-spin" /></span>
       )}
     </Tag>
   );
@@ -74,10 +74,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       title={label}
       data-force={forceState}
       aria-pressed={selected === undefined ? undefined : Boolean(selected)}
-      className={cx('bsh-iconbtn', `bsh-btn--${variant}`, `bsh-iconbtn--${size}`, selected && 'is-selected', className)}
+      className={cx('mb-iconbtn', `mb-btn--${variant}`, `mb-iconbtn--${size}`, selected && 'is-selected', className)}
       {...rest}
     >
-      <Icon name={icon} size={size === 'sm' ? 'sm' : 'lg'} className={flip ? 'bsh-flip' : undefined} />
+      <Icon name={icon} size={size === 'sm' ? 'sm' : 'lg'} className={flip ? 'mb-flip' : undefined} />
     </button>
   );
 });
@@ -91,12 +91,12 @@ export interface LinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement>
 export function Link({ href = '#', external = false, children, forceState, className, ...rest }: LinkProps) {
   const ext = external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   return (
-    <a href={href} data-force={forceState} className={cx('bsh-link', className)} {...ext} {...rest}>
+    <a href={href} data-force={forceState} className={cx('mb-link', className)} {...ext} {...rest}>
       {children}
       {external && (
         <>
-          <Icon name="ExternalLink" size="xs" className="bsh-link__ext bsh-flip-rtl" />
-          <span className="bsh-sr"> (در پنجرهٔ تازه باز می‌شود)</span>
+          <Icon name="ExternalLink" size="xs" className="mb-link__ext mb-flip-rtl" />
+          <span className="mb-sr"> (در پنجرهٔ تازه باز می‌شود)</span>
         </>
       )}
     </a>

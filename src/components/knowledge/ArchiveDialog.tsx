@@ -36,6 +36,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   const [busy, setBusy] = useState<string | null>(null);
   const [purge, setPurge] = useState<ContextObject | null>(null);
   const [deleteWs, setDeleteWs] = useState<Workspace | null>(null);
+  /** an archived output to erase for good: asked once, with the exact action on the button (patterns.md §۴) */
+  const [dropOut, setDropOut] = useState<GeneratedDeliverable | null>(null);
   const load = useCallback(async () => { try { setData(await dataApi.archive(workspaceId)); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); } }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? 'بخش حذف‌شده';
@@ -60,7 +62,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
         footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
         <div className="flex flex-col gap-stack-md">
           <SegmentedControl label="بخش بایگانی" value={section} onChange={(v) => setSection(v as Section)} items={[
-            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'گره‌های حذف‌شده') },
+            { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌های حذف‌شده') },
             { id: 'outputs', label: label('outputs', 'خروجی‌ها') }, { id: 'workspaces', label: label('workspaces', 'فضاهای کاری') },
           ]} />
           {error && <Alert intent="danger">{error}</Alert>}
@@ -77,7 +79,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
                 </>))}
             </ul>)}
           {data && section === 'removals' && (data.removals.length === 0
-            ? <EmptyState icon="Archive" title="حذف تازه‌ای نیست" description="گرهی که حذف یا با شاخه‌اش بایگانی کنی تا وقتی برنگردانی اینجا می‌ماند." />
+            ? <EmptyState icon="Archive" title="حذف تازه‌ای نیست" description="بخشی که حذف یا با شاخه‌اش بایگانی کنی تا وقتی برنگردانی اینجا می‌ماند." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="حذف‌های اخیر">
               {data.removals.map((r) => row(r.id, <span className="body-md text-text-default">{r.label}</span>, formatJalaliDate(r.createdAt),
                 <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === r.id} onClick={() => run(r.id, () => dataApi.undoRemoval(workspaceId, r.id), 'برگشت؛ بخش‌ها و دانش‌شان همان‌طور که بودند.')}>برگردان</Button>))}
@@ -88,11 +90,11 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
               {data.deliverables.map((d: GeneratedDeliverable) => row(d.id, <span className="body-md text-text-default">{d.title}</span>, formatJalaliDate(d.archivedAt ?? d.createdAt),
                 <>
                   <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === d.id} onClick={() => run(d.id, () => dataApi.restoreDeliverable(workspaceId, d.id), `«${d.title}» برگشت.`)}>برگردان</Button>
-                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف «${d.title}»`} onClick={() => run(`x${d.id}`, () => dataApi.deleteDeliverable(workspaceId, d.id), `«${d.title}» حذف شد.`)}>حذف</Button>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف دائمی «${d.title}»`} onClick={() => setDropOut(d)}>حذف دائمی</Button>
                 </>))}
             </ul>)}
           {section === 'workspaces' && (archivedWs.length === 0
-            ? <EmptyState icon="Archive" title="فضای کاری بایگانی‌شده‌ای نیست" description="فضای کاری‌ای که بایگانی کنی از منو بیرون می‌رود و همهٔ داده‌اش می‌ماند." />
+            ? <EmptyState icon="Archive" title="فضا بایگانی‌شده‌ای نیست" description="فضایی که بایگانی کنی از منو بیرون می‌رود و همهٔ داده‌اش می‌ماند." />
             : <ul className="flex flex-col gap-stack-xs" aria-label="فضاهای کاری بایگانی‌شده">
               {archivedWs.map((w) => row(w.id, <><span className="body-md text-text-default">{w.name}</span>{w.isDemo && <Badge intent="neutral" icon={false}>نمونه</Badge>}</>, w.archivedAt ? formatJalaliDate(w.archivedAt) : '',
                 <>
@@ -102,11 +104,16 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
             </ul>)}
         </div>
       </Dialog>
+      <Dialog
+        open={!!dropOut} onClose={() => setDropOut(null)} size="sm" alert title={dropOut ? `«${dropOut.title}» برای همیشه حذف شود؟` : ''}
+        description="این کار برگشت ندارد. اگر شاید دوباره لازمش داری، در بایگانی بماند."
+        footer={<><Button variant="ghost" onClick={() => setDropOut(null)}>بماند</Button><Button variant="danger" loading={!!dropOut && busy === `x${dropOut.id}`} onClick={async () => { const d = dropOut!; await run(`x${d.id}`, () => dataApi.deleteDeliverable(workspaceId, d.id), `«${d.title}» حذف شد.`); setDropOut(null); }}>حذف دائمی</Button></>}
+      />
       <PurgeDialog workspaceId={workspaceId} object={purge} onClose={() => setPurge(null)} onDone={(r) => { setPurge(null); toast.show({ intent: 'success', message: `برای همیشه حذف شد${r.scrubbed.thoughts ? `؛ ${formatNumber(r.scrubbed.thoughts)} فکر هم پاک شد` : ''}.` }); void load(); onChanged(); }} />
       <DangerDialog
         open={!!deleteWs} onClose={() => setDeleteWs(null)} title={`حذف دائمی «${deleteWs?.name ?? ''}»`}
-        description="همهٔ دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها و تاریخچهٔ این فضای کاری برای همیشه پاک می‌شود."
-        confirmLabel="حذف دائمی فضای کاری" typed={deleteWs && !deleteWs.isDemo ? { phrase: deleteWs.name, label: 'نام فضای کاری' } : undefined} ack="می‌فهمم که این کار برنمی‌گردد"
+        description="همهٔ دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها و تاریخچهٔ این فضا برای همیشه پاک می‌شود."
+        confirmLabel="حذف دائمی فضا" typed={deleteWs && !deleteWs.isDemo ? { phrase: deleteWs.name, label: 'نام فضا' } : undefined} ack="می‌فهمم که این کار برنمی‌گردد"
         onConfirm={async () => { if (!deleteWs) return; try { const r = await dataApi.deleteWorkspace(deleteWs.id, deleteWs.name); onWorkspacesChange(r.workspaces); setDeleteWs(null); toast.show({ intent: 'success', message: `«${deleteWs.name}» برای همیشه حذف شد.` }); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'حذف نشد؛ دوباره تلاش کن.' }); } }}
       />
     </>

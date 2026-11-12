@@ -30,7 +30,7 @@ test('parseTemplate: a file comes in through one door — valid ones are cleaned
     const r = parseTemplate(bad);
     assert.ok(!r.ok && r.reason.length > 5, JSON.stringify(bad));
   }
-  const dirty = parseTemplate({ schema: 1, id: 'x', title: 't', nodes: [{ key: 'a', label: 'الف', children: [{ key: 'a', label: 'تکراری' }, { label: 'بی‌کلید' }] }], samples: [{ node: 'a', type: 'Fact', title: 'ok', content: 'c' }, { node: 'a', type: 'Evil', title: 'x', content: 'y' }, { type: 'Fact', title: 'بی‌گره', content: 'y' }, 5], suggested: [{ key: 'k' }] });
+  const dirty = parseTemplate({ schema: 1, id: 'x', title: 't', nodes: [{ key: 'a', label: 'الف', children: [{ key: 'a', label: 'تکراری' }, { label: 'بی‌کلید' }] }], samples: [{ node: 'a', type: 'Fact', title: 'ok', content: 'c' }, { node: 'a', type: 'Evil', title: 'x', content: 'y' }, { type: 'Fact', title: 'بی‌بخش', content: 'y' }, 5], suggested: [{ key: 'k' }] });
   assert.ok(dirty.ok);
   if (dirty.ok) {
     assert.deepEqual(dirty.template.nodes[0].children, undefined, 'duplicate key and keyless node dropped');

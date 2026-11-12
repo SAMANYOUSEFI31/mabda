@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { NuqtaState } from '../../ui';
 import React, { useMemo, useState } from 'react';
 import type { ContextChange } from '../../types';
 import { ACTOR_FA } from '../../core/changeLog';
 import { draftsLabel, milestoneLabel, newestFirst, versionHistory, versionTexts } from '../../core/versionHistory';
 import type { VersionHistory } from '../../core/versionHistory';
-import { Badge, Select, formatJalaliDate, formatNumber } from '../../ui';
+import { Badge, Nuqta, Select, formatJalaliDate, formatNumber } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ChangeEntry } from './ChangeEntry';
 import { ClosedSection } from '../shared/ClosedSection';
@@ -16,12 +17,13 @@ import { ClosedSection } from '../shared/ClosedSection';
 interface Lookups { titleOf?: (id: string) => string; nodeLabel?: (id: string) => string }
 
 /** «آخرین تأیید: نسخهٔ N» (+ how many drafts came after it). Nothing for an object that was never approved. */
-export const ApprovalBadge: React.FC<{ history: VersionHistory }> = ({ history: h }) => (
+/** `state`: the item's shown state now (displayState), so a contradicting or stale truth never wears the solid dot here */
+export const ApprovalBadge: React.FC<{ history: VersionHistory; state?: NuqtaState }> = ({ history: h, state = 'truth' }) => (
   <span className="flex flex-wrap items-center gap-inline-xs">
     {h.lastApproval
-      ? <Badge intent="success" icon="Check">آخرین تأیید: نسخهٔ {formatNumber(h.lastApproval.version)} · {formatJalaliDate(h.lastApproval.at)}</Badge>
-      : <Badge intent="neutral" icon={false}>هنوز تأیید نشده</Badge>}
-    {h.draftsSinceApproval > 0 && <Badge intent="warning" icon={false}>{formatNumber(h.draftsSinceApproval)} پیش‌نویس {h.lastApproval ? 'پس از آن' : ''}</Badge>}
+      ? <span className="inline-flex items-center gap-inline-xs body-sm text-text-default"><Nuqta state={state} size="sm" />آخرین تأیید: نسخهٔ {formatNumber(h.lastApproval.version)} · {formatJalaliDate(h.lastApproval.at)}</span>
+      : <span className="inline-flex items-center gap-inline-xs body-sm text-text-subtle"><Nuqta state="proposed" size="sm" />هنوز تأیید نشده</span>}
+    {h.draftsSinceApproval > 0 && <span className="inline-flex items-center gap-inline-xs body-sm text-text-subtle"><Nuqta state="proposed" size="sm" />{formatNumber(h.draftsSinceApproval)} پیش‌نویس {h.lastApproval ? 'پس از آن' : ''}</span>}
   </span>
 );
 
@@ -59,9 +61,9 @@ export const VersionHistoryView: React.FC<{ changes: ContextChange[] } & Lookups
           if (e.type === 'event') return <ChangeEntry key={e.id} change={e.change} {...l} />;
           if (e.type === 'milestone') {
             return (
-              <li key={e.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-success bg-surface-sunken p-inset-md">
+              <li key={e.id} className="flex flex-col gap-stack-xs border-s border-border-bold ps-inset-md py-inset-xs">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                  <Badge intent="success" icon="Check">{milestoneLabel(e, formatNumber)}</Badge>
+                  <span className="inline-flex items-center gap-inline-xs label-md text-text-default"><Nuqta state="truth" size="sm" />{milestoneLabel(e, formatNumber)}</span>
                   <span className="body-sm text-text-subtle">{ACTOR_FA[e.actor]}{e.actorLabel ? ` (${e.actorLabel})` : ''} · {formatJalaliDate(e.at)}</span>
                 </div>
                 {e.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{e.reason}</p>}
@@ -70,10 +72,10 @@ export const VersionHistoryView: React.FC<{ changes: ContextChange[] } & Lookups
             );
           }
           return (
-            <li key={e.id} className="rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
+            <li key={e.id} className="border-s border-border-default ps-inset-md py-inset-xs">
               <details open={e.id === newestDrafts || undefined}>
                 <summary className="flex min-h-touch cursor-pointer flex-wrap items-center justify-between gap-inline-sm">
-                  <Badge intent="neutral" icon="Pencil">{draftsLabel(e, formatNumber)}</Badge>
+                  <span className="inline-flex items-center gap-inline-xs body-md text-text-default"><Nuqta state="proposed" size="sm" />{draftsLabel(e, formatNumber)}</span>
                   <span className="body-sm text-text-subtle">نسخهٔ {formatNumber(e.fromVersion)} تا {formatNumber(e.toVersion)} · {formatJalaliDate(e.at)}</span>
                 </summary>
                 <ul className="mt-stack-sm flex flex-col gap-stack-xs" aria-label="پیش‌نویس‌ها (جدیدترین اول)">

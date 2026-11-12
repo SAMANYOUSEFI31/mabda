@@ -89,7 +89,7 @@ export type LeftReason = 'scope' | 'child' | 'expired' | 'overridden' | 'facet' 
 export const LEFT_REASON_FA: Record<LeftReason, string> = {
   scope: 'مال بخش دیگری است',
   child: 'زیربخشی که انتخاب نشده',
-  expired: 'منقضی شده',
+  expired: 'قدیمی شده',
   overridden: 'در این بخش اعمال نمی‌شود (کنار گذاشته شده)',
   facet: 'بُعد دیگری دارد',
   status: 'تأییدنشده؛ تیکش نخورده',

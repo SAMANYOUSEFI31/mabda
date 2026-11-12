@@ -51,8 +51,8 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
       text: 'برای جلوگیری از سوءاستفاده، بازسازی با ۵۰٪ تخفیف فقط یک بار به ازای هر ویرایش دانش مجاز است (اصلاحیهٔ ممیزی شمارهٔ ۷).',
     },
     {
-      title: 'سقف فضای کاری در پلن Max',
-      text: 'برای اینکه هیچ وعدهٔ «نامحدود»ی نداده باشیم، سقف فضای کاری Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.',
+      title: 'سقف فضا در پلن Max',
+      text: 'برای اینکه هیچ وعدهٔ «نامحدود»ی نداده باشیم، سقف فضا Max دقیقاً ۱۰ تعیین شده است تا هزینه‌های ذخیره‌سازی و پردازش پایدار بماند.',
     },
   ];
 
@@ -61,7 +61,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
       <Card padding="xl" className="flex flex-col gap-stack-lg">
         <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
           <div>
-            <h2 className="heading-sm text-text-default">{managed ? 'دفتر کل، اقتصاد و اعتبارها' : 'مصرف و دفتر کل'}</h2>
+            <h2 className="heading-sm text-text-default">{managed ? 'مصرف، اقتصاد و اعتبارها' : 'مصرف'}</h2>
             <p className="body-sm mt-stack-xs text-text-subtle">
               {managed ? 'شفافیت کامل در مصرف اعتبارها، سقف‌های منصفانهٔ روزانه و هزینه‌های زیرساخت AI.' : 'سهمیه‌ها، سقف‌های روزانه و هزینهٔ واقعی هر فراخوانی AI؛ هیچ مصرفی پنهان نیست.'}
             </p>
@@ -88,12 +88,12 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
       </Card>
 
       <Tabs
-        label="بخش‌های دفتر کل"
+        label="بخش‌های مصرف"
         value={activeSubTab}
         onChange={(id) => setActiveSubTab(id as typeof activeSubTab)}
         items={[
           { id: 'usage', label: 'مصرف و سهمیه‌ها' },
-          { id: 'ledger', label: `تراکنش‌های دفتر کل (${formatNumber(ledgerEntries.length)})` },
+          { id: 'ledger', label: `تراکنش‌های مصرف (${formatNumber(ledgerEntries.length)})` },
           ...(managed ? [{ id: 'plans', label: 'پلن‌ها و اعتبار' }, { id: 'economics', label: 'خطوط قرمز اقتصادی' }] : []),
           ...(ai.admin ? [{ id: 'manager', label: 'نمای مدیر' }] : []),
         ]}
@@ -105,7 +105,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
 
       {activeSubTab === 'ledger' && (
         <Table
-          caption="تراکنش‌های دفتر کل"
+          caption="تراکنش‌های مصرف"
           rows={ledgerEntries as unknown as Array<Record<string, unknown> & LedgerEntry>}
           empty="هنوز تراکنشی ثبت نشده است."
           columns={[
@@ -173,8 +173,8 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
                       <dd className="label-md tabular-nums text-text-default">{formatNumber(p.creditsMonthly)} اعتبار</dd>
                     </div>
                     <div className="flex items-center justify-between gap-inline-sm">
-                      <dt className="text-text-subtle">سقف فضای کاری</dt>
-                      <dd className="label-md tabular-nums text-text-default">{formatNumber(p.workspaceLimit)} فضای کاری</dd>
+                      <dt className="text-text-subtle">سقف فضا</dt>
+                      <dd className="label-md tabular-nums text-text-default">{formatNumber(p.workspaceLimit)} فضا</dd>
                     </div>
                     <div className="flex items-center justify-between gap-inline-sm">
                       <dt className="text-text-subtle">سقف منصفانهٔ گفتگو</dt>
@@ -187,7 +187,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
                   </dl>
                 </div>
                 <Button variant="secondary" fullWidth disabled={isCurrent} onClick={() => onChangePlan(pid)}>
-                  {isCurrent ? 'فعال برای این فضای کاری' : 'انتخاب این پلن'}
+                  {isCurrent ? 'فعال برای این فضا' : 'انتخاب این پلن'}
                 </Button>
               </Card>
             );
@@ -197,7 +197,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({
 
       {managed && activeSubTab === 'economics' && (
         <Card padding="xl" className="flex flex-col gap-stack-lg">
-          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در دفتر کل</h3>
+          <h3 className="title text-text-default">اصول و شاخص‌های خط قرمز در مصرف</h3>
           <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
             {redLines.map((r) => (
               <div key={r.title} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">

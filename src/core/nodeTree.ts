@@ -45,14 +45,14 @@ export type Check = { ok: true } | { ok: false; reason: string };
 const no = (reason: string): Check => ({ ok: false, reason });
 
 export function canRename(nodes: TreeNode[], id: string, label: string): Check {
-  if (!nodes.some((n) => n.id === id)) return no('این گره وجود ندارد.');
-  if (!label.trim()) return no('نام گره نمی‌تواند خالی باشد.');
+  if (!nodes.some((n) => n.id === id)) return no('این بخش وجود ندارد.');
+  if (!label.trim()) return no('نام بخش نمی‌تواند خالی باشد.');
   return { ok: true };
 }
 
 export function canCreateUnder(nodes: TreeNode[], parentId: string, label: string): Check {
-  if (!nodes.some((n) => n.id === parentId)) return no('گرهٔ والد وجود ندارد.');
-  if (!label.trim()) return no('نام گره نمی‌تواند خالی باشد.');
+  if (!nodes.some((n) => n.id === parentId)) return no('بخش والد وجود ندارد.');
+  if (!label.trim()) return no('نام بخش نمی‌تواند خالی باشد.');
   return { ok: true };
 }
 
@@ -62,10 +62,10 @@ export const ROOT_TARGET = '__root';
 /** `newParentId === ''` = the top level (a main section). A node moves under any node that is not itself or inside itself. */
 export function canMove(nodes: TreeNode[], id: string, newParentId: string): Check {
   const node = nodes.find((n) => n.id === id);
-  if (!node) return no('این گره وجود ندارد.');
+  if (!node) return no('این بخش وجود ندارد.');
   if (!newParentId) return { ok: true };
   if (!nodes.some((n) => n.id === newParentId)) return no('مقصد وجود ندارد.');
-  if (subtreeIds(nodes, id).includes(newParentId)) return no('گره را نمی‌شود زیر خودش یا زیرشاخه‌هایش گذاشت.');
+  if (subtreeIds(nodes, id).includes(newParentId)) return no('بخش را نمی‌شود زیر خودش یا زیرشاخه‌هایش گذاشت.');
   return { ok: true };
 }
 
@@ -117,14 +117,14 @@ export function canDelete(
   thoughts: Array<{ nodeId: string }> = [],
 ): DeleteCheck {
   const node = nodes.find((n) => n.id === id);
-  if (!node) return no('این گره وجود ندارد.');
-  if (!node.parentId && nodes.filter((n) => !n.parentId).length <= 1) return no('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
+  if (!node) return no('این بخش وجود ندارد.');
+  if (!node.parentId && nodes.filter((n) => !n.parentId).length <= 1) return no('این آخرین بخش اصلی است؛ دانش باید جایی بماند. اول یک بخش دیگر بساز.');
   const content = contentOf(nodes, id, objects, notes, files, thoughts);
   const empty = content.objects + content.notes + content.thoughts + content.files + content.children === 0;
   if (empty) return { ok: true };
   if (!transferTo) return { ok: false, reason: 'این بخش خالی نیست؛ محتوایش را به بخش دیگری ببر.', needsTransfer: true, content };
-  if (!nodes.some((n) => n.id === transferTo)) return no('گرهٔ مقصد وجود ندارد.');
-  if (subtreeIds(nodes, id).includes(transferTo)) return no('مقصد نمی‌تواند خودِ گره یا زیرشاخه‌اش باشد.');
+  if (!nodes.some((n) => n.id === transferTo)) return no('بخش مقصد وجود ندارد.');
+  if (subtreeIds(nodes, id).includes(transferTo)) return no('مقصد نمی‌تواند خودِ بخش یا زیرشاخه‌اش باشد.');
   return { ok: true };
 }
 

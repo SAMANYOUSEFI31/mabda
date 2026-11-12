@@ -80,7 +80,7 @@ export function useThinkingItems(p: AppCoreScope) {
     const r = await attempt(() => dataApi.splitNote(wid, noteId));
     if (!r) return;
     patch((d) => ({ ...d, nodes: r.nodes, notes: r.notes, thoughts: r.thoughts }));
-    toast.show({ intent: 'success', message: `${formatNumber(r.created.length)} گره ساخته شد؛ یادداشت اصلی همان‌جا ماند.` });
+    toast.show({ intent: 'success', message: `${formatNumber(r.created.length)} بخش ساخته شد؛ یادداشت اصلی همان‌جا ماند.` });
   };
   // due: assumptions to look at again, decisions that ask «نتیجه چه شد؟»
   const dueAssumptions = useMemo(() => assumptionsDue(data?.objects ?? [], new Date()), [data?.objects]);

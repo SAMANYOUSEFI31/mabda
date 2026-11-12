@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { dialogOpen } from '../../core/addRequest';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { CompareMode } from '../../components/knowledge/TruthCompareDialog';
 import { buildInheritNotices } from '../../core/inheritNotice';
@@ -28,7 +29,13 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
   const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: (data?.deliverables ?? []).filter((d) => !d.archivedAt), notes: data?.notes ?? [], thoughts: data?.thoughts ?? [], files: data?.files ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes, data?.thoughts, data?.files]);
   useEffect(() => {
-    const on = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); setPaletteOpen((o) => !o); } };
+    const on = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
+      // «/» opens search when no field is being typed in (navigation.md «میان‌برها»; the physical key, so a Persian layout works too)
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      if (e.code === 'Slash' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !typing && !dialogOpen()) { e.preventDefault(); setPaletteOpen(true); }
+    };
     window.addEventListener('keydown', on);
     return () => window.removeEventListener('keydown', on);
   }, []);
