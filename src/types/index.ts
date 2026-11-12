@@ -298,6 +298,8 @@ export interface WorkstreamSpec {
   deliverables: Array<DeliverableSpec>;
   /** the public framework this workstream follows (named, never quoted) */
   reference?: string;
+  /** the kinds of space it is written for (audience.md); absent = work */
+  purposes?: Array<'personal' | 'work' | 'project' | 'empty'>;
   /** rules every output of this workstream must obey; Confirmed Constraint objects are applied on top automatically */
   guardrails?: string[];
 }

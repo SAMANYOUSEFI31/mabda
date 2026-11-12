@@ -287,31 +287,28 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       title={title_}
       description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
       footer={
-        <>
-          {isEditing && !isSupersedingMode && (
-            <>
-              <Button variant="secondary" iconStart="History" onClick={() => setIsSupersedingMode(true)}>
-                جایگزینی تصمیم
-              </Button>
-              <Button
-                variant="secondary"
-                iconStart="Archive"
-                onClick={() => {
-                  if (object) {
-                    onArchive(object.id);
-                    onClose();
-                  }
-                }}
-              >
-                بایگانی
-              </Button>
-            </>
-          )}
-          <Button variant="ghost" onClick={onClose}>انصراف</Button>
-          <Button variant="primary" type="submit" form="context-detail-form">
-            {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ذخیره'}
-          </Button>
-        </>
+        isEditing && tab !== 'edit' ? (
+          // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button
+          <Button variant="secondary" onClick={onClose}>بستن</Button>
+        ) : (
+          <>
+            {isEditing && !isSupersedingMode && object && (
+              <Menu
+                label="کارهای دیگر با این دانش"
+                side="top"
+                trigger={<Button type="button" variant="ghost" iconStart="Ellipsis">بیشتر</Button>}
+                items={[
+                  { label: 'جایگزینی تصمیم', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
+                  { label: 'بایگانی', icon: 'Archive', onSelect: () => { onArchive(object.id); onClose(); } },
+                ]}
+              />
+            )}
+            <Button variant="ghost" onClick={onClose}>انصراف</Button>
+            <Button variant="primary" type="submit" form="context-detail-form">
+              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'ذخیره'}
+            </Button>
+          </>
+        )
       }
     >
       {isEditing && object && (

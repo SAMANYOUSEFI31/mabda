@@ -324,9 +324,19 @@ export const LEGACY_SPEC_IDS = ['main_positioning', 'instagram_foundation', 'fre
 /** the whole library: the three originals + the general-purpose frameworks (`specLibrary.ts`) */
 export const LIBRARY: WorkstreamSpec[] = [...WORKSTREAM_SPECS, ...LIBRARY_SPECS];
 
-/** the library workstreams the workspace has taken (absent `enabledSpecIds` = the three originals) */
-export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds'> | undefined): WorkstreamSpec[] =>
-  !ws || ws.enabledSpecIds === undefined ? WORKSTREAM_SPECS.filter((s) => LEGACY_SPEC_IDS.includes(s.id)) : LIBRARY.filter((s) => ws.enabledSpecIds!.includes(s.id));
+/** does this library workstream fit a space of this kind? (no `purposes` = written for work) */
+export const specFits = (s: Pick<WorkstreamSpec, 'purposes'>, purpose: WorkspacePurpose | undefined): boolean =>
+  (s.purposes ?? ['work']).includes(purpose ?? 'work');
+
+/** what a space that never chose starts with: a work space keeps the three originals (old workspaces unchanged);
+ * a personal or project space starts with the ones written for it, never with selling (audience.md); an empty space with none */
+const defaultSpecs = (purpose: WorkspacePurpose | undefined): WorkstreamSpec[] =>
+  purpose === undefined || purpose === 'work' ? WORKSTREAM_SPECS.filter((s) => LEGACY_SPEC_IDS.includes(s.id))
+    : purpose === 'empty' ? [] : LIBRARY.filter((s) => s.purposes?.includes(purpose));
+
+/** the library workstreams the workspace has taken (absent `enabledSpecIds` = the defaults for its kind) */
+export const enabledBuiltInSpecs = (ws: Pick<Workspace, 'enabledSpecIds' | 'purpose'> | undefined): WorkstreamSpec[] =>
+  !ws || ws.enabledSpecIds === undefined ? defaultSpecs(ws?.purpose) : LIBRARY.filter((s) => ws.enabledSpecIds!.includes(s.id));
 
 /** `enabledSpecIds` as an explicit list (what «absent» means for a workspace that never chose) */
-export const currentSpecIds = (ws: Pick<Workspace, 'enabledSpecIds'>): string[] => enabledBuiltInSpecs(ws).map((s) => s.id);
+export const currentSpecIds = (ws: Pick<Workspace, 'enabledSpecIds' | 'purpose'>): string[] => enabledBuiltInSpecs(ws).map((s) => s.id);

@@ -74,7 +74,8 @@ try {
     await radio('ساختار');
     await page.getByRole('button', { name: 'شمارهٔ کارت اشتباهی' }).first().click().catch(async () => { await page.getByText('شمارهٔ کارت اشتباهی').first().click(); });
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بایگانی' }).click();
+    await detail.getByRole('button', { name: 'بیشتر' }).click();
+    await page.getByRole('menuitem', { name: 'بایگانی' }).click();
     await page.getByRole('button', { name: 'برگرداندن' }).first().waitFor();
     assert.equal((await state()).objects.find((o) => o.id === obj.id).status, 'Archived', 'archived first: nothing is erased by one click');
     await palette('بایگانی', 'رفتن به بایگانی');

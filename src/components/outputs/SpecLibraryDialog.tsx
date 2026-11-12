@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import type { Workspace } from '../../types';
-import { LIBRARY, currentSpecIds } from '../../core/specs';
+import { LIBRARY, currentSpecIds, specFits } from '../../core/specs';
 import { dataApi } from '../../services/dataApi';
 import { Badge, Button, Dialog, Select, formatNumber, useToast } from '../../ui';
 
@@ -32,26 +32,36 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
     setBusy(id);
     try { await onChange(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]); } finally { setBusy(null); }
   };
+  const row = (s: (typeof LIBRARY)[number]) => {
+    const on = ids.includes(s.id);
+    return (
+      <div key={s.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm">
+          <span className="label-md text-text-default">{s.title}</span>
+          {on && <Badge icon="Check">در این فضا</Badge>}
+        </div>
+        <p className="body-sm text-text-subtle">{s.description} · {formatNumber(s.deliverables.length)} خروجی</p>
+        {s.reference && <p className="caption text-text-subtle">منبع: {s.reference}</p>}
+        <div>
+          <Button variant="secondary" size="sm" iconStart={on ? 'Minus' : 'Plus'} loading={busy === s.id} onClick={() => toggle(s.id)}>{on ? 'حذف از این فضا' : 'افزودن به این فضا'}</Button>
+        </div>
+      </div>
+    );
+  };
+  const fitting = LIBRARY.filter((s) => specFits(s, workspace.purpose));
+  const others = LIBRARY.filter((s) => !specFits(s, workspace.purpose));
   return (
     <Dialog open={open} onClose={onClose} size="md" title="کتابخانهٔ جریان‌های کار" footer={<Button variant="primary" onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-md">
         <p className="body-sm text-text-subtle">جریان‌های آماده؛ هر فضا فقط آن‌هایی را نشان می‌دهد که از اینجا برداشته. حذف فقط پنهانش می‌کند و دارایی‌های ساخته‌شده می‌مانند.</p>
-        {LIBRARY.map((s) => {
-          const on = ids.includes(s.id);
-          return (
-            <div key={s.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
-              <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                <span className="label-md text-text-default">{s.title}</span>
-                {on && <Badge icon="Check">در این فضا</Badge>}
-              </div>
-              <p className="body-sm text-text-subtle">{s.description} · {formatNumber(s.deliverables.length)} خروجی</p>
-              {s.reference && <p className="caption text-text-subtle">منبع: {s.reference}</p>}
-              <div>
-                <Button variant="secondary" size="sm" iconStart={on ? 'Minus' : 'Plus'} loading={busy === s.id} onClick={() => toggle(s.id)}>{on ? 'حذف از این فضا' : 'افزودن به این فضا'}</Button>
-              </div>
-            </div>
-          );
-        })}
+        {fitting.map(row)}
+        {others.length > 0 && (
+          <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-label="برای کار و کسب‌وکار">
+            <h3 className="label-md text-text-default">برای کار و کسب‌وکار</h3>
+            <p className="body-sm text-text-subtle">برای فضای کاری نوشته شده‌اند؛ اگر به کارت می‌آیند، اینجا هم می‌شود برداشت.</p>
+            {others.map(row)}
+          </section>
+        )}
         <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-label="قالب‌های من">
           <h3 className="label-md text-text-default">قالب‌های من</h3>
           {templates.length === 0 ? <p className="body-sm text-text-subtle">هنوز قالبی نساخته‌ای: از منوی هر گره «ذخیره به‌عنوان قالب» را بزن.</p> : (
