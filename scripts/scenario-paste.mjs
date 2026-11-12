@@ -71,7 +71,7 @@ try {
     '## Asset: جملهٔ موقعیت‌یابی',
     'برای طراحان فریلنسر که از توضیح دوبارهٔ کسب‌وکارشان خسته‌اند، مبدأ منبع حقیقتی است که هر AI از آن کار می‌کند.',
   ].join('\n');
-  await page.getByRole('button', { name: 'وارد کردن متن آماده' }).click();
+  await page.getByRole('button', { name: 'آوردن یا بردن دانش' }).first().click(); await page.getByRole('menuitem', { name: 'وارد کردن متن آماده' }).click();
   await page.getByRole('textbox', { name: 'پاسخ AI' }).fill(answer);
   await page.getByRole('button', { name: 'تبدیل به بلوک' }).click();
   await page.getByText('بر اساس سرتیترها').waitFor();

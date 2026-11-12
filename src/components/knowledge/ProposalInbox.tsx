@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
+import { Badge, Button, Card, Menu, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
   mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
@@ -36,12 +36,18 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
+  // tools used now and then sit under one quiet trigger; the inbox itself is the content (thinking page stays calm)
   const actions = (
-    <div className="flex flex-wrap items-center gap-inline-sm">
-      <Button variant="secondary" size="sm" iconStart="Copy" onClick={onOpenPack}>کپی کل دانش برای استفاده در هر ابزار</Button>
-      <Button variant="secondary" size="sm" iconStart="Upload" onClick={onOpenImport}>وارد کردن متن آماده</Button>
-      <Button variant="secondary" size="sm" iconStart="FolderInput" onClick={onOpenMemory}>وارد کردن سند یا حافظه</Button>
-    </div>
+    <Menu
+      label="آوردن یا بردن دانش"
+      align="end"
+      trigger={<Button variant="ghost" size="sm" iconEnd="ChevronDown">آوردن یا بردن دانش</Button>}
+      items={[
+        { label: 'کپی کل دانش برای استفاده در هر ابزار', icon: 'Copy', onSelect: onOpenPack },
+        { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: onOpenImport },
+        { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: onOpenMemory },
+      ]}
+    />
   );
 
   // nothing waiting: one sentence and the ways to bring AI suggestions in — no big empty card
