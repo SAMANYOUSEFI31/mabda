@@ -61,6 +61,9 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-prose: 680px;
+  --container-measure-min: 600px;
+  --container-margin: 288px;
+  --container-doc: 1080px;
   --radius-none: 0px;
   --radius-xs: 3px;
   --radius-sm: 6px;

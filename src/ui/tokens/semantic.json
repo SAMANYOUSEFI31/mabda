@@ -340,6 +340,27 @@
         "value": 680,
         "unit": "px"
       }
+    },
+    "measure-min": {
+      "$value": {
+        "value": 600,
+        "unit": "px"
+      },
+      "$description": "the reading column may narrow to this when the margin sits beside it (layout.md)"
+    },
+    "margin": {
+      "$value": {
+        "value": 288,
+        "unit": "px"
+      },
+      "$description": "the margin column: related thoughts, engine notes, source notes (patterns.md §۲)"
+    },
+    "doc": {
+      "$value": {
+        "value": 1080,
+        "unit": "px"
+      },
+      "$description": "cap of the document view: text + gap + margin + padding (layout.md)"
     }
   },
   "radius": {

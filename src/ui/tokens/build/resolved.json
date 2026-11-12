@@ -1382,6 +1382,36 @@
    "dark": "680px"
   },
   {
+   "token": "container.measure-min",
+   "css": "--container-measure-min",
+   "level": "semantic",
+   "type": "dimension",
+   "description": "the reading column may narrow to this when the margin sits beside it (layout.md)",
+   "alias": null,
+   "light": "600px",
+   "dark": "600px"
+  },
+  {
+   "token": "container.margin",
+   "css": "--container-margin",
+   "level": "semantic",
+   "type": "dimension",
+   "description": "the margin column: related thoughts, engine notes, source notes (patterns.md §۲)",
+   "alias": null,
+   "light": "288px",
+   "dark": "288px"
+  },
+  {
+   "token": "container.doc",
+   "css": "--container-doc",
+   "level": "semantic",
+   "type": "dimension",
+   "description": "cap of the document view: text + gap + margin + padding (layout.md)",
+   "alias": null,
+   "light": "1080px",
+   "dark": "1080px"
+  },
+  {
    "token": "radius.none",
    "css": "--radius-none",
    "level": "semantic",

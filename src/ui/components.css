@@ -464,3 +464,19 @@
 }
 
 @layer components{.mb-navlabel::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}}
+
+/* ---------- «متن و حاشیه» (layout.md «ستون حاشیه»; src/ui/Margin.tsx) ----------
+ * A container query on the content, not the viewport: the sidebar (64–360) and the detail panel take from the page width.
+ * 58.5rem = 936px of host = measure-min 600 + space-12 48 + margin 288 (container queries cannot read custom properties). */
+@layer components{
+.mb-margin{container:mb-margin / inline-size;display:flex;flex-direction:column;gap:var(--stack-sm);max-inline-size:var(--container-doc)}
+.mb-margin__row{display:grid;grid-template-columns:minmax(0,var(--container-prose));row-gap:var(--space-1)}
+.mb-margin__text{min-inline-size:0}
+.mb-margin__note{display:flex;flex-direction:column;gap:var(--space-2);padding-inline-start:var(--space-8)}
+.mb-margin__line{display:flex;align-items:flex-start;gap:var(--inline-sm);margin:0}
+.mb-margin__icon{flex:none;margin-block-start:var(--space-0\.5);color:var(--icon-subtle)}
+}
+@container mb-margin (min-width: 58.5rem){
+  .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) var(--container-margin);column-gap:var(--space-12)}
+  .mb-margin__note{padding-inline-start:0;padding-block-start:calc(var(--space-3) + var(--space-0\.5))}
+}

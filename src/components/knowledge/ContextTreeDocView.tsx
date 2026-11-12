@@ -8,7 +8,7 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, AssumptionBadge, PROVENANCE_LABEL, ReachBadge, SampleBadge, StatusBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -73,20 +73,25 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const toggleNotes = (id: string) => setOpenNotes((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
+  // What the engines say about it (needs review, an assumption, where it applies) goes to the margin as one sentence, not a chip.
+  const marginFor = (obj: ContextObject) => {
+    const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');
+    const notes: React.ReactNode[] = [];
+    if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="TriangleAlert">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
+    else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="Lightbulb">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
+    else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="History">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
+    if (obj.assumption) notes.push(<MarginNote key="a" icon="Lightbulb">فرض است، نه واقعیتِ ثابت‌شده.</MarginNote>);
+    if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
+    return notes.length ? <>{notes}</> : undefined;
+  };
   const card = (obj: ContextObject) => (
-    <Card key={obj.id} padding="md" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
-      <div className="flex items-start justify-between gap-inline-sm">
-        <h4 className="headline min-w-space-0 flex-1 text-balance text-text-default">{obj.title}</h4>
-        <div className="flex max-w-1/2 flex-wrap justify-end gap-inline-xs">
-          <ReachBadge object={obj} />
-          <AssumptionBadge object={obj} />
-          {/* truth is the calm default: only an exception (needs review, proposed) carries words */}
-          {obj.status !== 'Confirmed' && <StatusBadge value={obj.status} />}
-        </div>
-      </div>
-      <p className="body-reading text-pretty text-text-default">{obj.content}</p>
-      <p className="body-sm text-text-subtle">{TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
-    </Card>
+    <MarginItem key={obj.id} margin={marginFor(obj)}>
+      <Card padding="md" knowledge={knowledgeState(obj)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
+        <h4 className="headline text-balance text-text-default">{obj.title}</h4>
+        <p className="body-reading text-pretty text-text-default">{obj.content}</p>
+        <p className="body-sm text-text-subtle">{TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
+      </Card>
+    </MarginItem>
   );
 
   const sampleCard = (obj: ContextObject) => (
@@ -167,7 +172,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 </div>
                 {established.length === 0 ? <p className="body-sm text-text-subtle">هنوز چیزی در این بخش تأیید نشده.</p> : (
                   <>
-                    <div className="flex max-w-reading flex-col gap-stack-sm">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</div>
+                    <MarginList>{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}
