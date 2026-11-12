@@ -122,7 +122,7 @@ try {
     await page.getByText(/پیش‌نویس ذخیره شد/).waitFor();
     objs = (await state()).objects;
     assert.deepEqual([objs[0].content, objs[0].draft?.content], ['قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.', 'قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.']);
-    await palette('آماده‌سازی درخواست', 'آماده‌سازی درخواست');
+    await palette('درخواست برای ابزار دیگر', 'درخواست برای ابزار دیگر');
     await page.getByRole('dialog').getByLabel('درخواستت را در یک خط بنویس').fill('قیمت اشتراک چقدر است؟');
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('۱٫۱ میلیون') && !t.value.includes('۱٫۴ میلیون')), null, { timeout: 15000 });
     await shot('5-request-approved-price');

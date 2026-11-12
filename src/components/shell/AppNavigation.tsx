@@ -11,7 +11,6 @@ import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { defaultAddKind, requestAdd } from '../../core/addRequest';
 
-type ContextView = 'doc' | 'read' | 'table' | 'canvas';
 
 interface AppNavigationProps {
   currentWorkspace: Workspace;
@@ -34,28 +33,20 @@ interface AppNavigationProps {
   onOpenMemory: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  specs: WorkstreamSpec[];
-  selectedSpecId: string;
-  onSelectSpecId: (specId: string) => void;
-  onOpenCustomSpecModal: () => void;
-  onOpenSpecLibrary: () => void;
-  contextViewMode: ContextView;
-  onChangeContextViewMode: (mode: ContextView) => void;
   contextCount: number;
   deliverablesCount: number;
   /** what waits in «فکر»: suggestions, drafts, open thoughts */
   thinkingCount: number;
+  /** the space's top-level sections: the only places listed under a destination */
+  sections: Array<{ id: string; label: string }>;
+  focusNodeId: string | null;
+  /** open a section of «منبع» (null = the whole source) */
+  onOpenSection: (id: string | null) => void;
 }
 
-const VIEWS: Array<{ id: ContextView; label: string }> = [
-  { id: 'doc', label: 'ساختار' },
-  { id: 'read', label: 'سند خوانا' },
-  { id: 'canvas', label: 'نمای کلی' },
-];
-
 /**
- * Shell navigation: four destinations (خانه، فکر، منبع حقیقت، خروجی‌ها). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). Each has a sub-menu that is open ONLY while
- * its section is active (accordion, aria-expanded). Everything that is not daily work lives in the one «حساب کاربری» menu,
+ * Shell navigation: four destinations (خانه، فکر، منبع حقیقت، خروجی‌ها). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). The sidebar lists PLACES, never views or actions:
+ * only «منبع» has places inside it (its top-level sections), shown while it is active; views switch on the page itself. Everything that is not daily work lives in the one «حساب کاربری» menu,
  * which is also the only place the plan is shown.
  */
 /** each space says what kind it is in the picker (navigation.md «انتخابگر فضا») */
@@ -213,22 +204,15 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
           {/* counters only for «منتظر تو» (navigation.md): a destination never shows how much it holds */}
           <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} expanded={activeTab === 'context'} onClick={() => go('context')} />
-          {activeTab === 'context' && (
-            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
-              {VIEWS.map((v) => <NavItem nested key={v.id} label={v.label} selected={p.contextViewMode === v.id} onClick={() => p.onChangeContextViewMode(v.id)} />)}
+          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context' && !p.sections.some((n) => n.id === p.focusNodeId)} expanded={activeTab === 'context' && p.sections.length > 0} onClick={() => { go('context'); p.onOpenSection(null); }} />
+          {/* the sidebar holds PLACES, never views or actions (navigation.md): only «منبع» has places inside it, its sections */}
+          {activeTab === 'context' && p.sections.length > 0 && (
+            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های منبع">
+              {p.sections.map((n) => <NavItem nested key={n.id} label={n.label} selected={p.focusNodeId === n.id} onClick={() => { setOverlay(false); p.onOpenSection(n.id); }} />)}
             </div>
           )}
 
-          <NavItem icon="Package" label="خروجی‌ها" selected={inOutputs} expanded={inOutputs} onClick={() => go('assets')} />
-          {inOutputs && (
-            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm">
-              <NavItem nested label="خروجی‌های تو" selected={activeTab === 'assets'} onClick={() => go('assets')} />
-              {p.specs.map((s) => <NavItem nested key={s.id} label={`${ai.managedEnabled ? 'بساز' : 'آماده‌سازی'}: ${s.title}`} selected={activeTab === 'workstreams' && p.selectedSpecId === s.id} onClick={() => p.onSelectSpecId(s.id)} />)}
-              <Button size="sm" variant="ghost" iconStart="Plus" onClick={p.onOpenCustomSpecModal}>جریان کار تازه</Button>
-              <Button size="sm" variant="ghost" iconStart="Layers" onClick={p.onOpenSpecLibrary}>افزودن از کتابخانه</Button>
-            </div>
-          )}
+          <NavItem icon="Package" label="خروجی‌ها" selected={inOutputs} onClick={() => go('assets')} />
       </nav>
 
       <div className="shrink-0 border-t border-border-default pt-inset-lg">

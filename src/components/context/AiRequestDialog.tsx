@@ -50,7 +50,7 @@ const THOUGHT_SECTIONS_SCOPE = '__selected_thought_sections__';
 const newPackId = () => `rq_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /**
- * «آماده‌سازی درخواست» (was «درخواست برای AI»): pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
+ * «درخواست برای ابزار دیگر» (was «درخواست برای AI»): pick the kind of work (default: سؤال), write one line, copy. Mabda assembles the prompt
  * (src/core/aiRequest.ts); the preview is the exact text that is copied. Nothing is generated here — no AI is called.
  */
 export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner {...props} /> : null);
@@ -156,7 +156,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
 
   return (
     <Dialog
-      open onClose={onClose} size="xl" title="آماده‌سازی درخواست" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
+      open onClose={onClose} size="xl" title="درخواست برای ابزار دیگر" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>

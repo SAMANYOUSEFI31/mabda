@@ -87,7 +87,7 @@ try {
     await page.getByRole('button', { name: 'تمام شد' }).click();
 
     step(`[${width}] the first request for an AI: one line, one click, a text ready to paste`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('درخواستت را در یک خط بنویس').fill('مخاطب اصلی ما کیست؟');
     await dlg.getByRole('button', { name: 'کپی برای استفاده در هر ابزار' }).click();

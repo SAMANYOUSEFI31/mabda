@@ -2,7 +2,7 @@
 /**
  * «بوم آرام، فکر بدون نحو، مثال برای خط قرمز» on a REAL server + temp SQLite:
  *   1. a red line with two examples (right / wrong) written under «بیشتر»; they are saved with the rule
- *   2. «آماده‌سازی درخواست»: the exact text to copy has the examples next to the rule, labelled
+ *   2. «درخواست برای ابزار دیگر»: the exact text to copy has the examples next to the rule, labelled
  *   3. a note: a line that ends with «؟» is a «سؤال» with no bracket; the line menu «علامت بزن» writes the marker
  *   4. the home says it in one line
  * Screenshots → docs/screens/redlines-*.png (1280) and redlines-m-*.png (390)
@@ -76,8 +76,8 @@ try {
     assert.deepEqual(rule.examples, [{ kind: 'good', text: 'ممکن است سود کنید' }, { kind: 'bad', text: 'سود تضمینی ۳۰٪' }]);
     await page.keyboard.press('Escape');
 
-    step(`[${width}] «آماده‌سازی درخواست»: the text to copy has the examples next to the rule`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    step(`[${width}] «درخواست برای ابزار دیگر»: the text to copy has the examples next to the rule`);
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     await page.getByRole('dialog').getByLabel('درخواستت را در یک خط بنویس').fill('یک متن تبلیغ برای باشگاه بنویس');
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('مثال درست: ممکن است سود کنید') && t.value.includes('مثال نادرست: سود تضمینی ۳۰٪')), null, { timeout: 15000 });
     await shot('2-request');

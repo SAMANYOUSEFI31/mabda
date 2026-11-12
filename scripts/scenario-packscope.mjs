@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * «بسته و آماده‌سازی درخواست: دقیقاً چه چیزی می‌آورد و چرا» on the showcase (قهوه), a REAL server + temp SQLite:
+ * «بسته و درخواست برای ابزار دیگر: دقیقاً چه چیزی می‌آورد و چرا» on the showcase (قهوه), a REAL server + temp SQLite:
  * build a pack «پاسخ به مشتری» and, BEFORE copying, see which rule came and why; «با زیربخش‌ها»; «چه نیامد و چرا»; the rule opens
  * where its reach is decided; the preview text is the saved text; the request dialog has the same switch.
  * Screenshots → docs/screens/packscope-*.png
@@ -103,7 +103,7 @@ try {
     step(`[${width}] «ببین و ویرایش»: the rule opens where its reach («محدودهٔ اثر») is decided, with a sentence of where it will come`);
     await noDiscount.first().getByRole('button', { name: /ببین یا ویرایش خط قرمز/ }).click();
     const detail = page.getByRole('dialog').last();
-    await detail.getByRole('button', { name: 'بیشتر', exact: true }).click(); // the reach of a rule is a detail: under «بیشتر»
+    await detail.getByRole('button', { name: 'جزئیات بیشتر' }).click(); // the reach of a rule is a detail: under «بیشتر»
     await detail.getByTestId('reach-sentence').waitFor();
     assert.match(await detail.getByTestId('reach-sentence').innerText(), /همهٔ بسته‌ها و درخواست‌های AI/);
     await shot('4-rule-reach');
@@ -123,8 +123,8 @@ try {
     assert.ok(rendered.includes('تخفیف نداریم'), 'the rule that was named is in the text');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] «آماده‌سازی درخواست» has the same switch and says where each thing came from`);
-    await page.getByRole('button', { name: 'آماده‌سازی درخواست' }).first().click();
+    step(`[${width}] «درخواست برای ابزار دیگر» has the same switch and says where each thing came from`);
+    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
     const rq = page.getByRole('dialog');
     await rq.getByLabel('درباره کجا؟').selectOption({ label: '— اشتراک ماهانه' }).catch(async () => { await rq.getByLabel('درباره کجا؟').selectOption({ index: 1 }); });
     await rq.getByLabel('درخواستت را در یک خط بنویس').fill('به مشتری ناراضی از ارسال چه بگویم؟');

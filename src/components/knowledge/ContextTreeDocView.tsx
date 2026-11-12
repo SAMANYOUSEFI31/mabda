@@ -143,7 +143,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               trigger={<IconButton icon="Ellipsis" label={`عملیات بخش ${node.label}`} size="sm" />}
               items={[
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
-                { label: 'آماده‌سازی درخواست', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
+                { label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },

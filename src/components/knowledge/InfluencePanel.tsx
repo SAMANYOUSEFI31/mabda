@@ -86,7 +86,7 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
         <Group title="جاهایی که اعمال نمی‌شود" empty="جایی نیست که اعمال نشود." count={shapedBy.exceptions.length}>
           {shapedBy.exceptions.map((e) => (
             <li key={`${e.by.id}>${e.target.id}`} className="body-md text-text-default">
-              {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای بخش خودش و زیرشاخه‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای بخش‌ای پایین‌تر کنار گذاشته است.</>}
+              {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای بخش خودش و زیرشاخه‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای بخشی پایین‌تر کنار گذاشته است.</>}
             </li>
           ))}
         </Group>

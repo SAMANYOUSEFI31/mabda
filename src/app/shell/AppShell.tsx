@@ -11,9 +11,16 @@ import { TopStatusBar } from '../../components/shell/TopStatusBar';
 import type { ReactNode } from 'react';
 import type { ReadyScope } from '../shared';
 
-export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsPlanModalOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
+export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsPlanModalOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
 
-export function AppShell({ activeTab, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsPlanModalOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
+/** the places under «منبع»: the top level; when the tree has one root (as the work tree «بنیان» does), the level under it */
+const topSections = (nodes: ReadyScope['nodes']) => {
+  const kids = (pid: string | undefined) => nodes.filter((n) => (n.parentId ?? undefined) === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const roots = kids(undefined);
+  return roots.length === 1 && kids(roots[0].id).length ? kids(roots[0].id) : roots;
+};
+
+export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsPlanModalOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
@@ -34,13 +41,9 @@ export function AppShell({ activeTab, contextViewMode, currentWorkspace, deliver
         onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        specs={specs}
-        selectedSpecId={selectedSpecId}
-        onSelectSpecId={setSelectedSpecId}
-        onOpenCustomSpecModal={() => openSpecEditor()}
-        onOpenSpecLibrary={() => setIsSpecLibraryOpen(true)}
-        contextViewMode={contextViewMode}
-        onChangeContextViewMode={setContextViewMode}
+        sections={topSections(nodes)}
+        focusNodeId={focusNodeId}
+        onOpenSection={(id) => { setActiveTab('context'); goFocus(id); }}
         contextCount={workspaceContexts.length}
         deliverablesCount={deliverables.length}
         thinkingCount={thinkingBadge}
