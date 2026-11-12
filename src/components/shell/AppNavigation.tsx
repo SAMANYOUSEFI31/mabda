@@ -89,7 +89,26 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const setDock = (n: boolean) => { setPref(n ? 'docked' : 'hidden'); setOverlay(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
   const toggleDock = () => { if (!roomy) setOverlay((v) => !v); else setDock(!docked); };
   const go = (tab: Parameters<typeof onTabChange>[0]) => { setOverlay(false); onTabChange(tab); };
-  useEffect(() => { if (!overlay) return; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOverlay(false); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [overlay]);
+  // the drawer is modal: focus goes in, Tab stays in, Esc closes, and focus returns to what opened it (overlays.md «رفتار»)
+  const drawerRef = React.useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!overlay) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const el = drawerRef.current;
+    const items = () => Array.from(el?.querySelectorAll<HTMLElement>('button:not(:disabled),[href],input,[tabindex]:not([tabindex="-1"])') ?? []);
+    items()[0]?.focus();
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="menu"]')) { e.preventDefault(); setOverlay(false); }
+      if (e.key === 'Tab') {
+        const list = items(); if (!list.length) return;
+        const first = list[0], last = list[list.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', k);
+    return () => { document.removeEventListener('keydown', k); if (opener && opener.isConnected) opener.focus(); };
+  }, [overlay]);
   // navigation.md «تغییر اندازه»: the inner edge is a separator; 232–360 (tokens), a drag under 200 snaps to the rail,
   // double-click returns to the default, arrows move 8, Home/End, Enter docks/undocks, Ctrl/⌘+\ toggles. Remembered per device.
   const token = (name: string, fallback: number) => { try { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || fallback; } catch { return fallback; } };
@@ -266,9 +285,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         </aside>
       )}
       {overlay && !docked && (
-        <div className="fixed inset-space-0 z-overlay hidden md:block">
-          <button type="button" aria-label="بستن نوار کناری" tabIndex={-1} className="absolute inset-space-0 bg-bg-scrim" onClick={() => setOverlay(false)} />
-          <aside data-testid="sidebar-overlay" className="absolute bottom-space-0 top-space-0 start-space-0 flex w-sidebar flex-col border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
+        // over the rail and the page (layer «dialog»), entering from its own edge with the scrim fading in (motion.md)
+        <div className="fixed inset-space-0 z-dialog hidden md:block">
+          <button type="button" aria-label="بستن نوار کناری" tabIndex={-1} className="mb-drawer-scrim absolute inset-space-0 bg-bg-scrim" onClick={() => setOverlay(false)} />
+          <aside ref={drawerRef} role="dialog" aria-modal="true" data-testid="sidebar-overlay" className="mb-drawer absolute bottom-space-0 top-space-0 start-space-0 flex w-sidebar flex-col border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
             {sidebar}
           </aside>
         </div>
@@ -298,11 +318,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         onChange={(id) => (id === 'capture' ? requestQuickCapture() : onTabChange(id))}
         items={[
           { id: 'home', label: 'خانه', icon: 'House' },
-          { id: 'thinking', label: 'فکر', icon: 'Lightbulb', badge: p.thinkingCount || undefined, badgeLabel: 'مورد باز' },
+          { id: 'thinking', label: 'فکر', icon: 'Lightbulb' },
           // capture lives in the bar itself: always reachable, and it never floats over the page
           { id: 'capture', label: 'افزودن', icon: 'Plus', action: true, testId: 'quick-capture-fab' },
           { id: 'context', label: 'منبع', icon: 'BookOpen' },
-          { id: 'assets', label: 'خروجی‌ها', icon: 'Package', badge: p.deliverablesCount || undefined, badgeLabel: 'خروجی' },
+          { id: 'assets', label: 'خروجی‌ها', icon: 'Package' },
         ]}
       />
     </>

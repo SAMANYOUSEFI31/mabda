@@ -159,7 +159,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs
     <Dialog
       open
       onClose={onClose}
-      size="xl"
+      size="lg"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
       description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
       footer={

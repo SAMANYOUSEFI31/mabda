@@ -66,7 +66,9 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     opener.current = document.activeElement;
     const el = panel.current!;
     const items = () => el.querySelectorAll<HTMLElement>(FOCUSABLE);
-    (items()[0] || el).focus();
+    // a confirmation starts on its safest answer, never on the risky one or the × (overlays.md «رفتار»)
+    const safe = alert ? el.querySelector<HTMLElement>('.mb-dialog__foot .mb-btn:not(.mb-btn--danger):not(.mb-btn--danger-bold)') : null;
+    (safe || items()[0] || el).focus();
     // make the rest of the page inert while the dialog is open
     const siblings = Array.from(document.body.children).filter((n) => n !== layer.current && !n.hasAttribute('inert') && !n.matches('.mb-toast-stack'));
     siblings.forEach((n) => n.setAttribute('inert', ''));
@@ -111,15 +113,17 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     const up = () => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
       const flick = dy > 40 && dy / Math.max(1, performance.now() - t0) > 0.5;
-      p.style.transform = '';
-      if (dy > p.offsetHeight / 4 || flick) requestClose();
+      const closing = dy > p.offsetHeight / 4 || flick;
+      // closing: the exit starts from where the finger left it (the inert copy keeps this offset), never a jump back first
+      if (!closing || dirty) p.style.transform = '';
+      if (closing) requestClose();
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   };
 
   if (!open) return null;
   const node = (
-    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top')}>
+    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top', alert && 'is-alert')}>
       <div className="mb-scrim" onClick={alert ? undefined : requestClose} aria-hidden="true" />
       <div
         ref={panel}
@@ -145,7 +149,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   );
   const discard = dirty && onClose ? (
     <Dialog open={asking} onClose={() => setAsking(false)} alert size="sm" title="تغییرها دور ریخته شود؟" description="آنچه نوشته‌ای و ذخیره نشده از دست می‌رود."
-      footer={<><Button variant="ghost" onClick={() => { setAsking(false); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
+      footer={<><Button variant="danger" onClick={() => { setAsking(false); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
   ) : null;
   return inline ? node : <>{createPortal(node, document.body)}{discard}</>;
 }
