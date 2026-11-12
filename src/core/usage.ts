@@ -19,7 +19,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'context.read', label: 'نمای سند', level: 1 },
   { key: 'context.canvas', label: 'نمای بوم', level: 1 },
   { key: 'context.table', label: 'نمای جدول', level: 3 },
-  { key: 'dialog.record', label: 'ثبت دانش', level: 1 },
+  { key: 'dialog.record', label: 'افزودن حقیقت', level: 1 },
   { key: 'dialog.ai-request', label: 'درخواست برای ابزار دیگر', level: 1 },
   { key: 'dialog.search', label: 'جستجوی سراسری', level: 1 },
   { key: 'dialog.quickstart', label: 'شروع سریع', level: 1 },

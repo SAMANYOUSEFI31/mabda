@@ -8,6 +8,7 @@
  * (docs/spine.md: «یادداشت … هرگز تزریق نمی‌شود»). Examples (samples), archived and superseded objects are not searched.
  * Pure.
  */
+import { parseThinking } from './thinkingMarkers';
 
 import { conflictPartners, displayState, DISPLAY_LABEL } from './displayState';
 import type { ContextObject, Note, TreeNode } from '../types';
@@ -52,7 +53,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-thinking', title: 'رفتن به فکر', keywords: ['فضای فکر', 'فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
   { id: 'batch-knowledge', title: 'چند دانش با هم', keywords: ['چندتایی', 'لیست', 'بچسبان', 'پیشنهاد'] },
-  { id: 'record', title: 'ثبت دانش', keywords: ['افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'خط قرمز', 'قید'] },
+  { id: 'record', title: 'افزودن حقیقت', keywords: ['ثبت', 'ثبت دانش', 'افزودن', 'تازه', 'جدید', 'واقعیت', 'تصمیم', 'خط قرمز', 'قید'] },
   { id: 'ai-request', title: 'درخواست برای ابزار دیگر', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی', 'ابزار'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
@@ -116,8 +117,11 @@ export function buildSearchIndex(input: {
   for (const d of input.deliverables ?? []) raw.push({ kind: 'asset', id: d.id, title: d.title, content: d.content, text: `${d.title} ${d.title} ${d.title} ${d.content}` });
   for (const f of input.files ?? []) raw.push({ kind: 'file', id: f.id, title: f.name, content: f.summary ?? '', text: `${f.name} ${f.name} ${f.name} ${f.summary ?? ''}`, ...(f.nodeId ? { subtitle: path(f.nodeId) } : {}) });
   for (const n of input.notes ?? []) {
-    const title = clip(firstLine(n.content), 70);
-    raw.push({ kind: 'note', id: n.id, title, content: n.content, text: `${title} ${n.content}`, subtitle: path(n.nodeId) });
+    // a marked line («[ایده] …») is a thought and already comes as one: the note keeps only its other text, and a note that is only thoughts is not listed twice
+    const prose = noteProse(n.content);
+    if (!prose.trim()) continue;
+    const title = clip(firstLine(prose), 70);
+    raw.push({ kind: 'note', id: n.id, title, content: prose, text: `${title} ${prose}`, subtitle: path(n.nodeId) });
   }
   const docs: Doc[] = [];
   const df = new Map<string, number>();
@@ -281,3 +285,10 @@ export function recentHits(index: SearchIndex, recent: Array<{ kind: SearchKind;
 }
 export const pushRecent = (recent: Array<{ kind: SearchKind; id: string }>, hit: Pick<SearchHit, 'kind' | 'id'>, max = 8) =>
   hit.kind === 'command' ? recent : [{ kind: hit.kind, id: hit.id }, ...recent.filter((r) => !(r.kind === hit.kind && r.id === hit.id))].slice(0, max);
+
+/** a note's text without its marked thoughts (and the lines that continue them) */
+export function noteProse(content: string): string {
+  const drop = new Set<number>();
+  for (const it of parseThinking(content)) if (!it.inferred) for (let l = it.line; l <= (it.endLine ?? it.line); l++) drop.add(l);
+  return content.split(/\r?\n/).filter((_, i) => !drop.has(i)).join('\n').trim();
+}

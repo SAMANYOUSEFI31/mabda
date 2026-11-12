@@ -127,3 +127,9 @@ test('recent: newest first, no duplicates, no commands, and only what still exis
   const hits = recentHits(buildSearchIndex({ nodes, objects: [o('a')] }), rec);
   assert.deepEqual(hits.map((h) => h.id), ['a']);
 });
+
+test('a note that is only marked thoughts is not listed again as a note, and a mixed note keeps only its prose', async () => {
+  const { noteProse } = await import('./globalSearch');
+  assert.equal(noteProse('[ایده] یک روز به یزد برویم'), '');
+  assert.equal(noteProse('خرید هفته\n[سؤال] هتل یا اقامتگاه؟\nنان و شیر'), 'خرید هفته\nنان و شیر');
+});
