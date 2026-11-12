@@ -10,8 +10,9 @@ import { Repo } from './db/repo.ts';
 import { FileService } from './files/service.ts';
 
 /** Wires storage + AI. `aiOptions` lets tests inject a mock-backed AiService / session resolver. */
-export function createApp(db: Database.Database, aiOptions: { sessions?: SessionResolver; service?: AiService; clock?: () => Date; admin?: boolean } = {}) {
+export function createApp(db: Database.Database, aiOptions: { sessions?: SessionResolver; service?: AiService; clock?: () => Date; admin?: boolean; gate?: express.RequestHandler } = {}) {
   const app = express();
+  if (aiOptions.gate) app.use(aiOptions.gate); // before everything else: nothing is reachable without it
   app.use(express.json({ limit: '10mb' }));
   const repo = new Repo(db);
 

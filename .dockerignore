@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+server/data
+.env*
+docs/screens
