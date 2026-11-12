@@ -252,13 +252,13 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <>
       {/* Desktop sidebar (inline-start edge): open, or a narrow icons-only rail */}
       {docked ? (
-        <aside aria-label="نوار کناری" className={`sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col${moved.current ? ' mb-side-open' : ''}`} style={width ? { inlineSize: `${width}px` } : undefined}>
+        <aside aria-label="نوار کناری" className={`sticky top-space-0 z-dropdown hidden h-screen w-sidebar shrink-0 border-e border-border-default bg-surface-sunken p-inset-lg md:flex md:flex-col ${moved.current ? 'mb-side-open' : ''}`} style={width ? { inlineSize: `${width}px` } : undefined}>
           {sidebar}
           <div role="separator" tabIndex={0} aria-orientation="vertical" aria-label="پهنای نوار کناری" aria-valuemin={bounds().min} aria-valuemax={bounds().max} aria-valuenow={width ?? bounds().def}
             className="mb-sidebar-handle" onPointerDown={startResize} onDoubleClick={() => saveWidth(null)} onKeyDown={keyResize} />
         </aside>
       ) : (
-        <aside data-testid="sidebar-rail" className={`mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex${moved.current ? ' mb-side-close' : ''}`} style={{ '--side-from': width ? `${width}px` : 'var(--sidebar-width)' } as React.CSSProperties} aria-label="نوار کناری باریک">
+        <aside data-testid="sidebar-rail" className={`mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex ${moved.current ? 'mb-side-close' : ''}`} style={{ '--side-from': width ? `${width}px` : 'var(--sidebar-width)' } as React.CSSProperties} aria-label="نوار کناری باریک">
           <Menu label="فضاها" filter={{ label: 'جست‌وجوی فضا' }} trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
           {toggleButton}
           <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />

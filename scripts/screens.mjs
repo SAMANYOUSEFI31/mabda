@@ -42,7 +42,8 @@ const audit = () => {
     const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
     out.overflow = `${de.scrollWidth} > ${de.clientWidth} ← ${wide.join(' | ')}`;
   }
-  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  // above the page's top edge (a skip link parked out of sight until it has focus) can never be seen by scrolling, so it is not measured
+  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && (cs.position === 'fixed' ? r.bottom > 0 : r.bottom + scrollY > 0) && cs.visibility !== 'hidden' && cs.display !== 'none'; };
   // sideways scroll inside the page: any box that can scroll (or clips) and is wider inside than outside, except the few places made to
   // scroll sideways on purpose (a wide table, the canvas, code). A tab bar never scrolls up and down.
   out.scrollX = [];

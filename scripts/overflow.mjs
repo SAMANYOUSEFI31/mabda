@@ -184,7 +184,8 @@ for (const { width: w0, height, touch } of SIZES) {
         if (harm) { if (await page.locator('[role=dialog], [role=alertdialog]').count()) await check(`${id} › ${it} (confirm)`); }
         else if (await page.locator('[role=dialog]').count()) await walkDialog(`${id} › ${it}`); else await check(`${id} › ${it}`);
         await escAll();
-        if (harm) await page.unrouteAll({ behavior: 'ignoreErrors' });
+        // the refused writes leave «could not reach the server» notes; they are the walk's own doing, so they are cleared
+        if (harm) { await page.unrouteAll({ behavior: 'ignoreErrors' }); for (const x of await page.locator('.mb-toast button').all()) await x.click().catch(() => {}); await settle(); }
       }
     }
   }
@@ -207,7 +208,7 @@ for (const { width: w0, height, touch } of SIZES) {
     // wide: the row's «ویرایش»; phone: the rows are cards, each one opens its knowledge
     const edit = width < 768 ? page.locator('main .md\\:hidden [role=button][data-knowledge]') : page.locator('main').getByRole('button', { name: 'ویرایش', exact: true });
     await edit.first().click({ timeout: 3000 }).catch(() => {}); await settle();
-    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else note(`${label} knowledge edit`, ['walk could not open the knowledge edit dialog']);
+    if (await page.locator('[role=dialog]').count()) await walkDialog('knowledge edit'); else { note(`${label} knowledge edit`, ['walk could not open the knowledge edit dialog']); }
     await escAll();
   }
   // every command of the palette

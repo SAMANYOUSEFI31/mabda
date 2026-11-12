@@ -40,7 +40,7 @@
 .mb-btn--lg{min-block-size:var(--button-height-lg);padding-inline:var(--button-padding-lg)}
 .mb-btn__content{display:inline-flex;align-items:center;justify-content:center;gap:var(--inline-sm)}
 /* a label longer than its column (or text at 200%) wraps inside the button rather than pushing the page sideways (WCAG 1.4.4, 1.4.10) */
-.mb-btn{max-inline-size:100%}.mb-btn__content{min-inline-size:0}.mb-btn__label{min-inline-size:0;white-space:normal;overflow-wrap:anywhere;text-wrap:balance}
+.mb-btn{max-inline-size:100%}.mb-btn__content{min-inline-size:0}.mb-btn__label{min-inline-size:0;white-space:normal;overflow-wrap:break-word;text-wrap:balance}
 .mb-btn__spin{position:absolute;inset:0;display:grid;place-items:center}
 .mb-btn.is-loading .mb-btn__content{visibility:hidden}
 .mb-btn--full{inline-size:100%}
@@ -247,7 +247,7 @@
 /* a tab bar never scrolls (either way): overflow-x would turn overflow-y into «auto» and each tab's 44px hit area (::after) would scroll it
    up and down. Tabs shrink instead and a long label ends with «…» (its full name is the title) */
 /* a label that no longer fits (a long name, or the text at 200%) wraps onto a second line rather than being cut (WCAG 1.4.4) */
-.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:anywhere}
+.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:break-word}
 .mb-tabs:not(.mb-tabs--full){inline-size:max-content}
 .mb-tabs--full{display:flex;inline-size:100%}.mb-tabs--full .mb-tab{flex:1}
 .mb-tab{display:inline-flex;align-items:center;justify-content:center;gap:var(--inline-xs);min-block-size:var(--control-sm);padding-inline:var(--inset-md);border:0;border-radius:var(--tabs-tab-radius);background:transparent;color:var(--text-subtle);cursor:pointer;white-space:nowrap;
@@ -272,7 +272,7 @@
 .mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon svg{stroke-width:1.75}.mb-bottomnav__item.is-active .mb-bottomnav__icon svg{stroke-width:2.25;color:var(--icon-default)}
 .mb-bottomnav__label::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600}
 .mb-bottomnav__item.is-active::before{background:var(--bg-selected)}
-.mb-bottomnav__label{display:flex;flex-direction:column;align-items:center;font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}
+.mb-bottomnav__label{display:flex;flex-direction:column;align-items:center;font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;white-space:normal;overflow-wrap:break-word;text-align:center}
 .mb-bottomnav__icon{position:relative;display:grid;place-items:center;inline-size:var(--icon-xl);block-size:var(--icon-xl)}
 /* «افزودن»: a filled ink tile 52×40, radius 12 (not lapis: the page's own primary keeps the one lapis); its name stays for screen readers */
 .mb-bottomnav__item.is-action .mb-bottomnav__icon{inline-size:calc(var(--space-12) + var(--space-1));block-size:var(--space-10);border-radius:var(--radius-lg);background:var(--surface-inverse);color:var(--text-on-neutral);transition:background-color var(--duration-fast) var(--ease-standard)}
