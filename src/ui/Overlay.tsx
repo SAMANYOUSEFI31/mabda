@@ -27,6 +27,11 @@ export interface DialogProps {
   dirty?: boolean;
   /** search and commands: pinned 12% from the top so the list grows downward without the box moving (overlays.md) */
   top?: boolean;
+  /** «دور بریز» was chosen: the caller drops the draft it keeps (called before onClose) */
+  onDiscard?: () => void;
+  /** one of a family of dialogs she switches between (the three kinds of «افزودن»): the same height on wide screens, so switching
+   *  never moves or resizes the box; a switch (marked on <html data-add-switch>) plays no exit or enter */
+  steady?: boolean;
 }
 
 const FOCUSABLE = 'button:not(:disabled),[href],input:not(:disabled),select,textarea,[tabindex]:not([tabindex="-1"])';
@@ -50,7 +55,7 @@ function ghostExit(el: HTMLElement | null) {
   panel.addEventListener('animationcancel', done);
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false, onDiscard, steady = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
@@ -123,7 +128,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
 
   if (!open) return null;
   const node = (
-    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top', alert && 'is-alert')}>
+    <div ref={layer} data-state="open" className={cx('mb-dialog-layer', inline && 'is-inline', side && 'is-side', top && 'is-top', alert && 'is-alert', steady && 'is-steady')}>
       <div className="mb-scrim" onClick={alert ? undefined : requestClose} aria-hidden="true" />
       <div
         ref={panel}
@@ -149,7 +154,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   );
   const discard = dirty && onClose ? (
     <Dialog open={asking} onClose={() => setAsking(false)} alert size="sm" title="تغییرها دور ریخته شود؟" description="آنچه نوشته‌ای و ذخیره نشده از دست می‌رود."
-      footer={<><Button variant="danger" onClick={() => { setAsking(false); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
+      footer={<><Button variant="danger" onClick={() => { setAsking(false); onDiscard?.(); onClose(); }}>دور بریز</Button><Button variant="primary" onClick={() => setAsking(false)}>ادامهٔ ویرایش</Button></>} />
   ) : null;
   return inline ? node : <>{createPortal(node, document.body)}{discard}</>;
 }

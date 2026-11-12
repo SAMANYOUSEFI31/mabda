@@ -63,7 +63,7 @@ try {
 
     step(`[${width}] 3: a dialog loads the first time it is opened`);
     assert.ok(!requested.includes('ThoughtDialog'));
-    await click(page.getByRole('button', { name: 'فکر تازه' }).first());
+    await page.keyboard.press('Control+KeyK'); await page.getByRole('combobox', { name: 'جستجو' }).fill('فکر تازه'); await click(page.locator('[role=dialog] [role=option]').filter({ hasText: 'فکر تازه' }).first());
     await page.getByRole('dialog').waitFor({ timeout: 10000 });
     assert.ok(requested.includes('ThoughtDialog'), 'ThoughtDialog was requested when opened');
     assert.deepEqual(errors, [], 'no page errors');

@@ -30,7 +30,7 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
                 onChange={(id) => setThinkingView(id as 'list' | 'canvas')}
                 items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
               />
-              <Button variant="primary" iconStart="Plus" onClick={() => setThoughtDialog({ nodeId: spaceNode })}>فکر تازه</Button>
+              {/* adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳) */}
             </div>
           </div>
           <div id="thinking-view" />

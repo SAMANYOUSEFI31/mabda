@@ -26,7 +26,7 @@ import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
 import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
-import { takePendingAddText } from '../../core/addRequest';
+import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
@@ -142,6 +142,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
   // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳)
   const [content, setContent] = useState(() => object?.draft?.content ?? object?.content ?? (object ? '' : takePendingAddText()));
+  useEffect(() => () => clearPendingAddText(), []);
   const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -293,6 +294,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       open
       onClose={onClose}
       size="md"
+      steady={!object}
       dirty={content.trim() !== (object?.draft?.content ?? object?.content ?? '').trim() || title !== (object?.draft?.title ?? object?.title ?? '')}
       title={title_}
       description={isEditing ? undefined : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.'}
@@ -361,7 +363,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           onValueChange={(v) => { setContent(v); if (contentError && v.trim()) setContentError(''); }}
           objects={allObjects}
           selfId={object?.id}
-          placeholder="مثلاً: مخاطب اصلی ما فریلنسرهای طراح‌اند. / تخفیف نداریم. / تصمیم گرفتیم اینستاگرام کانال اصلی باشد."
+          placeholder="مثلاً: جلسهٔ هفتگی دوشنبه‌هاست. / به بادام‌زمینی حساسیت دارم. / بودجهٔ این کار ۲۰ میلیون است."
         />
         <TextField
           label="عنوان"
@@ -415,7 +417,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               label="دلیل جایگزینی تصمیم قبلی"
               value={supersedeReason}
               onChange={(e) => setSupersedeReason(e.target.value)}
-              placeholder="مثلاً: تغییر رویکرد استراتژیک پس از بازخورد مشتریان"
+              placeholder="مثلاً: عدد تازه‌تری پیدا کردم"
               hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
             />
           </Card>

@@ -106,7 +106,9 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   return (
     <Dialog
-      open={open} onClose={onClose} size="md" title="افزودن"
+      open={open} onClose={onClose} size="md" title="افزودن" steady
+      // × / Esc with words in the box asks first; «دور بریز» empties it (the draft lives in the caller, so «ادامه» loses nothing)
+      dirty={!!text.trim()} onDiscard={() => { onTextChange(''); setPerLine(false); }}
       description="جایش را لازم نیست الان بدانی."
       footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن'}</Button></>}
     >

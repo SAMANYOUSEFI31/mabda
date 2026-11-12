@@ -20,7 +20,10 @@ export function requestAdd(req: AddRequest): void {
 /** text carried into the «حقیقت» dialog when switching from another kind (read once by the dialog as it opens) */
 let pendingText = '';
 export const setPendingAddText = (t: string) => { pendingText = t; };
-export const takePendingAddText = (): string => { const t = pendingText; pendingText = ''; return t; };
+/** read by the new truth dialog's first render (a lazy dialog may mount long after the switch, and StrictMode runs an initializer
+ *  twice), so reading does not clear it: the dialog clears it when it closes, and every «افزودن» sets it again */
+export const takePendingAddText = (): string => pendingText;
+export const clearPendingAddText = (): void => { pendingText = ''; };
 
 /** is a real dialog open? (the inert copy that plays a dialog's exit does not count) */
 export function dialogOpen(): boolean {

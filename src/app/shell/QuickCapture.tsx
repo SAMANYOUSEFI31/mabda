@@ -85,7 +85,7 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
           text={text} onTextChange={setText} node={node} onNodeChange={setNode}
           continuous={continuous} onContinuousChange={(on) => { setContinuous(on); try { localStorage.setItem(PREF, on ? 'on' : 'off'); } catch { /* a per-viewer convenience only */ } }}
           onSave={handleSaveThought} onSaveMany={handleSaveThoughts}
-          switcher={<AddKindSwitch value="thought" text={text} nodeId={node} onLeave={() => { setOpen(false); setText(''); }} />}
+          switcher={<AddKindSwitch value="thought" text={text} nodeId={node} onLeave={(to) => { setOpen(false); if (to !== 'file') setText(''); /* a file has no text: the words wait here for her return */ }} />}
         />
       </Deferred>
       {fileOpen && <FileAdd nodeId={fileOpen.nodeId} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} />}
@@ -96,20 +96,26 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
 /** «فایل» side of «افزودن»: pick a file and where it belongs; extracting knowledge from it stays in «فایل‌ها» */
 function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: QuickCaptureProps['nodes']; onClose: () => void; onUpload: QuickCaptureProps['handleUploadFile'] }) {
   const [file, setFile] = useState<File | null>(null);
+  const pick = useRef<HTMLInputElement>(null);
   const [node, setNode] = useState(nodeId);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const add = async () => { if (!file) { setErr('هنوز فایلی انتخاب نکرده‌ای.'); return; } setBusy(true); try { await onUpload(file, node); onClose(); } finally { setBusy(false); } };
   return (
-    <Dialog open onClose={onClose} size="md" title="افزودن" dirty={!!file}
+    <Dialog open onClose={onClose} size="md" title="افزودن" dirty={!!file} steady
       footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} onClick={add}>افزودن</Button></>}>
       <div className="flex flex-col gap-stack-md">
         <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />
-        <label className="flex flex-col gap-stack-xs">
-          <span className="label-md text-text-default">کدام فایل؟</span>
-          <input type="file" className="body-md text-text-default" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErr(''); }} />
+        {/* the browser's own picker says «No file chosen» in English: a Persian row instead, the real input stays for the keyboard */}
+        <div className="flex flex-col gap-stack-xs">
+          <span id="file-add-label" className="label-md text-text-default">کدام فایل؟</span>
+          <div className="flex flex-wrap items-center gap-inline-md">
+            <Button type="button" variant="secondary" iconStart="Upload" aria-describedby="file-add-name" onClick={() => pick.current?.click()}>{file ? 'فایل دیگر' : 'انتخاب فایل'}</Button>
+            <span id="file-add-name" className={file ? 'body-md text-text-default min-w-space-0 break-all' : 'body-md text-text-subtle'}>{file ? file.name : 'هنوز فایلی انتخاب نشده.'}</span>
+          </div>
+          <input ref={pick} type="file" className="sr-only" tabIndex={-1} aria-labelledby="file-add-label" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErr(''); }} />
           {err && <span className="body-sm text-text-danger" role="alert">{err}</span>}
-        </label>
+        </div>
         <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
       </div>
     </Dialog>
