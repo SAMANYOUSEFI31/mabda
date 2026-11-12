@@ -107,7 +107,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
           <input
             id={`${uid}-q`} ref={input} autoFocus type="search" role="combobox" aria-expanded="true" aria-controls={`${uid}-l`} aria-autocomplete="list"
             aria-activedescendant={flat.length ? optionId(active) : undefined} aria-label="جستجو" autoComplete="off"
-            value={query} onChange={(e) => setQuery(e.target.value)} placeholder="مثلاً: قیمت، لحن، ثبت دانش…"
+            value={query} onChange={(e) => setQuery(e.target.value)} placeholder="مثلاً: بودجه، سفر، افزودن…"
             className="body-md min-h-touch-comfortable w-full min-w-space-0 bg-transparent text-text-default outline-none"
           />
         </div>

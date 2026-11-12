@@ -47,7 +47,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   };
   const archivedWs = workspaces.filter((w) => w.archivedAt);
   const counts = { knowledge: data?.objects.length ?? 0, removals: data?.removals.length ?? 0, outputs: data?.deliverables.length ?? 0, workspaces: archivedWs.length };
-  const label = (k: Section, t: string) => (counts[k] ? `${t} (${counts[k]})` : t);
+  const label = (k: Section, t: string) => (counts[k] ? `${t} (${formatNumber(counts[k])})` : t);
 
   const row = (key: string, main: React.ReactNode, sub: React.ReactNode, actions: React.ReactNode) => (
     <li key={key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">

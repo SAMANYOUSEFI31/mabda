@@ -151,7 +151,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     const newSession: ChatSession = {
       id: `session_${Date.now()}`,
       workspaceId: currentWorkspace.id,
-      title: `گفتگوی جدید ${sessions.length + 1}`,
+      title: `گفتگوی ${formatNumber(sessions.length + 1)}`,
       chatMode: 'discovery',
       selectedNodeIds: [],
       createdAt: new Date().toISOString(),
