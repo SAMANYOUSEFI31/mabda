@@ -134,7 +134,7 @@ test('node delete refuses what the plan refuses: the last main section, a target
   const { repo, s } = fresh();
   const roots = repo.listNodes(s).filter((n) => !n.parentId);
   for (const r of roots.slice(1)) removeNode(repo, s, r.id, { transferTo: roots[0].id });
-  assert.throws(() => removeNode(repo, s, roots[0].id, {}), /آخرین گرهٔ اصلی/);
+  assert.throws(() => removeNode(repo, s, roots[0].id, {}), /آخرین بخش اصلی/);
   const a = repo.createNode(s, { parentId: roots[0].id, label: 'تازه' });
   const b = repo.createNode(s, { parentId: a.id, label: 'زیر' });
   repo.createNote(s, a.id, 'x');

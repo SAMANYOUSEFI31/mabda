@@ -138,9 +138,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => props.onAddNewToNode(node.id)}>افزودن دانش</Button>
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>باز کردن</Button>}
             <Menu
-              label={`عملیات گرهٔ ${node.label}`}
+              label={`عملیات بخش ${node.label}`}
               align="end"
-              trigger={<IconButton icon="Ellipsis" label={`عملیات گرهٔ ${node.label}`} size="sm" />}
+              trigger={<IconButton icon="Ellipsis" label={`عملیات بخش ${node.label}`} size="sm" />}
               items={[
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
                 { label: 'آماده‌سازی درخواست', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
@@ -220,7 +220,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <section className="flex flex-col gap-stack-sm" aria-label="نمونه‌ها">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h4 className="label-md text-text-subtle">نمونه‌ها (به AI نمی‌رسند)</h4>
-                  <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این گره</Button>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این بخش</Button>
                 </div>
                 <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{nodeSamples.map(sampleCard)}</div>
               </section>
@@ -237,7 +237,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {(nodeFiles.length > 0 || sources.length > 0) && (
               <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
                 <h4 className="label-md text-text-default">از کجا آمده</h4>
-                {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این گره: {nodeFiles.map((f) => f.name).join('، ')}</p>}
+                {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این بخش: {nodeFiles.map((f) => f.name).join('، ')}</p>}
                 {sources.length > 0 && <p className="body-sm text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}
               </section>
             )}

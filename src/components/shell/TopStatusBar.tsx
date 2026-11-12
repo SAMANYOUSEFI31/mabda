@@ -15,7 +15,7 @@ export const PAGE_TITLE: Record<string, string> = {
   chat: 'گفتگو',
   assets: 'خروجی‌ها',
   home: 'خانه',
-  ledger: 'مصرف و دفتر کل',
+  ledger: 'مصرف',
 };
 
 export interface PageAction { label: string; icon: IconName; onClick: () => void }

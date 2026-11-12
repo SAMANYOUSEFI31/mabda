@@ -17,15 +17,15 @@ function Marks({ item }: { item: SceneItem }) {
     <>
       {item.review && <Caution>بازبینی</Caution>}
       {item.assumption && <span className={small} title="فرض: واقعیت نیست" role="img" aria-label="فرض"><Icon name="CircleHelp" size="xs" /></span>}
-      {item.expired && <span className={small} title="منقضی شده" role="img" aria-label="منقضی"><Icon name="Clock" size="xs" /></span>}
+      {item.expired && <span className={small} title="قدیمی شده" role="img" aria-label="قدیمی"><Icon name="Clock" size="xs" /></span>}
       {item.global && <span className={small} title="برای کل درخت" role="img" aria-label="دامنهٔ کل"><Icon name="Globe" size="xs" /></span>}
     </>
   );
 }
 
 const aria = (item: SceneItem) => {
-  if (item.kind === 'object') return `${item.label}${item.review ? '، نیاز به بازبینی' : ''}${item.assumption ? '، فرض' : ''}${item.expired ? '، منقضی' : ''}${item.global ? '، دامنهٔ کل' : ''}`;
-  if (item.kind === 'node') return `گرهٔ ${item.label}، ${formatNumber(item.count ?? 0)} مورد`;
+  if (item.kind === 'object') return `${item.label}${item.review ? '، نیاز به بازبینی' : ''}${item.assumption ? '، فرض' : ''}${item.expired ? '، قدیمی' : ''}${item.global ? '، دامنهٔ کل' : ''}`;
+  if (item.kind === 'node') return `بخش ${item.label}، ${formatNumber(item.count ?? 0)} مورد`;
   if (item.kind === 'assets') return `${formatNumber(item.count ?? 0)} خروجی`;
   if (item.kind === 'note') return `یادداشت آزاد: ${item.label}`;
   return `خروجی ${item.label}${item.review ? '، نیاز به بازبینی' : ''}`;

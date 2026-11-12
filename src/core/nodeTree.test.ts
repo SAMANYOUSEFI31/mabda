@@ -19,7 +19,7 @@ test('no node is locked: the nodes of the default start rename and move like any
   assert.ok(!d.ok && 'needsTransfer' in d, 'its child must go somewhere');
   assert.equal(canDelete(nodes, 'brand', [], [], 'product').ok, true);
   const last = canDelete(nodes, 'business', [], [], 'brand');
-  assert.ok(!last.ok && /آخرین گرهٔ اصلی/.test(last.reason), 'the only root is not deleted');
+  assert.ok(!last.ok && /آخرین بخش اصلی/.test(last.reason), 'the only root is not deleted');
   const two = [...nodes, { id: 'r2', label: 'دوم', description: '', order: 9 }];
   assert.equal(canDelete(two, 'r2', [], []).ok, true, 'with another root, a root can go');
 });

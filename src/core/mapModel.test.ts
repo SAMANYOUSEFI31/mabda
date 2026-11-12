@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildMapModel, CARD_W, GAP_X, highlightOf, impactOf, latestChangedObject, visibleVertices } from './mapModel';
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
 
-const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `گره ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
+const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
 const obj = (id: string, nodeId: string, o: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: `مورد ${id}`, content: id, nodeId, version: 1, createdAt: '', updatedAt: '', ...o });
 const rel = (type: ContextRelationship['type'], s: string, t: string): ContextRelationship => ({ id: `${type}${s}${t}`, sourceId: s, targetId: t, type, createdAt: '' });
 const asset = (id: string, used: string[]): GeneratedDeliverable => ({ id, title: `خروجی ${id}`, usedContext: used.map((u) => ({ id: u, version: 1 })) } as unknown as GeneratedDeliverable);

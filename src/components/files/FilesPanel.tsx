@@ -145,7 +145,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
               «{confirm.file.name}» حدود {formatNumber(confirm.file.tokens)} توکن است و {formatNumber(confirm.charge.excessTokens)} توکنش از سهمیهٔ ماهانه بیشتر می‌شود.
             </p>
             <p className="body-md text-text-default">هزینه: {formatNumber(confirm.charge.credits)} اعتبار (موجودی: {formatNumber(credits)}).</p>
-            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از دفتر کل اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
+            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از «مصرف» اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
           </div>
         )}
       </Dialog>

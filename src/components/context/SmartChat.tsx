@@ -76,7 +76,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         id: 'msg_welcome',
         role: 'assistant',
         content: `سلام! من موتور هوشمند «مبدأ» هستم.
-من مستقیماً به درخت منبع حقیقت شما متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
+من مستقیماً به درخت منبع حقیقت تو متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
 
 درباره چه بخشی از کسب‌وکار صحبت کنیم؟`,
         timestamp: new Date().toISOString(),
@@ -515,7 +515,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               <div className="flex items-center justify-between gap-inline-sm">
                 <span className="label-md inline-flex items-center gap-inline-sm text-text-default">
                   <Icon name="Compass" size="md" className="text-icon-subtle" />
-                  پیشنهادهای شروع بر اساس شکاف‌های دانش فعلی
+                  پیشنهادهای شروع بر اساس جاهای خالیِ دانش فعلی
                 </span>
                 <span className="caption text-text-subtle">یک انتخاب برای آغاز</span>
               </div>
@@ -618,7 +618,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         <form noValidate onSubmit={handleSend} className="flex items-start gap-inline-sm">
           <div className="flex-1">
             <TextField
-              aria-label="پیام شما"
+              aria-label="پیام تو"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={ai.available ? 'دربارهٔ ایده‌ها، مشتری، قیمت‌گذاری یا استراتژی‌ات بنویس…' : 'هوش مصنوعی فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.'}

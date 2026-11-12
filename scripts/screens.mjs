@@ -268,7 +268,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     await page.getByTestId('sidebar-rail').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
     await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'باز کردن نوار کناری' }).click(); await page.waitForTimeout(300);
   }
-  await accountItem('مصرف و دفتر کل'); await shoot('ledger');
+  await accountItem('مصرف'); await shoot('ledger');
   // plan / economics tabs exist only when MABDA_MANAGED_AI is on
   const maybe = async (loc, fn) => { if (await loc.count()) await fn(loc.first()); };
   await maybe(page.getByRole('tab', { name: /پلن‌ها و اعتبار/ }), async (l) => { await l.click(); await shoot('ledger-plans'); });
@@ -312,7 +312,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // the removal model: the node delete dialog (plan, tree after, what stops reaching whom) and the archive
   await goTab(TABS[1]);
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
-  await page.getByRole('button', { name: 'عملیات گرهٔ کارگاه برشته‌کاری' }).first().click();
+  await page.getByRole('button', { name: 'عملیات بخش کارگاه برشته‌کاری' }).first().click();
   await page.getByRole('menuitem', { name: 'حذف' }).click();
   await page.getByTestId('node-delete').waitFor(); await page.waitForTimeout(300);
   await shoot('dialog-node-delete'); await closeDialog();

@@ -114,11 +114,11 @@ export function ReachBadge({ object, className }: { object: Pick<ContextObject, 
 
 /** why an object is (or is not) in force at a node — src/core/effectiveContext.ts. Label + icon, never colour alone. */
 export const ORIGIN_META: Record<'own' | 'inherited' | 'global' | 'overridden' | 'expired', Entry> = {
-  own: { label: 'مال این گره', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  own: { label: 'مال این بخش', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
   inherited: { label: 'از بخش بالاتر', icon: 'Network', cls: 'bg-surface-sunken text-text-default border-border-default' },
   global: { label: 'همه‌جا', icon: 'Layers', cls: 'bg-surface-sunken text-text-default border-border-default' },
   overridden: { label: 'کنار گذاشته‌شده', icon: 'Minus', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
-  expired: { label: 'منقضی', icon: 'History', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
+  expired: { label: 'قدیمی', icon: 'History', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
 };
 export function OriginBadge({ value, className }: { value: keyof typeof ORIGIN_META; className?: string }) {
   return <MabdaLabel entry={ORIGIN_META[value]} className={className} />;

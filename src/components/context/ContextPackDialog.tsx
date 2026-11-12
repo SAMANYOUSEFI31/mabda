@@ -49,7 +49,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       onClose={onClose}
       size="lg"
       title={`کپی برای استفاده در هر ابزار — ${target?.title ?? ''}`}
-      description="Markdown فشرده با دانش تأییدشده، شکاف‌ها، معیارها و خط قرمزها و قالب پاسخی که ابزار باید رعایت کند."
+      description="Markdown فشرده با دانش تأییدشده، جاهای خالی، معیارها و خط قرمزها و قالب پاسخی که ابزار باید رعایت کند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -67,7 +67,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
             <Badge intent="neutral" icon={false}>{formatNumber(pack.chars)} نویسه</Badge>
             <Badge icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
             {pack.counts.proposed > 0 && <Caution>{formatNumber(pack.counts.proposed)} پیشنهادی (تأییدنشده)</Caution>}
-            {pack.counts.gaps > 0 && <Caution>{formatNumber(pack.counts.gaps)} شکاف</Caution>}
+            {pack.counts.gaps > 0 && <Caution>{formatNumber(pack.counts.gaps)} جای خالی</Caution>}
             {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} خط قرمز</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />

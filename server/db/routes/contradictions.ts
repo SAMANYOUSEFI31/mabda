@@ -52,9 +52,9 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
     } else if (b.action === 'separate') {
       const moveId = String(b.moveId ?? '');
       if (moveId !== aId && moveId !== bId) throw new RepoError('invalid', 'مورد جابه‌جاشونده مشخص نیست.');
-      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') }, metaOf(b, { kind: 'contradiction_resolved', reason: 'تناقض: هر دو درست‌اند؛ گره‌ها جدا شد' }));
+      const moved = repo.updateObject(s, moveId, { nodeId: String(b.nodeId ?? '') }, metaOf(b, { kind: 'contradiction_resolved', reason: 'تناقض: هر دو درست‌اند؛ بخش‌ها جدا شد' }));
       impact = moved.impact;
-      repo.savePairJudgment(s, a, o, { conflict: false, reason: 'هر دو درست‌اند؛ گره‌ها جدا شد', resolution: 'separated' });
+      repo.savePairJudgment(s, a, o, { conflict: false, reason: 'هر دو درست‌اند؛ بخش‌ها جدا شد', resolution: 'separated' });
     } else throw new RepoError('invalid', 'اقدام نامعتبر است.');
     res.json({ objects: repo.listObjects(s), relationships: repo.listRelationships(s), pairJudgments: repo.listPairJudgments(s), stale: stale(s), impact });
   }));

@@ -35,7 +35,7 @@ try {
     const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
@@ -82,7 +82,7 @@ try {
     assert.ok((await page.locator('[role=dialog] [role=group][aria-label="دارایی‌ها"]').count()) === 1, 'the asset group');
     await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     await openPalette(); await type('کارگاه برشته');
-    assert.ok((await page.locator('[role=dialog] [role=group][aria-label="گره‌ها"]').count()) === 1, 'the node group');
+    assert.ok((await page.locator('[role=dialog] [role=group][aria-label="بخش‌ها"]').count()) === 1, 'the node group');
     await page.keyboard.press('Enter');
     await page.locator('#node-dn_ws').waitFor();
     await openPalette(); await type('ثبت');

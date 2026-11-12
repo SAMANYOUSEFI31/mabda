@@ -10,7 +10,7 @@ import { Badge, Nuqta, STATUS_META, TYPE_META, formatJalaliDate } from '../../ui
 import type { NuqtaState } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
-const FIELD_FA: Record<string, string> = { type: 'نوع', title: 'عنوان', content: 'متن', nodeId: 'گره', slotKey: 'جایگاه', provenance: 'منشأ', status: 'وضعیت', dependsOn: 'وابسته به', supersededById: 'جایگزین', supersedes: 'جایگزین‌کنندهٔ' };
+const FIELD_FA: Record<string, string> = { type: 'نوع', title: 'عنوان', content: 'متن', nodeId: 'بخش', slotKey: 'جایگاه', provenance: 'منشأ', status: 'وضعیت', dependsOn: 'وابسته به', supersededById: 'جایگزین', supersedes: 'جایگزین‌کنندهٔ' };
 const TEXT_FIELDS = new Set(['title', 'content']);
 
 interface Lookups { titleOf?: (id: string) => string; nodeLabel?: (id: string) => string }

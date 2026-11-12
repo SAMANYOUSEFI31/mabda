@@ -42,7 +42,7 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
           <h2 className="heading-sm text-text-default">تناقض‌ها</h2>
           <Caution>{formatNumber(contradictions.length)} مورد</Caution>
         </div>
-        <p className="body-sm text-text-subtle">دو مورد با هم نمی‌خوانند. یکی را نگه دار تا دیگری «جایگزین‌شده» شود، یا اگر هر دو درست‌اند آن‌ها را در گره‌های جدا بگذار. چیزی پاک نمی‌شود.</p>
+        <p className="body-sm text-text-subtle">دو مورد با هم نمی‌خوانند. یکی را نگه دار تا دیگری «جایگزین‌شده» شود، یا اگر هر دو درست‌اند آن‌ها را در بخش‌های جدا بگذار. چیزی پاک نمی‌شود.</p>
       </div>
       {check && <CheckBar check={check} />}
       {contradictions.map((c) => <Pair key={c.id} c={c} nodes={nodes} onKeep={onKeep} onSeparate={onSeparate} />)}
@@ -63,7 +63,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
         <span className="label-md text-text-default">{ordinal}: {o.title}</span>
         <span className="flex items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>
       </div>
-      <span className="body-sm text-text-subtle">گره: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
+      <span className="body-sm text-text-subtle">بخش: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
       <p className="body-md text-text-default">{o.content}</p>
       <div className="mt-stack-xs">
         <Button variant="secondary" size="sm" fullWidth iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
@@ -83,9 +83,9 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
           <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: c.itemA.title }, { value: c.itemB.id, label: c.itemB.title }]} />
         </div>
         <div className="lg:flex-1">
-          <Select label="به این گره" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).filter(({ node }) => node.id !== moving.nodeId).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} />
+          <Select label="به این بخش" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).filter(({ node }) => node.id !== moving.nodeId).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} />
         </div>
-        <Button variant="secondary" iconStart="Network" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>گره‌ها را جدا کن</Button>
+        <Button variant="secondary" iconStart="Network" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
       </div>
     </div>
   );

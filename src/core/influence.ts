@@ -86,6 +86,6 @@ export function aboutSentence(o: Pick<ContextObject, 'type' | 'status' | 'assump
   const where = nodeLabel ? ` در «${nodeLabel}»` : '';
   const base = o.assumption ? `فرضی${where}` : `${KIND_FA[o.type]}${where}`;
   const reach = o.type === 'Constraint' || (o.type === 'Decision' && reachOf(o) === 'global') ? (reachOf(o) === 'global' ? '؛ همه‌جا اعمال می‌شود' : '؛ فقط در همین بخش اعمال می‌شود') : '';
-  const state = opts.expired ? ' که منقضی شده' : o.status === 'Proposed' ? ' که هنوز تأیید نشده' : o.status === 'Needs Review' || opts.review ? ' که نیاز به بازبینی دارد' : o.assumption ? ' که هنوز واقعیت نیست' : '';
+  const state = opts.expired ? ' که قدیمی شده' : o.status === 'Proposed' ? ' که هنوز تأیید نشده' : o.status === 'Needs Review' || opts.review ? ' که نیاز به بازبینی دارد' : o.assumption ? ' که هنوز واقعیت نیست' : '';
   return `${base}${state}${reach}.`;
 }

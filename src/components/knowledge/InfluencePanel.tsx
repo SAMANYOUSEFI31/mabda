@@ -71,8 +71,8 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
     );
   }
   const scopeText = shapes.scope.kind === 'global'
-    ? 'در همهٔ گره‌ها اثر دارد'
-    : shapes.scope.nodeIds.length === 1 ? `فقط در «${label(shapes.scope.nodeIds[0])}»` : `در ${formatNumber(shapes.scope.nodeIds.length)} گره: ${shapes.scope.nodeIds.slice(0, 4).map(label).join('، ')}${shapes.scope.nodeIds.length > 4 ? '…' : ''}`;
+    ? 'در همهٔ بخش‌ها اثر دارد'
+    : shapes.scope.nodeIds.length === 1 ? `فقط در «${label(shapes.scope.nodeIds[0])}»` : `در ${formatNumber(shapes.scope.nodeIds.length)} بخش: ${shapes.scope.nodeIds.slice(0, 4).map(label).join('، ')}${shapes.scope.nodeIds.length > 4 ? '…' : ''}`;
   return (
     <div className="flex flex-col gap-stack-lg" role="region" aria-label="اثرگذاران و اثرپذیران">
       <section className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg" aria-label="اثرگذاران">
@@ -80,17 +80,17 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
         <Group title="وابستگی‌ها" empty="به مورد دیگری وابسته نیست." count={shapedBy.dependencies.length}>
           {shapedBy.dependencies.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}
         </Group>
-        <Group title="خط قرمزهای مؤثر در این گره" empty="خط قرمزی در این گره اثر ندارد." count={shapedBy.constraints.length}>
+        <Group title="خط قرمزهای مؤثر در این بخش" empty="خط قرمزی در این بخش اثر ندارد." count={shapedBy.constraints.length}>
           {shapedBy.constraints.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}
         </Group>
         <Group title="جاهایی که اعمال نمی‌شود" empty="جایی نیست که اعمال نشود." count={shapedBy.exceptions.length}>
           {shapedBy.exceptions.map((e) => (
             <li key={`${e.by.id}>${e.target.id}`} className="body-md text-text-default">
-              {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای گرهٔ خودش و زیرشاخه‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای گره‌ای پایین‌تر کنار گذاشته است.</>}
+              {e.role === 'overrides' ? <>این مورد «{e.target.title}» را برای بخش خودش و زیرشاخه‌ها کنار می‌گذارد.</> : <>«{e.by.title}» آن را برای بخش‌ای پایین‌تر کنار گذاشته است.</>}
             </li>
           ))}
         </Group>
-        <Group title="ورودی‌های اصلی (از بخش بالاتر آمده)" empty="چیزی از گره‌های بالاتر نرسیده." count={shapedBy.inputs.length}>
+        <Group title="ورودی‌های اصلی (از بخش بالاتر آمده)" empty="چیزی از بخش‌های بالاتر نرسیده." count={shapedBy.inputs.length}>
           {shapedBy.inputs.map((c) => <Row key={c.object.id} o={c.object} onOpen={onOpenObject} extra={<OriginBadge value={c.origin} />} />)}
         </Group>
       </section>

@@ -16,7 +16,7 @@ import { ancestorIds } from './nodeTree';
 import { normalizeText, tokenize } from './retrieval';
 
 export type SearchKind = 'command' | 'node' | 'object' | 'thought' | 'note' | 'asset' | 'file';
-export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'گره‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'خروجی‌ها', file: 'فایل‌ها' };
+export const SEARCH_GROUP_LABEL: Record<SearchKind, string> = { command: 'فرمان‌ها', node: 'بخش‌ها', object: 'دانش', thought: 'فکرها', note: 'یادداشت‌ها', asset: 'خروجی‌ها', file: 'فایل‌ها' };
 export const SEARCH_GROUP_ORDER: SearchKind[] = ['command', 'node', 'object', 'thought', 'note', 'asset', 'file'];
 
 /**

@@ -71,7 +71,7 @@ export function parseTemplate(input: unknown): { ok: true; template: StartTempla
     const key = str(k?.key, 80), label = str(k?.label, 160);
     if (key && label) suggested.push({ key, label, description: str(k?.description, 400) ?? '', ...(str(k?.node, 80) ? { node: str(k?.node, 80) } : {}) });
   }
-  if (!nodes.length && !samples.length) return { ok: false, reason: 'این قالب نه گره دارد نه نمونه.' };
+  if (!nodes.length && !samples.length) return { ok: false, reason: 'این قالب نه بخش دارد نه نمونه.' };
   return { ok: true, template: { schema: TEMPLATE_SCHEMA, id, version: Math.max(1, Math.floor(Number(r.version) || 1)), title, description: str(r.description, 400) ?? '', nodes, samples, ...(suggested.length ? { suggested } : {}) } };
 }
 

@@ -2,7 +2,7 @@
 /**
  * The audit scenarios on the showcase workspace (REAL server + temp SQLite), the four cognitive walkthroughs:
  *   الف «قیمت اشتراک چه تغییری کرد و چرا؟»  — the diff, its one-line summary, the newest drafts open, compare two versions
- *   ب «یک فکر خام دربارهٔ گرهٔ ارسال بنویس» — in the structure view, no other view needed
+ *   ب «یک فکر خام دربارهٔ بخش ارسال بنویس» — in the structure view, no other view needed
  *   ج «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — in the record dialog («بیشتر»), both directions, with search
  *   د «در بوم ببین چه چیزی به لحن پاسخ وابسته است» — the inspector says it; lines: halos in their own layer, below every line
  * Screenshots → docs/screens/explore-*.png (1280) and explore-m-*.png (390)
@@ -37,7 +37,7 @@ try {
     const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
@@ -73,7 +73,7 @@ try {
     assert.ok((await dlg.getByTestId('compare-versions').getByTestId('diff-summary').count()) >= 1, 'two versions compared with a summary');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] ب: «یک فکر خام دربارهٔ گرهٔ ارسال» — in the structure view, one calm invitation in the node itself`);
+    step(`[${width}] ب: «یک فکر خام دربارهٔ بخش ارسال» — in the structure view, one calm invitation in the node itself`);
     const ship = page.locator('section', { has: page.getByRole('heading', { name: 'ارسال و بسته‌بندی' }) }).last();
     await ship.scrollIntoViewIfNeeded();
     // the node's calm invitation opens «فکر تازه» for THIS node; if the node already has thoughts, its counter opens the space and the box is the button there

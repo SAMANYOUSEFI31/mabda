@@ -198,7 +198,7 @@ export class AiService {
       const task = [
         req.threadGoal ? `${THREAD_INSTRUCTION}\n## هدف این گفتگو\n${req.threadGoal}` : CHAT_MODE_HINT[req.chatMode ?? 'discovery'],
         history ? `## تاریخچهٔ اخیر گفتگو\n${history}` : '',
-        req.allowedNodeIds?.length ? `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین گره‌ها مجاز است.` : '',
+        req.allowedNodeIds?.length ? `## بخش‌های مجاز برای proposal (شناسه=نام)\n${req.allowedNodeIds.map((id) => `${id}=${req.nodeLabels?.[id] ?? id}`).join('، ')}\nپیشنهاد به‌روزرسانی فقط برای همین بخش‌ها مجاز است.` : '',
         `## پیام کاربر\n${req.message}`,
       ].filter(Boolean).join('\n\n');
       const prompt = buildPrompt({
@@ -304,7 +304,7 @@ export class AiService {
       const nodes = req.nodes.map((n) => `${n.id}=${n.label}`).join('، ');
       const user = [
         req.kind === 'memory' ? MEMORY_INSTRUCTION : EXTRACT_INSTRUCTION,
-        `## گره‌های مجاز (شناسه=نام)\n${nodes}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        `## بخش‌های مجاز (شناسه=نام)\n${nodes}\nبخش پیش‌فرض: ${req.nodeId}`,
         req.wantSummary ? 'علاوه بر objectها، کلید summary را با خلاصهٔ ۳ تا ۵ جمله‌ای فارسی پر کن.' : 'کلید summary لازم نیست.',
         truncated ? 'توجه: متن بلند است و فقط بخش ابتدایی آن داده شده است.' : '',
         `## متن\n${text}`,
@@ -358,7 +358,7 @@ export class AiService {
     await this.chat(userId, {
       message: req.message, contextList: req.contextList, focusNodeIds: [req.nodeId], chatMode: 'discovery', mode: 'auto', history: req.history, plan,
       nodeLabels: req.nodeLabels, allowedNodeIds: [req.nodeId], scopeNodeId: req.nodeId, excerpts: req.excerpts,
-      threadGoal: `ساختن پیش‌نویس بخش «${req.nodeLabel}» (شناسهٔ گره: ${req.nodeId}).`,
+      threadGoal: `ساختن پیش‌نویس بخش «${req.nodeLabel}» (شناسهٔ بخش: ${req.nodeId}).`,
     }, (e) => events.push(e), parent);
     const err = events.find((e): e is Extract<AiStreamEvent, { type: 'error' }> => e.type === 'error');
     if (err) throw new AiError(err.error.kind, { message: err.error.message, retryable: err.error.retryable, stage: err.error.stage });
@@ -413,8 +413,8 @@ export class AiService {
       const session = await this.deps.sessions.resolve(userId, 'platform');
       const runner = new StageRunner(session, dl.signal, this.cfg);
       const user = [
-        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر گرهٔ «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح گره: ${req.nodeDescription}` : ''}`,
-        `## گره‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nگرهٔ پیش‌فرض: ${req.nodeId}`,
+        req.scope === 'onboarding' ? '## موقعیت\nکاربر در شروع کار (onboarding) است و حقایق اساسی کسب‌وکارش را می‌نویسد.' : `## موقعیت\nکاربر بخش «${req.nodeLabel ?? req.nodeId}» را تعریف می‌کند.${req.nodeDescription ? ` توضیح بخش: ${req.nodeDescription}` : ''}`,
+        `## بخش‌های مجاز برای proposal (شناسه=نام)\n${req.nodes.map((n) => `${n.id}=${n.label}`).join('، ')}\nبخش پیش‌فرض: ${req.nodeId}`,
         req.existing?.length ? `## دانش تأییدشدهٔ موجود\n${req.existing.map((c) => `- ${c}`).join('\n')}` : '',
         req.history?.length ? `## گفتگوی قبلی با Coach\n${req.history.map((m) => `${m.role === 'user' ? 'کاربر' : 'Coach'}: ${m.content}`).join('\n')}` : '',
         `## متن کاربر\n${req.text}`,

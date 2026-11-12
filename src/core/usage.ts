@@ -14,7 +14,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'view.context', label: 'منبع حقیقت', level: 1 },
   { key: 'view.workstreams', label: 'جریان‌های کار', level: 1 },
   { key: 'view.assets', label: 'دارایی‌ها', level: 1 },
-  { key: 'view.ledger', label: 'مصرف و دفتر کل', level: 3 },
+  { key: 'view.ledger', label: 'مصرف', level: 3 },
   { key: 'context.doc', label: 'نمای ساختار', level: 1 },
   { key: 'context.read', label: 'نمای سند', level: 1 },
   { key: 'context.canvas', label: 'نمای بوم', level: 1 },

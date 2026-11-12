@@ -17,7 +17,7 @@ export function registerDemoRoutes(ctx: RouteContext): void {
   router.get('/workspaces', wrap((_req, res) => { res.json({ workspaces: repo.listWorkspaces(LOCAL_USER) }); }));
   router.put('/workspaces/:wid', wrap((req, res) => {
     const ws = body(req) as Workspace;
-    if (ws.id !== req.params.wid) throw new RepoError('invalid', 'شناسهٔ فضای کاری نامطابق است.');
+    if (ws.id !== req.params.wid) throw new RepoError('invalid', 'شناسهٔ فضا نامطابق است.');
     res.json(repo.saveWorkspace(LOCAL_USER, ws));
   }));
 

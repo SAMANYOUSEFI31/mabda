@@ -45,7 +45,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
             const p = PLANS[pid];
             const isCurrent = currentWorkspace.planId === pid;
             const rows: Array<{ ok: boolean; text: string }> = [
-              { ok: true, text: `${formatNumber(e.workspaces)} فضای کاری برای کسب‌وکارها یا مشتری‌هایت` },
+              { ok: true, text: `${formatNumber(e.workspaces)} فضا برای کسب‌وکارها یا مشتری‌هایت` },
               { ok: true, text: `تا ${formatNumber(e.maxObjects)} قلم دانش فعال در درخت منبع حقیقت` },
               ...(managed ? [{ ok: true, text: `فایل‌هایت را بخوان: حدود ${k(e.fileTokensPerMonth)} توکن پردازش در ماه` }] : []),
               { ok: e.engines.changeImpact, text: 'بفهم کدام دارایی با تغییر دانش نیاز به بازبینی پیدا کرد' },
@@ -87,7 +87,7 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                 </div>
 
                 {isCurrent ? (
-                  <Badge icon="CircleCheck" className="justify-center">پلن فعلی شما</Badge>
+                  <Badge icon="CircleCheck" className="justify-center">پلن فعلی تو</Badge>
                 ) : (
                   <Button variant="secondary" fullWidth onClick={() => { onSelectPlan(pid); onClose(); }}>
                     فعال‌سازی پلن {p.title.split(' ')[0]}

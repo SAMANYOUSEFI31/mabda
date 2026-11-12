@@ -131,7 +131,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         </DetailSection>
         <DetailSection title="بیشتر" count={0}>
           <p className="body-md whitespace-pre-wrap text-text-default">{o.content.length > 400 ? `${o.content.slice(0, 400)}…` : o.content}</p>
-          <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>منقضی</Badge>}</div>
+          <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>قدیمی</Badge>}</div>
           <div className="flex flex-wrap gap-inline-xs">
             {(item.review || p.onLineage) && moveBtn}
             {item.review && p.onLineage && <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button>}
@@ -142,7 +142,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
     );
   }
   if (item.kind === 'node') return (
-    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">گره</span><h3 className="heading-xs text-text-default">{item.label}</h3><p className="body-sm text-text-subtle">{formatNumber(item.count ?? 0)} مورد در این گره؛ یک جعبهٔ دامنه است و ترتیب ندارد.</p></div>
+    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">بخش</span><h3 className="heading-xs text-text-default">{item.label}</h3><p className="body-sm text-text-subtle">{formatNumber(item.count ?? 0)} مورد در این بخش؛ یک جعبهٔ دامنه است و ترتیب ندارد.</p></div>
   );
   if (item.kind === 'note') return (
     <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">یادداشت آزاد</span><p className="body-md whitespace-pre-wrap text-text-default">{item.summary}</p><p className="body-sm text-text-subtle">یادداشت دانش نیست و به AI داده نمی‌شود.</p></div>

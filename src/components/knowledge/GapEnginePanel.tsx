@@ -62,19 +62,19 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       {/* Free gap cost notice (P3) */}
       {managedEnabled && <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
         <p className="body-sm text-text-subtle">
-          شناسایی شکاف‌ها و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
+          شناسایی جاهای خالی و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
         </p>
         <Badge>۰ اعتبار</Badge>
       </div>}
 
       {/* Gaps */}
       <div className="flex flex-col gap-stack-md">
-        <h4 className="title text-text-default">شکاف‌های شناسایی‌شده ({formatNumber(readiness.gaps.length)} مورد)</h4>
+        <h4 className="title text-text-default">جاهای خالیِ شناسایی‌شده ({formatNumber(readiness.gaps.length)} مورد)</h4>
 
         {readiness.gaps.length === 0 ? (
           <div className="flex flex-col items-center gap-stack-sm rounded-control-sm border border-border-success-subtle bg-surface-sunken p-inset-xl text-center">
             <Icon name="CircleCheck" size="2xl" className="text-icon-success" />
-            <p className="title text-text-success">هیچ شکافی وجود ندارد! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.</p>
+            <p className="title text-text-success">هیچ جای خالی‌ای نیست! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.</p>
             <p className="body-sm text-text-subtle">می‌توانی خروجی‌های این جریان کاری را با حداکثر انسجام و غنای تخصصی تولید کنی.</p>
           </div>
         ) : (
@@ -134,7 +134,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                       </div>
 
                       <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md sm:flex-row sm:items-center sm:justify-between">
-                        <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این شکاف</Button>
+                        <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این جای خالی</Button>
                         <span className="body-sm text-text-subtle">
                           پاسخ مستقیم به‌عنوان یک دانش تأییدشده در بخش «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
                         </span>
@@ -151,7 +151,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
       {readiness.gaps.length > 0 && (
         <div className="flex flex-col gap-inline-md border-t border-border-default pt-inset-md sm:flex-row sm:items-center sm:justify-between">
           <span className="body-sm text-text-warning">
-            شکاف‌ها راهنما هستند، نه مانع؛ اگر بخواهی می‌توانی با همین اطلاعات ادامه بدهی.
+            جاهای خالی راهنما هستند، نه مانع؛ اگر بخواهی می‌توانی با همین اطلاعات ادامه بدهی.
           </span>
           <Button variant="secondary" iconEnd="ArrowLeft" onClick={onProceedAnyway}>
             ادامه با هشدار کیفیت کمتر

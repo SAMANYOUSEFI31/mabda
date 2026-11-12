@@ -49,7 +49,7 @@ async function scenario(width, tag) {
   const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
@@ -70,20 +70,20 @@ async function scenario(width, tag) {
   await goTab('منبع حقیقت', 'منبع');
 
   step('tree: user node under «محتوا», rename a node of the default start, a note and «استخراج»');
-  await page.getByRole('button', { name: 'عملیات گرهٔ محتوا و بازاریابی' }).click();
+  await page.getByRole('button', { name: 'عملیات بخش محتوا و بازاریابی' }).click();
   await page.getByRole('menuitem', { name: 'افزودن زیربخش' }).click();
-  await page.getByLabel('نام گره').fill('کمپین پاییز');
-  await page.getByRole('button', { name: 'ساخت گره' }).click();
+  await page.getByLabel('نام بخش').fill('کمپین پاییز');
+  await page.getByRole('button', { name: 'افزودن بخش' }).click();
   await page.getByRole('dialog').getByText('مربی دانش').first().waitFor(); // the Coach opens for the new node
   await page.keyboard.press('Escape');
   await page.getByRole('heading', { name: 'کمپین پاییز' }).waitFor();
-  await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
+  await page.getByRole('button', { name: 'عملیات بخش برند و پیام' }).click();
   await page.getByRole('menuitem', { name: 'تغییر نام' }).click();
-  await page.getByLabel('نام گره').fill('هویت و پیام برند');
+  await page.getByLabel('نام بخش').fill('هویت و پیام برند');
   await page.getByRole('button', { name: 'ذخیرهٔ نام' }).click();
   await page.getByRole('heading', { name: 'هویت و پیام برند' }).waitFor();
   // no node is locked: «حذف» of a node of the default start is an ordinary, enabled action
-  await page.getByRole('button', { name: 'عملیات گرهٔ هویت و پیام برند' }).click();
+  await page.getByRole('button', { name: 'عملیات بخش هویت و پیام برند' }).click();
   assert.ok(await page.getByRole('menuitem', { name: 'حذف' }).isEnabled(), 'no node is locked');
   await page.keyboard.press('Escape');
   const campaign = page.locator('section', { has: page.getByRole('heading', { name: 'کمپین پاییز' }) }).last();
@@ -103,7 +103,7 @@ async function scenario(width, tag) {
   await shot('2-files', true);
 
   step('«آماده‌سازی درخواست» from the node: scope preselected, «همین‌جا جواب بده» answers through the chat route; the block goes to knowledge on a click');
-  await campaign.getByRole('button', { name: 'عملیات گرهٔ کمپین پاییز' }).click(); // the node page has ONE main action; the rest is under «⋯»
+  await campaign.getByRole('button', { name: 'عملیات بخش کمپین پاییز' }).click(); // the node page has ONE main action; the rest is under «⋯»
   await page.getByRole('menuitem', { name: 'آماده‌سازی درخواست' }).click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('درباره کجا؟').waitFor();
@@ -160,7 +160,7 @@ async function scenario(width, tag) {
   await shot('8-after-rebuild', true);
 
   step('ledger shows the extraction, file processing and rebuild with real usage');
-  await account('مصرف و دفتر کل');
+  await account('مصرف');
   await page.getByText(/پردازش فایل/).first().waitFor();
   await shot('9-ledger');
 

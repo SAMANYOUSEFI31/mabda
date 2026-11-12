@@ -14,7 +14,7 @@ import type { StartTemplate } from './startTemplate';
  * node that is gone just falls back to the default place (`resolveNodeId`).
  */
 export const DEFAULT_START: StartTemplate = {
-  schema: TEMPLATE_SCHEMA, id: 'default', version: 1, title: 'کسب‌وکار و محصول', description: 'ساختار پیش‌فرض برای کسب‌وکار محصولی؛ هر گره‌اش را می‌شود عوض کرد.',
+  schema: TEMPLATE_SCHEMA, id: 'default', version: 1, title: 'کسب‌وکار و محصول', description: 'ساختار پیش‌فرض برای کسب‌وکار محصولی؛ هر بخش‌اش را می‌شود عوض کرد.',
   nodes: [{
     key: 'business', label: 'کسب‌وکار و بنیان', description: 'هویت، مأموریت، چشم‌انداز و مدل کلی درآمدی',
     children: [

@@ -216,7 +216,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       const base = runPreview ? previewCredits({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, plan: runPreview.plan }) : calculateCreditCost({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, executionMode: runMode });
       const cost = halfPrice ? rebuildCredits(base) : base;
       if (managed && currentWorkspace.creditsRemaining < cost) {
-        toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از بخش دفتر کل بستهٔ اعتباری تهیه کنی.' });
+        toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از «مصرف» بستهٔ اعتباری تهیه کنی.' });
         onOpenLedger();
         return;
       }
@@ -451,7 +451,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                         <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined} selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
                         <OptionCard title="خودکار" description="پیشنهاد مبدأ" meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined} selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
                         <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined} selected={executionMode === 'critique'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('critique')} onClick={() => setExecutionMode('critique')} />
-                        <OptionCard title="حساس" description="بررسی دقیق + شکاف + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
+                        <OptionCard title="حساس" description="بررسی دقیق + جای خالی + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
                       </div>
                     )}
                   </div>}
@@ -536,7 +536,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               onAddContextObject(newObj);
             }}
             onIgnoreGap={(gap) => {
-              toast.show({ intent: 'info', message: `شکاف «${gap.label}» نادیده گرفته شد و مانع ادامهٔ روند نخواهد شد.` });
+              toast.show({ intent: 'info', message: `جای خالی «${gap.label}» نادیده گرفته شد و مانع ادامهٔ روند نخواهد شد.` });
             }}
             onProceedAnyway={() => setActiveTab('create')}
           />

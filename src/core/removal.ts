@@ -57,7 +57,7 @@ export function nodeRemovalPlan(input: {
   const branchObjects = objects.filter((o) => inBranch.has(o.nodeId) && isLive(o));
   const empty0 = { objects: 0, notes: 0, thoughts: 0, files: 0, children: 0, archived: 0, branchNodes: branch.length };
   const fail = (reason: string): NodeRemovalPlan => ({ ok: false, reason, mode, removed, tree: [], counts: { ...empty0 }, effect: { lost: [], gained: [], sentences: [] } });
-  if (!here) return fail('این گره وجود ندارد.');
+  if (!here) return fail('این بخش وجود ندارد.');
   const target = input.transferTo ?? defaultTransferTarget(nodes, id);
   // a branch with content needs somewhere to put notes, Thoughts, files, and knowledge (move), or raw material and files (archive).
   const archivedCount = mode === 'archive' ? branchObjects.length : 0;
@@ -70,8 +70,8 @@ export function nodeRemovalPlan(input: {
     if (!check.ok) return fail(check.reason);
   } else {
     // The branch's knowledge stays archived; its raw material, Thoughts and files need a home.
-    if (!here.parentId && nodes.filter((n) => !n.parentId).length <= 1) return fail('این آخرین گرهٔ اصلی است؛ دانش باید جایی بماند. اول یک گرهٔ دیگر بساز.');
-    if (target && (!nodes.some((n) => n.id === target) || inBranch.has(target))) return fail(inBranch.has(target) ? 'مقصد نمی‌تواند خودِ گره یا زیرشاخه‌اش باشد.' : 'گرهٔ مقصد وجود ندارد.');
+    if (!here.parentId && nodes.filter((n) => !n.parentId).length <= 1) return fail('این آخرین بخش اصلی است؛ دانش باید جایی بماند. اول یک بخش دیگر بساز.');
+    if (target && (!nodes.some((n) => n.id === target) || inBranch.has(target))) return fail(inBranch.has(target) ? 'مقصد نمی‌تواند خودِ بخش یا زیرشاخه‌اش باشد.' : 'بخش مقصد وجود ندارد.');
   }
   if (needsPlace && !target) return fail('این بخش خالی نیست؛ محتوایش باید به جایی برود.');
 

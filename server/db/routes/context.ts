@@ -27,7 +27,7 @@ export function makeRouteContext(deps: DataRouterDeps) {
   const router = express.Router();
   const scopeOf = (req: Request): Scope => {
     const workspaceId = String(req.params.wid);
-    if (!repo.getWorkspace(LOCAL_USER, workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+    if (!repo.getWorkspace(LOCAL_USER, workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
     return { userId: LOCAL_USER, workspaceId };
   };
   const body = (req: Request) => (req.body ?? {}) as Record<string, any>;

@@ -54,7 +54,7 @@ try {
     const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
@@ -65,7 +65,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] an EMPTY workspace: a warm start, one main action`);
-    await account('فضای کاری تازه');
+    await account('فضا تازه');
     await page.getByRole('radio', { name: 'کار یا کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(`کافهٔ من ${width}`);
     await page.getByRole('button', { name: 'افزودن فضا' }).click();
     await page.getByText(`خانه: کافهٔ من ${width}`).waitFor({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: '/tmp/first3-fail.png' }); throw e; });

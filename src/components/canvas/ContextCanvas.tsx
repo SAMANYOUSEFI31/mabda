@@ -798,7 +798,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 <div className="flex flex-wrap gap-inline-xs">{LANES.map((l) => <Button key={l} size="sm" variant="secondary" disabled={(activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking')) === l} onClick={() => { setActions(null); void request({ objectId: activeObj.id, lane: l }); }}>{LANE_FA[l]}</Button>)}</div>
               </div>
             )}
-            <Select label="انتقال به گره" value={activeObj.nodeId} onChange={(e) => { setActions(null); void request({ objectId: activeObj.id, lane: activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking'), nodeId: e.target.value }); }} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
+            <Select label="انتقال به بخش" value={activeObj.nodeId} onChange={(e) => { setActions(null); void request({ objectId: activeObj.id, lane: activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking'), nodeId: e.target.value }); }} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
             <div className="flex flex-wrap gap-inline-xs">
               <Button size="sm" variant="secondary" iconStart="Link2" onClick={() => { setActions(null); setConnectMode(true); setConnectFrom(activeObj.id); setSelection([`o:${activeObj.id}`]); }}>وصل کن</Button>
               <Button size="sm" variant="ghost" onClick={() => { setActions(null); p.onOpenObject(activeObj); }}>باز کردن</Button>
@@ -850,7 +850,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {newNote && (
           <div className="flex flex-col gap-stack-md">
             <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و به AI داده نمی‌شود. برای ایده، سؤال یا فرض باز از «فکر تازه» استفاده کن." />
-            <Select label="به کدام گره مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
+            <Select label="به کدام بخش مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
           </div>
         )}
       </Dialog>

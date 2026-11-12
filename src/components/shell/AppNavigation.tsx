@@ -171,7 +171,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
     { label: 'پلن و ارتقا', icon: 'CreditCard', onSelect: p.onOpenPlanModal },
-    { label: 'مصرف و دفتر کل', icon: 'Wallet', onSelect: p.onOpenLedger },
+    { label: 'مصرف', icon: 'Wallet', onSelect: p.onOpenLedger },
     ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
     { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },

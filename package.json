@@ -7,7 +7,7 @@
     "dev": "tsx server.ts",
     "start": "node server.ts",
     "build": "node scripts/tokens/build.mjs --check && node scripts/check-design.mjs && vite build",
-    "check:design": "node scripts/check-design.mjs",
+    "check:design": "node scripts/check-design.mjs && tsx --test --test-reporter=dot src/ui/language.test.ts",
     "screens": "node scripts/screens.mjs",
     "eval:intelligence": "tsx scripts/eval-intelligence/run.ts",
     "preview": "vite preview",

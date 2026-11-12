@@ -75,7 +75,7 @@ test('context pack: Confirmed as fact, Proposed labelled unconfirmed, Archived/S
   assert.ok(!md.includes('بایگانی') && !md.includes('جایگزین‌شده'));
   assert.match(md, /خط قرمزها[\s\S]*بدون تخفیف: تخفیف نداریم/, 'Confirmed Constraints become guardrails automatically');
   assert.match(md, /معیارهای پذیرش[\s\S]*عدم وجود ادعاهای عمومی/);
-  assert.match(md, /## شکاف‌ها \(Gap\)/);
+  assert.match(md, /## جاهای خالی \(Gap\)/);
   assert.match(md, /## Asset: عنوان خروجی/);
   assert.deepEqual(pack.refs.map((r) => r.id).sort(), ['a', 'k', 'p']);
   assert.deepEqual(pack.refs.find((r) => r.id === 'a'), { id: 'a', version: 2 });

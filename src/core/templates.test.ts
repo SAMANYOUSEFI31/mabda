@@ -6,14 +6,14 @@ import { DEFAULT_TREE_NODES } from './specs';
 import { LIBRARY_SPECS } from './specLibrary';
 import type { ContextObject, TreeNode } from '../types';
 
-const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `گره ${id}`, description: `شرح ${id}`, ...(parentId ? { parentId } : {}), order });
+const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: `شرح ${id}`, ...(parentId ? { parentId } : {}), order });
 const obj = (id: string, nodeId: string, p: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: id, content: `متن ${id}`, nodeId, version: 1, createdAt: '', updatedAt: '', ...p });
 
 test('a node template keeps the sub-tree and ONLY Confirmed, non-assumption, non-sample knowledge as examples (path = child indexes)', () => {
   const nodes = [node('r'), node('a', 'r', 1), node('b', 'a', 1), node('c', 'a', 2), node('x', 'r', 2)];
   const objects = [obj('r1', 'a'), obj('r2', 'a', { status: 'Proposed' }), obj('r3', 'a', { assumption: true }), obj('r4', 'a', { sample: true }), obj('r5', 'a', { status: 'Archived' }), obj('deep', 'c', { facets: ['فصل'], slotKey: 'k' }), obj('out', 'x')];
   const t = nodeTemplateOf('a', nodes, objects)!;
-  assert.deepEqual([t.root.label, t.root.children.map((c) => c.label)], ['گره a', ['گره b', 'گره c']]);
+  assert.deepEqual([t.root.label, t.root.children.map((c) => c.label)], ['بخش a', ['بخش b', 'بخش c']]);
   assert.deepEqual(t.objects.map((o) => [o.title, o.path]), [['r1', []], ['deep', [1]]]);
   assert.deepEqual(t.objects[1].facets, ['فصل']);
   assert.equal(nodeTemplateOf('nope', nodes, objects), undefined);

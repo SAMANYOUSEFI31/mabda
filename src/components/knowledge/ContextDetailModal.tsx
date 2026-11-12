@@ -350,7 +350,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
           </div>
         )}
-        {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ گره */}
+        {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea
           id="context-content"
           label="چه چیزی درست است؟"
@@ -450,7 +450,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {type === 'Constraint' && (
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این خط قرمز" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
-            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر گره‌ای، خط قرمز است.' : 'فقط برای این گره و زیرگره‌هایش خط قرمز است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
+            <p className="body-sm text-text-subtle">{reach === 'global' ? 'در هر خروجی و گفتگو، در هر بخش‌ای، خط قرمز است.' : 'فقط برای این بخش و زیربخش‌هایش خط قرمز است؛ بخش‌های دیگر آن را نمی‌بینند.'}</p>
             <p className="body-sm text-text-default" data-testid="reach-sentence">{reachSentence({ nodeId, type, reach }, nodes)}</p>
           </div>
         )}

@@ -41,7 +41,7 @@ export const workspacesMethods = {
         this.seedStartNodes({ userId, workspaceId: ws.id }, startTemplateFor(ws.purpose));
       } else {
         const r = this.db.prepare('UPDATE workspaces SET data = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(ws), ws.id, userId);
-        if (!r.changes) throw new RepoError('forbidden', 'این فضای کاری مال شما نیست.');
+        if (!r.changes) throw new RepoError('forbidden', 'این فضا مال شما نیست.');
       }
       return ws;
     })();
@@ -67,7 +67,7 @@ export const workspacesMethods = {
   },
 
   assertWorkspace(this: Repo, s: Scope) {
-    if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضای کاری پیدا نشد.');
+    if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
   },
 
   planOf(this: Repo, s: Scope) { return this.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter'; },

@@ -17,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** «سند این گره»: the node and everything under it as a typeset document (Markdown source one click away). */
+/** «سند این بخش»: the node and everything under it as a typeset document (Markdown source one click away). */
 export const NodeReaderDialog: React.FC<Props> = ({ nodeId, nodes, objects, relationships = [], onClose }) => {
   const [refs, setRefs] = useState(false);
   const node = nodes.find((n) => n.id === nodeId);
@@ -28,14 +28,14 @@ export const NodeReaderDialog: React.FC<Props> = ({ nodeId, nodes, objects, rela
       onClose={onClose}
       size="xl"
       title={node ? `سند: ${node.label}` : 'سند'}
-      description="همهٔ دانش فعال این گره و زیرشاخه‌هایش، به همان شکلی که AI می‌خواند."
+      description="همهٔ دانش فعال این بخش و زیرشاخه‌هایش، به همان شکلی که AI می‌خواند."
       footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}
     >
       <DocReader
         markdown={markdown}
         fileName={node?.label ?? 'context'}
         refs={{ checked: refs, onChange: setRefs }}
-        empty={<EmptyState icon="Inbox" title="این گره هنوز دانشی ندارد" />}
+        empty={<EmptyState icon="Inbox" title="این بخش هنوز دانشی ندارد" />}
       />
     </Dialog>
   );

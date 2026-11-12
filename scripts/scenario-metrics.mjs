@@ -36,7 +36,7 @@ try {
     const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }

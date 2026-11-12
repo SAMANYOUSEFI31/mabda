@@ -34,7 +34,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
 
   return (
     <>
-      <Dialog open={isOpen && !confirm} onClose={closeAll} title="حساب و داده‌ها" description="خروجی داده، بایگانی و حذف فضای کاری.">
+      <Dialog open={isOpen && !confirm} onClose={closeAll} title="حساب و داده‌ها" description="خروجی داده، بایگانی و حذف فضا.">
         <div className="flex flex-col gap-stack-md">
           <Card padding="lg" className="flex flex-col gap-stack-xs">
             <span className="label-md text-text-default">داده‌های تو کجاست؟</span>
@@ -52,7 +52,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
             <span className="label-md text-text-default">بایگانی و حذف</span>
             <p className="body-sm text-text-subtle">بایگانی برمی‌گردد و تاریخچه را نگه می‌دارد؛ «حذف دائمی» برنمی‌گردد.</p>
             <Button variant="secondary" iconStart="Archive" fullWidth onClick={() => { onClose(); onOpenArchive(); }}>بایگانی و حذف‌های اخیر</Button>
-            <Button variant="secondary" iconStart="Archive" fullWidth onClick={async () => { await onArchiveWorkspace(); closeAll(); }}>بایگانی فضای کاری «{currentWorkspace.name}»</Button>
+            <Button variant="secondary" iconStart="Archive" fullWidth onClick={async () => { await onArchiveWorkspace(); closeAll(); }}>بایگانی فضا «{currentWorkspace.name}»</Button>
           </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
@@ -60,7 +60,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
               <Icon name="OctagonAlert" size="md" />
               منطقهٔ خطر
             </span>
-            <Button variant="danger" iconStart="Trash2" fullWidth onClick={() => setConfirm('workspace')}>حذف دائمی فضای کاری «{currentWorkspace.name}»…</Button>
+            <Button variant="danger" iconStart="Trash2" fullWidth onClick={() => setConfirm('workspace')}>حذف دائمی فضا «{currentWorkspace.name}»…</Button>
             <Button variant="danger" iconStart="Trash2" fullWidth onClick={() => setConfirm('everything')}>حذف همهٔ داده‌ها…</Button>
           </div>
         </div>
@@ -68,8 +68,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
 
       <DangerDialog
         open={isOpen && confirm === 'workspace'} onClose={() => setConfirm(null)} title={`حذف دائمی «${currentWorkspace.name}»`}
-        description="همهٔ دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها و تاریخچهٔ همین فضای کاری برای همیشه پاک می‌شود. فضاهای دیگر دست نمی‌خورند. اگر فقط می‌خواهی کنار برود، «بایگانی» را بزن."
-        confirmLabel="حذف دائمی فضای کاری" typed={currentWorkspace.isDemo ? undefined : { phrase: currentWorkspace.name, label: 'نام فضای کاری' }} ack="می‌فهمم که این کار برنمی‌گردد"
+        description="همهٔ دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها و تاریخچهٔ همین فضا برای همیشه پاک می‌شود. فضاهای دیگر دست نمی‌خورند. اگر فقط می‌خواهی کنار برود، «بایگانی» را بزن."
+        confirmLabel="حذف دائمی فضا" typed={currentWorkspace.isDemo ? undefined : { phrase: currentWorkspace.name, label: 'نام فضا' }} ack="می‌فهمم که این کار برنمی‌گردد"
         onConfirm={async () => { await onDeleteWorkspace(); closeAll(); }}
       />
       <DangerDialog

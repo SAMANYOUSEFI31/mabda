@@ -38,7 +38,7 @@ async function run(managed, port, fakePort) {
     const account = async (name) => {
       // spaces (and what acts on one) live in the space picker at the head of the bar; the rest in the account menu
       const inSpace = !/حساب و داده|پلن و ارتقا|مصرف|امکانات|بایگانی|راهنما|شروع سریع|ظاهر/.test(String(name));
-      const label = name === 'فضای کاری تازه' ? 'فضای تازه…' : name;
+      const label = name === 'فضا تازه' ? 'فضای تازه…' : name;
       if (inSpace) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: label }).first().click(); return; }
       if (page.viewportSize().width < 768) { await page.getByRole('button', { name: 'حساب کاربری' }).first().click(); await page.getByRole('dialog').getByRole('button', { name: label }).first().click(); }
       else { await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.getByRole('menuitem', { name: label }).first().click(); }
@@ -51,13 +51,13 @@ async function run(managed, port, fakePort) {
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the first screen');
       // a subscription-included judgement on OUR key: Context Coach (no user key at all)
       await nav('منبع حقیقت');
-      await page.getByRole('button', { name: 'عملیات گرهٔ برند و پیام' }).click();
+      await page.getByRole('button', { name: 'عملیات بخش برند و پیام' }).click();
       await page.getByRole('menuitem', { name: 'مربی دانش' }).click();
       await page.getByRole('button', { name: 'از مربی دانش بپرس' }).click();
       await page.getByText('سؤال‌های روشن‌کننده').waitFor({ timeout: 20000 });
       await page.keyboard.press('Escape');
 
-      await account('مصرف و دفتر کل');
+      await account('مصرف');
       await page.getByText('پردازش فایل این ماه').first().waitFor();
       await page.getByText('مربی دانش امروز').first().waitFor();
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the usage page');
@@ -75,7 +75,7 @@ async function run(managed, port, fakePort) {
       await shot('3-plan-page', true);
     } else {
       console.log('• run B: managed AI ON');
-      await account('مصرف و دفتر کل');
+      await account('مصرف');
       await page.getByText('اعتبار باقی‌مانده').first().waitFor();
       await page.keyboard.press('Escape').catch(() => {});
       await account('پلن و ارتقا');

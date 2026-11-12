@@ -122,7 +122,7 @@ test('nodes: nothing is locked — rename, move, create, delete (empty or with t
   repo.moveNode(s, 'brand', 'offer'); // a node of the default start moves like any other
   repo.moveNode(s, 'brand', 'business');
   assert.throws(() => repo.deleteNode(s, 'brand'), RepoError, 'brand has a child node: it needs a place to go');
-  assert.throws(() => repo.deleteNode(s, 'business', 'brand'), (e) => e instanceof RepoError && /آخرین گرهٔ اصلی/.test(e.message), 'the last root is never deleted: knowledge must live somewhere');
+  assert.throws(() => repo.deleteNode(s, 'business', 'brand'), (e) => e instanceof RepoError && /آخرین بخش اصلی/.test(e.message), 'the last root is never deleted: knowledge must live somewhere');
   const a = repo.createNode(s, { parentId: 'content', label: 'کمپین' });
   const b = repo.createNode(s, { parentId: a.id, label: 'اینستاگرام' });
   assert.throws(() => repo.moveNode(s, a.id, b.id), RepoError);
@@ -251,7 +251,7 @@ test('plan limits: workspaces and active objects are enforced (archived/supersed
   // pro = 3 workspaces
   repo.saveWorkspace(U, ws('w2'));
   repo.saveWorkspace(U, ws('w3'));
-  assert.throws(() => repo.saveWorkspace(U, ws('w4')), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف فضای کاری/.test(e.message));
+  assert.throws(() => repo.saveWorkspace(U, ws('w4')), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف فضا/.test(e.message));
   repo.saveWorkspace(U, { ...ws('w3'), name: 'renamed' }); // updating is fine
   const st = { userId: U, workspaceId: 'w2' };
   repo.saveWorkspace(U, ws('w2', 'starter')); // 400 objects
@@ -654,12 +654,12 @@ test('migration 18: nodes that were locked (is_system = 1) are ordinary now — 
   migrate(db, 17);
   db.prepare('INSERT INTO workspaces (id,user_id,workspace_id,data,created_at) VALUES (?,?,?,?,?)').run('w1', U, 'w1', JSON.stringify(ws('w1')), 'x');
   db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('business', U, 'w1', null, 'کسب‌وکار', '', 1, 0);
-  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('mine', U, 'w1', 'business', 'گرهٔ من', '', 0, 1);
+  db.prepare('INSERT INTO tree_nodes (id,user_id,workspace_id,parent_id,label,description,is_system,ord) VALUES (?,?,?,?,?,?,?,?)').run('mine', U, 'w1', 'business', 'بخش من', '', 0, 1);
   db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('c1', U, 'w1', 'Fact', 'Confirmed', 'User Input', 'عنوان', 'متن', 'business', 't', 't');
   assert.deepEqual(migrate(db, 18), [18]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
-  assert.deepEqual(repo.listNodes(s).map((n) => [n.id, n.label]), [['business', 'کسب‌وکار'], ['mine', 'گرهٔ من']], 'the nodes are intact');
+  assert.deepEqual(repo.listNodes(s).map((n) => [n.id, n.label]), [['business', 'کسب‌وکار'], ['mine', 'بخش من']], 'the nodes are intact');
   assert.equal((db.prepare('SELECT COUNT(*) AS n FROM tree_nodes WHERE is_system = 1').get() as { n: number }).n, 0);
   assert.equal(repo.listObjects(s)[0].nodeId, 'business', 'the knowledge is untouched');
   // the node that used to be locked now deletes like any other once another root exists

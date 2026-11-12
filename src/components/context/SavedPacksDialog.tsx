@@ -96,9 +96,9 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
           <div className="flex flex-col gap-stack-md">
           <TextField label="نام بسته" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: برای نوشتن متن تبلیغ" />
           {editing.kind
-            ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ گرهٔ اول دامنه است." />
+            ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ بخش اول دامنه است." />
             : <Textarea label="دستور کوتاه همراه بسته (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
-          <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام گره‌ها؟ (هیچ‌کدام = کل درخت)</legend>
+          <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام بخش‌ها؟ (هیچ‌کدام = کل درخت)</legend>
             <div className="grid grid-cols-1 gap-inline-xs">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
           </fieldset>
           {facetNames.length > 0 && (
@@ -112,7 +112,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
             <Checkbox label="نیازمند بررسی (برچسب «تأییدنشده»)" checked={editing.selection.statuses.includes('Needs Review')} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, statuses: e.target.checked ? [...new Set([...editing.selection.statuses, 'Needs Review' as const])] : editing.selection.statuses.filter((x) => x !== 'Needs Review') } })} />
           </fieldset>
           <Checkbox label="زیربخش‌های بخش‌های انتخاب‌شده هم بیایند" checked={editing.selection.withChildren === true} onChange={(e) => setEditing({ ...editing, selection: { ...editing.selection, withChildren: e.target.checked } })} hint="اگر «محصول» را تیک بزنی، «آفر و قیمت‌گذاری» و بقیهٔ زیربخش‌هایش هم می‌آیند. بدون تیک فقط خود بخش (و آنچه از بالا به ارث می‌برد). بخش‌های هم‌سطح هیچ‌وقت نمی‌آیند." />
-          <p className="body-sm text-text-subtle">هر بخش می‌آورد: دانش خودش + آنچه از بخش‌های بالاتر به ارث می‌برد + خط قرمزهای «همه‌جا». آنچه در یک بخش کنار گذاشته شده، منقضی‌شده‌ها، نمونه‌ها و یادداشت‌ها هرگز نمی‌آیند؛ فرض و پیشنهادی فقط با تیک و با برچسب «تأییدنشده».</p>
+          <p className="body-sm text-text-subtle">هر بخش می‌آورد: دانش خودش + آنچه از بخش‌های بالاتر به ارث می‌برد + خط قرمزهای «همه‌جا». آنچه در یک بخش کنار گذاشته شده، قدیمی‌شده‌ها، نمونه‌ها و یادداشت‌ها هرگز نمی‌آیند؛ فرض و پیشنهادی فقط با تیک و با برچسب «تأییدنشده».</p>
 
           </div>
 
@@ -139,7 +139,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
       ) : packs === null ? (
         <div className="flex justify-center p-inset-xl"><Spinner /></div>
       ) : packs.length === 0 ? (
-        <EmptyState icon="Package" title="هنوز بسته‌ای نساخته‌ای" description="یک بسته بساز: انتخاب گره‌ها، بُعدها و یک دستور کوتاه؛ بعد فقط «کپی» را بزن." />
+        <EmptyState icon="Package" title="هنوز بسته‌ای نساخته‌ای" description="یک بسته بساز: انتخاب بخش‌ها، بُعدها و یک دستور کوتاه؛ بعد فقط «کپی» را بزن." />
       ) : (
         <ul className="flex flex-col gap-stack-sm" aria-label="بسته‌های ذخیره‌شده">
           {packs.map((p) => (
@@ -154,7 +154,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
               </div>
               {p.kind && <p className="body-sm text-text-subtle"><Badge intent="neutral" icon="PackageOpen">درخواست: {KIND_LABEL[p.kind]}</Badge> {p.template}</p>}
               {p.instruction && <p className="body-sm text-text-subtle">{p.instruction}</p>}
-              <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} گره${p.selection.withChildren ? ' + زیربخش‌ها' : ''}` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
+              <p className="caption text-text-subtle">{p.selection.nodeIds.length ? `${formatNumber(p.selection.nodeIds.length)} بخش${p.selection.withChildren ? ' + زیربخش‌ها' : ''}` : 'کل درخت'}{p.selection.facets.length ? ` · بُعد: ${p.selection.facets.join('، ')}` : ''}</p>
               <div className="flex flex-wrap gap-inline-xs">
                 <Button size="sm" variant="secondary" iconStart="Copy" loading={busy === `c${p.id}`} onClick={() => copy(p)}>کپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, kind: p.kind, template: p.template })}>ویرایش</Button>

@@ -126,7 +126,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     if (!r) return;
     patch((d) => ({ ...d, objects: r.objects, pairJudgments: r.pairJudgments, stale: r.stale }));
     showImpact(r.impact);
-    toast.show({ intent: 'success', message: 'گره‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
+    toast.show({ intent: 'success', message: 'بخش‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
   };
 
   // semantic contradictions (Pro and above, needs an AI key). The judge NEVER runs because a workspace was opened, built or

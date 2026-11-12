@@ -86,13 +86,13 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         open
         onClose={onClose}
         size="sm"
-        title={state.kind === 'create' ? (parent ? `گرهٔ جدید زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
-        description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : managedEnabled ? 'بعد از ساخت گره، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined) : undefined}
+        title={state.kind === 'create' ? (parent ? `بخش تازه زیر «${parent.label}»` : 'بخش اصلی تازه') : `تغییر نام «${node?.label ?? ''}»`}
+        description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : managedEnabled ? 'بعد از افزودن بخش، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined) : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             <Button variant="primary" type="submit" form="node-form" loading={busy}>
-              {state.kind === 'create' ? 'ساخت گره' : 'ذخیرهٔ نام'}
+              {state.kind === 'create' ? 'افزودن بخش' : 'ذخیرهٔ نام'}
             </Button>
           </>
         }
@@ -103,7 +103,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
           className="flex flex-col gap-stack-md"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!label.trim()) { setLabelError('نام گره را بنویس تا ساخته شود.'); document.getElementById('node-label')?.focus(); return; }
+            if (!label.trim()) { setLabelError('نام بخش را بنویس تا ساخته شود.'); document.getElementById('node-label')?.focus(); return; }
             if (state.kind === 'create') {
               // the dialog is replaced by the Coach for the new node (no close in between)
               setBusy(true);
@@ -114,7 +114,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
             } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}
         >
-          <TextField id="node-label" label="نام گره" required autoFocus value={label} error={labelError || undefined} onChange={(e) => { setLabel(e.target.value); if (labelError && e.target.value.trim()) setLabelError(''); }} placeholder="مثلاً: کمپین پاییز" />
+          <TextField id="node-label" label="نام بخش" required autoFocus value={label} error={labelError || undefined} onChange={(e) => { setLabel(e.target.value); if (labelError && e.target.value.trim()) setLabelError(''); }} placeholder="مثلاً: کمپین پاییز" />
           {state.kind === 'create' && state.chooseParent && (
             <Select label="زیر کدام بخش؟" value={createParent} onChange={(e) => setCreateParent(e.target.value)} options={[{ value: '', label: 'بخش اصلی (سطح اول)' }, ...flatten(nodes).map((x) => ({ value: x.node.id, label: `${'— '.repeat(x.depth)}${x.node.label}` }))]} />
           )}

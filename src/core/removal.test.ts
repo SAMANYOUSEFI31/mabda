@@ -4,7 +4,7 @@ import { containsAny, needlesOf, nodeRemovalPlan, normalizeForMatch, scrubLines 
 import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
 
 const NOW = new Date('2026-06-01T00:00:00Z');
-const N = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `گره-${id}`, description: '', order, ...(parentId ? { parentId } : {}) });
+const N = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش-${id}`, description: '', order, ...(parentId ? { parentId } : {}) });
 // R ─ A ─ B ─ C ─ D   (five levels)   and   R ─ S (a sibling of A)   and a second main section R2
 const nodes: TreeNode[] = [N('R'), N('A', 'R'), N('B', 'A'), N('C', 'B'), N('D', 'C'), N('S', 'R', 1), N('R2', undefined, 1)];
 const o = (id: string, nodeId: string, p: Partial<ContextObject> = {}): ContextObject => ({
@@ -19,7 +19,7 @@ test('move: a level-3 section with level-4 and level-5 below it — its direct c
   assert.equal(pl.ok, true);
   assert.equal(pl.target, 'A', 'the default target is the parent');
   assert.equal(row(pl, 'B').state, 'removed');
-  assert.deepEqual([row(pl, 'C').state, row(pl, 'C').depth, row(pl, 'C').to], ['moved', 2, 'گره-A'], 'C was level 4, now level 3 under A');
+  assert.deepEqual([row(pl, 'C').state, row(pl, 'C').depth, row(pl, 'C').to], ['moved', 2, 'بخش-A'], 'C was level 4, now level 3 under A');
   assert.deepEqual([row(pl, 'D').state, row(pl, 'D').depth], ['kept', 3], 'D (level 5) follows C up by one level');
   assert.deepEqual(pl.removed, ['B']);
 });
@@ -42,8 +42,8 @@ test('move: the last main section cannot go; with a second main section the defa
 test('move: a rule «only for this section» in the deleted section now sits in the target — it reaches the target\'s other sub-sections (said in words)', () => {
   const rule = o('rule', 'A', { type: 'Constraint', reach: 'position', title: 'خط قرمز فقط-این-بخش' });
   const pl = plan('A', { objects: [rule], transferTo: 'R' });
-  assert.ok(pl.effect.gained.some((g) => g.object.id === 'rule' && g.nodes.includes('گره-S')), 'it now reaches S, a sibling it never reached');
-  assert.match(pl.effect.sentences.join(' '), /«خط قرمز فقط-این-بخش» حالا به .*«گره-S».* هم می‌رسد/);
+  assert.ok(pl.effect.gained.some((g) => g.object.id === 'rule' && g.nodes.includes('بخش-S')), 'it now reaches S, a sibling it never reached');
+  assert.match(pl.effect.sentences.join(' '), /«خط قرمز فقط-این-بخش» حالا به .*«بخش-S».* هم می‌رسد/);
   const tight = plan('A', { objects: [rule], transferTo: 'R' });
   assert.ok(!tight.effect.lost.some((l) => l.object.id === 'rule'), 'nothing is lost for the sections below it');
 });

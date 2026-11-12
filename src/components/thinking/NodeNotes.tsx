@@ -21,7 +21,7 @@ interface Props {
   onDelete: (noteId: string) => Promise<void>;
   /** «استخراج»: the note becomes Proposed objects (never facts) */
   onExtract: (noteId: string) => Promise<void>;
-  /** «تبدیل به گره»: a note with several ## headings → one child node per section (the note stays) */
+  /** «تبدیل به بخش»: a note with several ## headings → one child node per section (the note stays) */
   onSplit?: (noteId: string) => Promise<void>;
 }
 
@@ -45,7 +45,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
       </div>
 
       {notes.length > 0 && (
-        <ul className="flex flex-col gap-stack-sm" aria-label="یادداشت‌های این گره">
+        <ul className="flex flex-col gap-stack-sm" aria-label="یادداشت‌های این بخش">
           {notes.map((n) => (
             <li key={n.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-raised p-inset-md">
               {editing?.id === n.id ? (
@@ -61,8 +61,8 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                   <NoteLines content={n.content} onChange={(c) => onUpdate(n.id, c)} />
                   {onSplit && canSplit(n.content) && (
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm">
-                      <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به گره؟ متن اصلی یادداشت می‌ماند.</span>
-                      <Button size="sm" variant="secondary" iconStart="Network" onClick={() => onSplit(n.id)}>تبدیل به گره</Button>
+                      <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به بخش؟ متن اصلی یادداشت می‌ماند.</span>
+                      <Button size="sm" variant="secondary" iconStart="Network" onClick={() => onSplit(n.id)}>تبدیل به بخش</Button>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
