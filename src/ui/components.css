@@ -382,7 +382,7 @@
 /* ---------- Dialog: a sheet from below on phones, a centred card from 640px ---------- */
 .mb-dialog-layer{position:fixed;inset:0;z-index:var(--layer-dialog);display:flex;align-items:flex-end;justify-content:center}
 .mb-dialog-layer.is-inline{position:relative;inset:auto;min-block-size:100%;z-index:auto;padding-block-start:var(--space-6)}
-.mb-scrim{position:absolute;inset:0;background:var(--bg-scrim);animation:mb-fade var(--duration-moderate) var(--ease-enter)}
+.mb-scrim{position:absolute;inset-block:0;inset-inline:calc(var(--space-6) * -1);background:var(--bg-scrim);animation:mb-fade var(--duration-moderate) var(--ease-enter)}
 /* spec overlays.md «یک ساختار برای همه»: head and foot stay, only the body scrolls */
 .mb-dialog{position:relative;inline-size:100%;max-block-size:90dvh;display:flex;flex-direction:column;overflow:hidden;padding:0;padding-block-end:var(--safe-bottom);
   background:var(--dialog-surface);border:var(--border-width-thin) solid var(--border-default);border-block-end:0;border-start-start-radius:var(--dialog-radius);border-start-end-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);color:var(--text-default);outline:none;
@@ -411,7 +411,9 @@
 .mb-dialog__foot{flex:none;display:flex;flex-direction:column-reverse;gap:var(--stack-sm);padding:var(--space-3) var(--dialog-padding);border-block-start:var(--border-width-thin) solid var(--border-default)}
 .mb-dialog--sm .mb-dialog__foot,.mb-dialog__top+.mb-dialog__foot{border-block-start-color:transparent}
 @media (min-width:768px){
-  .mb-dialog-layer{align-items:center;padding:var(--space-6)}
+  /* a dialog hangs from a fixed top edge and grows downward: switching a tab or opening a section never moves its title (layout.md «اسکرول») */
+  .mb-dialog-layer{align-items:flex-start;padding:var(--space-6);padding-block-start:min(10dvh, var(--space-20))}
+  .mb-dialog-layer.is-alert{align-items:center;padding-block-start:var(--space-6)}
   .mb-dialog-layer.is-top{align-items:flex-start;padding-block-start:12dvh}
   .mb-dialog{max-block-size:min(85dvh, calc(var(--space-40) * 5));border-radius:var(--dialog-radius);border-block-end:var(--border-width-thin) solid var(--border-default);padding-block-end:0;animation:mb-pop var(--duration-moderate) var(--ease-enter)}
   .mb-dialog-layer.is-side .mb-dialog{animation:mb-panel var(--duration-moderate) var(--ease-enter)}
@@ -569,6 +571,9 @@
 /* «افزودن»: فکر · حقیقت · فایل are one box. Wide screens: one height for all three (the body scrolls inside); a switch between them has no motion */
 @layer components{
 @media (min-width:768px){.mb-dialog-layer.is-steady .mb-dialog{block-size:min(85dvh, calc(var(--space-40) * 4))}}
+/* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
+   switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
+@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(100dvh - var(--safe-top) - var(--space-3));max-block-size:none}}
 :root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim){animation:none!important}
 :root[data-add-switch] .mb-dialog-layer.is-steady[data-state=closed]{display:none}
 }
@@ -585,3 +590,6 @@
 }
 /* on a phone the month sits inside the field's own width: no side frame, so seven days stay as close to 44px as the field allows */
 @layer components{@media (max-width:767px){.mb-cal.mb-popover__panel{padding-inline:0;border-inline:0;border-radius:0}}}
+/* while a dialog or sheet is open the toast moves to the top edge: at the bottom it would cover the sheet's footer and its main
+   button (on a phone) or the dialog's footer (on a short laptop); the dialog hangs below a fixed top gap, so the toast fits above it */
+@layer components{html:has(.mb-dialog-layer:not([data-state=closed]):not(.is-inline)) .mb-toast-stack{inset-block-end:auto;inset-block-start:calc(var(--inset-md) + var(--safe-top))}}
