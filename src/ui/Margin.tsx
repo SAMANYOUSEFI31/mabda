@@ -16,7 +16,7 @@ export function MarginItem({ children, margin }: { children: ReactNode; margin?:
   return (
     <div className="mb-margin__row">
       <div className="mb-margin__text">{children}</div>
-      {margin ? <aside className="mb-margin__note">{margin}</aside> : null}
+      {margin ? <div className="mb-margin__note">{margin}</div> : null}
     </div>
   );
 }

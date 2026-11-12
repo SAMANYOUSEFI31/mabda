@@ -159,7 +159,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
-          <h3 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h3>
+          <h2 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h2>
           {drafts.map((o) => (
             <Card key={o.id} padding="md" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -193,7 +193,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.thoughts.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
-          <h3 className="title text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h3>
+          <h2 className="title text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h2>
           {selectMode && selectedThoughts.length > 0 && (
             <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
@@ -221,7 +221,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.assumptions.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فرض‌های فعال">
-          <h3 className="title text-text-default">فرض‌های فعال ({formatNumber(view.assumptions.length)})</h3>
+          <h2 className="title text-text-default">فرض‌های فعال ({formatNumber(view.assumptions.length)})</h2>
           <p className="body-sm text-text-subtle">تأییدشده‌اند و AI آن‌ها را در بخش جدای «فرض» می‌بیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (

@@ -10,6 +10,7 @@ import { AppNavigation } from '../../components/shell/AppNavigation';
 import { TopStatusBar } from '../../components/shell/TopStatusBar';
 import type { ReactNode } from 'react';
 import type { ReadyScope } from '../shared';
+import { Shortcuts } from '../../components/shell/Shortcuts';
 
 export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsPlanModalOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
 
@@ -23,6 +24,8 @@ const topSections = (nodes: ReadyScope['nodes']) => {
 export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsPlanModalOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
+      {/* WCAG 2.4.1: the first Tab offers to skip the bars and lands in the page itself */}
+      <a href="#main" className="mb-skip" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus(); m?.scrollIntoView({ block: 'start' }); }}>پرش به محتوا</a>
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
       <AppNavigation
         currentWorkspace={currentWorkspace}
@@ -49,6 +52,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         thinkingCount={thinkingBadge}
       />
 
+      <Shortcuts onGoTab={setActiveTab} onGoSpace={(i) => { const ws = liveWorkspaces[i]; if (ws) { setChatScope(undefined); setCurrentWorkspaceId(ws.id); } }} />
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-space-0">
         {/* Desktop Minimal Top Status Bar with Breadcrumbs & Quick Actions */}
@@ -59,7 +63,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         />
 
         {/* Main Canvas */}
-        <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
+        <main id="main" tabIndex={-1} className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
           {children}
         </main>

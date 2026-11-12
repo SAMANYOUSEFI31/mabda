@@ -71,6 +71,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.waitForTimeout(800);
   await views('partial');
 
+
   // «افزودن»: its three kinds, the date picker inside «حقیقت», and the question before her words are thrown away
   const palette = async (q) => { await page.keyboard.press('Control+KeyK'); await page.getByRole('combobox').fill(q); await page.waitForTimeout(250); await page.getByRole('option').first().click(); await page.waitForTimeout(700); };
   const kind = async (k) => { await page.locator('[role=dialog]:not([inert] *)').getByRole('radio', { name: k, exact: true }).click(); await page.waitForTimeout(800); };
@@ -96,13 +97,16 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.keyboard.press('Control+Enter'); await page.locator('.mb-toast').first().waitFor({ timeout: 6000 }).catch(() => {}); await page.waitForTimeout(400);
   await shot('add-toast', true);
   await page.unroute(/\/api\//);
-  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /دور بریز/ }).first().click({ timeout: 800 }).catch(() => {}); await page.waitForTimeout(300);
+  // close it for good: Esc asks before throwing her words away, so answer that too, until nothing is open
+  for (let i = 0; i < 4 && await page.locator('[role=dialog]:not([inert] *), [role=alertdialog]:not([inert] *)').count(); i++) {
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    await page.getByRole('button', { name: /دور بریز/ }).first().click({ timeout: 800 }).catch(() => {}); await page.waitForTimeout(300);
+  }
 
   // error in place: the next space does not arrive; the shell stays and says so where the page was
   await page.route(STATE, (r) => r.abort());
   await space(sample);
-  await page.getByRole('alert').filter({ hasText: 'این فضا باز نشد' }).waitFor({ timeout: 8000 });
+  await page.getByRole('alert').filter({ hasText: 'این فضا باز نشد' }).waitFor({ timeout: 8000 }).catch(async (e) => { await page.screenshot({ path: `${OUT}/fail.png` }); throw e; });
   await shot('error');
   await page.unroute(STATE);
 
@@ -117,6 +121,17 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.getByText('منبع باز نشد').waitFor({ timeout: 8000 });
   await page.getByText('جزئیات').click();
   await shot('error-boot');
+  await page.unroute(/\/api\/bootstrap/);
+  // all clear: the same space after its weekly review, nothing waits, nothing is missing → «همه‌چیز به‌روز است.» and the latest changes
+  await page.evaluate(async (n) => {
+    const { workspaces } = await (await fetch('/api/workspaces')).json();
+    const w = workspaces.find((x) => x.name === n);
+    if (w) await fetch(`/api/workspaces/${w.id}/weekly-review/done`, { method: 'POST' });
+  }, name);
+  await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(800);
+  await space(name).catch(() => {}); await page.waitForTimeout(1200);
+  await page.getByText('همه‌چیز به‌روز است.').first().waitFor({ timeout: 6000 }).catch(() => {});
+  await shot('clear-home');
   await ctx.close();
   stop();
 }

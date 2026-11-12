@@ -18,6 +18,7 @@ import { Button, Dialog, Select } from '../../ui';
 import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
+import { letterKeysOn } from '../../core/shortcuts';
 
 const QuickCaptureDialog = lazyNamed(() => import('../../components/thinking/QuickCaptureDialog'), 'QuickCaptureDialog');
 
@@ -54,7 +55,7 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
       if (e.code !== 'KeyN' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-      if (dialogOpen()) return;
+      if (dialogOpen() || !letterKeysOn()) return;
       e.preventDefault(); requestAdd({ kind: defaultAddKind(tab.current) });
     };
     window.addEventListener(ADD_EVENT, onAdd);

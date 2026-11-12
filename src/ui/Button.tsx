@@ -3,6 +3,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
+import { useShownBusy } from './useShownBusy.ts';
 
 type ForceState = 'hover' | 'active' | 'focus';
 
@@ -25,6 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     href, forceState, className, children, type = 'button', ...rest }, ref,
 ) {
   const inert = disabled || loading;
+  const spin = useShownBusy(loading);
   const asLink = Boolean(href) && !inert;
   const Tag = (asLink ? 'a' : 'button') as 'button';
   const tagProps = asLink ? { href } : { type, disabled: inert };
@@ -32,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <Tag
       ref={ref}
       className={cx('mb-btn', `mb-btn--${variant}`, `mb-btn--${size}`, size === 'lg' ? 'label-lg' : 'label-md',
-        fullWidth && 'mb-btn--full', glow && variant === 'primary' && 'mb-btn--glow', loading && 'is-loading', className)}
+        fullWidth && 'mb-btn--full', glow && variant === 'primary' && 'mb-btn--glow', spin && 'is-loading', className)}
       aria-busy={loading || undefined}
       data-force={forceState}
       {...tagProps}
@@ -43,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         <span className="mb-btn__label">{children}</span>
         {iconEnd && <Icon name={iconEnd} size="md" className="mb-flip" />}
       </span>
-      {loading && (
+      {spin && (
         <span className="mb-btn__spin" aria-hidden="true"><Icon name="LoaderCircle" size="md" className="mb-spin" /></span>
       )}
     </Tag>

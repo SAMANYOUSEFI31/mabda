@@ -29,7 +29,7 @@ interface TopStatusBarProps {
 
 /** Desktop top bar: breadcrumb + the page's single main action. Plan, badges and global buttons live in the account menu. */
 export const TopStatusBar: React.FC<TopStatusBarProps> = ({ currentWorkspace, activeTab, action }) => (
-  <div className="sticky top-space-0 z-sticky hidden items-center justify-between gap-inline-lg border-b border-border-default bg-surface-sunken px-inset-2xl py-inset-md md:flex">
+  <div data-pin="app" className="sticky top-space-0 z-sticky hidden items-center justify-between gap-inline-lg border-b border-border-default bg-surface-sunken px-inset-2xl py-inset-md md:flex">
     <Breadcrumb items={[{ label: 'مبدأ' }, { label: currentWorkspace.name }, { label: PAGE_TITLE[activeTab] || activeTab }]} />
     {action && <Button variant="secondary" iconStart={action.icon} onClick={action.onClick}>{action.label}</Button>}
   </div>

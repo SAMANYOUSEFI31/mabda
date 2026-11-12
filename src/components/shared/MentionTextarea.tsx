@@ -64,7 +64,7 @@ export const MentionTextarea: React.FC<Props> = ({ label, value, onValueChange, 
           else if ((e.key === 'Enter' || e.key === 'Tab') && !e.nativeEvent.isComposing) { e.preventDefault(); choose(list[pos] ?? list[0]); }
           else if (e.key === 'Escape') { setMuted(act!.start); }
         }}
-        role="combobox" aria-expanded={open} aria-autocomplete="list" aria-controls={open ? `${uid}-l` : undefined} aria-activedescendant={open ? optId(pos) : undefined}
+        aria-autocomplete="list" aria-controls={open ? `${uid}-l` : undefined} aria-activedescendant={open ? optId(pos) : undefined}
       />
       {open && (
         <div id={`${uid}-l`} role="listbox" aria-label="دانش‌هایی که می‌شود نام برد" className="flex flex-col rounded-control border border-border-default bg-surface-raised p-inset-xs">
