@@ -1,5 +1,11 @@
 /* the device's safe areas (notch, home bar): used by sheets, the bottom bar and toasts; 0 where there is none */
 :root{--safe-top:env(safe-area-inset-top, 0px);--safe-bottom:env(safe-area-inset-bottom, 0px)}
+/* the height a person can actually see: with the phone's keyboard open it is the visible part above it (keyboard.ts sets
+   --vv-h and --vv-top from visualViewport); a sheet and its layer follow it, so the field being typed in never slides out of view */
+:root{--app-h:var(--vv-h, 100dvh)}
+@media (max-width:767px){.mb-dialog-layer{inset:auto 0 auto 0;inset-block-start:var(--vv-top, 0px);block-size:var(--app-h)}}
+/* while she types on a phone the bottom bar steps aside: it would sit on the keyboard and cover the field (keyboard.ts) */
+html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 /*
  * Mabda components (src/ui). Reads component tokens (--button-*, --card-*, …) and semantic tokens only;
  * text is set with the generated type-style classes (body-md, label-md …). Logical properties only (RTL first).
@@ -12,6 +18,7 @@
 .mb-btn,.mb-iconbtn,.mb-link,.mb-card--interactive,.mb-tab,.mb-check,.mb-radio,.mb-switch,.mb-bottomnav__item,.mb-menu__item,.mb-tag--toggle,.mb-li__row{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 ::selection{background:var(--bg-selection);color:var(--text-default)}
 .mb-icon{flex:none;display:block}
+.mb-icon--mirror:dir(rtl){scale:-1 1}
 /* direction-aware icons (arrows, chevrons that mean «next»): drawn for RTL, mirrored in LTR */
 .mb-flip:dir(ltr){transform:scaleX(-1)}
 .mb-flip-rtl:dir(rtl){transform:scaleX(-1)}
@@ -241,15 +248,22 @@
 .is-disabled .mb-switch__thumb{background:var(--text-disabled)}
 .mb-check-wrap .mb-field__error{padding-inline-start:calc(var(--indicator-size) + var(--inline-sm))}
 
+/* the current place in the sidebar and the rail: a short bar on its start edge as well as the fill, so it never looks like a place
+   under the pointer (the hover fill is close to the selected one) */
+.mb-nav-current::before{content:"";position:absolute;inset-block:var(--space-2);inset-inline-start:0;inline-size:var(--space-0\.5);border-radius:var(--radius-full);background:var(--border-selected)}
 /* ---------- Tabs / Segmented: a sunken track, the chosen one is a raised key ---------- */
 .mb-tabs-wrap{min-inline-size:0;max-inline-size:100%}
 .mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;min-inline-size:0}
 /* a tab bar never scrolls (either way): overflow-x would turn overflow-y into «auto» and each tab's 44px hit area (::after) would scroll it
    up and down. Tabs shrink instead and a long label ends with «…» (its full name is the title) */
-/* a label that no longer fits (a long name, or the text at 200%) wraps onto a second line rather than being cut (WCAG 1.4.4) */
-.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:break-word}
+/* a label that no longer fits (a long name, or the text at 200%) is never cut and never broken inside a word (WCAG 1.4.4): the tabs
+   first flow onto a second row of the track, and only a tab wider than the whole row wraps between its words */
+.mb-tabs{flex-wrap:wrap}
+.mb-tab{min-inline-size:min-content;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:normal}
 .mb-tabs:not(.mb-tabs--full){inline-size:max-content}
 .mb-tabs--full{display:flex;inline-size:100%}.mb-tabs--full .mb-tab{flex:1}
+/* full width on a phone only: each segment takes its label's width plus an equal share, so a two-word label does not wrap first */
+@media (max-width:767px){.mb-tabs.mb-tabs--full-phone{display:flex;inline-size:100%}.mb-tabs--full-phone .mb-tab{flex:1 1 auto}}
 .mb-tab{display:inline-flex;align-items:center;justify-content:center;gap:var(--inline-xs);min-block-size:var(--control-sm);padding-inline:var(--inset-md);border:0;border-radius:var(--tabs-tab-radius);background:transparent;color:var(--text-subtle);cursor:pointer;white-space:nowrap;
   transition:background-color var(--duration-base) var(--ease-standard),color var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard)}
 .mb-tab[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-tab:hover:not([aria-selected=true]):not([aria-checked=true]):not(:disabled){background:var(--interaction-hover);color:var(--text-default)}}
@@ -262,7 +276,7 @@
 .mb-bottomnav{display:flex;inline-size:100%;background:var(--nav-surface);border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--safe-bottom);box-shadow:var(--shadow-overflow)}
 .mb-bottomnav.is-fixed{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--layer-sticky)}
 /* spec navigation.md «نوار پایین»: bar 56; the selected state is one neutral tile (48 tall, radius 12) holding icon AND label */
-.mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
+.mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-block-start:var(--space-1);gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
   border:0;background:transparent;color:var(--text-subtle);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-standard)}
 .mb-bottomnav__item::before{content:"";position:absolute;z-index:calc(var(--layer-base) - 1);inset-block:var(--space-1);inset-inline:var(--space-1);border-radius:var(--radius-lg);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
 .mb-bottomnav__item[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-bottomnav__item:hover{color:var(--text-default)}.mb-bottomnav__item:not(.is-action):hover::before{background:var(--interaction-hover)}}
@@ -391,7 +405,7 @@
 .mb-dialog-layer.is-inline{position:relative;inset:auto;min-block-size:100%;z-index:auto;padding-block-start:var(--space-6)}
 .mb-scrim{position:absolute;inset-block:0;inset-inline:calc(var(--space-6) * -1);background:var(--bg-scrim);animation:mb-fade var(--duration-moderate) var(--ease-enter)}
 /* spec overlays.md «یک ساختار برای همه»: head and foot stay, only the body scrolls */
-.mb-dialog{position:relative;inline-size:100%;max-block-size:90dvh;display:flex;flex-direction:column;overflow:hidden;padding:0;padding-block-end:var(--safe-bottom);
+.mb-dialog{position:relative;inline-size:100%;max-block-size:calc(var(--app-h) * .9);display:flex;flex-direction:column;overflow:hidden;padding:0;padding-block-end:var(--safe-bottom);
   background:var(--dialog-surface);border:var(--border-width-thin) solid var(--border-default);border-block-end:0;border-start-start-radius:var(--dialog-radius);border-start-end-radius:var(--dialog-radius);box-shadow:var(--dialog-shadow);color:var(--text-default);outline:none;
   animation:mb-sheet var(--duration-slow) var(--ease-enter)}
 /* the panel takes focus only when it has nothing focusable; then the keyboard still sees where focus is */
@@ -407,7 +421,7 @@
   .mb-dialog-layer.is-alert .mb-dialog__top{touch-action:auto;cursor:auto}
   .mb-dialog-layer.is-alert .mb-dialog__foot{flex-direction:column}
   .mb-dialog-layer.is-alert[data-state=closed] .mb-dialog{animation:mb-pop-out var(--duration-base) var(--ease-exit) forwards}
-  .mb-dialog-layer.is-top .mb-dialog{max-block-size:none;block-size:100dvh;border-radius:0;border:0;padding-block-start:var(--safe-top)}
+  .mb-dialog-layer.is-top .mb-dialog{max-block-size:none;block-size:var(--app-h);border-radius:0;border:0;padding-block-start:var(--safe-top)}
 }
 .mb-dialog__top.is-scrolled{border-block-end-color:var(--border-default)}
 .mb-dialog__grab{display:block;inline-size:var(--space-10);block-size:var(--space-1);margin:calc(var(--space-3) * -1) auto var(--stack-md);border-radius:var(--radius-pill);background:var(--border-bold)}
@@ -460,6 +474,9 @@
   /* «where am I» without colour: the current place in the sidebar, the rail and the phone bar */
   :is(.mb-bottomnav__item,button,a)[aria-current]:not([aria-current=false]),
   .mb-tab:is([aria-selected=true],[aria-checked=true]),.mb-tag--toggle.is-selected,.mb-li.is-selected .mb-li__row,.mb-card.is-selected,.mb-iconbtn.is-selected{outline:var(--border-width-thick) solid Highlight;outline-offset:calc(var(--border-width-thick) * -1)}
+  /* …and filled, so it never reads as just another button (a button has a frame too) */
+  .mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false]){forced-color-adjust:none;background:Highlight;color:HighlightText}
+  :is(.mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false])) *{color:HighlightText}
 }
 }
 
@@ -493,6 +510,11 @@
 .mb-knowledge[data-knowledge=proposed],.mb-knowledge[data-knowledge=sample]{background:var(--bg-neutral-subtle)}
 .mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
+/* identity.md «متن و حاشیه»: a truth is a passage of the text, never a card. Hovering it marks the passage like a reader's pencil
+   (a quiet tint), no border, no shadow, no press-shrink; the focus ring still shows for the keyboard */
+.mb-knowledge.mb-card--interactive[data-force~=hover]{border-color:transparent;box-shadow:none;background-image:linear-gradient(var(--interaction-hover),var(--interaction-hover))}
+@media (hover:hover){.mb-knowledge.mb-card--interactive:hover{border-color:transparent;box-shadow:none;background-image:linear-gradient(var(--interaction-hover),var(--interaction-hover))}}
+.mb-knowledge.mb-card--interactive:active{scale:none;background-image:linear-gradient(var(--interaction-pressed),var(--interaction-pressed))}
 }
 
 /* sidebar (navigation.md): only the nav scrolls, never sideways; the inner edge is a 9-wide grip that shows a 2px focus-coloured line */
@@ -604,7 +626,7 @@
 }
 /* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
    switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
-@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(100dvh - var(--safe-top) - var(--space-3));max-block-size:none}}
+@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(var(--app-h) - var(--safe-top) - var(--space-3));max-block-size:none}}
 /* a switch between kinds: the last box is held still until the next is in place, which then arrives without motion (Overlay.tsx) */
 :root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim),
 .mb-dialog-layer[data-hold] :is(.mb-dialog,.mb-scrim),

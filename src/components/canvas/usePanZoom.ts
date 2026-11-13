@@ -18,7 +18,9 @@ const pinchCenter = (pts: Map<number, { x: number; y: number }>) => { const [a, 
  * Pan / zoom of a stage (shared by the map and the boards): drag or one finger pans, two fingers pinch, ctrl+wheel zooms,
  * arrow keys pan and +/−/0 zoom/fit when the stage itself has focus. Coordinates stay plain numbers; the stage is moved with `transform`.
  */
-export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0) {
+/** `endInset(stageWidth)`: room kept free at the stage's END edge (the right, the stage is LTR) for labels pinned there, so the first
+ *  view and «متناسب‌سازی» never place a card under them (the overview's row labels) */
+export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0, endInset: (w: number) => number = () => 0) {
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const [size, setSize] = useState({ w: 800, h: 520 });
   const [measured, setMeasured] = useState(false);
@@ -35,16 +37,19 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     return () => ro.disconnect();
   }, [remountKey]);
 
+  const inset = endInset(size.w);
   const fit = useCallback(() => {
-    const k = Math.min(1, Math.max(MIN_K, Math.min((size.w - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
-    setView({ k, x: Math.max(16, (size.w - content.width * k) / 2), y: Math.max(16, (size.h - content.height * k) / 2) });
-  }, [size.w, size.h, content.width, content.height]);
+    const w = size.w - inset;
+    const k = Math.min(1, Math.max(MIN_K, Math.min((w - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
+    setView({ k, x: Math.max(16, (w - content.width * k) / 2), y: Math.max(16, (size.h - content.height * k) / 2) });
+  }, [size.w, size.h, content.width, content.height, inset]);
   /** first view: readable (cards stay comfortably tappable), anchored at the START of the flow (the right edge in RTL) */
   const overview = useCallback(() => {
-    const k = Math.min(1, Math.max(readableK, Math.min((size.w - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
+    const room = size.w - inset;
+    const k = Math.min(1, Math.max(readableK, Math.min((room - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
     const w = content.width * k;
-    setView({ k, x: w <= size.w - 32 ? (size.w - w) / 2 : size.w - 16 - w, y: content.height * k <= size.h - 32 ? (size.h - content.height * k) / 2 : 16 });
-  }, [size.w, size.h, content.width, content.height, readableK]);
+    setView({ k, x: w <= room - 32 ? (room - w) / 2 : room - 16 - w, y: content.height * k <= size.h - 32 ? (size.h - content.height * k) / 2 : 16 });
+  }, [size.w, size.h, content.width, content.height, readableK, inset]);
   useEffect(() => { if (measured) overview(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shapeKey, measured]);
 

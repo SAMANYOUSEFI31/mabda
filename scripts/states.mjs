@@ -53,6 +53,20 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
 
   // full: the sample space
   await views('full');
+  // floating layers (overlays.md «جای لایه‌های شناور»): the canvas «گزینه‌ها» popover, and a section's «…» menu opened low on the page
+  await go('منبع', 'منبع حقیقت');
+  await page.locator('main .mb-seg [role=radio]', { hasText: 'نمای کلی' }).first().click(); await page.waitForTimeout(900);
+  await page.locator('main').getByRole('button', { name: /^گزینه‌ها/ }).first().click().catch(() => {}); await shot('canvas-options');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  await page.locator('main .mb-seg [role=radio]', { hasText: 'ساختار' }).first().click(); await page.waitForTimeout(700);
+  const sectionMenu = page.locator('main').getByRole('button', { name: /^عملیات بخش / }).first();
+  await sectionMenu.evaluate((b) => { const r = b.getBoundingClientRect(); window.scrollBy(0, r.top - innerHeight + 140); }).catch(() => {});
+  await page.waitForTimeout(300); await sectionMenu.click().catch(() => {}); await shot('menu-low');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  // a section, away to «فکر», and back: the page is where it was (layout.md «بی‌جابه‌جایی»)
+  await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click().catch(() => {}); await page.waitForTimeout(700);
+  await go('فکر', 'فکر'); await page.waitForTimeout(500); await go('منبع', 'منبع حقیقت'); await shot('section-back');
+  await go('خانه', 'خانه');
 
   // empty: a new space
   const name = 'فضای تازه';
@@ -133,6 +147,23 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.getByText('همه‌چیز به‌روز است.').first().waitFor({ timeout: 6000 }).catch(() => {});
   await shot('clear-home');
   await ctx.close();
+  // the on-screen keyboard (layout.md): a stand-in shrinks the visible part to 450 while a field has focus, as a phone reports it
+  if (mobile) {
+    const kctx = await browser.newContext({ viewport: { width, height: 844 }, locale: 'fa-IR', colorScheme: scheme, isMobile: true, hasTouch: true });
+    await kctx.addInitScript(() => {
+      const t = new EventTarget(); let kb = false;
+      const fake = { get height() { return kb ? 450 : innerHeight; }, get offsetTop() { return 0; }, get width() { return innerWidth; }, get offsetLeft() { return 0; }, get pageTop() { return scrollY; }, get scale() { return 1; }, addEventListener: (...a) => t.addEventListener(...a), removeEventListener: (...a) => t.removeEventListener(...a) };
+      Object.defineProperty(window, 'visualViewport', { get: () => fake });
+      document.addEventListener('focusin', (e) => { if (/INPUT|TEXTAREA/.test(e.target.tagName)) setTimeout(() => { kb = true; t.dispatchEvent(new Event('resize')); }, 30); });
+    });
+    const kp = await kctx.newPage(); await kp.goto(BASE, { waitUntil: 'networkidle' }); await kp.waitForTimeout(1200);
+    await kp.locator('.mb-bottomnav__item.is-action').click(); await kp.waitForTimeout(700);
+    await kp.locator('[role=dialog] textarea').first().focus(); await kp.waitForTimeout(700);
+    // the keyboard itself is drawn as a plain block over the bottom part, so the picture shows what is left to see
+    await kp.evaluate(() => { const k = document.createElement('div'); k.setAttribute('aria-hidden', 'true'); k.textContent = 'صفحه‌کلید'; Object.assign(k.style, { position: 'fixed', insetInline: '0', insetBlockEnd: '0', blockSize: `${innerHeight - 450}px`, background: 'GrayText', color: 'Canvas', display: 'grid', placeItems: 'center', zIndex: '2147483647', font: '600 16px sans-serif' }); document.body.append(k); });
+    await kp.screenshot({ path: `${OUT}/state-keyboard-${width}${sfx}.png` });
+    await kctx.close();
+  }
   stop();
 }
 await browser.close();

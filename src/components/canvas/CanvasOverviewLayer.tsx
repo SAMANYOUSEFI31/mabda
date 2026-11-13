@@ -19,10 +19,15 @@ const countsText = (c: { knowledge: number; redLines: number; stale: number; ope
  *                  counters and, for a row that has deeper sections rolled into it, a button to open them;
  *  · OverviewFar — zoomed out, a row is ONE summary (counters) and the lines between rows are ONE line with a count.
  */
+/** the stage width under which a row label is a small tab; and the room the labels take at the END edge (their width + gap),
+ *  kept free by the first view and «متناسب‌سازی» so no card starts under a label */
+const COMPACT_BELOW = 560;
+export const railInset = (stageW: number) => (stageW < COMPACT_BELOW ? 96 : 168) + 12;
+
 export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: Set<string>; onToggleRow: (nodeId: string) => void; onEnterRow?: (nodeId: string) => void; /** the order of rows is display only */ onMoveRow?: (nodeId: string, dir: -1 | 1) => void }> = ({ scene, view, size, opened, onToggleRow, onEnterRow, onMoveRow }) => {
   const rows = scene.overview?.rows ?? [];
   // on a phone the label is a small tab; a tap opens its counters and buttons (the labels must not cover the cards)
-  const compact = size.w < 560;
+  const compact = size.w < COMPACT_BELOW;
   const [openRow, setOpenRow] = useState<string | null>(null);
   return (
     <div className="pointer-events-none absolute top-space-0 bottom-space-0 end-space-0 start-space-0 overflow-hidden">
@@ -32,12 +37,12 @@ export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: S
         if (bottom < 0 || top > size.h) return null;
         const y = Math.min(Math.max(top + 4, 4), Math.max(top + 4, bottom - 64)); // stays visible while the row is on screen
         if (compact && openRow !== r.nodeId) return (
-          <button key={r.nodeId} type="button" data-testid="row-rail" data-row={r.nodeId} data-no-pan="" aria-expanded={false} onClick={() => setOpenRow(r.nodeId)} className="label-sm pointer-events-auto absolute end-space-1 truncate rounded-control border border-border-default bg-surface-raised px-inset-sm text-text-default shadow-raised" style={{ top: y, inlineSize: 96, minBlockSize: 44 }}>{r.label}</button>
+          <button key={r.nodeId} type="button" data-testid="row-rail" data-row={r.nodeId} data-no-pan="" aria-expanded={false} onClick={() => setOpenRow(r.nodeId)} className="label-sm pointer-events-auto absolute end-space-1 text-balance rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs text-text-default shadow-raised" style={{ top: y, inlineSize: 96, minBlockSize: 44 }}>{r.label}</button>
         );
         return (
           <div key={r.nodeId} data-testid="row-rail" data-row={r.nodeId} data-no-pan="" className="pointer-events-auto absolute end-space-1 flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs shadow-raised" style={{ top: y, inlineSize: 168 }}>
             <span dir="rtl" className="flex items-center justify-between gap-inline-xs">
-              <span className="label-md truncate text-text-default" style={{ paddingInlineStart: r.depth * 10 }}>{r.label}</span>
+              <span className="label-md min-w-space-0 text-balance text-text-default" style={{ paddingInlineStart: r.depth * 10 }}>{r.label}</span>
               {onMoveRow && <span className="flex shrink-0 items-center"><IconButton icon="ChevronUp" label={`ردیف «${r.label}» را بالاتر ببر`} onClick={() => onMoveRow(r.nodeId, -1)} /><IconButton icon="ChevronDown" label={`ردیف «${r.label}» را پایین‌تر ببر`} onClick={() => onMoveRow(r.nodeId, 1)} /></span>}
             </span>
             <span dir="rtl" className="caption text-text-subtle">{countsText(r.counts)}</span>

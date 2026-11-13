@@ -4000,8 +4000,8 @@
    "type": "dimension",
    "description": null,
    "alias": null,
-   "light": "8px",
-   "dark": "8px"
+   "light": "12px",
+   "dark": "12px"
   },
   {
    "token": "nuqta-size.md",
@@ -4010,8 +4010,8 @@
    "type": "dimension",
    "description": null,
    "alias": null,
-   "light": "10px",
-   "dark": "10px"
+   "light": "14px",
+   "dark": "14px"
   },
   {
    "token": "nuqta-size.lg",
@@ -4020,8 +4020,8 @@
    "type": "dimension",
    "description": null,
    "alias": null,
-   "light": "14px",
-   "dark": "14px"
+   "light": "16px",
+   "dark": "16px"
   },
   {
    "token": "nuqta-size.xl",

@@ -8,7 +8,7 @@
 import { ContextTreeDocView } from '../../components/knowledge/ContextTreeDocView';
 import { effectiveObjects } from '../../core/effectiveContext';
 import { dataApi } from '../../services/dataApi';
-import { Button, EmptyState, IconButton, Menu, SegmentedControl } from '../../ui';
+import { Button, EmptyState, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
 
@@ -22,7 +22,7 @@ export type KnowledgePageProps = Pick<ReadyScope, 'approvals' | 'askDeleteNote' 
 export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, currentWorkspace, data, extractingNoteId, focusNodeId, focusNotes, goFocus, handleAddNote, handleDeleteFile, handleDeleteSamples, handleExtractNote, handleProcessFile, handleSplitNote, handleUpdateNote, handleUploadFile, nodeOp, nodes, openContext, openCounts, openThinkingSpace, quota, renderCanvas, reviewIdSet, setAiRequest, setArchiveOpen, setContextViewMode, setEffectNodeId, setIsPacksOpen, setIsStarterOpen, setNodeDialog, setReadNodeId, setTemplateDraft, setThoughtDialog, setThreadNodeId, toast, vf, wid, workspaceContexts }: KnowledgePageProps) {
   return (
         <div className="space-y-stack-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-inline-lg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">
                 منبع حقیقت: {currentWorkspace.name}
@@ -32,28 +32,20 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-inline-sm">
+            {/* patterns.md «نماها و «…»»: the four views are one choice, all visible; «افزودن» is the app's (top bar, phone bar),
+                never repeated by a page; the archive is a place, at the end of the page */}
+            <div className="flex flex-wrap items-center gap-inline-sm max-md:w-full">
               {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
-              <Button className="md:hidden" variant="secondary" iconStart="Plus" onClick={() => openContext(null)}>افزودن</Button>
               <SegmentedControl
                 label="نمای منبع حقیقت"
+                fullWidth="phone"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode((id === 'map' ? 'canvas' : id) as 'doc' | 'read' | 'table' | 'canvas')}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas')}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
-                  ...(contextViewMode === 'read' ? [{ id: 'read', label: 'سند', icon: 'BookOpen' as const }] : []),
-                  ...(contextViewMode === 'table' ? [{ id: 'table', label: 'جدول', icon: 'Table2' as const }] : []),
-                ]}
-              />
-              <Menu
-                label="نماهای بیشتر"
-                align="end"
-                trigger={<IconButton icon="Ellipsis" label="نماهای بیشتر" variant="secondary" />}
-                items={[
-                  { label: 'خواندن به‌صورت سند', icon: contextViewMode === 'read' ? 'Check' : 'BookOpen', onSelect: () => setContextViewMode('read') },
-                  { label: 'جدول', icon: contextViewMode === 'table' ? 'Check' : 'Table2', onSelect: () => setContextViewMode('table') },
-                  { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
+                  { id: 'read', label: 'سند', icon: 'BookOpen' },
+                  { id: 'table', label: 'جدول', icon: 'Table2' },
                 ]}
               />
             </div>
@@ -126,6 +118,9 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, curre
             onProcess={handleProcessFile}
             onDelete={handleDeleteFile}
           /></PageSuspense>
+          <div className="flex justify-start border-t border-border-subtle pt-inset-md">
+            <Button variant="ghost" iconStart="Archive" onClick={() => setArchiveOpen(true)}>بایگانی و حذف‌های اخیر</Button>
+          </div>
         </div>
   );
 }

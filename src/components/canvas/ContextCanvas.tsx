@@ -20,7 +20,7 @@ import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
 import { CanvasItemCard, CanvasNoteCard, FACET_TINT } from './CanvasItemCard';
 import { CanvasMinimap } from './CanvasMinimap';
-import { OverviewFar, RowRail } from './CanvasOverviewLayer';
+import { OverviewFar, RowRail, railInset } from './CanvasOverviewLayer';
 import { ConnectDialog } from './ConnectDialog';
 import { connectOptions, connectionUndo } from '../../core/connectRules';
 import type { ConnectOption } from '../../core/connectRules';
@@ -162,7 +162,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
   const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : 0.85, fullscreen);
+  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
   const lod = lodOf(view.k);
   const overviewFar = layoutEff === 'overview' && lod === 'far';
 
@@ -582,7 +582,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
       {mode === 'thinking' && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: '', x: 0, y: 0 })}>یادداشت آزاد</Button>}
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
-        {!sheet && <IconButton icon="PanelRight" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
+        {!sheet && <IconButton icon="PanelLeft" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           ...(mode === 'thinking' ? [{ label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
@@ -610,7 +610,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       <div className="flex items-center justify-between gap-inline-sm">
         <span className="label-sm text-text-subtle">جزئیات</span>
         <span className="flex items-center gap-inline-xs">
-          {!sheet && <IconButton icon={floating ? 'PanelRight' : 'PictureInPicture2'} label={floating ? 'جا دادن کنار بوم' : 'شناور کردن روی بوم'} aria-pressed={floating} onClick={() => setInspectorMode(floating ? 'docked' : 'floating')} />}
+          {!sheet && <IconButton icon={floating ? 'PanelLeft' : 'PictureInPicture2'} label={floating ? 'جا دادن کنار بوم' : 'شناور کردن روی بوم'} aria-pressed={floating} onClick={() => setInspectorMode(floating ? 'docked' : 'floating')} />}
           <IconButton icon="X" label="بستن جزئیات (I)" onClick={() => setInspectorMode('closed')} />
         </span>
       </div>
@@ -728,7 +728,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             <div className="pointer-events-none absolute bottom-space-2 start-space-2 flex flex-col items-start gap-stack-xs">
               {!isMobile && size.w >= 640 && scene.items.length > 0 && (fullscreen || scene.width * view.k > size.w * 1.15 || scene.height * view.k > size.h * 1.15) && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
             </div>
-            {!inspectorOpen && !sheet && <div className="absolute end-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelRight" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
+            {!inspectorOpen && !sheet && <div className="absolute start-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelLeft" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
             <div className="pointer-events-none absolute start-space-2 top-space-2" data-no-pan=""><span className="label-sm rounded-pill border border-border-default bg-surface-raised px-inset-sm text-text-subtle">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span></div>
           </div>
           {layoutEff === 'overview' && scene.overview && (

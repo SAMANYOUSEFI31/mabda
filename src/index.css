@@ -111,6 +111,10 @@
 /* «رفتن به عمق»: the new section comes from the end edge (the left in RTL) */
 @keyframes focus-in { from { opacity: 0; translate: calc(var(--distance-lg) * -1) 0; } }
 .focus-enter { animation: focus-in var(--duration-moderate) var(--ease-enter); }
+/* the section slides in from the end edge; while it travels it must not make the page wider (on a phone the browser would zoom
+   out and the whole page would slip). Clipped sideways only, a ring's width outside the column so focus rings still show;
+   overflow: clip is not a scroll container, so the pinned path bar inside keeps pinning (layout.md «بی‌جابه‌جایی») */
+.focus-scope { overflow-x: clip; padding-inline: var(--space-1); margin-inline: calc(var(--space-1) * -1); }
 @media (prefers-reduced-motion: reduce) { .focus-enter { animation: none; } }
 
 /* the path bar of a section we are inside stays in view while the section scrolls: UNDER the app's bar, never in its place

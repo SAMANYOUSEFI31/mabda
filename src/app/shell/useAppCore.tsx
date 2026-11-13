@@ -94,13 +94,8 @@ export function useAppCore() {
   const [thinkingView, setThinkingView] = useState<'list' | 'canvas'>('list');
   /** a new value makes the truth map show what is on its way (the thinking space asks «اگر همه را تأیید کنم؟») */
   const [previewNonce, setPreviewNonce] = useState(0);
-  // map and board are far below the attention panel and the inbox: switching to one brings it into view (not on first render)
-  const viewModeSeen = useRef(contextViewMode);
-  useEffect(() => {
-    if (viewModeSeen.current === contextViewMode) return;
-    viewModeSeen.current = contextViewMode;
-    if (contextViewMode === 'canvas') setTimeout(() => document.getElementById('context-view')?.scrollIntoView({ block: 'start' }), 30);
-  }, [contextViewMode]);
+  // switching a view never moves the page (layout.md «بی‌جابه‌جایی»): the title, the view switch and «افزودن» stay where they are,
+  // as in «فکر». (It used to scroll to the canvas, when the canvas sat below panels that are gone.)
   // a new destination opens at its top (the scroll of the previous page must not carry over)
   const tabSeen = useRef(activeTab);
   useEffect(() => { if (tabSeen.current === activeTab) return; tabSeen.current = activeTab; window.scrollTo({ top: 0 }); }, [activeTab]);

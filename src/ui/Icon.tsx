@@ -8,7 +8,7 @@ import {
   CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Eye, Lock, Layers, Table2,
   Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive, CircleDot,
   ZoomIn, ZoomOut, Maximize, Workflow,
-  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
+  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
   SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
 } from 'lucide-react';
 import { cx } from './cx.ts';
@@ -21,7 +21,7 @@ const ICONS = {
   Shield, BookOpen, CreditCard, TrendingUp, FileText, Target, Package, Send, RefreshCw, Eye, Lock,
   Layers, Table2, Upload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive,
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
-  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
+  CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
   SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
 } as const;
 
@@ -36,10 +36,14 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'ref'>
   size?: IconSize;
 }
 
+/** iconography.md «راست‌به‌چپ»: icons whose drawing says a direction in time or flow turn around in RTL (undo points back = right).
+ *  Arrows and chevrons are chosen by meaning at each use (ChevronLeft = «forward» in Persian), so they are not in this list. */
+const MIRRORED: ReadonlySet<string> = new Set(['Undo2', 'Redo2', 'Send', 'LogIn', 'LogOut', 'ListIndentIncrease', 'ListIndentDecrease']);
+
 export function Icon({ name, size = 'md', className, ...rest }: IconProps) {
   const Cmp = ICONS[name];
   if (!Cmp) return null;
-  return <Cmp size={SIZE_PX[size]} strokeWidth={2} aria-hidden="true" className={cx('mb-icon', className)} {...rest} />;
+  return <Cmp size={SIZE_PX[size]} strokeWidth={2} aria-hidden="true" className={cx('mb-icon', MIRRORED.has(name) && 'mb-icon--mirror', className)} {...rest} />;
 }
 
 /** Status intent -> icon, mirrors the DS (icon + words, never color alone). */

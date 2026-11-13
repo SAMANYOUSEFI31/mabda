@@ -57,7 +57,7 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
 export interface SegmentItem { id: string; label: ReactNode; icon?: IconName; disabled?: boolean }
 export interface SegmentedControlProps {
   items: SegmentItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
-  label: string; fullWidth?: boolean; className?: string;
+  label: string; fullWidth?: boolean | 'phone'; className?: string;
 }
 
 export function SegmentedControl({ items, value, defaultValue, onChange, label, fullWidth = false, className }: SegmentedControlProps) {
@@ -78,7 +78,7 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth && 'mb-tabs--full', className)}>
+    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
       {items.map((it, i) => (
         <button
           key={it.id} ref={(n) => { refs.current[it.id] = n; }} type="button" role="radio" aria-checked={current === it.id}
@@ -188,7 +188,10 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
               </>
             ) : null}
           </span>
-          <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{typeof it.label === 'string' ? softBreaks(it.label) : it.label}</span>
+          {/* the drawn label may carry a break point at a ZWNJ, which a screen reader would read as a gap: it hears the plain word */}
+          {typeof it.label === 'string' && !it.action && it.label.includes('\u200c')
+            ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true">{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
+            : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>}
         </button>
       ))}
     </nav>
@@ -228,7 +231,7 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
         compact && 'justify-center px-inset-xs',
         nested ? 'body-sm' : 'label-md',
         selected
-          ? 'bg-bg-selected font-semibold text-text-default'
+          ? 'mb-nav-current bg-bg-selected font-semibold text-text-default'
           : 'text-text-subtle hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed',
         className,
       )}
