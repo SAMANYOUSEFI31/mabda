@@ -315,7 +315,6 @@ function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', si
   // for the moment the menu is open (overlays.md «جای لایه‌های شناور»)
   m.style.maxBlockSize = '';
   if (m.scrollHeight + 2 > a.bottom - a.top) a = { ...a, top: gap, bottom: window.innerHeight - gap };
-  const vw = document.documentElement.clientWidth;
   const kept = m.scrollTop;
   requestAnimationFrame(() => { m.scrollTop = kept; });
   m.style.maxBlockSize = '';
@@ -337,7 +336,9 @@ function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', si
   x = Math.max(a.left, Math.min(x, a.right - mw));
   // the height was freed by hand above; React does not write a style it believes unchanged, so put it back here too
   m.style.maxBlockSize = `${mh}px`;
-  return { position: 'fixed', insetBlockStart: y, insetInlineStart: rtl ? vw - x - mw : x, maxBlockSize: mh, maxInlineSize: room, overflowY: 'auto' };
+  // measured from the LEFT edge in both directions (inline-end is the left in RTL): counting from the right would include the
+  // scrollbar gutter, which a fixed layer's containing block leaves out, and push the layer 10px past the content margin
+  return { position: 'fixed', insetBlockStart: y, ...(rtl ? { insetInlineEnd: x, insetInlineStart: 'auto' } : { insetInlineStart: x, insetInlineEnd: 'auto' }), maxBlockSize: mh, maxInlineSize: room, overflowY: 'auto' };
 }
 
 /** follow the trigger while open: the page or a container scrolled, or the window changed; the panel's own scroll is not a move */
