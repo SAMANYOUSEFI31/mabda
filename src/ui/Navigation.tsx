@@ -231,7 +231,7 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
         compact && 'justify-center px-inset-xs',
         nested ? 'body-sm' : 'label-md',
         selected
-          ? 'bg-bg-selected font-semibold text-text-default'
+          ? 'mb-nav-current bg-bg-selected font-semibold text-text-default'
           : 'text-text-subtle hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed',
         className,
       )}

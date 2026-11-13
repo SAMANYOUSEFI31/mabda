@@ -248,13 +248,18 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .is-disabled .mb-switch__thumb{background:var(--text-disabled)}
 .mb-check-wrap .mb-field__error{padding-inline-start:calc(var(--indicator-size) + var(--inline-sm))}
 
+/* the current place in the sidebar and the rail: a short bar on its start edge as well as the fill, so it never looks like a place
+   under the pointer (the hover fill is close to the selected one) */
+.mb-nav-current::before{content:"";position:absolute;inset-block:var(--space-2);inset-inline-start:0;inline-size:var(--space-0\.5);border-radius:var(--radius-full);background:var(--border-selected)}
 /* ---------- Tabs / Segmented: a sunken track, the chosen one is a raised key ---------- */
 .mb-tabs-wrap{min-inline-size:0;max-inline-size:100%}
 .mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;min-inline-size:0}
 /* a tab bar never scrolls (either way): overflow-x would turn overflow-y into «auto» and each tab's 44px hit area (::after) would scroll it
    up and down. Tabs shrink instead and a long label ends with «…» (its full name is the title) */
-/* a label that no longer fits (a long name, or the text at 200%) wraps onto a second line rather than being cut (WCAG 1.4.4) */
-.mb-tab{min-inline-size:0;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:break-word}
+/* a label that no longer fits (a long name, or the text at 200%) is never cut and never broken inside a word (WCAG 1.4.4): the tabs
+   first flow onto a second row of the track, and only a tab wider than the whole row wraps between its words */
+.mb-tabs{flex-wrap:wrap}
+.mb-tab{min-inline-size:min-content;flex-shrink:1}.mb-tab__label{min-inline-size:0;white-space:normal;text-wrap:balance;text-align:center;overflow-wrap:normal}
 .mb-tabs:not(.mb-tabs--full){inline-size:max-content}
 .mb-tabs--full{display:flex;inline-size:100%}.mb-tabs--full .mb-tab{flex:1}
 /* full width on a phone only: each segment takes its label's width plus an equal share, so a two-word label does not wrap first */
@@ -271,7 +276,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-bottomnav{display:flex;inline-size:100%;background:var(--nav-surface);border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--safe-bottom);box-shadow:var(--shadow-overflow)}
 .mb-bottomnav.is-fixed{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--layer-sticky)}
 /* spec navigation.md «نوار پایین»: bar 56; the selected state is one neutral tile (48 tall, radius 12) holding icon AND label */
-.mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
+.mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-block-start:var(--space-1);gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
   border:0;background:transparent;color:var(--text-subtle);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-standard)}
 .mb-bottomnav__item::before{content:"";position:absolute;z-index:calc(var(--layer-base) - 1);inset-block:var(--space-1);inset-inline:var(--space-1);border-radius:var(--radius-lg);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
 .mb-bottomnav__item[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-bottomnav__item:hover{color:var(--text-default)}.mb-bottomnav__item:not(.is-action):hover::before{background:var(--interaction-hover)}}
@@ -469,6 +474,9 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   /* «where am I» without colour: the current place in the sidebar, the rail and the phone bar */
   :is(.mb-bottomnav__item,button,a)[aria-current]:not([aria-current=false]),
   .mb-tab:is([aria-selected=true],[aria-checked=true]),.mb-tag--toggle.is-selected,.mb-li.is-selected .mb-li__row,.mb-card.is-selected,.mb-iconbtn.is-selected{outline:var(--border-width-thick) solid Highlight;outline-offset:calc(var(--border-width-thick) * -1)}
+  /* …and filled, so it never reads as just another button (a button has a frame too) */
+  .mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false]){forced-color-adjust:none;background:Highlight;color:HighlightText}
+  :is(.mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false])) *{color:HighlightText}
 }
 }
 

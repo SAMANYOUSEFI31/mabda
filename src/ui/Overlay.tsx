@@ -453,7 +453,8 @@ export function Menu({ trigger, items: allItems, label = 'منو', align = 'star
   useLayoutEffect(() => { if (open) place(); }, [open, place, items.length]);
   useEffect(() => { if (!presence.mounted) setPos(null); }, [presence.mounted]);
   useFollow(open, menu, place);
-  useEffect(() => { if (open && pos) (searchable ? search.current : enabled()[0])?.focus(); }, [open, pos !== null]);
+  // on touch the search field is not focused at once: that would raise the keyboard over half the list before the person chose to type
+  useEffect(() => { if (open && pos) (searchable && !matchMedia('(pointer: coarse)').matches ? search.current : enabled()[0])?.focus(); }, [open, pos !== null]);
   useEffect(() => { if (!open) setQuery(''); }, [open]);
   const onKey = (e: React.KeyboardEvent) => {
     const list = enabled();

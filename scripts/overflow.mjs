@@ -51,6 +51,24 @@ const measure = (userText = '') => {
     const L = Math.min(r.left, t.width ? t.left : r.left), R = Math.max(r.right, t.width ? t.right : r.right);
     if (L < o.left - 1 || R > o.right + 1) out.push(`label spills out of its control: «${(lab.textContent || '').trim().slice(0, 30)}» ${Math.round(R - L)}px in ${Math.round(o.width)}px (${name(own)})`);
   }
+  // …nor breaks inside a word (WCAG 1.4.4 at 200% text: «سا/خت/ار» is not readable as a word): a label may wrap between words or at a
+  // ZWNJ joint, never in the middle of one
+  for (const lab of document.querySelectorAll('.mb-bottomnav__label, .mb-tab__label, .mb-btn__label, [role=menuitem], [role=tab], nav button span')) {
+    if (lab.closest('[inert], .mb-sr')) continue;
+    const lh = parseFloat(getComputedStyle(lab).lineHeight) || parseFloat(getComputedStyle(lab).fontSize) * 1.4;
+    const tw = document.createTreeWalker(lab, NodeFilter.SHOW_TEXT);
+    let broken = null;
+    for (let n = tw.nextNode(); n && !broken; n = tw.nextNode()) {
+      if (n.parentElement.closest('.mb-sr')) continue;
+      const re = /[^\s\u200c]+/g; let m;
+      while ((m = re.exec(n.data)) && !broken) {
+        const rg = document.createRange(); rg.setStart(n, m.index); rg.setEnd(n, m.index + m[0].length);
+        const tops = [...rg.getClientRects()].filter((q) => q.width > 0).map((q) => q.top);
+        if (tops.length > 1 && Math.max(...tops) - Math.min(...tops) > lh / 2) broken = m[0];
+      }
+    }
+    if (broken) out.push(`label breaks inside a word: «${broken}» in ${name(lab.closest('button, a, [role]') || lab)}`);
+  }
   // at most two layers over the page (overlays.md): a dialog and one thing on it (a menu, a calendar, a confirmation)
   const layers = [...document.querySelectorAll('.mb-dialog-layer:not(.is-inline):not([data-state=closed]), [role=menu]')].filter((l) => !l.closest('[inert]') && l.getBoundingClientRect().height > 0);
   if (layers.length > 2) out.push(`${layers.length} layers open at once: ${layers.map(name).join(' › ')}`);

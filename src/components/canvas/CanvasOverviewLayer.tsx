@@ -37,12 +37,12 @@ export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: S
         if (bottom < 0 || top > size.h) return null;
         const y = Math.min(Math.max(top + 4, 4), Math.max(top + 4, bottom - 64)); // stays visible while the row is on screen
         if (compact && openRow !== r.nodeId) return (
-          <button key={r.nodeId} type="button" data-testid="row-rail" data-row={r.nodeId} data-no-pan="" aria-expanded={false} onClick={() => setOpenRow(r.nodeId)} className="label-sm pointer-events-auto absolute end-space-1 truncate rounded-control border border-border-default bg-surface-raised px-inset-sm text-text-default shadow-raised" style={{ top: y, inlineSize: 96, minBlockSize: 44 }}>{r.label}</button>
+          <button key={r.nodeId} type="button" data-testid="row-rail" data-row={r.nodeId} data-no-pan="" aria-expanded={false} onClick={() => setOpenRow(r.nodeId)} className="label-sm pointer-events-auto absolute end-space-1 text-balance rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs text-text-default shadow-raised" style={{ top: y, inlineSize: 96, minBlockSize: 44 }}>{r.label}</button>
         );
         return (
           <div key={r.nodeId} data-testid="row-rail" data-row={r.nodeId} data-no-pan="" className="pointer-events-auto absolute end-space-1 flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs shadow-raised" style={{ top: y, inlineSize: 168 }}>
             <span dir="rtl" className="flex items-center justify-between gap-inline-xs">
-              <span className="label-md truncate text-text-default" style={{ paddingInlineStart: r.depth * 10 }}>{r.label}</span>
+              <span className="label-md min-w-space-0 text-balance text-text-default" style={{ paddingInlineStart: r.depth * 10 }}>{r.label}</span>
               {onMoveRow && <span className="flex shrink-0 items-center"><IconButton icon="ChevronUp" label={`ردیف «${r.label}» را بالاتر ببر`} onClick={() => onMoveRow(r.nodeId, -1)} /><IconButton icon="ChevronDown" label={`ردیف «${r.label}» را پایین‌تر ببر`} onClick={() => onMoveRow(r.nodeId, 1)} /></span>}
             </span>
             <span dir="rtl" className="caption text-text-subtle">{countsText(r.counts)}</span>
