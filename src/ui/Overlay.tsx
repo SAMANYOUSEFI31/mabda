@@ -288,6 +288,8 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
   let top = gap, bottom = vh - gap, left = gutter, right = vw - gutter;
   for (const bar of document.querySelectorAll<HTMLElement>('[data-pin], .mb-bottomnav.is-fixed')) {
     if (bar.contains(trigger)) continue;
+    // a page's own pinned bar belongs to the page: a menu of the app's shell (the sidebar, the rail) may pass over it, never over the app's bars
+    if (bar.closest('main') && !trigger.closest('main')) continue;
     const pos = getComputedStyle(bar).position;
     if (pos !== 'fixed' && pos !== 'sticky') continue;
     const r = bar.getBoundingClientRect();
@@ -307,7 +309,12 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
  *  scrolls itself only when taller than the room there is */
 function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', side: 'top' | 'bottom', fill = false): CSSProperties {
   const tr = t.getBoundingClientRect();
-  const a = floatArea(t), gap = 8;
+  const gap = 8;
+  let a = floatArea(t);
+  // the bars give way only when the menu cannot be whole between them (a short window): every item seen beats a bar seen
+  // for the moment the menu is open (overlays.md «جای لایه‌های شناور»)
+  m.style.maxBlockSize = '';
+  if (m.scrollHeight + 2 > a.bottom - a.top) a = { ...a, top: gap, bottom: window.innerHeight - gap };
   const vw = document.documentElement.clientWidth;
   const kept = m.scrollTop;
   requestAnimationFrame(() => { m.scrollTop = kept; });
@@ -318,8 +325,12 @@ function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', si
   const above = tr.top - gap - a.top, below = a.bottom - tr.bottom - gap;
   const natural = m.scrollHeight + 2;
   const up = side === 'top' ? above >= natural || above > below : !(below >= natural || below > above);
-  const mh = Math.max(Math.min(natural, up ? above : below), Math.min(natural, 160));
-  let y = up ? tr.top - gap - mh : tr.bottom + gap;
+  // neither side holds the whole menu (a short window: phone landscape) but the area does: use all of it, over the trigger,
+  // so nothing is hidden behind the menu's own scroll; only a menu taller than the whole area scrolls
+  const whole = a.bottom - a.top;
+  const cover = natural > Math.max(above, below) && whole > Math.max(above, below);
+  const mh = cover ? Math.min(natural, whole) : Math.max(Math.min(natural, up ? above : below), Math.min(natural, 160));
+  let y = cover ? (up ? tr.bottom - mh : tr.top) : up ? tr.top - gap - mh : tr.bottom + gap;
   y = Math.max(a.top, Math.min(y, a.bottom - mh));
   const rtl = getComputedStyle(t).direction === 'rtl';
   let x = rtl === (align === 'start') ? tr.right - mw : tr.left;

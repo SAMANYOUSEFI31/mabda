@@ -65,10 +65,13 @@ const measure = (userText = '') => {
     if (hit && !f.contains(hit)) out.push(`floating layer is covered: ${name(f)} under ${name(hit)}`);
     for (const bar of document.querySelectorAll('[data-pin], .mb-bottomnav.is-fixed')) {
       if (opener && bar.contains(opener)) continue;
+      if (opener && bar.closest('main') && !opener.closest('main')) continue; // a shell menu may pass over a page's own bar
       const pos = getComputedStyle(bar).position; if (pos !== 'fixed' && pos !== 'sticky') continue;
       const q = bar.getBoundingClientRect(); if (!q.height || q.bottom <= 0 || q.top >= innerHeight) continue;
       const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top), w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
-      if (h > 1 && w > 1) out.push(`floating layer covers a pinned bar: ${name(f)} over ${name(bar)} by ${Math.round(h)}px`);
+      // …unless the layer could not be whole between the bars (a short window): then the bars give way, never the items
+      const room = innerHeight - [...document.querySelectorAll('[data-pin], .mb-bottomnav.is-fixed')].filter((b) => /fixed|sticky/.test(getComputedStyle(b).position)).reduce((n, b) => n + b.getBoundingClientRect().height, 0) - 16;
+      if (h > 1 && w > 1 && f.scrollHeight + 2 <= room) out.push(`floating layer covers a pinned bar: ${name(f)} over ${name(bar)} by ${Math.round(h)}px`);
     }
     const main = opener?.closest('main');
     if (main && !opener.closest('[role=dialog]')) {
