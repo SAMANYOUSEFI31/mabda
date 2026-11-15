@@ -10,13 +10,13 @@
  */
 
 import type { ContextChange, ContextObject, Measurement, Metric, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
+import { tehranDay, isGregorianDay } from './calendar';
 
-const day = (iso: string) => iso.slice(0, 10);
+const day = (iso: string) => (iso.length >= 10 && iso[4] === '-' ? iso.slice(0, 10) : tehranDay(iso));
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const isIsoDate = (s: unknown): s is string => {
   if (typeof s !== 'string' || !DATE.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s; // 2026-02-30 is not a date
+  return isGregorianDay(s); // 2026-02-30 is not a date
 };
 
 const DIGITS = '۰۱۲۳۴۵۶۷۸۹';
@@ -91,7 +91,7 @@ const reached = (dir: MetricDirection, target: number, value: number) => (dir ==
 /** the arithmetic of one decision's expectation. No cause is inferred: «پس از» is a position on the time line, nothing more. */
 export function readExpectation(exp: MetricExpectation, decisionAt: string, measurements: Measurement[], now: Date | string | number): ExpectationReading {
   const series = seriesOf(exp.metricId, measurements);
-  const today = day(new Date(now).toISOString());
+  const today = tehranDay(now);
   const decDay = day(decisionAt);
   const before = [...series].reverse().find((m) => m.at <= decDay);
   const upTo = exp.by <= today ? exp.by : today;
@@ -142,7 +142,7 @@ export function expectationRows(objects: ContextObject[], metrics: Metric[], mea
 
 /** expectations whose date has come and that nobody has judged yet — the «بازبینی تصمیم» list */
 export const expectationsDue = (rows: ExpectationRow[], now: Date | string | number): ExpectationRow[] => {
-  const t = day(new Date(now).toISOString());
+  const t = tehranDay(now);
   return rows.filter((r) => !r.verdict && r.expectation.by <= t);
 };
 
