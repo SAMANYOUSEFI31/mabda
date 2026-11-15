@@ -79,16 +79,19 @@ export const relationsMethods = {
   /** when an object is replaced, whatever rested on it (and whatever it rested on) now points at the replacement too; old edges stay as history */
   carryDependencies(this: Repo, s: Scope, fromId: string, toId: string) {
     const t = now();
-    const rels = this.listRelationships(s).filter((r) => r.type === 'depends_on');
-    const has = new Set(rels.map((r) => `${r.sourceId}>${r.targetId}`));
-    const add = (a: string, b: string) => {
-      if (a === b || has.has(`${a}>${b}`)) return;
-      has.add(`${a}>${b}`);
-      this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, a, b, 'depends_on', t);
-    };
-    for (const r of rels) {
-      if (r.targetId === fromId) add(r.sourceId, toId);
-      if (r.sourceId === fromId) add(toId, r.targetId);
+    // depends_on + overrides must both move with a supersede (CORE-09)
+    for (const type of ['depends_on', 'overrides'] as const) {
+      const rels = this.listRelationships(s).filter((r) => r.type === type);
+      const has = new Set(rels.map((r) => `${r.sourceId}>${r.targetId}`));
+      const add = (a: string, b: string) => {
+        if (a === b || has.has(`${a}>${b}`)) return;
+        has.add(`${a}>${b}`);
+        this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, a, b, type, t);
+      };
+      for (const r of rels) {
+        if (r.targetId === fromId) add(r.sourceId, toId);
+        if (r.sourceId === fromId) add(toId, r.targetId);
+      }
     }
   },
 
