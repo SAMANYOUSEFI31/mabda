@@ -1,5 +1,6 @@
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import { RuntimeBoundary } from './app/lazy';
 import './index.css';
 import { ToastProvider } from './ui';
 import { installScrollbars } from './ui/scrollbars';
@@ -14,7 +15,9 @@ installKeyboard();
 createRoot(document.getElementById('root')!).render(
   <ToastProvider>
     <AiStatusProvider>
-      <App />
+      <RuntimeBoundary label="برنامه خطا داد">
+        <App />
+      </RuntimeBoundary>
     </AiStatusProvider>
   </ToastProvider>,
 );
