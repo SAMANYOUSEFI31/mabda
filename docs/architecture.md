@@ -204,6 +204,12 @@
 
 `context.ts` (کمکی‌های مشترک: `stale`، `today`، …) · `bootstrap.ts` · `demo.ts` · `nodes.ts` · `archive.ts` · `account.ts` · `objects.ts` · `canvas.ts` (بوم و رابطه‌ها) · `notes-thoughts.ts` · `metrics.ts` · `outputs.ts` (Asset، دفتر، گفتگو، spec) · `judgments.ts` · `memory.ts` · `threads.ts` · `contradictions.ts` · `starters.ts` · `saved-packs.ts` · `packs.ts` · `usage.ts` · `files.ts`.
 
+### `server/auth/`، پشتیبان و گزارش خطا (آزمون ۱۰ نفره، آذر ۱۴۰۵)
+- `server/auth/http.ts`: حالت «local» (یک نفر، بدون ورود) یا «invite» (`MABDA_OWNER_CODE`)؛ ورود با لینک شخصی (`/#join=<کد>` ← کوکی HttpOnly)، سرآیندهای امنیتی، بررسی Origin، محدودیت تلاش. `userIdOf(req)` **تنها منبع** شناسهٔ کاربر در همهٔ لایه‌ها (داده، فایل، AI). `accounts.ts`: حساب‌ها و نشست‌ها (فقط SHA-256). `owner.ts`: «افراد آزمون» (`/api/owner`).
+- هر دستور SQL روی دادهٔ کاربر شرط `user_id` دارد (`server/db/userScope.test.ts` به‌طور ایستا اجبار می‌کند). `claimId` (`repo/shared.ts`) نمی‌گذارد upsert ردیف کس دیگری را بگیرد. `server/db/userIds.ts`: شناسه‌های نمونه و بذر برای هر نفر یکتا.
+- `server/backup.ts`: پشتیبان روزانهٔ کل پایگاه (۱۴ روز) و برگرداندن با `MABDA_RESTORE_FROM`. `server/db/workspaceBackup.ts`: پشتیبان یک فضا، **از روی schema** (هر جدول با `workspace_id` و `user_id`)، برگرداندن همیشه به فضای تازه با شناسه‌های تازه.
+- `server/diagnostics.ts`: خطاهای مرورگر (`src/services/errorReport.ts`) و سرور، بدون متن کاربر. `src/app/shell/RootBoundary.tsx` (هیچ خطایی صفحهٔ سفید نمی‌گذارد) و `SessionGate.tsx` (صفحهٔ ورود). `src/services/deadline.ts`: مهلت و لغو هر درخواست.
+
 ### `src/App.tsx` و `src/app/` (قبلاً `App.tsx` ۲٬۰۰۰ خط، سپس `AppView.tsx` ۸۵۰ خط)
 `App.tsx` (۴۳ خط) فقط هوک‌ها را به ترتیب صدا می‌زند (هر هوک خروجی هوک‌های قبلی را می‌گیرد) و `AppView` را می‌دهد. `AppView.tsx` (۳۸ خط) فقط انتخاب می‌کند: پیش از بار شدن فضای کاری «شروع تازه» یا «بوت»؛ پس از آن پوسته و صفحهٔ زبانهٔ فعال. **هر صفحه و هر گروه دیالوگ کنار هوک حوزهٔ خودش است** و فقط props خودش را می‌خواهد (`Pick<ReadyScope, …>`؛ وضعیت سراسری پنهان نیست: `ReadyScope` فقط نوع خروجی هوک‌هاست).
 
@@ -276,3 +282,8 @@
 | `build/` | ساختهٔ `scripts/tokens/build.mjs` (`bun run tokens`): `tokens.css`، تم Tailwind `theme.css`، `resolved.json`؛ دستی ویرایش نمی‌شود |
 
 قرارداد با `src/ui/tokens.test.ts` اجبار می‌شود (drift، یکسانی حالت‌ها، ارجاع لایه‌ها، کف کنتراست WCAG 2.2 و APCA). کلاس‌های جزء در `src/ui/components.css`، فونت‌ها در `src/ui/fonts.css` و `public/fonts/`. سند مرجع: `docs/design-system/`.
+
+### بدهی آگاهانهٔ آزمون ۱۰ نفره
+- **یک فرایند، SQLite روی یک دیسک.** برای ۱۰ نفر کافی و اندازه‌گیری شده: بزرگ‌ترین سند مجاز (۲٬۰۰۰ بند، حدود ۴۵۶KB) ۲۲۷ms پردازش می‌شود و درخواست نفر دیگر حداکثر ۱۴ms منتظر می‌ماند؛ پنج سند هم‌زمان: ۵۳۱ms، انتظار دیگران حداکثر ۱۳۵ms؛ PDF سیصدصفحه‌ای ۱٫۶s (`scripts/measure-docload.ts`). پس worker و صف (RES-03) لازم نشد. **کی بازبینی:** انتظار دیگران از ۵۰۰ms بگذرد یا افراد از ده‌ها بیشتر شوند.
+- **قاعدهٔ تا مهاجرت:** کد تازه همیشه `user_id` دارد و دستور مخصوص SQLite اضافه نمی‌کند (`docs/later.md → Postgres`).
+- **CSRF ورود:** کسی می‌تواند مرورگر دیگری را با لینک خودش وارد کند؛ پذیرفته شد چون فقط دادهٔ مهاجم دیده می‌شود و «خروج از این دستگاه» و نام نفر در منو آن را آشکار می‌کند.
