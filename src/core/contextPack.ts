@@ -84,27 +84,23 @@ export function buildContextPack(input: PackInput): ContextPack {
   const { nodes, spec, deliverable } = input;
   const rels = input.relationships ?? [];
   const now = input.now ?? new Date();
-  // the scope: a workstream's own sections (hints, resolved against THIS tree — never a fixed id), or the picked sections of a
-  // saved pack (+ their sub-sections when asked), or the whole tree. One rule for packs and requests: src/core/packScope.ts
   const wanted = spec
     ? [...new Set([...spec.requiredContext, ...spec.suggestedContext, ...spec.optionalContext].map((c) => resolveNodeId(nodes, c.nodeId)))]
     : input.targetNodeIds?.length ? input.targetNodeIds : input.targetNodeId ? [input.targetNodeId] : [];
-  const scope = scopeSeeds(nodes, wanted, spec ? true : !!input.withChildren); // a workstream reads its sections WITH their sub-sections (what generation reads: the sections it names and everything beneath)
+  const scope = scopeSeeds(nodes, wanted, spec ? true : !!input.withChildren);
   const standing = standingOver(scope, input.objects, nodes, rels, now);
   const inForce = (o: ContextObject) => { const st = standing.get(o.id); return !!st && IN_FORCE.has(st.origin); };
   const facetSet = new Set(input.facets ?? []);
   const extra = new Set<string>(input.statuses ?? ['Proposed', 'Needs Review']);
   const facetOk = (o: ContextObject) => !facetSet.size || (o.facets ?? []).some((f) => facetSet.has(f));
-  const statusOk = (o: ContextObject) => o.status === 'Confirmed' || extra.has(o.status) || (!!o.assumption && input.includeAssumptions !== false); // active assumptions come with their own switch, whatever their status
+  const statusOk = (o: ContextObject) => o.status === 'Confirmed' || extra.has(o.status) || (!!o.assumption && input.includeAssumptions !== false);
   const assumptionOk = (o: ContextObject) => input.includeAssumptions !== false || !o.assumption;
   const relevant = input.objects.filter((o) => inForce(o) && facetOk(o) && statusOk(o) && assumptionOk(o));
-  // guardrails: Constraints in force at the target (spec / picked sections); for the whole-tree pack only the ones that hold from the top
   const guardScope = scope.whole ? scopeSeeds(nodes, nodes.filter((n) => !n.parentId).map((n) => n.id), false) : scope;
   const guardStanding = scope.whole ? standingOver(guardScope, input.objects, nodes, rels, now) : standing;
   const guardObjects = input.objects.filter((o) => { const st = guardStanding.get(o.id); return !!st && IN_FORCE.has(st.origin) && o.type === 'Constraint' && o.status === 'Confirmed'; });
   const guardIds = new Set(guardObjects.map((o) => o.id));
 
-  // an assumption is neither knowledge nor merely «proposed»: it has its own section and rule
   const assumptions = relevant.filter((o) => isAssumption(o));
   const confirmed = relevant.filter((o) => o.status === 'Confirmed' && !o.assumption);
   const proposed = relevant.filter((o) => o.status !== 'Confirmed' && !o.assumption);
@@ -151,7 +147,6 @@ export function buildContextPack(input: PackInput): ContextPack {
   }
   parts.push(RESPONSE_FORMAT);
 
-  // — what came and why, what did not and why: the same data as the text above —
   const nodeLabel = (id: string) => path(id);
   const items: ExplainItem[] = [
     ...(spec?.guardrails ?? []).filter(Boolean).map((g): ExplainItem => ({ title: g, nodeLabel: spec!.title, group: 'guardrail', from: `از جریان کار «${spec!.title}»` })),
@@ -180,7 +175,8 @@ export function buildContextPack(input: PackInput): ContextPack {
   return {
     explain,
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
-    refs: relevant.map((o) => ({ id: o.id, version: o.version })),
+    // guardrails in the pack body must be in refs for Context Replay (CORE-08)
+    refs: [...new Map([...relevant, ...guardObjects].map((o) => [o.id, { id: o.id, version: o.version }])).values()],
     counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? input.metrics!.metrics.filter((m) => !m.archived).length : 0 },
   };
 }
