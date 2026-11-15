@@ -16,7 +16,7 @@
     "clean": "rm -rf dist server.js",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/*.test.ts server/intelligence/*.test.ts server/intelligence/providers/*.test.ts scripts/eval-intelligence/*.test.ts",
+    "test": "tsx --test src/core/*.test.ts src/ui/*.test.ts server/ai/*.test.ts server/db/*.test.ts server/files/*.test.ts server/*.test.ts server/auth/*.test.ts server/intelligence/*.test.ts server/intelligence/providers/*.test.ts scripts/eval-intelligence/*.test.ts",
     "tokens": "node scripts/tokens/build.mjs"
   },
   "dependencies": {

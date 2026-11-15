@@ -25,8 +25,9 @@ interface AccountModalProps {
 }
 
 /**
- * «حساب و داده‌ها». There is no sign-in, phone number or SMS in this product (one local user), so none is shown; what is here is
- * real: the export, and the three levels of removal — archive a workspace, delete it, delete everything.
+ * «حساب و داده‌ها». Signing in is a personal link (online) or nothing at all (one person on their own computer); there is no
+ * password, phone number or SMS, so none is shown. What is here is real: the backup and its restore, and the three levels of
+ * removal — archive a workspace, delete it, delete everything of this person (never anyone else's).
  */
 export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, currentWorkspace, onExportAllData, onOpenArchive, onArchiveWorkspace, onDeleteWorkspace, onDeleteEverything }) => {
   const [confirm, setConfirm] = useState<null | 'workspace' | 'everything'>(null);
@@ -39,7 +40,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
           <Card padding="lg" className="flex flex-col gap-stack-xs">
             <span className="label-md text-text-default">داده‌های تو کجاست؟</span>
             <p className="body-sm text-text-subtle">
-              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند. هیچ‌چیز خودکار به جایی فرستاده نمی‌شود؛ بسته‌های دانش را خودت کپی می‌کنی و یادداشت‌های آزاد هرگز در آن‌ها نمی‌آیند.
+              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین مبدأ می‌ماند و فقط با ورود خودت دیده می‌شود. هیچ‌چیز خودکار به جای دیگری فرستاده نمی‌شود؛ بسته‌های دانش را خودت کپی می‌کنی و یادداشت‌های آزاد هرگز در آن‌ها نمی‌آیند.
             </p>
           </Card>
 
@@ -74,7 +75,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
       />
       <DangerDialog
         open={isOpen && confirm === 'everything'} onClose={() => setConfirm(null)} title="حذف همهٔ داده‌ها"
-        description="همهٔ فضاهای کاری و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها و تاریخچه) از این نصب برای همیشه پاک می‌شود. بعدش برنامه خالی شروع می‌شود. اگر نسخهٔ پشتیبان می‌خواهی، اول «خروجی گرفتن» را بزن."
+        description="همهٔ فضاهای کاری تو و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها و تاریخچه) برای همیشه پاک می‌شود. بعدش برنامه برایت خالی شروع می‌شود؛ دادهٔ هیچ‌کس دیگری دست نمی‌خورد. اگر نسخهٔ پشتیبان می‌خواهی، اول پشتیبان هر فضا را بگیر."
         confirmLabel="حذف همهٔ داده‌ها" typed={{ phrase: WIPE_WORDS, label: 'عبارت تأیید' }}
         onConfirm={async () => { await onDeleteEverything(); closeAll(); }}
       />
