@@ -57,6 +57,25 @@ const Loading: React.FC<{ label: string; minHeight?: number | string }> = ({ lab
   </div>
 );
 
+/** runtime errors in a subtree: keep the shell usable; ChunkBoundary only covers failed lazy loads */
+export class RuntimeBoundary extends Component<{ children: ReactNode; label?: string }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (typeof console !== 'undefined') console.error('[mabda] RuntimeBoundary', error, info.componentStack);
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="flex p-inset-lg" role="alert">
+        <Alert intent="danger" title={this.props.label ?? 'این بخش خطا داد'} action={<Button size="sm" variant="secondary" onClick={() => this.setState({ error: null })}>دوباره</Button>}>
+          یک خطای پیش‌بینی‌نشده رخ داد. «دوباره» را بزن؛ اگر تکرار شد صفحه را تازه کن. داده‌هایت روی سرور هستند.
+        </Alert>
+      </div>
+    );
+  }
+}
+
 /** a page that is a separate chunk: the same height from the first frame (no jump), the words «در حال بار شدن…» for everyone */
 export const PageSuspense: React.FC<{ children: ReactNode; /** the height the loaded page will take (a number of px or a CSS length): the layout does not jump when it arrives */ minHeight?: number | string }> = ({ children, minHeight = 280 }) => (
   <ChunkBoundary><Suspense fallback={<Loading label="در حال بار شدن…" minHeight={minHeight} />}>{children}</Suspense></ChunkBoundary>
