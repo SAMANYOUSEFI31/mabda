@@ -10,6 +10,7 @@ import { affectedOutputs, approvalMoments, compareTruth, groupBySection, mostImp
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
 import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
+import { tehranDay } from '../../core/calendar';
 
 export type CompareMode = 'week' | 'approval' | 'pending' | 'custom';
 
@@ -29,7 +30,7 @@ interface Props {
 const KIND_FA: Record<ChangeKind, string> = { added: 'افزوده شد', removed: 'حذف شد', changed: 'تغییر کرد', moved: 'جابه‌جا شد', reach: 'جای اعمالش عوض شد' };
 const KIND_INTENT: Record<ChangeKind, 'success' | 'danger' | 'info' | 'neutral' | 'warning'> = { added: 'success', removed: 'danger', changed: 'info', moved: 'neutral', reach: 'warning' };
 const PER_GROUP = 8;
-const dayOnly = (iso: string) => iso.slice(0, 10);
+const dayOnly = (iso: string) => tehranDay(iso);
 const endOfDay = (d: string) => new Date(`${d}T23:59:59.999Z`).toISOString();
 
 /**
@@ -85,7 +86,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
     catch { toast.show({ intent: 'danger', message: 'کپی نشد. دوباره تلاش کن.' }); }
   };
   const open = (d: TruthDelta) => { const o = byId.get(d.id); if (o) { p.onClose(); p.onOpenObject(o); } };
-  const ymd = (iso: string) => iso.slice(0, 10);
+  const ymd = (iso: string) => tehranDay(iso);
 
   return (
     <Dialog
