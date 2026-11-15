@@ -475,8 +475,10 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   :is(.mb-bottomnav__item,button,a)[aria-current]:not([aria-current=false]),
   .mb-tab:is([aria-selected=true],[aria-checked=true]),.mb-tag--toggle.is-selected,.mb-li.is-selected .mb-li__row,.mb-card.is-selected,.mb-iconbtn.is-selected{outline:var(--border-width-thick) solid Highlight;outline-offset:calc(var(--border-width-thick) * -1)}
   /* …and filled, so it never reads as just another button (a button has a frame too) */
-  .mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false]){forced-color-adjust:none;background:Highlight;color:HighlightText}
-  :is(.mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false])) *{color:HighlightText}
+  /* !important: the place's own fill and text colours are utilities, and utilities sit above this layer; with the system colours
+     turned off here they would show the light fill under light text (forced.mjs checks it) */
+  .mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false]){forced-color-adjust:none;background:Highlight!important;color:HighlightText!important}
+  :is(.mb-nav-current,.mb-bottomnav__item[aria-current]:not([aria-current=false])) *{color:HighlightText!important}
 }
 }
 
