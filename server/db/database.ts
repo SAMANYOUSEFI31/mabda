@@ -3,7 +3,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { migrate } from './migrations.ts';
 
-export const DEFAULT_DB_PATH = process.env.MABDA_DB_PATH ?? path.join(process.cwd(), 'server', 'data', 'mabda.sqlite');
+export const DEFAULT_DB_PATH = process.env.MABDA_DB_PATH || path.join(process.cwd(), 'server', 'data', 'mabda.sqlite');
 
 export function openDatabase(file: string = DEFAULT_DB_PATH): Database.Database {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });

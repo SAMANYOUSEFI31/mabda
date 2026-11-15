@@ -14,7 +14,7 @@ import { ledgerEntryFromUsage } from '../../../src/core/ledger.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerMemoryRoutes(ctx: RouteContext): void {
-  const { repo, ai, router, scopeOf, body, wrap, LOCAL_USER, today } = ctx;
+  const { repo, ai, router, scopeOf, body, wrap, userOf, today } = ctx;
   const docs = new DocImportService(repo);
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
 
@@ -43,7 +43,7 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
 
   router.post('/workspaces/:wid/memory/import', wrap(async (req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     const text = String(body(req).text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
     if (text.length > 120_000) throw new RepoError('invalid', 'متن بیش از حد بلند است؛ آن را در چند بخش وارد کن.');

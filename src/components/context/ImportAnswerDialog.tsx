@@ -14,6 +14,7 @@ import { PACK_MARKER_RE } from '../../core/contextPack';
 import { flatten } from '../../core/nodeTree';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
+import { clientId } from '../../core/ids';
 
 const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
@@ -94,7 +95,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     // an Asset block answering a pack made for a specific output counts as that output (unlocks what depends on it)
     const forOutput = b.kind === 'asset' && res?.packDeliverableId && res.packSpecId;
     const asset: GeneratedDeliverable = {
-      id: `del_paste_${Date.now()}`, workspaceId, workstreamId: forOutput ? res!.packSpecId! : 'external',
+      id: clientId('del_paste'), workspaceId, workstreamId: forOutput ? res!.packSpecId! : 'external',
       deliverableId: forOutput ? res!.packDeliverableId! : `external_${Date.now()}`, title: b.title, content: b.markdown,
       executionMode: 'auto', creditCost: 0, usedContext: res?.usedContext ?? [], rebuildCount: 0, createdAt: at(),
       source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() }, ...(res?.packId ? { sourcePackId: res.packId } : {}),

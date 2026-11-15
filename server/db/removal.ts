@@ -50,19 +50,19 @@ export function purgeImpact(repo: Repo, s: Scope, id: string): PurgeImpact {
   const deliverables = repo.listDeliverables(s);
   const noteCopies = repo.listNotes(s).filter((n) => containsAny(n.content, needles)).map((n) => ({ id: n.id, nodeLabel: nodes.find((x) => x.id === n.nodeId)?.label ?? 'بخش حذف‌شده', lines: n.content.split(/\r?\n/).filter((l) => containsAny(l, needles)).length }));
   const fileCopies = rows<{ id: string; name: string }>(repo, 'SELECT DISTINCT f.id, f.name FROM files f JOIN file_chunks c ON c.file_id = f.id WHERE f.workspace_id = ? AND f.user_id = ?', s.workspaceId, s.userId)
-    .filter((f) => rows<{ text: string }>(repo, 'SELECT text FROM file_chunks WHERE file_id = ?', f.id).some((c) => containsAny(c.text, needles)));
+    .filter((f) => rows<{ text: string }>(repo, 'SELECT text FROM file_chunks WHERE file_id = ? AND user_id = ?', f.id, s.userId).some((c) => containsAny(c.text, needles)));
   const thoughtText = (t: { id: string; text: string; sourceQuote?: string }) => [t.text, t.sourceQuote ?? '', ...repo.listThoughtRevisions(s, t.id).flatMap((r) => [r.beforeText, r.afterText])].join(' / ');
   const thoughtCopies = repo.listThoughts(s, { includeResolved: true }).filter((t) => containsAny(thoughtText(t), needles))
     .map((t) => ({ id: t.id, nodeLabel: nodes.find((x) => x.id === t.nodeId)?.label ?? 'بخش حذف‌شده', status: t.status }));
   return {
     title: o.title, status: o.status,
     pointers: {
-      thoughtsAbout: count("SELECT COUNT(DISTINCT thought_id) AS n FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ?", id, s.workspaceId),
-      thoughtsConverted: count('SELECT COUNT(*) AS n FROM thoughts WHERE resolved_object_id = ? AND workspace_id = ?', id, s.workspaceId),
+      thoughtsAbout: count("SELECT COUNT(DISTINCT thought_id) AS n FROM thought_about WHERE target_kind = 'object' AND target_id = ? AND workspace_id = ? AND user_id = ?", id, s.workspaceId, s.userId),
+      thoughtsConverted: count('SELECT COUNT(*) AS n FROM thoughts WHERE resolved_object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId),
     },
-    versions: count('SELECT COUNT(*) AS n FROM context_object_versions WHERE object_id = ? AND workspace_id = ?', id, s.workspaceId),
-    changes: count('SELECT COUNT(*) AS n FROM context_changes WHERE object_id = ? AND workspace_id = ?', id, s.workspaceId),
-    relationships: count('SELECT COUNT(*) AS n FROM context_relationships WHERE workspace_id = ? AND (source_id = ? OR target_id = ?)', s.workspaceId, id, id),
+    versions: count('SELECT COUNT(*) AS n FROM context_object_versions WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId),
+    changes: count('SELECT COUNT(*) AS n FROM context_changes WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId),
+    relationships: count('SELECT COUNT(*) AS n FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND (source_id = ? OR target_id = ?)', s.workspaceId, s.userId, id, id),
     usedIn: deliverables.filter((d) => (d.usedContext ?? []).some((u) => u.id === id)).map((d) => ({ id: d.id, title: d.title })),
     copies: {
       notes: noteCopies,
@@ -88,17 +88,17 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
   const out = { notes: 0, thoughts: 0, sessions: 0, deliverables: 0 };
   repo.db.transaction(() => {
     const w = s.workspaceId, u = s.userId;
-    repo.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ?').run(id, w);
-    repo.db.prepare('DELETE FROM context_changes WHERE object_id = ? AND workspace_id = ?').run(id, w);
-    repo.db.prepare('DELETE FROM context_relationships WHERE workspace_id = ? AND (source_id = ? OR target_id = ?)').run(w, id, id);
-    repo.db.prepare('DELETE FROM canvas_view_items WHERE workspace_id = ? AND item_ref = ?').run(w, `obj:${id}`);
-    repo.db.prepare('DELETE FROM context_judgments WHERE object_id = ? AND workspace_id = ?').run(id, w);
-    repo.db.prepare('DELETE FROM contradiction_judgments WHERE workspace_id = ? AND (a_id = ? OR b_id = ?)').run(w, id, id);
-    repo.db.prepare('UPDATE context_objects SET superseded_by_id = NULL WHERE workspace_id = ? AND superseded_by_id = ?').run(w, id);
+    repo.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+    repo.db.prepare('DELETE FROM context_changes WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+    repo.db.prepare('DELETE FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND (source_id = ? OR target_id = ?)').run(w, u, id, id);
+    repo.db.prepare('DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND item_ref = ?').run(w, u, `obj:${id}`);
+    repo.db.prepare('DELETE FROM context_judgments WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+    repo.db.prepare('DELETE FROM contradiction_judgments WHERE workspace_id = ? AND user_id = ? AND (a_id = ? OR b_id = ?)').run(w, u, id, id);
+    repo.db.prepare('UPDATE context_objects SET superseded_by_id = NULL WHERE workspace_id = ? AND user_id = ? AND superseded_by_id = ?').run(w, u, id);
     // recorded packs keep only «which things were in it»: the id goes
     for (const p of rows<{ id: string; refs: string }>(repo, 'SELECT id, refs FROM context_packs WHERE workspace_id = ? AND user_id = ?', w, u)) {
       const refs = (JSON.parse(p.refs) as Array<{ id: string }>);
-      if (refs.some((r) => r.id === id)) repo.db.prepare('UPDATE context_packs SET refs = ? WHERE id = ?').run(JSON.stringify(refs.filter((r) => r.id !== id)), p.id);
+      if (refs.some((r) => r.id === id)) repo.db.prepare('UPDATE context_packs SET refs = ? WHERE id = ? AND user_id = ?').run(JSON.stringify(refs.filter((r) => r.id !== id)), p.id, u);
     }
     // an output keeps its own text; only the pointer to the erased source goes (an id is still a trace), and the card says «N منبع حذف‌شده»
     for (const d of repo.listDeliverables(s) as Array<GeneratedDeliverable & { removedSources?: number }>) {
@@ -107,16 +107,16 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
       repo.db.prepare('UPDATE deliverables SET data = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(JSON.stringify({ ...d, usedContext: kept, removedSources: (d.removedSources ?? 0) + (d.usedContext.length - kept.length) }), d.id, w, u);
     }
     // thoughts that were only ABOUT this knowledge, or became it, are not erased: the pointer goes and they say «منبع حذف‌شده»
-    repo.db.prepare("DELETE FROM thought_about WHERE workspace_id = ? AND target_kind = 'object' AND target_id = ?").run(w, id);
-    repo.db.prepare('UPDATE thoughts SET resolved_object_id = NULL, resolved_removed = 1 WHERE workspace_id = ? AND resolved_object_id = ?').run(w, id);
-    for (const ev of rows<{ id: string; event_kind: string; before_value: string | null; after_value: string | null }>(repo, "SELECT id, event_kind, before_value, after_value FROM thought_events WHERE workspace_id = ? AND event_kind IN ('resolved','about_updated')", w)) {
+    repo.db.prepare("DELETE FROM thought_about WHERE workspace_id = ? AND user_id = ? AND target_kind = 'object' AND target_id = ?").run(w, u, id);
+    repo.db.prepare('UPDATE thoughts SET resolved_object_id = NULL, resolved_removed = 1 WHERE workspace_id = ? AND user_id = ? AND resolved_object_id = ?').run(w, u, id);
+    for (const ev of rows<{ id: string; event_kind: string; before_value: string | null; after_value: string | null }>(repo, "SELECT id, event_kind, before_value, after_value FROM thought_events WHERE workspace_id = ? AND user_id = ? AND event_kind IN ('resolved','about_updated')", w, u)) {
       const clean = (v: string | null): string | null => {
         if (v === null) return v;
         if (ev.event_kind === 'resolved') return v === id ? null : v;
         try { return JSON.stringify((JSON.parse(v) as Array<{ kind: string; id: string }>).filter((t) => !(t.kind === 'object' && t.id === id))); } catch { return v; }
       };
       const b = clean(ev.before_value), a = clean(ev.after_value);
-      if (b !== ev.before_value || a !== ev.after_value) repo.db.prepare('UPDATE thought_events SET before_value = ?, after_value = ? WHERE id = ?').run(b, a, ev.id);
+      if (b !== ev.before_value || a !== ev.after_value) repo.db.prepare('UPDATE thought_events SET before_value = ?, after_value = ? WHERE id = ? AND user_id = ?').run(b, a, ev.id, u);
     }
     // the thoughts she chose to erase (their text, every revision, every event) — erased from every thought table
     const chosen = (copies.thoughts ?? []).filter((tid) => !!repo.getThought(s, tid));
@@ -210,14 +210,14 @@ export function removeNode(repo: Repo, s: Scope, id: string, o: { mode?: Removal
         batch.archived[x.id] = x.status;
         repo.updateObject(s, x.id, { status: 'Archived' }, { actor: 'user', reason: `بخش «${here.label}» با شاخه‌اش بایگانی شد` });
       }
-      for (const x of notes.filter((x) => ownNodes.has(x.nodeId))) { batch.notes[x.id] = x.nodeId; repo.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(plan.target, x.id, s.workspaceId); }
+      for (const x of notes.filter((x) => ownNodes.has(x.nodeId))) { batch.notes[x.id] = x.nodeId; repo.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(plan.target, x.id, s.workspaceId, s.userId); }
       for (const x of thoughts.filter((x) => ownNodes.has(x.nodeId))) { batch.thoughts[x.id] = x.nodeId; repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(plan.target, x.id, s.workspaceId, s.userId); }
-      for (const x of files.filter((x) => x.nodeId && ownNodes.has(x.nodeId))) { batch.files[x.id] = x.nodeId!; repo.db.prepare('UPDATE files SET node_id = ? WHERE id = ? AND workspace_id = ?').run(plan.target, x.id, s.workspaceId); }
+      for (const x of files.filter((x) => x.nodeId && ownNodes.has(x.nodeId))) { batch.files[x.id] = x.nodeId!; repo.db.prepare('UPDATE files SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(plan.target, x.id, s.workspaceId, s.userId); }
       for (const smp of repo.listSampleObjects(s).filter((x) => ownNodes.has(x.nodeId))) { batch.samples.push(smp as unknown as Record<string, unknown>); }
       repo.deleteSamples(s, [...ownNodes]);
       // the branch's sections go, deepest first (its knowledge stays, archived, with the section it was in)
       repo.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: `بخش «${here.label}» با ${batch.nodes.length - 1} زیربخشش بایگانی شد؛ ${Object.keys(batch.archived).length} دانش بایگانی شد.` } });
-      for (const n of [...batch.nodes].reverse()) repo.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND id = ?').run(s.workspaceId, n.id);
+      for (const n of [...batch.nodes].reverse()) repo.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND user_id = ? AND id = ?').run(s.workspaceId, s.userId, n.id);
     }
     const removalId = newId('rm');
     const label = mode === 'archive' ? `«${here.label}» با شاخه‌اش بایگانی شد` : `«${here.label}» حذف شد`;
@@ -244,20 +244,20 @@ export function undoRemoval(repo: Repo, s: Scope, batchId: string): { nodes: Tre
     const exists = (id?: string) => !!id && (have.has(id) || b.nodes.some((n) => n.id === id));
     for (const n of b.nodes) ins.run(n.id, s.userId, s.workspaceId, exists(n.parentId) ? n.parentId : null, n.label, n.description, n.order);
     const back = (table: 'context_objects' | 'notes' | 'files', col: string, map: Record<string, string>) => {
-      for (const [id, nodeId] of Object.entries(map)) repo.db.prepare(`UPDATE ${table} SET ${col} = ? WHERE id = ? AND workspace_id = ?`).run(nodeId, id, s.workspaceId);
+      for (const [id, nodeId] of Object.entries(map)) repo.db.prepare(`UPDATE ${table} SET ${col} = ? WHERE id = ? AND workspace_id = ? AND user_id = ?`).run(nodeId, id, s.workspaceId, s.userId);
     };
     back('context_objects', 'node_id', b.mode === 'move' ? b.objects : {});
     back('notes', 'node_id', b.notes);
     for (const [id, nodeId] of Object.entries(b.thoughts ?? {})) repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
     back('files', 'node_id', b.files);
-    for (const c of b.children) repo.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(c.parentId ?? null, c.order, s.workspaceId, c.id);
+    for (const c of b.children) repo.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND user_id = ? AND id = ?').run(c.parentId ?? null, c.order, s.workspaceId, s.userId, c.id);
     for (const [oid, status] of Object.entries(b.archived)) {
       const cur = repo.getObjectAny(s, oid);
       if (cur && cur.status === 'Archived') repo.updateObject(s, oid, { status: status as ContextObject['status'] }, { actor: 'user', reason: 'حذف بخش برگردانده شد' });
     }
     for (const smp of b.samples) repo.createSample(s, smp as never);
     repo.recordChange(s, { objectId: `node:${b.rootId}`, fromVersion: 0, toVersion: 0, kind: 'node_restored', meta: { actor: 'user', reason: `${row.label} — برگردانده شد.` } });
-    repo.db.prepare('UPDATE removal_batches SET undone_at = ? WHERE id = ?').run(now(), batchId);
+    repo.db.prepare('UPDATE removal_batches SET undone_at = ? WHERE id = ? AND user_id = ?').run(now(), batchId, s.userId);
     return { nodes: repo.listNodes(s) };
   })();
 }
@@ -277,7 +277,7 @@ export const restoreDeliverable = (repo: Repo, s: Scope, id: string) => patchDel
 export function deleteDeliverable(repo: Repo, s: Scope, id: string) {
   if (!repo.getDeliverable(s, id)) throw new RepoError('not_found', 'خروجی پیدا نشد.');
   repo.db.prepare('DELETE FROM deliverables WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
-  repo.db.prepare("DELETE FROM canvas_view_items WHERE workspace_id = ? AND item_ref = ?").run(s.workspaceId, `asset:${id}`);
+  repo.db.prepare("DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND item_ref = ?").run(s.workspaceId, s.userId, `asset:${id}`);
 }
 
 // ───────────────────────────── workspaces and the whole account ─────────────────────────────

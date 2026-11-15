@@ -13,7 +13,7 @@ import { nodeTemplateOf, nodeTemplateToStart, workstreamTemplateOf } from '../..
 import { planNodes, sampleNode } from '../../../src/core/startTemplate.ts';
 
 export function registerStartersRoutes(ctx: RouteContext): void {
-  const { repo, router, scopeOf, body, wrap, LOCAL_USER } = ctx;
+  const { repo, router, scopeOf, body, wrap, userOf } = ctx;
   router.post('/workspaces/:wid/starters/:id/apply', wrap((req, res) => {
     const s = scopeOf(req);
     const st = STARTERS.find((x) => x.id === req.params.id);
@@ -37,9 +37,9 @@ export function registerStartersRoutes(ctx: RouteContext): void {
     const ids = Array.isArray(body(req).nodeIds) ? (body(req).nodeIds as unknown[]).map(String) : undefined;
     res.json({ removed: repo.deleteSamples(s, ids), samples: repo.listSampleObjects(s) });
   }));
-  router.get('/templates', wrap((_req, res) => { res.json({ templates: repo.listTemplates(LOCAL_USER) }); }));
-  router.delete('/templates/:id', wrap((req, res) => { const template = repo.listTemplates(LOCAL_USER).find((t) => t.id === req.params.id); repo.deleteTemplate(LOCAL_USER, req.params.id); res.json({ ok: true, template }); }));
-  router.post('/workspaces/:wid/templates/restore', wrap((req, res) => { const s = scopeOf(req); const t = body(req).template as { id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }; if (!t?.id) throw new RepoError('invalid', 'قالب نامعتبر است.'); repo.saveTemplate(s, t.kind, t.name, t.payload, t.createdAt, t.id); res.json({ templates: repo.listTemplates(LOCAL_USER) }); }));
+  router.get('/templates', wrap((req, res) => { res.json({ templates: repo.listTemplates(userOf(req)) }); }));
+  router.delete('/templates/:id', wrap((req, res) => { const template = repo.listTemplates(userOf(req)).find((t) => t.id === req.params.id); repo.deleteTemplate(userOf(req), req.params.id); res.json({ ok: true, template }); }));
+  router.post('/workspaces/:wid/templates/restore', wrap((req, res) => { const s = scopeOf(req); const t = body(req).template as { id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }; if (!t?.id) throw new RepoError('invalid', 'قالب نامعتبر است.'); repo.saveTemplate(s, t.kind, t.name, t.payload, t.createdAt, t.id); res.json({ templates: repo.listTemplates(userOf(req)) }); }));
   /** save a node (with its sub-tree and knowledge) or a custom workstream as the user's own template */
   router.post('/workspaces/:wid/templates', wrap((req, res) => {
     const s = scopeOf(req);
@@ -57,10 +57,10 @@ export function registerStartersRoutes(ctx: RouteContext): void {
   /** bring a template in: a node template → child nodes + grey examples under `parentId`; a workstream template → a custom workstream (Pro and above) */
   router.post('/workspaces/:wid/templates/:id/apply', wrap((req, res) => {
     const s = scopeOf(req);
-    const t = repo.listTemplates(LOCAL_USER).find((x) => x.id === req.params.id);
+    const t = repo.listTemplates(userOf(req)).find((x) => x.id === req.params.id);
     if (!t) throw new RepoError('not_found', 'قالب پیدا نشد.');
     if (t.kind === 'workstream') {
-      const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+      const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
       if (!PLANS[ws.planId]?.customSpecs) throw new RepoError('forbidden', 'ساخت و ویرایش جریان کار سفارشی از پلن Pro به بالا فعال است.');
       const spec = { ...(t.payload as Omit<WorkstreamSpec, 'id'>), id: newId('spec') } as WorkstreamSpec;
       res.json({ spec: repo.saveSpec(s, spec) });

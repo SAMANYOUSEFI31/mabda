@@ -7,8 +7,9 @@ import type { ChangeMeta, Scope } from '../repo.ts';
 import express from 'express';
 import type { NextFunction, Request, Response, Router } from 'express';
 
-/** One local user until real accounts exist. Every table already carries user_id + workspace_id. */
-export const LOCAL_USER = 'local';
+import { LOCAL_USER, userIdOf } from '../../auth/http.ts';
+/** the one user of the local mode (server/auth/http.ts); in the invite mode every request carries its own signed-in user */
+export { LOCAL_USER };
 /** the words that must be typed to delete every piece of data (nothing is half-confirmed) */
 export const ACCOUNT_WIPE_WORDS = 'حذف همهٔ داده‌ها';
 
@@ -17,7 +18,7 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
 };
 
 
-export interface DataRouterDeps { repo: Repo; ai: AiService; files?: FileService; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date }
+export interface DataRouterDeps { repo: Repo; ai: AiService; files?: FileService; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date; /** an unexpected fault in a route (reported to the owner, server/diagnostics.ts) */ onServerError?: (req: Request, err: unknown) => void }
 
 /** Everything the route files share: the dependencies, the request helpers and the helpers that more than one route file uses. Built once per router. */
 export function makeRouteContext(deps: DataRouterDeps) {
@@ -27,8 +28,10 @@ export function makeRouteContext(deps: DataRouterDeps) {
   const router = express.Router();
   const scopeOf = (req: Request): Scope => {
     const workspaceId = String(req.params.wid);
-    if (!repo.getWorkspace(LOCAL_USER, workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
-    return { userId: LOCAL_USER, workspaceId };
+    const userId = userIdOf(req);
+    // the workspace must be this person's: someone else's id answers exactly like an id that does not exist
+    if (!repo.getWorkspace(userId, workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
+    return { userId, workspaceId };
   };
   const body = (req: Request) => (req.body ?? {}) as Record<string, any>;
   const ACTORS = ['user', 'chat', 'coach', 'import', 'system'];
@@ -46,7 +49,7 @@ export function makeRouteContext(deps: DataRouterDeps) {
   // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
   const today = () => clock().toISOString().slice(0, 10);
 
-  return { repo, ai, clock, files, router, scopeOf, body, ACTORS, metaOf, wrap, deps, LOCAL_USER, ACCOUNT_WIPE_WORDS, stale, today };
+  return { repo, ai, clock, files, router, scopeOf, body, ACTORS, metaOf, wrap, deps, userOf: userIdOf, ACCOUNT_WIPE_WORDS, stale, today };
 }
 
 export type RouteContext = ReturnType<typeof makeRouteContext>;

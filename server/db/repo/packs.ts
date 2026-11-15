@@ -4,7 +4,7 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { RepoError, Scope, cleanFacets, newId, now } from './shared.ts';
+import { RepoError, Scope, cleanFacets, newId, now, claimId } from './shared.ts';
 import { REQUEST_MAX_CHARS, isRequestKind } from '../../../src/core/aiRequest.ts';
 import type { PackSelection, SavedPack } from '../../../src/types/index.ts';
 
@@ -77,6 +77,7 @@ export const packsMethods = {
 
   /** the demo builder: raw insert with explicit timestamps */
   importSavedPack(this: Repo, s: Scope, p: SavedPack) {
+    claimId(this.db, 'saved_packs', p.id, s);
     this.db.prepare('INSERT OR REPLACE INTO saved_packs (id, user_id, workspace_id, name, selection, instruction, kind, template, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(p.id, s.userId, s.workspaceId, p.name, JSON.stringify(this.cleanSelection(s, p.selection)), p.instruction, p.kind ?? null, p.kind ? (p.template ?? '') : null, p.createdAt, p.updatedAt);
   },
 

@@ -26,6 +26,8 @@ export const adminEnabled = () => /^(1|on|true|yes)$/i.test(process.env.MABDA_AD
 const USER_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 export function userOf(req: Request): string {
+  // the signed-in user (server/auth/http.ts) is the one id of every layer; the browser's header is only for a bare AI router (tests)
+  if (req.mabdaUser?.id) return req.mabdaUser.id;
   const id = req.header('x-mabda-user') ?? '';
   if (!USER_ID.test(id)) throw new AiError('bad_request', { message: 'شناسهٔ کاربر نامعتبر است.', retryable: false });
   return id;

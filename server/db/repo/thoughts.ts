@@ -174,7 +174,7 @@ export const thoughtsMethods = {
         const src = JSON.parse(o.source) as ObjectSource;
         if (!src.thoughtId || !set.includes(src.thoughtId)) continue;
         const { thoughtId: _t, ...rest } = src;
-        this.db.prepare('UPDATE context_objects SET source = ? WHERE id = ? AND workspace_id = ?').run(JSON.stringify(rest), o.id, w);
+        this.db.prepare('UPDATE context_objects SET source = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(JSON.stringify(rest), o.id, w, s.userId);
       }
     })();
     return n;

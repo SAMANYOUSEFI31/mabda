@@ -9,7 +9,7 @@ import { RepoError } from '../repo.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerFilesRoutes(ctx: RouteContext): void {
-  const { repo, files, router, scopeOf, body, wrap, LOCAL_USER } = ctx;
+  const { repo, files, router, scopeOf, body, wrap, userOf } = ctx;
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
   router.get('/workspaces/:wid/files/quota', wrap((req, res) => { res.json(files.quota(scopeOf(req))); }));
   router.post('/workspaces/:wid/files', upload.single('file'), wrap(async (req, res) => {
@@ -23,7 +23,7 @@ export function registerFilesRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/files/:id/process', wrap(async (req, res) => {
     const s = scopeOf(req);
     const r = await files.process(s, req.params.id, aiUserOf(req));
-    res.json({ ...r, workspace: repo.getWorkspace(LOCAL_USER, s.workspaceId), quota: files.quota(s) });
+    res.json({ ...r, workspace: repo.getWorkspace(s.userId, s.workspaceId), quota: files.quota(s) });
   }));
   router.delete('/workspaces/:wid/files/:id', wrap((req, res) => { repo.deleteFile(scopeOf(req), req.params.id); res.json({ ok: true }); }));
 }

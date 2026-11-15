@@ -1,9 +1,11 @@
 import type { Repo } from './repo.ts';
 import type { Workspace } from '../../src/types/index.ts';
 import { buildDemo, DEMO_ID, tehranAt } from '../../src/core/demoData.ts';
+import { idSuffixFor, idsOf, remapIds } from './userIds.ts';
 
-/** the one showcase workspace of an account */
+/** the one showcase workspace of an account (the local user's id; everyone else's carries their suffix: demoWorkspaceIdFor) */
 export const DEMO_WORKSPACE_ID = DEMO_ID;
+export const demoWorkspaceIdFor = (userId: string) => DEMO_WORKSPACE_ID + idSuffixFor(userId);
 
 /**
  * Builds — or rebuilds from nothing — the showcase workspace («قهوهٔ تخصصی آنلاین»). Idempotent: every run deletes all data of
@@ -11,15 +13,18 @@ export const DEMO_WORKSPACE_ID = DEMO_ID;
  * judgement; ids, versions and timestamps are written exactly as the builder says, bypassing the plan caps on purpose.
  */
 export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
-  const s = { userId, workspaceId: DEMO_WORKSPACE_ID };
+  const wsId = demoWorkspaceIdFor(userId);
+  const s = { userId, workspaceId: wsId };
   const ws: Workspace = {
-    id: DEMO_WORKSPACE_ID, name: 'قهوهٔ تخصصی آنلاین', slug: 'demo-coffee', description: 'فضای نمونهٔ کامل برای بررسی محصول؛ داده‌ها ساختگی‌اند.',
+    id: wsId, name: 'قهوهٔ تخصصی آنلاین', slug: 'demo-coffee', description: 'فضای نمونهٔ کامل برای بررسی محصول؛ داده‌ها ساختگی‌اند.',
     planId: 'max', creditsRemaining: 150, todayChatCount: 0, isDemo: true, enabledSpecIds: [], createdAt: now.toISOString(),
   };
-  const data = buildDemo(now);
+  // the same showcase for everyone, under this person's own ids (DB-PG-01: server/db/userIds.ts)
+  const raw = buildDemo(now);
+  const data = remapIds(raw, idsOf({ id: DEMO_WORKSPACE_ID }, raw.objects, raw.relationships, raw.changes, raw.notes, raw.file, raw.specs, raw.deliverables, raw.packs, raw.templates, raw.samples, raw.metrics, raw.measurements), idSuffixFor(userId));
   repo.db.transaction(() => {
-    const exists = !!repo.getWorkspace(userId, DEMO_WORKSPACE_ID);
-    repo.saveWorkspace(userId, exists ? { ...repo.getWorkspace(userId, DEMO_WORKSPACE_ID)!, ...ws, createdAt: repo.getWorkspace(userId, DEMO_WORKSPACE_ID)!.createdAt } : ws, { demo: true, skipLimit: true });
+    const exists = !!repo.getWorkspace(userId, wsId);
+    repo.saveWorkspace(userId, exists ? { ...repo.getWorkspace(userId, wsId)!, ...ws, createdAt: repo.getWorkspace(userId, wsId)!.createdAt } : ws, { demo: true, skipLimit: true });
     if (exists) repo.resetWorkspaceData(s);
     for (const n of data.nodes) repo.importNode(s, n);
     for (const o of data.objects) repo.importObject(s, o, { silent: true });
@@ -38,5 +43,5 @@ export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
     for (const m of data.metrics) repo.createMetric(s, { id: m.id, name: m.name, unit: m.unit, direction: m.direction, target: m.target, at: m.at }, { actor: 'user' });
     for (const x of data.measurements) repo.addMeasurement(s, { id: x.id, metricId: x.metricId, value: x.value, at: x.day, note: x.note, source: 'demo', createdAt: `${x.day}T09:00:00.000Z` }, { actor: 'user' });
   })();
-  return repo.getWorkspace(userId, DEMO_WORKSPACE_ID)!;
+  return repo.getWorkspace(userId, wsId)!;
 }

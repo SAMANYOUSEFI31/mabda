@@ -3,16 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// first: .env must be read before any module reads process.env (the database path is read at import)
+import 'dotenv/config';
 import express from 'express';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp } from './server/app.ts';
-import { openDatabase } from './server/db/database.ts';
-import { resolveAccessGate } from './server/access.ts';
+import { DEFAULT_DB_PATH, openDatabase } from './server/db/database.ts';
+import { resolveAuthMode } from './server/auth/http.ts';
+import { backupDirFor, restoreIfAsked, scheduleDailyBackups } from './server/backup.ts';
 import { decommissionLegacyByok } from './server/ai/decommission.ts';
 
-dotenv.config();
 
 const removedLegacyCredentials = decommissionLegacyByok();
 if (removedLegacyCredentials) console.info('[ai] removed retired personal-key vault files');
@@ -22,10 +23,21 @@ const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-const access = resolveAccessGate(process.env);
-if (access.fatal) { console.error(`[access] ${access.fatal}`); process.exit(1); }
+// sign-in: production refuses to start without MABDA_OWNER_CODE (docs/deploy.md)
+const auth = resolveAuthMode(process.env);
+if ('fatal' in auth) { console.error(`[auth] ${auth.fatal}`); process.exit(1); }
 
-const { app, aiSessions } = createApp(openDatabase(), { gate: access.gate });
+// a backup named in MABDA_RESTORE_FROM replaces the database once, before it is opened
+const restore = restoreIfAsked(DEFAULT_DB_PATH);
+if (restore.error) { console.error(`[backup] ${restore.error}`); process.exit(1); }
+if (restore.restored) console.log(`[backup] restored the database from ${restore.restored}`);
+
+const db = openDatabase();
+const backupDir = backupDirFor(DEFAULT_DB_PATH);
+if (process.env.NODE_ENV === 'production' || process.env.MABDA_BACKUP_DIR) scheduleDailyBackups(db, backupDir);
+const publicOrigin = process.env.MABDA_PUBLIC_URL?.trim() || undefined;
+const { app, aiSessions } = createApp(db, { auth, backupDir, publicOrigin });
+console.log(`[auth] ${auth.mode === 'invite' ? 'invite mode: every person signs in with their own link' : 'local mode: one person on this computer'}`);
 
 /** At start-up, verify the configured model ids against the managed key's model list. Never guesses. */
 async function verifyManagedModels() {

@@ -19,6 +19,8 @@ export interface PurgeImpactInfo {
 }
 import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
+import { SIGNED_OUT_EVENT } from './session';
+import { deadline } from './deadline';
 
 /**
  * The only way the UI reads or writes data. The server (SQLite) is the source of truth — there is no localStorage copy
@@ -33,23 +35,39 @@ export class DataApiError extends Error {
 
 const base = '/api';
 
-async function call<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
+/**
+ * ARCH-04: no request waits forever. A plain read or write gets 20 s; sending or reading a document gets 120 s (a large PDF on a
+ * slow phone line); the caller can also cancel with its own signal (leaving a page). A timeout says so and is retryable.
+ */
+export const REQUEST_TIMEOUT_MS = { normal: 20_000, document: 120_000 } as const;
+const DOCUMENT_PATH = /\/(files|memory\/document|imports)(\/|$)/;
+
+async function call<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}, opts: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
+  const ms = opts.timeoutMs ?? (body instanceof FormData || DOCUMENT_PATH.test(path) ? REQUEST_TIMEOUT_MS.document : REQUEST_TIMEOUT_MS.normal);
+  const g = deadline(ms, opts.signal);
+  const signal = g.signal;
   let res: Response;
   try {
     res = await fetch(base + path, {
-      method,
+      method, signal,
       headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'x-mabda-user': getUserId(), ...extraHeaders },
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
   } catch {
+    g.done();
+    if (opts.signal?.aborted) throw new DataApiError('درخواست لغو شد.', 0, true);
+    if (g.timedOut()) throw new DataApiError('پاسخ سرور به‌موقع نرسید. چیزی از دست نرفته است؛ دوباره تلاش کن.', 0, true);
     throw new DataApiError('ارتباط با سرور برقرار نشد. اجرای سرور و اینترنت را بررسی کن و دوباره تلاش کن.', 0, true);
   }
+  g.done();
   if (!res.ok) {
     let message = `خطای سرور (${res.status}). دوباره تلاش کن.`;
     try {
       const j = await res.json();
       if (typeof j?.error?.message === 'string') message = j.error.message;
     } catch { /* not JSON */ }
+    // not signed in (any more): the sign-in screen takes over (src/app/shell/SessionGate.tsx)
+    if (res.status === 401) window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
     throw new DataApiError(message, res.status, res.status >= 500);
   }
   return (await res.json()) as T;
@@ -90,7 +108,24 @@ export function clearLegacyData(workspaceIds: string[]) {
 }
 
 export type MetricsBundle = { metrics: import('../types').Metric[]; measurements: import('../types').Measurement[] };
+export interface PersonInfo { id: string; name: string; role: 'tester'; createdAt: string; disabledAt?: string; lastSeenAt?: string; hasLink: boolean }
+export interface ErrorReportInfo { id: string; userId: string; source: 'client' | 'server'; name: string; message: string; stack?: string; path?: string; createdAt: string }
+/** the owner's tools (server/auth/owner.ts): people and their links, error reports */
+export const ownerApi = {
+  people: () => call<{ mode: 'local' | 'invite'; people: PersonInfo[] }>('GET', '/owner/people'),
+  invite: (name: string) => call<{ person: PersonInfo; link: string }>('POST', '/owner/people', { name }),
+  newLink: (id: string) => call<{ link: string }>('POST', `/owner/people/${encodeURIComponent(id)}/link`, {}),
+  setDisabled: (id: string, disabled: boolean) => call<{ person: PersonInfo }>('POST', `/owner/people/${encodeURIComponent(id)}/disabled`, { disabled }),
+  errors: () => call<{ errors: ErrorReportInfo[] }>('GET', '/owner/errors'),
+  /** the whole database, every person's data (a download, not JSON) */
+  backupUrl: '/api/owner/backup',
+};
+
 export const dataApi = {
+  /** BETA-01: the whole workspace as one file (server/db/workspaceBackup.ts); a link, so the browser saves it itself */
+  backupUrl: (id: string) => `/api${ws(id)}/backup`,
+  /** a backup file comes back as a NEW workspace next to the others (never over one) */
+  restoreBackup: (backup: unknown) => call<{ workspace: Workspace; workspaces: Workspace[] }>('POST', '/backup/restore', { backup }, {}, { timeoutMs: REQUEST_TIMEOUT_MS.document }),
   async bootstrap(): Promise<Workspace[]> {
     const legacy = readLegacyData();
     const r = await call<{ workspaces: Workspace[]; imported: unknown }>('POST', '/bootstrap', legacy ? { legacy } : {});

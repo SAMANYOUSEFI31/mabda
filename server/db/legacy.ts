@@ -2,6 +2,8 @@ import type { ChatSession, ContextObject, Note, ContextRelationship, GeneratedDe
 import { INITIAL_CONTEXT_OBJECTS, INITIAL_DELIVERABLES, INITIAL_LEDGER, INITIAL_NOTES, INITIAL_RELATIONSHIPS, INITIAL_WORKSPACES } from '../../src/core/seedData.ts';
 import { LIBRARY } from '../../src/core/specs.ts';
 import type { Repo } from './repo.ts';
+import { LOCAL_USER } from '../auth/http.ts';
+import { idSuffixFor, idsOf, remapIds } from './userIds.ts';
 
 /** Everything the old localStorage-based client kept. Sent once by the browser to POST /api/bootstrap. */
 export interface LegacyPayload {
@@ -63,10 +65,14 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
   return counts;
 }
 
-/** First run without any old browser data: the same sample workspaces the prototype always started with. */
-export function seedPayload(): LegacyPayload {
-  return {
+/**
+ * First run without any old browser data: the same sample workspaces the prototype always started with — under this person's
+ * own ids (DB-PG-01: server/db/userIds.ts; the local user keeps the plain ids its database already has).
+ */
+export function seedPayload(userId: string = LOCAL_USER): LegacyPayload {
+  const raw: LegacyPayload = {
     workspaces: INITIAL_WORKSPACES, contextObjects: INITIAL_CONTEXT_OBJECTS, relationships: INITIAL_RELATIONSHIPS,
     deliverables: INITIAL_DELIVERABLES, ledger: INITIAL_LEDGER, notes: INITIAL_NOTES,
   };
+  return remapIds(raw, idsOf(raw.workspaces, raw.contextObjects, raw.relationships, raw.deliverables, raw.ledger, raw.notes), idSuffixFor(userId));
 }

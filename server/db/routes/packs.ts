@@ -17,11 +17,11 @@ import { toAiError } from '../../ai/errors.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerPacksRoutes(ctx: RouteContext): void {
-  const { repo, ai, clock, router, scopeOf, body, wrap, LOCAL_USER } = ctx;
-  const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(LOCAL_USER, s.workspaceId))];
+  const { repo, ai, clock, router, scopeOf, body, wrap, userOf } = ctx;
+  const specList = (s: Scope) => [...repo.listSpecs(s), ...enabledBuiltInSpecs(repo.getWorkspace(s.userId, s.workspaceId))];
   router.post('/workspaces/:wid/packs', wrap((req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
     const b = body(req);
     const spec = typeof b.specId === 'string' ? specList(s).find((x) => x.id === b.specId) : undefined;
@@ -36,7 +36,7 @@ export function registerPacksRoutes(ctx: RouteContext): void {
   // «درخواست برای AI»: kind + one line (+ scope) → the assembled prompt. `record` stores the pack (lineage for the import of the answer); a preview does not
   router.post('/workspaces/:wid/ai-requests', wrap((req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
     const b = body(req);
     if (!isRequestKind(b.kind)) throw new RepoError('invalid', 'نوع کار نامعتبر است.');

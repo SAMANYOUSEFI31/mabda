@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Workspace } from '../../types';
 import { Button, Card, Dialog, Icon } from '../../ui';
 import { DangerDialog } from '../shared/Removal';
@@ -14,7 +14,10 @@ interface AccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentWorkspace: Workspace;
+  /** the whole current workspace as one backup file (BETA-01) */
   onExportAllData: () => void;
+  /** a backup file comes back as a new workspace; true = done */
+  onRestoreBackup: (file: File) => Promise<boolean>;
   /** «بایگانی»: everything that is out of the way, with «برگردان» and «حذف دائمی» */
   onOpenArchive: () => void;
   onArchiveWorkspace: () => Promise<void>;
@@ -25,11 +28,14 @@ interface AccountModalProps {
 }
 
 /**
- * «حساب و داده‌ها». There is no sign-in, phone number or SMS in this product (one local user), so none is shown; what is here is
- * real: the export, and the three levels of removal — archive a workspace, delete it, delete everything.
+ * «حساب و داده‌ها». Signing in is a personal link (online) or nothing at all (one person on their own computer); there is no
+ * password, phone number or SMS, so none is shown. What is here is real: the backup and its restore, and the three levels of
+ * removal — archive a workspace, delete it, delete everything of this person (never anyone else's).
  */
-export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, currentWorkspace, onExportAllData, onOpenArchive, onArchiveWorkspace, onDeleteWorkspace, onDeleteEverything }) => {
+export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, currentWorkspace, onExportAllData, onRestoreBackup, onOpenArchive, onArchiveWorkspace, onDeleteWorkspace, onDeleteEverything }) => {
   const [confirm, setConfirm] = useState<null | 'workspace' | 'everything'>(null);
+  const [restoring, setRestoring] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const closeAll = () => { setConfirm(null); onClose(); };
 
   return (
@@ -39,13 +45,25 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
           <Card padding="lg" className="flex flex-col gap-stack-xs">
             <span className="label-md text-text-default">داده‌های تو کجاست؟</span>
             <p className="body-sm text-text-subtle">
-              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین نصب مبدأ می‌ماند. هیچ‌چیز خودکار به جایی فرستاده نمی‌شود؛ بسته‌های دانش را خودت کپی می‌کنی و یادداشت‌های آزاد هرگز در آن‌ها نمی‌آیند.
+              دانش، یادداشت‌ها و خروجی‌هایت در پایگاه‌دادهٔ همین مبدأ می‌ماند و فقط با ورود خودت دیده می‌شود. هیچ‌چیز خودکار به جای دیگری فرستاده نمی‌شود؛ بسته‌های دانش را خودت کپی می‌کنی و یادداشت‌های آزاد هرگز در آن‌ها نمی‌آیند.
             </p>
           </Card>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
             <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>
-            <Button variant="secondary" iconStart="Download" fullWidth onClick={onExportAllData}>خروجی گرفتن از تمام داده‌های منبع حقیقت (JSON)</Button>
+            <p className="body-sm text-text-subtle">پشتیبان همهٔ این فضا را در یک فایل می‌دهد: دانش با همهٔ نسخه‌ها، فکرها، رابطه‌ها، تغییرها، بوم، فایل‌ها و عددها. برگرداندن پشتیبان همیشه یک فضای تازه می‌سازد و روی چیزی نمی‌نویسد.</p>
+            <Button variant="secondary" iconStart="Download" fullWidth onClick={onExportAllData}>پشتیبان کامل «{currentWorkspace.name}»</Button>
+            <Button variant="secondary" iconStart="Upload" fullWidth disabled={restoring} onClick={() => fileRef.current?.click()}>{restoring ? 'در حال برگرداندن…' : 'برگرداندن از فایل پشتیبان…'}</Button>
+            <input
+              ref={fileRef} type="file" accept="application/json,.json" className="sr-only" tabIndex={-1} aria-hidden="true"
+              onChange={async (e) => {
+                const f = e.currentTarget.files?.[0];
+                e.currentTarget.value = '';
+                if (!f) return;
+                setRestoring(true);
+                try { if (await onRestoreBackup(f)) closeAll(); } finally { setRestoring(false); }
+              }}
+            />
           </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
@@ -74,7 +92,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
       />
       <DangerDialog
         open={isOpen && confirm === 'everything'} onClose={() => setConfirm(null)} title="حذف همهٔ داده‌ها"
-        description="همهٔ فضاهای کاری و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها و تاریخچه) از این نصب برای همیشه پاک می‌شود. بعدش برنامه خالی شروع می‌شود. اگر نسخهٔ پشتیبان می‌خواهی، اول «خروجی گرفتن» را بزن."
+        description="همهٔ فضاهای کاری تو و هرچه در آن‌هاست (دانش، یادداشت‌ها، خروجی‌ها، فایل‌ها، بسته‌ها، قالب‌ها و تاریخچه) برای همیشه پاک می‌شود. بعدش برنامه برایت خالی شروع می‌شود؛ دادهٔ هیچ‌کس دیگری دست نمی‌خورد. اگر نسخهٔ پشتیبان می‌خواهی، اول پشتیبان هر فضا را بگیر."
         confirmLabel="حذف همهٔ داده‌ها" typed={{ phrase: WIPE_WORDS, label: 'عبارت تأیید' }}
         onConfirm={async () => { await onDeleteEverything(); closeAll(); }}
       />

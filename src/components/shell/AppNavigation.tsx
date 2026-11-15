@@ -9,6 +9,8 @@ import { PLANS } from '../../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
+import { useSession } from '../../app/shell/SessionGate';
+import { PeopleDialog } from '../workspace/PeopleDialog';
 import { defaultAddKind, requestAdd } from '../../core/addRequest';
 
 
@@ -151,6 +153,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const planName = plan.title.split(' ')[0];
 
   const ai = useAiStatus();
+  const { session, signOut } = useSession();
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const online = session?.mode === 'invite';
+  // AI-04: plans and credits are frozen and never shown unless managed AI is on (CLAUDE.md 5b); the account line says whose it is
+  const accountLine = ai.managedEnabled ? `پلن ${planName}` : online ? (session?.user?.name ?? '') : 'روی همین دستگاه';
   const [theme, setTheme] = useTheme();
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
@@ -163,13 +170,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   ];
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
-    { label: 'پلن و ارتقا', icon: 'CreditCard', onSelect: p.onOpenPlanModal },
-    { label: 'مصرف', icon: 'Wallet', onSelect: p.onOpenLedger },
+    ...(online && session?.user?.role === 'owner' ? [{ label: 'افراد آزمون', icon: 'Link2' as const, onSelect: () => setPeopleOpen(true) }] : []),
+    ...(ai.managedEnabled ? [{ label: 'پلن و ارتقا', icon: 'CreditCard' as const, onSelect: p.onOpenPlanModal }, { label: 'مصرف', icon: 'Wallet' as const, onSelect: p.onOpenLedger }] : []),
     ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
     { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },
     { divider: true },
     { label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
+    ...(online ? [{ label: 'خروج از این دستگاه', icon: 'LogOut' as const, onSelect: () => void signOut() }] : []),
   ];
   const workspacePicker = (compact: boolean) => (
     <Menu
@@ -224,11 +232,11 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           side="top"
           className="w-full"
           trigger={(
-            <button type="button" aria-label={`حساب کاربری، پلن ${planName}`} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+            <button type="button" aria-label={accountLine ? `حساب کاربری، ${accountLine}` : 'حساب کاربری'} className="flex min-h-touch w-full items-center gap-inline-md rounded-control p-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
               <span className="grid size-control-sm shrink-0 place-items-center rounded-control-sm bg-bg-neutral-subtle text-icon-subtle"><Icon name="User" size="lg" /></span>
               <span className="min-w-space-0 flex-1">
                 <span className="label-md block truncate text-text-default">حساب من</span>
-                <span className="body-sm block whitespace-nowrap text-text-subtle">پلن {planName}</span>
+                <span className="body-sm block truncate whitespace-nowrap text-text-subtle">{accountLine}</span>
               </span>
               <Icon name="ChevronsUpDown" size="md" className="text-icon-subtle" />
             </button>
@@ -268,7 +276,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
             <NavItem compact icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />
             <NavItem compact icon="Package" label="خروجی‌ها" selected={inOutputs} onClick={() => go('assets')} />
           </nav>
-          <Menu label="حساب کاربری" side="top" trigger={<IconButton icon="User" label={`حساب کاربری، پلن ${planName}`} variant="ghost" />} items={accountItems} />
+          <Menu label="حساب کاربری" side="top" trigger={<IconButton icon="User" label={accountLine ? `حساب کاربری، ${accountLine}` : 'حساب کاربری'} variant="ghost" />} items={accountItems} />
         </aside>
       )}
       {overlay && !docked && (
@@ -290,8 +298,10 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         </span>
       </header>
 
+      <PeopleDialog open={peopleOpen} onClose={() => setPeopleOpen(false)} />
+
       {/* Mobile account drawer */}
-      <Dialog open={drawer} onClose={close} title="حساب کاربری" description={`پلن ${planName}`} size="sm">
+      <Dialog open={drawer} onClose={close} title="حساب کاربری" description={accountLine || undefined} size="sm">
         <div className="flex flex-col gap-stack-xs">{accountItems.map(drawerRow)}</div>
       </Dialog>
 

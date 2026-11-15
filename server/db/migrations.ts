@@ -722,6 +722,49 @@ export const MIGRATIONS: Migration[] = [
       db.exec('CREATE INDEX idx_notes_source ON notes(source_file_id)');
     },
   },
+  {
+    version: 27,
+    name: 'people and sign-in: one account per person (personal invite link), sign-in sessions, error reports from devices',
+    up(db) {
+      // Accounts are not content: they carry no workspace and their column is `account_id`, not `user_id`, so the sweeps that
+      // walk every user_id table («حذف همهٔ داده‌ها», the workspace backup) never touch sign-in. Codes and tokens are stored as
+      // SHA-256 only: a copy of the database does not let anyone sign in.
+      db.exec(`
+        CREATE TABLE accounts (
+          id TEXT PRIMARY KEY,           -- the one user id of every layer (= user_id in every content table)
+          name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('owner', 'tester')),
+          invite_hash TEXT UNIQUE,       -- sha256 of the personal link's code; NULL = no working link
+          created_at TEXT NOT NULL,
+          disabled_at TEXT,
+          last_seen_at TEXT
+        );
+        CREATE TABLE auth_sessions (
+          token_hash TEXT PRIMARY KEY,   -- sha256 of the cookie value
+          account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+          created_at TEXT NOT NULL,
+          expires_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_auth_sessions_account ON auth_sessions(account_id);
+      `);
+      // what went wrong on a device or on the server: the error's name, a message with quoted text removed, code locations, the
+      // page path. Never what the person wrote. It is the person's data too, so it carries user_id and goes with «حذف همهٔ داده‌ها».
+      db.exec(`
+        CREATE TABLE client_errors (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          source TEXT NOT NULL CHECK (source IN ('client', 'server')),
+          name TEXT NOT NULL,
+          message TEXT NOT NULL,
+          stack TEXT,
+          path TEXT,
+          agent TEXT,
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_client_errors_at ON client_errors(created_at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

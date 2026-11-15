@@ -13,10 +13,10 @@ import { pairsToJudge } from '../../../src/core/contradictionCandidates.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerContradictionsRoutes(ctx: RouteContext): void {
-  const { repo, ai, router, scopeOf, body, metaOf, wrap, LOCAL_USER, stale, today } = ctx;
+  const { repo, ai, router, scopeOf, body, metaOf, wrap, userOf, stale, today } = ctx;
   router.post('/workspaces/:wid/contradictions/judge', wrap(async (req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
     const objects = repo.listObjects(s);
     // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
@@ -60,7 +60,7 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
   }));
 
   const coachQuota = (s: Scope) => {
-    const limit = entitlementsOf(repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId).coachPerDay;
+    const limit = entitlementsOf(repo.getWorkspace(s.userId, s.workspaceId)!.planId).coachPerDay;
     const used = repo.dailyUsage(s, today(), 'coach');
     return { used, limit, remaining: Math.max(0, limit - used) };
   };

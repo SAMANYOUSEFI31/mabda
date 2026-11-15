@@ -104,10 +104,8 @@ export function estimateRemainingOutputs(credits: number, avgCostPerDeliverable 
   return Math.floor(credits / avgCostPerDeliverable);
 }
 
-/** YYYY-MM-DD in Tehran time (the day the fair-use counter belongs to). */
-export function tehranDay(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tehran', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-}
+/** YYYY-MM-DD in Tehran time (the day the fair-use counter belongs to). One source: src/core/tehranDate.ts. */
+export { tehranDay } from './tehranDate';
 
 /** Today's chat count: a count recorded on another day is yesterday's, i.e. zero. `today` = YYYY-MM-DD (Tehran). */
 export function chatCountToday(todayChatCount: number, chatCountDay: string | undefined, today: string): number {

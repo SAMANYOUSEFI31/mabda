@@ -111,5 +111,7 @@
  "POST /workspaces/:wid/files",
  "POST /workspaces/:wid/files/:id/process",
  "DELETE /workspaces/:wid/files/:id",
+ "GET /workspaces/:wid/backup",
+ "POST /backup/restore",
  "use:<anonymous>:4"
 ]

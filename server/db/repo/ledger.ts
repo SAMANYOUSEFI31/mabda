@@ -4,7 +4,7 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { Scope } from './shared.ts';
+import { Scope, claimId } from './shared.ts';
 import type { LedgerEntry, Workspace } from '../../../src/types/index.ts';
 
 export const ledgerMethods = {
@@ -14,6 +14,7 @@ export const ledgerMethods = {
 
   addLedger(this: Repo, s: Scope, e: LedgerEntry): LedgerEntry {
     this.assertWorkspace(s);
+    claimId(this.db, 'ledger', e.id, s);
     this.db.prepare('INSERT OR REPLACE INTO ledger (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(e.id, s.userId, s.workspaceId, JSON.stringify({ ...e, workspaceId: s.workspaceId }), e.timestamp);
     return e;
   },
