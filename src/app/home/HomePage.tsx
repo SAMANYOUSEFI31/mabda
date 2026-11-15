@@ -5,7 +5,6 @@
 
 /** Home: where to start — what needs you, this week, waiting decisions, the inbox, recent changes. */
 
-import { AttentionPanel } from '../../components/home/AttentionPanel';
 import { DueItems } from '../../components/home/DueItems';
 import { HomeSections } from '../../components/home/HomeSections';
 import { InheritNoticeList } from '../../components/home/InheritNoticeList';
@@ -75,38 +74,11 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               onToggleAll={() => setHomeAllOpen((v) => !v)}
             />
           )}
-          {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
+          {/* calm news, below the to-do and OUTSIDE it: it is not a task; one at a time, the rest wait in the weekly review */}
           {inheritNotices.length > 0 && <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} />}
           {homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
             <div id="home-all" className="flex flex-col gap-stack-lg">
-          <AttentionPanel
-            specTitle={attentionSpec?.title ?? ''}
-            gaps={attentionGaps}
-            contradictionCount={contradictions.length}
-            staleCount={stale.length}
-            reviews={[...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, dependencyTitles: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) }))}
-            waiting={waiting}
-            structure={waitingOrdered.structure}
-            flips={flips}
-            titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
-            weeklyDue={weeklyDue}
-            showWeekly={vf.weeklyReview}
-            showWaiting={vf.waitingDecisions}
-            onOpenWeekly={() => setWeeklyOpen(true)}
-            onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
-            onAcceptReview={handleAcceptReview}
-            proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
-            onAnswerGap={(gap, answer) => { void handleSaveContextObject({
-              workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
-              title: gap.label, content: answer, nodeId: gap.nodeId, slotKey: gap.key,
-            }); }}
-            onOpenStudio={() => setActiveTab('workstreams')}
-            onOpenAssets={() => setActiveTab('assets')}
-            onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            onOpenContradictions={() => document.getElementById('contradictions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
-          />
-
+          {/* UX-01: AttentionPanel removed — it duplicated HomeSections (waiting / gaps / stale). Expanded view keeps unique panels only. */}
           {vf.metrics && (
             <Card padding="xl" id="expectations" className="flex flex-col gap-stack-md" aria-label={MX.homeTitle}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
