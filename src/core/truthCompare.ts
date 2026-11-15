@@ -19,6 +19,7 @@ import { reachOf } from './effectiveContext';
 import { subtreeIds } from './nodeTree';
 import { diffWords, isSame } from './textDiff';
 import type { DiffSegment } from './textDiff';
+import { tehranStartOfMonth } from './calendar';
 
 export interface TruthItem { id: string; title: string; content: string; type: ContextObject['type']; nodeId: string; reach: 'global' | 'position'; version: number; assumption: boolean }
 export type TruthSet = Map<string, TruthItem>;
@@ -221,7 +222,8 @@ export function toMarkdown(c: TruthComparison, nodes: TreeNode[], title: string,
 export function presetMoments(now: Date, milestones: string[]): { weekAgo: string; lastApproval?: string; startOfMonth: string } {
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
   const lastApproval = milestones[0] ? new Date(new Date(milestones[0]).getTime() - 1).toISOString() : undefined;
-  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  // calendar start of the Tehran month (not UTC month — CORE-03)
+  const startOfMonth = `${tehranStartOfMonth(now)}T00:00:00.000Z`;
   return { weekAgo, ...(lastApproval ? { lastApproval } : {}), startOfMonth };
 }
 
@@ -236,4 +238,3 @@ export function approvalMoments(changes: ContextChange[], limit = 8, objects: Ar
   for (const t of at) if (!out.length || Math.abs(new Date(out[out.length - 1]).getTime() - new Date(t).getTime()) > 60_000) out.push(t);
   return out.slice(0, limit);
 }
-
