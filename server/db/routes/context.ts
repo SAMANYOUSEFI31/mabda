@@ -1,4 +1,5 @@
 /** Shared context of the route files (server/db/routes/*): see docs/architecture.md → «نقشهٔ پوشه‌ها». */
+import { tehranDay } from '../../../src/core/tehranDate.ts';
 import type { ContextSource } from '../../ai/routes.ts';
 import type { AiService } from '../../ai/service.ts';
 import { FileService } from '../../files/service.ts';
@@ -47,7 +48,8 @@ export function makeRouteContext(deps: DataRouterDeps) {
   const stale = (s: Scope) => (repo.impactEnabled(s) ? repo.computeStale(s) : []);
 
   // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
-  const today = () => clock().toISOString().slice(0, 10);
+  // daily allowances and «today» follow the Tehran day (src/core/tehranDate.ts), not the UTC one
+  const today = () => tehranDay(clock());
 
   return { repo, ai, clock, files, router, scopeOf, body, ACTORS, metaOf, wrap, deps, userOf: userIdOf, ACCOUNT_WIPE_WORDS, stale, today };
 }

@@ -9,6 +9,7 @@
  * Pure.
  */
 
+import { tehranDay } from './tehranDate';
 import type { ContextChange, ContextObject } from '../types';
 import { isActiveContext } from './contextStatus';
 
@@ -30,7 +31,8 @@ export function rejectedOptions(objects: ContextObject[]): RejectedOption[] {
   return out;
 }
 
-const today = (now: Date | string | number) => new Date(now).toISOString().slice(0, 10);
+// «today» is the Tehran day (tehranDate.ts): a date due today is due from 00:00 in Tehran, not from 03:30
+const today = (now: Date | string | number) => tehranDay(now);
 
 /** assumptions whose review date has come (inclusive) */
 export function assumptionsDue(objects: ContextObject[], now: Date | string | number): ContextObject[] {

@@ -31,8 +31,10 @@ export function buildChangeDigest(input: {
   deliverables: GeneratedDeliverable[];
   now?: Date;
   days?: number;
+  /** where the window starts (an ISO moment); wins over `days` */
+  since?: string;
 }): Digest {
-  const since = new Date((input.now ?? new Date()).getTime() - (input.days ?? DEFAULT_DAYS) * DAY_MS).toISOString();
+  const since = input.since ?? new Date((input.now ?? new Date()).getTime() - (input.days ?? DEFAULT_DAYS) * DAY_MS).toISOString();
   const titleOf = new Map(input.objects.map((o) => [o.id, o.title]));
   const stale = computeStaleAssets(input.deliverables, input.objects, { relationships: input.relationships, changes: input.changes });
   const dTitle = new Map(input.deliverables.map((d) => [d.id, d.title]));

@@ -9,6 +9,7 @@
  * by hash lookup (no early-exit string compare of secrets), the cookie is HttpOnly + SameSite=Lax + Secure on HTTPS, and
  * sessions expire.
  */
+import { tehranDay } from '../../src/core/tehranDate.ts';
 import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 
@@ -108,8 +109,8 @@ export class Accounts {
     if (!r) return undefined;
     const a = rowToAccount(r);
     // "last seen" per day is enough to tell the owner who is testing; it is not a tracking log
-    const day = nowIso(this.clock()).slice(0, 10);
-    if (a.lastSeenAt?.slice(0, 10) !== day) this.db.prepare('UPDATE accounts SET last_seen_at = ? WHERE id = ?').run(nowIso(this.clock()), a.id);
+    const day = tehranDay(this.clock());
+    if (!a.lastSeenAt || tehranDay(a.lastSeenAt) !== day) this.db.prepare('UPDATE accounts SET last_seen_at = ? WHERE id = ?').run(nowIso(this.clock()), a.id);
     return a;
   }
 

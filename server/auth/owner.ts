@@ -2,6 +2,7 @@
  * The owner's tools (invite mode): people and their links, error reports, a copy of the whole database.
  * Only the owner reaches these; to anyone else they do not exist (404, not 403: nothing to discover).
  */
+import { tehranDay } from '../../src/core/tehranDate.ts';
 import fs from 'node:fs';
 import express from 'express';
 import type { Request } from 'express';
@@ -49,7 +50,7 @@ export function createOwnerRouter(deps: { db: Database.Database; mode: AuthMode;
     try {
       if (!deps.backupDir) return void res.status(404).json({ error: { code: 'not_found', message: 'پایگاه‌داده در حافظه است؛ پشتیبانی برای دانلود نیست.' } });
       const file = await freshCopy(deps.db, deps.backupDir);
-      res.download(file, `mabda-${new Date().toISOString().slice(0, 10)}.sqlite`, () => fs.rmSync(file, { force: true }));
+      res.download(file, `mabda-${tehranDay()}.sqlite`, () => fs.rmSync(file, { force: true }));
     } catch (e) { next(e); }
   });
   return r;

@@ -103,7 +103,7 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const markInheritSeen = (key: string) => setInheritSeen((cur) => { const next = [...cur, key].slice(-200); try { localStorage.setItem('mabda.inherit.seen', JSON.stringify(next)); } catch { /* optional */ } return next; });
   const inheritNotices = useMemo(() => buildInheritNotices({ changes: data?.changes ?? [], objects: data?.objects ?? [], nodes, relationships: data?.relationships ?? [], seen: inheritSeen }), [data?.changes, data?.objects, data?.relationships, nodes, inheritSeen]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
-  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [], nodes }), [data?.objects, data?.relationships, data?.changes, data?.deliverables, nodes]);
+  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [], nodes, lastReviewAt: data?.weeklyReviewAt }), [data?.objects, data?.relationships, data?.changes, data?.deliverables, nodes, data?.weeklyReviewAt]);
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [compare, setCompare] = useState<{ mode: CompareMode; scopeNodeId?: string } | null>(null);

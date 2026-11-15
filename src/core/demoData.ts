@@ -8,6 +8,7 @@
  * found by the same deterministic engines as everywhere else.
  */
 
+import { tehranDay } from './tehranDate';
 import { lineHash } from './thinkingMarkers';
 import { nodeTemplateOf } from './templates';
 import type { NodeTemplate } from './templates';
@@ -319,7 +320,7 @@ export function buildDemo(now: Date): DemoData {
   };
 
   // ── metrics: recorded numbers (never facts) and four decisions that state what they expect of one ──
-  const dayOf = (n: number) => new Date(now.getTime() - n * DAY).toISOString().slice(0, 10);
+  const dayOf = (n: number) => tehranDay(now.getTime() - n * DAY);
   const metrics: DemoData['metrics'] = [
     { id: 'met_demo_orders', name: 'سفارش هفتگی', unit: 'سفارش', direction: 'up', target: 120, at: at(36, 9) },
     { id: 'met_demo_retention', name: 'ماندگاری اشتراک', unit: 'درصد', direction: 'up', target: 70, at: at(31, 9) },

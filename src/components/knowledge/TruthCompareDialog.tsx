@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { addDays, tehranDay } from '../../core/tehranDate';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } from '../../types';
 import { flatten } from '../../core/nodeTree';
-import { affectedOutputs, approvalMoments, compareTruth, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
+import { affectedOutputs, approvalMoments, compareDays, compareTruth, customRange, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
 import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
@@ -29,8 +30,6 @@ interface Props {
 const KIND_FA: Record<ChangeKind, string> = { added: 'افزوده شد', removed: 'حذف شد', changed: 'تغییر کرد', moved: 'جابه‌جا شد', reach: 'جای اعمالش عوض شد' };
 const KIND_INTENT: Record<ChangeKind, 'success' | 'danger' | 'info' | 'neutral' | 'warning'> = { added: 'success', removed: 'danger', changed: 'info', moved: 'neutral', reach: 'warning' };
 const PER_GROUP = 8;
-const dayOnly = (iso: string) => iso.slice(0, 10);
-const endOfDay = (d: string) => new Date(`${d}T23:59:59.999Z`).toISOString();
 
 /**
  * «حقیقت در دو لحظه»: what the source of truth said then versus now (or «اگر همه را تأیید کنم»), grouped by section, with the
@@ -55,7 +54,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
   const range = useMemo(() => {
     if (mode === 'week') return { a: preset.weekAgo, b: now.toISOString(), label: 'هفتهٔ پیش ← امروز' };
     if (mode === 'approval') return preset.lastApproval ? { a: preset.lastApproval, b: now.toISOString(), label: 'قبل از آخرین تأیید ← امروز' } : null;
-    if (mode === 'custom') return from && to ? { a: endOfDay(from), b: endOfDay(to), label: `${formatJalaliDate(from)} ← ${formatJalaliDate(to)}` } : null;
+    if (mode === 'custom') return from && to ? { ...customRange(from, to), label: `${formatJalaliDate(from)} ← ${formatJalaliDate(to)}` } : null;
     return { a: now.toISOString(), b: now.toISOString(), label: 'امروز ← اگر همه را تأیید کنم' };
   }, [mode, preset, now, from, to]);
 
@@ -85,7 +84,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
     catch { toast.show({ intent: 'danger', message: 'کپی نشد. دوباره تلاش کن.' }); }
   };
   const open = (d: TruthDelta) => { const o = byId.get(d.id); if (o) { p.onClose(); p.onOpenObject(o); } };
-  const ymd = (iso: string) => iso.slice(0, 10);
+  const days = compareDays(now);
 
   return (
     <Dialog
@@ -103,14 +102,14 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
           </div>
           {more && (
             <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2" data-testid="custom-dates">
-              <DateField label="از روز" value={from} max={ymd(now.toISOString())} onValueChange={(v) => { setFrom(v); setMode('custom'); }} />
-              <DateField label="تا روز" value={to} max={ymd(now.toISOString())} min={from || undefined} onValueChange={(v) => { setTo(v); setMode('custom'); }} />
+              <DateField label="از روز" value={from} max={days.today} onValueChange={(v) => { setFrom(v); setMode('custom'); }} />
+              <DateField label="تا روز" value={to} max={days.today} min={from || undefined} onValueChange={(v) => { setTo(v); setMode('custom'); }} />
             </div>
           )}
-          {more && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">زودتر:</span><Button size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(preset.startOfMonth)); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>از اول ماه</Button></div>}
+          {more && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">زودتر:</span><Button size="sm" variant="ghost" onClick={() => { setFrom(days.monthStart); setTo(days.today); setMode('custom'); }}>از اول ماه</Button></div>}
           {moments.length > 0 && more && (
             <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">لحظه‌های تأیید:</span>
-              {moments.slice(0, 5).map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(new Date(new Date(m).getTime() - 86_400_000).toISOString())); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>{formatJalaliDate(m)}</Button>)}
+              {moments.slice(0, 5).map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => { setFrom(addDays(tehranDay(m), -1)); setTo(days.today); setMode('custom'); }}>{formatJalaliDate(m)}</Button>)}
             </div>
           )}
         </div>
