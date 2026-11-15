@@ -12,8 +12,7 @@ import { calculateReadinessAndGaps } from './contextEngine';
 import { needsReview, planDecisions, waitingDecisions } from './decisionGraph';
 import type { ReviewNeed, WaitingDecisions } from './decisionGraph';
 import { assumptionsDue, decisionsDue } from './assumptions';
-
-const DAY_MS = 86_400_000;
+import { tehranCalendarDaysBetween } from './calendar';
 
 export interface WeeklyReviewData {
   digest: Digest;
@@ -48,7 +47,8 @@ export function buildWeeklyReview(input: { objects: ContextObject[]; relationshi
 export function reviewDue(lastAt: string | null | undefined, data: Pick<WeeklyReviewData, 'total'>, now: Date = new Date()): boolean {
   if (data.total === 0) return false;
   if (!lastAt) return true;
-  return now.getTime() - new Date(lastAt).getTime() >= DEFAULT_DAYS * DAY_MS;
+  // calendar days in Tehran, not a sliding 7×24h window (CORE-04)
+  return tehranCalendarDaysBetween(lastAt, now) >= DEFAULT_DAYS;
 }
 
 export interface WorkstreamReadiness { specId: string; title: string; score: number; status: 'ready' | 'needs_work' | 'blocked'; missing: number }
