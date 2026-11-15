@@ -12,7 +12,11 @@ import {  ContextObject,
   TreeNode,
   WorkstreamSpec,
 } from '../types';
-import { isActiveContext } from './contextStatus';
+import { isValidKnowledge } from './validity';
+import { governanceOf } from './coGoverning';
+import type { GovernanceInput } from './coGoverning';
+import { DEFAULT_RULE_PACK } from './contradictionRules';
+import type { RulePack } from './contradictionRules';
 
 /**
  * Returns parent chain for a node to resolve context inheritance:
@@ -28,24 +32,6 @@ export function getAncestorNodeIds(nodeId: string, nodes: TreeNode[]): string[] 
   return result;
 }
 
-/**
- * Filters active context objects (excluding archived or superseded items)
- * that belong to the specified branch or any of its ancestors.
- */
-export function resolveActiveContextsForNode(
-  nodeId: string,
-  allObjects: ContextObject[],
-  nodes: TreeNode[]
-): ContextObject[] {
-  const validNodeIds = new Set(getAncestorNodeIds(nodeId, nodes));
-
-  return allObjects.filter((item) => {
-    if (item.status === 'Archived' || item.status === 'Superseded') {
-      return false;
-    }
-    return validNodeIds.has(item.nodeId);
-  });
-}
 
 /** What the decision layer said about one object version: is it too vague to build on? */
 export interface AmbiguityJudgment {
@@ -55,7 +41,8 @@ export interface AmbiguityJudgment {
 }
 export type AmbiguityMap = Record<string, AmbiguityJudgment>;
 
-const activeOf = (objects: ContextObject[]) => objects.filter(isActiveContext);
+// one definition of valid knowledge (validity.ts): an expired item never fills a gap or makes a workstream ready
+const activeOf = (objects: ContextObject[], now: Date | string | number = Date.now()) => objects.filter((o) => isValidKnowledge(o, now));
 
 /** Persian-aware normalisation for title matching: ی/ک variants, ZWNJ, diacritics, case, spacing. */
 export function normalizeFa(text: string): string {
@@ -89,9 +76,9 @@ export function fillsItem(req: { key?: string; label: string }, o: ContextObject
 }
 
 /** The object that fills a required item, if any (same matching rule the readiness uses). Confirmed wins over Proposed; an explicit slot wins over a title match. */
-export function findForRequired(req: { key?: string; label: string }, objects: ContextObject[]): ContextObject | undefined {
+export function findForRequired(req: { key?: string; label: string }, objects: ContextObject[], now: Date | string | number = Date.now()): ContextObject | undefined {
   const rank = (o: ContextObject) => (o.status === 'Confirmed' && !o.assumption ? 0 : o.status === 'Confirmed' || o.status === 'Proposed' ? 1 : 2); // an assumption never counts as established
-  return activeOf(objects)
+  return activeOf(objects, now)
     .filter((o) => fillsItem(req, o))
     .sort((a, b) => Number(!!b.slotKey) - Number(!!a.slotKey) || rank(a) - rank(b))[0];
 }
@@ -115,9 +102,10 @@ export function calculateReadinessAndGaps(
   spec: WorkstreamSpec,
   objects: ContextObject[],
   _relationships: ContextRelationship[] = [],
-  ambiguity: AmbiguityMap = {}
+  ambiguity: AmbiguityMap = {},
+  now: Date | string | number = Date.now()
 ): ReadinessResult {
-  const activeObjects = activeOf(objects);
+  const activeObjects = activeOf(objects, now);
 
   const gaps: GapItem[] = [];
   let confirmedRequiredCount = 0;
@@ -258,24 +246,41 @@ export function extractQuantities(text: string): Quantity[] {
  * Semantic contradictions (different words, same claim) are the decision layer's job — it receives only
  * candidate pairs and answers one closed question; this function never invents a conflict from keywords alone.
  */
-export function detectContradictions(objects: ContextObject[]): Contradiction[] {
-  const active = objects.filter((o) => o.status === 'Confirmed' || o.status === 'Proposed');
+export interface ContradictionContext extends Omit<GovernanceInput, 'objects'> {
+  /** the domain rules (contradictionRules.ts); default: the pricing pack */
+  rules?: RulePack;
+  /** a governance check already built for these objects (the caller shares one between engines) */
+  governs?: (a: ContextObject, b: ContextObject) => boolean;
+}
+
+/**
+ * Certain (rule-based) contradictions: same topic with different numbers, and the domain rules of a rule pack. A pair counts only
+ * where both govern the same place now (coGoverning.ts: valid, same section or ancestor, «همه‌جا», exceptions). Without the tree
+ * every valid pair may meet.
+ */
+export function detectContradictions(objects: ContextObject[], ctx: ContradictionContext = {}): Contradiction[] {
+  const governs = ctx.governs ?? governanceOf({ objects, ...ctx });
+  const rules = ctx.rules ?? DEFAULT_RULE_PACK;
+  const now = ctx.now ?? Date.now();
+  const active = objects.filter((o) => (o.status === 'Confirmed' || o.status === 'Proposed') && isValidKnowledge(o, now));
   const contradictions: Contradiction[] = [];
   const tokens = new Map(active.map((o) => [o.id, titleTokens(o.title)]));
   const quantities = new Map(active.map((o) => [o.id, extractQuantities(`${o.title} ${o.content}`)]));
+  const text = new Map(active.map((o) => [o.id, toLatin(normalizeFa(o.content))]));
 
-  // only pairs that share a title word can be «the same topic»; the «no discount» rule pairs its two small groups
-  const noDisc = (o: ContextObject) => /تخفیف نداریم|بدون تخفیف|تخفیف نمی(‌|\s)?دهیم/.test(normalizeFa(o.content));
-  const disc = (o: ContextObject) => /تخفیف\s*[\d۰-۹]+\s*(٪|%|درصد)|آفر رایگان|تخفیف ویژه/.test(toLatin(normalizeFa(o.content)));
-  const nd = active.map((o, i) => (noDisc(o) ? i : -1)).filter((i) => i >= 0);
-  const di = active.map((o, i) => (disc(o) ? i : -1)).filter((i) => i >= 0);
+  // only pairs that share a title word can be «the same topic»; each domain rule pairs its two small groups
   const extra: Array<[number, number]> = [];
-  for (const x of nd) for (const y of di) if (x !== y) extra.push([x, y]);
+  for (const r of rules) {
+    const says = active.map((o, i) => (r.says.test(text.get(o.id)!) ? i : -1)).filter((i) => i >= 0);
+    const does = active.map((o, i) => (r.contradictedBy.test(text.get(o.id)!) ? i : -1)).filter((i) => i >= 0);
+    for (const x of says) for (const y of does) if (x !== y) extra.push([Math.min(x, y), Math.max(x, y)]);
+  }
   const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra });
   {
     for (const [i, j] of pairs) {
       const a = active[i];
       const b = active[j];
+      if (!governs(a, b)) continue;
 
       // 1) same topic, different numbers
       if (jaccard(tokens.get(a.id)!, tokens.get(b.id)!) >= 0.6) {
@@ -297,18 +302,12 @@ export function detectContradictions(objects: ContextObject[]): Contradiction[] 
         }
       }
 
-      // 2) «no discount» constraint vs a discount definition
-      for (const [x, y] of [[a, b], [b, a]] as const) {
-        const noDiscount = /تخفیف نداریم|بدون تخفیف|تخفیف نمی(‌|\s)?دهیم/.test(normalizeFa(x.content));
-        const discount = /تخفیف\s*[\d۰-۹]+\s*(٪|%|درصد)|آفر رایگان|تخفیف ویژه/.test(toLatin(normalizeFa(y.content)));
-        if (noDiscount && discount && !contradictions.some((c) => c.id === `contra_${x.id}_${y.id}`)) {
-          contradictions.push({
-            id: `contra_${x.id}_${y.id}`,
-            itemA: x,
-            itemB: y,
-            reason: 'تناقض با مرز قیمت‌گذاری: در خط قرمزها ذکر شده «تخفیف نداریم»، اما در مورد دیگری تخفیف تعریف شده است.',
-            suggestedResolution: 'خط قرمز عدم تخفیف را اصلاح کن یا مورد تخفیف‌دار را از حالت تأییدشده خارج کن.',
-          });
+      // 2) the domain rules: one side forbids what the other does
+      for (const r of rules) {
+        for (const [x, y] of [[a, b], [b, a]] as const) {
+          if (r.says.test(text.get(x.id)!) && r.contradictedBy.test(text.get(y.id)!) && !contradictions.some((c) => c.id === `contra_${x.id}_${y.id}`)) {
+            contradictions.push({ id: `contra_${x.id}_${y.id}`, itemA: x, itemB: y, reason: r.reason, suggestedResolution: r.suggestedResolution });
+          }
         }
       }
     }

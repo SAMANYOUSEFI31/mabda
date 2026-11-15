@@ -11,7 +11,7 @@
 import { parseThinking } from './thinkingMarkers';
 
 import { conflictPartners, displayState, DISPLAY_LABEL } from './displayState';
-import type { ContextObject, Note, TreeNode } from '../types';
+import type { ContextObject, Contradiction, Note, TreeNode } from '../types';
 import type { StoredFile, Thought } from '../types';
 import { ancestorIds } from './nodeTree';
 import { normalizeText, tokenize } from './retrieval';
@@ -95,6 +95,8 @@ export function buildSearchIndex(input: {
   notes?: Array<Pick<Note, 'id' | 'nodeId' | 'content'>>;
   thoughts?: Array<Pick<Thought, 'id' | 'nodeId' | 'text' | 'status'>>;
   files?: Array<Pick<StoredFile, 'id' | 'name' | 'nodeId' | 'summary'>>;
+  /** the app's unresolved contradictions (displayState.conflictPartners) */
+  conflicts?: Contradiction[];
 }): SearchIndex {
   const labels = new Map(input.nodes.map((n) => [n.id, n.label]));
   const label = (id: string) => labels.get(id) ?? id;
@@ -103,7 +105,7 @@ export function buildSearchIndex(input: {
   type Raw = Omit<Doc, 'tf' | 'len' | 'ftitle'>;
   const raw: Raw[] = [];
   for (const n of input.nodes) raw.push({ kind: 'node', id: n.id, title: n.label, content: n.description, text: `${n.label} ${n.label} ${n.label} ${n.description}`, subtitle: path(n.id) });
-  const partners = conflictPartners(input.objects);
+  const partners = conflictPartners(input.objects, input.conflicts);
   for (const o of input.objects) {
     if (o.sample || o.status === 'Archived' || o.status === 'Superseded') continue;
     const state = displayState(o, partners);

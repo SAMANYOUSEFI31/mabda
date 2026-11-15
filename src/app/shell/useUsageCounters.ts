@@ -10,7 +10,6 @@ import { dataApi } from '../../services/dataApi';
 import { enabledBuiltInSpecs } from '../../core/specs';
 import { impactMessage } from '../../core/impactEngine';
 import { track } from '../../services/usage';
-import { unresolvedContradictions } from '../../core/contradictionCandidates';
 import { useEffect } from 'react';
 import type { AppCoreScope } from './useAppCore';
 import type { SearchAndFocusScope } from './useSearchAndFocus';
@@ -45,7 +44,7 @@ export function useUsageCounters(p: AppCoreScope & SearchAndFocusScope) {
   const firstOwnSpec = data?.specs[0]?.id;
   useEffect(() => { if (data?.workspace.id) setSelectedSpecId(firstOwnSpec ?? enabledLibrary[0]?.id ?? ''); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.workspace.id, firstOwnSpec]);
-  const contradictions: Contradiction[] = unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? []);
+  const contradictions: Contradiction[] = p.contradictions; // computed once (useSearchAndFocus): the same list everywhere
   const attentionSpec = specs.find((s) => s.id === selectedSpecId) ?? specs[0];
   const attentionGaps = attentionSpec
     ? calculateReadinessAndGaps(attentionSpec, workspaceContexts, data?.relationships ?? []).gaps.filter((g) => g.importance === 'required')

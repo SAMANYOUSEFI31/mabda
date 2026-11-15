@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { Contradiction } from '../../types';
 import React, { useEffect, useMemo, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
@@ -15,6 +16,8 @@ import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
 
 interface ContextTreeDocViewProps {
+  /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
+  conflicts?: Contradiction[];
   objects: ContextObject[];
   relationships?: ContextRelationship[];
   /** objects whose dependency changed (the «قدیمی» counter of a sub-section) */
@@ -60,7 +63,7 @@ interface ContextTreeDocViewProps {
 }
 
 export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => {
-  const { objects, nodes } = props;
+  const { objects, nodes, conflicts } = props;
   // the Coach is Mabda's own AI: frozen (hidden) while MABDA_MANAGED_AI is off
   const { managedEnabled } = useAiStatus();
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
@@ -76,7 +79,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   // «مورد دانش» (components.md, patterns.md §۲): hanging nuqta · headline · reading text · one trace line. No box, no type colour.
   // What the engines say about it (needs review, an assumption, where it applies) goes to the margin as one sentence, not a chip.
   // the deterministic contradiction engine (same topic, different amounts…): both sides carry the conflict dot and say who the other is
-  const conflictWith = useMemo(() => conflictPartners(objects), [objects]);
+  const conflictWith = useMemo(() => conflictPartners(objects, conflicts), [objects, conflicts]);
   const nodeName = (id: string) => nodes.find((n) => n.id === id)?.label ?? '';
   const marginFor = (obj: ContextObject) => {
     const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');

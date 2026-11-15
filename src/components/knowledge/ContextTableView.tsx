@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { Contradiction } from '../../types';
 import React, { useMemo, useState } from 'react';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../../types';
 import { conflictPartners, DISPLAY_LABEL, displayState } from '../../core/displayState';
@@ -11,6 +12,8 @@ import {
 } from '../../ui';
 
 interface ContextTableViewProps {
+  /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
+  conflicts?: Contradiction[];
   objects: ContextObject[];
   nodes: TreeNode[];
   onSelectObject: (obj: ContextObject) => void;
@@ -23,13 +26,14 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   nodes,
   onSelectObject,
   samples = [],
+  conflicts,
 }) => {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedNode, setSelectedNode] = useState<string>('all');
   const [selectedFacet, setSelectedFacet] = useState<string>('all');
-  const partners = useMemo(() => conflictPartners(objects), [objects]);
+  const partners = useMemo(() => conflictPartners(objects, conflicts), [objects, conflicts]);
   const facetNames = [...new Set([...objects, ...samples].flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b));
 
   const filteredObjects = [...objects, ...samples].filter((o) => {

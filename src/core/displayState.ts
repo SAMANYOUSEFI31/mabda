@@ -1,4 +1,4 @@
-import type { ContextObject } from '../types';
+import type { ContextObject, Contradiction } from '../types';
 import { detectContradictions } from './contextEngine';
 
 /**
@@ -9,10 +9,16 @@ export type DisplayState = 'truth' | 'proposed' | 'stale' | 'conflict' | 'past';
 
 export const DISPLAY_LABEL: Record<DisplayState, string> = { truth: 'حقیقت', proposed: 'پیشنهاد', stale: 'قدیمی', conflict: 'تناقض', past: 'گذشته' };
 
-/** each object in an unresolved rule contradiction → the other side (first found). Samples never take part. */
-export function conflictPartners(objects: ContextObject[]): Map<string, ContextObject> {
+/**
+ * each object in an unresolved contradiction → the other side (first found). UX-04: pass the SAME list the counters show
+ * (unresolvedContradictions: resolutions respected, semantic verdicts included, governance and expiry applied), so a marker
+ * and a number never disagree. Without it (a sample view, a test) the certain rules alone are used. Samples never take part.
+ */
+export function conflictPartners(objects: ContextObject[], unresolved?: Contradiction[]): Map<string, ContextObject> {
   const m = new Map<string, ContextObject>();
-  for (const c of detectContradictions(objects.filter((o) => !o.sample))) {
+  const sample = new Set(objects.filter((o) => o.sample).map((o) => o.id));
+  for (const c of unresolved ?? detectContradictions(objects.filter((o) => !o.sample))) {
+    if (sample.has(c.itemA.id) || sample.has(c.itemB.id)) continue;
     if (!m.has(c.itemA.id)) m.set(c.itemA.id, c.itemB);
     if (!m.has(c.itemB.id)) m.set(c.itemB.id, c.itemA);
   }
