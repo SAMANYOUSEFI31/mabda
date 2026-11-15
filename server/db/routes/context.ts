@@ -6,6 +6,7 @@ import { Repo, RepoError } from '../repo.ts';
 import type { ChangeMeta, Scope } from '../repo.ts';
 import express from 'express';
 import type { NextFunction, Request, Response, Router } from 'express';
+import { tehranDay } from '../../../src/core/calendar.ts';
 
 /** One local user until real accounts exist. Every table already carries user_id + workspace_id. */
 export const LOCAL_USER = 'local';
@@ -44,7 +45,7 @@ export function makeRouteContext(deps: DataRouterDeps) {
   const stale = (s: Scope) => (repo.impactEnabled(s) ? repo.computeStale(s) : []);
 
   // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
-  const today = () => clock().toISOString().slice(0, 10);
+  const today = () => tehranDay(clock());
 
   return { repo, ai, clock, files, router, scopeOf, body, ACTORS, metaOf, wrap, deps, LOCAL_USER, ACCOUNT_WIPE_WORDS, stale, today };
 }

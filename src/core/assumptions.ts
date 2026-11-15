@@ -11,6 +11,7 @@
 
 import type { ContextChange, ContextObject } from '../types';
 import { isActiveContext } from './contextStatus';
+import { tehranDay } from './calendar';
 
 export const ASSUMPTION_RULE = 'این‌ها فرض‌اند، نه واقعیت. آن‌ها را واقعیت نگیر و چیزی را بر پایه‌شان قطعی ننویس؛ اگر لازم شد، صریح بگو «بر پایهٔ فرض …».';
 export const REJECTED_RULE = 'این گزینه‌ها بررسی و رد شده‌اند. دوباره پیشنهادشان نکن مگر کاربر خودش بخواهد.';
@@ -30,7 +31,7 @@ export function rejectedOptions(objects: ContextObject[]): RejectedOption[] {
   return out;
 }
 
-const today = (now: Date | string | number) => new Date(now).toISOString().slice(0, 10);
+const today = (now: Date | string | number) => tehranDay(now);
 
 /** assumptions whose review date has come (inclusive) */
 export function assumptionsDue(objects: ContextObject[], now: Date | string | number): ContextObject[] {
