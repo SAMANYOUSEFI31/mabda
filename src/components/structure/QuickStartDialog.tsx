@@ -12,6 +12,7 @@ import { useAiStatus } from '../../services/aiStatus';
 import { AiErrorNotice } from '../shared/AiNotices';
 import { quickStartSummary } from '../../core/quickStartSummary';
 import { Alert, Badge, Button, Checkbox, Dialog, Markdown, OptionCard, Progress, Select, Spinner, TextField, Textarea, TypeBadge, formatNumber, useToast } from '../../ui';
+import { clientId } from '../../core/ids';
 
 interface Props {
   open: boolean;
@@ -119,7 +120,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
         acceptanceCriteria: ['عدم وجود ادعاهای عمومی و کلیشه‌ای', 'اشاره صریح به مخاطب هدف و معضل محوری'], workspaceId, targetNodeId: '*', executionMode: 'auto',
       });
       const d: GeneratedDeliverable = {
-        id: `del_first_${Date.now()}`, workspaceId, workstreamId: 'main_positioning', deliverableId: 'del_positioning_statement', title: 'جملهٔ موقعیت‌یابی اختصاصی', content: r.markdown,
+        id: clientId('del_first'), workspaceId, workstreamId: 'main_positioning', deliverableId: 'del_positioning_statement', title: 'جملهٔ موقعیت‌یابی اختصاصی', content: r.markdown,
         blocks: r.blocks, plan: r.plan, usage: r.usage, validationFailed: r.validationFailed, executionMode: 'auto', creditCost: 0, usedContext: r.usedContext, usedFileChunks: r.usedFileChunks,
         critiqueFeedback: r.critiqueFeedback, rebuildCount: 0, createdAt: new Date().toISOString(),
       };

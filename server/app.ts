@@ -33,7 +33,9 @@ export function createApp(db: Database.Database, opts: AppOptions = {}) {
   app.use(securityHeaders);
   // the host's health check: no data, no sign-in
   app.get('/healthz', (_req, res) => { res.type('text/plain').send('ok'); });
-  app.use(express.json({ limit: '10mb' }));
+  // 10 MB for every request; a workspace restore brings its own, larger limit (server/db/routes/backup.ts)
+  const json = express.json({ limit: '10mb' });
+  app.use((req, res, next) => (req.path === '/api/backup/restore' ? next() : json(req, res, next)));
   const repo = new Repo(db);
   const errors = new ErrorLog(db, opts.clock);
   const { accounts } = installAuth(app, db, mode, { clock: opts.clock, publicOrigin: opts.publicOrigin });

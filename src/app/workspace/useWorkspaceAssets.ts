@@ -14,6 +14,7 @@ import { ledgerEntryFromUsage } from '../../core/ledger';
 import { titleFromMarkdown } from '../../core/blocks';
 import type { AppCoreScope } from '../shell/useAppCore';
 import type { UsageCountersScope } from '../shell/useUsageCounters';
+import { clientId } from '../../core/ids';
 
 export type WorkspaceAssetsScope = ReturnType<typeof useWorkspaceAssets>;
 
@@ -44,7 +45,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       creditCost,
       usage,
       plan: del.plan,
-      id: `led_${Date.now()}`,
+      id: clientId('led'),
     }));
     if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
@@ -61,7 +62,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       creditCost,
       usage: result.usage,
       plan: result.plan,
-      id: `led_chat_${Date.now()}`,
+      id: clientId('led_chat'),
     }));
   };
 
@@ -69,7 +70,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
   const handleSaveBlockAsAsset = async (block: ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary; usedContext?: UsedContextRef[] }) => {
     const now = new Date().toISOString();
     const asset: GeneratedDeliverable = {
-      id: `del_chat_${Date.now()}`,
+      id: clientId('del_chat'),
       workspaceId: wid,
       workstreamId: 'chat',
       deliverableId: `chat_${block.id}`,
@@ -145,7 +146,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     const purpose = raw === 'work' || raw === 'project' || raw === 'empty' ? raw : 'personal';
     const newWs: Workspace = {
       purpose,
-      id: `ws_${Date.now()}`,
+      id: clientId('ws'),
       name: newWsName.trim(),
       slug: newWsName.trim().toLowerCase().replace(/\s+/g, '-'),
       description: { personal: 'فضای شخصی در مبدأ', work: 'فضا در مبدأ', project: 'فضای پروژه در مبدأ', empty: 'فضا در مبدأ' }[purpose],
@@ -175,29 +176,31 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     } finally { setExtractingAssetId(null); }
   };
 
+  /** BETA-01: the whole workspace — knowledge with every version, thoughts, relations, changes, boards, files, metrics — as one file */
   const handleExportAllData = () => {
-    if (!data || !currentWorkspace) return;
-    const backupData = {
-      workspace: currentWorkspace,
-      allWorkspaces: liveWorkspaces,
-      nodes: data.nodes,
-      contextObjects: data.objects,
-      notes: data.notes,
-      deliverables: data.deliverables,
-      ledgerEntries: data.ledger,
-      files: data.files.map(({ id, name, mime, sizeBytes, tokens, summary }) => ({ id, name, mime, sizeBytes, tokens, summary })),
-      specs,
-      exportedAt: new Date().toISOString(),
-      platform: 'مبدأ · منبع حقیقت تو',
-    };
-
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `mabda_backup_${currentWorkspace.slug}_${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    if (!currentWorkspace) return;
+    const a = document.createElement('a');
+    a.href = dataApi.backupUrl(currentWorkspace.id);
+    a.setAttribute('download', '');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
-  return { persistDeliverable, persistLedger, handleSaveDeliverable, handleRecordChatUsage, handleIncrementChatCount, handleChangePlan, handleSetLibrarySpecs, ensureLibrarySpec, handleAddCredits, demoConfirm, setDemoConfirm, demoBusy, handleResetDemo, handleCreateWorkspace, extractingAssetId, handleExtractFromAsset, handleExportAllData };
+
+  /** a backup file becomes a new workspace «… (برگردانده‌شده)» and opens; nothing existing is overwritten */
+  const handleRestoreBackup = async (file: File) => {
+    let parsed: unknown;
+    try { parsed = JSON.parse(await file.text()); } catch {
+      toast.show({ intent: 'danger', message: 'این فایل پشتیبان مبدأ نیست (خوانده نشد).' });
+      return false;
+    }
+    const r = await attempt(() => dataApi.restoreBackup(parsed));
+    if (!r) return false;
+    setWs(r.workspaces);
+    setCurrentWorkspaceId(r.workspace.id);
+    toast.show({ intent: 'success', message: `«${r.workspace.name}» برگردانده شد.` });
+    return true;
+  };
+
+  return { persistDeliverable, persistLedger, handleSaveDeliverable, handleRecordChatUsage, handleIncrementChatCount, handleChangePlan, handleSetLibrarySpecs, ensureLibrarySpec, handleAddCredits, demoConfirm, setDemoConfirm, demoBusy, handleResetDemo, handleCreateWorkspace, extractingAssetId, handleExtractFromAsset, handleExportAllData, handleRestoreBackup };
 }

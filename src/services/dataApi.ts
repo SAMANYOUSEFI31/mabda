@@ -122,6 +122,10 @@ export const ownerApi = {
 };
 
 export const dataApi = {
+  /** BETA-01: the whole workspace as one file (server/db/workspaceBackup.ts); a link, so the browser saves it itself */
+  backupUrl: (id: string) => `/api${ws(id)}/backup`,
+  /** a backup file comes back as a NEW workspace next to the others (never over one) */
+  restoreBackup: (backup: unknown) => call<{ workspace: Workspace; workspaces: Workspace[] }>('POST', '/backup/restore', { backup }, {}, { timeoutMs: REQUEST_TIMEOUT_MS.document }),
   async bootstrap(): Promise<Workspace[]> {
     const legacy = readLegacyData();
     const r = await call<{ workspaces: Workspace[]; imported: unknown }>('POST', '/bootstrap', legacy ? { legacy } : {});

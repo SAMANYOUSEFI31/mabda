@@ -26,6 +26,7 @@ import { registerSavedPacksRoutes } from './routes/saved-packs.ts';
 import { registerPacksRoutes } from './routes/packs.ts';
 import { registerUsageRoutes } from './routes/usage.ts';
 import { registerFilesRoutes } from './routes/files.ts';
+import { registerBackupRoutes } from './routes/backup.ts';
 import { AiError, toAiError } from '../ai/errors.ts';
 import { AuthError } from '../auth/accounts.ts';
 import { FileExtractError } from '../files/extract.ts';
@@ -58,6 +59,7 @@ export function createDataRouter(deps: DataRouterDeps): { router: Router; files:
   registerPacksRoutes(ctx);
   registerUsageRoutes(ctx);
   registerFilesRoutes(ctx);
+  registerBackupRoutes(ctx);
 
   // ── errors ───────────────────────────────────────────────────────────
   router.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {

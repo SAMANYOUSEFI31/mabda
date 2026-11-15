@@ -18,9 +18,9 @@ const AccountModal = lazyNamed(() => import('../../components/workspace/AccountM
 const PlanSelectionModal = lazyNamed(() => import('../../components/workspace/PlanSelectionModal'), 'PlanSelectionModal');
 const UsageDialog = lazyNamed(() => import('../../components/workspace/UsageDialog'), 'UsageDialog');
 
-export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoBusy' | 'demoConfirm' | 'demoDelete' | 'handleArchiveWorkspace' | 'handleChangePlan' | 'handleCreateWorkspace' | 'handleDeleteDemo' | 'handleDeleteEverything' | 'handleDeleteWorkspace' | 'handleExportAllData' | 'handleResetDemo' | 'isAccountModalOpen' | 'isNewWorkspaceModalOpen' | 'isPlanModalOpen' | 'newWsName' | 'setArchiveOpen' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsPlanModalOpen' | 'setNewWsName' | 'setUsageOpen' | 'usageOpen'>;
+export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoBusy' | 'demoConfirm' | 'demoDelete' | 'handleArchiveWorkspace' | 'handleChangePlan' | 'handleCreateWorkspace' | 'handleDeleteDemo' | 'handleDeleteEverything' | 'handleDeleteWorkspace' | 'handleExportAllData' | 'handleRestoreBackup' | 'handleResetDemo' | 'isAccountModalOpen' | 'isNewWorkspaceModalOpen' | 'isPlanModalOpen' | 'newWsName' | 'setArchiveOpen' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsPlanModalOpen' | 'setNewWsName' | 'setUsageOpen' | 'usageOpen'>;
 
-export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleChangePlan, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, isPlanModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setIsPlanModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
+export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleChangePlan, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleRestoreBackup, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, isPlanModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setIsPlanModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
   const [nameError, setNameError] = useState('');
   const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
   return (
@@ -42,6 +42,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       onClose={() => setIsAccountModalOpen(false)}
       currentWorkspace={currentWorkspace}
       onExportAllData={handleExportAllData}
+      onRestoreBackup={handleRestoreBackup}
       onOpenArchive={() => setArchiveOpen(true)}
       onArchiveWorkspace={handleArchiveWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
