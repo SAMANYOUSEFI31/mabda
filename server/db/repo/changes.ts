@@ -4,12 +4,13 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { ChangeMeta, Scope, newId, now } from './shared.ts';
+import { ChangeMeta, Scope, newId, now, claimId } from './shared.ts';
 import { actorOfSource } from '../../../src/core/changeLog.ts';
 import type { ContextChange, ContextChangeActor, ContextChangeKind, ObjectSource } from '../../../src/types/index.ts';
 
 export const changesMethods = {
   importChange(this: Repo, s: Scope, c: ContextChange) {
+    claimId(this.db, 'context_changes', c.id, s);
     this.db.prepare('INSERT OR REPLACE INTO context_changes (id,user_id,workspace_id,object_id,from_version,to_version,kind,actor,actor_label,reason,before,after,at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
       .run(c.id, s.userId, s.workspaceId, c.objectId, c.fromVersion, c.toVersion, c.kind, c.actor, c.actorLabel ?? null, c.reason ?? null, c.before ? JSON.stringify(c.before) : null, c.after ? JSON.stringify(c.after) : null, c.at);
   },

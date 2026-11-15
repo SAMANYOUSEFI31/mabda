@@ -59,7 +59,7 @@ export const workspacesMethods = {
       for (const t of tables) {
         if (t === 'workspaces' || t === 'mcp_tokens' || t === 'schema_migrations' || t === 'templates') continue; // (a template belongs to the user, not to the workspace it was saved from)
         const cols = (this.db.prepare(`PRAGMA table_info(${JSON.stringify(t)})`).all() as Array<{ name: string }>).map((c) => c.name);
-        if (cols.includes('workspace_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ?`).run(s.workspaceId);
+        if (cols.includes('workspace_id') && cols.includes('user_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ? AND user_id = ?`).run(s.workspaceId, s.userId);
       }
       this.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(s.userId, `weekly_review:${s.workspaceId}`);
       this.seedStartNodes(s, startTemplateFor(this.getWorkspace(s.userId, s.workspaceId)?.purpose));

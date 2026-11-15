@@ -4,18 +4,19 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { Scope, StoredChunk, newId, now, rowToFile } from './shared.ts';
+import { Scope, StoredChunk, newId, now, rowToFile, claimId } from './shared.ts';
 import type { FileStatus, StoredFile } from '../../../src/types/index.ts';
 
 export const filesMethods = {
   importFile(this: Repo, s: Scope, f: { id: string; nodeId: string; name: string; mime: string; rawText: string; summary: string; tokens: number; createdAt: string; chunks: Array<{ index: number; text: string; tokens: number }> }) {
+    claimId(this.db, 'files', f.id, s);
     this.db.prepare("INSERT OR REPLACE INTO files (id, user_id, workspace_id, node_id, name, mime, size_bytes, status, tokens, raw_text, summary, created_at) VALUES (?,?,?,?,?,?,?,'ready',?,?,?,?)")
       .run(f.id, s.userId, s.workspaceId, f.nodeId, f.name, f.mime, Buffer.byteLength(f.rawText), f.tokens, f.rawText, f.summary, f.createdAt);
     this.saveChunks(s, f.id, f.chunks);
   },
 
-  chunkCount(this: Repo, fileId: string): number {
-    return (this.db.prepare('SELECT COUNT(*) AS n FROM file_chunks WHERE file_id = ?').get(fileId) as { n: number }).n;
+  chunkCount(this: Repo, s: Scope, fileId: string): number {
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM file_chunks WHERE file_id = ? AND user_id = ?').get(fileId, s.userId) as { n: number }).n;
   },
 
   createFile(this: Repo, s: Scope, f: { name: string; mime: string; sizeBytes: number; nodeId?: string; rawText: string; tokens: number }): StoredFile {
@@ -30,7 +31,7 @@ export const filesMethods = {
 
   getFile(this: Repo, s: Scope, id: string): StoredFile | undefined {
     const r = this.db.prepare('SELECT * FROM files WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
-    return r ? rowToFile(r, this.chunkCount(id)) : undefined;
+    return r ? rowToFile(r, this.chunkCount(s, id)) : undefined;
   },
 
   getFileText(this: Repo, s: Scope, id: string): string | undefined {
@@ -39,7 +40,7 @@ export const filesMethods = {
   },
 
   listFiles(this: Repo, s: Scope): StoredFile[] {
-    return (this.db.prepare('SELECT * FROM files WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map((r) => rowToFile(r, this.chunkCount(r.id as string)));
+    return (this.db.prepare('SELECT * FROM files WHERE workspace_id = ? AND user_id = ? ORDER BY created_at DESC').all(s.workspaceId, s.userId) as Array<Record<string, unknown>>).map((r) => rowToFile(r, this.chunkCount(s, r.id as string)));
   },
 
   setFileStatus(this: Repo, s: Scope, id: string, status: FileStatus, extra: { summary?: string; error?: string } = {}) {
@@ -49,7 +50,7 @@ export const filesMethods = {
 
   saveChunks(this: Repo, s: Scope, fileId: string, chunks: Array<{ index: number; text: string; tokens: number }>) {
     this.db.transaction(() => {
-      this.db.prepare('DELETE FROM file_chunks WHERE file_id = ? AND workspace_id = ?').run(fileId, s.workspaceId);
+      this.db.prepare('DELETE FROM file_chunks WHERE file_id = ? AND workspace_id = ? AND user_id = ?').run(fileId, s.workspaceId, s.userId);
       const ins = this.db.prepare('INSERT INTO file_chunks (file_id, idx, user_id, workspace_id, text, tokens) VALUES (?,?,?,?,?,?)');
       for (const c of chunks) ins.run(fileId, c.index, s.userId, s.workspaceId, c.text, c.tokens);
     })();
@@ -64,7 +65,7 @@ export const filesMethods = {
 
   deleteFile(this: Repo, s: Scope, id: string) {
     this.db.transaction(() => {
-      this.db.prepare('DELETE FROM file_chunks WHERE file_id = ? AND workspace_id = ?').run(id, s.workspaceId);
+      this.db.prepare('DELETE FROM file_chunks WHERE file_id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
       this.db.prepare('DELETE FROM files WHERE id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
     })();
   },

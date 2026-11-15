@@ -9,7 +9,7 @@ import { RepoError } from '../repo.ts';
 import { validateSpec } from '../../../src/core/specGraph.ts';
 
 export function registerOutputsRoutes(ctx: RouteContext): void {
-  const { repo, router, scopeOf, body, wrap, LOCAL_USER, stale } = ctx;
+  const { repo, router, scopeOf, body, wrap, userOf, stale } = ctx;
   router.put('/workspaces/:wid/deliverables/:id', wrap((req, res) => {
     const s = scopeOf(req);
     const d = body(req) as GeneratedDeliverable;
@@ -22,7 +22,7 @@ export function registerOutputsRoutes(ctx: RouteContext): void {
   router.delete('/workspaces/:wid/sessions/:id', wrap((req, res) => { repo.deleteSession(scopeOf(req), req.params.id); res.json({ ok: true }); }));
   router.put('/workspaces/:wid/specs/:id', wrap((req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     if (!PLANS[ws.planId]?.customSpecs) throw new RepoError('forbidden', 'ساخت و ویرایش جریان کار سفارشی از پلن Pro به بالا فعال است.');
     const spec = body(req) as WorkstreamSpec;
     if (spec.id !== req.params.id) throw new RepoError('invalid', 'شناسهٔ spec نامطابق است.');

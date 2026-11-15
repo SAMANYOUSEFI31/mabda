@@ -7,14 +7,14 @@ import type { RouteContext } from './context.ts';
 import { importLegacy, seedPayload } from '../legacy.ts';
 
 export function registerBootstrapRoutes(ctx: RouteContext): void {
-  const { repo, router, body, wrap, LOCAL_USER } = ctx;
+  const { repo, router, body, wrap, userOf } = ctx;
   router.post('/bootstrap', wrap((req, res) => {
     let imported: unknown = null;
-    if (!repo.isImported(LOCAL_USER)) {
+    if (!repo.isImported(userOf(req))) {
       const legacy = body(req).legacy as LegacyPayload | undefined;
       const hasLegacy = !!legacy?.workspaces?.length;
-      imported = importLegacy(repo, LOCAL_USER, hasLegacy ? legacy! : seedPayload(), hasLegacy ? 'localStorage' : 'seed');
+      imported = importLegacy(repo, userOf(req), hasLegacy ? legacy! : seedPayload(userOf(req)), hasLegacy ? 'localStorage' : 'seed');
     }
-    res.json({ workspaces: repo.listWorkspaces(LOCAL_USER), imported });
+    res.json({ workspaces: repo.listWorkspaces(userOf(req)), imported });
   }));
 }

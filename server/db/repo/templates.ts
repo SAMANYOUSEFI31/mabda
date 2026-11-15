@@ -4,7 +4,7 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { RepoError, Scope, newId, now } from './shared.ts';
+import { RepoError, Scope, newId, now, claimId } from './shared.ts';
 
 export const templatesMethods = {
   listTemplates(this: Repo, userId: string): Array<{ id: string; kind: 'node' | 'workstream'; name: string; payload: unknown; createdAt: string }> {
@@ -15,6 +15,7 @@ export const templatesMethods = {
     const n = name.trim().slice(0, 80);
     if (!n) throw new RepoError('invalid', 'نام قالب لازم است.');
     const tid = id ?? newId('tpl');
+    claimId(this.db, 'templates', tid, s, { sameWorkspace: false });
     this.db.prepare('INSERT OR REPLACE INTO templates (id, user_id, workspace_id, kind, name, payload, created_at) VALUES (?,?,?,?,?,?,?)').run(tid, s.userId, s.workspaceId, kind, n, JSON.stringify(payload), at ?? now());
     return tid;
   },

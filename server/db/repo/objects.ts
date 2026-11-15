@@ -16,7 +16,7 @@ import type { ContextChange, ContextObject, ContextType, ExpectationVerdict, Gen
 
 export const objectsMethods = {
   setDraft(this: Repo, s: Scope, id: string, draft: ObjectDraft | null) {
-    this.db.prepare('UPDATE context_objects SET draft = ? WHERE id = ? AND workspace_id = ?').run(draft ? JSON.stringify(draft) : null, id, s.workspaceId);
+    this.db.prepare('UPDATE context_objects SET draft = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(draft ? JSON.stringify(draft) : null, id, s.workspaceId, s.userId);
   },
 
   /** «تأیید»: the draft REPLACES the text — a normal confirmed edit (version + 1, a milestone in the history, the reason the user gave) */
@@ -82,8 +82,8 @@ export const objectsMethods = {
     const ids = (this.db.prepare('SELECT id, node_id FROM context_objects WHERE workspace_id = ? AND user_id = ? AND sample = 1').all(s.workspaceId, s.userId) as Array<{ id: string; node_id: string }>).filter((r) => !nodeIds || nodeIds.includes(r.node_id)).map((r) => r.id);
     this.db.transaction(() => {
       for (const id of ids) {
-        this.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ?').run(id, s.workspaceId);
-        this.db.prepare('DELETE FROM context_objects WHERE id = ? AND workspace_id = ? AND sample = 1').run(id, s.workspaceId);
+        this.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, s.workspaceId, s.userId);
+        this.db.prepare('DELETE FROM context_objects WHERE id = ? AND workspace_id = ? AND user_id = ? AND sample = 1').run(id, s.workspaceId, s.userId);
       }
     })();
     return ids.length;
@@ -226,8 +226,8 @@ export const objectsMethods = {
       else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
       const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || JSON.stringify(next.examples ?? null) !== JSON.stringify(cur.examples ?? null) || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
-      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=?, facets=?, sample=?, examples=? WHERE id=? AND workspace_id=?')
-        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, next.facets ? JSON.stringify(next.facets) : null, next.sample ? 1 : null, next.examples ? JSON.stringify(next.examples) : null, id, s.workspaceId);
+      this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=?, facets=?, sample=?, examples=? WHERE id=? AND workspace_id=? AND user_id=?')
+        .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, next.facets ? JSON.stringify(next.facets) : null, next.sample ? 1 : null, next.examples ? JSON.stringify(next.examples) : null, id, s.workspaceId, s.userId);
       if (contentChanged) this.snapshot(s, next, next.updatedAt);
       // one record for a status transition, one for everything else that changed (edit / move / slot) — never silent
       const st = diffFields({ status: cur.status }, { status: next.status }, ['status']);
@@ -250,7 +250,7 @@ export const objectsMethods = {
       const t = now();
       const created: ContextObject = { id: newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: old.version + 1, ...((input.slotKey ?? old.slotKey) ? { slotKey: (input.slotKey ?? old.slotKey)! } : {}), ...scopeFields({ reach: input.reach ?? old.reach, validUntil: input.validUntil ?? old.validUntil }), ...thinkingFields({ type: input.type, assumption: input.assumption ?? old.assumption, reviewBy: input.reviewBy ?? old.reviewBy, record: input.record ?? old.record }), ...(canHaveExamples({ type: input.type, reach: input.reach ?? old.reach }) && cleanExamples(input.examples ?? old.examples) ? { examples: cleanExamples(input.examples ?? old.examples) } : {}), createdAt: t, updatedAt: t };
       this.insertObject(s, created);
-      this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(created.id, t, oldId, s.workspaceId);
+      this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(created.id, t, oldId, s.workspaceId, s.userId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')
         .run(newId('rel'), s.userId, s.workspaceId, created.id, oldId, 'supersedes', t);
       this.carryDependencies(s, oldId, created.id);
@@ -299,12 +299,12 @@ export const objectsMethods = {
     if (loserId === winnerId) throw new RepoError('invalid', 'دو مورد یکی نیستند.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const t = now();
-      this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=?").run(winnerId, t, loserId, s.workspaceId);
+      this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(winnerId, t, loserId, s.workspaceId, s.userId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
       this.carryDependencies(s, loserId, winnerId);
       this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: meta?.kind ?? 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
       if (winner.status !== 'Confirmed') {
-        this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=?").run(t, winnerId, s.workspaceId);
+        this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(t, winnerId, s.workspaceId, s.userId);
         this.recordChange(s, { objectId: winnerId, fromVersion: winner.version, toVersion: winner.version, kind: statusChangeKind(winner.status, 'Confirmed'), meta, before: { status: winner.status }, after: { status: 'Confirmed' } });
       }
       return this.getObject(s, loserId)!;

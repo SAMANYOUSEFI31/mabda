@@ -1,0 +1,161 @@
+/**
+ * Sign-in on the wire: security headers, the CSRF check, the session cookie, and who the request is for.
+ *
+ * Two modes, decided by the environment and nothing else:
+ * - «local» (one person on their own computer, the default outside production): every request is the one local user, as before.
+ * - «invite» (MABDA_OWNER_CODE is set): every /api request needs a sign-in; each person has their own data.
+ * Production without MABDA_OWNER_CODE refuses to start (fails closed): an open server would show one person's data to anyone.
+ */
+import crypto from 'node:crypto';
+import express from 'express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type Database from 'better-sqlite3';
+import { Accounts, AuthError, OWNER_ID, sha256 } from './accounts.ts';
+import type { Role } from './accounts.ts';
+
+/** the one user of the local mode (also the id that existing single-user databases already use) */
+export const LOCAL_USER = 'local';
+export const SESSION_COOKIE = 'mabda_session';
+
+export type AuthMode = { mode: 'local' } | { mode: 'invite'; ownerCode: string };
+export interface RequestUser { id: string; role: Role | 'local'; name: string }
+
+declare module 'express-serve-static-core' {
+  interface Request { mabdaUser?: RequestUser }
+}
+
+export function resolveAuthMode(env: NodeJS.ProcessEnv): AuthMode | { fatal: string } {
+  const code = (env.MABDA_OWNER_CODE ?? '').trim();
+  if (code) {
+    if (code.length < 20) return { fatal: 'MABDA_OWNER_CODE must be at least 20 characters (let the host generate it).' };
+    return { mode: 'invite', ownerCode: code };
+  }
+  if (env.NODE_ENV === 'production') return { fatal: 'Refusing to start in production without MABDA_OWNER_CODE: without sign-in every visitor would share one person\'s data. See docs/deploy.md.' };
+  return { mode: 'local' };
+}
+
+/** who this request is for; throws when nobody is signed in (a route can never fall back to someone else's data) */
+export function userIdOf(req: Request): string {
+  const id = req.mabdaUser?.id;
+  if (!id) throw new AuthError('unauthenticated', 'برای دیدن داده‌ها اول وارد شو.');
+  return id;
+}
+
+/**
+ * Headers every response carries. Goal: the page cannot be framed (clickjacking), sniffed into another type, or leak its URL
+ * to other sites, and the test copy is not indexed. Standard: OWASP Secure Headers.
+ */
+export const securityHeaders: RequestHandler = (_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'");
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  next();
+};
+
+const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
+/**
+ * CSRF (OWASP CSRF cheat sheet, «verifying origin with standard headers»): a request that changes data must come from this
+ * site. The browser's own Sec-Fetch-Site / Origin say where it came from; a mismatch is refused. A request with neither header
+ * is not from a browser page, so it cannot carry a victim's cookie in a forged way (and the cookie is SameSite=Lax as well).
+ */
+export function sameOriginOnly(publicOrigin?: string): RequestHandler {
+  return (req, res, next) => {
+    if (SAFE.has(req.method)) return next();
+    const site = req.get('sec-fetch-site');
+    if (site && site !== 'same-origin' && site !== 'none') return void res.status(403).json({ error: { code: 'forbidden', message: 'این درخواست از جای دیگری آمده بود و انجام نشد.' } });
+    const origin = req.get('origin');
+    if (origin) {
+      const host = req.get('x-forwarded-host') ?? req.get('host');
+      let ok = false;
+      try { ok = publicOrigin ? new URL(origin).origin === new URL(publicOrigin).origin : new URL(origin).host === host; } catch { ok = false; }
+      if (!ok) return void res.status(403).json({ error: { code: 'forbidden', message: 'این درخواست از جای دیگری آمده بود و انجام نشد.' } });
+    }
+    next();
+  };
+}
+
+/** a small fixed-window limiter (memory only: one server, ten people). Goal: guessing links or flooding error reports cannot be cheap. */
+export function rateLimit(opts: { windowMs: number; max: number; key: (req: Request) => string; clock?: () => number }): RequestHandler {
+  const hits = new Map<string, { start: number; n: number }>();
+  const now = opts.clock ?? (() => Date.now());
+  return (req, res, next) => {
+    const t = now();
+    const k = opts.key(req);
+    const h = hits.get(k);
+    if (!h || t - h.start >= opts.windowMs) { hits.set(k, { start: t, n: 1 }); if (hits.size > 5000) hits.clear(); return next(); }
+    if (++h.n > opts.max) return void res.status(429).json({ error: { code: 'rate_limited', message: 'تعداد تلاش‌ها زیاد بود. چند دقیقهٔ دیگر دوباره امتحان کن.' } });
+    next();
+  };
+}
+
+const readCookie = (req: Request, name: string): string | undefined => {
+  for (const part of (req.headers.cookie ?? '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return undefined;
+};
+const secureRequest = (req: Request) => req.secure || req.get('x-forwarded-proto') === 'https';
+const cookie = (req: Request, value: string, maxAge: number) =>
+  `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureRequest(req) ? '; Secure' : ''}`;
+
+const sameSecret = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(sha256(a), 'hex'), Buffer.from(sha256(b), 'hex'));
+
+/**
+ * Installs sign-in on the app. Routes it owns: POST /api/join (link code → cookie), GET /api/session, POST /api/logout.
+ * Everything else under /api gets `req.mabdaUser` or a 401.
+ */
+export function installAuth(app: express.Express, db: Database.Database, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
+  const accounts = new Accounts(db, opts.clock);
+  const ipKey = (req: Request) => req.ip ?? 'unknown';
+
+  app.use('/api', sameOriginOnly(opts.publicOrigin));
+
+  if (mode.mode === 'local') {
+    app.use('/api', (req, _res, next) => { req.mabdaUser = { id: LOCAL_USER, role: 'local', name: '' }; next(); });
+    app.get('/api/session', (req, res) => { res.json({ mode: 'local', user: req.mabdaUser }); });
+    return { accounts };
+  }
+
+  // ten tries a minute per address is far more than a person needs and far too few to guess a 128-bit code
+  app.post('/api/join', rateLimit({ windowMs: 60_000, max: 10, key: ipKey }), express.json({ limit: '2kb' }), (req, res) => {
+    const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+    let account = code && code.length <= 200 && sameSecret(code, mode.ownerCode) ? accounts.ensureOwner() : accounts.byCode(code);
+    if (account?.disabledAt) account = undefined;
+    if (!account) return void res.status(401).json({ error: { code: 'invalid_link', message: 'این لینک دعوت کار نمی‌کند. شاید عوض شده یا خاموش شده است؛ از کسی که آن را فرستاده لینک تازه بخواه.' } });
+    const old = readCookie(req, SESSION_COOKIE);
+    accounts.endSession(old);
+    const s = accounts.startSession(account.id);
+    res.setHeader('Set-Cookie', cookie(req, s.token, s.maxAgeSeconds));
+    res.json({ mode: 'invite', user: { id: account.id, role: account.role, name: account.name } });
+  });
+
+  app.use('/api', (req, _res, next) => {
+    const a = accounts.bySession(readCookie(req, SESSION_COOKIE));
+    if (a) req.mabdaUser = { id: a.id, role: a.role, name: a.name };
+    next();
+  });
+  app.get('/api/session', (req, res) => { res.json({ mode: 'invite', user: req.mabdaUser ?? null }); });
+  app.post('/api/logout', (req, res) => {
+    accounts.endSession(readCookie(req, SESSION_COOKIE));
+    res.setHeader('Set-Cookie', cookie(req, '', 0));
+    res.json({ ok: true });
+  });
+  app.use('/api', (req, res, next) => {
+    if (req.path === '/health') return next();
+    if (!req.mabdaUser) return void res.status(401).json({ error: { code: 'unauthenticated', message: 'برای دیدن داده‌ها اول با لینک دعوت شخصی‌ات وارد شو.' } });
+    next();
+  });
+  return { accounts };
+}
+
+/** only the owner (invite mode) or the one local user may use the owner's tools */
+export function requireOwner(req: Request, res: Response, next: NextFunction) {
+  const role = req.mabdaUser?.role;
+  if (role !== 'owner' && role !== 'local') return void res.status(404).json({ error: { code: 'not_found', message: 'پیدا نشد.' } });
+  next();
+}
+
+export { OWNER_ID };

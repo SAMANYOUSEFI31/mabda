@@ -4,11 +4,12 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { Scope, now } from './shared.ts';
+import { Scope, now, claimId } from './shared.ts';
 import type { WorkstreamSpec } from '../../../src/types/index.ts';
 
 export const specsMethods = {
   importSpec(this: Repo, s: Scope, spec: WorkstreamSpec, createdAt: string) {
+    claimId(this.db, 'specs', spec.id, s);
     this.db.prepare('INSERT OR REPLACE INTO specs (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(spec.id, s.userId, s.workspaceId, JSON.stringify(spec), createdAt);
   },
 
@@ -18,6 +19,7 @@ export const specsMethods = {
 
   saveSpec(this: Repo, s: Scope, spec: WorkstreamSpec): WorkstreamSpec {
     this.assertWorkspace(s);
+    claimId(this.db, 'specs', spec.id, s);
     this.db.prepare('INSERT INTO specs (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET data = excluded.data').run(spec.id, s.userId, s.workspaceId, JSON.stringify(spec), now());
     return spec;
   },

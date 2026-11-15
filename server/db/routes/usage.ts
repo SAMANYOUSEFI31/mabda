@@ -7,10 +7,10 @@ import { RepoError } from '../repo.ts';
 import { costReport } from '../../../src/core/costReport.ts';
 
 export function registerUsageRoutes(ctx: RouteContext): void {
-  const { repo, clock, router, scopeOf, body, wrap, deps, LOCAL_USER, today } = ctx;
+  const { repo, clock, router, scopeOf, body, wrap, deps, userOf, today } = ctx;
   router.get('/workspaces/:wid/usage', wrap((req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(LOCAL_USER, s.workspaceId)!;
+    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     const month = clock().toISOString().slice(0, 7);
     res.json({
       planId: ws.planId, month,
@@ -20,13 +20,15 @@ export function registerUsageRoutes(ctx: RouteContext): void {
   }));
 
   // usage counters: any client may add one (a catalog key only); only an admin may read them
-  router.post('/usage', wrap((req, res) => { repo.bumpUsage(LOCAL_USER, body(req).feature); res.json({ ok: true }); }));
-  router.get('/admin/usage', wrap((_req, res) => {
-    if (!deps.admin) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
-    res.json({ rows: repo.listUsage(LOCAL_USER) });
+  router.post('/usage', wrap((req, res) => { repo.bumpUsage(userOf(req), body(req).feature); res.json({ ok: true }); }));
+  // the manager views: the operator flag AND the owner (or the one local user); the cost report reads every person's rows
+  const adminOf = (req: { mabdaUser?: { role: string } }) => !!deps.admin && (req.mabdaUser?.role === 'owner' || req.mabdaUser?.role === 'local');
+  router.get('/admin/usage', wrap((req, res) => {
+    if (!adminOf(req)) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
+    res.json({ rows: repo.listUsage(userOf(req)) });
   }));
   router.get('/admin/cost-report', wrap((req, res) => {
-    if (!deps.admin) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
+    if (!adminOf(req)) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
     const month = typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month) ? req.query.month : clock().toISOString().slice(0, 7);
     const rows = repo.ledgerByWorkspaceForMonth(month).map((w) => ({ userId: w.userId, workspaceId: w.workspaceId, name: w.name, ...costReport(w.planId, w.entries) }));
     res.json({ month, rows });

@@ -26,7 +26,8 @@ import { registerSavedPacksRoutes } from './routes/saved-packs.ts';
 import { registerPacksRoutes } from './routes/packs.ts';
 import { registerUsageRoutes } from './routes/usage.ts';
 import { registerFilesRoutes } from './routes/files.ts';
-import { toAiError } from '../ai/errors.ts';
+import { AiError, toAiError } from '../ai/errors.ts';
+import { AuthError } from '../auth/accounts.ts';
 import { FileExtractError } from '../files/extract.ts';
 import { RepoError } from './repo.ts';
 import type { NextFunction, Request, Response } from 'express';
@@ -59,10 +60,16 @@ export function createDataRouter(deps: DataRouterDeps): { router: Router; files:
   registerFilesRoutes(ctx);
 
   // ── errors ───────────────────────────────────────────────────────────
-  router.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  router.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof AuthError) return void res.status(err.code === 'unauthenticated' ? 401 : 400).json({ error: { code: err.code, message: err.message } });
     if (err instanceof RepoError) return void res.status(err.code === 'not_found' ? 404 : err.code === 'forbidden' ? 403 : 400).json({ error: { code: err.code, message: err.message } });
     if (err instanceof FileExtractError) return void res.status(422).json({ error: { code: 'unreadable', message: err.message } });
     if (err instanceof multer.MulterError) return void res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: { code: err.code, message: err.code === 'LIMIT_FILE_SIZE' ? 'حجم فایل بیشتر از ۲۵ مگابایت است.' : 'ارسال فایل نامعتبر بود.' } });
+    // anything that is not a known, explained refusal is a fault: it is reported (no user text: server/diagnostics.ts)
+    if (!(err instanceof AiError) && !(err as { type?: string })?.type?.startsWith?.('entity.')) {
+      deps.onServerError?.(req, err);
+      return void res.status(500).json({ error: { code: 'internal', message: 'کار انجام نشد: خطایی در سرور پیش آمد و گزارشش ثبت شد. دوباره تلاش کن.', retryable: true } });
+    }
     const a = toAiError(err);
     res.status(a.kind === 'bad_request' ? 400 : a.kind === 'quota' ? 429 : a.kind === 'disabled' ? 503 : 502).json({ error: a.toInfo() });
   });

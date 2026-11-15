@@ -10,6 +10,16 @@ export class RepoError extends Error {
   constructor(public code: RepoErrorCode, message: string) { super(message); }
 }
 
+/**
+ * Ids are global (one primary key per table for everyone), and some come from the browser (an import, a saved chat, an output).
+ * Before an upsert by id: if that id already belongs to another person (or, with `sameWorkspace`, another workspace), refuse —
+ * an «INSERT OR REPLACE» must never take over someone else's row.
+ */
+export function claimId(db: { prepare(sql: string): { get(...a: unknown[]): unknown } }, table: string, id: string, s: Scope, opts: { sameWorkspace?: boolean } = {}): void {
+  const r = db.prepare(`SELECT user_id, workspace_id FROM ${table} WHERE id = ?`).get(id) as { user_id: string; workspace_id: string } | undefined;
+  if (r && (r.user_id !== s.userId || (opts.sameWorkspace !== false && r.workspace_id !== s.workspaceId))) throw new RepoError('forbidden', 'این شناسه مال جای دیگری است.');
+}
+
 export const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 export const now = () => new Date().toISOString();
 

@@ -51,7 +51,7 @@ export const nodesMethods = {
     const ok = canRename(nodes, id, label);
     if (!ok.ok) throw new RepoError('invalid', ok.reason);
     const description = patch.description ?? cur.description;
-    this.db.prepare('UPDATE tree_nodes SET label = ?, description = ? WHERE workspace_id = ? AND id = ?').run(label.trim(), description, s.workspaceId, id);
+    this.db.prepare('UPDATE tree_nodes SET label = ?, description = ? WHERE workspace_id = ? AND user_id = ? AND id = ?').run(label.trim(), description, s.workspaceId, s.userId, id);
     return { ...cur, label: label.trim(), description };
   },
 
@@ -63,9 +63,9 @@ export const nodesMethods = {
       if (!ok.ok) throw new RepoError('invalid', ok.reason);
       const to = parentId || undefined;
       const here = nodes.find((n) => n.id === id)!;
-      const upd = this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?');
+      const upd = this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND user_id = ? AND id = ?');
       const moved = movedNodeTree(nodes, id, parentId, index);
-      for (const n of moved.filter((item) => (item.parentId ?? undefined) === to)) upd.run(n.parentId ?? null, n.order, s.workspaceId, n.id);
+      for (const n of moved.filter((item) => (item.parentId ?? undefined) === to)) upd.run(n.parentId ?? null, n.order, s.workspaceId, s.userId, n.id);
       const label = (pid?: string | null) => (pid ? nodes.find((n) => n.id === pid)?.label ?? '' : 'سطح اصلی');
       if ((here.parentId ?? undefined) !== to) this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_moved', meta: { actor: 'user', reason: reason?.trim() || `بخش «${here.label}» از «${label(here.parentId)}» به «${label(to)}» رفت` }, before: { parent: label(here.parentId) }, after: { parent: label(to) } });
       return this.listNodes(s);
@@ -87,18 +87,18 @@ export const nodesMethods = {
       if (transferTo) {
         // nothing is lost or archived in silence: every piece of knowledge that moves gets a Change that says why (and where)
         for (const o of objects.filter((x) => x.nodeId === id)) this.recordChange(s, { objectId: o.id, fromVersion: o.version, toVersion: o.version, kind: 'edited', meta: { actor: 'user', reason: `بخش «${here.label}» حذف شد؛ این دانش به «${target?.label ?? ''}» رفت` }, before: { nodeId: id }, after: { nodeId: transferTo } });
-        this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
-        this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
+        this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
+        this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         this.db.prepare('UPDATE thoughts SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
-        this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND node_id = ?').run(transferTo, s.workspaceId, id);
+        this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         const kids = nodes.filter((n) => n.parentId === id);
         const base = nextOrder(nodes, transferTo);
-        kids.forEach((k, i) => this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND id = ?').run(transferTo, base + i, s.workspaceId, k.id));
+        kids.forEach((k, i) => this.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND user_id = ? AND id = ?').run(transferTo, base + i, s.workspaceId, s.userId, k.id));
       }
       // the deletion itself is a record too (object id `node:<id>`: it is not in the knowledge feed, but it is there)
       const moved = { objects: objects.filter((x) => x.nodeId === id).length, notes: notes.filter((x) => x.nodeId === id).length, thoughts: thoughts.filter((x) => x.nodeId === id).length, files: files.filter((x) => x.nodeId === id).length, nodes: nodes.filter((n) => n.parentId === id).length };
       this.recordChange(s, { objectId: `node:${id}`, fromVersion: 0, toVersion: 0, kind: 'node_deleted', meta: { actor: 'user', reason: target ? `بخش «${here.label}» حذف شد؛ ${moved.objects} دانش، ${moved.notes} یادداشت، ${moved.thoughts} فکر، ${moved.files} فایل و ${moved.nodes} زیربخش به «${target.label}» رفت` : `بخش خالی «${here.label}» حذف شد` }, before: { label: here.label }, after: {} });
-      this.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND id = ?').run(s.workspaceId, id);
+      this.db.prepare('DELETE FROM tree_nodes WHERE workspace_id = ? AND user_id = ? AND id = ?').run(s.workspaceId, s.userId, id);
       return this.listNodes(s);
     })();
   },

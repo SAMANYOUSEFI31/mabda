@@ -9,14 +9,14 @@ import { newId } from '../repo.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerJudgmentsRoutes(ctx: RouteContext): void {
-  const { repo, ai, router, scopeOf, body, wrap, LOCAL_USER, today } = ctx;
+  const { repo, ai, router, scopeOf, body, wrap, userOf, today } = ctx;
   router.post('/workspaces/:wid/gap/judge', wrap(async (req, res) => {
     const s = scopeOf(req);
     const ids = Array.isArray(body(req).objectIds) ? (body(req).objectIds as unknown[]).map(String) : [];
     const have = repo.listJudgments(s);
     const todo = ids.map((id) => repo.getObject(s, id)).filter((o): o is NonNullable<typeof o> => !!o && have[o.id]?.version !== o.version);
     // Platform-paid judgements are always capped per plan per day.
-    const planOf = repo.getWorkspace(LOCAL_USER, s.workspaceId)!.planId;
+    const planOf = repo.getWorkspace(s.userId, s.workspaceId)!.planId;
     const left = Math.max(0, entitlementsOf(planOf).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge'));
     const limited = todo.length > left;
     if (limited) todo.length = left;

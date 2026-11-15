@@ -4,13 +4,14 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { RepoError, Scope, newId, now, rowToNote } from './shared.ts';
+import { RepoError, Scope, newId, now, rowToNote, claimId } from './shared.ts';
 import { can } from '../../../src/core/entitlements.ts';
 import type { Note } from '../../../src/types/index.ts';
 
 export const notesMethods = {
   importNote(this: Repo, s: Scope, n: Note) {
     this.db.transaction(() => {
+      claimId(this.db, 'notes', n.id, s);
       this.db.prepare('INSERT OR REPLACE INTO notes (id, user_id, workspace_id, node_id, content, created_at, updated_at) VALUES (?,?,?,?,?,?,?)').run(n.id, s.userId, s.workspaceId, n.nodeId, n.content, n.createdAt, n.updatedAt);
       this.syncNoteThoughts(s, n, true);
     })();
@@ -43,7 +44,7 @@ export const notesMethods = {
     const t = now();
     const updated = { ...cur, content, updatedAt: t };
     this.db.transaction(() => {
-      this.db.prepare('UPDATE notes SET content = ?, updated_at = ? WHERE id = ? AND workspace_id = ?').run(content, t, id, s.workspaceId);
+      this.db.prepare('UPDATE notes SET content = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(content, t, id, s.workspaceId, s.userId);
       this.syncNoteThoughts(s, updated);
     })();
     return updated;
@@ -55,7 +56,7 @@ export const notesMethods = {
     if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     if (!this.listNodes(s).some((n) => n.id === nodeId)) throw new RepoError('not_found', 'بخش پیدا نشد.');
     this.db.transaction(() => {
-      this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ?').run(nodeId, id, s.workspaceId);
+      this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
       this.db.prepare('UPDATE thoughts SET node_id = ? WHERE source_note_id = ? AND source_line IS NOT NULL AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
     })();
     return { ...cur, nodeId };
