@@ -4,14 +4,14 @@
  */
 import type { RouteContext } from './context.ts';
 import type { Workspace } from '../../../src/types/index.ts';
-import { DEMO_WORKSPACE_ID, applyDemo } from '../demo.ts';
+import { applyDemo } from '../demo.ts';
 import { RepoError } from '../repo.ts';
 
 export function registerDemoRoutes(ctx: RouteContext): void {
   const { repo, clock, router, scopeOf, body, wrap, LOCAL_USER } = ctx;
   router.post('/demo/reset', wrap((_req, res) => {
-    applyDemo(repo, LOCAL_USER, clock());
-    res.json({ workspaces: repo.listWorkspaces(LOCAL_USER), workspaceId: DEMO_WORKSPACE_ID });
+    const demo = applyDemo(repo, LOCAL_USER, clock());
+    res.json({ workspaces: repo.listWorkspaces(LOCAL_USER), workspaceId: demo.id });
   }));
 
   router.get('/workspaces', wrap((_req, res) => { res.json({ workspaces: repo.listWorkspaces(LOCAL_USER) }); }));
