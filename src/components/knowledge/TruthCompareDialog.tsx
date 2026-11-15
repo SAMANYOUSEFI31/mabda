@@ -110,7 +110,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
           {more && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">زودتر:</span><Button size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(preset.startOfMonth)); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>از اول ماه</Button></div>}
           {moments.length > 0 && more && (
             <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">لحظه‌های تأیید:</span>
-              {moments.slice(0, 5).map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(new Date(new Date(m).getTime() - 86_400_000).toISOString())); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>{formatJalaliDate(m)}</Button>)}
+              {moments.slice(0, 5).map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => { setFrom(dayOnly(m)); setTo(dayOnly(now.toISOString())); setMode('custom'); }}>{formatJalaliDate(m)}</Button>)}
             </div>
           )}
         </div>
@@ -153,7 +153,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                                   <li key={d.id} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-md">
                                     <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                                       <span className="flex min-w-space-0 flex-wrap items-center gap-inline-xs">
-                                        {d.kinds.map((k) => <Badge key={k} icon={false}>{KIND_FA[k]}</Badge>)}
+                                        {d.kinds.map((k) => <Badge key={k}>{KIND_FA[k]}</Badge>)}
                                         <span className="label-md text-text-default">{it.title}</span><TypeBadge value={it.type} iconOnly />
                                       </span>
                                       {byId.has(d.id) && <Button size="sm" variant="ghost" onClick={() => open(d)}>جزئیات و تاریخچه</Button>}
