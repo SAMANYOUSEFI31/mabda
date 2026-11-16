@@ -103,3 +103,13 @@ test('a contradiction between two items with the same title names it once', () =
   const r = homeActions(base({ contradictions: [{ id: 'c1', titleA: 'اجارهٔ ماهانه', titleB: 'اجارهٔ ماهانه', idA: 'o1' }] }));
   assert.equal(r.top[0].text, 'دو مورد «اجارهٔ ماهانه» با هم نمی‌خوانند.');
 });
+
+test('UX-01: both sides of home answer a gap the same way (before: the list under «جزئیات بیشتر» made a «تصمیم», the top a «واقعیت»)', async () => {
+  const { gapAnswer, gapDraft } = await import('./homeActions');
+  const gap = { key: 'audience', label: 'مخاطب', nodeId: 'brand', importance: 'required' as const };
+  const a = gapAnswer(gap, 'فریلنسرها', 'w');
+  const d = gapDraft(gap, 'w');
+  assert.equal(a.type, d.type);
+  assert.equal(a.slotKey, 'audience');
+  assert.equal(a.content, 'فریلنسرها');
+});
