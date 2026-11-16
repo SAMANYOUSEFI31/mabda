@@ -6,6 +6,7 @@ import { createApp, proxyHopsFrom } from '../app.ts';
 import { migrate } from '../db/migrations.ts';
 import { resolveAuthMode } from './http.ts';
 import type { AiService } from '../ai/service.ts';
+import { OWNER_NOTICE_VERSION } from '../../src/core/ownerNotice.ts';
 
 const OWNER_CODE = 'owner-code-for-tests-0123456789';
 
@@ -212,6 +213,11 @@ test('informed consent is kept on the server for the person: a second device doe
     assert.equal((await laptop.join(code)).json.user.consented, true);
     await laptop.call('POST', '/consent', {});
     assert.equal((await owner.call('GET', '/owner/people')).json.people.find((p: { name: string }) => p.name === 'A').consentedAt, first, 'the first date stays');
+    // the notice text changes (a new version): what was accepted before no longer covers it, so the person is asked again
+    t.db.prepare('UPDATE accounts SET consent_version = ? WHERE name = ?').run(OWNER_NOTICE_VERSION - 1, 'A');
+    assert.equal((await laptop.call('GET', '/session')).json.user.consented, false, 'before: one «فهمیدم» covered every later text');
+    assert.equal((await laptop.call('POST', '/consent', {})).json.user.consented, true);
+    assert.equal((await owner.call('GET', '/owner/people')).json.people.find((p: { name: string }) => p.name === 'A').consentVersion, OWNER_NOTICE_VERSION);
   } finally { t.close(); }
 });
 

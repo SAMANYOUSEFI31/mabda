@@ -773,6 +773,15 @@ export const MIGRATIONS: Migration[] = [
       db.exec('ALTER TABLE accounts ADD COLUMN consented_at TEXT');
     },
   },
+  {
+    version: 29,
+    name: 'consent has a version: a changed owner-access notice asks every tester again',
+    up(db) {
+      // everyone who accepted so far accepted the first text
+      db.exec('ALTER TABLE accounts ADD COLUMN consent_version INTEGER');
+      db.exec('UPDATE accounts SET consent_version = 1 WHERE consented_at IS NOT NULL');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

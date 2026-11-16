@@ -1,0 +1,7 @@
+/**
+ * The owner-access notice a tester accepts before first use (informed consent, a principle) and its version. The server stores
+ * the version a person accepted (`accounts.consent_version`); a new version asks everyone again, so a changed promise is never
+ * covered by an old «فهمیدم». `ownerNotice.test.ts` fails when the text changes and the version does not.
+ */
+export const OWNER_ACCESS_NOTICE = 'این نسخهٔ آزمون است. صاحب مبدأ برای نگه‌داشتن پشتیبان به همهٔ داده‌های این نسخه دسترسی دارد، از جمله یادداشت‌های شخصی تو؛ چیزی را بنویس که از دیده شدنش به دست او نگران نیستی.';
+export const OWNER_NOTICE_VERSION = 1;

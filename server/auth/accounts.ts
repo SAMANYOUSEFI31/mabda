@@ -14,7 +14,7 @@ import crypto from 'node:crypto';
 import type Database from 'better-sqlite3';
 
 export type Role = 'owner' | 'tester';
-export interface Account { id: string; name: string; role: Role; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; hasLink: boolean }
+export interface Account { id: string; name: string; role: Role; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; /** the notice version accepted (src/core/ownerNotice.ts) */ consentVersion?: number; hasLink: boolean }
 
 /** the id the owner signs in as; also the user_id of the owner's own data */
 export const OWNER_ID = 'owner';
@@ -31,6 +31,7 @@ const rowToAccount = (r: Record<string, unknown>): Account => ({
   id: r.id as string, name: r.name as string, role: r.role as Role, createdAt: r.created_at as string,
   ...(r.disabled_at ? { disabledAt: r.disabled_at as string } : {}), ...(r.last_seen_at ? { lastSeenAt: r.last_seen_at as string } : {}),
   ...(r.consented_at ? { consentedAt: r.consented_at as string } : {}),
+  ...(r.consent_version ? { consentVersion: r.consent_version as number } : {}),
   hasLink: !!r.invite_hash,
 });
 
@@ -95,9 +96,9 @@ export class Accounts {
   }
 
   /** the tester whose link this is (none for a wrong, replaced or turned-off link) */
-  /** the person read the owner-access notice and accepted it (kept from the first time; asking again never moves the date) */
-  consent(id: string): Account | undefined {
-    this.db.prepare('UPDATE accounts SET consented_at = ? WHERE id = ? AND consented_at IS NULL').run(nowIso(this.clock()), id);
+  /** the person read the owner-access notice of `version` and accepted it (accepting the same version again never moves the date) */
+  consent(id: string, version: number): Account | undefined {
+    this.db.prepare('UPDATE accounts SET consented_at = ?, consent_version = ? WHERE id = ? AND (consent_version IS NULL OR consent_version < ?)').run(nowIso(this.clock()), version, id, version);
     return this.get(id);
   }
 

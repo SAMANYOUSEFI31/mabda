@@ -12,6 +12,7 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type Database from 'better-sqlite3';
 import { Accounts, AuthError, OWNER_ID, sha256 } from './accounts.ts';
 import type { Account, Role } from './accounts.ts';
+import { OWNER_NOTICE_VERSION } from '../../src/core/ownerNotice.ts';
 
 /** the one user of the local mode (also the id that existing single-user databases already use) */
 export const LOCAL_USER = 'local';
@@ -112,7 +113,7 @@ const sameSecret = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(
  * Installs sign-in on the app. Routes it owns: POST /api/join (link code → cookie), GET /api/session, POST /api/logout, POST /api/consent.
  * Everything else under /api gets `req.mabdaUser` or a 401.
  */
-const toUser = (a: Account): RequestUser => ({ id: a.id, role: a.role, name: a.name, consented: a.role === 'owner' || !!a.consentedAt });
+const toUser = (a: Account): RequestUser => ({ id: a.id, role: a.role, name: a.name, consented: a.role === 'owner' || (a.consentVersion ?? 0) >= OWNER_NOTICE_VERSION });
 
 export function installAuth(app: express.Express, db: Database.Database, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
   const accounts = new Accounts(db, opts.clock);
@@ -160,7 +161,7 @@ export function installAuth(app: express.Express, db: Database.Database, mode: A
   });
   // informed consent is stored on the person (not on one device), so the owner can see who has accepted
   app.post('/api/consent', (req, res) => {
-    const a = accounts.consent(req.mabdaUser!.id);
+    const a = accounts.consent(req.mabdaUser!.id, OWNER_NOTICE_VERSION);
     res.json({ mode: 'invite', user: a ? toUser(a) : req.mabdaUser });
   });
   return { accounts };
