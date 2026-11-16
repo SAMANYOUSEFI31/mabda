@@ -79,6 +79,7 @@ const KIND_OF = (raw: string): ThinkingKind => {
 
 /** FNV-1a over the normalised text — small, deterministic, no crypto needed */
 export function lineHash(text: string): string {
+  // punctuation is cosmetic (a «؟» that makes a line a question changes its KIND, which is recorded on its own); digits: normalizeFa makes them Latin
   const t = normalizeFa(text.replace(/\u200c/g, '')).replace(new RegExp(`[${MARKS}]`, 'g'), '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   let h = 0x811c9dc5;
   for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }

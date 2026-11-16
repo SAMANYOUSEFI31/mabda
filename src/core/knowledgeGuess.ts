@@ -18,7 +18,8 @@ const STRONG = ['هرگز', 'نباید', 'ممنوع', 'مجاز نیست', 'خ
 const DECISION = ['تصمیم گرفتیم', 'تصمیم گرفته ایم', 'تصمیم گرفتم', 'تصمیم داریم', 'تصمیم این است', 'انتخاب کردیم', 'انتخاب کرده ایم', 'برگزیدیم', 'قرار شد', 'قرار گذاشتیم', 'ترجیح دادیم', 'تصمیم ما'];
 const WEAK = ['نداریم', 'ندارد', 'ندارم', 'نمی دهیم', 'نمیدهیم', 'نمی کنیم', 'نمیکنیم', 'نمی شود', 'نمیشود', 'نمی فروشیم', 'نمیفروشیم', 'نمی پذیریم', 'نمیپذیریم'];
 
-const has = (text: string, words: string[]) => words.some((w) => text.includes(w));
+/** a whole-word match (the text is padded with spaces and its punctuation is spaces): «استاندارد» must not read as «ندارد» */
+const has = (text: string, words: string[]) => words.some((w) => text.includes(` ${w} `));
 
 /** the kind of knowledge this text most likely is (a short text with no marker is a fact) */
 export function guessType(text: string): ContextType {

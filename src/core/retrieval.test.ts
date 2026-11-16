@@ -20,7 +20,7 @@ test('a single huge paragraph is split', () => {
 });
 
 test('tokenize normalizes Arabic letters, digits and ZWNJ', () => {
-  assert.deepEqual(tokenize('كتاب‌های ۱۲۳ علي'), ['کتاب', 'های', '123', 'علی']);
+  assert.deepEqual(tokenize('كتاب‌های ۱۲۳ علي'), ['کتاب', '123', 'علی']);
 });
 
 test('BM25 ranks the relevant chunk first and drops the unrelated ones', () => {
@@ -44,3 +44,11 @@ test('budget: only whole chunks that fit, best first', () => {
 
 test('estimateTokens is monotonic', () => assert.ok(estimateTokens('aaaa') < estimateTokens('aaaa'.repeat(10))));
 
+
+test('a plural suffix is not a word: «مشتری‌ها» and «مشتریها» find «مشتری», and «ها» alone matches nothing (algorithm review #2)', () => {
+  assert.deepEqual(tokenize('مشتری‌ها'), ['مشتری']);
+  assert.deepEqual(tokenize('مشتریهای ما'), ['مشتری', 'ما']);
+  assert.deepEqual(tokenize('تنها راه'), ['تنها', 'راه'], 'a short word that only ends like a suffix is kept');
+  const ranked = bm25Rank('مشتری‌ها', [{ text: 'کتاب‌ها و دفترها' }, { text: 'مشتری اصلی ما فریلنسرها هستند' }]);
+  assert.deepEqual(ranked.map((r) => r.chunk.text), ['مشتری اصلی ما فریلنسرها هستند']);
+});

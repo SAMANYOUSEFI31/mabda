@@ -59,8 +59,14 @@ export function normalizeText(s: string): string {
     .toLowerCase();
 }
 
+/** the Persian plural suffix, written apart (after a ZWNJ, which normalizeText makes a space) or joined («مشتریها»): it is not a word */
+const PLURAL = new Set(['ها', 'های', 'هایی']);
+/** «مشتریها» → «مشتری»; only when at least three letters stay, so «تنها» or «بها» are left whole. «ان»/«ات» are not cut: too many
+ *  plain nouns end that way (ایران، زمان، اطلاعات); the search's prefix match already finds «مشتریان» from «مشتری». */
+const stem = (t: string): string => { const m = /^(\p{L}{3,}?)(هایی|های|ها)$/u.exec(t); return m ? m[1] : t; };
+
 export function tokenize(s: string): string[] {
-  return normalizeText(s).split(/[^\p{L}\p{N}]+/u).filter((t) => t.length >= 2 && !STOP.has(t));
+  return normalizeText(s).split(/[^\p{L}\p{N}]+/u).filter((t) => t.length >= 2 && !STOP.has(t) && !PLURAL.has(t)).map(stem);
 }
 
 export interface Scored<T> { chunk: T; score: number }

@@ -32,3 +32,11 @@ test('title: the first sentence, no list marker, no trailing punctuation, never 
   assert.equal(guessTitle('   \n  '), FALLBACK_TITLE);
   assert.equal(guessTitle('فقط یک کلمه'), 'فقط یک کلمه');
 });
+
+test('a marker counts only as a whole word: «استاندارد» is not «ندارد», «برقرار شد» is not «قرار شد» (algorithm review #1)', () => {
+  assert.equal(guessType('این بسته استاندارد است'), 'Fact');
+  assert.equal(guessType('ارتباط با مشتری برقرار شد'), 'Fact');
+  assert.equal(guessType('قرار شد جمعه‌ها تعطیل باشیم'), 'Decision');
+  assert.equal(guessType('تخفیف نداریم.'), 'Constraint');
+  assert.equal(guessType('ما هرگز اطلاعات مشتری را نمی‌فروشیم'), 'Constraint');
+});

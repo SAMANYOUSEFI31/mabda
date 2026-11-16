@@ -15,7 +15,7 @@ import {  ContextObject,
 import { isValidKnowledge } from './validity';
 import { governanceOf } from './coGoverning';
 import type { GovernanceInput } from './coGoverning';
-import { DEFAULT_RULE_PACK } from './contradictionRules';
+import { DEFAULT_RULE_PACK, doesIt } from './contradictionRules';
 import type { RulePack } from './contradictionRules';
 
 /**
@@ -51,6 +51,8 @@ export function normalizeFa(text: string): string {
     .replace(/\u200c/g, ' ') // ZWNJ
     .replace(/ي/g, 'ی')
     .replace(/ك/g, 'ک')
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)) // «۵۰۰» and «500» are the same number
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -214,14 +216,19 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
   return inter / (a.size + b.size - inter);
 }
 
-interface Quantity { cls: string; value: number; text: string }
+interface Quantity { cls: string; value: number; text: string; /** the written unit (two durations in different units are compared with a tolerance) */ unit?: string }
 const MULT: Record<string, number> = { 'هزار': 1e3, 'میلیون': 1e6, 'میلیارد': 1e9 };
 const UNIT_CLASS: Record<string, { cls: string; scale: number }> = {
   'تومان': { cls: 'money', scale: 1 }, 'ریال': { cls: 'money', scale: 0.1 }, 'دلار': { cls: 'usd', scale: 1 },
   'درصد': { cls: 'percent', scale: 1 }, '%': { cls: 'percent', scale: 1 }, '٪': { cls: 'percent', scale: 1 },
-  'روز': { cls: 'day', scale: 1 }, 'هفته': { cls: 'week', scale: 1 }, 'ماه': { cls: 'month', scale: 1 },
-  'نفر': { cls: 'person', scale: 1 }, 'ساعت': { cls: 'hour', scale: 1 }, 'جلسه': { cls: 'session', scale: 1 },
+  // one class for time, in hours: «۲۴ ساعت» and «۱ روز» are the same claim (a month is ~30 days, so across units a 10% tolerance)
+  'ساعت': { cls: 'duration', scale: 1 }, 'روز': { cls: 'duration', scale: 24 }, 'هفته': { cls: 'duration', scale: 168 }, 'ماه': { cls: 'duration', scale: 720 },
+  'نفر': { cls: 'person', scale: 1 }, 'جلسه': { cls: 'session', scale: 1 },
 };
+
+/** the same amount: equal, or (a duration written in two different units) within 10% — «۴ هفته» and «۱ ماه» say the same */
+const sameQuantity = (x: Quantity, y: Quantity): boolean =>
+  x.value === y.value || (x.cls === 'duration' && x.unit !== y.unit && Math.abs(x.value - y.value) <= 0.1 * Math.max(x.value, y.value));
 
 /** Numbers that carry a unit (or a million/thousand multiplier = money): «۴ میلیون تومان», «۱۰٪», «۳۰ روز». */
 export function extractQuantities(text: string): Quantity[] {
@@ -234,7 +241,7 @@ export function extractQuantities(text: string): Quantity[] {
     if (!mult && !unit) continue;
     const u = unit ? UNIT_CLASS[unit] : { cls: 'money', scale: 1 };
     const value = Number(m[1]) * (mult ? MULT[mult] : 1) * u.scale;
-    out.push({ cls: u.cls, value, text: m[0].trim() });
+    out.push({ cls: u.cls, value, text: m[0].trim(), ...(unit ? { unit } : {}) });
   }
   return out;
 }
@@ -272,7 +279,7 @@ export function detectContradictions(objects: ContextObject[], ctx: Contradictio
   const extra: Array<[number, number]> = [];
   for (const r of rules) {
     const says = active.map((o, i) => (r.says.test(text.get(o.id)!) ? i : -1)).filter((i) => i >= 0);
-    const does = active.map((o, i) => (r.contradictedBy.test(text.get(o.id)!) ? i : -1)).filter((i) => i >= 0);
+    const does = active.map((o, i) => (doesIt(r, text.get(o.id)!) ? i : -1)).filter((i) => i >= 0);
     for (const x of says) for (const y of does) if (x !== y) extra.push([Math.min(x, y), Math.max(x, y)]);
   }
   const pairs = blockedPairs(active.map((o) => tokens.get(o.id)!), { extra });
@@ -290,7 +297,7 @@ export function detectContradictions(objects: ContextObject[], ctx: Contradictio
         for (const cls of classes) {
           const va = qa.filter((q) => q.cls === cls);
           const vb = qb.filter((q) => q.cls === cls);
-          if (va.some((x) => vb.some((y) => y.value === x.value))) continue;
+          if (va.some((x) => vb.some((y) => sameQuantity(x, y)))) continue;
           contradictions.push({
             id: `contra_${a.id}_${b.id}`,
             itemA: a,
@@ -305,7 +312,7 @@ export function detectContradictions(objects: ContextObject[], ctx: Contradictio
       // 2) the domain rules: one side forbids what the other does
       for (const r of rules) {
         for (const [x, y] of [[a, b], [b, a]] as const) {
-          if (r.says.test(text.get(x.id)!) && r.contradictedBy.test(text.get(y.id)!) && !contradictions.some((c) => c.id === `contra_${x.id}_${y.id}`)) {
+          if (r.says.test(text.get(x.id)!) && doesIt(r, text.get(y.id)!) && !contradictions.some((c) => c.id === `contra_${x.id}_${y.id}`)) {
             contradictions.push({ id: `contra_${x.id}_${y.id}`, itemA: x, itemB: y, reason: r.reason, suggestedResolution: r.suggestedResolution });
           }
         }

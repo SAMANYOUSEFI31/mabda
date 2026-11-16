@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultSectionFor, findExactDuplicate, normalizeForDuplicate, QUICK_CAPTURE_EVENT, requestQuickCapture } from './quickCapture.ts';
+import { defaultSectionFor, findExactDuplicate, findNearDuplicate, normalizeForDuplicate, QUICK_CAPTURE_EVENT, requestQuickCapture } from './quickCapture.ts';
 import type { ContextObject, Thought, TreeNode } from '../types';
 
 const th = (id: string, text: string, status: 'open' | 'resolved' = 'open'): Thought => ({ id, workspaceId: 'w', nodeId: '', kind: 'idea', text, status, createdAt: '', updatedAt: '' });
@@ -45,4 +45,14 @@ test('بخش پیش‌فرض: بخش فعلی اگر در درخت هست، وگ
 test('requestQuickCapture بدون window بی‌اثر و بی‌خطاست', () => {
   assert.equal(typeof QUICK_CAPTURE_EVENT, 'string');
   assert.doesNotThrow(() => requestQuickCapture('x'));
+});
+
+test('a near duplicate (most words shared) is a soft «maybe» hint, deterministic and without any model (algorithm review #6)', () => {
+  const objects = [ob('o1', 'قیمت', 'قیمت ۲۰ میلیون تومان')];
+  assert.equal(findNearDuplicate('قیمت ۲۰ میلیون', [], objects)?.id, 'o1');
+  assert.equal(findNearDuplicate('قیمت ۲۰ میلیون تومان', [], objects), null, 'an exact one is the exact check, not this');
+  assert.equal(findNearDuplicate('قیمت ۴۰ میلیون دلار', [], objects), null, 'half the words is not a duplicate');
+  assert.equal(findNearDuplicate('قیمت ۲۰', [], objects), null, 'too short to tell');
+  assert.equal(findNearDuplicate('قیمت ۲۰ میلیون', [], [ob('o2', 'قیمت', 'قیمت ۲۰ میلیون تومان', 'Archived')]), null);
+  assert.equal(findNearDuplicate('قیمت اشتراک را بالا ببریم حتما', [th('t1', 'قیمت اشتراک را بالا ببریم')], [])?.id, 't1');
 });

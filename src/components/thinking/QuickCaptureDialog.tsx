@@ -11,7 +11,7 @@ import { composeThought, guessThoughtKind } from '../../core/thoughts';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak } from '../../core/batchLines';
 import { flatten } from '../../core/nodeTree';
-import { findExactDuplicate } from '../../core/quickCapture';
+import { findExactDuplicate, findNearDuplicate } from '../../core/quickCapture';
 import { getSlotProvider } from '../../core/suggestionSlots';
 import type { SlotSuggestion } from '../../core/suggestionSlots';
 import type { NotePayload } from '../../core/thoughtBatch';
@@ -70,7 +70,10 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   const count = split ? lines.length : 1;
   const sectionOptions = useMemo(() => [{ value: '', label: 'تازه‌ها — جایش را بعداً مشخص می‌کنم' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))], [nodes]);
   const exact = useMemo(() => (open ? findExactDuplicate(text, thoughts, objects) : null), [open, text, thoughts, objects]);
-  const maybeDup = useSlot('duplicate', text, node, open && !exact);
+  const slotDup = useSlot('duplicate', text, node, open && !exact);
+  // with the intelligence layer off the slot is silent; the deterministic word-overlap check still gives the soft hint
+  const nearDup = useMemo(() => (open && !exact && !slotDup ? findNearDuplicate(text, thoughts, objects) : null), [open, exact, slotDup, text, thoughts, objects]);
+  const maybeDup = slotDup ?? (nearDup ? { label: `«${nearDup.text.length > 80 ? `${nearDup.text.slice(0, 80)}…` : nearDup.text}»` } : null);
   const place = useSlot('place', text, node, open && !node);
   const placeNode = place?.targetId && nodes.some((n) => n.id === place.targetId) ? place : null;
 

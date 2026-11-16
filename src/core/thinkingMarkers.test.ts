@@ -127,3 +127,8 @@ test('displayLine hides only the bracket marker', () => {
   assert.equal(displayLine('[Open Decision] روز'), 'روز');
   assert.equal(displayLine('چرا [فرض] وسط؟'), 'چرا [فرض] وسط؟');
 });
+
+test('lineHash: Persian and Latin digits are the same number, not a revision (algorithm review #5)', () => {
+  assert.equal(lineHash('قیمت ۵۰۰ هزار'), lineHash('قیمت 500 هزار'));
+  assert.equal(lineHash('قیمت، ۵۰۰ هزار.'), lineHash('قیمت ۵۰۰ هزار'), 'other punctuation stays cosmetic');
+});

@@ -129,7 +129,7 @@ test('gaps never carry canned suggested answers', () => {
 
 test('extractQuantities reads Persian digits, multipliers and units', () => {
   const q = extractQuantities('قیمت ۴ میلیون تومان و ۱۰٪ تخفیف برای ۳۰ روز');
-  assert.deepEqual(q.map((x) => [x.cls, x.value]), [['money', 4_000_000], ['percent', 10], ['day', 30]]);
+  assert.deepEqual(q.map((x) => [x.cls, x.value]), [['money', 4_000_000], ['percent', 10], ['duration', 30 * 24]]); // time is one class, in hours
 });
 
 test('detectContradictions finds a real price conflict on the same topic, but not on different topics', () => {
@@ -175,4 +175,18 @@ test('readiness judges validity at the given `now`, not the wall clock (CORE-05)
   assert.equal(later.gaps.find((g) => g.key === 'aud')?.status, 'missing');
   const before = calculateReadinessAndGaps(spec, [item], [], {}, '2029-01-01T00:00:00Z');
   assert.notEqual(before.gaps.find((g) => g.key === 'aud')?.status, 'missing');
+});
+
+test('durations in different units are one class: «۲۴ ساعت» = «۱ روز», «۲۴ ساعت» ≠ «۳ روز»; «۴ هفته» ≈ «یک ماه» (algorithm review #3)', () => {
+  const t = (id: string, content: string) => obj({ id, title: 'زمان پاسخ به پیام', content });
+  assert.equal(detectContradictions([t('a', 'پاسخ ظرف ۲۴ ساعت'), t('b', 'پاسخ ظرف ۳ روز')]).length, 1);
+  assert.equal(detectContradictions([t('a', 'پاسخ ظرف ۲۴ ساعت'), t('b', 'پاسخ ظرف ۱ روز')]).length, 0);
+  assert.equal(detectContradictions([t('a', 'تحویل ۴ هفته'), t('b', 'تحویل ۱ ماه')]).length, 0, 'a month is not exactly four weeks; the same claim');
+  assert.equal(detectContradictions([t('a', 'تحویل ۳۰ روز'), t('b', 'تحویل ۴۵ روز')]).length, 1);
+});
+
+test('a sentence that refuses the discount does not «define» one: «حتی تخفیف ۱۰٪ هم نمی‌دهیم» agrees with «تخفیف نداریم» (algorithm review #3)', () => {
+  const rule = obj({ id: 'r', type: 'Constraint', title: 'تخفیف', content: 'تخفیف نداریم.' });
+  assert.equal(detectContradictions([rule, obj({ id: 'x', title: 'سیاست قیمت', content: 'حتی تخفیف ۱۰٪ هم نمی‌دهیم.' })]).length, 0);
+  assert.equal(detectContradictions([rule, obj({ id: 'y', title: 'جشنواره', content: 'برای عید تخفیف ۲۰٪ داریم. بقیهٔ سال نداریم.' })]).length, 1, 'another sentence defines it');
 });

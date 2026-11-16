@@ -121,3 +121,16 @@ test('slots are clamped inside the side; the rounded path starts and ends exactl
   assert.deepEqual(r.points.at(-1), r.end);
   assert.ok(r.mid.x >= Math.min(r.start.x, r.end.x) && r.mid.x <= Math.max(r.start.x, r.end.x));
 });
+
+test('two detours that would run along the same corridor get separate lanes (algorithm review #10)', () => {
+  const rects = new Map([['a1', R(0, 0, 100, 40)], ['b1', R(400, 0, 100, 40)], ['a2', R(0, 100, 100, 40)], ['b2', R(400, 100, 100, 40)]]);
+  const wall = R(230, -50, 40, 1000);
+  const routes = routeEdges([{ id: 'e1', from: 'a1', to: 'b1' }, { id: 'e2', from: 'a2', to: 'b2' }], rects, { obstacles: [...rects.values(), wall] });
+  const r1 = routes.get('e1')!, r2 = routes.get('e2')!;
+  assert.ok(r1.detour && r2.detour);
+  const horizontals = (r: Route) => segsOf(r).filter(([p, q]) => Math.abs(p.y - q.y) < 0.01 && Math.abs(p.x - q.x) > 50).map(([p, q]) => ({ y: p.y, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) }));
+  for (const h1 of horizontals(r1)) for (const h2 of horizontals(r2)) {
+    const overlap = Math.min(h1.hi, h2.hi) - Math.max(h1.lo, h2.lo);
+    assert.ok(overlap <= 0 || Math.abs(h1.y - h2.y) >= 6, `shared corridor at y=${h1.y}`);
+  }
+});

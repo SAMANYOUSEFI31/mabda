@@ -92,7 +92,8 @@ export const thoughtsMethods = {
    * Note lines ↔ Thoughts (docs/spine.md → «یادداشت ماده است، فکر هویت دارد»). A note line is matched to a Thought in this order:
    *   1. the same line with the same text (or the same text moved to another line) — nothing changes except where it sits;
    *   2. an EDITED line: an open, unconverted Thought of this note whose anchor (its line, its original words) is close to the new
-   *      line — the same line and ≥ 25% shared words, or ≥ 50% shared words anywhere — is REVISED (same id; a purely cosmetic
+   *      line — the same line and ≥ 25% shared words (≥ 15% when the line keeps its kind and the note its number of thoughts),
+   *      or ≥ 50% shared words anywhere — is REVISED (same id; a purely cosmetic
    *      change records no revision), never duplicated;
    *   3. a resolved (converted) Thought that matches the same way is left alone: editing the note neither changes it nor makes a twin;
    *   4. only a line that matches nothing makes a new Thought.
@@ -109,6 +110,7 @@ export const thoughtsMethods = {
       if (hit) { used.add(hit.id); p.thought = hit; }
     }
     const words = (x: string) => titleTokens(x);
+    const sameCount = pairs.length === anchored.filter((t) => t.status !== 'resolved').length;
     for (const p of pairs) { // 2 & 3. an edited line
       if (p.thought) continue;
       let best: { t: Thought; sim: number; gap: number } | undefined;
@@ -116,7 +118,10 @@ export const thoughtsMethods = {
         if (used.has(t.id)) continue;
         const sim = Math.max(jaccard(words(p.item.text), words(t.sourceQuote ?? t.text)), jaccard(words(p.item.text), words(t.text)));
         const near = t.sourceLine === p.item.line;
-        if (!((near && sim >= 0.25) || sim >= 0.5)) continue;
+        // a short line edited in place: when the note keeps its number of thoughts, the same line with the same kind and ~one shared
+        // word in a few («قیمت اشتراک ماهانه» → «قیمت پلن سالانه») is still that thought; the threshold drops to 15%
+        const inPlace = near && sameCount && t.kind === p.item.kind;
+        if (!((inPlace && sim >= 0.15) || (near && sim >= 0.25) || sim >= 0.5)) continue;
         const gap = Math.abs((t.sourceLine ?? 0) - p.item.line);
         if (!best || sim > best.sim || (sim === best.sim && gap < best.gap)) best = { t, sim, gap };
       }
