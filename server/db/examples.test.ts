@@ -47,3 +47,20 @@ test('replacing a Constraint carries the examples to the new version unless new 
   const r = repo.supersedeObject(s, o.id, { type: 'Constraint', provenance: 'User Input', title: 'جدید', content: 'متن جدید', nodeId: 'business' });
   assert.deepEqual(r.object.examples, EX);
 });
+
+test('a waiting draft ends when the examples are written directly or the item is archived (LOGIC-06)', () => {
+  const db = new Database(':memory:'); migrate(db); const repo = new Repo(db);
+  repo.saveWorkspace('local', { id: 'wd', name: 'wd', slug: 'wd', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as never);
+  const s = { userId: 'local', workspaceId: 'wd' };
+  const node = repo.listNodes(s)[0].id;
+  const make = () => repo.createObject(s, { type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: 'تخفیف نداریم', content: 'هیچ تخفیفی نمی‌دهیم', nodeId: node, examples: [{ text: 'نمونهٔ اول', fits: true }] } as never);
+  const a = make();
+  repo.updateObject(s, a.id, { content: 'متن پیش‌نویس', asDraft: true });
+  assert.ok(repo.getObject(s, a.id)?.draft);
+  repo.updateObject(s, a.id, { examples: [{ text: 'نمونهٔ تازه', fits: false }] });
+  assert.equal(repo.getObject(s, a.id)?.draft, undefined, 'a direct write of the examples replaces what the draft held');
+  const b = make();
+  repo.updateObject(s, b.id, { content: 'متن پیش‌نویس', asDraft: true });
+  repo.updateObject(s, b.id, { status: 'Archived' });
+  assert.equal(repo.getObjectAny(s, b.id)?.draft, undefined, 'archiving ends the edit');
+});

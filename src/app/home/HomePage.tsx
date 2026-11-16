@@ -16,6 +16,7 @@ import { LIMITS } from '../../core/limits';
 import { MX } from '../../core/metricsText';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { gapAnswer, gapDraft } from '../../core/homeActions';
+import { resolveNodeId } from '../../core/nodeTree';
 import { CHANGE_KIND_FA } from '../../core/changeLog';
 import { Button, Card, EmptyState, IconButton, Menu, formatNumber } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
@@ -66,7 +67,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             <HomeSections
               sections={homeView}
               onAct={handleHomeAct}
-              onAnswerGap={(g) => openContext(gapDraft(g, wid), g.nodeId)}
+              onAnswerGap={(g) => { const at = { ...g, nodeId: resolveNodeId(nodes, g.nodeId) }; openContext(gapDraft(at, wid), at.nodeId); }}
               truthCount={workspaceContexts.filter((o) => o.status === 'Confirmed').length}
               thoughts={(data?.thoughts ?? []).filter((t) => t.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
               onOpenThinking={() => openThinkingSpace()}
@@ -96,7 +97,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
             onAcceptReview={handleAcceptReview}
             proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
-            onAnswerGap={(gap, answer) => { void handleSaveContextObject(gapAnswer(gap, answer, wid)); }}
+            onAnswerGap={(gap, answer) => { void handleSaveContextObject(gapAnswer({ ...gap, nodeId: resolveNodeId(nodes, gap.nodeId) }, answer, wid)); }}
             onOpenStudio={() => setActiveTab('workstreams')}
             onOpenAssets={() => setActiveTab('assets')}
             onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}

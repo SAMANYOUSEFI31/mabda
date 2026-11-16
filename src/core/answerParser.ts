@@ -18,10 +18,10 @@ export interface ParsedBlock {
 
 const KINDS: Record<string, ParsedKind> = {
   decision: 'decision', fact: 'fact', constraint: 'constraint', asset: 'asset', question: 'question',
-  'تصمیم': 'decision', 'واقعیت': 'fact', 'محدودیت': 'constraint', 'دارایی': 'asset', 'خروجی': 'asset', 'سؤال': 'question', 'سوال': 'question',
+  'تصمیم': 'decision', 'واقعیت': 'fact', 'محدودیت': 'constraint', 'خط قرمز': 'constraint', 'قید': 'constraint', 'دارایی': 'asset', 'خروجی': 'asset', 'سؤال': 'question', 'سوال': 'question',
 };
 
-const HEADING = /^##(?!#)\s*(Decision|Fact|Constraint|Asset|Question|تصمیم|واقعیت|محدودیت|دارایی|خروجی|سؤال|سوال)\s*(?:[:：\-—–]\s*(.*))?$/i;
+const HEADING = /^##(?!#)\s*(Decision|Fact|Constraint|Asset|Question|تصمیم|واقعیت|محدودیت|خط[\s\u200c]*قرمز|قید|دارایی|خروجی|سؤال|سوال)\s*(?:[:：\-—–]\s*(.*))?$/i;
 
 const plain = (s: string) => s.replace(/^[#>*\-\s`]+/, '').replace(/[*_`]/g, '').trim();
 const clip = (s: string, n = 80) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -44,7 +44,7 @@ export function parseByHeadings(input: string): ParsedBlock[] | null {
     if (/^\s*```/.test(line)) inFence = !inFence;
     const m = inFence ? null : line.match(HEADING);
     if (m) {
-      cur = { kind: KINDS[m[1].toLowerCase()] ?? KINDS[m[1]], title: (m[2] ?? '').trim(), body: [] };
+      cur = { kind: KINDS[m[1].toLowerCase()] ?? KINDS[m[1]] ?? KINDS[m[1].replace(/[\s\u200c]+/g, ' ')], title: (m[2] ?? '').trim(), body: [] };
       drafts.push(cur);
     } else if (cur) cur.body.push(line);
     else pre.push(line);

@@ -87,3 +87,11 @@ test('mapAnswer یک نگاشت برای هر بلوک می‌سازد و Postel
   assert.equal(m.size, 2);
   assert.equal([...m.values()][0].action, 'duplicate');
 });
+
+test('the product word «خط قرمز» (and «قید») is read as a red line heading, like Constraint (LOGIC-07)', () => {
+  for (const h of ['## خط قرمز: تخفیف نمی‌دهیم', '## خط‌قرمز: تخفیف نمی‌دهیم', '## قید: تخفیف نمی‌دهیم']) {
+    const blocks = parseByHeadings(`${h}\nهیچ تخفیفی در کار نیست.`);
+    assert.equal(blocks?.[0]?.kind, 'constraint', h);
+    assert.equal(blocks?.[0]?.title, 'تخفیف نمی‌دهیم');
+  }
+});

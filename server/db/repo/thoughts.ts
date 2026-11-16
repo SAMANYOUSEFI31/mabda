@@ -404,6 +404,8 @@ export const thoughtsMethods = {
         });
       } else if (ev.event_kind === 'source_line_deleted' || ev.event_kind === 'source_note_deleted') {
         entries.push({ kind: ev.event_kind, at: ev.at, actor: ev.actor, details: {} });
+      } else if (ev.event_kind === 'moved') {
+        entries.push({ kind: 'moved', at: ev.at, actor: ev.actor, details: { beforeNodeId: ev.before_value ?? undefined, afterNodeId: ev.after_value ?? undefined } });
       } else if (ev.event_kind === 'resolved') {
         entries.push({
           kind: 'resolved',

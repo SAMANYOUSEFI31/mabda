@@ -166,7 +166,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
-  const [examples, setExamples] = useState<RedlineExample[]>(object?.examples ?? []);
+  const [examples, setExamples] = useState<RedlineExample[]>(object?.draft?.examples ?? object?.examples ?? []); // a waiting draft keeps its examples too
   const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
@@ -232,7 +232,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   // editing the TEXT of confirmed knowledge: the user chooses — keep it as a draft (nothing downstream sees it) or replace the text now
   const confirmedEdit = isEditing && !!object && object.status === 'Confirmed' && !object.sample && !isSupersedingMode;
-  const textChanged = confirmedEdit && (content.trim() !== object!.content.trim() || (title.trim() || guessTitle(content)) !== object!.title);
+  // the examples are part of a red line's text: changing them is a change of the text (draft or replace, like the rest)
+  const examplesChanged = JSON.stringify(cleanExamples(examples) ?? null) !== JSON.stringify(cleanExamples(object?.examples ?? []) ?? null);
+  const textChanged = confirmedEdit && (content.trim() !== object!.content.trim() || (title.trim() || guessTitle(content)) !== object!.title || examplesChanged);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalTitle = title.trim() || guessTitle(content);

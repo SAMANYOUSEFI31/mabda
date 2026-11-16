@@ -180,6 +180,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                               : entry.kind === 'derived' ? 'اشتقاق'
                               : entry.kind === 'source_line_deleted' ? 'خط از یادداشت حذف شد'
                               : entry.kind === 'source_note_deleted' ? 'یادداشت حذف شد'
+                              : entry.kind === 'moved' ? 'جابه‌جایی بخش'
                               : 'به‌روزرسانی'}
                           </span>
                           <span className="caption text-text-subtle">{formatJalaliDate(entry.at)}</span>
@@ -190,6 +191,9 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                             <span className="line-through">{entry.details.beforeText}</span>
                             {entry.details.afterText && <><br /><span className="caption text-text-subtle">متن تازه: </span><span>{entry.details.afterText}</span></>}
                           </div>
+                        )}
+                        {entry.kind === 'moved' && entry.details.beforeNodeId && entry.details.afterNodeId && (
+                          <p className="body-sm text-text-subtle">از «{label(entry.details.beforeNodeId)}» به «{label(entry.details.afterNodeId)}»</p>
                         )}
                         {entry.kind === 'reclassification' && entry.details.beforeKind && entry.details.afterKind && (
                           <p className="body-sm text-text-subtle">

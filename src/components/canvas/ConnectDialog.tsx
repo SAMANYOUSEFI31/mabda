@@ -21,11 +21,13 @@ interface Props {
 export const ConnectDialog: React.FC<Props> = ({ open, from, to, options, busy, onClose, onConfirm }) => {
   const [choice, setChoice] = useState<ConnectChoice | undefined>(() => options.find((o) => !o.blocked)?.choice);
   const [reason, setReason] = useState('');
+  // setting a red line or a decision aside for a section is a real exception: its reason is required (the server asks for it too)
   useEffect(() => { if (open) { setChoice(options.find((o) => !o.blocked)?.choice); setReason(''); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const cur = options.find((o) => o.choice === choice);
+  const needsReason = cur?.type === 'overrides';
   return (
     <Dialog open={open} onClose={onClose} size="sm" title="وصل کن" description={from && to ? `بین «${from}» و «${to}» چه رابطه‌ای هست؟` : undefined}
-      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" disabled={!cur || !!cur.blocked} loading={busy} onClick={() => cur && onConfirm(cur, reason.trim())}>وصل کن</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" disabled={!cur || !!cur.blocked || (needsReason && !reason.trim())} loading={busy} onClick={() => cur && onConfirm(cur, reason.trim())}>وصل کن</Button></>}>
       <div className="flex flex-col gap-stack-md" data-testid="connect-dialog">
         <RadioGroup legend="یک جمله را انتخاب کن" value={choice ?? ''} onChange={(v) => setChoice(v as ConnectChoice)}
           options={options.map((o) => ({ value: o.choice, label: <span className="flex flex-col"><span>{o.label}</span>{o.blocked && <span className="body-sm text-text-subtle">{o.blocked}</span>}</span>, disabled: !!o.blocked }))} />
@@ -34,7 +36,7 @@ export const ConnectDialog: React.FC<Props> = ({ open, from, to, options, busy, 
             {cur.note ? `${cur.note} ` : ''}{cur.type === 'supersedes' ? 'این کار با «واگرد» برنمی‌گردد.' : 'با «واگرد» (Ctrl+Z) برمی‌گردد.'}
           </Alert>
         )}
-        <TextField label="دلیل (اختیاری)" value={reason} onChange={(e) => setReason(e.target.value)} hint="در تاریخچهٔ تغییرها ثبت می‌شود." />
+        <TextField label={needsReason ? 'دلیل (لازم)' : 'دلیل (اختیاری)'} required={needsReason} value={reason} onChange={(e) => setReason(e.target.value)} hint="در تاریخچهٔ تغییرها ثبت می‌شود." />
       </div>
     </Dialog>
   );

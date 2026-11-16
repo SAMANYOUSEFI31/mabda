@@ -17,7 +17,7 @@ test('whole tree: title is H1, nodes H2, objects H3; labels are Persian', () => 
   assert.match(md, /#### برند و پیام|### برند و پیام/);
 });
 
-test('a node export contains only its subtree; archived and superseded are left out; Proposed is labelled', () => {
+test('a node export contains only its subtree; only the truth: archived, superseded and Proposed are left out (LOGIC-02)', () => {
   const md = contextToMarkdown({
     nodes: DEFAULT_TREE_NODES,
     nodeId: 'product',
@@ -28,8 +28,16 @@ test('a node export contains only its subtree; archived and superseded are left 
     ],
   });
   assert.match(md, /^# محصول و خدمت/);
-  assert.match(md, /پیشنهادی \(تأییدنشده\)/);
-  assert.doesNotMatch(md, /بیرون از زیرشاخه|قدیمی/);
+  assert.doesNotMatch(md, /تأییدنشده|### قیمت|بیرون از زیرشاخه|قدیمی/);
+});
+
+test('an expired item is not written into the document; a stale one (Needs Review) still is (LOGIC-02)', () => {
+  const md = contextToMarkdown({
+    nodes: DEFAULT_TREE_NODES, nodeId: 'business', now: '2027-01-01T00:00:00Z',
+    objects: [o({ id: 'x', title: 'منقضی', validUntil: '2026-12-01' }), o({ id: 'y', title: 'نیازمند بازبینی', status: 'Needs Review' })],
+  });
+  assert.doesNotMatch(md, /منقضی/);
+  assert.match(md, /نیازمند بازبینی/);
 });
 
 test('empty leaf says so instead of leaving a bare heading', () => {

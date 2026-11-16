@@ -20,6 +20,7 @@ import { remapIds } from './userIds.ts';
 import type { Workspace } from '../../src/types/index.ts';
 import { LIMITS } from '../../src/core/limits.ts';
 import { formatNumber } from '../../src/ui/format.ts';
+import { pairKey } from '../../src/core/contradictionCandidates.ts';
 
 export const BACKUP_FORMAT = 'mabda.workspace-backup';
 export const BACKUP_VERSION = 1;
@@ -70,6 +71,14 @@ const remapCell = (v: unknown, ids: ReadonlySet<string>, suffix: string, map: Ma
   return v;
 };
 
+/** a contradiction judgment is keyed by its two ids in order (`pairKey`): with new ids the key is rebuilt and the order (with its
+ * versions) fixed, or a resolved contradiction would come back open */
+function pairRow(row: Record<string, unknown>): void {
+  if (typeof row.a_id !== 'string' || typeof row.b_id !== 'string') return;
+  if (row.a_id > row.b_id) [row.a_id, row.b_id, row.a_version, row.b_version] = [row.b_id, row.a_id, row.b_version, row.a_version];
+  if ('pair_key' in row) row.pair_key = pairKey(row.a_id as string, row.b_id as string);
+}
+
 export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: Date = new Date()): Workspace {
   const b = raw as Partial<WorkspaceBackup> | null;
   if (!b || b.format !== BACKUP_FORMAT || typeof b.tables !== 'object' || !b.workspace || typeof b.workspace !== 'object') throw new RepoError('invalid', 'این فایل پشتیبان یک فضای مبدأ نیست.');
@@ -104,7 +113,9 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
       const cols = columnsOf(repo, t).map((c) => c.name).filter((c) => c !== 'user_id' && c !== 'workspace_id' && c in rows[0]);
       const ins = repo.db.prepare(`INSERT INTO ${q(t)} (${[...cols, 'user_id', 'workspace_id'].map(q).join(', ')}) VALUES (${[...cols, 'u', 'w'].map(() => '?').join(', ')})`);
       for (const r of rows) {
-        ins.run(...cols.map((c) => remapCell(r[c], ids, suffix, map)), userId, wsId);
+        const row = Object.fromEntries(cols.map((c) => [c, remapCell(r[c], ids, suffix, map)]));
+        if (t === 'contradiction_judgments') pairRow(row);
+        ins.run(...cols.map((c) => row[c]), userId, wsId);
       }
     }
     if (typeof b.weeklyReview === 'string') repo.db.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, `weekly_review:${wsId}`, b.weeklyReview);

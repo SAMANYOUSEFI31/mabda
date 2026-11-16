@@ -91,7 +91,10 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   const ready = blocks.filter((b) => !b.done && isContextKind(b.kind) && (choice[b.id]?.action === 'new' || (choice[b.id]?.action === 'update' && onUpdateDraft)));
   const applyAll = async () => { setBusy(true); try { for (const b of ready) await apply(b); } finally { setBusy(false); } };
 
+  /** the block being saved as an asset: a second click while it saves must not make a second asset */
+  const [savingAsset, setSavingAsset] = useState<string | null>(null);
   const toAsset = async (b: ParsedBlock) => {
+    if (savingAsset) return;
     // an Asset block answering a pack made for a specific output counts as that output (unlocks what depends on it)
     const forOutput = b.kind === 'asset' && res?.packDeliverableId && res.packSpecId;
     const asset: GeneratedDeliverable = {
@@ -100,7 +103,8 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
       executionMode: 'auto', usedContext: res?.usedContext ?? [], rebuildCount: 0, createdAt: at(),
       source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() }, ...(res?.packId ? { sourcePackId: res.packId } : {}),
     };
-    if (await onSaveAsset(asset)) mark(b.id, 'در کتابخانهٔ دارایی‌ها ذخیره شد');
+    setSavingAsset(b.id);
+    try { if (await onSaveAsset(asset)) mark(b.id, 'در کتابخانهٔ دارایی‌ها ذخیره شد'); } finally { setSavingAsset(null); }
   };
 
   const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
@@ -155,7 +159,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                     {b.done ? <Badge icon="Check">{b.done}</Badge> : (
                       <div className="flex flex-wrap items-center gap-inline-xs">
                         {ctx && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
-                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" onClick={() => toAsset(b)}>ذخیره به‌عنوان دارایی</Button>}
+                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset} onClick={() => toAsset(b)}>ذخیره به‌عنوان دارایی</Button>}
                         <Button size="sm" variant="ghost" iconStart="X" onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
                       </div>
                     )}

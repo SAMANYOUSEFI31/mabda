@@ -26,7 +26,7 @@ export function useThinkingItems(p: AppCoreScope) {
     for (const w of v.waiting) m.set(w.object.nodeId, (m.get(w.object.nodeId) ?? 0) + 1);
     for (const t of v.thoughts) m.set(t.nodeId, (m.get(t.nodeId) ?? 0) + 1);
     return m;
-  }, [workspaceContexts, data?.notes, nodes]);
+  }, [workspaceContexts, data?.notes, nodes, thinking]);
   const handleConvertItem = async (item: NoteThinkingItem, type: ContextObject['type']) => {
     if (!item.id) return;
     const r = await attempt(() => dataApi.convertThinkingItem(wid, item.id!, type));

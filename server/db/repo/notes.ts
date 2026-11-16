@@ -55,8 +55,13 @@ export const notesMethods = {
     if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     if (!this.listNodes(s).some((n) => n.id === nodeId)) throw new RepoError('not_found', 'بخش پیدا نشد.');
     this.db.transaction(() => {
+      // each thought that changes section gets a «moved» event: a section change is part of a thought's history, like its text and kind
+      const moving = this.db.prepare('SELECT id, node_id FROM thoughts WHERE source_note_id = ? AND source_line IS NOT NULL AND node_id != ? AND workspace_id = ? AND user_id = ?').all(id, nodeId, s.workspaceId, s.userId) as Array<{ id: string; node_id: string }>;
       this.db.prepare('UPDATE notes SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
       this.db.prepare('UPDATE thoughts SET node_id = ? WHERE source_note_id = ? AND source_line IS NOT NULL AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
+      const ev = this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)');
+      const at = now();
+      for (const t of moving) ev.run(newId('th_ev'), t.id, s.userId, s.workspaceId, 'moved', t.node_id, nodeId, 'user', at);
     })();
     return { ...cur, nodeId };
   },

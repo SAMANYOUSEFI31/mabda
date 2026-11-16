@@ -90,3 +90,16 @@ test('the same ids: the card of a tray thought is the stored thought (id), and a
   assert.ok(!placed.items.some((i) => i.unplaced && i.noteId === other.id), 'a placed note is not in the tray');
   assert.equal(thinkingSpace({ objects: [], notes: repo.listNotes(s), thoughts, nodes }).thoughts.length, 2, 'the space still lists both');
 });
+
+test('moving a thought card into another section is recorded in the thought history (LOGIC-09)', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک');
+  const t = repo.listThoughts(s)[0];
+  const other = repo.listNodes(s).find((n) => n.id !== 'offer')!.id;
+  repo.moveNoteToNode(s, note.id, other);
+  const moved = repo.getThoughtHistory(s, t.id).entries.find((e) => e.kind === 'moved');
+  assert.ok(moved, 'a «moved» entry');
+  assert.deepEqual([moved!.details.beforeNodeId, moved!.details.afterNodeId], ['offer', other]);
+  repo.moveNoteToNode(s, note.id, other); // the same section again: nothing to record
+  assert.equal(repo.getThoughtHistory(s, t.id).entries.filter((e) => e.kind === 'moved').length, 1);
+});

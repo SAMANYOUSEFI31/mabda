@@ -18,6 +18,7 @@ import {
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../../types';
 import { LIBRARY } from '../../core/specs';
 import { resolveNodeId } from '../../core/nodeTree';
+import { gapAnswer } from '../../core/homeActions';
 import { calculateReadinessAndGaps, objectsToJudge } from '../../core/contextEngine';
 import type { AmbiguityMap } from '../../core/contextEngine';
 import { lockOf, lockReason, topologicalOrder } from '../../core/specGraph';
@@ -271,7 +272,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const answerGap = (gap: (typeof readiness.gaps)[number]) => {
     const text = (answers[gap.key] ?? '').trim();
     if (!text) return;
-    onAddContextObject({ workspaceId: currentWorkspace.id, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input', title: gap.label, content: text, nodeId: resolveNodeId(nodes, gap.nodeId), slotKey: gap.key });
+    // the same answer as from home (homeActions.gapAnswer): a gap says nothing about its kind, so it starts as «واقعیت»
+    onAddContextObject(gapAnswer({ ...gap, nodeId: resolveNodeId(nodes, gap.nodeId) }, text, currentWorkspace.id));
     setAnswers((m) => { const n = { ...m }; delete n[gap.key]; return n; });
   };
 
@@ -484,16 +486,8 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
             spec={currentSpec}
             readiness={readiness}
             onAnswerGap={(gap, answer) => {
-              const newObj: ContextDraft = {
-                workspaceId: currentWorkspace.id,
-                type: gap.importance === 'required' ? 'Decision' : 'Fact',
-                status: 'Confirmed',
-                provenance: 'User Input',
-                title: gap.label,
-                content: answer,
-                nodeId: resolveNodeId(nodes, gap.nodeId), // the spec's node is only a hint: when that node is gone the answer goes to the default place
-                slotKey: gap.key,
-              };
+              // the spec's node is only a hint: when that node is gone the answer goes to the default place; the kind is the same as from home
+              const newObj: ContextDraft = gapAnswer({ ...gap, nodeId: resolveNodeId(nodes, gap.nodeId) }, answer, currentWorkspace.id);
               onAddContextObject(newObj);
             }}
             onIgnoreGap={(gap) => {
