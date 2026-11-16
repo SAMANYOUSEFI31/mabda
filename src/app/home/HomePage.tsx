@@ -12,7 +12,7 @@ import { InheritNoticeList } from '../../components/home/InheritNoticeList';
 import { ContradictionPanel } from '../../components/knowledge/ContradictionPanel';
 import { ProposalInbox } from '../../components/knowledge/ProposalInbox';
 import { ThinkingList } from '../../components/thinking/ThinkingList';
-import { entitlementsOf } from '../../core/entitlements';
+import { LIMITS } from '../../core/limits';
 import { MX } from '../../core/metricsText';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { gapAnswer, gapDraft } from '../../core/homeActions';
@@ -138,7 +138,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
 
           {changesOpen && <Deferred when={changesOpen}><ChangesPanel onCompare={() => setCompare({ mode: 'week' })} open={changesOpen} onToggle={() => setChangesOpen((v) => !v)} changes={data?.changes ?? []} objects={workspaceContexts} relationships={data?.relationships ?? []} deliverables={deliverables} nodes={nodes} onOpenAssets={() => setActiveTab('assets')} /></Deferred>}
 
-          {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: entitlementsOf(data!.workspace.planId).decisionJudgmentsPerDay } : undefined} />}
+          {vf.contradictions && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: LIMITS.decisionJudgmentsPerDay } : undefined} />}
 
           {vf.proposals && <ProposalInbox
             objects={workspaceContexts}

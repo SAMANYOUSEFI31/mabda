@@ -9,14 +9,14 @@ import type { Extractor } from './service.ts';
 import { extractText, FileExtractError } from './extract.ts';
 import type { ExtractResult } from '../ai/service.ts';
 import { estimateTokens } from '../../src/core/tokens.ts';
-import type { Workspace } from '../../src/types/index.ts';
+import { LIMITS } from '../../src/core/limits.ts';
 
 const U = 'local';
 const S = { userId: U, workspaceId: 'w1' };
-const mk = (plan: Workspace['planId'] = 'starter', credits = 100) => {
+const mk = () => {
   const db = new Database(':memory:'); migrate(db);
   const repo = new Repo(db);
-  repo.saveWorkspace(U, { id: 'w1', name: 'w', slug: 'w', description: '', planId: plan, creditsRemaining: credits, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
+  repo.saveWorkspace(U, { id: 'w1', name: 'w', slug: 'w', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
   return repo;
 };
 const usage = () => ({ stages: [{ stage: 'extract' as const, tier: 'cheap' as const, provider: 'gemini', modelId: 'm', effort: 'low' as const, inputTokens: 1000, cachedTokens: 0, outputTokens: 100, thinkingTokens: 0, costUsd: 0.001, durationMs: 5 }], totals: { inputTokens: 1000, cachedTokens: 0, outputTokens: 100, thinkingTokens: 0, costUsd: 0.001 } });
@@ -43,7 +43,7 @@ test('extraction: txt / md / docx / pdf; unsupported, empty and oversize are rej
 });
 
 test('upload computes tokens + the quota preview; processing makes chunks, summary, Proposed «Imported» objects and counts the quota', async () => {
-  const repo = mk('starter');
+  const repo = mk();
   const svc = new FileService(repo, ok, () => NOW);
   const { file, charge } = await svc.upload(S, { name: 'brief.txt', mime: 'text/plain', buffer: txt(20000), nodeId: 'brand' });
   assert.equal(file.status, 'uploaded');
@@ -55,7 +55,6 @@ test('upload computes tokens + the quota preview; processing makes chunks, summa
   assert.equal(r.file.status, 'ready');
   assert.ok(r.file.chunkCount > 1);
   assert.equal(r.file.summary, 'خلاصهٔ فایل');
-  assert.equal(r.creditCost, 0);
   assert.deepEqual(r.created.map((o) => [o.status, o.provenance, o.nodeId]), [['Proposed', 'Imported', 'brand']]);
   assert.equal(svc.quota(S).used, file.tokens);
   assert.equal(repo.listLedger(S)[0].mode, 'file_processing');
@@ -63,23 +62,25 @@ test('upload computes tokens + the quota preview; processing makes chunks, summa
   await assert.rejects(svc.process(S, file.id, 'user-12345678'), /قبلاً پردازش/);
 });
 
-test('over the monthly quota: 2 credits per started 20k tokens are deducted; quota resets next month', async () => {
-  const repo = mk('starter', 100);
+test('over the monthly quota: processing waits (no credits, no purchase); the quota resets next month', async () => {
+  const repo = mk();
   let now = NOW;
   const svc = new FileService(repo, ok, () => now);
-  repo.addFileUsage(S, periodOf(NOW), 140_000);
+  repo.addFileUsage(S, periodOf(NOW), LIMITS.fileTokensPerMonth - 10_000);
   const big = await svc.upload(S, { name: 'big.txt', mime: 'text/plain', buffer: txt(33000, 'سلام') }); // ≈ 30k tokens: 10k inside, ~20k over
-  assert.ok(big.charge.credits >= 2 && !big.charge.withinQuota);
-  const r = await svc.process(S, big.file.id, 'user-12345678');
-  assert.equal(r.creditCost, big.charge.credits);
-  assert.equal(repo.getWorkspace(U, 'w1')!.creditsRemaining, 100 - big.charge.credits);
+  assert.equal(big.charge.withinQuota, false);
+  assert.equal(big.policy, 'blocked');
+  assert.equal('credits' in big.charge, false);
+  await assert.rejects(svc.process(S, big.file.id, 'user-12345678'), /سهمیهٔ ماهانهٔ پردازش فایل/);
+  assert.equal(repo.getFile(S, big.file.id)!.status, 'uploaded', 'nothing was spent and the file can be processed next month');
 
   now = new Date('2026-11-02T10:00:00Z');
   assert.equal(svc.quota(S).used, 0, 'new month, new quota');
+  assert.equal((await svc.process(S, big.file.id, 'user-12345678')).file.status, 'ready');
 });
 
 test('a failed extraction charges nothing, counts nothing and can be retried', async () => {
-  const repo = mk('pro', 50);
+  const repo = mk();
   let fail = true;
   const svc = new FileService(repo, async (...a) => { if (fail) throw new Error('quota'); return ok(...a); }, () => NOW);
   const { file } = await svc.upload(S, { name: 'x.txt', mime: 'text/plain', buffer: txt(1000) });
@@ -92,7 +93,7 @@ test('a failed extraction charges nothing, counts nothing and can be retried', a
 });
 
 test('retrieval: only relevant chunks of READY files, inside the budget', async () => {
-  const repo = mk('pro');
+  const repo = mk();
   const svc = new FileService(repo, ok, () => NOW);
   const para = (t: string) => `${t} `.repeat(300);
   const doc = [para('قیمت اشتراک ماهانه بسته حرفه‌ای تخفیف'), para('تاریخچه شرکت تیم مؤسس سال تأسیس'), para('مخاطب فریلنسر طراح مشاور')].join('\n\n');
@@ -111,20 +112,3 @@ test('retrieval: only relevant chunks of READY files, inside the budget', async 
   void pending;
 });
 
-test('past the quota: managed AI → credits; with managed AI off processing is blocked', async () => {
-  const run = async (managed: boolean) => {
-    const repo = mk('starter', 100);
-    const svc = new FileService(repo, ok, () => NOW, { managed: () => managed });
-    repo.addFileUsage(S, periodOf(NOW), 150_000);
-    const up = await svc.upload(S, { name: 'over.txt', mime: 'text/plain', buffer: txt(33000, 'سلام') });
-    return { repo, svc, up };
-  };
-  const credits = await run(true);
-  assert.equal(credits.up.policy, 'credits');
-  assert.ok((await credits.svc.process(S, credits.up.file.id, 'user-12345678')).creditCost > 0);
-
-  const blocked = await run(false);
-  assert.equal(blocked.up.policy, 'blocked');
-  await assert.rejects(blocked.svc.process(S, blocked.up.file.id, 'user-12345678'), /سهمیهٔ ماهانهٔ پردازش فایل/);
-  assert.equal(blocked.repo.getFile(S, blocked.up.file.id)!.status, 'uploaded', 'nothing was spent and the file can be processed next month');
-});

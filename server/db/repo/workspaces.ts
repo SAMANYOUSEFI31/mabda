@@ -1,13 +1,16 @@
 /**
- * Workspaces, plan limits and the demo flag.
+ * Workspaces, the fair-use limits (src/core/limits.ts) and the demo flag.
  * Part of the Repo (server/db/repo/index.ts): the methods are mixed into `Repo`, so `this` is the whole Repo and every
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
 import { RepoError, Scope, now } from './shared.ts';
-import { can, entitlementsOf, objectsRemaining, workspaceLimitMessage } from '../../../src/core/entitlements.ts';
+import { LIMITS, objectsRemaining, workspaceLimitMessage } from '../../../src/core/limits.ts';
 import { LIBRARY, startTemplateFor } from '../../../src/core/specs.ts';
 import type { Workspace } from '../../../src/types/index.ts';
+
+/** fields of the removed subscription model that old rows, old backups or an old client may still carry (limits.test.ts allows them only here) */
+const REMOVED_PLAN_FIELDS = ['planId', 'creditsRemaining'];
 
 export const workspacesMethods = {
   listWorkspaces(this: Repo, userId: string): Workspace[] {
@@ -26,6 +29,8 @@ export const workspacesMethods = {
       // `isDemo` is decided by the server only: a client can neither claim nor drop it
       const stored = exists ? this.getWorkspace(userId, ws.id) : undefined;
       ws = { ...ws, ...((opts.demo || stored?.isDemo) ? { isDemo: true } : { isDemo: undefined }) };
+      // fields of the removed subscription model: never kept, whatever a client or an old backup sends
+      for (const k of REMOVED_PLAN_FIELDS) delete (ws as unknown as Record<string, unknown>)[k];
       if (!ws.isDemo) delete ws.isDemo;
       // archived is decided by the server only (a client save must not un-archive, nor archive)
       if (stored?.archivedAt) ws.archivedAt = stored.archivedAt; else delete ws.archivedAt;
@@ -35,8 +40,8 @@ export const workspacesMethods = {
       // only ids of the library survive, once, in library order
       if (ws.enabledSpecIds !== undefined) ws.enabledSpecIds = LIBRARY.map((x) => x.id).filter((id) => Array.isArray(ws.enabledSpecIds) && ws.enabledSpecIds.includes(id));
       if (!exists) {
-        // the showcase workspace is not counted: it never uses up a plan's workspace allowance
-        if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= entitlementsOf(ws.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws.planId));
+        // the showcase workspace is not counted: it never uses up the workspace limit
+        if (!opts.skipLimit && !ws.isDemo && this.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= LIMITS.workspaces) throw new RepoError('forbidden', workspaceLimitMessage());
         this.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(ws.id, userId, ws.id, JSON.stringify(ws), ws.createdAt);
         this.seedStartNodes({ userId, workspaceId: ws.id }, startTemplateFor(ws.purpose));
       } else {
@@ -70,19 +75,14 @@ export const workspacesMethods = {
     if (!this.getWorkspace(s.userId, s.workspaceId)) throw new RepoError('not_found', 'فضا پیدا نشد.');
   },
 
-  planOf(this: Repo, s: Scope) { return this.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter'; },
-
-  /** active Context objects (Archived and Superseded do not count against the plan) */
+  /** active Context objects (Archived and Superseded do not count against the limit) */
   countActiveObjects(this: Repo, s: Scope): number {
     return (this.db.prepare("SELECT COUNT(*) AS n FROM context_objects WHERE workspace_id = ? AND user_id = ? AND (sample IS NULL OR sample = 0) AND status NOT IN ('Archived','Superseded')").get(s.workspaceId, s.userId) as { n: number }).n;
   },
 
-  /** how many more objects the plan allows right now (bulk creators — files, notes — stop here instead of failing) */
-  objectSlots(this: Repo, s: Scope): number { return this.isDemo(s) ? 1_000_000 : objectsRemaining(this.planOf(s), this.countActiveObjects(s)); },
+  /** how many more objects the limit allows right now (bulk creators — files, notes — stop here instead of failing) */
+  objectSlots(this: Repo, s: Scope): number { return this.isDemo(s) ? 1_000_000 : objectsRemaining(this.countActiveObjects(s)); },
 
   /** the showcase workspace (see Workspace.isDemo) */
   isDemo(this: Repo, s: Scope): boolean { return !!this.getWorkspace(s.userId, s.workspaceId)?.isDemo; },
-
-  /** the change-impact engine is a plan entitlement */
-  impactEnabled(this: Repo, s: Scope): boolean { return can(this.planOf(s), 'changeImpact'); },
 };

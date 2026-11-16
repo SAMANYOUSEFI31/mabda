@@ -45,9 +45,9 @@ export function makeRouteContext(deps: DataRouterDeps) {
 
 
   // ── context objects ──────────────────────────────────────────────────
-  const stale = (s: Scope) => (repo.impactEnabled(s) ? repo.computeStale(s) : []);
+  const stale = (s: Scope) => repo.computeStale(s);
 
-  // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily cap per plan) ──
+  // ── decision layer: Gap ambiguity (cached per object version), Context Coach (daily fair-use cap) ──
   // daily allowances and «today» follow the Tehran day (src/core/tehranDate.ts), not the UTC one
   const today = () => tehranDay(clock());
 

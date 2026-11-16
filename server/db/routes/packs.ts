@@ -8,7 +8,6 @@ import type { Scope } from '../repo.ts';
 import { KIND_LABEL, isRequestKind } from '../../../src/core/aiRequest.ts';
 import { PACK_MARKER_RE, buildContextPack } from '../../../src/core/contextPack.ts';
 import { RepoError, newId } from '../repo.ts';
-import { can } from '../../../src/core/entitlements.ts';
 import { enabledBuiltInSpecs } from '../../../src/core/specs.ts';
 import { ledgerEntryFromUsage } from '../../../src/core/ledger.ts';
 import { parseByHeadings } from '../../../src/core/answerParser.ts';
@@ -22,7 +21,6 @@ export function registerPacksRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/packs', wrap((req, res) => {
     const s = scopeOf(req);
     const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
-    if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
     const b = body(req);
     const spec = typeof b.specId === 'string' ? specList(s).find((x) => x.id === b.specId) : undefined;
     if (b.specId && !spec) throw new RepoError('not_found', 'spec پیدا نشد.');
@@ -37,7 +35,6 @@ export function registerPacksRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/ai-requests', wrap((req, res) => {
     const s = scopeOf(req);
     const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
-    if (!can(ws.planId, 'contextPack')) throw new RepoError('forbidden', 'بستهٔ Context در این پلن فعال نیست.');
     const b = body(req);
     if (!isRequestKind(b.kind)) throw new RepoError('invalid', 'نوع کار نامعتبر است.');
     const request = typeof b.request === 'string' ? b.request.trim() : '';
@@ -79,7 +76,7 @@ export function registerPacksRoutes(ctx: RouteContext): void {
         const r = await ai.parseExternal(aiUserOf(req), text, ctl.signal);
         blocks = r.blocks;
         method = 'ai';
-        repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تقسیم پاسخ بیرونی به بلوک', mode: 'import_parse', creditCost: 0, usage: r.usage, id: newId('led') }));
+        repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تقسیم پاسخ بیرونی به بلوک', mode: 'import_parse', usage: r.usage, id: newId('led') }));
         if (r.truncated) warning = 'متن بلند بود؛ فقط بخش ابتدایی تقسیم شد.';
       } catch (e) {
         // no headings and no AI: keep the text as ONE block — never invent a structure

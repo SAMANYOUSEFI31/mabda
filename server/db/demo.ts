@@ -10,14 +10,14 @@ export const demoWorkspaceIdFor = (userId: string) => DEMO_WORKSPACE_ID + idSuff
 /**
  * Builds — or rebuilds from nothing — the showcase workspace («قهوهٔ تخصصی آنلاین»). Idempotent: every run deletes all data of
  * that workspace first and then inserts the same content (dates relative to `now`). Nothing stored here is an AI output or an AI
- * judgement; ids, versions and timestamps are written exactly as the builder says, bypassing the plan caps on purpose.
+ * judgement; ids, versions and timestamps are written exactly as the builder says, bypassing the fair-use limits on purpose.
  */
 export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
   const wsId = demoWorkspaceIdFor(userId);
   const s = { userId, workspaceId: wsId };
   const ws: Workspace = {
     id: wsId, name: 'قهوهٔ تخصصی آنلاین', slug: 'demo-coffee', description: 'فضای نمونهٔ کامل برای بررسی محصول؛ داده‌ها ساختگی‌اند.',
-    planId: 'max', creditsRemaining: 150, todayChatCount: 0, isDemo: true, enabledSpecIds: [], createdAt: now.toISOString(),
+    todayChatCount: 0, isDemo: true, enabledSpecIds: [], createdAt: now.toISOString(),
   };
   // the same showcase for everyone, under this person's own ids (DB-PG-01: server/db/userIds.ts)
   const raw = buildDemo(now);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  toFaDigits, toLatinDigits, parseNumberInput, formatNumber, formatPercent, formatCredits,
+  toFaDigits, toLatinDigits, parseNumberInput, formatNumber, formatPercent,
   formatJalaliDate, formatJalaliShort, formatJalaliDateTime,
 } from './format.ts';
 
@@ -28,9 +28,8 @@ test('formatNumber groups thousands with «٬» and uses Persian digits', () => 
   assert.equal(formatNumber(Number.NaN), '—');
 });
 
-test('formatPercent and formatCredits', () => {
+test('formatPercent', () => {
   assert.equal(formatPercent(0.256), '۲۶٪');
-  assert.equal(formatCredits(1200), '۱٬۲۰۰ اعتبار');
 });
 
 test('Jalali dates use Intl fa-IR-u-ca-persian (Tehran time)', () => {

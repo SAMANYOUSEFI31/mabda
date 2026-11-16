@@ -7,10 +7,10 @@ import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverabl
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 
 const U = 'local';
-const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', planId: 'pro', creditsRemaining: 100, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
+const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
 const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
 const del = (id: string, title: string, content: string, used: Array<[string, number]> = []): GeneratedDeliverable => ({
-  id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title, content, executionMode: 'auto', creditCost: 0, usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
+  id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title, content, executionMode: 'auto', usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
 } as GeneratedDeliverable);
 /** every row of every table, as text — what «no trace anywhere» is measured against */
 const dump = (db: Database.Database) => (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>)

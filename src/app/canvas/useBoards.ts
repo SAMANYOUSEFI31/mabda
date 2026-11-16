@@ -8,7 +8,6 @@ import type { MovePayload } from '../../components/canvas/ContextCanvas';
 import type { VersionBaseline } from '../../core/judgePolicy';
 import { ContextDraft, ContextObject, Contradiction } from '../../types';
 import { JUDGE_SETTLE_MS, baselineOf, changedSince, pairsAfterChange } from '../../core/judgePolicy';
-import { can } from '../../core/entitlements';
 import { dataApi } from '../../services/dataApi';
 import { formatNumber } from '../../ui';
 import { useEffect, useRef, useState } from 'react';
@@ -129,13 +128,13 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     toast.show({ intent: 'success', message: 'بخش‌ها جدا شدند و دیگر با هم رقابت نمی‌کنند.' });
   };
 
-  // semantic contradictions (Pro and above, needs an AI key). The judge NEVER runs because a workspace was opened, built or
+  // semantic contradictions (needs the platform's judge model). The judge NEVER runs because a workspace was opened, built or
   // reset: only (a) after an object of a candidate pair changed in this session and has no fresh judgement (settle first),
   // or (b) from the «بررسی تناقض» button. Policy and the pure rules: src/core/judgePolicy.ts
   const baselineRef = useRef<{ wid: string; versions: VersionBaseline } | null>(null);
   const [judging, setJudging] = useState(false);
   const [judgedToday, setJudgedToday] = useState<number | null>(null);
-  const canJudge = !!data && can(data.workspace.planId, 'semanticContradiction') && ai.judgmentsAvailable;
+  const canJudge = !!data && ai.judgmentsAvailable;
   const refreshJudged = () => { dataApi.usage(wid).then((u) => setJudgedToday(u.judgmentsToday)).catch(() => { /* the meter is optional */ }); };
   const runJudge = async (objectIds?: string[]) => {
     setJudging(true);

@@ -4,7 +4,6 @@
  */
 
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { can } from '../../core/entitlements';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { dataApi } from '../../services/dataApi';
 import { formatNumber } from '../../ui';

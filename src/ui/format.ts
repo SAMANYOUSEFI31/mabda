@@ -55,10 +55,6 @@ export function formatPercentValue(percent: number, maxFractionDigits = 0): stri
   return `${formatNumber(percent, maxFractionDigits)}٪`;
 }
 
-/** Credits are whole numbers shown with a unit word. */
-export function formatCredits(value: number): string {
-  return `${formatNumber(Math.round(value))} اعتبار`;
-}
 
 export function formatUsd(value: number, maxFractionDigits = 2): string {
   return `${formatNumber(value, maxFractionDigits)} دلار`;

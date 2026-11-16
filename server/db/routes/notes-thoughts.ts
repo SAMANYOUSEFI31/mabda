@@ -5,7 +5,6 @@
 import type { RouteContext } from './context.ts';
 import type { ThinkingKind } from '../../../src/core/thinkingMarkers.ts';
 import { RepoError } from '../repo.ts';
-import { can } from '../../../src/core/entitlements.ts';
 import { findItem, headingSections, parseThinking } from '../../../src/core/thinkingMarkers.ts';
 import { guessTitle } from '../../../src/core/knowledgeGuess.ts';
 

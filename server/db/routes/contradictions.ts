@@ -1,5 +1,5 @@
 /**
- * Semantic contradictions (plan feature) and the Context Coach (shares the daily judgement cap).
+ * Semantic contradictions and the Context Coach (shares the daily judgement cap).
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
@@ -7,7 +7,7 @@ import type { Scope } from '../repo.ts';
 import { AiError } from '../../ai/errors.ts';
 import { RepoError, newId } from '../repo.ts';
 import { ancestorIds, resolveNodeId } from '../../../src/core/nodeTree.ts';
-import { can, entitlementsOf } from '../../../src/core/entitlements.ts';
+import { LIMITS } from '../../../src/core/limits.ts';
 import { ledgerEntryFromUsage } from '../../../src/core/ledger.ts';
 import { pairsToJudge } from '../../../src/core/contradictionCandidates.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
@@ -16,13 +16,11 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
   const { repo, ai, router, scopeOf, body, metaOf, wrap, userOf, stale, today } = ctx;
   router.post('/workspaces/:wid/contradictions/judge', wrap(async (req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
-    if (!can(ws.planId, 'semanticContradiction')) throw new RepoError('forbidden', 'تشخیص تناقض معنایی در این پلن فعال نیست.');
     const objects = repo.listObjects(s);
     // optional scope: only pairs that involve these objects (the client sends the ones changed in this session)
     const only = Array.isArray(body(req).objectIds) ? new Set((body(req).objectIds as unknown[]).map(String)) : null;
     const todo = pairsToJudge(objects, repo.listPairJudgments(s), undefined, repo.listRelationships(s), repo.listNodes(s)).filter((p) => !only || only.has(p.a.id) || only.has(p.b.id));
-    const left = Math.max(0, entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge'));
+    const left = Math.max(0, LIMITS.decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge'));
     const limited = todo.length > left;
     if (limited) todo.length = left;
     if (todo.length) {
@@ -31,7 +29,7 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
       const r = await ai.judgeContradictions(aiUserOf(req), todo.map((p) => ({ key: p.key, a: p.a, b: p.b })), ctl.signal);
       for (const p of todo) { const j = r.results[p.key]; if (j) repo.savePairJudgment(s, p.a, p.b, j); }
       repo.addDailyUsage(s, today(), 'judge', todo.length);
-      if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص تناقض معنایی', mode: 'contradiction', creditCost: 0, usage: r.usage, id: newId('led') }));
+      if (r.usage) repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'تشخیص تناقض معنایی', mode: 'contradiction', usage: r.usage, id: newId('led') }));
     }
     res.json({ pairJudgments: repo.listPairJudgments(s), ledger: repo.listLedger(s), judged: todo.length, limited });
   }));
@@ -60,7 +58,7 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
   }));
 
   const coachQuota = (s: Scope) => {
-    const limit = entitlementsOf(repo.getWorkspace(s.userId, s.workspaceId)!.planId).coachPerDay;
+    const limit = LIMITS.coachPerDay;
     const used = repo.dailyUsage(s, today(), 'coach');
     return { used, limit, remaining: Math.max(0, limit - used) };
   };
@@ -70,7 +68,7 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
     const b = body(req);
     const text = String(b.text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای Coach نوشته نشده است.');
-    if (coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ مربی دانش برای این پلن پر شده است. فردا دوباره یا پلن را ارتقا بده.', retryable: false });
+    if (coachQuota(s).remaining <= 0) throw new AiError('quota', { message: 'سقف روزانهٔ مربی دانش پر شده است؛ فردا دوباره تلاش کن.', retryable: false });
     const nodes = repo.listNodes(s);
     const nodeId = resolveNodeId(nodes, typeof b.nodeId === 'string' ? b.nodeId : undefined);
     const node = nodes.find((n) => n.id === nodeId);
@@ -84,7 +82,7 @@ export function registerContradictionsRoutes(ctx: RouteContext): void {
       history: Array.isArray(b.history) ? (b.history as Array<{ role: 'user' | 'coach'; content: string }>).slice(-6) : undefined,
     }, ctl.signal);
     repo.addDailyUsage(s, today(), 'coach'); // counted only after a successful answer
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'Context Coach', mode: 'coach', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'Context Coach', mode: 'coach', usage: r.usage, id: newId('led') }));
     const { usage: _u, ...result } = r;
     res.json({ result, quota: coachQuota(s), ledger: repo.listLedger(s) });
   }));

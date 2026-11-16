@@ -15,27 +15,16 @@ import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const AccountModal = lazyNamed(() => import('../../components/workspace/AccountModal'), 'AccountModal');
-const PlanSelectionModal = lazyNamed(() => import('../../components/workspace/PlanSelectionModal'), 'PlanSelectionModal');
 const UsageDialog = lazyNamed(() => import('../../components/workspace/UsageDialog'), 'UsageDialog');
 
-export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoBusy' | 'demoConfirm' | 'demoDelete' | 'handleArchiveWorkspace' | 'handleChangePlan' | 'handleCreateWorkspace' | 'handleDeleteDemo' | 'handleDeleteEverything' | 'handleDeleteWorkspace' | 'handleExportAllData' | 'handleRestoreBackup' | 'handleResetDemo' | 'isAccountModalOpen' | 'isNewWorkspaceModalOpen' | 'isPlanModalOpen' | 'newWsName' | 'setArchiveOpen' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsPlanModalOpen' | 'setNewWsName' | 'setUsageOpen' | 'usageOpen'>;
+export type WorkspaceDialogsProps = Pick<ReadyScope, 'currentWorkspace' | 'demoBusy' | 'demoConfirm' | 'demoDelete' | 'handleArchiveWorkspace' | 'handleCreateWorkspace' | 'handleDeleteDemo' | 'handleDeleteEverything' | 'handleDeleteWorkspace' | 'handleExportAllData' | 'handleRestoreBackup' | 'handleResetDemo' | 'isAccountModalOpen' | 'isNewWorkspaceModalOpen' | 'newWsName' | 'setArchiveOpen' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsNewWorkspaceModalOpen' | 'setNewWsName' | 'setUsageOpen' | 'usageOpen'>;
 
-export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleChangePlan, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleRestoreBackup, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, isPlanModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setIsPlanModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
+export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demoDelete, handleArchiveWorkspace, handleCreateWorkspace, handleDeleteDemo, handleDeleteEverything, handleDeleteWorkspace, handleExportAllData, handleRestoreBackup, handleResetDemo, isAccountModalOpen, isNewWorkspaceModalOpen, newWsName, setArchiveOpen, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsNewWorkspaceModalOpen, setNewWsName, setUsageOpen, usageOpen }: WorkspaceDialogsProps) {
   const [nameError, setNameError] = useState('');
   const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
   return (
     <>
     <DangerDialog open={demoDelete} onClose={() => setDemoDelete(false)} title="فضای نمونه حذف شود؟" description="همهٔ داده‌های فضای نمونه (دانش، یادداشت، خروجی، تاریخچه) پاک می‌شود. این داده‌ها ساختگی‌اند و فضاهای دیگرت دست نمی‌خورند؛ هر وقت خواستی دوباره ساخته می‌شود." confirmLabel="حذف فضای نمونه" onConfirm={handleDeleteDemo} />
-    {/* Plan Selection Modal (Starter / Pro / Max - F6) */}
-    <Deferred when={isPlanModalOpen}><PlanSelectionModal
-      isOpen={isPlanModalOpen}
-      onClose={() => setIsPlanModalOpen(false)}
-      currentWorkspace={currentWorkspace}
-      onSelectPlan={(pid) => {
-        handleChangePlan(pid);
-        setIsPlanModalOpen(false);
-      }}
-    /></Deferred>
     {/* Account Modal (F1 - Mobile OTP, JSON Data Export, 30-day Deletion) */}
     <Deferred when={isAccountModalOpen}><AccountModal
       isOpen={isAccountModalOpen}

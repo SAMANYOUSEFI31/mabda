@@ -3,7 +3,7 @@
  *   (a) an object that belongs to a candidate pair changed in THIS session and the pair has no fresh judgement
  *       (the client waits JUDGE_SETTLE_MS first, so a burst of edits is one call), or
  *   (b) the user presses «بررسی تناقض».
- * Without an AI key nothing runs at all. The daily cap is the plan's decisionJudgmentsPerDay (entitlements.config.ts).
+ * Without an AI key nothing runs at all. The daily cap is LIMITS.decisionJudgmentsPerDay (src/core/limits.ts).
  */
 
 import type { ContextObject, ContextRelationship, TreeNode } from '../types';

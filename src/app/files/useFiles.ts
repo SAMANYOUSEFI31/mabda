@@ -26,7 +26,7 @@ export function useFiles(p: AppCoreScope) {
     setQuota(r.quota);
     const ledger = await dataApi.state(wid).then((s) => s.ledger).catch(() => null);
     if (ledger) patch((d) => ({ ...d, ledger }));
-    toast.show({ intent: 'success', message: `فایل پردازش شد: ${formatNumber(r.created.length)} مورد پیشنهادی و ${formatNumber(r.file.chunkCount)} قطعه.${ai.managedEnabled && r.creditCost ? ` ${formatNumber(r.creditCost)} اعتبار کسر شد.` : ''}` });
+    toast.show({ intent: 'success', message: `فایل پردازش شد: ${formatNumber(r.created.length)} مورد پیشنهادی و ${formatNumber(r.file.chunkCount)} قطعه.` });
   };
   const handleDeleteFile = async (fileId: string) => {
     const r = await attempt(() => dataApi.deleteFile(wid, fileId));

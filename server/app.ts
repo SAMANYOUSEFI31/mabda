@@ -54,14 +54,12 @@ export function createApp(db: Database.Database, opts: AppOptions = {}) {
   app.use('/api/owner', createOwnerRouter({ db, mode, accounts, errors, backupDir: opts.backupDir, publicOrigin: opts.publicOrigin }));
 
   let aiRef: AiService | undefined;
-  let sessionsRef = (): SessionResolver => { throw new Error('sessions not ready'); };
-  const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), opts.clock, { managed: () => sessionsRef().managedEnabled });
+  const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), opts.clock);
   // the AI's context is always read for the person making the request (before: one fixed local person, safe only because AI
   // runs in the local mode alone; now a wrong person's knowledge cannot reach a prompt even if that ever changes)
   const sourceFor = (userId: string) => createContextSource(repo, files, userId, opts.clock ?? (() => new Date()));
   const ai = createAiRouter({ sourceFor, sessions: opts.sessions, service: opts.service });
   aiRef = ai.service;
-  sessionsRef = () => ai.sessions;
 
   if (mode.mode === 'invite') {
     // Generative AI is frozen and not part of the product; its routes were built for one user. With several people only the

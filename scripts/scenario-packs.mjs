@@ -47,7 +47,7 @@ try {
     await api(`/workspaces/${wid}/starters/services/apply`, 'POST', {});
     await page.reload({ waitUntil: 'networkidle' });
     await nav('منبع حقیقت', 'منبع');
-    await page.getByText('نمونه‌ها (به AI نمی‌رسند)').first().waitFor();
+    await page.getByText('نمونه‌ها (جزو دانش نیستند)').first().waitFor();
     assert.ok((await page.getByText('نمونه', { exact: true }).count()) >= 1, 'the «نمونه» badge is visible');
     const st = await api(`/workspaces/${wid}/state`);
     assert.equal(st.objects.length, before, 'knowledge unchanged');
@@ -72,7 +72,7 @@ try {
     assert.ok(clip.includes('فقط از همین بسته کار کن.'), 'the instruction opens the pack');
     assert.ok(clip.includes(FACT), 'her Confirmed knowledge is in it');
     assert.ok(!clip.includes('مثال:'), 'NO example reaches what the AI is given');
-    assert.ok(!clip.includes('نمونه‌ها (به AI نمی‌رسند)'));
+    assert.ok(!clip.includes('نمونه‌ها (جزو دانش نیستند)'));
     await page.keyboard.press('Escape');
 
     step(`[${width}] map: the overview has rows = sections; «بُعد» makes the rows facets; colouring by facet shows the name`);

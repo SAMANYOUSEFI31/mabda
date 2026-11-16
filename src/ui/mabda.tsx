@@ -86,7 +86,7 @@ export function ModeBadge({ value, className, iconOnly }: { value: ExecutionMode
 
 export const LEDGER_META: Record<LedgerEntry['status'], Entry> = {
   completed: { label: 'انجام‌شده', icon: 'CircleCheck', cls: 'bg-mabda-ledger-completed-bg text-mabda-ledger-completed-fg border-mabda-ledger-completed-border' },
-  refunded: { label: 'بازگشت اعتبار', icon: 'Undo2', cls: 'bg-mabda-ledger-refunded-bg text-mabda-ledger-refunded-fg border-mabda-ledger-refunded-border' },
+  refunded: { label: 'برگشت‌خورده', icon: 'Undo2', cls: 'bg-mabda-ledger-refunded-bg text-mabda-ledger-refunded-fg border-mabda-ledger-refunded-border' },
 };
 export function LedgerStatusBadge({ value, className, iconOnly }: { value: LedgerEntry['status']; className?: string; iconOnly?: boolean }) {
   return <MabdaLabel entry={LEDGER_META[value]} className={className} iconOnly={iconOnly} />;

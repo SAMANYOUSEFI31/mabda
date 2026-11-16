@@ -9,7 +9,7 @@ import { MAX_FILE_BYTES } from '../../files/extract.ts';
 import { AiError } from '../../ai/errors.ts';
 import { RepoError, newId } from '../repo.ts';
 import { defaultNodeId } from '../../../src/core/nodeTree.ts';
-import { entitlementsOf } from '../../../src/core/entitlements.ts';
+import { LIMITS } from '../../../src/core/limits.ts';
 import { ledgerEntryFromUsage } from '../../../src/core/ledger.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
 
@@ -51,8 +51,8 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
     const plain = body(req).mode === 'text';
     const label = ['ChatGPT', 'Claude', 'Gemini'].includes(String(body(req).sourceLabel)) ? String(body(req).sourceLabel) : 'AI دیگر';
     const sourceName = plain ? 'متن چسبانده‌شده' : `حافظهٔ ${label}`;
-    if (entitlementsOf(ws.planId).decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
-      throw new AiError('quota', { message: 'سقف قضاوت‌های روزانهٔ پلن پر شده است؛ فردا دوباره تلاش کن یا پلن را ارتقا بده.', retryable: false });
+    if (LIMITS.decisionJudgmentsPerDay - repo.dailyUsage(s, today(), 'judge') <= 0) {
+      throw new AiError('quota', { message: 'سقف قضاوت‌های امروز پر شده است؛ فردا دوباره تلاش کن.', retryable: false });
     }
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
@@ -61,7 +61,7 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
     const at = new Date().toISOString();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: sourceName, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     repo.addDailyUsage(s, today(), 'judge', 1);
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: plain ? 'وارد کردن متن چسبانده‌شده' : `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: plain ? 'وارد کردن متن چسبانده‌شده' : `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, truncated: r.truncated, ledger: repo.listLedger(s) });
   }));
 
@@ -80,7 +80,7 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
     const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
     const at = new Date().toISOString();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Asset Derived', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'asset', label: del.title, at, ...(o.quote ? { quote: o.quote } : {}) } }));
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, ledger: repo.listLedger(s) });
   }));
 }

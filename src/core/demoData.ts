@@ -268,35 +268,33 @@ export function buildDemo(now: Date): DemoData {
   };
 
   // ── three workstreams (custom specs): one ready, one with a missing slot, one with an ambiguous slot ─────
-  const cost = { fast: 1, auto: 2, critique: 10, sensitive: 20 };
   const item = (key: string, label: string, description: string, nodeId: string) => ({ key, label, description, nodeId });
   const specs: WorkstreamSpec[] = [
     {
       id: 'demo_spec_intro', title: 'معرفی برند', target: 'یک معرفی کوتاه و دقیق از برند برای صفحهٔ اصلی و پروفایل‌ها.', description: 'کاملاً آماده: همهٔ موارد لازمش تأیید شده است.',
       requiredContext: [item('business_domain', 'حوزهٔ کسب‌وکار', 'برند چه می‌فروشد', 'business'), item('target_audience', 'مخاطب اصلی', 'برای چه کسی', 'business'), item('brand_voice', 'لحن برند', 'چطور حرف می‌زنیم', 'brand')],
       suggestedContext: [item('core_problem', 'معضل اصلی مخاطب', 'چه دردی را حل می‌کنیم', 'business')], optionalContext: [],
-      deliverables: [{ id: 'del_intro', title: 'معرفی کوتاه برند', type: 'Asset', description: 'سه جمله برای صفحهٔ اصلی.', order: 1, baseCreditCost: cost, acceptanceCriteria: ['لحن صمیمی و دقیق باشد', 'مخاطب را نام ببرد'] }],
+      deliverables: [{ id: 'del_intro', title: 'معرفی کوتاه برند', type: 'Asset', description: 'سه جمله برای صفحهٔ اصلی.', order: 1, acceptanceCriteria: ['لحن صمیمی و دقیق باشد', 'مخاطب را نام ببرد'] }],
     },
     {
       id: 'demo_spec_campaign', title: 'کمپین اشتراک', target: 'متن کمپین برای معرفی اشتراک ماهانه در اینستاگرام.', description: 'یک مورد لازم هنوز ثبت نشده («تاریخ شروع»)، و یکی هنوز فقط پیشنهادی است.',
       requiredContext: [item('subscription_price', 'قیمت اشتراک ماهانه', 'قیمت نهایی اشتراک', 'dn_sub'), item('shipping_policy', 'سیاست ارسال', 'رایگان یا با هزینه', 'dn_ship'), item('ad_channel', 'کانال اصلی تبلیغ', 'کدام کانال', 'brand'), item('launch_date', 'تاریخ شروع کمپین', 'کمپین از چه روزی شروع می‌شود', 'offer')],
       suggestedContext: [item('ad_budget', 'بودجهٔ ماهانهٔ تبلیغات', 'چقدر خرج می‌کنیم', 'offer')], optionalContext: [],
-      deliverables: [{ id: 'del_campaign', title: 'متن کمپین اشتراک', type: 'Deliverable', description: 'سه متن کوتاه برای پست و استوری.', order: 1, baseCreditCost: cost, acceptanceCriteria: ['قیمت درست آمده باشد', 'بدون تخفیف باشد'] }],
+      deliverables: [{ id: 'del_campaign', title: 'متن کمپین اشتراک', type: 'Deliverable', description: 'سه متن کوتاه برای پست و استوری.', order: 1, acceptanceCriteria: ['قیمت درست آمده باشد', 'بدون تخفیف باشد'] }],
       guardrails: ['به مشتری تخفیف وعده نده.'],
     },
     {
       id: 'demo_spec_calendar', title: 'تقویم محتوای هفتگی', target: 'یک تقویم هفتگی برای پست و استوری.', description: 'یک مورد لازم مبهم است («تقویم محتوا» نیاز به بازبینی دارد).',
       requiredContext: [item('content_calendar', 'تقویم محتوا', 'چند پست و استوری در هفته', 'dn_social'), item('brand_voice', 'لحن برند', 'چطور حرف می‌زنیم', 'brand'), item('active_channels', 'کانال‌های فعال', 'کجا منتشر می‌کنیم', 'dn_social')],
       suggestedContext: [item('core_problem', 'معضل اصلی مخاطب', 'چه دردی را حل می‌کنیم', 'business')], optionalContext: [],
-      deliverables: [{ id: 'del_calendar', title: 'تقویم هفتگی', type: 'Deliverable', description: 'جدول روز به روز.', order: 1, baseCreditCost: cost, acceptanceCriteria: ['هر روز یک ایده داشته باشد'] }],
+      deliverables: [{ id: 'del_calendar', title: 'تقویم هفتگی', type: 'Deliverable', description: 'جدول روز به روز.', order: 1, acceptanceCriteria: ['هر روز یک ایده داشته باشد'] }],
     },
   ];
 
   // ── three sample assets, written by hand (NOT AI output); lineage = the exact object versions they were made from ─────────
   const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده.';
   const made = (id: string, specId: string, delId: string, title: string, body: string, used: Array<[string, number]>, d: number): GeneratedDeliverable => ({
-    id, workspaceId: W, workstreamId: specId, deliverableId: delId, title, content: `${label}\n\n${body}`, executionMode: 'auto', creditCost: 0,
-    usedContext: used.map(([i, v]) => ({ id: i, version: v })), rebuildCount: 0, createdAt: at(d, 15), source: { kind: 'user', label: 'نمونهٔ دستی', at: at(d, 15) },
+    id, workspaceId: W, workstreamId: specId, deliverableId: delId, title, content: `${label}\n\n${body}`, executionMode: 'auto', usedContext: used.map(([i, v]) => ({ id: i, version: v })), rebuildCount: 0, createdAt: at(d, 15), source: { kind: 'user', label: 'نمونهٔ دستی', at: at(d, 15) },
   });
   const deliverables: GeneratedDeliverable[] = [
     made('dd_intro', 'demo_spec_intro', 'del_intro', 'معرفی کوتاه برند', `${BRAND} قهوهٔ تخصصی را تازه‌برشته به خانهٔ علاقه‌مندان قهوه می‌رساند؛ هر ماه چهار بسته با تاریخ برشتهٔ روی آن.\nاگر اسپرسوساز یا موکاپات داری، می‌دانی تازگی چقدر فرق می‌کند. ما همان را می‌فرستیم.`, [['dm_domain', 1], ['dm_audience', 2], ['dm_voice', 1]], 1),

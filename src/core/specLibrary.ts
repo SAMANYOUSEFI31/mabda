@@ -8,10 +8,6 @@ import type { DeliverableSpec, WorkstreamSpec } from '../types';
 type Item = [key: string, label: string, description: string, nodeId: string];
 type Del = [id: string, title: string, description: string, criteria: string[], dependsOn?: string[]];
 
-const COST = {
-  Asset: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
-  Deliverable: { fast: 12, auto: 20, critique: 40, sensitive: 70 },
-} as const;
 
 const make = (id: string, title: string, target: string, description: string, reference: string, required: Item[], suggested: Item[], dels: Del[], guardrails: string[] = []): WorkstreamSpec => ({
   id, title, target, description, reference,
@@ -19,8 +15,7 @@ const make = (id: string, title: string, target: string, description: string, re
   suggestedContext: suggested.map(([key, label, d, nodeId]) => ({ key, label, description: d, nodeId })),
   optionalContext: [],
   deliverables: dels.map(([did, dt, dd, criteria, dependsOn], i): DeliverableSpec => ({
-    id: did, title: dt, type: i === 0 ? 'Asset' : 'Deliverable', description: dd, order: i + 1, ...(dependsOn ? { dependsOn } : {}),
-    baseCreditCost: { ...COST[i === 0 ? 'Asset' : 'Deliverable'] }, acceptanceCriteria: criteria,
+    id: did, title: dt, type: i === 0 ? 'Asset' : 'Deliverable', description: dd, order: i + 1, ...(dependsOn ? { dependsOn } : {}), acceptanceCriteria: criteria,
   })),
   ...(guardrails.length ? { guardrails } : {}),
 });

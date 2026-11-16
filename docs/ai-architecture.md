@@ -5,7 +5,7 @@
 ## جریان یک درخواست
 ```
 UI ── previewPlan ──► /api/ai/plan ─► router(decision layer) ─► plan {pattern,tier,effort,band,maxTokens,confidence,reason}
-UI: اعتبار = creditEngine.previewCredits(plan)           ← قبل از اجرا نمایش داده می‌شود
+UI: حالت اجرا و دلیلش (plan.reason)                       ← قبل از اجرا نمایش داده می‌شود
 UI ── generate(plan) ► /api/ai/generate (NDJSON) ─► pipeline: single | cascade | critique ─► {blocks, markdown, usage, plan}
 UI ── chat ─────────► /api/ai/chat     (NDJSON) ─► stream بلوک‌به‌بلوک ─► {blocks, markdown, usage, plan}
 ```
@@ -38,7 +38,7 @@ UI ── chat ─────────► /api/ai/chat     (NDJSON) ─► s
 `MABDA_MANAGED_AI` (پیش‌فرض خاموش) · `GEMINI_API_KEY` (کلید پلتفرم) · `MABDA_GEMINI_BASE_URL` (فقط آزمون محلی)
 
 ## آزمون
-`bun run test` (router، cascade با provider ماک، هزینه، parser، creditEngine، ledger).
+`bun run test` (router، cascade با provider ماک، هزینه، parser، ledger).
 e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## هنوز نیست
@@ -47,7 +47,7 @@ e2e محلی با stand-in: دستورها بالای `scripts/e2e-ai.mjs`.
 
 ## لایهٔ هوش غیرمولد (`server/intelligence/`) — محور کناری، جدا از همهٔ بالا
 
-AI مولد در این سند (`server/ai/`) فریز است. لایهٔ هوش چیز دیگری است: مدل‌های **غیرمولد** (embedding، rerank، قضاوت نوع‌دار، گفتار به متن) از لیارا برای «پیشنهاد»؛ هیچ‌چیز از `server/ai/` یا `creditEngine` نمی‌خواند. معماری و جنس هر بخش (متخصص، نقش، دستورپخت، قابلیت): `docs/architecture.md` §۸ب؛ شکل درخواست/پاسخ لیارا: `docs/intelligence-providers.md`؛ آزمون کیفیت: `scripts/eval-intelligence/` و `docs/eval/`.
+AI مولد در این سند (`server/ai/`) فریز است. لایهٔ هوش چیز دیگری است: مدل‌های **غیرمولد** (embedding، rerank، قضاوت نوع‌دار، گفتار به متن) از لیارا برای «پیشنهاد»؛ هیچ‌چیز از `server/ai/` نمی‌خواند. معماری و جنس هر بخش (متخصص، نقش، دستورپخت، قابلیت): `docs/architecture.md` §۸ب؛ شکل درخواست/پاسخ لیارا: `docs/intelligence-providers.md`؛ آزمون کیفیت: `scripts/eval-intelligence/` و `docs/eval/`.
 
 | فایل | نقش |
 | --- | --- |
@@ -69,7 +69,7 @@ AI مولد در این سند (`server/ai/`) فریز است. لایهٔ هوش
 - **اصالت:** `GeneratedDeliverable.usedContext = [{id, version}]` دقیقاً همان چیزی است که در prompt تزریق شد (`injectedRefs` در `server/ai/context.ts`). برای خروجی‌ها = Contextهای مرتبط با گره هدف (زنجیرهٔ والدها) + همهٔ Constraintهای تأییدشده؛ برای گفتگو = همهٔ Contextهای محدودهٔ گفتگو.
 - **اثر تغییر:** `src/core/impactEngine.ts` (`computeStaleAssets`, `newlyStale`, `halfPriceRebuildAvailable`). بازسازی نصف‌قیمت یک‌بار برای هر مجموعه‌تغییر (`halfPriceUsedFor`).
 - **گره‌ها:** قوانین در `src/core/nodeTree.ts`؛ هیچ گره‌ای قفل نیست (همه تغییر نام، جابه‌جایی و حذف می‌شوند؛ حذف گرهٔ پُر فقط با انتقال محتوا؛ آخرین ریشه حذف نمی‌شود). «جای پیش‌فرض» (`defaultNodeId`) = اولین ریشهٔ درخت، نه شناسهٔ ثابت. هدف تولید خروجی = کل Workspace (`'*'`). **یادداشت** هرگز تزریق نمی‌شود؛ «استخراج» فقط Proposed می‌سازد.
-- **فایل:** `server/files/*` — txt/md/pdf/docx ≤ ۲۵MB، پردازش یک‌بارِ cheap (`AiService.extract`)، قطعه‌های ~۸۰۰ توکنی، بازیابی BM25 (`src/core/retrieval.ts`) فقط از فایل‌های `ready` و در بودجهٔ ۳۰۰۰ توکن؛ سهمیهٔ ماهانهٔ توکن (Starter 150k / Pro 500k / Max 1.5M) و بیش از آن ۲ اعتبار به ازای هر ۲۰ هزار توکن (`fileProcessingCharge`).
+- **فایل:** `server/files/*` — txt/md/pdf/docx ≤ ۲۵MB، پردازش یک‌بارِ cheap (`AiService.extract`)، قطعه‌های ~۸۰۰ توکنی، بازیابی BM25 (`src/core/retrieval.ts`) فقط از فایل‌های `ready` و در بودجهٔ ۳۰۰۰ توکن؛ سهمیهٔ ماهانهٔ توکن برای همه یکسان (`LIMITS.fileTokensPerMonth`)؛ بیش از آن پردازش تا ماه بعد صبر می‌کند (`fileQuotaCheck`)، نه اعتبار و نه خرید.
 - **سناریوی کامل:** `node scripts/scenario-impact.mjs` (سرور واقعی + stand-in Gemini) → `docs/screens/impact-*.png`.
 
 

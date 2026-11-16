@@ -121,7 +121,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
       });
       const d: GeneratedDeliverable = {
         id: clientId('del_first'), workspaceId, workstreamId: 'main_positioning', deliverableId: 'del_positioning_statement', title: 'جملهٔ موقعیت‌یابی اختصاصی', content: r.markdown,
-        blocks: r.blocks, plan: r.plan, usage: r.usage, validationFailed: r.validationFailed, executionMode: 'auto', creditCost: 0, usedContext: r.usedContext, usedFileChunks: r.usedFileChunks,
+        blocks: r.blocks, plan: r.plan, usage: r.usage, validationFailed: r.validationFailed, executionMode: 'auto', usedContext: r.usedContext, usedFileChunks: r.usedFileChunks,
         critiqueFeedback: r.critiqueFeedback, rebuildCount: 0, createdAt: new Date().toISOString(),
       };
       setSample(d);
@@ -217,7 +217,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                 </ul>
                 {made.proposed > 0 && (
                   <Alert intent="info" title={`${formatNumber(made.proposed)} مورد پیشنهادی است`} action={<Button size="sm" variant="secondary" onClick={() => { onClose(); onOpenThinking(); }}>رفتن به فضای فکر</Button>}>
-                    پیشنهادی‌ها هنوز جزو حقیقت نیستند و به AI نمی‌رسند. در «فضای فکر» هرکدام را تأیید یا رد کن.
+                    پیشنهادی‌ها هنوز جزو حقیقت نیستند. در «فضای فکر» هرکدام را تأیید یا رد کن.
                   </Alert>
                 )}
               </section>

@@ -5,7 +5,6 @@
 import type { NodeTemplate } from '../../../src/core/templates.ts';
 import type { RouteContext } from './context.ts';
 import type { WorkstreamSpec } from '../../../src/types/index.ts';
-import { PLANS } from '../../../src/core/creditEngine.ts';
 import { RepoError, newId } from '../repo.ts';
 import { STARTERS } from '../../../src/core/starters.ts';
 import { defaultNodeId, resolveNodeId } from '../../../src/core/nodeTree.ts';
@@ -54,14 +53,12 @@ export function registerStartersRoutes(ctx: RouteContext): void {
       res.json({ id: repo.saveTemplate(s, 'workstream', String(b.name ?? spec.title), workstreamTemplateOf(spec)) });
     } else throw new RepoError('invalid', 'نوع قالب نامعتبر است.');
   }));
-  /** bring a template in: a node template → child nodes + grey examples under `parentId`; a workstream template → a custom workstream (Pro and above) */
+  /** bring a template in: a node template → child nodes + grey examples under `parentId`; a workstream template → a custom workstream */
   router.post('/workspaces/:wid/templates/:id/apply', wrap((req, res) => {
     const s = scopeOf(req);
     const t = repo.listTemplates(userOf(req)).find((x) => x.id === req.params.id);
     if (!t) throw new RepoError('not_found', 'قالب پیدا نشد.');
     if (t.kind === 'workstream') {
-      const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
-      if (!PLANS[ws.planId]?.customSpecs) throw new RepoError('forbidden', 'ساخت و ویرایش جریان کار سفارشی از پلن Pro به بالا فعال است.');
       const spec = { ...(t.payload as Omit<WorkstreamSpec, 'id'>), id: newId('spec') } as WorkstreamSpec;
       res.json({ spec: repo.saveSpec(s, spec) });
       return;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStaleAssets, halfPriceRebuildAvailable, impactMessage, newlyStale } from './impactEngine';
+import { computeStaleAssets, impactMessage, newlyStale } from './impactEngine';
 import type { ContextChange, ContextObject } from '../types';
 
 const obj = (o: Partial<ContextObject> & { id: string }): ContextObject => ({
@@ -48,15 +48,6 @@ test('newlyStale counts only assets that became stale because of this change', (
   assert.deepEqual(newlyStale(before, after).map((s) => s.deliverableId).sort(), ['a1', 'a3']);
   assert.equal(impactMessage(2), 'این تغییر روی ۲ دارایی اثر دارد.');
   assert.equal(impactMessage(0), '');
-});
-
-test('half-price rebuild: once per distinct change set', () => {
-  const [s] = computeStaleAssets([asset('a', [['c1', 1]])], [obj({ id: 'c1', version: 2 })]);
-  assert.equal(halfPriceRebuildAvailable({}, s), true);
-  assert.equal(halfPriceRebuildAvailable({ halfPriceUsedFor: s.signature }, s), false);
-  const [s2] = computeStaleAssets([asset('a', [['c1', 1]])], [obj({ id: 'c1', version: 3 })]);
-  assert.equal(halfPriceRebuildAvailable({ halfPriceUsedFor: s.signature }, s2), true, 'a new change re-opens the discount');
-  assert.equal(halfPriceRebuildAvailable({}, undefined), false);
 });
 
 test('dependency_changed: an asset made from a dependent goes stale when what it rests on changes; reviewing clears it', () => {

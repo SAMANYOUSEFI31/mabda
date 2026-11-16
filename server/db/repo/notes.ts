@@ -5,7 +5,6 @@
  */
 import type { Repo } from './index.ts';
 import { RepoError, Scope, newId, now, rowToNote, claimId } from './shared.ts';
-import { can } from '../../../src/core/entitlements.ts';
 import type { Note } from '../../../src/types/index.ts';
 
 export const notesMethods = {

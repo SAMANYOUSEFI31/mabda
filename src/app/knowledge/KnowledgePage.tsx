@@ -115,7 +115,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             files={data.files}
             nodes={nodes}
             quota={quota}
-            credits={currentWorkspace.creditsRemaining}
             onUpload={handleUploadFile}
             onProcess={handleProcessFile}
             onDelete={handleDeleteFile}

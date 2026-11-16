@@ -6,7 +6,7 @@
 import type { Repo } from './index.ts';
 import { CONTEXT_TYPES, ChangeMeta, ImpactResult, ObjectInput, RepoError, Scope, cleanFacets, newId, now, rowToObject, scopeFields, thinkingFields } from './shared.ts';
 import { diffFields, statusChangeKind } from '../../../src/core/changeLog.ts';
-import { can, objectLimitMessage } from '../../../src/core/entitlements.ts';
+import { objectLimitMessage } from '../../../src/core/limits.ts';
 import { computeStaleAssets, newlyStale } from '../../../src/core/impactEngine.ts';
 import type { StaleAsset } from '../../../src/core/impactEngine.ts';
 import { resolveNodeId } from '../../../src/core/nodeTree.ts';
@@ -107,7 +107,6 @@ export const objectsMethods = {
 
   /** impact of a mutation = assets that are stale after it but were not before */
   withImpact<T>(this: Repo, s: Scope, run: () => T): { value: T; impact: ImpactResult } {
-    if (!this.impactEnabled(s)) return { value: run(), impact: { count: 0, assets: [] } };
     const dels = this.listDeliverables(s);
     const before = this.computeStale(s, dels);
     const value = run();
@@ -153,7 +152,7 @@ export const objectsMethods = {
         ...(promotedThought.kind === 'assumption' ? { assumption: true } : {}),
       };
     }
-    if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
+    if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), ...(canHaveExamples({ type: input.type, reach: scopeFields(input).reach }) && cleanExamples(input.examples) ? { examples: cleanExamples(input.examples) } : {}), createdAt: t, updatedAt: t };
     this.db.transaction(() => {
@@ -223,7 +222,7 @@ export const objectsMethods = {
       delete next.sample;
       const stillSample = !!cur.sample && next.title === cur.title && next.content === cur.content && next.type === cur.type && next.status === cur.status && JSON.stringify(next.examples ?? null) === JSON.stringify(cur.examples ?? null);
       if (stillSample) next.sample = true;
-      else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage(this.planOf(s)));
+      else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
       const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || JSON.stringify(next.examples ?? null) !== JSON.stringify(cur.examples ?? null) || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
       this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=?, facets=?, sample=?, examples=? WHERE id=? AND workspace_id=? AND user_id=?')

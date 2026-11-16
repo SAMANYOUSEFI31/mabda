@@ -7,7 +7,6 @@ import { resolveNodeId } from '../../core/nodeTree';
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../../types';
 import type { TreeNode } from '../../types';
-import { useAiStatus } from '../../services/aiStatus';
 import { Badge, Button, Card, GapBadge, Icon, Progress, ReadinessBadge, TextField, formatNumber, Caution } from '../../ui';
 
 interface GapEnginePanelProps {
@@ -27,7 +26,6 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
   onProceedAnyway,
   nodes,
 }) => {
-  const { managedEnabled } = useAiStatus();
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [expandedGapKey, setExpandedGapKey] = useState<string | null>(
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
@@ -58,14 +56,6 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
           <Progress value={readiness.score} label="آمادگی خروجی" showValue={false} intent={readiness.score >= 85 ? 'success' : 'warning'} />
         </div>
       </div>
-
-      {/* Free gap cost notice (P3) */}
-      {managedEnabled && <div className="flex flex-col gap-inline-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
-        <p className="body-sm text-text-subtle">
-          شناسایی جاهای خالی و ساختن دانش رایگان است؛ فقط ساخت خروجی هزینه دارد.
-        </p>
-        <Badge>۰ اعتبار</Badge>
-      </div>}
 
       {/* Gaps */}
       <div className="flex flex-col gap-stack-md">

@@ -13,7 +13,6 @@ import {
   fillsItem,
   extractQuantities,
 } from './contextEngine';
-import { calculateCreditCost, checkChatFairUse, chatCountToday } from './creditEngine';
 import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from './specs';
 import { ContextObject } from '../types';
 
@@ -23,49 +22,6 @@ test('getAncestorNodeIds traverses parent branches up to root', () => {
 
   const brandChain = getAncestorNodeIds('content', DEFAULT_TREE_NODES);
   assert.deepEqual(brandChain, ['content', 'brand', 'business']);
-});
-
-test('calculateCreditCost applies 10% auto discount and 50% rebuild discount correctly', () => {
-  // Fast mode on Deliverable base = 18
-  const fastCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'fast',
-  });
-  assert.equal(fastCost, 18);
-
-  // Auto mode base = 26, with 10% discount -> 26 * 0.9 = 23.4 rounded to 23
-  const autoCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'auto',
-  });
-  assert.equal(autoCost, 23);
-
-  // Critique mode base = 50
-  const critiqueCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'critique',
-  });
-  assert.equal(critiqueCost, 50);
-
-  // Rebuild after context change = 50% of 23 = 12
-  const rebuildCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'auto',
-    isRebuildAfterContextChange: true,
-  });
-  assert.equal(rebuildCost, 12);
-});
-
-test('chat fair-use is soft only: it degrades, it never blocks; the count resets each day', () => {
-  const under = checkChatFairUse('pro', 40);
-  assert.equal(under.isSoftExceeded, false);
-  assert.equal(under.remaining, 30);
-  assert.equal(checkChatFairUse('pro', 75).isSoftExceeded, true);
-  assert.equal(checkChatFairUse('pro', 5000).isSoftExceeded, true);
-  assert.equal('allowed' in checkChatFairUse('pro', 5000), false);
-  assert.equal(chatCountToday(60, '2026-11-01', '2026-11-01'), 60);
-  assert.equal(chatCountToday(60, '2026-10-31', '2026-11-01'), 0);
-  assert.equal(chatCountToday(14, undefined, '2026-11-01'), 0);
 });
 
 test('calculateReadinessAndGaps detects missing required items and calculates score', () => {

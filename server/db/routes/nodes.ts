@@ -3,7 +3,6 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
-import { can } from '../../../src/core/entitlements.ts';
 import { planNodeRemoval, removeNode, undoRemoval } from '../removal.ts';
 
 export function registerNodesRoutes(ctx: RouteContext): void {

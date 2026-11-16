@@ -66,7 +66,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
         void (async () => {
           if (!(await persistDeliverable(firstDeliverable))) return;
           if (firstDeliverable.usage) {
-            await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'خروجی نمونهٔ شروع سریع', mode: 'auto', creditCost: 0, usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
+            await persistLedger(ledgerEntryFromUsage({ workspaceId: wid, action: 'خروجی نمونهٔ شروع سریع', mode: 'auto', usage: firstDeliverable.usage, plan: firstDeliverable.plan, id: `led_onb_${Date.now()}` }));
           }
         })();
       }}

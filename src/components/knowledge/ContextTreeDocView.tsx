@@ -223,7 +223,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {nodeSamples.length > 0 && (
               <section className="flex flex-col gap-stack-sm" aria-label="نمونه‌ها">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                  <h4 className="label-md text-text-subtle">نمونه‌ها (به AI نمی‌رسند)</h4>
+                  <h4 className="label-md text-text-subtle">نمونه‌ها (جزو دانش نیستند)</h4>
                   <Button size="sm" variant="ghost" iconStart="Trash2" onClick={() => props.onDeleteSamples([node.id])}>حذف نمونه‌های این بخش</Button>
                 </div>
                 <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">{nodeSamples.map(sampleCard)}</div>

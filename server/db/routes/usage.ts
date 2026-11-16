@@ -10,10 +10,9 @@ export function registerUsageRoutes(ctx: RouteContext): void {
   const { repo, clock, router, scopeOf, body, wrap, deps, userOf, today } = ctx;
   router.get('/workspaces/:wid/usage', wrap((req, res) => {
     const s = scopeOf(req);
-    const ws = repo.getWorkspace(s.userId, s.workspaceId)!;
     const month = clock().toISOString().slice(0, 7);
     res.json({
-      planId: ws.planId, month,
+      month,
       objects: repo.countActiveObjects(s), fileTokens: repo.fileUsage(s, month),
       judgmentsToday: repo.dailyUsage(s, today(), 'judge'), coachToday: repo.dailyUsage(s, today(), 'coach'),
     });
@@ -30,7 +29,7 @@ export function registerUsageRoutes(ctx: RouteContext): void {
   router.get('/admin/cost-report', wrap((req, res) => {
     if (!adminOf(req)) throw new RepoError('not_found', 'نمای مدیر فعال نیست (MABDA_ADMIN).');
     const month = typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month) ? req.query.month : clock().toISOString().slice(0, 7);
-    const rows = repo.ledgerByWorkspaceForMonth(month).map((w) => ({ userId: w.userId, workspaceId: w.workspaceId, name: w.name, ...costReport(w.planId, w.entries) }));
+    const rows = repo.ledgerByWorkspaceForMonth(month).map((w) => ({ userId: w.userId, workspaceId: w.workspaceId, name: w.name, ...costReport(w.entries) }));
     res.json({ month, rows });
   }));
 }

@@ -126,8 +126,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       );
       setAnswer({ blocks: res.blocks, text: res.markdown, streaming: false });
       const now = new Date().toISOString();
-      const user: ChatMessage = { id: `msg_u_${Date.now()}`, role: 'user', content: request.trim(), timestamp: now, executionMode: 'auto', creditCost: 0 };
-      const asst: ChatMessage = { id: `msg_a_${Date.now()}`, role: 'assistant', content: res.markdown, timestamp: now, executionMode: 'auto', creditCost: 0, blocks: res.blocks, plan: res.plan, usage: res.usage, usedContext: res.usedContext };
+      const user: ChatMessage = { id: `msg_u_${Date.now()}`, role: 'user', content: request.trim(), timestamp: now, executionMode: 'auto' };
+      const asst: ChatMessage = { id: `msg_a_${Date.now()}`, role: 'assistant', content: res.markdown, timestamp: now, executionMode: 'auto', blocks: res.blocks, plan: res.plan, usage: res.usage, usedContext: res.usedContext };
       onSaveSession({ id: `sess_${Date.now()}`, workspaceId, title: request.trim().slice(0, 30), createdAt: now, updatedAt: now, chatMode: MODE_OF[kind], selectedNodeIds: usesThoughtSections ? thoughtScopeNodeIds : [], ...(!usesThoughtSections && scope ? { scopeNodeId: scope } : {}), messages: [user, asst] });
       onAnswered(res); track('action.ai-answer');
     } catch (e) { setAnswer(null); setAnswerError(asAiError(e)); } finally { setBusy(null); }
