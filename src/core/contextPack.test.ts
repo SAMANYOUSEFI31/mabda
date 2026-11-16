@@ -117,7 +117,7 @@ test('an assumption is never a fact: even Confirmed it sits in its own section w
 test('CORE-08: a red line in the pack text is also in its trace, even when a facet filter leaves it out of the knowledge', () => {
   const redLine = o('rl', { type: 'Constraint', title: 'بدون تخفیف', content: 'تخفیف نداریم', nodeId: 'business' });
   const fact = o('f', { type: 'Fact', facets: ['sales'], nodeId: 'business' });
-  const pack = buildContextPack({ workspaceName: 'w', nodes: DEFAULT_TREE_NODES, objects: [redLine, fact], facets: ['sales'] });
+  const pack = buildContextPack({ packId: 'p', workspaceName: 'w', nodes: DEFAULT_TREE_NODES, objects: [redLine, fact], facets: ['sales'] });
   assert.ok(pack.markdown.includes('بدون تخفیف'), 'the red line is in the text');
   // before: refs held only the facet-filtered knowledge, so editing the red line never marked the output stale
   assert.deepEqual(pack.refs.map((r) => r.id).sort(), ['f', 'rl']);

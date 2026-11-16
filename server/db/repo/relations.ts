@@ -90,6 +90,22 @@ export const relationsMethods = {
       if (r.targetId === fromId) add(r.sourceId, toId);
       if (r.sourceId === fromId) add(toId, r.targetId);
     }
+    // CORE-09: exceptions («اینجا اعمال نشود») follow the new version too, so replacing a red line does not silently switch it
+    // back on in the sub-section that was excepted. Only where the exception still makes sense (overrideProblem: the excepting
+    // item must sit below the one it excepts); an edge that no longer fits is not invented.
+    const nodes = this.listNodes(s);
+    const exc = this.listRelationships(s).filter((r) => r.type === 'overrides');
+    const hasExc = new Set(exc.map((r) => `${r.sourceId}>${r.targetId}`));
+    const addExc = (by: string, target: string) => {
+      if (by === target || hasExc.has(`${by}>${target}`)) return;
+      if (overrideProblem(this.getObject(s, by) ?? undefined, this.getObject(s, target) ?? undefined, nodes)) return;
+      hasExc.add(`${by}>${target}`);
+      this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, by, target, 'overrides', t);
+    };
+    for (const r of exc) {
+      if (r.targetId === fromId) addExc(r.sourceId, toId);
+      if (r.sourceId === fromId) addExc(toId, r.targetId);
+    }
   },
 
   listRelationships(this: Repo, s: Scope): ContextRelationship[] {
