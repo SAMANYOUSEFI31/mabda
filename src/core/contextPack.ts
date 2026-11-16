@@ -117,7 +117,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   };
 
   const guardrails = [...(spec?.guardrails ?? []), ...input.objects.filter((o) => guardIds.has(o.id)).map(guardrailText)].filter(Boolean);
-  const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
+  const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments, now).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
   const depTitles = (deliverable?.dependsOn ?? []).map((id) => spec?.deliverables.find((d) => d.id === id)?.title).filter(Boolean);
 
   const parts: string[] = [
@@ -180,7 +180,9 @@ export function buildContextPack(input: PackInput): ContextPack {
   return {
     explain,
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
-    refs: relevant.map((o) => ({ id: o.id, version: o.version })),
+    // the trace (lineage) holds every red line the text carries too, also one a facet filter left out of «relevant» (CORE-08):
+    // when a red line changes, an output built from this pack is marked stale
+    refs: [...relevant, ...guardObjects.filter((o) => !relevant.some((r) => r.id === o.id))].map((o) => ({ id: o.id, version: o.version })),
     counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? input.metrics!.metrics.filter((m) => !m.archived).length : 0 },
   };
 }
