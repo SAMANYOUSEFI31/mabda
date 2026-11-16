@@ -4,6 +4,8 @@
  * Pure: the page asks, this decides; nothing is removed.
  */
 
+import { addDays, tehranDay, tehranDayStart } from './tehranDate';
+
 export interface FeatureState {
   now: Date;
   /** the change records of this workspace (only `objectId` and `at` are read) */
@@ -32,7 +34,8 @@ export interface VisibleFeatures {
 export const RECENT_DAYS = 7;
 
 export function visibleFeatures(s: FeatureState): VisibleFeatures {
-  const since = s.now.getTime() - RECENT_DAYS * 86_400_000;
+  // the same window the weekly review reads (weeklyReview.reviewWindowStart): seven Tehran calendar days, not 7×24h
+  const since = Date.parse(tehranDayStart(addDays(tehranDay(s.now), -RECENT_DAYS)));
   const recentChange = s.changes.some((c) => !c.objectId.startsWith('metric:') && !c.objectId.startsWith('node:') && new Date(c.at).getTime() >= since);
   return {
     weeklyReview: recentChange,

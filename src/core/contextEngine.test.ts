@@ -166,3 +166,13 @@ test('readiness: the answer of a Gap (title = label, slotKey = key) closes the g
   assert.equal(gapOf([answered]), undefined);
   assert.equal(gapOf([{ ...answered, slotKey: undefined }])?.status, 'missing', 'without the slot (and without the title) it is a gap again');
 });
+
+test('readiness judges validity at the given `now`, not the wall clock (CORE-05)', () => {
+  const spec = { ...WORKSTREAM_SPECS[0], requiredContext: [{ key: 'aud', label: 'مخاطب اصلی', description: 'مخاطب' }] } as typeof WORKSTREAM_SPECS[0];
+  const item = obj({ id: 'a', title: 'مخاطب اصلی', content: 'فریلنسرها', validUntil: '2030-01-01' });
+  // still valid today, but already expired at the `now` this call asks about
+  const later = calculateReadinessAndGaps(spec, [item], [], {}, '2031-01-01T00:00:00Z');
+  assert.equal(later.gaps.find((g) => g.key === 'aud')?.status, 'missing');
+  const before = calculateReadinessAndGaps(spec, [item], [], {}, '2029-01-01T00:00:00Z');
+  assert.notEqual(before.gaps.find((g) => g.key === 'aud')?.status, 'missing');
+});

@@ -30,8 +30,6 @@ interface Props {
   onAnswerGap: (gap: GapItem, answer: string) => void;
   onOpenStudio: () => void;
   onOpenAssets: () => void;
-  onOpenProposals: () => void;
-  onOpenContradictions: () => void;
   /** «چه چیزی عوض شد»: opens the 7-day change feed */
   onOpenChanges: () => void;
   /** a quiet marker (never a notification): a week since the last weekly review and something is waiting */
@@ -45,7 +43,7 @@ interface Props {
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenProposals, onOpenContradictions, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;

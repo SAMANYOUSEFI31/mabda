@@ -99,8 +99,6 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             onAnswerGap={(gap, answer) => { void handleSaveContextObject(gapAnswer(gap, answer, wid)); }}
             onOpenStudio={() => setActiveTab('workstreams')}
             onOpenAssets={() => setActiveTab('assets')}
-            onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            onOpenContradictions={() => document.getElementById('contradictions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
           />
 
