@@ -166,3 +166,29 @@ test('auth mode from the environment: production never starts open', () => {
   assert.deepEqual(resolveAuthMode({ NODE_ENV: 'production', MABDA_OWNER_CODE: OWNER_CODE }), { mode: 'invite', ownerCode: OWNER_CODE });
   assert.deepEqual(resolveAuthMode({}), { mode: 'local' });
 });
+
+test('audit follow-ups: HSTS on HTTPS, a new owner key signs out older owner devices, the frozen AI cannot run with several people', async () => {
+  // HSTS only when the request came over HTTPS (the host's proxy says so with one hop)
+  const t = await boot();
+  try {
+    const plain = await fetch(t.origin + '/healthz');
+    assert.equal(plain.headers.get('strict-transport-security'), null, 'a laptop on http stays usable');
+    const tls = await fetch(t.origin + '/healthz', { headers: { 'x-forwarded-proto': 'https' } });
+    assert.match(tls.headers.get('strict-transport-security') ?? '', /max-age=\d+/);
+
+    // owner signed in with the old key; the server restarts with a new key → the old device is out
+    const owner = t.browser();
+    await owner.join(OWNER_CODE);
+    assert.equal((await owner.call('GET', '/owner/people')).status, 200);
+    createApp(t.db, { auth: { mode: 'invite', ownerCode: 'a-brand-new-owner-key-0123456789' } });
+    assert.equal((await owner.call('GET', '/owner/people')).status, 401, 'before: the old owner session lived on for 60 days');
+    // the same key again changes nothing
+    const again = t.browser();
+    createApp(t.db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
+    await again.join(OWNER_CODE);
+    createApp(t.db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
+    assert.equal((await again.call('GET', '/owner/people')).status, 200);
+  } finally { t.close(); }
+  assert.ok('fatal' in resolveAuthMode({ MABDA_OWNER_CODE: OWNER_CODE, MABDA_MANAGED_AI: 'true' }));
+  assert.deepEqual(resolveAuthMode({ MABDA_OWNER_CODE: OWNER_CODE, MABDA_MANAGED_AI: 'false' }), { mode: 'invite', ownerCode: OWNER_CODE });
+});

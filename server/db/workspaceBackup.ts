@@ -16,12 +16,14 @@ import type { Repo } from './repo.ts';
 import { RepoError } from './repo.ts';
 import type { Scope } from './repo.ts';
 import { currentVersion } from './migrations.ts';
-import { entitlementsOf, workspaceLimitMessage } from '../../src/core/entitlements.ts';
 import { remapIds } from './userIds.ts';
 import type { Workspace } from '../../src/types/index.ts';
 
 export const BACKUP_FORMAT = 'mabda.workspace-backup';
 export const BACKUP_VERSION = 1;
+/** how many live workspaces a person may have for a restore to go ahead (a disk guard, not a plan) */
+export const RESTORE_WORKSPACE_CAP = 20;
+const RESTORE_CAP_FA = '۲۰';
 const LEFT_OUT = new Set(['workspaces', 'templates', 'mcp_tokens', 'intelligence_embeddings', 'intelligence_suggestions', 'intelligence_reactions']);
 
 export interface WorkspaceBackup {
@@ -73,9 +75,11 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   const live = workspaceTables(repo);
   const unknown = Object.keys(b.tables!).filter((t) => !live.includes(t));
   if (unknown.length) throw new RepoError('invalid', 'بخشی از این پشتیبان برای این نسخهٔ مبدأ ناشناخته است؛ چیزی برگردانده نشد.');
-  // the plan's allowance counts a restored workspace like a new one
+  // Plans are frozen and hidden this round, so a plan never blocks bringing one's own data back (principle: reversible). The
+  // plan written INSIDE the file was also the wrong thing to read (a sample on a small plan was refused, a tampered file passed).
+  // A fixed, plain safety cap remains so one person cannot fill the shared disk with copies; it counts only their live workspaces.
   const ws0 = b.workspace as Workspace;
-  if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= entitlementsOf(ws0.planId).workspaces) throw new RepoError('forbidden', workspaceLimitMessage(ws0.planId));
+  if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `بیش از ${RESTORE_CAP_FA} فضا داری؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
 
   // a new id for every row that has its own global id (the workspace too); tree nodes are keyed by workspace already
   const suffix = `_r${crypto.randomBytes(4).toString('hex')}`;

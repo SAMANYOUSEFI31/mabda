@@ -46,6 +46,15 @@ export class Accounts {
   }
 
   /** the owner's account exists from the first sign-in; its key is MABDA_OWNER_CODE (never stored) */
+  /** the owner key changed since the last start: end every owner session (the hash is kept in the owner's invite_hash slot) */
+  rememberOwnerKey(hash: string): void {
+    const owner = this.ensureOwner();
+    const was = (this.db.prepare('SELECT invite_hash FROM accounts WHERE id = ?').get(OWNER_ID) as { invite_hash: string | null } | undefined)?.invite_hash ?? null;
+    if (was === hash) return;
+    this.db.prepare('UPDATE accounts SET invite_hash = ? WHERE id = ?').run(hash, owner.id);
+    if (was !== null) this.db.prepare('DELETE FROM auth_sessions WHERE account_id = ?').run(OWNER_ID);
+  }
+
   ensureOwner(): Account {
     this.db.prepare("INSERT OR IGNORE INTO accounts (id, name, role, created_at) VALUES (?, 'صاحب محصول', 'owner', ?)").run(OWNER_ID, nowIso(this.clock()));
     return this.get(OWNER_ID)!;
