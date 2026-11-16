@@ -7,8 +7,6 @@
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 export const THOUSANDS_SEPARATOR = '٬';
 export const DECIMAL_SEPARATOR = '٫';
-/** Week starts on Saturday in the Jalali calendar. */
-export const WEEK_START_DAY = 6;
 const TEHRAN = 'Asia/Tehran';
 
 /** Latin digits -> Persian digits (any other character is kept). */

@@ -83,7 +83,6 @@ export interface MapOptions {
   groupBy?: MapGroupBy;
 }
 export type MapGroupBy = 'domain' | 'dependency' | 'facet' | 'status';
-export const GROUP_BY_FA: Record<MapGroupBy, string> = { domain: 'دامنه', dependency: 'وابستگی', facet: 'بُعد', status: 'وضعیت' };
 export const NO_FACET = 'بدون بُعد';
 const STATUS_ORDER: ContextObject['status'][] = ['Confirmed', 'Needs Review', 'Proposed', 'Superseded', 'Archived'];
 const STATUS_FA: Record<string, string> = { Confirmed: 'تأییدشده', 'Needs Review': 'نیازمند بررسی', Proposed: 'پیشنهادی', Superseded: 'جایگزین‌شده', Archived: 'بایگانی‌شده' };
@@ -304,11 +303,6 @@ export function latestChangedObject(changes: ContextChange[]): string | undefine
 }
 
 export interface Rect { x: number; y: number; w: number; h: number }
-/** the grouping boxes that intersect the viewport */
-export function visibleGroups(model: MapModel, view: Rect, margin = 200): MapGroup[] {
-  const x0 = view.x - margin, y0 = view.y - margin, x1 = view.x + view.w + margin, y1 = view.y + view.h + margin;
-  return model.groups.filter((g) => g.x + g.w >= x0 && g.x <= x1 && g.y + g.h >= y0 && g.y <= y1);
-}
 
 /** only what intersects the viewport (plus a margin) is drawn — keeps a very large map smooth */
 export function visibleVertices(model: MapModel, view: Rect, margin = 200): MapVertex[] {

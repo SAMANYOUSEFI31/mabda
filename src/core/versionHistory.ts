@@ -97,7 +97,6 @@ export function versionHistory(changes: Ch[]): VersionHistory {
 /** newest first, for display */
 export const newestFirst = (h: VersionHistory): HistoryEntry[] => [...h.entries].reverse();
 
-export const MILESTONE_FA: Record<ApprovalInfo['how'], string> = { created: 'ثبت و تأیید شد', accepted: 'تأیید شد', status: 'تأیید شد', edited: 'ویرایش تأییدشده' };
 export const milestoneLabel = (e: Extract<HistoryEntry, { type: 'milestone' }>, fa: (n: number) => string): string =>
   e.how === 'edited' ? `ویرایش تأییدشده → نسخهٔ ${fa(e.version)}` : e.how === 'created' ? `ثبت و تأیید شد در نسخهٔ ${fa(e.version)}` : `تأیید شد در نسخهٔ ${fa(e.version)}`;
 export const draftsLabel = (e: Extract<HistoryEntry, { type: 'drafts' }>, fa: (n: number) => string): string => `${fa(e.count)} پیش‌نویس`;

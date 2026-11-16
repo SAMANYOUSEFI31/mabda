@@ -59,8 +59,6 @@ export interface CanvasInput {
 }
 export type BoardColumns = 'status' | 'layer' | 'facet' | 'none';
 export type BoardRows = 'domain' | 'facet' | 'none';
-export const BOARD_COLUMNS_FA: Record<BoardColumns, string> = { status: 'وضعیت', layer: 'لایهٔ وابستگی', facet: 'بُعد', none: 'هیچ' };
-export const BOARD_ROWS_FA: Record<BoardRows, string> = { domain: 'دامنه', facet: 'بُعد', none: 'هیچ' };
 export const NO_FACET_ROW = 'بدون بُعد';
 export interface CanvasCard { id: string; objectId: string; /** the status column (always known) */ lane: Lane; /** the column this card is drawn in (= lane when columns = status) */ col: string; nodeId: string; rank: number; x: number; y: number; w: number; h: number; review: boolean }
 /** `nodeId` is the ROW key: a tree node for rows = domain, otherwise a facet name / «all» (a row never means «move the object» unless it is a node) */
