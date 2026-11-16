@@ -19,7 +19,7 @@ const wrap = (fn: (req: Request, res: Response) => unknown | Promise<unknown>) =
 };
 
 
-export interface DataRouterDeps { repo: Repo; ai: AiService; files?: FileService; /** builds the AI context from the database (thread: only the node + its parents) */ source?: ContextSource; admin?: boolean; clock?: () => Date; /** an unexpected fault in a route (reported to the owner, server/diagnostics.ts) */ onServerError?: (req: Request, err: unknown) => void }
+export interface DataRouterDeps { repo: Repo; ai: AiService; files?: FileService; /** builds the AI context from the database for one person (thread: only the node + its parents) */ sourceFor?: (userId: string) => ContextSource; admin?: boolean; clock?: () => Date; /** an unexpected fault in a route (reported to the owner, server/diagnostics.ts) */ onServerError?: (req: Request, err: unknown) => void }
 
 /** Everything the route files share: the dependencies, the request helpers and the helpers that more than one route file uses. Built once per router. */
 export function makeRouteContext(deps: DataRouterDeps) {

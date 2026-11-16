@@ -79,7 +79,7 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   // plan written INSIDE the file was also the wrong thing to read (a sample on a small plan was refused, a tampered file passed).
   // A fixed, plain safety cap remains so one person cannot fill the shared disk with copies; it counts only their live workspaces.
   const ws0 = b.workspace as Workspace;
-  if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `بیش از ${RESTORE_CAP_FA} فضا داری؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
+  if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `${RESTORE_CAP_FA} فضا داری و این سقف برگرداندن است؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
 
   // a new id for every row that has its own global id (the workspace too); tree nodes are keyed by workspace already
   const suffix = `_r${crypto.randomBytes(4).toString('hex')}`;

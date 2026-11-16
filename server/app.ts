@@ -4,7 +4,7 @@ import type Database from 'better-sqlite3';
 import { adminEnabled, createAiRouter } from './ai/routes.ts';
 import type { AiService } from './ai/service.ts';
 import type { SessionResolver } from './ai/session.ts';
-import { createDataRouter, LOCAL_USER } from './db/routes.ts';
+import { createDataRouter } from './db/routes.ts';
 import { createContextSource } from './db/aiContext.ts';
 import { Repo } from './db/repo.ts';
 import { FileService } from './files/service.ts';
@@ -50,9 +50,10 @@ export function createApp(db: Database.Database, opts: AppOptions = {}) {
   let aiRef: AiService | undefined;
   let sessionsRef = (): SessionResolver => { throw new Error('sessions not ready'); };
   const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), opts.clock, { managed: () => sessionsRef().managedEnabled });
-  // the AI's context source reads one fixed user; it is only reachable in the local mode (below)
-  const source = createContextSource(repo, files, LOCAL_USER, opts.clock ?? (() => new Date()));
-  const ai = createAiRouter({ source, sessions: opts.sessions, service: opts.service });
+  // the AI's context is always read for the person making the request (before: one fixed local person, safe only because AI
+  // runs in the local mode alone; now a wrong person's knowledge cannot reach a prompt even if that ever changes)
+  const sourceFor = (userId: string) => createContextSource(repo, files, userId, opts.clock ?? (() => new Date()));
+  const ai = createAiRouter({ sourceFor, sessions: opts.sessions, service: opts.service });
   aiRef = ai.service;
   sessionsRef = () => ai.sessions;
 
@@ -69,7 +70,7 @@ export function createApp(db: Database.Database, opts: AppOptions = {}) {
     const e = err as { name?: string; message?: string; stack?: string };
     try { errors.record(req.mabdaUser?.id ?? 'unknown', 'server', { name: e?.name, message: e?.message, stack: e?.stack, path: req.baseUrl + req.path }); } catch { /* reporting must never fail a request twice */ }
   };
-  app.use('/api', createDataRouter({ repo, ai: ai.service, files, source, admin: adminEnabled() || opts.admin, clock: opts.clock, onServerError }).router);
+  app.use('/api', createDataRouter({ repo, ai: ai.service, files, sourceFor, admin: adminEnabled() || opts.admin, clock: opts.clock, onServerError }).router);
 
   /** Health check (does not call any model). */
   app.get('/api/health', (_req: Request, res: Response) => {

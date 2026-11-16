@@ -53,7 +53,7 @@ function ndjson(req: Request, res: Response) {
 
 const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiService; source?: ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
+export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiService; /** the context of the person making the request (never one fixed person) */ sourceFor?: (userId: string) => ContextSource } = {}): { router: Router; sessions: SessionResolver; service: AiService } {
   const sessions = opts.sessions ?? new SessionResolver({ managedEnabled: managedAiEnabled(), managedKey: process.env.GEMINI_API_KEY, admin: adminEnabled() });
   const service = opts.service ?? new AiService({ sessions });
   const router = express.Router();
@@ -69,7 +69,7 @@ export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiS
       const jobKind = b.jobKind === 'asset' || b.jobKind === 'chat' ? b.jobKind : 'deliverable';
       const ctl = new AbortController();
       res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
-      const contextList = opts.source && typeof b.workspaceId === 'string' ? opts.source.forChat(b.workspaceId, { message: String(b.text ?? '') }).contextList ?? [] : asArray<ContextObjectLite>(b.contextList);
+      const contextList = opts.sourceFor && typeof b.workspaceId === 'string' ? opts.sourceFor(userOf(req)).forChat(b.workspaceId, { message: String(b.text ?? '') }).contextList ?? [] : asArray<ContextObjectLite>(b.contextList);
       res.json(await service.previewPlan(userOf(req), { userMode, jobKind, text: String(b.text ?? ''), contextList }, ctl.signal));
     } catch (e) { fail(res, e); }
   });
@@ -96,7 +96,7 @@ export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiS
       out.emit({ type: 'error', error: new AiError('bad_request', { message: 'حداکثر ۱۲ فکر را می‌توان برای یک درخواست انتخاب کرد.', retryable: false }).toInfo() });
       return out.end();
     }
-    if (thoughtIds?.length && (!opts.source || typeof b.workspaceId !== 'string')) {
+    if (thoughtIds?.length && (!opts.sourceFor || typeof b.workspaceId !== 'string')) {
       out.emit({ type: 'error', error: new AiError('bad_request', { message: 'برای استفاده از فکرها، فضا باید از منبع معتبر بارگذاری شود.', retryable: false }).toInfo() });
       return out.end();
     }
@@ -105,8 +105,8 @@ export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiS
       chatMode: b.chatMode, mode: b.mode === 'deep' ? 'deep' : b.mode === 'fast' ? 'fast' : 'auto', history: asArray(b.history), plan: b.plan, decisionUsage: b.decisionUsage,
     };
     try {
-      if (opts.source && typeof b.workspaceId === 'string') {
-        chat = { ...chat, ...opts.source.forChat(b.workspaceId, { scopeNodeId: typeof b.scopeNodeId === 'string' ? b.scopeNodeId : undefined, scopeNodeIds, message: b.message, thoughtIds }) };
+      if (opts.sourceFor && typeof b.workspaceId === 'string') {
+        chat = { ...chat, ...opts.sourceFor(userOf(req)).forChat(b.workspaceId, { scopeNodeId: typeof b.scopeNodeId === 'string' ? b.scopeNodeId : undefined, scopeNodeIds, message: b.message, thoughtIds }) };
         if (asArray<string>(b.focusNodeIds).length && !chat.scopeNodeId) chat.focusNodeIds = asArray(b.focusNodeIds);
       }
     } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
@@ -134,8 +134,8 @@ export function createAiRouter(opts: { sessions?: SessionResolver; service?: AiS
       outputBand: ['short', 'medium', 'long'].includes(b.outputBand) ? b.outputBand : undefined,
     };
     try {
-      if (opts.source && typeof b.workspaceId === 'string') {
-        gen = { ...gen, ...opts.source.forGenerate(b.workspaceId, { targetNodeId: typeof b.targetNodeId === 'string' ? b.targetNodeId : undefined, title: b.deliverableTitle, criteria: gen.acceptanceCriteria, dependencyAssetIds: asArray<unknown>(b.dependencyAssetIds).filter((x): x is string => typeof x === 'string').slice(0, 20) }) };
+      if (opts.sourceFor && typeof b.workspaceId === 'string') {
+        gen = { ...gen, ...opts.sourceFor(userOf(req)).forGenerate(b.workspaceId, { targetNodeId: typeof b.targetNodeId === 'string' ? b.targetNodeId : undefined, title: b.deliverableTitle, criteria: gen.acceptanceCriteria, dependencyAssetIds: asArray<unknown>(b.dependencyAssetIds).filter((x): x is string => typeof x === 'string').slice(0, 20) }) };
       }
     } catch (e) { out.emit({ type: 'error', error: toAiError(e).toInfo() }); return out.end(); }
     await service.generate(userId, gen, out.emit, out.signal);

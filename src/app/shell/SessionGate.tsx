@@ -18,15 +18,15 @@ export const useSession = () => useContext(SessionContext);
 
 /**
  * Informed consent (principle): a tester learns, before their first use on a device, that this is a test copy and that the
- * owner can read everything on it (the owner's full download and the server's daily backups). Once per person per device.
+ * owner can read everything on it (the owner's full download and the server's daily backups). Once per person, kept on the
+ * server (`POST /api/consent`): a new device does not ask again, and the owner sees in «افراد آزمون» who has accepted.
  */
 export const OWNER_ACCESS_NOTICE = 'این نسخهٔ آزمون است. صاحب مبدأ برای نگه‌داشتن پشتیبان به همهٔ داده‌های این نسخه دسترسی دارد، از جمله یادداشت‌های شخصی تو؛ چیزی را بنویس که از دیده شدنش به دست او نگران نیستی.';
-const consentKey = (id: string) => `mabda.consent.${id}`;
-const consented = (id: string) => { try { return localStorage.getItem(consentKey(id)) === '1'; } catch { return false; } };
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GateState>({ status: 'checking' });
-  const [, setAck] = useState(0);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [consenting, setConsenting] = useState(false);
 
   const check = useCallback(async () => {
     setState({ status: 'checking' });
@@ -61,14 +61,21 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   const user = state.status === 'in' ? state.session.user : null;
-  if (state.status === 'in' && user?.role === 'tester' && !consented(user.id)) {
+  const accept = async () => {
+    setConsenting(true); setConsentError(null);
+    try { setState({ status: 'in', session: await sessionApi.consent() }); }
+    catch (e) { setConsentError(e instanceof Error ? e.message : String(e)); }
+    finally { setConsenting(false); }
+  };
+  if (state.status === 'in' && user?.role === 'tester' && !user.consented) {
     return (
       <div className="min-h-screen bg-surface-page text-text-default">
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex flex-col gap-stack-md">
           <h1 className="heading-md">پیش از شروع، {user.name}</h1>
           <p className="body-md">{OWNER_ACCESS_NOTICE}</p>
           <p className="body-sm text-text-subtle">دادهٔ تو از دید افراد آزمون دیگر جداست؛ فقط صاحب مبدأ آن را می‌بیند.</p>
-          <div><Button variant="primary" onClick={() => { try { localStorage.setItem(consentKey(user.id), '1'); } catch { /* the notice simply shows again next time */ } setAck((n) => n + 1); }}>فهمیدم، ادامه بده</Button></div>
+          {consentError && <p role="alert" className="body-sm text-text-danger">{consentError}</p>}
+          <div><Button variant="primary" loading={consenting} onClick={() => void accept()}>{consentError ? 'دوباره' : 'فهمیدم، ادامه بده'}</Button></div>
         </main>
       </div>
     );
