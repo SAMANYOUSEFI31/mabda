@@ -105,7 +105,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
                 <div className="flex min-w-space-0 flex-wrap items-center gap-inline-sm">
                   <span className="label-md text-text-default">{f.name}</span>
                   {managed && <Badge icon={false}>{STATUS[f.status].label}</Badge>}
-                  <span className="body-sm text-text-subtle">{nodeLabel(f.nodeId) ? `${nodeLabel(f.nodeId)} · ` : ''}{kb(f.sizeBytes)} · حدود {formatNumber(f.tokens)} توکن{f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}</span>
+                  <span className="body-sm text-text-subtle">{nodeLabel(f.nodeId) ? `${nodeLabel(f.nodeId)} · ` : ''}{kb(f.sizeBytes)}{managed ? ` · حدود ${formatNumber(f.tokens)} توکن${f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}` : ''}</span>
                 </div>
                 <div className="flex items-center gap-inline-xs">
                   {managed && (f.status === 'uploaded' || f.status === 'failed') && (

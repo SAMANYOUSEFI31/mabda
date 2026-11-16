@@ -50,10 +50,12 @@ try {
       await nav('خروجی‌ها', 'خروجی‌ها');
       await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
       const line = page.getByTestId('readiness-line');
-      await line.getByLabel('در بخش').first().scrollIntoViewIfNeeded();
+      // on a phone the place is one line «در: … · تغییر» until tapped
+      await (mobile ? line.getByRole('button', { name: /؛ تغییر$/ }) : line.getByLabel('در بخش', { exact: true })).first().scrollIntoViewIfNeeded();
       await shot('gap-place');
       await page.getByRole('tab', { name: /چه چیزی کم است/ }).click();
-      await page.getByLabel('پاسخ در این بخش ثبت می‌شود').first().scrollIntoViewIfNeeded();
+      if (mobile) await page.getByRole('button', { name: /^پاسخ در این بخش ثبت می‌شود.*؛ تغییر$/ }).first().click();
+      await page.getByLabel('پاسخ در این بخش ثبت می‌شود', { exact: true }).first().scrollIntoViewIfNeeded();
       await shot('gap-panel');
     });
     await page.reload({ waitUntil: 'networkidle' }); await page.getByText(/^خانه: /).waitFor();

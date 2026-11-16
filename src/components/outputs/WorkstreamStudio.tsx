@@ -17,7 +17,8 @@ import {
 } from '../../types';
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../../types';
 import { LIBRARY } from '../../core/specs';
-import { flatten, resolveNodeId } from '../../core/nodeTree';
+import { resolveNodeId } from '../../core/nodeTree';
+import { PlacePicker } from '../shared/PlacePicker';
 import { gapAnswer } from '../../core/homeActions';
 import { calculateReadinessAndGaps, objectsToJudge } from '../../core/contextEngine';
 import type { AmbiguityMap } from '../../core/contextEngine';
@@ -271,7 +272,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   // what is missing, required first: at most THREE questions are asked here; the rest wait in «چه چیزی کم است»
   const todo = [...readiness.gaps].filter((g) => g.status !== 'confirmed').sort((a, b) => (a.importance === 'required' ? 0 : 1) - (b.importance === 'required' ? 0 : 1)).slice(0, 3);
   // where an answer goes (NEW-01): the spec's hint, resolved in this tree, and changeable before it is saved
-  const gapNodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
   const gapPlace = (gap: (typeof readiness.gaps)[number]) => gapPlaces[gap.key] ?? resolveNodeId(nodes, gap.nodeId);
   const answerGap = (gap: (typeof readiness.gaps)[number]) => {
     const text = (answers[gap.key] ?? '').trim();
@@ -385,7 +385,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <div className="flex-1">
                       <TextField label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
                     </div>
-                    {gapNodeOptions.length > 1 && <Select label="در بخش" options={gapNodeOptions} value={gapPlace(g)} onChange={(e) => setGapPlaces((m) => ({ ...m, [g.key]: e.target.value }))} />}
+                    <PlacePicker nodes={nodes} label="در بخش" value={gapPlace(g)} onChange={(v) => setGapPlaces((m) => ({ ...m, [g.key]: v }))} />
                     <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>افزودن</Button>
                   </div>
                 ))}

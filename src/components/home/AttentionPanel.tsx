@@ -6,9 +6,10 @@
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
 import React, { useState } from 'react';
 import type { GapItem, TreeNode } from '../../types';
-import { flatten, resolveNodeId } from '../../core/nodeTree';
+import { resolveNodeId } from '../../core/nodeTree';
+import { PlacePicker } from '../shared/PlacePicker';
 import type { FlipFlop, WaitingDecisions } from '../../core/decisionGraph';
-import { Badge, Button, Card, Icon, Select, TextField, formatNumber } from '../../ui';
+import { Badge, Button, Card, Icon, TextField, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
 
 interface Props {
@@ -54,7 +55,6 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
   const anyWaiting = waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + flips.length > 0;
 
   const [placeOf, setPlaceOf] = useState<Record<string, string>>({});
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
   const placeFor = (gap: GapItem) => placeOf[gap.key] ?? resolveNodeId(nodes, gap.nodeId);
   const submit = (gap: GapItem) => {
     const v = draft[gap.key]?.trim();
@@ -167,7 +167,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
                     onChange={(e) => setDraft({ ...draft, [g.key]: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') submit(g); }}
                   />
-                  {nodeOptions.length > 1 && <Select label="در بخش" options={nodeOptions} value={placeFor(g)} onChange={(e) => setPlaceOf((m) => ({ ...m, [g.key]: e.target.value }))} />}
+                  <PlacePicker nodes={nodes} label="در بخش" value={placeFor(g)} onChange={(v) => setPlaceOf((m) => ({ ...m, [g.key]: v }))} />
                   <Button variant="secondary" disabled={!draft[g.key]?.trim()} onClick={() => submit(g)}>افزودن</Button>
                 </div>
               </li>
