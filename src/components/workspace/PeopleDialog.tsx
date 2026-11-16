@@ -2,6 +2,7 @@
  * «افراد آزمون» (only the owner, only online with sign-in): make a personal link for each tester, replace a lost link, turn a
  * person off, see what broke on testers' devices, and take a copy of the whole database. Built only from src/ui.
  */
+import { OWNER_NOTICE_VERSION } from '../../core/ownerNotice';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, EmptyState, ErrorState, List, ListItem, PageSkeleton, TextField, formatJalaliDateTime } from '../../ui';
 import { ownerApi } from '../../services/dataApi';
@@ -71,7 +72,7 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
                   <ListItem
                     key={p.id}
                     title={p.name}
-                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)} · ${p.consentedAt ? 'آگاهی از دسترسی تو را پذیرفته' : 'هنوز آگاهی را نپذیرفته'}` : 'هنوز وارد نشده'}
+                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)} · ${(p.consentVersion ?? 0) >= OWNER_NOTICE_VERSION ? 'آگاهی از دسترسی تو را پذیرفته' : 'هنوز آگاهی را نپذیرفته'}` : 'هنوز وارد نشده'}
                     trailing={(
                       <span className="flex flex-wrap gap-inline-xs">
                         <Button size="sm" variant="ghost" iconStart="RefreshCw" disabled={busy} onClick={() => void replace(p)}>لینک تازه</Button>

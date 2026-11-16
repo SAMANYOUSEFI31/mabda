@@ -108,7 +108,7 @@ export function clearLegacyData(workspaceIds: string[]) {
 }
 
 export type MetricsBundle = { metrics: import('../types').Metric[]; measurements: import('../types').Measurement[] };
-export interface PersonInfo { id: string; name: string; role: 'tester'; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; hasLink: boolean }
+export interface PersonInfo { id: string; name: string; role: 'tester'; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; consentVersion?: number; hasLink: boolean }
 export interface ErrorReportInfo { id: string; userId: string; source: 'client' | 'server'; name: string; message: string; stack?: string; path?: string; createdAt: string }
 /** the owner's tools (server/auth/owner.ts): people and their links, error reports */
 export const ownerApi = {

@@ -21,7 +21,8 @@ export const useSession = () => useContext(SessionContext);
  * owner can read everything on it (the owner's full download and the server's daily backups). Once per person, kept on the
  * server (`POST /api/consent`): a new device does not ask again, and the owner sees in «افراد آزمون» who has accepted.
  */
-export const OWNER_ACCESS_NOTICE = 'این نسخهٔ آزمون است. صاحب مبدأ برای نگه‌داشتن پشتیبان به همهٔ داده‌های این نسخه دسترسی دارد، از جمله یادداشت‌های شخصی تو؛ چیزی را بنویس که از دیده شدنش به دست او نگران نیستی.';
+import { OWNER_ACCESS_NOTICE } from '../../core/ownerNotice';
+export { OWNER_ACCESS_NOTICE };
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GateState>({ status: 'checking' });
