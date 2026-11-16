@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
-import { createApp } from '../app.ts';
+import { createApp, proxyHopsFrom } from '../app.ts';
 import { migrate } from '../db/migrations.ts';
 import { resolveAuthMode } from './http.ts';
 import type { AiService } from '../ai/service.ts';
@@ -235,4 +235,22 @@ test('the AI context is read for the person asking, never for one fixed person (
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.ok(seen[0].includes('دانش خود B'));
   } finally { t.close(); }
+});
+
+test('sign-in limit behind more than one proxy: with the right hop count two visitors are two addresses', async () => {
+  const run = async (proxyHops: number) => {
+    const db = new Database(':memory:'); migrate(db);
+    const { app } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE }, proxyHops });
+    const server = app.listen(0);
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    // a CDN (9.9.9.9) in front of the host's proxy: the CDN adds the visitor, the host's proxy adds the CDN
+    const join = (visitor: string) => fetch(origin + '/api/join', { method: 'POST', headers: { 'content-type': 'application/json', origin, 'x-forwarded-for': `${visitor}, 9.9.9.9` }, body: JSON.stringify({ code: 'wrong-code-000000000000' }) });
+    try {
+      for (let i = 0; i < 10; i++) await join('1.1.1.1');
+      return (await join('2.2.2.2')).status;
+    } finally { server.close(); }
+  };
+  assert.equal(await run(1), 429, 'one hop: everyone looks like the CDN, so one person\'s ten wrong tries lock out the next person');
+  assert.equal(await run(2), 401, 'two hops: the next person is someone else and only gets «this link does not work»');
+  assert.equal(proxyHopsFrom(undefined), 1); assert.equal(proxyHopsFrom('2'), 2); assert.equal(proxyHopsFrom('0'), 1); assert.equal(proxyHopsFrom('x'), 1);
 });

@@ -21,14 +21,20 @@ export interface AppOptions {
   publicOrigin?: string;
   /** where the whole-database backups live (none for an in-memory database) */
   backupDir?: string;
+  /** how many proxies stand in front of the server (default 1: Render's). A CDN in front adds one; a wrong number makes every
+   *  visitor look like one address, so the sign-in limit would lock everyone out at once (`MABDA_PROXY_HOPS`) */
+  proxyHops?: number;
 }
+
+/** `MABDA_PROXY_HOPS`: a whole number 1..5; anything else means the default 1 */
+export const proxyHopsFrom = (v: string | undefined): number => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= 5 ? n : 1; };
 
 /** Wires sign-in, storage and the (frozen) AI. `opts` lets tests inject a mock-backed AiService / session resolver and the auth mode. */
 export function createApp(db: Database.Database, opts: AppOptions = {}) {
   const app = express();
   const mode: AuthMode = opts.auth ?? { mode: 'local' };
-  // the host's proxy terminates HTTPS: trust exactly one hop, so req.ip / req.secure are the visitor's
-  app.set('trust proxy', 1);
+  // the host's proxy terminates HTTPS: trust exactly the proxies in front (Render: one), so req.ip / req.secure are the visitor's
+  app.set('trust proxy', opts.proxyHops ?? 1);
   app.disable('x-powered-by');
   app.use(securityHeaders);
   // the host's health check: no data, no sign-in
