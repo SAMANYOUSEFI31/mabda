@@ -4,11 +4,15 @@
  */
 import type { RouteContext } from './context.ts';
 import { RepoError } from '../repo.ts';
-import { archiveDeliverable, archivedObjects, deleteDeliverable, listRemovals, purgeImpact, purgeObject, restoreDeliverable, restoreObject } from '../removal.ts';
+import { archiveDeliverable, archivedObjects, deleteDeliverable, listRemovals, purgeImpact, purgeObject, restoreDeliverable, restoreObject, restoreTarget } from '../removal.ts';
 
 export function registerArchiveRoutes(ctx: RouteContext): void {
   const { repo, router, scopeOf, body, wrap, stale } = ctx;
-  router.get('/workspaces/:wid/archive', wrap((req, res) => { const s = scopeOf(req); res.json({ objects: archivedObjects(repo, s), removals: listRemovals(repo, s), deliverables: repo.listDeliverables(s).filter((d) => d.archivedAt) }); }));
+  router.get('/workspaces/:wid/archive', wrap((req, res) => { const s = scopeOf(req); const objects = archivedObjects(repo, s);
+    const live = new Set(repo.listNodes(s).map((n) => n.id));
+    // knowledge whose section is gone: where «برگردان» would put it, so the dialog can say so and offer another place
+    const restoreTo = Object.fromEntries(objects.filter((o) => !live.has(o.nodeId)).map((o) => [o.id, restoreTarget(repo, s, o.nodeId)]));
+    res.json({ objects, restoreTo, removals: listRemovals(repo, s), deliverables: repo.listDeliverables(s).filter((d) => d.archivedAt) }); }));
   router.post('/workspaces/:wid/objects/:id/restore', wrap((req, res) => { const s = scopeOf(req); const r = restoreObject(repo, s, req.params.id, typeof body(req).nodeId === 'string' ? body(req).nodeId : undefined); res.json({ object: r.object, impact: r.impact, stale: stale(s) }); }));
   router.get('/workspaces/:wid/objects/:id/purge-impact', wrap((req, res) => { res.json({ impact: purgeImpact(repo, scopeOf(req), req.params.id) }); }));
   router.delete('/workspaces/:wid/objects/:id/permanent', wrap((req, res) => {

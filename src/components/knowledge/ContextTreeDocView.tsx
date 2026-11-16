@@ -10,10 +10,11 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, Nuqta, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
+import { BeforeAfter } from '../shared/BeforeAfter';
 
 interface ContextTreeDocViewProps {
   /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
@@ -67,6 +68,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   // the Coach is Mabda's own AI: frozen (hidden) while MABDA_MANAGED_AI is off
   const { managedEnabled } = useAiStatus();
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
+  /** «نمایش گذشته‌ها» (NEW-06): what was replaced stays out of the way by default and comes back, in its section, on request */
+  const [showPast, setShowPast] = useState(false);
+  const pastCount = objects.filter((o) => o.status === 'Superseded').length;
+  const shownObjects = showPast ? objects.filter((o) => o.status !== 'Archived') : activeObjects;
+  /** «پیش‌تر» → the two texts side by side */
+  const [compare, setCompare] = useState<{ before: ContextObject; after: ContextObject } | null>(null);
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
   // entering / leaving a section moves focus to its heading: keyboard and screen-reader users land IN the new place (Alt+↑ and the arrows keep working)
@@ -91,7 +98,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     if (other) notes.push(<MarginNote key="c" lead={<Nuqta state="conflict" size="sm" />}>با «{other.title}» در بخش «{nodeName(other.nodeId)}» نمی‌خواند؛ یکی را نگه دار.</MarginNote>);
     // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
     const before = objects.filter((o) => o.supersededById === obj.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
+    if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />} action={<button type="button" className="body-sm inline-flex min-h-touch min-w-touch items-center justify-center text-text-default underline underline-offset-2" onClick={() => setCompare({ before: before[0], after: obj })}>مقایسه</button>}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
     if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
     return notes.length ? <>{notes}</> : undefined;
   };
@@ -117,7 +124,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   );
 
   const renderNode = (node: TreeNode, path: string, depth: number, focused = false): React.ReactNode => {
-    const nodeObjects = activeObjects.filter((o) => o.nodeId === node.id);
+    const nodeObjects = shownObjects.filter((o) => o.nodeId === node.id);
     const nodeNotes = props.notes.filter((n) => n.nodeId === node.id);
     const nodeFiles = props.files.filter((f) => f.nodeId === node.id);
     const kids = childrenOf(nodes, node.id);
@@ -255,6 +262,13 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     );
   };
 
+  const pastToggle = pastCount > 0 ? <Switch label={`نمایش گذشته‌ها (${formatNumber(pastCount)})`} checked={showPast} onChange={(e) => setShowPast(e.target.checked)} /> : null;
+  const compareDialog = (
+    <Dialog open={!!compare} onClose={() => setCompare(null)} size="md" title="پیش‌تر و اکنون" description={compare ? `«${compare.after.title}»` : undefined}
+      footer={<><Button variant="ghost" onClick={() => setCompare(null)}>بستن</Button><Button variant="secondary" onClick={() => { const o = compare!.after; setCompare(null); props.onSelectObject(o); }}>تاریخچهٔ کامل</Button></>}>
+      {compare && <BeforeAfter before={compare.before.content} after={compare.after.content} />}
+    </Dialog>
+  );
   const roots = childrenOf(nodes, undefined);
   const focusNode = props.focusId ? nodes.find((n) => n.id === props.focusId) : undefined;
   if (focusNode && props.onFocus) {
@@ -263,6 +277,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     return (
       <section className="focus-scope flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
         <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
+        {pastToggle}
+        {compareDialog}
         <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
           {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
           {renderNode(focusNode, '', 0, true)}
@@ -282,10 +298,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
           {activeObjects.length > 0 && <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>}
+          {pastToggle}
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
       </div>
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
+      {compareDialog}
     </section>
   );
 };

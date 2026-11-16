@@ -81,6 +81,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           {homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
             <div id="home-all" className="flex flex-col gap-stack-lg">
           <AttentionPanel
+            nodes={nodes}
             specTitle={attentionSpec?.title ?? ''}
             gaps={attentionGaps}
             contradictionCount={contradictions.length}
@@ -121,7 +122,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
             <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-lg" aria-label="سؤال‌ها و تصمیم‌های باز">
               <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
-              <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز به AI داده نمی‌شوند.</p>
+              <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز در خروجی‌ها و بسته‌ها نمی‌آیند.</p>
               <ThinkingList
                 items={thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts))}
                 objects={workspaceContexts}

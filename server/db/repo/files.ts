@@ -4,7 +4,7 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { Scope, StoredChunk, newId, now, rowToFile, claimId } from './shared.ts';
+import { RepoError, Scope, StoredChunk, newId, now, rowToFile, claimId } from './shared.ts';
 import type { FileStatus, StoredFile } from '../../../src/types/index.ts';
 
 export const filesMethods = {
@@ -26,6 +26,14 @@ export const filesMethods = {
     const t = now();
     this.db.prepare('INSERT INTO files (id, user_id, workspace_id, node_id, name, mime, size_bytes, status, tokens, raw_text, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
       .run(id, s.userId, s.workspaceId, f.nodeId ?? null, f.name, f.mime, f.sizeBytes, 'uploaded', f.tokens, f.rawText, t);
+    return this.getFile(s, id)!;
+  },
+
+  /** a file's place in the tree (a file uploaded without one, or from an old backup, gets one here) */
+  moveFile(this: Repo, s: Scope, id: string, nodeId: string): StoredFile {
+    this.requireNode(s, nodeId);
+    const r = this.db.prepare('UPDATE files SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
+    if (!r.changes) throw new RepoError('not_found', 'فایل پیدا نشد.');
     return this.getFile(s, id)!;
   },
 

@@ -169,6 +169,13 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
       revealObject={mode === 'truth' ? canvasReveal ?? undefined : undefined}
       onPreviewTruth={mode === 'thinking' ? previewTruth : undefined}
       onNoteToSection={mode === 'thinking' ? startSectionFromNote : undefined}
+      onSectionFromItems={mode === 'thinking' ? async (input) => {
+        const r = await attempt(() => dataApi.createNodeFromItems(wid, input));
+        if (!r) return false;
+        patch((d) => ({ ...d, nodes: r.nodes, objects: r.objects, notes: r.notes, thoughts: r.thoughts, stale: r.stale }));
+        toast.show({ intent: 'success', message: `بخش «${r.node.label}» ساخته شد و ${formatNumber(r.moved)} مورد در آن قرار گرفت.` });
+        return true;
+      } : undefined}
               nodes={nodes}
               objects={scopedObjects}
               relationships={data?.relationships ?? []}

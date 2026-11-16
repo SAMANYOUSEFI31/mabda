@@ -106,7 +106,7 @@ const STATUS_OPTIONS = [
 const PROVENANCE_OPTIONS = [
   { value: 'User Input', label: 'نوشتهٔ خودت' },
   { value: 'Onboarding', label: 'شروع سریع' },
-  { value: 'AI Suggested', label: 'پیشنهاد هوش مصنوعی که تأیید کردی' },
+  { value: 'AI Suggested', label: 'پیشنهادی که تأیید کردی' },
   { value: 'Asset Derived', label: 'برگرفته از یک خروجی' },
   { value: 'Imported', label: 'وارد شده از بیرون' },
 ];
@@ -432,7 +432,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {object?.draft && (
           <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
             <div className="flex flex-col gap-stack-sm">
-              <p className="body-sm text-text-default">تا تأیید نشود، AI و خروجی‌ها همین متنِ تأییدشده را می‌بینند. پایین، متن تأییدشده در برابر پیش‌نویس است.</p>
+              <p className="body-sm text-text-default">تا تأیید نشود، خروجی‌ها و بسته‌ها همین متنِ تأییدشده را می‌بینند. پایین، متن تأییدشده در برابر پیش‌نویس است.</p>
               <BeforeAfter before={object.content} after={object.draft.content} />
               <div className="flex flex-wrap gap-inline-sm">
                 {onApproveDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>تأیید و جایگزین کن</Button>}
@@ -444,7 +444,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {confirmedEdit && textChanged && (
           <div className="flex flex-col gap-stack-xs" data-testid="draft-choice">
             <SegmentedControl label="این تغییر" value={applyNow ? 'now' : 'draft'} onChange={(v) => setApplyNow(v === 'now')} items={[{ id: 'draft', label: 'پیش‌نویس بماند' }, { id: 'now', label: 'همین حالا جایگزین شود' }]} />
-            <p className="body-sm text-text-subtle">{applyNow ? 'متن تازه فوراً جای متن تأییدشده می‌نشیند و AI همین را می‌بیند.' : 'متن تأییدشده همان می‌ماند و AI و خروجی‌ها هنوز آن را می‌بینند؛ وقتی پیش‌نویس را تأیید کنی جایش را می‌گیرد.'}</p>
+            <p className="body-sm text-text-subtle">{applyNow ? 'متن تازه فوراً جای متن تأییدشده می‌نشیند و خروجی‌ها همین را می‌بینند.' : 'متن تأییدشده همان می‌ماند و خروجی‌ها و بسته‌ها هنوز آن را می‌بینند؛ وقتی پیش‌نویس را تأیید کنی جایش را می‌گیرد.'}</p>
           </div>
         )}
         <div>
@@ -475,7 +475,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               </div>
             ))}
             {examples.length < EXAMPLE_LIMIT && <div><Button type="button" size="sm" variant="ghost" iconStart="Plus" onClick={() => setExamples((l) => [...l, { kind: l.some((x) => x.kind === 'good') ? 'bad' : 'good', text: '' }])}>افزودن مثال</Button></div>}
-            {examples.length > 0 && <p className="body-sm text-text-subtle">مثال‌ها کنار همین قاعده به AI می‌روند تا مرز را بهتر بفهمد.</p>}
+            {examples.length > 0 && <p className="body-sm text-text-subtle">مثال‌ها کنار همین قاعده در خروجی‌ها و بسته‌ها می‌آیند تا مرزش روشن باشد.</p>}
           </div>
         )}
         {isEditing && !isSupersedingMode && reasonAllowed(object!.status) && (
@@ -490,7 +490,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {type === 'Fact' && (
           <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
             <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />
-            <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت به AI داده نمی‌شود (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» با دستور صریح می‌رود.</p>
+            <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» می‌آید.</p>
             {assumption && <DateField label="بازبینی تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
           </div>
         )}

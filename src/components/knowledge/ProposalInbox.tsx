@@ -10,7 +10,7 @@ import type { ContextObject, ObjectSource, TreeNode } from '../../types';
 import { Badge, Button, Card, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
-  mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
+  mcp: 'ابزار بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
 };
 
 interface Props {

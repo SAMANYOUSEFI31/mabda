@@ -8,6 +8,12 @@ import { planNodeRemoval, removeNode, undoRemoval } from '../removal.ts';
 export function registerNodesRoutes(ctx: RouteContext): void {
   const { repo, files, router, scopeOf, body, wrap, stale } = ctx;
   router.post('/workspaces/:wid/nodes', wrap((req, res) => { res.json({ node: repo.createNode(scopeOf(req), body(req) as never), nodes: repo.listNodes(scopeOf(req)) }); }));
+  router.post('/workspaces/:wid/nodes/from-items', wrap((req, res) => {
+    const s = scopeOf(req); const b = body(req);
+    const ids = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 200) : []);
+    const r = repo.createNodeFromItems(s, { parentId: typeof b.parentId === 'string' && b.parentId ? b.parentId : undefined, label: typeof b.label === 'string' ? b.label : '', notes: ids(b.notes), thoughts: ids(b.thoughts), objects: ids(b.objects) });
+    res.json({ node: r.node, moved: r.moved, nodes: repo.listNodes(s), objects: repo.listObjects(s), notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), stale: stale(s) });
+  }));
   router.patch('/workspaces/:wid/nodes/:id', wrap((req, res) => { const s = scopeOf(req); repo.updateNode(s, req.params.id, body(req)); res.json({ nodes: repo.listNodes(s) }); }));
   router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined) }); }));
   // a node delete is planned (the plan is the dialog's preview), done in one transaction and recorded so it can be undone
