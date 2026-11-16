@@ -32,5 +32,9 @@ export function useFiles(p: AppCoreScope) {
     const r = await attempt(() => dataApi.deleteFile(wid, fileId));
     if (r) patch((d) => ({ ...d, files: d.files.filter((f) => f.id !== fileId) }));
   };
-  return { handleUploadFile, handleProcessFile, handleDeleteFile };
+  const handleMoveFile = async (fileId: string, nodeId: string) => {
+    const r = await attempt(() => dataApi.moveFile(wid, fileId, nodeId));
+    if (r) patch((d) => ({ ...d, files: d.files.map((f) => (f.id === fileId ? r.file : f)) }));
+  };
+  return { handleUploadFile, handleProcessFile, handleDeleteFile, handleMoveFile };
 }

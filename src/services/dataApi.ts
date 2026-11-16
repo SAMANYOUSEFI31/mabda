@@ -136,6 +136,7 @@ export const dataApi = {
   state: (id: string) => call<WorkspaceState>('GET', `${ws(id)}/state`),
   saveWorkspace: (w: Workspace) => call<Workspace>('PUT', ws(w.id), w),
 
+  createNodeFromItems: (id: string, input: { parentId?: string; label: string; notes: string[]; thoughts: string[]; objects: string[] }) => call<{ node: TreeNode; moved: number; nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; stale: StaleAsset[] }>('POST', `${ws(id)}/nodes/from-items`, input),
   createNode: (id: string, input: { parentId?: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
   renameNode: (id: string, nodeId: string, patch: { label?: string; description?: string }) => call<{ nodes: TreeNode[] }>('PATCH', `${ws(id)}/nodes/${nodeId}`, patch),
   moveNode: (id: string, nodeId: string, parentId: string, index?: number, reason?: string) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index, ...(reason ? { reason } : {}) }),
@@ -143,7 +144,7 @@ export const dataApi = {
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; removal: { id: string; label: string }; stale: StaleAsset[] }>('DELETE', `${ws(id)}/nodes/${nodeId}?mode=${mode}${transferTo ? `&transferTo=${encodeURIComponent(transferTo)}` : ''}`),
   /** «واگرد»: a node removal is undone on the server (the sections, what moved, what was archived) */
   undoRemoval: (id: string, removalId: string) => call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; samples: ContextObject[]; changes: ContextChange[]; stale: StaleAsset[] }>('POST', `${ws(id)}/removals/${removalId}/undo`, {}),
-  archive: (id: string) => call<{ objects: ContextObject[]; removals: Array<{ id: string; kind: string; label: string; createdAt: string }>; deliverables: GeneratedDeliverable[] }>('GET', `${ws(id)}/archive`),
+  archive: (id: string) => call<{ objects: ContextObject[]; restoreTo?: Record<string, string>; removals: Array<{ id: string; kind: string; label: string; createdAt: string }>; deliverables: GeneratedDeliverable[] }>('GET', `${ws(id)}/archive`),
   restoreObject: (id: string, objectId: string, nodeId?: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/restore`, nodeId ? { nodeId } : {}),
   purgeImpact: (id: string, objectId: string) => call<{ impact: PurgeImpactInfo }>('GET', `${ws(id)}/objects/${objectId}/purge-impact`),
   purgeObject: (id: string, objectId: string, copies: { notes: string[]; thoughts: string[]; sessions: string[]; deliverables: string[] }) =>
@@ -265,6 +266,7 @@ export const dataApi = {
     return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'blocked' }>('POST', `${ws(id)}/files`, form);
   },
   processFile: (id: string, fileId: string) => call<ProcessedFile>('POST', `${ws(id)}/files/${fileId}/process`, {}),
+  moveFile: (id: string, fileId: string, nodeId: string) => call<{ file: StoredFile }>('POST', `${ws(id)}/files/${fileId}/move`, { nodeId }),
   deleteFile: (id: string, fileId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/files/${fileId}`),
 };
 

@@ -4,6 +4,7 @@
  */
 
 import { resolveNodeId } from '../../core/nodeTree';
+import { PlacePicker } from '../shared/PlacePicker';
 import React, { useState } from 'react';
 import { GapItem, ReadinessResult, WorkstreamSpec } from '../../types';
 import type { TreeNode } from '../../types';
@@ -31,11 +32,14 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
     readiness.gaps.length > 0 ? readiness.gaps[0].key : null
   );
 
-  // the spec's node is a hint: when that node is gone the answer goes to the default place of the tree
-  const nodeLabel = (id: string) => (nodes ?? []).find((n) => n.id === resolveNodeId(nodes ?? [], id))?.label ?? 'جای پیش‌فرض';
+  // the spec's node is a hint (NEW-01): the answer's section is shown and can be changed before it is saved;
+  // when the hinted node is gone, the default place of the tree is preselected, never silently used
+  const [placeOf, setPlaceOf] = useState<Record<string, string>>({});
+  const placeFor = (gap: GapItem) => placeOf[gap.key] ?? resolveNodeId(nodes ?? [], gap.nodeId);
+  const answer = (gap: GapItem, v: string) => onAnswerGap({ ...gap, nodeId: placeFor(gap) }, v);
   const submitCustom = (gap: GapItem) => {
     const v = customAnswers[gap.key]?.trim();
-    if (v) onAnswerGap(gap, v);
+    if (v) answer(gap, v);
   };
 
   return (
@@ -100,10 +104,12 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
 
                   {isExpanded && (
                     <div className="flex flex-col gap-stack-md border-t border-border-default bg-surface-raised p-inset-lg">
+                      {/* where the answer goes comes first: it is decided before «ثبت پاسخ» or a suggested answer is tapped */}
+                      <PlacePicker nodes={nodes ?? []} label="پاسخ در این بخش ثبت می‌شود" value={placeFor(gap)} onChange={(v) => setPlaceOf((m) => ({ ...m, [gap.key]: v }))} />
                       {gap.suggestedAnswers.length > 0 && (
                         <div className="flex flex-wrap gap-inline-sm">
                           {gap.suggestedAnswers.map((ans, aIdx) => (
-                            <Button key={aIdx} variant="secondary" onClick={() => onAnswerGap(gap, ans)}>«{ans}»</Button>
+                            <Button key={aIdx} variant="secondary" onClick={() => answer(gap, ans)}>«{ans}»</Button>
                           ))}
                         </div>
                       )}
@@ -118,16 +124,14 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
                             if (e.key === 'Enter') submitCustom(gap);
                           }}
                         />
-                        <Button variant="secondary" disabled={!customAnswers[gap.key]?.trim()} onClick={() => submitCustom(gap)}>
+                        <Button variant="secondary" className="shrink-0" disabled={!customAnswers[gap.key]?.trim()} onClick={() => submitCustom(gap)}>
                           ثبت پاسخ
                         </Button>
                       </div>
 
                       <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md sm:flex-row sm:items-center sm:justify-between">
                         <Button variant="ghost" size="sm" onClick={() => onIgnoreGap(gap)}>نادیده گرفتن این جای خالی</Button>
-                        <span className="body-sm text-text-subtle">
-                          پاسخ مستقیم به‌عنوان یک دانش تأییدشده در بخش «{nodeLabel(gap.nodeId)}» ثبت می‌شود.
-                        </span>
+
                       </div>
                     </div>
                   )}

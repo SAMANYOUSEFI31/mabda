@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { migrate } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
-import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverable, deleteWorkspace, listRemovals, purgeImpact, purgeObject, removeNode, restoreDeliverable, restoreObject, undoRemoval, wipeUser } from './removal.ts';
+import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverable, deleteWorkspace, listRemovals, purgeImpact, purgeObject, removeNode, restoreDeliverable, restoreObject, restoreTarget, undoRemoval, wipeUser } from './removal.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 
 const U = 'local';
@@ -277,4 +277,48 @@ test('permanent delete reaches the THOUGHT tables: the thoughts she picks (text,
   assert.equal(b.resolvedObjectId, undefined);
   assert.equal(b.resolvedRemoved, true);
   assert.equal(b.status, 'resolved');
+});
+
+test('restore into a deleted section: the nearest living section above it, or the place she picks (NEW-09)', () => {
+  const { repo, s } = fresh();
+  const root = repo.listNodes(s)[0].id;
+  const a = repo.createNode(s, { parentId: root, label: 'الف' });
+  const b = repo.createNode(s, { parentId: a.id, label: 'ب' });
+  const c = repo.createNode(s, { parentId: b.id, label: 'ج' });
+  const other = repo.createNode(s, { parentId: root, label: 'دیگر' });
+  const kb = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'دانش ب', content: 'x', nodeId: b.id });
+  const kc = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'دانش ج', content: 'y', nodeId: c.id });
+  removeNode(repo, s, b.id, { mode: 'archive', transferTo: a.id });
+  assert.equal(repo.getObjectAny(s, kb.id)!.status, 'Archived');
+  assert.equal(restoreTarget(repo, s, b.id), a.id, 'its parent still lives: that is where it goes, not the first section');
+  assert.equal(restoreTarget(repo, s, c.id), a.id, 'two levels gone: the nearest living one above');
+  assert.equal(restoreObject(repo, s, kb.id).object.nodeId, a.id);
+  assert.equal(restoreObject(repo, s, kc.id, other.id).object.nodeId, other.id, 'the place she picks wins');
+});
+
+test('restore while a newer truth holds the same slot: it comes back as a suggestion (NEW-10)', () => {
+  const { repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  const old = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'قیمت', content: '۱۰', nodeId: node, slotKey: 'price' });
+  repo.updateObject(s, old.id, { status: 'Archived' });
+  repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'قیمت', content: '۲۰', nodeId: node, slotKey: 'price' });
+  const back = restoreObject(repo, s, old.id);
+  assert.equal(back.object.status, 'Proposed');
+});
+
+test('undo a section removal: what she moved since stays where she put it (NEW-10)', () => {
+  const { repo, s } = fresh();
+  const root = repo.listNodes(s)[0].id;
+  const a = repo.createNode(s, { parentId: root, label: 'الف' });
+  const third = repo.createNode(s, { parentId: root, label: 'سوم' });
+  const stays = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'می‌ماند', content: 'x', nodeId: a.id });
+  const moved = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'جابه‌جا', content: 'y', nodeId: a.id });
+  const note = repo.createNote(s, a.id, 'یادداشت');
+  const r = removeNode(repo, s, a.id, { transferTo: root });
+  repo.updateObject(s, moved.id, { nodeId: third.id });
+  repo.moveNoteToNode(s, note.id, third.id);
+  undoRemoval(repo, s, r.removal.id);
+  assert.equal(repo.getObject(s, stays.id)!.nodeId, a.id, 'what is still where the removal put it comes back');
+  assert.equal(repo.getObject(s, moved.id)!.nodeId, third.id, 'her later move is kept');
+  assert.equal(repo.listNotes(s).find((n) => n.id === note.id)!.nodeId, third.id);
 });

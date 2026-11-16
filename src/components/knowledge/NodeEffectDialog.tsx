@@ -52,7 +52,7 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
     { title: 'اینجا اثر ندارند', list: items.filter((i) => i.origin === 'overridden' || i.origin === 'expired') },
   ];
   return (
-    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که AI برای ساخت خروجی و گفتگوی این بخش می‌بیند. خط قرمز هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}>
+    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که خروجی‌ها و بسته‌های این بخش از آن ساخته می‌شوند. خط قرمز هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-lg">
         {items.length === 0 && <EmptyState title="هیچ خط قرمز یا دانشی روی این بخش اثر ندارد" />}
         {sections.filter((s) => s.list.length > 0).map((sec) => (

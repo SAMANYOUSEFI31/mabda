@@ -43,6 +43,8 @@ interface Props {
   /** «دور این مورد» (the truth canvas) */
   onLineage?: (objectId: string) => void;
   onOpenNote?: (noteId: string, nodeId: string) => void;
+  /** thinking canvas, several cards picked: «ساخت بخش از این موارد» (UX-STR-01) */
+  onMakeSection?: () => void;
 }
 
 const LEGEND: Array<{ kind: SceneEdge['kind']; what: string }> = [
@@ -79,7 +81,10 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         <h3 className="heading-xs text-text-default">{formatNumber(p.selection.length)} مورد انتخاب شده</h3>
         <ul className="flex flex-col gap-stack-xs">{p.selection.slice(0, 8).map((id) => <li key={id}><button type="button" className="body-sm text-start text-text-default underline-offset-2 hover:underline" onClick={() => p.onSelect(id)}>{titleOf(id)}</button></li>)}</ul>
         {p.selection.length > 8 && <p className="body-sm text-text-subtle">و {formatNumber(p.selection.length - 8)} مورد دیگر.</p>}
-        <div><Button size="sm" variant="ghost" onClick={p.onClear}>پاک کردن انتخاب</Button></div>
+        <div className="flex flex-wrap gap-inline-xs">
+          {p.onMakeSection && <Button size="sm" variant="secondary" iconStart="FolderTree" onClick={p.onMakeSection}>ساخت بخش از این موارد</Button>}
+          <Button size="sm" variant="ghost" onClick={p.onClear}>پاک کردن انتخاب</Button>
+        </div>
       </div>
     );
   }
@@ -145,7 +150,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
     <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">بخش</span><h3 className="heading-xs text-text-default">{item.label}</h3><p className="body-sm text-text-subtle">{formatNumber(item.count ?? 0)} مورد در این بخش؛ یک جعبهٔ دامنه است و ترتیب ندارد.</p></div>
   );
   if (item.kind === 'note') return (
-    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">یادداشت آزاد</span><p className="body-md whitespace-pre-wrap text-text-default">{item.summary}</p><p className="body-sm text-text-subtle">یادداشت دانش نیست و به AI داده نمی‌شود.</p></div>
+    <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">یادداشت آزاد</span><p className="body-md whitespace-pre-wrap text-text-default">{item.summary}</p><p className="body-sm text-text-subtle">یادداشت دانش نیست و در خروجی‌ها و بسته‌ها نمی‌آید.</p></div>
   );
   return (
     <div className="flex flex-col gap-stack-sm"><span className="label-sm text-text-subtle">{item.kind === 'assets' ? 'خروجی‌ها' : 'خروجی'}</span><h3 className="heading-xs text-text-default">{item.label}</h3>{item.review && <Caution>نیاز به بازبینی</Caution>}<p className="body-sm text-text-subtle">{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی (برای خوانایی یک‌جا جمع شده‌اند).` : 'خروجی ساخته‌شده از Context؛ با تغییر Context قدیمی می‌شود.'}</p><div><Button size="sm" variant="secondary" onClick={p.onOpenAssets}>باز کردن</Button></div></div>

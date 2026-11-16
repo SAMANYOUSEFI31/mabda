@@ -63,7 +63,7 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
       const r = await attempt(() => dataApi.updateObject(wid, existing.id, { type: draft.type, title: draft.title, content: draft.content, nodeId: draft.nodeId, status: draft.status, provenance: draft.provenance, slotKey: draft.slotKey, reach: draft.reach ?? null, validUntil: draft.validUntil ?? null, assumption: draft.assumption === true, reviewBy: draft.reviewBy ?? null, record: draft.record ?? null, facets: draft.facets ?? null, examples: draft.examples ?? null, ...(opts?.reason ? { reason: opts.reason } : {}), ...(opts?.asDraft ? { asDraft: true } : {}) }));
       if (!r) return undefined;
       patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
-      if (opts?.asDraft) toast.show({ intent: 'success', message: r.object.draft ? 'پیش‌نویس ذخیره شد؛ AI و خروجی‌ها هنوز متن تأییدشده را می‌بینند. در «فضای فکر» تأییدش کن.' : 'پیش‌نویس برداشته شد؛ متن تأییدشده همان است.' });
+      if (opts?.asDraft) toast.show({ intent: 'success', message: r.object.draft ? 'پیش‌نویس ذخیره شد؛ خروجی‌ها و بسته‌ها هنوز متن تأییدشده را می‌بینند. در «فضای فکر» تأییدش کن.' : 'پیش‌نویس برداشته شد؛ متن تأییدشده همان است.' });
       else showImpact(r.impact);
       return r.object;
     }

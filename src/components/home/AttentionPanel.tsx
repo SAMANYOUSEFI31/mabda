@@ -5,7 +5,9 @@
 
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
 import React, { useState } from 'react';
-import type { GapItem } from '../../types';
+import type { GapItem, TreeNode } from '../../types';
+import { resolveNodeId } from '../../core/nodeTree';
+import { PlacePicker } from '../shared/PlacePicker';
 import type { FlipFlop, WaitingDecisions } from '../../core/decisionGraph';
 import { Badge, Button, Card, Icon, TextField, formatNumber } from '../../ui';
 import type { IconName } from '../../ui';
@@ -28,6 +30,8 @@ interface Props {
   onAcceptReview: (id: string) => void;
   proposedCount: number;
   onAnswerGap: (gap: GapItem, answer: string) => void;
+  /** the tree, so an answer's section is shown and can be changed (NEW-01) */
+  nodes?: TreeNode[];
   onOpenStudio: () => void;
   onOpenAssets: () => void;
   /** «چه چیزی عوض شد»: opens the 7-day change feed */
@@ -43,17 +47,19 @@ interface Props {
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, onOpenStudio, onOpenAssets, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, nodes = [], onOpenStudio, onOpenAssets, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
   const names = (ids: string[]) => ids.map((id) => `«${titleOf(id)}»`).join('، ');
   const anyWaiting = waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + flips.length > 0;
 
+  const [placeOf, setPlaceOf] = useState<Record<string, string>>({});
+  const placeFor = (gap: GapItem) => placeOf[gap.key] ?? resolveNodeId(nodes, gap.nodeId);
   const submit = (gap: GapItem) => {
     const v = draft[gap.key]?.trim();
     if (!v) return;
-    onAnswerGap(gap, v);
+    onAnswerGap(nodes.length ? { ...gap, nodeId: placeFor(gap) } : gap, v);
     setDraft((d) => ({ ...d, [gap.key]: '' }));
   };
 
@@ -161,6 +167,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
                     onChange={(e) => setDraft({ ...draft, [g.key]: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter') submit(g); }}
                   />
+                  <PlacePicker nodes={nodes} label="در بخش" value={placeFor(g)} onChange={(v) => setPlaceOf((m) => ({ ...m, [g.key]: v }))} />
                   <Button variant="secondary" disabled={!draft[g.key]?.trim()} onClick={() => submit(g)}>افزودن</Button>
                 </div>
               </li>

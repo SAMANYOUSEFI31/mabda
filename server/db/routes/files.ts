@@ -25,5 +25,10 @@ export function registerFilesRoutes(ctx: RouteContext): void {
     const r = await files.process(s, req.params.id, aiUserOf(req));
     res.json({ ...r, workspace: repo.getWorkspace(s.userId, s.workspaceId), quota: files.quota(s) });
   }));
+  router.post('/workspaces/:wid/files/:id/move', wrap((req, res) => {
+    const nodeId = body(req).nodeId;
+    if (typeof nodeId !== 'string' || !nodeId) throw new RepoError('invalid', 'بخش مقصد را انتخاب کن.');
+    res.json({ file: repo.moveFile(scopeOf(req), req.params.id, nodeId) });
+  }));
   router.delete('/workspaces/:wid/files/:id', wrap((req, res) => { repo.deleteFile(scopeOf(req), req.params.id); res.json({ ok: true }); }));
 }

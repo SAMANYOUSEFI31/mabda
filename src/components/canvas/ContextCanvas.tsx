@@ -16,6 +16,7 @@ import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
 import { clusterItems, edgeBudget, lodOf } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
+import { flatten } from '../../core/nodeTree';
 import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
 import { CanvasItemCard, CanvasNoteCard, FACET_TINT } from './CanvasItemCard';
@@ -75,6 +76,8 @@ export interface CanvasProps {
   lineageObjects?: ContextObject[];
   /** a free note can become a SECTION of the tree: the person picks the name and the parent */
   onNoteToSection?: (noteId: string) => void;
+  /** thinking canvas: «ساخت بخش از این موارد» — a new section, and the picked cards go into it (UX-STR-01); true when it was made */
+  onSectionFromItems?: (input: { label: string; parentId?: string; notes: string[]; thoughts: string[]; objects: string[] }) => Promise<boolean>;
 }
 
 type Pending = { kind: 'accept'; payload: MovePayload; title: string } | { kind: 'backward'; payload: MovePayload; title: string } | null;
@@ -86,7 +89,7 @@ const TIPS = [
 const TIPS_THINKING = [
   'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «فکر تازه» در فهرست فکرها استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
 ];
-const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
+const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی (در بوم فکر: «ساخت بخش از این موارد»)'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
 // three looks, one engine: the overview and «دور یک مورد» (the truth canvas), the free canvas (thinking). «تابلو» is gone: see docs/canvas-design.md
 const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['overview'], thinking: ['free'] };
@@ -126,6 +129,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [frameDlg, setFrameDlg] = useState<string | null>(null);
   const [frameMenuAt, setFrameMenuAt] = useState<{ nodeId: string; x: number; y: number } | null>(null);
   const [moveTo, setMoveTo] = useState<{ noteId?: string; objectId?: string; itemId: string; nodeId: string } | null>(null);
+  /** «ساخت بخش از این موارد»: the name and where it hangs; the cards are the current selection */
+  const [fromItems, setFromItems] = useState<{ label: string; parentId: string } | null>(null);
   const [selection, setSelection] = useState<string[]>([]);
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
@@ -538,6 +543,14 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const activeItem = actions ? scene.items.find((i) => i.objectId === actions) : undefined;
   const hasContent = p.objects.length > 0 || p.deliverables.length > 0 || p.notes.length > 0;
   const sel1 = selection.length === 1 ? byId.get(selection[0]) : undefined;
+  // what the selection holds that can go into a section (notes, thoughts, knowledge); files and outputs cannot
+  const picked = selection.map((id) => byId.get(id)).filter((i): i is NonNullable<typeof i> => !!i && !!(i.noteId || i.thoughtId || i.objectId));
+  const canMakeSection = mode === 'thinking' && !!p.onSectionFromItems && picked.length > 0;
+  const openFromItems = () => {
+    const shared = new Set(picked.map((i) => i.nodeId ?? ''));
+    // all from one section: the new one goes under it (the cluster is a part of that section); otherwise a main section
+    setFromItems({ label: '', parentId: shared.size === 1 ? [...shared][0] : '' });
+  };
   const sheet = isMobile && fullscreen;
 
   const aboutText = LAYOUT_ABOUT[layoutEff];
@@ -620,6 +633,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         onPlace={mode === 'thinking' ? (id) => { void p.onPlaceObject(id, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); } : undefined}
         notes={p.notes} onLineage={mode === 'truth' && !lineage ? enterLineage : undefined} onOpenNote={p.onOpenNote}
         onUnplace={mode === 'thinking' ? (id) => void p.onUnplaceObject(id) : undefined} placed={!!sel1?.objectId && placedIds.has(sel1.objectId)} onClear={clearSelection} onSelect={(id) => select(id)}
+        onMakeSection={canMakeSection && selection.length > 1 ? openFromItems : undefined}
       />
     </aside>
   );
@@ -761,6 +775,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             <div role="menu" aria-label="منوی کارت" className="fixed z-dialog flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised" style={{ insetBlockStart: ctx.y, insetInlineStart: ctx.x }} onKeyDown={(e) => { if (e.key === 'Escape') setCtx(null); }}>
               {([
                 ['انتخاب و روشن کردن اثرگذارها', () => select(ctx.item.id)],
+                ...(mode === 'thinking' && (ctx.item.noteId || ctx.item.thoughtId || ctx.item.objectId) ? [[selSet.has(ctx.item.id) ? 'از انتخاب بردار' : 'به انتخاب اضافه کن', () => select(ctx.item.id, true)]] as Array<[string, () => void]> : []),
                 ...(layoutEff === 'free' && (ctx.item.noteId || ctx.item.objectId) ? [['جابه‌جا کن به بخش…', () => setMoveTo({ noteId: ctx.item.noteId, objectId: ctx.item.objectId, itemId: ctx.item.id, nodeId: ctx.item.nodeId ?? '' })]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId && mode === 'truth' ? [['دور این مورد', () => enterLineage(ctx.item.objectId!)]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], ...(mode === 'thinking' ? [[placedIds.has(ctx.item.objectId) ? 'از بوم فکر بردار' : 'بگذار در بوم فکر', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] : [])] as Array<[string, () => void]> : []),
@@ -845,11 +860,30 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {moveTo && <Select label="بخش" value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
       </Dialog>
 
+      <Dialog open={!!fromItems} onClose={() => setFromItems(null)} size="sm" title={`ساخت بخش از ${formatNumber(picked.length)} مورد`}
+        description="بخش تازه ساخته می‌شود و این موارد در آن قرار می‌گیرند؛ متنشان عوض نمی‌شود و هر جابه‌جایی در تاریخچه می‌ماند."
+        footer={<><Button variant="ghost" onClick={() => setFromItems(null)}>انصراف</Button><Button variant="primary" disabled={!fromItems?.label.trim() || picked.length === 0} loading={busy} onClick={async () => {
+          if (!fromItems || !p.onSectionFromItems) return;
+          setBusy(true);
+          try {
+            const ok = await p.onSectionFromItems({ label: fromItems.label.trim(), ...(fromItems.parentId ? { parentId: fromItems.parentId } : {}), notes: picked.flatMap((i) => (i.noteId ? [i.noteId] : [])), thoughts: picked.flatMap((i) => (i.thoughtId ? [i.thoughtId] : [])), objects: picked.flatMap((i) => (i.objectId ? [i.objectId] : [])) });
+            if (ok) { setFromItems(null); clearSelection(); }
+          } finally { setBusy(false); }
+        }}>ساخت بخش</Button></>}>
+        {fromItems && (
+          <div className="flex flex-col gap-stack-sm">
+            <TextField label="نام بخش" required autoFocus value={fromItems.label} onChange={(e) => setFromItems({ ...fromItems, label: e.target.value })} />
+            <Select label="زیر کدام بخش" value={fromItems.parentId} onChange={(e) => setFromItems({ ...fromItems, parentId: e.target.value })} options={[{ value: '', label: 'بخش اصلی تازه' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} />
+            <ul className="body-sm flex flex-col gap-stack-xs text-text-subtle" aria-label="موارد انتخاب‌شده">{picked.slice(0, 6).map((i) => <li key={i.id}>{i.label}</li>)}{picked.length > 6 && <li>و {formatNumber(picked.length - 6)} مورد دیگر</li>}</ul>
+          </div>
+        )}
+      </Dialog>
+
       <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="یادداشت آزاد روی بوم"
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">
-            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و به AI داده نمی‌شود. برای ایده، سؤال یا فرض باز از «فکر تازه» استفاده کن." />
+            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز از «فکر تازه» استفاده کن." />
             <Select label="به کدام بخش مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
           </div>
         )}

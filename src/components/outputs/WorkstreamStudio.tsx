@@ -18,6 +18,7 @@ import {
 import type { AiErrorInfo, StageName, Tier, UsageSummary } from '../../types';
 import { LIBRARY } from '../../core/specs';
 import { resolveNodeId } from '../../core/nodeTree';
+import { PlacePicker } from '../shared/PlacePicker';
 import { gapAnswer } from '../../core/homeActions';
 import { calculateReadinessAndGaps, objectsToJudge } from '../../core/contextEngine';
 import type { AmbiguityMap } from '../../core/contextEngine';
@@ -104,6 +105,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const [manualModeOpen, setManualModeOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [gapPlaces, setGapPlaces] = useState<Record<string, string>>({});
   const importantMode: ExecutionMode = 'sensitive';
   const [isGenerating, setIsGenerating] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>('');
@@ -269,11 +271,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const lock = lockOf(currentDeliverableSpec, currentSpec.deliverables, builtIds);
   // what is missing, required first: at most THREE questions are asked here; the rest wait in «چه چیزی کم است»
   const todo = [...readiness.gaps].filter((g) => g.status !== 'confirmed').sort((a, b) => (a.importance === 'required' ? 0 : 1) - (b.importance === 'required' ? 0 : 1)).slice(0, 3);
+  // where an answer goes (NEW-01): the spec's hint, resolved in this tree, and changeable before it is saved
+  const gapPlace = (gap: (typeof readiness.gaps)[number]) => gapPlaces[gap.key] ?? resolveNodeId(nodes, gap.nodeId);
   const answerGap = (gap: (typeof readiness.gaps)[number]) => {
     const text = (answers[gap.key] ?? '').trim();
     if (!text) return;
     // the same answer as from home (homeActions.gapAnswer): a gap says nothing about its kind, so it starts as «واقعیت»
-    onAddContextObject(gapAnswer({ ...gap, nodeId: resolveNodeId(nodes, gap.nodeId) }, text, currentWorkspace.id));
+    onAddContextObject(gapAnswer({ ...gap, nodeId: gapPlace(gap) }, text, currentWorkspace.id));
     setAnswers((m) => { const n = { ...m }; delete n[gap.key]; return n; });
   };
 
@@ -381,6 +385,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     <div className="flex-1">
                       <TextField label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
                     </div>
+                    <PlacePicker nodes={nodes} label="در بخش" value={gapPlace(g)} onChange={(v) => setGapPlaces((m) => ({ ...m, [g.key]: v }))} />
                     <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>افزودن</Button>
                   </div>
                 ))}

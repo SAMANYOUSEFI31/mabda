@@ -19,6 +19,8 @@ interface Props {
   onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'blocked' } | undefined>;
   onProcess: (fileId: string) => Promise<void>;
   onDelete: (fileId: string) => Promise<void>;
+  /** a file with no section gets one (NEW-05) */
+  onMove: (fileId: string, nodeId: string) => Promise<void>;
 }
 
 const STATUS: Record<StoredFile['status'], { label: string; intent: 'neutral' | 'info' | 'success' | 'danger' }> = {
@@ -31,7 +33,7 @@ const STATUS: Record<StoredFile['status'], { label: string; intent: 'neutral' | 
 const kb = (n: number) => (n >= 1024 * 1024 ? `${formatNumber(Math.round((n / 1024 / 1024) * 10) / 10)} مگابایت` : `${formatNumber(Math.max(1, Math.round(n / 1024)))} کیلوبایت`);
 
 /** Upload txt / md / pdf / docx (≤ 25MB). Processed once on the cheap tier: summary, Proposed objects, ~800-token chunks. */
-export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onProcess, onDelete }) => {
+export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onProcess, onDelete, onMove }) => {
   const ai = useAiStatus();
   const managed = ai.managedEnabled;
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -39,6 +41,8 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
   const [pendingDelete, setPendingDelete] = useState<StoredFile | null>(null);
   const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
+  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  const nodeLabel = (id?: string) => (id ? nodes.find((n) => n.id === id)?.label : undefined);
 
   const run = async (id: string, fn: () => Promise<void>) => {
     setBusy(id);
@@ -72,7 +76,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
         </div>
         <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
           <div className="sm:w-overlay-xs">
-            <Select label="محل در درخت" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))} />
+            <Select label="محل در درخت" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={nodeOptions} />
           </div>
           <input ref={input} type="file" accept=".txt,.md,.pdf,.docx" className="sr-only" aria-label="انتخاب فایل" tabIndex={-1} onChange={(e) => void pick(e.target.files?.[0])} />
           <Button variant="secondary" iconStart="Upload" loading={busy === 'upload'} onClick={() => input.current?.click()}>بارگذاری فایل</Button>
@@ -101,7 +105,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
                 <div className="flex min-w-space-0 flex-wrap items-center gap-inline-sm">
                   <span className="label-md text-text-default">{f.name}</span>
                   {managed && <Badge icon={false}>{STATUS[f.status].label}</Badge>}
-                  <span className="caption text-text-subtle">{kb(f.sizeBytes)} · حدود {formatNumber(f.tokens)} توکن{f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}</span>
+                  <span className="body-sm text-text-subtle">{nodeLabel(f.nodeId) ? `${nodeLabel(f.nodeId)} · ` : ''}{kb(f.sizeBytes)}{managed ? ` · حدود ${formatNumber(f.tokens)} توکن${f.chunkCount ? ` · ${formatNumber(f.chunkCount)} قطعه` : ''}` : ''}</span>
                 </div>
                 <div className="flex items-center gap-inline-xs">
                   {managed && (f.status === 'uploaded' || f.status === 'failed') && (
@@ -112,6 +116,12 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
                   <IconButton icon="Trash2" label={`حذف ${f.name}`} size="sm" onClick={() => setPendingDelete(f)} />
                 </div>
               </div>
+              {!nodeLabel(f.nodeId) && (
+                // a file with no living section is not in any section's list: it says so here and gets one in one step (NEW-05)
+                <div className="flex flex-wrap items-end gap-inline-sm">
+                  <Select label="این فایل در هیچ بخشی نیست؛ بگذارش در" placeholder="یک بخش انتخاب کن" value="" options={nodeOptions} disabled={busy === f.id} onChange={(e) => { const to = e.target.value; if (to) void run(f.id, () => onMove(f.id, to)); }} />
+                </div>
+              )}
               {f.summary && <p className="body-sm whitespace-pre-wrap text-text-default">{f.summary}</p>}
               {f.error && <Alert intent="danger">{f.error}</Alert>}
             </li>

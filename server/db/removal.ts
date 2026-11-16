@@ -140,16 +140,40 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
   return { purged: id, scrubbed: out };
 }
 
-/** «برگردان»: the knowledge comes back with the status it had before it was archived (default: confirmed); into its section if that still exists */
+/**
+ * Where knowledge goes back to: its own section if it still lives; else the nearest section above it that still lives
+ * (the parents are read from the removal records); only when nothing is known, the first section.
+ */
+export function restoreTarget(repo: Repo, s: Scope, nodeId: string): string {
+  const nodes = repo.listNodes(s);
+  const live = new Set(nodes.map((n) => n.id));
+  if (live.has(nodeId)) return nodeId;
+  const parentOf = new Map<string, string | undefined>();
+  for (const r of rows<{ payload: string }>(repo, "SELECT payload FROM removal_batches WHERE workspace_id = ? AND user_id = ? AND kind = 'node' ORDER BY created_at DESC", s.workspaceId, s.userId)) {
+    try { for (const n of (JSON.parse(r.payload) as NodeBatch).nodes ?? []) if (!parentOf.has(n.id)) parentOf.set(n.id, n.parentId); } catch { /* an unreadable old record says nothing */ }
+  }
+  const seen = new Set<string>();
+  let cur: string | undefined = nodeId;
+  while (cur && !live.has(cur) && !seen.has(cur)) { seen.add(cur); cur = parentOf.get(cur); }
+  return cur && live.has(cur) ? cur : defaultNodeId(nodes);
+}
+
+/**
+ * «برگردان»: the knowledge comes back with the status it had before it was archived (default: confirmed); into its section if that
+ * still exists, else into the place she picked (or the nearest living section above it). If a newer truth now holds the same slot,
+ * it comes back as a suggestion: two truths for one slot is not a restore, it is a contradiction.
+ */
 export function restoreObject(repo: Repo, s: Scope, id: string, nodeId?: string) {
   const o = repo.getObjectAny(s, id);
   if (!o) throw new RepoError('not_found', 'مورد پیدا نشد.');
   if (o.status !== 'Archived') throw new RepoError('invalid', 'فقط مورد بایگانی‌شده برمی‌گردد.');
   const nodes = repo.listNodes(s);
   const before = repo.listChanges(s, { objectId: id }).filter((c) => c.kind === 'archived' || c.kind === 'status_changed' || c.kind === 'proposal_rejected').map((c) => (c.before?.status as string | undefined)).filter((st): st is string => !!st && st !== 'Archived' && st !== 'Superseded').pop();
-  const status = (['Confirmed', 'Proposed', 'Needs Review'].includes(before ?? '') ? before : 'Confirmed') as ContextObject['status'];
-  const target = nodeId && nodes.some((n) => n.id === nodeId) ? nodeId : nodes.some((n) => n.id === o.nodeId) ? o.nodeId : defaultNodeId(nodes);
-  return repo.updateObject(s, id, { status, ...(target !== o.nodeId ? { nodeId: target } : {}) }, { actor: 'user', reason: 'از بایگانی برگشت' });
+  let status = (['Confirmed', 'Proposed', 'Needs Review'].includes(before ?? '') ? before : 'Confirmed') as ContextObject['status'];
+  const slotTaken = !!o.slotKey && repo.listObjects(s).some((x) => x.id !== id && x.slotKey === o.slotKey && (x.status === 'Confirmed' || x.status === 'Needs Review'));
+  if (slotTaken && status !== 'Proposed') status = 'Proposed';
+  const target = nodeId && nodes.some((n) => n.id === nodeId) ? nodeId : restoreTarget(repo, s, o.nodeId);
+  return repo.updateObject(s, id, { status, ...(target !== o.nodeId ? { nodeId: target } : {}) }, { actor: 'user', reason: slotTaken ? 'از بایگانی برگشت؛ چون دانش تازه‌تری همین جا را گرفته، پیشنهاد شد' : 'از بایگانی برگشت' });
 }
 
 /** everything that is out of the way, for the «بایگانی» dialog (archived and superseded knowledge) */
@@ -243,13 +267,15 @@ export function undoRemoval(repo: Repo, s: Scope, batchId: string): { nodes: Tre
     const ins = repo.db.prepare('INSERT INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)');
     const exists = (id?: string) => !!id && (have.has(id) || b.nodes.some((n) => n.id === id));
     for (const n of b.nodes) ins.run(n.id, s.userId, s.workspaceId, exists(n.parentId) ? n.parentId : null, n.label, n.description, n.order);
-    const back = (table: 'context_objects' | 'notes' | 'files', col: string, map: Record<string, string>) => {
-      for (const [id, nodeId] of Object.entries(map)) repo.db.prepare(`UPDATE ${table} SET ${col} = ? WHERE id = ? AND workspace_id = ? AND user_id = ?`).run(nodeId, id, s.workspaceId, s.userId);
+    // only what is still where the removal put it comes back: a later move of hers is a newer decision than this undo
+    const back = (table: 'context_objects' | 'notes' | 'thoughts' | 'files', map: Record<string, string>) => {
+      if (!b.target) return;
+      for (const [id, nodeId] of Object.entries(map)) repo.db.prepare(`UPDATE ${table} SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ? AND node_id = ?`).run(nodeId, id, s.workspaceId, s.userId, b.target);
     };
-    back('context_objects', 'node_id', b.mode === 'move' ? b.objects : {});
-    back('notes', 'node_id', b.notes);
-    for (const [id, nodeId] of Object.entries(b.thoughts ?? {})) repo.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(nodeId, id, s.workspaceId, s.userId);
-    back('files', 'node_id', b.files);
+    back('context_objects', b.mode === 'move' ? b.objects : {});
+    back('notes', b.notes);
+    back('thoughts', b.thoughts ?? {});
+    back('files', b.files);
     for (const c of b.children) repo.db.prepare('UPDATE tree_nodes SET parent_id = ?, ord = ? WHERE workspace_id = ? AND user_id = ? AND id = ?').run(c.parentId ?? null, c.order, s.workspaceId, s.userId, c.id);
     for (const [oid, status] of Object.entries(b.archived)) {
       const cur = repo.getObjectAny(s, oid);

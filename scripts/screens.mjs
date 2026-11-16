@@ -266,7 +266,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   const mobile = size.width < 768;
   const openAccount = async () => {
     if (mobile) await page.getByRole('button', { name: 'حساب کاربری' }).first().click();
-    else await page.getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click();
+    else await page.getByRole('button', { name: /^حساب کاربری/ }).first().click();
     await page.waitForTimeout(150);
   };
   const accountItem = async (name) => {
@@ -283,17 +283,19 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   if (size.width >= 1024) {
     // the narrow rail (icons only): its account menu must sit fully inside the window; then open the bar again
     await page.getByRole('button', { name: 'باریک کردن نوار کناری' }).click(); await page.waitForTimeout(200); await shoot('sidebar-narrow');
-    await page.getByTestId('sidebar-rail').getByRole('button', { name: /پلن (Starter|Pro|Max)/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
+    await page.getByTestId('sidebar-rail').getByRole('button', { name: /^حساب کاربری/ }).click(); await page.waitForTimeout(150); await shoot('menu-account-narrow');
     await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'باز کردن نوار کناری' }).click(); await page.waitForTimeout(300);
   }
-  await accountItem('مصرف'); await shoot('ledger');
+  // «مصرف» and «پلن و ارتقا» exist only with the managed AI on (the plan model is gone, #63): shot when there, skipped when not
+  const accountItemIf = async (name) => { await openAccount(); const l = (mobile ? page.getByRole('dialog').getByRole('button', { name }) : page.getByRole('menuitem', { name })).first(); if (await l.count()) { await l.click(); await page.waitForTimeout(250); return true; } await page.keyboard.press('Escape'); await page.waitForTimeout(200); return false; };
+  if (await accountItemIf('مصرف')) await shoot('ledger');
   // plan / economics tabs exist only when MABDA_MANAGED_AI is on
   const maybe = async (loc, fn) => { if (await loc.count()) await fn(loc.first()); };
   await maybe(page.getByRole('tab', { name: /پلن‌ها و اعتبار/ }), async (l) => { await l.click(); await shoot('ledger-plans'); });
   await maybe(page.getByRole('tab', { name: /خطوط قرمز/ }), async (l) => { await l.click(); await shoot('ledger-economics'); });
   await maybe(page.getByRole('tab', { name: /مصرف و سهمیه/ }), async (l) => { await l.click(); await shoot('ledger-usage'); });
 
-  await accountItem('پلن و ارتقا'); await shoot('dialog-plans'); await closeDialog();
+  if (await accountItemIf('پلن و ارتقا')) { await shoot('dialog-plans'); await closeDialog(); }
   await accountItem('راهنما و شروع سریع'); await shoot('dialog-onboarding'); await closeDialog();
   await accountItem('حساب و داده‌ها'); await shoot('dialog-account'); await closeDialog();
   // the truth overview, its focused lineage view, and the free thinking canvas

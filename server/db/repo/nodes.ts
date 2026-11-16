@@ -4,7 +4,7 @@
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
 import type { Repo } from './index.ts';
-import { ChangeMeta, RepoError, Scope, newId, rowToNode } from './shared.ts';
+import { ChangeMeta, RepoError, Scope, newId, now, rowToNode } from './shared.ts';
 import { canCreateUnder, canDelete, canMove, canRename, defaultNodeId, movedNodeTree, nextOrder } from '../../../src/core/nodeTree.ts';
 import { DEFAULT_START } from '../../../src/core/specs.ts';
 import { planNodes } from '../../../src/core/startTemplate.ts';
@@ -40,6 +40,32 @@ export const nodesMethods = {
     this.db.prepare('INSERT INTO tree_nodes (id, user_id, workspace_id, parent_id, label, description, is_system, ord) VALUES (?,?,?,?,?,?,0,?)')
         .run(node.id, s.userId, s.workspaceId, node.parentId ?? null, node.label, node.description, node.order);
     return node;
+  },
+
+  /**
+   * «ساخت بخش از این موارد» (UX-STR-01): a new section, and the notes, thoughts and knowledge she picked on the thinking canvas
+   * go into it, in one step. Structure grows out of the clustering: nothing is rewritten, only placed; each move is in history.
+   */
+  createNodeFromItems(this: Repo, s: Scope, input: { parentId?: string; label: string; notes?: string[]; thoughts?: string[]; objects?: string[] }): { node: TreeNode; moved: number } {
+    const notes = [...new Set(input.notes ?? [])], thoughts = [...new Set(input.thoughts ?? [])], objects = [...new Set(input.objects ?? [])];
+    if (notes.length + thoughts.length + objects.length === 0) throw new RepoError('invalid', 'دست‌کم یک مورد انتخاب کن.');
+    return this.db.transaction(() => {
+      const node = this.createNode(s, { parentId: input.parentId, label: input.label });
+      let moved = 0;
+      for (const id of notes) if (this.getNote(s, id)) { this.moveNoteToNode(s, id, node.id); moved += 1; }
+      const ev = this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)');
+      for (const id of thoughts) {
+        const t = this.db.prepare('SELECT node_id FROM thoughts WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as { node_id: string } | undefined;
+        if (!t) continue;
+        if (t.node_id !== node.id) {
+          this.db.prepare('UPDATE thoughts SET node_id = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(node.id, id, s.workspaceId, s.userId);
+          ev.run(newId('th_ev'), id, s.userId, s.workspaceId, 'moved', t.node_id, node.id, 'user', now());
+        }
+        moved += 1;
+      }
+      for (const id of objects) if (this.getObject(s, id)) { this.updateObject(s, id, { nodeId: node.id }, { actor: 'user', reason: `در بخش تازهٔ «${node.label}» گذاشته شد` }); moved += 1; }
+      return { node, moved };
+    })();
   },
 
   /** rename works for every node, system or not */

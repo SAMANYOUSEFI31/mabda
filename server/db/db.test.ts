@@ -925,3 +925,28 @@ test('the text one person keeps is capped across ALL their workspaces, not per w
     assert.doesNotThrow(() => repo.createNote({ userId: 'p2', workspaceId: 'wc' }, repo.listNodes({ userId: 'p2', workspaceId: 'wc' })[0].id, 'z'.repeat(400)));
   } finally { LIMITS.storedTextPerPerson = keep; }
 });
+
+test('«ساخت بخش از این موارد»: a new section, and the picked notes, thoughts and knowledge go into it, each move on record (UX-STR-01)', () => {
+  const { repo, s } = fresh();
+  const root = repo.listNodes(s)[0].id;
+  const note = repo.createNote(s, root, 'سفر شمال\n- [ ] بلیت قطار');
+  const k = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'بودجه', content: 'ده', nodeId: root });
+  const r = repo.createNodeFromItems(s, { parentId: root, label: 'سفر', notes: [note.id], objects: [k.id] });
+  assert.equal(r.moved, 2);
+  assert.equal(repo.listNodes(s).find((n) => n.id === r.node.id)?.parentId, root);
+  assert.equal(repo.listNotes(s).find((n) => n.id === note.id)?.nodeId, r.node.id);
+  assert.equal(repo.getObject(s, k.id)?.nodeId, r.node.id);
+  assert.ok(repo.listChanges(s, { objectId: k.id }).some((c) => /بخش تازهٔ «سفر»/.test(c.reason ?? '')), 'the move of the knowledge is in its history');
+  for (const t of repo.listThoughts(s).filter((t) => t.sourceNoteId === note.id)) assert.equal(t.nodeId, r.node.id, 'the note\'s thoughts went with it');
+  assert.throws(() => repo.createNodeFromItems(s, { parentId: root, label: 'خالی' }), /دست‌کم یک مورد/);
+  assert.equal(repo.listNodes(s).some((n) => n.label === 'خالی'), false, 'nothing is created when nothing is picked');
+});
+
+test('a file with no section gets one; an unknown section is refused (NEW-05)', () => {
+  const { repo, s } = fresh();
+  const f = repo.createFile(s, { name: 'a.txt', mime: 'text/plain', sizeBytes: 3, rawText: 'abc', tokens: 1 });
+  assert.equal(f.nodeId, undefined);
+  const node = repo.listNodes(s)[0].id;
+  assert.equal(repo.moveFile(s, f.id, node).nodeId, node);
+  assert.throws(() => repo.moveFile(s, f.id, 'nope'));
+});

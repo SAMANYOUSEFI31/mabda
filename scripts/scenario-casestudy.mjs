@@ -71,7 +71,7 @@ try {
     assert.ok((await page.getByText(/قیمت اشتراک ماهانه/).count()) >= 2);
 
     step(`[${width}] proposals inbox with sources and reasons`);
-    await page.getByText('پیشنهاد AI بیرونی').first().waitFor().catch(() => {});
+    await page.getByText('پیشنهاد ابزار بیرونی').first().waitFor().catch(() => {});
     await page.getByText(/پاسخ بیرونی/).first().waitFor();
     await page.getByText(/دلیل پیشنهاد/).first().waitFor();
     await page.getByText(/تغییر پیشنهادی/).first().waitFor();

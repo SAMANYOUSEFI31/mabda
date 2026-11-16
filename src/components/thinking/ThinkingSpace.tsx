@@ -171,7 +171,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
               {o.draft!.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{o.draft!.reason}</p>}
-              <p className="body-sm text-text-subtle">تا تأیید نشود، AI و خروجی‌ها همان متن تأییدشده را می‌بینند.</p>
+              <p className="body-sm text-text-subtle">تا تأیید نشود، خروجی‌ها و بسته‌ها همان متن تأییدشده را می‌بینند.</p>
               <div className="flex flex-wrap gap-inline-sm">
                 <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>تأیید و جایگزین کن</Button>
                 <Button size="sm" variant="ghost" iconStart="X" onClick={() => void p.onRejectDraft(o.id)}>رد کن</Button>
@@ -225,7 +225,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {view.assumptions.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فرض‌های فعال">
           <h2 className="title text-text-default">فرض‌های فعال ({formatNumber(view.assumptions.length)})</h2>
-          <p className="body-sm text-text-subtle">تأییدشده‌اند و AI آن‌ها را در بخش جدای «فرض» می‌بیند؛ واقعیت نیستند.</p>
+          <p className="body-sm text-text-subtle">تأییدشده‌اند و در خروجی‌ها در بخش جدای «فرض» می‌آیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (
               <li key={o.id} data-knowledge="truth" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
