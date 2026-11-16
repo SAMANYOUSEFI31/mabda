@@ -765,6 +765,14 @@ export const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 28,
+    name: 'informed consent per person, on the server: when a tester read and accepted that the owner can read their data',
+    up(db) {
+      // on the person, not on a device: a new phone does not ask again, and the owner can see who has accepted
+      db.exec('ALTER TABLE accounts ADD COLUMN consented_at TEXT');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

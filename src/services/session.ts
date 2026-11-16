@@ -5,7 +5,8 @@
 import { deadline } from './deadline';
 
 export type SessionRole = 'owner' | 'tester' | 'local';
-export interface SessionUser { id: string; role: SessionRole; name: string }
+/** `consented`: the person has accepted the owner-access notice (kept on the server, for the person, not the device) */
+export interface SessionUser { id: string; role: SessionRole; name: string; consented: boolean }
 export interface SessionInfo { mode: 'local' | 'invite'; user: SessionUser | null }
 
 /** the event every API call raises when the server says «not signed in» (the sign-in screen listens) */
@@ -45,4 +46,5 @@ export const sessionApi = {
   current: () => send<SessionInfo>('GET', '/session'),
   join: (code: string) => send<SessionInfo>('POST', '/join', { code }),
   signOut: () => send<{ ok: true }>('POST', '/logout', {}),
+  consent: () => send<SessionInfo>('POST', '/consent', {}),
 };

@@ -71,7 +71,7 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
                   <ListItem
                     key={p.id}
                     title={p.name}
-                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)}` : 'هنوز وارد نشده'}
+                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)} · ${p.consentedAt ? 'آگاهی از دسترسی تو را پذیرفته' : 'هنوز آگاهی را نپذیرفته'}` : 'هنوز وارد نشده'}
                     trailing={(
                       <span className="flex flex-wrap gap-inline-xs">
                         <Button size="sm" variant="ghost" iconStart="RefreshCw" disabled={busy} onClick={() => void replace(p)}>لینک تازه</Button>

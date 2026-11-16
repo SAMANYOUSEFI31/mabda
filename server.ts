@@ -8,7 +8,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createApp } from './server/app.ts';
+import { createApp, proxyHopsFrom } from './server/app.ts';
 import { DEFAULT_DB_PATH, openDatabase } from './server/db/database.ts';
 import { resolveAuthMode } from './server/auth/http.ts';
 import { backupDirFor, restoreIfAsked, scheduleDailyBackups } from './server/backup.ts';
@@ -36,7 +36,7 @@ const db = openDatabase();
 const backupDir = backupDirFor(DEFAULT_DB_PATH);
 if (process.env.NODE_ENV === 'production' || process.env.MABDA_BACKUP_DIR) scheduleDailyBackups(db, backupDir);
 const publicOrigin = process.env.MABDA_PUBLIC_URL?.trim() || undefined;
-const { app, aiSessions } = createApp(db, { auth, backupDir, publicOrigin });
+const { app, aiSessions } = createApp(db, { auth, backupDir, publicOrigin, proxyHops: proxyHopsFrom(process.env.MABDA_PROXY_HOPS) });
 console.log(`[auth] ${auth.mode === 'invite' ? 'invite mode: every person signs in with their own link' : 'local mode: one person on this computer'}`);
 
 /** At start-up, verify the configured model ids against the managed key's model list. Never guesses. */

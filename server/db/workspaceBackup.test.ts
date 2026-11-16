@@ -93,5 +93,5 @@ test('restore never stops at a plan (plans are frozen): a new person brings back
   for (let i = 0; i < 3; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
   assert.equal(repo.listWorkspaces('person_e_0005').length, 3);
   for (let i = 3; i < RESTORE_WORKSPACE_CAP; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
-  assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا/.test(e.message) && !/پلن/.test(e.message));
+  assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا داری/.test(e.message) && !/بیش از/.test(e.message) && !/پلن/.test(e.message)); // at exactly 20, not «more than 20»
 });

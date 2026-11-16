@@ -11,14 +11,15 @@ import express from 'express';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type Database from 'better-sqlite3';
 import { Accounts, AuthError, OWNER_ID, sha256 } from './accounts.ts';
-import type { Role } from './accounts.ts';
+import type { Account, Role } from './accounts.ts';
 
 /** the one user of the local mode (also the id that existing single-user databases already use) */
 export const LOCAL_USER = 'local';
 export const SESSION_COOKIE = 'mabda_session';
 
 export type AuthMode = { mode: 'local' } | { mode: 'invite'; ownerCode: string };
-export interface RequestUser { id: string; role: Role | 'local'; name: string }
+/** `consented`: a tester has accepted the owner-access notice (always true for the owner and the one local person) */
+export interface RequestUser { id: string; role: Role | 'local'; name: string; consented: boolean }
 
 declare module 'express-serve-static-core' {
   interface Request { mabdaUser?: RequestUser }
@@ -108,9 +109,11 @@ const cookie = (req: Request, value: string, maxAge: number) =>
 const sameSecret = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(sha256(a), 'hex'), Buffer.from(sha256(b), 'hex'));
 
 /**
- * Installs sign-in on the app. Routes it owns: POST /api/join (link code → cookie), GET /api/session, POST /api/logout.
+ * Installs sign-in on the app. Routes it owns: POST /api/join (link code → cookie), GET /api/session, POST /api/logout, POST /api/consent.
  * Everything else under /api gets `req.mabdaUser` or a 401.
  */
+const toUser = (a: Account): RequestUser => ({ id: a.id, role: a.role, name: a.name, consented: a.role === 'owner' || !!a.consentedAt });
+
 export function installAuth(app: express.Express, db: Database.Database, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
   const accounts = new Accounts(db, opts.clock);
   const ipKey = (req: Request) => req.ip ?? 'unknown';
@@ -118,7 +121,7 @@ export function installAuth(app: express.Express, db: Database.Database, mode: A
   app.use('/api', sameOriginOnly(opts.publicOrigin));
 
   if (mode.mode === 'local') {
-    app.use('/api', (req, _res, next) => { req.mabdaUser = { id: LOCAL_USER, role: 'local', name: '' }; next(); });
+    app.use('/api', (req, _res, next) => { req.mabdaUser = { id: LOCAL_USER, role: 'local', name: '', consented: true }; next(); });
     app.get('/api/session', (req, res) => { res.json({ mode: 'local', user: req.mabdaUser }); });
     return { accounts };
   }
@@ -136,12 +139,12 @@ export function installAuth(app: express.Express, db: Database.Database, mode: A
     accounts.endSession(old);
     const s = accounts.startSession(account.id);
     res.setHeader('Set-Cookie', cookie(req, s.token, s.maxAgeSeconds));
-    res.json({ mode: 'invite', user: { id: account.id, role: account.role, name: account.name } });
+    res.json({ mode: 'invite', user: toUser(account) });
   });
 
   app.use('/api', (req, _res, next) => {
     const a = accounts.bySession(readCookie(req, SESSION_COOKIE));
-    if (a) req.mabdaUser = { id: a.id, role: a.role, name: a.name };
+    if (a) req.mabdaUser = toUser(a);
     next();
   });
   app.get('/api/session', (req, res) => { res.json({ mode: 'invite', user: req.mabdaUser ?? null }); });
@@ -154,6 +157,11 @@ export function installAuth(app: express.Express, db: Database.Database, mode: A
     if (req.path === '/health') return next();
     if (!req.mabdaUser) return void res.status(401).json({ error: { code: 'unauthenticated', message: 'برای دیدن داده‌ها اول با لینک دعوت شخصی‌ات وارد شو.' } });
     next();
+  });
+  // informed consent is stored on the person (not on one device), so the owner can see who has accepted
+  app.post('/api/consent', (req, res) => {
+    const a = accounts.consent(req.mabdaUser!.id);
+    res.json({ mode: 'invite', user: a ? toUser(a) : req.mabdaUser });
   });
   return { accounts };
 }

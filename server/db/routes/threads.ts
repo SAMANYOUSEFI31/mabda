@@ -12,13 +12,13 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
   const { repo, ai, router, scopeOf, body, wrap, deps } = ctx;
   router.post('/workspaces/:wid/threads/:nodeId/turn', wrap(async (req, res) => {
     const s = scopeOf(req);
-    if (!deps.source) throw new RepoError('invalid', 'منبع Context برای گفتگوی متمرکز تنظیم نشده است.');
+    if (!deps.sourceFor) throw new RepoError('invalid', 'منبع Context برای گفتگوی متمرکز تنظیم نشده است.');
     const node = repo.listNodes(s).find((n) => n.id === req.params.nodeId);
     if (!node) throw new RepoError('not_found', 'بخش پیدا نشد.');
     const message = String(body(req).message ?? '').trim();
     if (!message) throw new RepoError('invalid', 'پیام خالی است.');
     const history = (Array.isArray(body(req).history) ? body(req).history : []).filter((m: any) => m && typeof m.content === 'string').map((m: any) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
-    const ctx = deps.source.forChat(s.workspaceId, { scopeNodeId: node.id, message, threadOnly: true });
+    const ctx = deps.sourceFor(s.userId).forChat(s.workspaceId, { scopeNodeId: node.id, message, threadOnly: true });
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.threadTurn(aiUserOf(req), { message, nodeId: node.id, nodeLabel: node.label, contextList: ctx.contextList ?? [], nodeLabels: ctx.nodeLabels, excerpts: ctx.excerpts, history }, ctl.signal);
