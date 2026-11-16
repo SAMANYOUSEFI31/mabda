@@ -68,7 +68,7 @@ export interface ThoughtDerivation {
 }
 
 export interface ThoughtHistoryEntry {
-  kind: 'created' | 'revision' | 'reclassification' | 'resolved' | 'derived' | 'about_updated' | 'source_line_deleted' | 'source_note_deleted';
+  kind: 'created' | 'revision' | 'reclassification' | 'resolved' | 'derived' | 'about_updated' | 'source_line_deleted' | 'source_note_deleted' | 'moved';
   at: string;
   actor: string;
   details: {
@@ -80,6 +80,9 @@ export interface ThoughtHistoryEntry {
     objectId?: string;
     sourceNoteId?: string;
     sourceQuote?: string;
+    /** «moved»: the section before and after */
+    beforeNodeId?: string;
+    afterNodeId?: string;
   };
 }
 

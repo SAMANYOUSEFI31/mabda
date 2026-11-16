@@ -16,9 +16,9 @@ const NodeDialogs = lazyNamed(() => import('../../components/structure/NodeDialo
 const QuickStartDialog = lazyNamed(() => import('../../components/structure/QuickStartDialog'), 'QuickStartDialog');
 const StarterDialog = lazyNamed(() => import('../../components/structure/StarterDialog'), 'StarterDialog');
 
-export type StructureDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'ensureLibrarySpec' | 'handleApplyStarter' | 'handleCreateObjects' | 'handleDeleteSamples' | 'handleSaveProposals' | 'handleSaveTemplate' | 'handleThoughtSectioned' | 'isOnboardingOpen' | 'isStarterOpen' | 'nodeDialog' | 'nodeOp' | 'nodes' | 'openThinkingSpace' | 'patch' | 'persistDeliverable' | 'persistLedger' | 'reload' | 'revealWhenThere' | 'setActiveTab' | 'setContextViewMode' | 'setIsOnboardingOpen' | 'setIsStarterOpen' | 'setLedger' | 'setNodeDialog' | 'setStatus' | 'setTemplateDraft' | 'stale' | 'templateDraft' | 'toast' | 'wid' | 'workspaceContexts'>;
+export type StructureDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'ensureLibrarySpec' | 'handleApplyStarter' | 'handleCreateObjects' | 'handleDeleteSamples' | 'handleSaveProposals' | 'handleSaveTemplate' | 'handleThoughtSectioned' | 'isOnboardingOpen' | 'isStarterOpen' | 'nodeDialog' | 'nodeOp' | 'nodes' | 'openThinkingSpace' | 'patch' | 'persistDeliverable' | 'persistLedger' | 'reload' | 'revealWhenThere' | 'setActiveTab' | 'setContextViewMode' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsStarterOpen' | 'setLedger' | 'setNodeDialog' | 'setStatus' | 'setTemplateDraft' | 'stale' | 'templateDraft' | 'toast' | 'wid' | 'workspaceContexts'>;
 
-export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApplyStarter, handleCreateObjects, handleDeleteSamples, handleSaveProposals, handleSaveTemplate, handleThoughtSectioned, isOnboardingOpen, isStarterOpen, nodeDialog, nodeOp, nodes, openThinkingSpace, patch, persistDeliverable, persistLedger, reload, revealWhenThere, setActiveTab, setContextViewMode, setIsOnboardingOpen, setIsStarterOpen, setLedger, setNodeDialog, setStatus, setTemplateDraft, stale, templateDraft, toast, wid, workspaceContexts }: StructureDialogsProps) {
+export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApplyStarter, handleCreateObjects, handleDeleteSamples, handleSaveProposals, handleSaveTemplate, handleThoughtSectioned, isOnboardingOpen, isStarterOpen, nodeDialog, nodeOp, nodes, openThinkingSpace, patch, persistDeliverable, persistLedger, reload, revealWhenThere, setActiveTab, setContextViewMode, setIsMemoryOpen, setIsOnboardingOpen, setIsStarterOpen, setLedger, setNodeDialog, setStatus, setTemplateDraft, stale, templateDraft, toast, wid, workspaceContexts }: StructureDialogsProps) {
   return (
     <>
     <Deferred when={!!nodeDialog}><NodeDialogs
@@ -56,11 +56,13 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
       onClose={() => setIsOnboardingOpen(false)}
       workspaceId={wid}
       onImported={(created, ledger) => patch((d) => ({ ...d, objects: [...created.slice().reverse(), ...d.objects], ledger }))}
-      onCreateObjects={(items) => { ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }}
+      onCreateObjects={(items) => { if (!data?.workspace.purpose || data.workspace.purpose === 'work') ensureLibrarySpec('main_positioning'); return handleCreateObjects(items); }} // a work workstream only in a work space
       onConfirmMany={async (ids) => { for (const id of ids) await setStatus(id, 'Confirmed'); }}
       nodes={nodes}
       onGoToNode={(nodeId) => { setActiveTab('context'); setContextViewMode('doc'); revealWhenThere(`node-${nodeId}`); }}
       onOpenThinking={() => openThinkingSpace()}
+      purpose={data?.workspace.purpose}
+      onOpenDocumentImport={() => { setIsOnboardingOpen(false); setActiveTab('context'); setIsMemoryOpen(true); }}
       onSampleDone={(firstDeliverable) => {
         ensureLibrarySpec('main_positioning');
         void (async () => {

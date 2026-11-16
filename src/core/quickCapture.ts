@@ -41,6 +41,21 @@ export function findExactDuplicate(text: string, thoughts: Thought[], objects: C
   return null;
 }
 
+const words = (text: string) => new Set(normalizeForDuplicate(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+const overlap = (a: Set<string>, b: Set<string>) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / (a.size + b.size - n || 1); };
+
+/** «شاید تکراری باشد» بدون هیچ مدل: سه‌چهارم واژه‌ها مشترک (Jaccard ≥ ۰٫۷۵) و دست‌کم سه واژه. فقط یک اشاره است؛ چیزی را نمی‌بندد. */
+export function findNearDuplicate(text: string, thoughts: Thought[], objects: ContextObject[]): ExactDuplicate | null {
+  const w = words(text);
+  if (w.size < 3 || findExactDuplicate(text, thoughts, objects)) return null;
+  for (const t of thoughts) if (t.status === 'open' && overlap(w, words(t.text)) >= 0.75) return { kind: 'thought', id: t.id, text: t.text };
+  for (const o of objects) {
+    if (o.status === 'Archived' || o.status === 'Superseded') continue;
+    if (overlap(w, words(o.content)) >= 0.75) return { kind: 'object', id: o.id, text: o.title };
+  }
+  return null;
+}
+
 /** بخش فعلی اگر هنوز در درخت هست؛ وگرنه '' یعنی «تازه‌ها» (جا بعداً مشخص می‌شود) */
 export function defaultSectionFor(currentNodeId: string | null | undefined, nodes: TreeNode[]): string {
   return currentNodeId && nodes.some((n) => n.id === currentNodeId) ? currentNodeId : '';

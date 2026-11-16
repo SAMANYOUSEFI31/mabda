@@ -7,6 +7,7 @@
 import type { ContextObject, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
 import { byOrder, childrenOf, subtreeIds } from './nodeTree';
 import { isActiveContext } from './contextStatus';
+import { isExpired } from './validity';
 
 const TYPE_FA: Record<ContextType, string> = { Fact: 'واقعیت', Decision: 'تصمیم', Constraint: 'خط قرمز' };
 const STATUS_FA: Record<ContextStatus, string> = {
@@ -27,7 +28,14 @@ export interface DocOptions {
   relationships?: ContextRelationship[];
   /** the last approval of each object (see versionHistory): «آخرین تأیید: نسخهٔ N» is added when it is not the current version */
   approvals?: Record<string, { version: number }>;
+  /** when validity is judged (default: now) */
+  now?: Date | string | number;
 }
+
+/** the document is the truth: approved knowledge and approved knowledge that needs a look, still valid. A suggestion or an
+ * expired item is not truth, so it is not written into a document someone copies or downloads (the tree view reads the same). */
+const inDocument = (o: ContextObject, now: Date | string | number | undefined): boolean =>
+  (o.status === 'Confirmed' || o.status === 'Needs Review') && !isExpired(o, now ?? Date.now());
 
 interface Ctx extends DocOptions { outline: OutlineItem[]; all: ContextObject[]; withChildren: boolean }
 
@@ -54,7 +62,7 @@ function nodeSection(node: TreeNode, nodes: TreeNode[], objects: ContextObject[]
   out.push(heading(level, node.label), '');
   ctx.outline.push({ id: nodeAnchor(node.id), level: Math.min(6, level), text: node.label, kind: 'node', refId: node.id });
   if (node.description) out.push(`> ${node.description}`, '');
-  const own = objects.filter((o) => o.nodeId === node.id && isActiveContext(o));
+  const own = objects.filter((o) => o.nodeId === node.id && inDocument(o, ctx.now));
   if (own.length === 0 && (!ctx.withChildren || childrenOf(nodes, node.id).length === 0)) out.push('_هنوز چیزی در این بخش ثبت نشده است._', '');
   for (const o of own) {
     out.push(heading(level + 1, o.title), '');
@@ -73,7 +81,7 @@ export interface ContextDoc { markdown: string; outline: OutlineItem[] }
 export function contextDoc(input: { nodes: TreeNode[]; objects: ContextObject[]; nodeId?: string; title?: string; ownOnly?: boolean } & DocOptions): ContextDoc {
   const { nodes, objects, nodeId, title } = input;
   const out: string[] = [];
-  const ctx: Ctx = { outline: [], all: objects, withChildren: !input.ownOnly, refs: input.refs, relationships: input.relationships, approvals: input.approvals };
+  const ctx: Ctx = { outline: [], all: objects, withChildren: !input.ownOnly, refs: input.refs, relationships: input.relationships, approvals: input.approvals, now: input.now };
   if (nodeId) {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { markdown: '', outline: [] };
@@ -98,13 +106,13 @@ export interface DocTab { id: string; nodeId: string; label: string; /** the roo
  * Tabs = the first-level sections. With one root (the usual tree) they are the root's children; the root's own objects get a
  * leading «کلیات» tab only if it has any. With several roots, each root is a tab.
  */
-export function docTabs(nodes: TreeNode[], objects: ContextObject[]): DocTab[] {
+export function docTabs(nodes: TreeNode[], objects: ContextObject[], now?: Date | string | number): DocTab[] {
   const roots = childrenOf(nodes, undefined).sort(byOrder);
   if (roots.length !== 1) return roots.map((r) => ({ id: r.id, nodeId: r.id, label: r.label }));
   const root = roots[0];
   const kids = childrenOf(nodes, root.id).sort(byOrder).map((k) => ({ id: k.id, nodeId: k.id, label: k.label }));
   if (!kids.length) return [{ id: root.id, nodeId: root.id, label: root.label }];
-  const hasOwn = objects.some((o) => o.nodeId === root.id && isActiveContext(o));
+  const hasOwn = objects.some((o) => o.nodeId === root.id && inDocument(o, now));
   return hasOwn ? [{ id: root.id, nodeId: root.id, label: 'کلیات', own: true }, ...kids] : kids;
 }
 

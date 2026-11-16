@@ -127,11 +127,12 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 onArchive={onArchive}
                 onDelete={onDelete}
               />
-              <div className="flex flex-wrap items-center justify-end">
+              {/* reading knowledge out of an output needs the managed AI: with it off the button is not offered (no dead end) */}
+              {managedEnabled && <div className="flex flex-wrap items-center justify-end">
                 <Button variant="secondary" size="sm" iconStart="FolderInput" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
                   پیشنهاد دانش از این خروجی
                 </Button>
-              </div>
+              </div>}
             </div>
           ))}
         </div>

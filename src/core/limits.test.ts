@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { LIMITS, chatCountToday, checkChatFairUse, fileQuotaCheck, meters, objectLimitMessage, objectsRemaining, workspaceLimitMessage } from './limits';
+import { LIMITS, chatCountToday, checkChatFairUse, fileQuotaCheck, meters, objectLimitMessage, objectsRemaining, storageAllows, storageLimitMessage, workspaceLimitMessage } from './limits';
 
 test('usage meters: ratio, near-limit and exceeded, read from LIMITS', () => {
   const m = meters({ objects: LIMITS.maxObjects - 1, fileTokens: LIMITS.fileTokensPerMonth, judgmentsToday: 10, coachToday: LIMITS.coachPerDay });
@@ -59,4 +59,12 @@ test('no plan, price or credit concept is left in the product code (subscription
     for (const b of banned) if (b.test(src)) bad.push(`${f}: ${b}`);
   }
   assert.deepEqual(bad, []);
+});
+
+test('the per-person text cap counts across workspaces; shrinking is always allowed; the message is a way out, not a purchase (#63 audit carry-over)', () => {
+  assert.equal(storageAllows(LIMITS.storedTextPerPerson - 10, 10), true);
+  assert.equal(storageAllows(LIMITS.storedTextPerPerson - 10, 11), false);
+  assert.equal(storageAllows(LIMITS.storedTextPerPerson + 999, -5), true);
+  assert.match(storageLimitMessage(), /حذف کن/);
+  assert.doesNotMatch(storageLimitMessage(), /پلن|ارتقا|اشتراک|اعتبار|خرید/);
 });

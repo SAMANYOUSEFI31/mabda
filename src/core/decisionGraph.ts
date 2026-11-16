@@ -168,7 +168,7 @@ export interface FlipFlop { id: string; times: number }
 
 /**
  * Soft warning: a decision that has been REPLACED many times (counted from the Change log: `superseded` records, followed
- * back along the chain of replacements). Never blocks anything.
+ * back along the chain of replacements) or changed in place with a reason given each time. Never blocks anything.
  */
 export function flipFlops(objects: ContextObject[], changes: ContextChange[], min = 3): FlipFlop[] {
   const predecessors = new Map<string, string[]>(); // replacement → what it replaced
@@ -182,9 +182,12 @@ export function flipFlops(objects: ContextObject[], changes: ContextChange[], mi
     seen.add(id);
     return Math.max(0, ...(predecessors.get(id) ?? []).map((p) => 1 + depth(p, seen)));
   };
+  // a decision can also be changed in place: an edit of its text that carries a reason is a deliberate change (a typo fix carries none)
+  const reasonedEdits = new Map<string, number>();
+  for (const c of changes) if (c.kind === 'edited' && c.reason?.trim() && isContentChange(c)) reasonedEdits.set(c.objectId, (reasonedEdits.get(c.objectId) ?? 0) + 1);
   return objects
     .filter(isActiveContext)
-    .map((o) => ({ id: o.id, times: depth(o.id, new Set()) }))
+    .map((o) => ({ id: o.id, times: depth(o.id, new Set()) + (o.type === 'Decision' ? reasonedEdits.get(o.id) ?? 0 : 0) }))
     .filter((x) => x.times >= min)
     .sort((a, b) => b.times - a.times || a.id.localeCompare(b.id));
 }

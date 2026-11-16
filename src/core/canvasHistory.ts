@@ -10,7 +10,7 @@ export type CanvasAction =
   | { type: 'setDependencies'; objectId: string; targetIds: string[] }
   | { type: 'moveNoteNode'; noteId: string; nodeId: string }
   | { type: 'removeOverride'; objectId: string; targetId: string }
-  | { type: 'addOverride'; objectId: string; targetId: string }
+  | { type: 'addOverride'; objectId: string; targetId: string; /** the reason given the first time: the server requires one, so a redo sends it again */ reason: string }
   | { type: 'moveNote'; noteId: string; x: number; y: number }
   | { type: 'placeObject'; objectId: string; x: number; y: number }
   | { type: 'unplaceObject'; objectId: string };

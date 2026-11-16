@@ -10,7 +10,7 @@ import { dataApi, DataApiError } from '../../services/dataApi';
 import { asAiError, generateDeliverableApi } from '../../services/apiClient';
 import { useAiStatus } from '../../services/aiStatus';
 import { AiErrorNotice } from '../shared/AiNotices';
-import { quickStartSummary } from '../../core/quickStartSummary';
+import { quickStartQuestions, quickStartSummary } from '../../core/quickStartSummary';
 import { Alert, Badge, Button, Checkbox, Dialog, Markdown, OptionCard, Progress, Select, Spinner, TextField, Textarea, TypeBadge, formatNumber, useToast } from '../../ui';
 import { clientId } from '../../core/ids';
 
@@ -28,17 +28,14 @@ interface Props {
   onGoToNode: (nodeId: string) => void;
   /** the suggestions that are not approved yet wait in the thinking space */
   onOpenThinking: () => void;
+  /** with the managed AI off, pasted text goes through the deterministic document import (cut by headings and length, all as suggestions) */
+  onOpenDocumentImport: () => void;
+  /** what the space is for: the questions match it (a personal space is never asked about customers) */
+  purpose?: 'personal' | 'work' | 'project' | 'empty';
 }
 
 type Path = 'text' | 'memory' | 'questions';
 const SOURCES = ['ChatGPT', 'Claude', 'Gemini', 'ابزار دیگر'];
-const QUESTIONS: Array<{ key: string; label: string; type: ContextDraft['type']; title: string; nodeId: string; multiline?: boolean }> = [
-  { key: 'domain', label: 'روی چه کاری کار می‌کنی؟', type: 'Fact', title: 'حوزهٔ کسب‌وکار و تخصص', nodeId: 'business' },
-  { key: 'audience', label: 'مخاطب اصلی تو کیست؟', type: 'Decision', title: 'مخاطب اصلی', nodeId: 'business' },
-  { key: 'problem', label: 'بزرگ‌ترین دردِ مشتری‌ات چیست؟', type: 'Fact', title: 'معضل اصلی مخاطب', nodeId: 'business', multiline: true },
-  { key: 'value', label: 'چطور آن درد را حل می‌کنی؟', type: 'Decision', title: 'پیشنهاد ارزش و راه‌حل', nodeId: 'product', multiline: true },
-  { key: 'difference', label: 'چه چیزی تو را از بقیه جدا می‌کند؟', type: 'Fact', title: 'تمایز کلیدی', nodeId: 'brand' },
-];
 
 /**
  * «شروع سریع»: the shortest road from nothing to a first better AI answer — paste text, paste another AI's memory, or answer up to
@@ -47,7 +44,8 @@ const QUESTIONS: Array<{ key: string; label: string; type: ContextDraft['type'];
  */
 export const QuickStartDialog: React.FC<Props> = (props) => (props.open ? <Wizard {...props} /> : null);
 
-const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, nodes, onGoToNode, onOpenThinking }) => {
+const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObjects, onConfirmMany, onSampleDone, nodes, onGoToNode, onOpenThinking, onOpenDocumentImport, purpose }) => {
+  const QUESTIONS = quickStartQuestions(purpose);
   const ai = useAiStatus();
   const toast = useToast();
   const [step, setStep] = useState<'choose' | 'input' | 'review' | 'pack'>('choose');
@@ -159,8 +157,9 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
 
         {step === 'choose' && (
           <div className="flex flex-col gap-stack-sm">
-            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی، از کار یا زندگی" onClick={() => { setPath('text'); setStep('input'); }} />
-            <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه دربارهٔ تو یاد گرفته‌اند" onClick={() => { setPath('memory'); setStep('input'); }} />
+            <OptionCard title="متن یا یادداشت‌هایم را می‌چسبانم" description="هر متنی، از کار یا زندگی" onClick={() => { if (ai.managedEnabled) { setPath('text'); setStep('input'); } else onOpenDocumentImport(); }} />
+            {/* another tool's memory is read by the managed AI: with it off this road is not offered */}
+            {ai.managedEnabled && <OptionCard title="حافظهٔ ChatGPT یا Claude را می‌چسبانم" description="هرچه دربارهٔ تو یاد گرفته‌اند" onClick={() => { setPath('memory'); setStep('input'); }} />}
             <OptionCard title="به چند سؤال کوتاه جواب می‌دهم" description="حداکثر پنج سؤال کوتاه" onClick={() => { setPath('questions'); setStep('input'); }} />
           </div>
         )}

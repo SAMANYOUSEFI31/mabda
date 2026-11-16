@@ -321,7 +321,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       else if (a.type === 'setDependencies') await p.onSetDependencies(a.objectId, a.targetIds);
       else if (a.type === 'moveNoteNode') await p.onMoveNoteNode?.(a.noteId, a.nodeId);
       else if (a.type === 'removeOverride') await p.onRemoveOverride?.(a.objectId, a.targetId);
-      else if (a.type === 'addOverride') await p.onOverride?.(a.objectId, a.targetId);
+      else if (a.type === 'addOverride') await p.onOverride?.(a.objectId, a.targetId, a.reason);
       else if (a.type === 'moveNote') p.onMoveNote(a.noteId, a.x, a.y);
       else if (a.type === 'placeObject') await p.onPlaceObject(a.objectId, a.x, a.y);
       else await p.onUnplaceObject(a.objectId);
@@ -433,7 +433,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         await p.onConnect({ fromId: opt.fromId, toId: opt.toId, type: 'supersedes', ...reasonPart, confirmed: true });
       } else if (p.onOverride) {
         await p.onOverride(opt.fromId, opt.toId, why || undefined);
-        push({ label: 'کنار گذاشتن', undo: [{ type: 'removeOverride', objectId: opt.fromId, targetId: opt.toId }], redo: [{ type: 'addOverride', objectId: opt.fromId, targetId: opt.toId }] });
+        push({ label: 'کنار گذاشتن', undo: [{ type: 'removeOverride', objectId: opt.fromId, targetId: opt.toId }], redo: [{ type: 'addOverride', objectId: opt.fromId, targetId: opt.toId, reason: why }] });
       }
       toast.show({ intent: 'success', message: opt.type === 'supersedes' ? 'جایگزین شد؛ مورد قبلی در تاریخچه می‌ماند.' : 'وصل شد. با «واگرد» برمی‌گردد.' });
       setConnect(null); setConnectFrom(null); setConnectMode(false);

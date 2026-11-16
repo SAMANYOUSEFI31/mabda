@@ -112,3 +112,10 @@ test('needsReview: a relation to a suggestion (Proposed) does not make truth «n
   const approved = [obj('A'), obj('B'), obj('C')];
   assert.deepEqual([...needsReview(approved, rels, edited).keys()], ['C'], 'once B is approved the same relation is real');
 });
+
+test('flipFlops: a decision changed again and again by direct edits WITH a reason counts too; a typo fix (no reason) does not (algorithm review #9)', () => {
+  const edit = (id: string, at: string, reason?: string): ContextChange => ({ ...chg(id, 'edited', at, { content: `نسخه ${at}` }), ...(reason ? { reason } : {}) });
+  const changes = [edit('d', '2026-01-01T00:00:00Z', 'تغییر نظر'), edit('d', '2026-02-01T00:00:00Z', 'دوباره'), edit('d', '2026-03-01T00:00:00Z', 'باز هم'), edit('f', '2026-01-01T00:00:00Z'), edit('f', '2026-02-01T00:00:00Z'), edit('f', '2026-03-01T00:00:00Z')];
+  assert.deepEqual(flipFlops([obj('d'), obj('f')], changes), [{ id: 'd', times: 3 }]);
+  assert.deepEqual(flipFlops([obj('x', { type: 'Fact' })], [edit('x', '2026-01-01T00:00:00Z', 'a'), edit('x', '2026-02-01T00:00:00Z', 'b'), edit('x', '2026-03-01T00:00:00Z', 'c')]), [], 'a fact that is updated is not «changing a decision»');
+});

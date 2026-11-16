@@ -85,6 +85,7 @@ export class DocImportService {
     this.repo.assertWorkspace(s);
     const text = normalizeDocText(String(input.text ?? ''));
     if (!text) throw new RepoError('invalid', 'متن سند خالی است.');
+    this.repo.assertRoom(s.userId, text.length * 3); // the document, its notes and the thoughts read from them
     const hash = hashDocText(text);
     const nodesNow = this.repo.listNodes(s);
     const dup = this.findDuplicate(s, hash);

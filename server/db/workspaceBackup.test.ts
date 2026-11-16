@@ -95,3 +95,20 @@ test('restore never stops at a plan (plans are frozen): a new person brings back
   for (let i = 3; i < RESTORE_WORKSPACE_CAP; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
   assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا داری/.test(e.message) && !/بیش از/.test(e.message) && !/پلن/.test(e.message)); // at exactly 20, not «more than 20»
 });
+
+test('restore keeps a resolved contradiction resolved: the pair key and its order follow the new ids (LOGIC-05)', () => {
+  const { repo, s } = rich();
+  const [a, b] = repo.listObjects(s);
+  repo.savePairJudgment(s, a, b, { conflict: true, reason: 'تناقض', resolution: 'kept' });
+  const backup = JSON.parse(JSON.stringify(exportWorkspace(repo, s, NOW))) as WorkspaceBackup;
+  const restored = restoreWorkspace(repo, 'person_e_0005', backup, NOW);
+  const rs = { userId: 'person_e_0005', workspaceId: restored.id };
+  const sfx = restored.id.slice(backup.workspace.id.length);
+  const [ra, rb] = [a.id + sfx, b.id + sfx];
+  const judged = repo.listPairJudgments(rs);
+  assert.equal(judged.length, 1);
+  assert.equal(judged[0].key, ra < rb ? `${ra}|${rb}` : `${rb}|${ra}`);
+  assert.equal(judged[0].resolution, 'kept');
+  const lo = ra < rb ? a : b; const hi = lo === a ? b : a;
+  assert.deepEqual([judged[0].aVersion, judged[0].bVersion], [lo.version, hi.version]);
+});

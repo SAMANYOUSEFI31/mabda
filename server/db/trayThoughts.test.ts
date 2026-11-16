@@ -90,3 +90,29 @@ test('the same ids: the card of a tray thought is the stored thought (id), and a
   assert.ok(!placed.items.some((i) => i.unplaced && i.noteId === other.id), 'a placed note is not in the tray');
   assert.equal(thinkingSpace({ objects: [], notes: repo.listNotes(s), thoughts, nodes }).thoughts.length, 2, 'the space still lists both');
 });
+
+test('moving a thought card into another section is recorded in the thought history (LOGIC-09)', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک');
+  const t = repo.listThoughts(s)[0];
+  const other = repo.listNodes(s).find((n) => n.id !== 'offer')!.id;
+  repo.moveNoteToNode(s, note.id, other);
+  const moved = repo.getThoughtHistory(s, t.id).entries.find((e) => e.kind === 'moved');
+  assert.ok(moved, 'a «moved» entry');
+  assert.deepEqual([moved!.details.beforeNodeId, moved!.details.afterNodeId], ['offer', other]);
+  repo.moveNoteToNode(s, note.id, other); // the same section again: nothing to record
+  assert.equal(repo.getThoughtHistory(s, t.id).entries.filter((e) => e.kind === 'moved').length, 1);
+});
+
+test('a short line edited in place stays the same thought when the note keeps its number of thoughts (algorithm review #4)', () => {
+  const { repo, s } = fresh();
+  const note = repo.createNote(s, 'offer', '[ایده] قیمت اشتراک ماهانه\n[سؤال] مشتری کیست؟');
+  const before = repo.listThoughts(s).find((t) => t.text.includes('اشتراک'))!;
+  repo.updateNote(s, note.id, '[ایده] قیمت پلن سالانه\n[سؤال] مشتری کیست؟'); // two of three words changed: 20% shared
+  const after = repo.listThoughts(s, { includeResolved: true });
+  assert.equal(after.length, 2, 'no twin');
+  assert.equal(after.find((t) => t.id === before.id)?.text, 'قیمت پلن سالانه');
+  // a line replaced by something unrelated is a new thought (the old one stays, its line gone)
+  repo.updateNote(s, note.id, '[ایده] کارگاه حضوری در اصفهان\n[سؤال] مشتری کیست؟');
+  assert.equal(repo.listThoughts(s, { includeResolved: true }).length, 3);
+});

@@ -166,7 +166,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
-  const [examples, setExamples] = useState<RedlineExample[]>(object?.examples ?? []);
+  const [examples, setExamples] = useState<RedlineExample[]>(object?.draft?.examples ?? object?.examples ?? []); // a waiting draft keeps its examples too
   const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
@@ -232,7 +232,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   // editing the TEXT of confirmed knowledge: the user chooses — keep it as a draft (nothing downstream sees it) or replace the text now
   const confirmedEdit = isEditing && !!object && object.status === 'Confirmed' && !object.sample && !isSupersedingMode;
-  const textChanged = confirmedEdit && (content.trim() !== object!.content.trim() || (title.trim() || guessTitle(content)) !== object!.title);
+  // the examples are part of a red line's text: changing them is a change of the text (draft or replace, like the rest)
+  const examplesChanged = JSON.stringify(cleanExamples(examples) ?? null) !== JSON.stringify(cleanExamples(object?.examples ?? []) ?? null);
+  const textChanged = confirmedEdit && (content.trim() !== object!.content.trim() || (title.trim() || guessTitle(content)) !== object!.title || examplesChanged);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalTitle = title.trim() || guessTitle(content);
@@ -534,12 +536,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             {promote && (() => {
               const eff = scopeEffect(nodes, relationships ?? [], object, promote.to === 'global' ? { kind: 'global' } : { kind: 'node', nodeId: promote.to }, new Date());
               const unchanged = promote.to === 'global' ? object.reach === 'global' : promote.to === object.nodeId && object.reach !== 'global';
+              // a reason is asked only when the REACH changes (to or from «همه‌جا»); a plain move to another branch is tidying, like «در: …» above
+              const reachChanges = promote.to === 'global' || object.reach === 'global';
               return (
                 <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="کجا اعمال شود">
                   <Select label="این دانش در کدام بخش خانه دارد؟" value={promote.to} onChange={(e) => setPromote({ ...promote, to: e.target.value })} options={[{ value: 'global', label: 'همه‌جا' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === object.nodeId && object.reach !== 'global' ? ' (الان)' : ''}` }))]} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
                   <p className="body-sm text-text-default" aria-live="polite" data-testid="scope-effect">{unchanged ? 'همین‌جاست؛ چیزی عوض نمی‌شود.' : eff.sentence}</p>
-                  <Textarea label="دلیل (لازم)" rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
-                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || !promote.reason.trim()} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>انتقال به این جا</Button></div>
+                  <Textarea label={reachChanges ? 'دلیل (لازم)' : 'دلیل (اختیاری)'} rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
+                  <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || (reachChanges && !promote.reason.trim())} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>انتقال به این جا</Button></div>
                 </div>
               );
             })()}

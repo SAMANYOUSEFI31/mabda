@@ -130,6 +130,7 @@ export const objectsMethods = {
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
     if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
+    this.assertRoom(s.userId, (input.title.length + String(input.content ?? '').length) * 2); // the object and its first version
     const promotedThought = input.source?.thoughtId ? this.getThought(s, input.source.thoughtId) : undefined;
     if (input.source?.thoughtId && !promotedThought) throw new RepoError('not_found', 'فکر مبدأ پیدا نشد.');
     if (promotedThought) {
@@ -194,8 +195,9 @@ export const objectsMethods = {
       this.setDraft(s, id, same ? null : { title, content, ...(examples ? { examples } : {}), at: now(), ...(meta?.reason ? { reason: meta.reason } : {}) });
       return this.updateObject(s, id, rest, { ...meta, reason: undefined });
     }
-    // writing the text directly replaces it AND whatever draft was waiting (a draft never survives a direct replace)
-    if (cur.draft && ('content' in patch || 'title' in patch)) this.setDraft(s, id, null);
+    // writing the text (title, text or examples) directly replaces it AND whatever draft was waiting (a draft never survives a
+    // direct replace); archiving or replacing the item ends the edit too (a draft must not wait on something no longer in use)
+    if (cur.draft && ('content' in patch || 'title' in patch || 'examples' in patch || patch.status === 'Archived' || patch.status === 'Superseded')) this.setDraft(s, id, null);
     if (patch.nodeId) this.requireNode(s, patch.nodeId);
     if (patch.type && !CONTEXT_TYPES.includes(patch.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {

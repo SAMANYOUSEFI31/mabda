@@ -222,6 +222,20 @@ export function routeEdges(edges: RouteEdgeInput[], rects: Map<string, Rect>, o:
   const laneOf = new Map<string, number>();
   for (const ids of pair.values()) ids.sort().forEach((id, i) => laneOf.set(id, ids.length === 1 ? 0 : i - (ids.length - 1) / 2));
   const out = new Map<string, Route>();
-  for (const e of live) out.set(e.id, routeEdge(rects.get(e.from)!, rects.get(e.to)!, { obstacles: o.obstacles ?? [...rects.values()], lane: laneOf.get(e.id), slotA: slotOf.get(`${e.id}|a`), slotB: slotOf.get(`${e.id}|b`) }));
+  const route = (e: RouteEdgeInput, lane = laneOf.get(e.id) ?? 0) => routeEdge(rects.get(e.from)!, rects.get(e.to)!, { obstacles: o.obstacles ?? [...rects.values()], lane, slotA: slotOf.get(`${e.id}|a`), slotB: slotOf.get(`${e.id}|b`) });
+  // detours of DIFFERENT pairs can pick the same corridor around the same obstacles: one line on top of another hides which card
+  // goes where. Each detour that would run along a corridor already taken moves one lane further out (a few tries at most).
+  const taken: Array<{ horizontal: boolean; at: number; lo: number; hi: number }> = [];
+  const runs = (r: Route) => r.points.slice(1).map((q, i) => { const p = r.points[i]; const horizontal = Math.abs(p.y - q.y) < 0.01; return { horizontal, at: horizontal ? p.y : p.x, lo: Math.min(horizontal ? p.x : p.y, horizontal ? q.x : q.y), hi: Math.max(horizontal ? p.x : p.y, horizontal ? q.x : q.y) }; }).filter((x) => x.hi - x.lo > STUB * 2);
+  const clashes = (r: Route) => runs(r).some((x) => taken.some((t) => t.horizontal === x.horizontal && Math.abs(t.at - x.at) < LANE_SPACING / 2 && Math.min(t.hi, x.hi) - Math.max(t.lo, x.lo) > 0));
+  for (const e of [...live].sort((p, q) => p.id.localeCompare(q.id))) {
+    let r = route(e);
+    if (r.detour) {
+      const base = laneOf.get(e.id) ?? 0;
+      for (let k = 1; k <= 4 && clashes(r); k++) r = route(e, (base >= 0 ? base + k : base - k));
+      taken.push(...runs(r));
+    }
+    out.set(e.id, r);
+  }
   return out;
 }
