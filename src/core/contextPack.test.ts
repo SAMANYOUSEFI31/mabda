@@ -113,3 +113,12 @@ test('an assumption is never a fact: even Confirmed it sits in its own section w
   assert.ok(!md.includes('«ماهانه» (در تصمیم'), 'only options with a rejection reason are listed');
   assert.deepEqual([pack.counts.confirmed, pack.counts.assumptions, pack.counts.rejected], [2, 2, 1]);
 });
+
+test('CORE-08: a red line in the pack text is also in its trace, even when a facet filter leaves it out of the knowledge', () => {
+  const redLine = o('rl', { type: 'Constraint', title: 'بدون تخفیف', content: 'تخفیف نداریم', nodeId: 'business' });
+  const fact = o('f', { type: 'Fact', facets: ['sales'], nodeId: 'business' });
+  const pack = buildContextPack({ packId: 'p', workspaceName: 'w', nodes: DEFAULT_TREE_NODES, objects: [redLine, fact], facets: ['sales'] });
+  assert.ok(pack.markdown.includes('بدون تخفیف'), 'the red line is in the text');
+  // before: refs held only the facet-filtered knowledge, so editing the red line never marked the output stale
+  assert.deepEqual(pack.refs.map((r) => r.id).sort(), ['f', 'rl']);
+});

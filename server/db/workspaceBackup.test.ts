@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import { migrate } from './migrations.ts';
 import { Repo } from './repo.ts';
 import { applyDemo } from './demo.ts';
-import { exportWorkspace, restoreWorkspace, workspaceTables } from './workspaceBackup.ts';
+import { exportWorkspace, restoreWorkspace, workspaceTables, RESTORE_WORKSPACE_CAP } from './workspaceBackup.ts';
 import type { WorkspaceBackup } from './workspaceBackup.ts';
 
 const NOW = new Date('2026-11-15T08:00:00Z');
@@ -83,4 +83,15 @@ test('restore refuses what it cannot bring back whole, and changes nothing', () 
   // a broken row: the transaction leaves nothing behind
   assert.throws(() => restoreWorkspace(repo, 'person_d_0004', { ...b, tables: { ...b.tables, notes: [{ id: 'n1' }] } }, NOW));
   assert.equal(count(), 0);
+});
+
+test('restore never stops at a plan (plans are frozen): a new person brings back a small-plan workspace several times; only a plain disk guard remains', () => {
+  const { repo, s } = rich();
+  const b = exportWorkspace(repo, s, NOW);
+  const small = { ...b, workspace: { ...b.workspace, planId: 'starter' } };
+  // before: the second restore was refused with «سقف فضا این پلن (1 عدد) پر شده است»
+  for (let i = 0; i < 3; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
+  assert.equal(repo.listWorkspaces('person_e_0005').length, 3);
+  for (let i = 3; i < RESTORE_WORKSPACE_CAP; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
+  assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا/.test(e.message) && !/پلن/.test(e.message));
 });

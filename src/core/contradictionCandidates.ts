@@ -13,9 +13,11 @@
 
 import type { Contradiction, ContextObject, ContextRelationship, TreeNode } from '../types';
 import { ancestorIds } from './nodeTree';
-import { reachOf } from './effectiveContext';
+import { governanceOf } from './coGoverning';
+import { isValidKnowledge } from './validity';
 import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, extractQuantities, jaccard, normalizeFa, titleTokens } from './contextEngine';
+import type { ContradictionContext } from './contextEngine';
 
 export type CandidateReason = 'same_slot' | 'same_node' | 'linked' | 'same_node_same_type' | 'inherits_conflict' | 'number_differs' | 'qualifier_differs';
 
@@ -77,14 +79,9 @@ function inheritedPairs(active: ContextObject[], nodes: TreeNode[]): Array<[numb
   return out;
 }
 
-/** is there a place where both are in force at once? (same section · one is the other's ancestor · either reaches everywhere) */
-export function coGoverning(a: ContextObject, b: ContextObject, ancestors: (nodeId: string) => string[]): boolean {
-  if (reachOf(a) === 'global' || reachOf(b) === 'global') return true;
-  return a.nodeId === b.nodeId || ancestors(a.nodeId).includes(b.nodeId) || ancestors(b.nodeId).includes(a.nodeId);
-}
-
-export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
-  const active = live(objects).filter((o) => o.content.trim().length > 0);
+export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = [], now: Date | string | number = Date.now()): CandidatePair[] {
+  const governs = governanceOf({ objects, nodes, relationships, now });
+  const active = live(objects).filter((o) => o.content.trim().length > 0 && isValidKnowledge(o, now));
   const linked = linkedPairs(active, relationships);
   const linkedSet = new Set(linked.map(([i, j]) => `${i}|${j}`));
   const contentTokens = new Map(active.map((o) => [o.id, titleTokens(o.content)]));
@@ -105,9 +102,9 @@ export function candidatePairs(objects: ContextObject[], limit = MAX_CANDIDATES,
       const a = active[i];
       const b = active[j];
       if (normalizeFa(a.content) === normalizeFa(b.content)) continue; // identical claims agree
-      // two pieces of knowledge can only contradict where BOTH are in force: the same section, a section and its ancestor,
-      // or a «همه‌جا» item (compared with everything). Two sibling sections never govern the same place — unless a person linked them.
-      if (nodes.length && !linkedSet.has(`${index.get(a.id)}|${index.get(b.id)}`) && !coGoverning(a, b, ancestors)) continue;
+      // two pieces of knowledge can only contradict where BOTH govern the same place now (coGoverning.ts: same section, a section
+      // and its ancestor, a «همه‌جا» item, minus exceptions and expired items) — unless a person linked them.
+      if (!linkedSet.has(`${index.get(a.id)}|${index.get(b.id)}`) && !governs(a, b)) continue;
       const sim = jaccard(tokens.get(a.id)!, tokens.get(b.id)!);
       const reasons: CandidateReason[] = [];
 
@@ -145,9 +142,9 @@ export const isFresh = (p: CandidatePair, j: PairJudgment | undefined) => {
 };
 
 /** candidates that still need a judgement (no fresh answer, not already resolved by the user) */
-export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = []): CandidatePair[] {
+export function pairsToJudge(objects: ContextObject[], known: PairJudgment[], limit = MAX_CANDIDATES, relationships: ContextRelationship[] = [], nodes: TreeNode[] = [], now: Date | string | number = Date.now()): CandidatePair[] {
   const byKey = new Map(known.map((j) => [j.key, j]));
-  return candidatePairs(objects, limit, relationships, nodes).filter((p) => {
+  return candidatePairs(objects, limit, relationships, nodes, now).filter((p) => {
     const j = byKey.get(p.key);
     return !(j && (j.resolution || isFresh(p, j)));
   });
@@ -167,11 +164,12 @@ export const REASON_FA: Record<CandidateReason, string> = {
  * What the user has to resolve: the rule-based contradictions (certain numeric / «no discount» conflicts) plus every
  * pair the decision layer called a conflict for the CURRENT versions. A pair the user already resolved never comes back.
  */
-export function unresolvedContradictions(objects: ContextObject[], judgments: PairJudgment[]): Contradiction[] {
+export function unresolvedContradictions(objects: ContextObject[], judgments: PairJudgment[], ctx: ContradictionContext = {}): Contradiction[] {
   const byKey = new Map(judgments.map((j) => [j.key, j]));
   const out: Contradiction[] = [];
   const seen = new Set<string>();
-  for (const c of detectContradictions(objects)) {
+  const governs = ctx.governs ?? governanceOf({ objects, ...ctx });
+  for (const c of detectContradictions(objects, { ...ctx, governs })) {
     const key = pairKey(c.itemA.id, c.itemB.id);
     if (byKey.get(key)?.resolution) continue;
     seen.add(key);
@@ -183,6 +181,7 @@ export function unresolvedContradictions(objects: ContextObject[], judgments: Pa
     const [aId, bId] = j.key.split('|');
     const a = live.get(aId), b = live.get(bId);
     if (!a || !b || a.version !== j.aVersion || b.version !== j.bVersion) continue; // edited since: it will be judged again
+    if (!governs(a, b)) continue; // one expired, or an exception now separates them: they no longer meet anywhere
     out.push({ id: `contra_${aId}_${bId}`, source: 'semantic', itemA: a, itemB: b, reason: j.reason || 'این دو ادعا با هم نمی‌خوانند.', suggestedResolution: 'یکی را نگه دار یا اگر هر دو درست‌اند، بخش‌هایشان را جدا کن.' });
   }
   return out;

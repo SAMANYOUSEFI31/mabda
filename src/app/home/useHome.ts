@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { tehranDayPlus } from '../../core/tehranDate';
 import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
@@ -60,7 +61,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     else if (t.type === 'thinking') openThinkingSpace();
     else reveal('open-thinking'); // «due»
   };
-  const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const plusDays = (n: number) => tehranDayPlus(n); // calendar days in Tehran (core/tehranDate.ts)
   const metrics = data?.metrics ?? [];
   const measurements = data?.measurements ?? [];
   const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);

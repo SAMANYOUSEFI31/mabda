@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import type { ContextObject } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import type { PurgeImpactInfo } from '../../services/dataApi';
-import { Alert, Badge, Button, Checkbox, Dialog, Spinner, TextField, formatNumber } from '../../ui';
+import { Alert, Button, Checkbox, Dialog, Spinner, TextField, formatNumber } from '../../ui';
 
 /**
  * ONE confirm for the big removals (docs/removal.md): what will happen, said in plain words; a tick («می‌فهمم برنمی‌گردد») or typed
@@ -128,6 +128,3 @@ export const PurgeDialog: React.FC<{ workspaceId: string; object: ContextObject 
   );
 };
 
-/** the one phrase for a removal that can be undone, so every «واگرد» toast reads the same */
-export const undoMessage = (what: string, verb: 'حذف' | 'بایگانی' = 'حذف') => `${what} ${verb} شد.`;
-export const BadgeRemoved: React.FC = () => <Badge intent="neutral" icon="Archive">بایگانی‌شده</Badge>;

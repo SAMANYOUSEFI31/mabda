@@ -13,6 +13,7 @@
  * Every object that was left out comes back with its reason, and the user can add it by hand.
  */
 
+import { tehranDay } from './tehranDate';
 import type { ContextChange, ContextObject, ContextRelationship, GapItem, Measurement, Metric, ThoughtKind, TreeNode, UsedContextRef, WorkstreamSpec } from '../types';
 import { isActiveContext } from './contextStatus';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
@@ -417,7 +418,7 @@ function changesSection(changes: NonNullable<AiRequestInput['changes']>, find: (
     const o = find(c.objectId);
     const fields = SHOWN_FIELDS.filter((f) => c.before?.[f] !== undefined || c.after?.[f] !== undefined);
     const diff = fields.map((f) => `  - ${f}: «${safe(val(c.before?.[f]))}» ← «${safe(val(c.after?.[f]))}»`);
-    return [`- \`${c.objectId}\` «${safe(o?.title ?? '')}» — نسخهٔ ${c.fromVersion} به ${c.toVersion}، ${KIND(c)}، ${c.at.slice(0, 10)}`, ...diff].join('\n');
+    return [`- \`${c.objectId}\` «${safe(o?.title ?? '')}» — نسخهٔ ${c.fromVersion} به ${c.toVersion}، ${KIND(c)}، ${tehranDay(c.at)}`, ...diff].join('\n');
   });
   return ['## تغییرهای اخیر (قبل ← بعد)', ...lines].join('\n');
 }

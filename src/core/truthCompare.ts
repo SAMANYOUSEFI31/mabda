@@ -16,6 +16,8 @@
 import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } from '../types';
 import { normalizeFa } from './contextEngine';
 import { reachOf } from './effectiveContext';
+import { isExpired } from './validity';
+import { addDays, jalaliMonthStart, tehranDay, tehranDayEnd, tehranDayStart } from './tehranDate';
 import { subtreeIds } from './nodeTree';
 import { diffWords, isSame } from './textDiff';
 import type { DiffSegment } from './textDiff';
@@ -28,7 +30,8 @@ const REVERTIBLE = ['title', 'content', 'type', 'nodeId', 'status', 'reach', 'va
 type State = Pick<ContextObject, 'title' | 'content' | 'type' | 'nodeId' | 'status' | 'reach' | 'validUntil' | 'assumption' | 'version'>;
 
 const toItem = (o: ContextObject, s: State): TruthItem => ({ id: o.id, title: s.title, content: s.content, type: s.type, nodeId: s.nodeId, reach: reachOf({ type: s.type, reach: s.reach }), version: s.version, assumption: !!s.assumption });
-const inForce = (s: Pick<State, 'status' | 'validUntil'>, atMs: number) => s.status === 'Confirmed' && !(s.validUntil && new Date(s.validUntil).getTime() < atMs);
+// one definition of «expired» (validity.ts): a day-only `validUntil` holds through the end of that day in Tehran
+const inForce = (s: Pick<State, 'status' | 'validUntil'>, atMs: number) => s.status === 'Confirmed' && !isExpired(s, atMs);
 
 /** changes per object, oldest first, built once (the cost is the number of changes, not objects × changes) */
 function indexChanges(changes: ContextChange[]): Map<string, ContextChange[]> {
@@ -220,10 +223,16 @@ export function toMarkdown(c: TruthComparison, nodes: TreeNode[], title: string,
 /** quick presets for the two moments; `milestones` are the moments an approval happened (newest first) */
 export function presetMoments(now: Date, milestones: string[]): { weekAgo: string; lastApproval?: string; startOfMonth: string } {
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  // the first moment of the Jalali month in Tehran (not the Gregorian month in UTC)
   const lastApproval = milestones[0] ? new Date(new Date(milestones[0]).getTime() - 1).toISOString() : undefined;
-  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const startOfMonth = tehranDayStart(jalaliMonthStart(now));
   return { weekAgo, ...(lastApproval ? { lastApproval } : {}), startOfMonth };
 }
+
+/** «از روز X تا روز Y» as two moments: the END of each Tehran day (a picked day includes all of that day, nothing of the next) */
+export const customRange = (fromDay: string, toDay: string): { a: string; b: string } => ({ a: tehranDayEnd(fromDay), b: tehranDayEnd(toDay) });
+/** the days the date fields offer: today (the latest allowed) and the first day of this Jalali month */
+export const compareDays = (now: Date): { today: string; monthStart: string; weekAgo: string } => ({ today: tehranDay(now), monthStart: jalaliMonthStart(now), weekAgo: addDays(tehranDay(now), -7) });
 
 /** when approvals happened (a proposal accepted, a status made Confirmed, a confirmed creation), newest first, one per minute */
 export function approvalMoments(changes: ContextChange[], limit = 8, objects: Array<Pick<ContextObject, 'id' | 'status'>> = []): string[] {

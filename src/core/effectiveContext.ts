@@ -13,6 +13,7 @@
 import type { ContextObject, ContextRelationship, TreeNode } from '../types';
 import { ancestorIds } from './nodeTree';
 import { isActiveContext } from './contextStatus';
+import { isExpired } from './validity';
 
 export type Origin = 'own' | 'inherited' | 'global' | 'overridden' | 'expired';
 
@@ -31,14 +32,7 @@ export const IN_FORCE: ReadonlySet<Origin> = new Set<Origin>(['own', 'inherited'
 
 export const reachOf = (o: Pick<ContextObject, 'type' | 'reach'>): 'global' | 'position' => o.reach ?? (o.type === 'Constraint' ? 'global' : 'position');
 
-const toMs = (d: Date | string | number) => (d instanceof Date ? d.getTime() : typeof d === 'number' ? d : Date.parse(d));
-
-/** `validUntil` is a date (YYYY-MM-DD) or a timestamp; a date is valid through the END of that day */
-export function isExpired(o: Pick<ContextObject, 'validUntil'>, now: Date | string | number): boolean {
-  if (!o.validUntil) return false;
-  const t = /^\d{4}-\d{2}-\d{2}$/.test(o.validUntil) ? Date.parse(`${o.validUntil}T23:59:59.999Z`) : Date.parse(o.validUntil);
-  return Number.isFinite(t) && t < toMs(now);
-}
+export { isExpired } from './validity';
 
 /** an `overrides` edge counts only when its source sits in a strict descendant node of its target and is live and not expired */
 function validOverrides(objects: ContextObject[], nodes: TreeNode[], relations: ContextRelationship[], now: Date | string | number) {

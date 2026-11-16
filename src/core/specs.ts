@@ -68,7 +68,6 @@ export const EMPTY_START: StartTemplate = {
 
 /** what a space is for (audience.md): picks the starting tree, the guide texts and the examples. Absent = work, as before. */
 export type WorkspacePurpose = 'personal' | 'work' | 'project' | 'empty';
-export const WORKSPACE_PURPOSES: WorkspacePurpose[] = ['personal', 'work', 'project', 'empty'];
 export const startTemplateFor = (purpose: WorkspacePurpose | undefined): StartTemplate =>
   purpose === 'personal' ? PERSONAL_START : purpose === 'project' ? PROJECT_START : purpose === 'empty' ? EMPTY_START : DEFAULT_START;
 

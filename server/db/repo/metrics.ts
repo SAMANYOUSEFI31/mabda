@@ -3,6 +3,7 @@
  * Part of the Repo (server/db/repo/index.ts): the methods are mixed into `Repo`, so `this` is the whole Repo and every
  * call and every transaction behaves exactly as when it was one class. See docs/architecture.md → «نقشهٔ پوشه‌ها».
  */
+import { tehranDay } from '../../../src/core/tehranDate.ts';
 import type { Repo } from './index.ts';
 import { ChangeMeta, RepoError, Scope, newId, now } from './shared.ts';
 import { can } from '../../../src/core/entitlements.ts';
@@ -97,7 +98,7 @@ export const metricsMethods = {
     if (typeof i.value !== 'number' || !Number.isFinite(i.value)) throw new RepoError('invalid', 'مقدار باید عدد باشد.');
     const source: MeasurementSource = i.source ?? 'manual';
     if ((source as string) === 'mcp') throw new RepoError('invalid', 'این نوع منشأ فقط برای خواندن داده‌های تاریخی پشتیبانی می‌شود.');
-    const at = i.at ?? now().slice(0, 10);
+    const at = i.at ?? tehranDay();
     if (!isIsoDate(at)) throw new RepoError('invalid', 'تاریخ معتبر نیست.');
     const status: Measurement['status'] = 'Confirmed';
     const note = typeof i.note === 'string' && i.note.trim() ? i.note.trim().slice(0, 300) : undefined;
@@ -111,7 +112,7 @@ export const metricsMethods = {
 
   /** pasted CSV → numbers in one transaction; lines that cannot be read are returned, never guessed */
   addMeasurementsCsv(this: Repo, s: Scope, text: string, meta?: ChangeMeta): { added: Measurement[]; errors: ReturnType<typeof parseMeasurementCsv>['errors'] } {
-    const parsed = parseMeasurementCsv(text, this.listMetrics(s), now().slice(0, 10));
+    const parsed = parseMeasurementCsv(text, this.listMetrics(s), tehranDay());
     const added = this.db.transaction(() => parsed.rows.map((r) => this.addMeasurement(s, { metricId: r.metricId, value: r.value, at: r.at, note: r.note, source: 'csv' }, meta)))();
     return { added, errors: parsed.errors };
   },

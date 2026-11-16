@@ -244,7 +244,9 @@ export const objectsMethods = {
   supersedeObject(this: Repo, s: Scope, oldId: string, input: ObjectInput, meta?: ChangeMeta): { object: ContextObject; previous: ContextObject; impact: ImpactResult } {
     const old = this.getObject(s, oldId);
     if (!old) throw new RepoError('not_found', 'Context پیدا نشد.');
+    // CORE-10: only live knowledge can be replaced; an archived or already replaced item is history
     if (old.status === 'Superseded') throw new RepoError('invalid', 'این مورد قبلاً جایگزین شده است.');
+    if (old.status === 'Archived') throw new RepoError('invalid', 'این مورد بایگانی شده است؛ اول آن را برگردان.');
     this.requireNode(s, input.nodeId);
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const t = now();
@@ -297,6 +299,9 @@ export const objectsMethods = {
     const winner = this.getObject(s, winnerId);
     if (!loser || !winner) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (loserId === winnerId) throw new RepoError('invalid', 'دو مورد یکی نیستند.');
+    // CORE-10: neither side may already be history (a second «جایگزین» would rewrite who replaced it)
+    if (loser.status === 'Superseded' || winner.status === 'Superseded') throw new RepoError('invalid', 'یکی از این دو قبلاً جایگزین شده است.');
+    if (loser.status === 'Archived' || winner.status === 'Archived') throw new RepoError('invalid', 'یکی از این دو بایگانی شده است؛ اول آن را برگردان.');
     const { value, impact } = this.withImpact(s, () => this.db.transaction(() => {
       const t = now();
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(winnerId, t, loserId, s.workspaceId, s.userId);

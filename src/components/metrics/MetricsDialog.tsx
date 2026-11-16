@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { tehranDay } from '../../core/tehranDate';
 import React, { useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricDirection } from '../../types';
 import { decisionMoments, expectationRows, proposedMeasurements, seriesOf, metricsWithoutRecentNumber, parseNumber } from '../../core/metrics';
@@ -27,7 +28,7 @@ interface Props {
   onOpenObject: (o: ContextObject) => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => tehranDay(); // the Tehran day, not the UTC one
 const fmt = (n: number) => formatNumber(n);
 
 /** «شاخص‌ها»: every metric as a line with the decisions' days on it, the quick entry, AI-suggested numbers, expectation versus result. */

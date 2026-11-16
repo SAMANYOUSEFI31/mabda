@@ -8,6 +8,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { CompareMode } from '../../components/knowledge/TruthCompareDialog';
 import { buildInheritNotices } from '../../core/inheritNotice';
 import { buildSearchIndex } from '../../core/globalSearch';
+import { unresolvedContradictions } from '../../core/contradictionCandidates';
 import { buildWeeklyReview, reviewDue } from '../../core/weeklyReview';
 import { flipFlops, needsReview, planDecisions, waitingDecisions } from '../../core/decisionGraph';
 import { orderWaitingByStructure } from '../../core/decisionOrder';
@@ -28,7 +29,9 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const [savedPackCount, setSavedPackCount] = useState(0);
   const [focusNotes, setFocusNotes] = useState<{ nodeId: string; n: number } | null>(null);
   const [focusAsset, setFocusAsset] = useState<{ id: string; n: number } | null>(null);
-  const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, deliverables: (data?.deliverables ?? []).filter((d) => !d.archivedAt), notes: data?.notes ?? [], thoughts: data?.thoughts ?? [], files: data?.files ?? [] }), [nodes, workspaceContexts, data?.deliverables, data?.notes, data?.thoughts, data?.files]);
+  // UX-04: one list of unresolved contradictions for the whole app (home counter, panel, tree, table, detail, search)
+  const contradictions = useMemo(() => unresolvedContradictions(workspaceContexts, data?.pairJudgments ?? [], { nodes, relationships: data?.relationships ?? [] }), [workspaceContexts, data?.pairJudgments, nodes, data?.relationships]);
+  const searchIdx = useMemo(() => buildSearchIndex({ nodes, objects: workspaceContexts, conflicts: contradictions, deliverables: (data?.deliverables ?? []).filter((d) => !d.archivedAt), notes: data?.notes ?? [], thoughts: data?.thoughts ?? [], files: data?.files ?? [] }), [nodes, workspaceContexts, contradictions, data?.deliverables, data?.notes, data?.thoughts, data?.files]);
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') { e.preventDefault(); setPaletteOpen((o) => !o); return; }
@@ -103,10 +106,10 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const markInheritSeen = (key: string) => setInheritSeen((cur) => { const next = [...cur, key].slice(-200); try { localStorage.setItem('mabda.inherit.seen', JSON.stringify(next)); } catch { /* optional */ } return next; });
   const inheritNotices = useMemo(() => buildInheritNotices({ changes: data?.changes ?? [], objects: data?.objects ?? [], nodes, relationships: data?.relationships ?? [], seen: inheritSeen }), [data?.changes, data?.objects, data?.relationships, nodes, inheritSeen]);
   const flips = useMemo(() => flipFlops(data?.objects ?? [], data?.changes ?? []), [data?.objects, data?.changes]);
-  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [], nodes }), [data?.objects, data?.relationships, data?.changes, data?.deliverables, nodes]);
+  const weekly = useMemo(() => buildWeeklyReview({ objects: data?.objects ?? [], relationships: data?.relationships ?? [], changes: data?.changes ?? [], deliverables: data?.deliverables ?? [], nodes, lastReviewAt: data?.weeklyReviewAt }), [data?.objects, data?.relationships, data?.changes, data?.deliverables, nodes, data?.weeklyReviewAt]);
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [compare, setCompare] = useState<{ mode: CompareMode; scopeNodeId?: string } | null>(null);
   const [metricsOpen, setMetricsOpen] = useState(false);
-  return { paletteOpen, setPaletteOpen, usageOpen, setUsageOpen, homeAllOpen, setHomeAllOpen, canvasReveal, setCanvasReveal, savedPackCount, setSavedPackCount, focusNotes, setFocusNotes, focusAsset, setFocusAsset, searchIdx, focusNodeId, goFocus, focusSection, focusScope, revealWhenThere, deliverables, ledgerEntries, stale, reviewNeeds, reviewIdSet, staleIdSet, waitingOrdered, waiting, markInheritSeen, inheritNotices, flips, weekly, weeklyDue, weeklyOpen, setWeeklyOpen, compare, setCompare, metricsOpen, setMetricsOpen };
+  return { contradictions, paletteOpen, setPaletteOpen, usageOpen, setUsageOpen, homeAllOpen, setHomeAllOpen, canvasReveal, setCanvasReveal, savedPackCount, setSavedPackCount, focusNotes, setFocusNotes, focusAsset, setFocusAsset, searchIdx, focusNodeId, goFocus, focusSection, focusScope, revealWhenThere, deliverables, ledgerEntries, stale, reviewNeeds, reviewIdSet, staleIdSet, waitingOrdered, waiting, markInheritSeen, inheritNotices, flips, weekly, weeklyDue, weeklyOpen, setWeeklyOpen, compare, setCompare, metricsOpen, setMetricsOpen };
 }

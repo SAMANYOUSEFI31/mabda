@@ -15,7 +15,7 @@ import { ThinkingList } from '../../components/thinking/ThinkingList';
 import { entitlementsOf } from '../../core/entitlements';
 import { MX } from '../../core/metricsText';
 import { convertedTo } from '../../core/thinkingMarkers';
-import { gapDraft } from '../../core/homeActions';
+import { gapAnswer, gapDraft } from '../../core/homeActions';
 import { CHANGE_KIND_FA } from '../../core/changeLog';
 import { Button, Card, EmptyState, IconButton, Menu, formatNumber } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
@@ -96,10 +96,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}
             onAcceptReview={handleAcceptReview}
             proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
-            onAnswerGap={(gap, answer) => { void handleSaveContextObject({
-              workspaceId: wid, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input',
-              title: gap.label, content: answer, nodeId: gap.nodeId, slotKey: gap.key,
-            }); }}
+            onAnswerGap={(gap, answer) => { void handleSaveContextObject(gapAnswer(gap, answer, wid)); }}
             onOpenStudio={() => setActiveTab('workstreams')}
             onOpenAssets={() => setActiveTab('assets')}
             onOpenProposals={() => document.getElementById('proposal-inbox')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}

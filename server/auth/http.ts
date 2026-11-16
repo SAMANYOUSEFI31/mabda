@@ -28,6 +28,8 @@ export function resolveAuthMode(env: NodeJS.ProcessEnv): AuthMode | { fatal: str
   const code = (env.MABDA_OWNER_CODE ?? '').trim();
   if (code) {
     if (code.length < 20) return { fatal: 'MABDA_OWNER_CODE must be at least 20 characters (let the host generate it).' };
+    // the frozen AI was built for one person: its data routes read one fixed user, so it must never run with several people
+    if (/^(1|on|true|yes)$/i.test(env.MABDA_MANAGED_AI ?? '')) return { fatal: 'MABDA_MANAGED_AI cannot be on together with MABDA_OWNER_CODE: the frozen AI reads a single fixed user. Turn it off.' };
     return { mode: 'invite', ownerCode: code };
   }
   if (env.NODE_ENV === 'production') return { fatal: 'Refusing to start in production without MABDA_OWNER_CODE: without sign-in every visitor would share one person\'s data. See docs/deploy.md.' };
@@ -45,7 +47,9 @@ export function userIdOf(req: Request): string {
  * Headers every response carries. Goal: the page cannot be framed (clickjacking), sniffed into another type, or leak its URL
  * to other sites, and the test copy is not indexed. Standard: OWASP Secure Headers.
  */
-export const securityHeaders: RequestHandler = (_req, res, next) => {
+export const securityHeaders: RequestHandler = (req, res, next) => {
+  // HTTPS only from now on for this address (OWASP Secure Headers); only on a secure request, so a laptop on http stays usable
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -118,6 +122,9 @@ export function installAuth(app: express.Express, db: Database.Database, mode: A
     app.get('/api/session', (req, res) => { res.json({ mode: 'local', user: req.mabdaUser }); });
     return { accounts };
   }
+
+  // a new owner key signs out every device the owner signed in with an older key (only the key's hash is kept)
+  accounts.rememberOwnerKey(sha256(mode.ownerCode));
 
   // ten tries a minute per address is far more than a person needs and far too few to guess a 128-bit code
   app.post('/api/join', rateLimit({ windowMs: 60_000, max: 10, key: ipKey }), express.json({ limit: '2kb' }), (req, res) => {

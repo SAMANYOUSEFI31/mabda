@@ -83,6 +83,15 @@ export function homeSections(input: HomeInput, gaps: Array<Pick<GapItem, 'key' |
   return { waiting, missing, stale, empty: waiting.length + missing.length + stale.length === 0 };
 }
 
+/**
+ * UX-01: the home has two places to answer a gap (the top «چه چیزی کم است» and the full list under «جزئیات بیشتر»). Both make
+ * the SAME knowledge: before, the top made a «واقعیت» and the list below silently made a «تصمیم» for a required gap.
+ */
+export function gapAnswer(gap: Pick<GapItem, 'key' | 'label' | 'nodeId'>, answer: string, workspaceId: string): Omit<ContextObject, 'id' | 'version' | 'createdAt' | 'updatedAt'> {
+  const { id: _id, version: _v, createdAt: _c, updatedAt: _u, ...rest } = gapDraft(gap, workspaceId);
+  return { ...rest, content: answer };
+}
+
 /** answering a gap from home: a new truth already bound to that gap (its slot), in its place, for her to write and save. A gap
  *  says nothing about its kind («حساسیت‌ها» is not a decision), so it starts as «واقعیت», the plainest; she can change it there */
 export function gapDraft(gap: Pick<GapItem, 'key' | 'label' | 'nodeId'>, workspaceId: string, now = new Date().toISOString()): ContextObject {

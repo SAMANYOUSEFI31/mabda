@@ -1,4 +1,5 @@
 import type { AiPlan, AiStreamEvent, ContentBlock, GenerationResult, JobKind, StageUsage, UsageSummary, UserMode } from '../../src/types/ai.ts';
+import { isExpired } from '../../src/core/validity.ts';
 import { modelsConfig } from './config.ts';
 import type { ModelsConfig } from './config.ts';
 import { BlockStreamParser, blocksToMarkdown, normalizeBlock, parseBlocks } from './blocks.ts';
@@ -259,7 +260,7 @@ export class AiService {
       // This exact set is what Context Replay and the impact engine record (id + version).
       const seen = new Set(req.contextObjects.map((c) => c.id));
       // (the server's own source already hands over the list that is IN FORCE at the target node; a client-supplied list is only trusted for global, unexpired Constraints)
-      const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && c.reach !== 'position' && !(c.validUntil && c.validUntil < new Date().toISOString().slice(0, 10)) && !seen.has(c.id))];
+      const all = [...req.contextObjects, ...(req.contextList ?? []).filter((c) => c.status === 'Confirmed' && c.type === 'Constraint' && c.reach !== 'position' && !isExpired(c, new Date()) && !seen.has(c.id))];
       // guardrails = the spec's own rules + every Confirmed Constraint of the workspace (applied automatically)
       const guardrails = [...new Set([...(req.specGuardrails ?? []).map((g) => g.trim()).filter(Boolean), ...all.filter((c) => c.status === 'Confirmed' && c.type === 'Constraint').map((c) => `${c.title}: ${c.content}${exampleSuffix(c.examples)}`)])];
       const task = [

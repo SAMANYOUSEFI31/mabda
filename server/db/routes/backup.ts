@@ -2,6 +2,7 @@
  * A workspace's own backup file and its restore (server/db/workspaceBackup.ts).
  * Registered last on the shared router by routes.ts (new paths; the earlier order is unchanged).
  */
+import { tehranDay } from '../../../src/core/tehranDate.ts';
 import express from 'express';
 import type { RouteContext } from './context.ts';
 import { exportWorkspace, restoreWorkspace } from '../workspaceBackup.ts';
@@ -11,7 +12,7 @@ export function registerBackupRoutes(ctx: RouteContext): void {
   router.get('/workspaces/:wid/backup', wrap((req, res) => {
     const s = scopeOf(req);
     const b = exportWorkspace(repo, s, clock());
-    const name = `mabda-${(b.workspace.slug || 'workspace').replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 40) || 'workspace'}-${b.exportedAt.slice(0, 10)}.json`;
+    const name = `mabda-${(b.workspace.slug || 'workspace').replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 40) || 'workspace'}-${tehranDay(b.exportedAt)}.json`;
     res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
     res.setHeader('Cache-Control', 'no-store');
     res.json(b);

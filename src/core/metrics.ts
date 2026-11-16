@@ -9,9 +9,11 @@
  * Pure.
  */
 
+import { tehranDay } from './tehranDate';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
 
-const day = (iso: string) => iso.slice(0, 10);
+// a day stays a day; a moment becomes its Tehran day (tehranDate.ts), never the UTC one
+const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : tehranDay(iso));
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const isIsoDate = (s: unknown): s is string => {
   if (typeof s !== 'string' || !DATE.test(s)) return false;

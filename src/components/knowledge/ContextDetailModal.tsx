@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { Contradiction } from '../../types';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
@@ -38,6 +39,8 @@ import { dataApi } from '../../services/dataApi';
 import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface ContextDetailModalProps {
+  /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
+  conflicts?: Contradiction[];
   object: ContextObject | null;
   isOpen: boolean;
   onClose: () => void;
@@ -109,6 +112,7 @@ const PROVENANCE_OPTIONS = [
 ];
 
 const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
+  conflicts,
   object,
   onClose,
   onSave,
@@ -221,7 +225,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   const addFacet = (raw: string) => { const f = raw.replace(/\s+/g, ' ').trim().slice(0, 40); if (f) setFacets((l) => (l.includes(f) || l.length >= 8 ? l : [...l, f])); setFacetDraft(''); };
   const facetsFinal = () => { const f = facetDraft.replace(/\s+/g, ' ').trim().slice(0, 40); return f && !facets.includes(f) && facets.length < 8 ? [...facets, f] : facets; };
-  const partners = useMemo(() => conflictPartners(allObjects), [allObjects]);
+  const partners = useMemo(() => conflictPartners(allObjects, conflicts), [allObjects, conflicts]);
   const conflictWith = object ? partners.get(object.id) : undefined;
   const shownState = object ? displayState(object, partners) : 'truth';
   const knownFacets = useMemo(() => [...new Set(allObjects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [allObjects]);

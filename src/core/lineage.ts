@@ -14,7 +14,6 @@ import { CARD_H, CARD_W, GAP_X, PAD } from './swimlane';
 import { badges, extract } from './sceneParts';
 import { isActiveContext } from './contextStatus';
 
-export const LINEAGE_DEPTHS = [1, 2, 3] as const;
 const GAP_Y = 16;
 
 const isPending = (o: ContextObject) => o.status === 'Proposed' || o.status === 'Needs Review';

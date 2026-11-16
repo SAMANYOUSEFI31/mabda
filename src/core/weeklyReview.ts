@@ -12,8 +12,8 @@ import { calculateReadinessAndGaps } from './contextEngine';
 import { needsReview, planDecisions, waitingDecisions } from './decisionGraph';
 import type { ReviewNeed, WaitingDecisions } from './decisionGraph';
 import { assumptionsDue, decisionsDue } from './assumptions';
+import { addDays, daysBetween, tehranDay, tehranDayStart } from './tehranDate';
 
-const DAY_MS = 86_400_000;
 
 export interface WeeklyReviewData {
   digest: Digest;
@@ -28,8 +28,16 @@ export interface WeeklyReviewData {
   total: number;
 }
 
-export function buildWeeklyReview(input: { objects: ContextObject[]; relationships: ContextRelationship[]; changes: ContextChange[]; deliverables: GeneratedDeliverable[]; now?: Date; nodes?: TreeNode[] }): WeeklyReviewData {
-  const digest = buildChangeDigest({ changes: input.changes, objects: input.objects, relationships: input.relationships, deliverables: input.deliverables, now: input.now, days: DEFAULT_DAYS });
+/**
+ * where «what changed» starts: the last review itself (nothing seen in it comes back, nothing after it is missed), or, before
+ * the first review, the start of the Tehran day a week ago (calendar days, not a sliding 7×24 h window)
+ */
+export function reviewWindowStart(lastAt: string | null | undefined, now: Date = new Date()): string {
+  return lastAt ?? tehranDayStart(addDays(tehranDay(now), -DEFAULT_DAYS));
+}
+
+export function buildWeeklyReview(input: { objects: ContextObject[]; relationships: ContextRelationship[]; changes: ContextChange[]; deliverables: GeneratedDeliverable[]; now?: Date; nodes?: TreeNode[]; lastReviewAt?: string | null }): WeeklyReviewData {
+  const digest = buildChangeDigest({ changes: input.changes, objects: input.objects, relationships: input.relationships, deliverables: input.deliverables, now: input.now, days: DEFAULT_DAYS, since: reviewWindowStart(input.lastReviewAt, input.now ?? new Date()) });
   const byId = new Map(input.objects.map((o) => [o.id, o]));
   const reviews = [...needsReview(input.objects, input.relationships, input.changes)]
     .filter(([id]) => byId.has(id))
@@ -44,11 +52,14 @@ export function buildWeeklyReview(input: { objects: ContextObject[]; relationshi
   return { digest, reviews, waiting, structure, due, total: digest.total + reviews.length + waiting.ready.length + waiting.blocked.length + waiting.concurrent.length + due.assumptions.length + due.decisions.length };
 }
 
-/** a quiet «it is time» marker: a week since the last review (or never) AND something to look at */
+/**
+ * a quiet «it is time» marker: a week since the last review (or never) AND something to look at. A week is counted in Tehran
+ * calendar days (Saturday 23:30 → the next Saturday morning is a week), not in milliseconds.
+ */
 export function reviewDue(lastAt: string | null | undefined, data: Pick<WeeklyReviewData, 'total'>, now: Date = new Date()): boolean {
   if (data.total === 0) return false;
   if (!lastAt) return true;
-  return now.getTime() - new Date(lastAt).getTime() >= DEFAULT_DAYS * DAY_MS;
+  return daysBetween(tehranDay(lastAt), tehranDay(now)) >= DEFAULT_DAYS;
 }
 
 export interface WorkstreamReadiness { specId: string; title: string; score: number; status: 'ready' | 'needs_work' | 'blocked'; missing: number }

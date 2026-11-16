@@ -6,7 +6,7 @@
  * Any later «not signed in» from the server (the link was replaced, the person turned off, the sign-in expired) comes back here.
  */
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { EmptyState, ErrorState, PageSkeleton } from '../../ui';
+import { Button, EmptyState, ErrorState, PageSkeleton } from '../../ui';
 import { SIGNED_OUT_EVENT, SessionError, forgetInviteCode, inviteCodeInAddress, sessionApi } from '../../services/session';
 import type { SessionInfo } from '../../services/session';
 
@@ -16,8 +16,17 @@ const SessionContext = createContext<{ session: SessionInfo | null; signOut: () 
 /** the signed-in person and «خروج» (null outside the gate, e.g. in a preview) */
 export const useSession = () => useContext(SessionContext);
 
+/**
+ * Informed consent (principle): a tester learns, before their first use on a device, that this is a test copy and that the
+ * owner can read everything on it (the owner's full download and the server's daily backups). Once per person per device.
+ */
+export const OWNER_ACCESS_NOTICE = 'این نسخهٔ آزمون است. صاحب مبدأ برای نگه‌داشتن پشتیبان به همهٔ داده‌های این نسخه دسترسی دارد، از جمله یادداشت‌های شخصی تو؛ چیزی را بنویس که از دیده شدنش به دست او نگران نیستی.';
+const consentKey = (id: string) => `mabda.consent.${id}`;
+const consented = (id: string) => { try { return localStorage.getItem(consentKey(id)) === '1'; } catch { return false; } };
+
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GateState>({ status: 'checking' });
+  const [, setAck] = useState(0);
 
   const check = useCallback(async () => {
     setState({ status: 'checking' });
@@ -51,6 +60,19 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
     try { await sessionApi.signOut(); } finally { setState({ status: 'out', reason: 'signed_out' }); }
   }, []);
 
+  const user = state.status === 'in' ? state.session.user : null;
+  if (state.status === 'in' && user?.role === 'tester' && !consented(user.id)) {
+    return (
+      <div className="min-h-screen bg-surface-page text-text-default">
+        <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex flex-col gap-stack-md">
+          <h1 className="heading-md">پیش از شروع، {user.name}</h1>
+          <p className="body-md">{OWNER_ACCESS_NOTICE}</p>
+          <p className="body-sm text-text-subtle">دادهٔ تو از دید افراد آزمون دیگر جداست؛ فقط صاحب مبدأ آن را می‌بیند.</p>
+          <div><Button variant="primary" onClick={() => { try { localStorage.setItem(consentKey(user.id), '1'); } catch { /* the notice simply shows again next time */ } setAck((n) => n + 1); }}>فهمیدم، ادامه بده</Button></div>
+        </main>
+      </div>
+    );
+  }
   if (state.status === 'in') return <SessionContext.Provider value={{ session: state.session, signOut }}>{children}</SessionContext.Provider>;
   return (
     <div className="min-h-screen bg-surface-page text-text-default">
@@ -62,7 +84,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
             title={state.reason === 'invalid_link' ? 'این لینک دعوت کار نمی‌کند' : 'برای ورود، لینک دعوت شخصی‌ات را باز کن'}
             description={state.reason === 'invalid_link'
               ? 'شاید لینک عوض شده یا خاموش شده است. از کسی که آن را برایت فرستاده، لینک تازه بخواه و همان را باز کن.'
-              : 'مبدأ رمز ندارد: هر نفر یک لینک شخصی دارد که فقط داده‌های خودش را باز می‌کند. لینکی را که برایت فرستاده‌اند روی همین دستگاه باز کن؛ اگر لینک نداری، از فرستنده بخواه.'}
+              : 'مبدأ رمز ندارد: هر نفر یک لینک شخصی دارد که فقط داده‌های خودش را باز می‌کند. لینکی را که برایت فرستاده‌اند روی همین دستگاه باز کن؛ اگر لینک نداری، از فرستنده بخواه. ' + OWNER_ACCESS_NOTICE}
           />
         )}
       </main>
