@@ -6,7 +6,6 @@
 /** The dialogs of context: packs, AI request, answer import, the thread of a section. Each lazy dialog loads the first time it is opened. */
 
 import { contextDraftFromBlock } from '../../core/blocks';
-import { chatCredits } from '../../core/creditEngine';
 import { dataApi } from '../../services/dataApi';
 import { ChatSession } from '../../types';
 import { Deferred, lazyNamed } from '../lazy';
@@ -29,7 +28,7 @@ export function ContextDialogs({ ai, aiRequest, attempt, data, handleDraftFromIm
       open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} initialThoughtIds={aiRequest?.thoughtIds} thoughts={thinking} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
       sessions={data?.sessions ?? []}
       onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
-      onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, ai.managedEnabled ? chatCredits(false) : 0, false); }}
+      onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, false); }}
       onAddKnowledge={(b) => openContext(contextDraftFromBlock(b, wid))}
       onSaveAsThought={handleSaveAiThought}
       onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }}

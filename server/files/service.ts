@@ -1,8 +1,8 @@
-import type { ContextObject, PlanId, StoredFile } from '../../src/types/index.ts';
+import type { ContextObject, StoredFile } from '../../src/types/index.ts';
 import { chunkText, bm25Rank, selectWithinBudget } from '../../src/core/retrieval.ts';
 import { estimateTokens } from '../../src/core/tokens.ts';
-import { fileProcessingCharge } from '../../src/core/creditEngine.ts';
-import type { FileCharge } from '../../src/core/creditEngine.ts';
+import { fileQuotaCheck } from '../../src/core/limits.ts';
+import type { FileCharge } from '../../src/core/limits.ts';
 import { ledgerEntryFromUsage } from '../../src/core/ledger.ts';
 import type { UsageSummary } from '../../src/types/ai.ts';
 import type { ExtractRequest, ExtractResult } from '../ai/service.ts';
@@ -19,44 +19,35 @@ export const periodOf = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMon
 /** Token budget for file excerpts injected into one request. */
 export const EXCERPT_BUDGET_TOKENS = 3000;
 
-/** what happens past the monthly quota */
-export type OveragePolicy = 'ok' | 'credits' | 'blocked';
-export interface FilePolicy { managed: () => boolean }
+/** what happens past the monthly fair-use quota: processing waits for next month (no credits, no purchase) */
+export type OveragePolicy = 'ok' | 'blocked';
 export interface UploadResult { file: StoredFile; charge: FileCharge; period: string; policy: OveragePolicy }
 export interface ProcessResult {
   file: StoredFile;
   created: ContextObject[];
   charge: FileCharge;
-  /** credits deducted from the workspace */
-  creditCost: number;
   usage: UsageSummary;
   truncated: boolean;
 }
 
-/** Upload → (user sees quota/credits) → one-time processing → chunks + summary + Proposed objects. */
+/** Upload → (user sees the quota) → one-time processing → chunks + summary + Proposed objects. */
 export class FileService {
-  constructor(private readonly repo: Repo, private readonly extract: Extractor, private readonly clock: () => Date = () => new Date(), private readonly policy: FilePolicy = { managed: () => true }) {}
+  constructor(private readonly repo: Repo, private readonly extract: Extractor, private readonly clock: () => Date = () => new Date()) {}
 
   overagePolicy(charge: FileCharge): OveragePolicy {
-    if (charge.withinQuota) return 'ok';
-    if (this.policy.managed()) return 'credits';
-    return 'blocked';
-  }
-
-  private plan(s: Scope): PlanId {
-    return this.repo.getWorkspace(s.userId, s.workspaceId)?.planId ?? 'starter';
+    return charge.withinQuota ? 'ok' : 'blocked';
   }
 
   /** the showcase workspace processes files for free and is never counted against the monthly quota */
   private chargeOf(s: Scope, used: number, tokens: number): FileCharge {
-    const c = fileProcessingCharge(this.plan(s), used, tokens);
-    return this.repo.isDemo(s) ? { ...c, withinQuota: true, excessTokens: 0, credits: 0 } : c;
+    const c = fileQuotaCheck(used, tokens);
+    return this.repo.isDemo(s) ? { ...c, withinQuota: true, excessTokens: 0 } : c;
   }
 
   quota(s: Scope) {
     const period = periodOf(this.clock());
     const used = this.repo.fileUsage(s, period);
-    return { period, used, plan: this.plan(s), ...this.chargeOf(s, used, 0) };
+    return { period, used, ...this.chargeOf(s, used, 0) };
   }
 
   async upload(s: Scope, f: { name: string; mime: string; buffer: Buffer; nodeId?: string }): Promise<UploadResult> {
@@ -85,8 +76,7 @@ export class FileService {
     if (!text) throw new RepoError('invalid', 'متن فایل در دسترس نیست؛ دوباره بارگذاری کن.');
     const period = periodOf(this.clock());
     const charge = this.chargeOf(s, this.repo.fileUsage(s, period), file.tokens);
-    const ws = this.repo.getWorkspace(s.userId, s.workspaceId)!;
-    if (this.overagePolicy(charge) === 'blocked') throw new RepoError('forbidden', 'سهمیهٔ ماهانهٔ پردازش فایل این پلن پر شده است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.');
+    if (this.overagePolicy(charge) === 'blocked') throw new RepoError('forbidden', 'سهمیهٔ ماهانهٔ پردازش فایل این فضا پر شده است؛ ماه بعد ادامه بده.');
 
     this.repo.setFileStatus(s, fileId, 'processing');
     let res: ExtractResult;
@@ -96,24 +86,22 @@ export class FileService {
         nodes: this.repo.listNodes(s).map((n) => ({ id: n.id, label: n.label })), wantSummary: true,
       });
     } catch (e) {
-      // nothing is charged and nothing is counted: the user can retry
+      // nothing is counted: the user can retry
       this.repo.setFileStatus(s, fileId, 'failed', { error: (e as { message?: string }).message ?? 'پردازش ناموفق بود.' });
       throw e;
     }
 
-    const creditCost = this.policy.managed() ? charge.credits : 0;
     const created: ContextObject[] = this.repo.db.transaction(() => {
       this.repo.saveChunks(s, fileId, chunkText(fileId, text));
-      // the plan's object cap: keep what fits (never fail the whole file over it)
+      // the object limit: keep what fits (never fail the whole file over it)
       const objs = res.objects.slice(0, this.repo.objectSlots(s)).map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'file', label: file.name, at: new Date().toISOString() } }));
       const summary = (res.summary ?? 'خلاصه‌ای تولید نشد.') + (res.truncated ? '\n\n(خلاصه و پیشنهادها فقط از بخش ابتدایی فایل ساخته شد؛ کل فایل برای بازیابی قطعه‌بندی شده است.)' : '');
       this.repo.setFileStatus(s, fileId, 'ready', { summary });
       if (!this.repo.isDemo(s)) this.repo.addFileUsage(s, period, file.tokens);
-      if (creditCost > 0) this.repo.saveWorkspace(s.userId, { ...ws, creditsRemaining: Math.max(0, ws.creditsRemaining - creditCost) });
-      this.repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پردازش فایل: ${file.name}`, mode: 'file_processing', creditCost, usage: res.usage, now: this.clock() }));
+      this.repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پردازش فایل: ${file.name}`, mode: 'file_processing', usage: res.usage, now: this.clock() }));
       return objs;
     })();
-    return { file: this.repo.getFile(s, fileId)!, created, charge, creditCost, usage: res.usage, truncated: res.truncated };
+    return { file: this.repo.getFile(s, fileId)!, created, charge, usage: res.usage, truncated: res.truncated };
   }
 
   /** Only the chunks relevant to `query`, inside the token budget. Files that are not `ready` are never used. */

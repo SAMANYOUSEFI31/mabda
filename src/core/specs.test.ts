@@ -55,3 +55,12 @@ test('a new space is created with the workstreams for its kind', () => {
   assert.deepEqual(starterSpecIds('work'), []);
   assert.deepEqual(starterSpecIds('empty'), []);
 });
+
+test('a personal or project space that never chose falls back only to workstreams written for it, never to a work one (UX-02)', () => {
+  for (const purpose of ['personal', 'project'] as const) {
+    const specs = enabledBuiltInSpecs({ purpose });
+    assert.ok(specs.length > 0);
+    assert.ok(specs.every((s) => s.purposes?.includes(purpose)), `${purpose}: ${specs.map((s) => s.id).join(',')}`);
+  }
+  assert.deepEqual(enabledBuiltInSpecs({ purpose: 'empty' }), []);
+});

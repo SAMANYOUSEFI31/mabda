@@ -7,13 +7,12 @@ import type { AiPlan, LedgerEntry, UsageSummary } from '../types';
 
 /**
  * Ledger row from REAL provider usage (token counts and cost come from response metadata and config/models.json
- * on the server — nothing here is estimated). Credits are whatever creditEngine decided.
+ * on the server — nothing here is estimated).
  */
 export function ledgerEntryFromUsage(params: {
   workspaceId: string;
   action: string;
   mode: LedgerEntry['mode'];
-  creditCost: number;
   usage: UsageSummary;
   plan?: AiPlan;
   now?: Date;
@@ -26,7 +25,6 @@ export function ledgerEntryFromUsage(params: {
     workspaceId: params.workspaceId,
     action: params.action,
     mode: params.mode,
-    creditCost: params.creditCost,
     // "input" includes cached tokens; "output" includes reasoning tokens (both are billed as such)
     inputTokens: t.inputTokens + t.cachedTokens,
     outputTokens: t.outputTokens + t.thinkingTokens,

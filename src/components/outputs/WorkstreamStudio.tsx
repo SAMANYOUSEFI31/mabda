@@ -21,9 +21,7 @@ import { resolveNodeId } from '../../core/nodeTree';
 import { calculateReadinessAndGaps, objectsToJudge } from '../../core/contextEngine';
 import type { AmbiguityMap } from '../../core/contextEngine';
 import { lockOf, lockReason, topologicalOrder } from '../../core/specGraph';
-import { halfPriceRebuildAvailable } from '../../core/impactEngine';
 import type { StaleAsset } from '../../core/impactEngine';
-import { calculateCreditCost, creditModeForPlan, estimateRemainingOutputs, PLANS, previewCredits, rebuildCredits } from '../../core/creditEngine';
 import { GapEnginePanel } from '../knowledge/GapEnginePanel';
 import { ContextReplayCard } from './ContextReplayCard';
 import { asAiError, generateDeliverableApi, previewPlan } from '../../services/apiClient';
@@ -54,9 +52,8 @@ interface WorkstreamStudioProps {
   changes?: ContextChange[];
   nodes: TreeNode[];
   onAddContextObject: (obj: ContextDraft) => void;
-  onSaveDeliverable: (del: GeneratedDeliverable, creditCost: number, usage: UsageSummary, kind: 'new' | 'rebuild') => void;
+  onSaveDeliverable: (del: GeneratedDeliverable, usage: UsageSummary, kind: 'new' | 'rebuild') => void;
   onOpenContextModal: (obj: ContextObject) => void;
-  onOpenLedger: () => void;
   /** «کپی برای هوش مصنوعی»: a Context pack for this spec (and output) */
   onOpenPack: (target: { specId?: string; deliverableId?: string; title: string }) => void;
   onOpenImport: () => void;
@@ -82,14 +79,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   onAddContextObject,
   onSaveDeliverable,
   onOpenContextModal,
-  onOpenLedger,
   onOpenPack,
   onOpenImport,
   pendingRebuild,
   onPendingRebuildHandled,
 }) => {
   const ai = useAiStatus();
-  // credits exist only in the managed-AI layer (feature flag); with it off nothing about credits is shown or charged
+  // Mabda's own generation is frozen behind the managed-AI flag; with it off the outside route (copy the pack) is shown
   const managed = ai.managedEnabled;
   const [internalSelectedSpecId, setInternalSelectedSpecId] = useState<string>(
     specs[0]?.id || 'main_positioning'
@@ -107,7 +103,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
   const [manualModeOpen, setManualModeOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const importantMode: ExecutionMode | null = PLANS[currentWorkspace.planId].allowedModes.includes('sensitive') ? 'sensitive' : PLANS[currentWorkspace.planId].allowedModes.includes('critique') ? 'critique' : null;
+  const importantMode: ExecutionMode = 'sensitive';
   const [isGenerating, setIsGenerating] = useState(false);
   const [stageLabel, setStageLabel] = useState<string>('');
   const [genError, setGenError] = useState<AiErrorInfo | null>(null);
@@ -141,10 +137,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     void onJudge(todo.map((o) => o.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ai.judgmentsAvailable, activeTab, currentSpec.id, allContextObjects, judgments]);
-  const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
-
-  // The router's plan for the selected deliverable + mode. Credits are derived from it BEFORE the run,
-  // and the same plan is sent back to the server so the charge equals the preview.
+  // The router's plan for the selected deliverable + mode, shown BEFORE the run; the same plan is sent back to the server so what runs is what was shown.
   const jobKind = currentDeliverableSpec.type === 'Asset' ? 'asset' : 'deliverable';
   useEffect(() => {
     if (!ai.available) { setPreview(null); setPreviewState('idle'); return; }
@@ -160,14 +153,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     // contexts only matter for their size; re-plan when the deliverable, mode or availability changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ai.available, executionMode, currentDeliverableSpec.id, jobKind, currentWorkspace.id]);
-
-  const costArgs = { deliverableType: currentDeliverableSpec.type, baseCreditCost: currentDeliverableSpec.baseCreditCost };
-  const planCredits = preview ? previewCredits({ ...costArgs, plan: preview.plan }) : null;
-  const creditCost = planCredits ?? calculateCreditCost({ ...costArgs, executionMode });
-  const chargedPreview = creditCost;
-  const planMode = preview ? creditModeForPlan(preview.plan) : executionMode;
-
-  const remainingOutputsEstimate = estimateRemainingOutputs(currentWorkspace.creditsRemaining);
 
   const STAGE_FA: Record<StageName, string> = {
     decision: 'تعیین حالت اجرا', chat: 'نوشتن پاسخ', draft: 'نوشتن پیش‌نویس', critique: 'نقد پیش‌نویس',
@@ -196,9 +181,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     // the finished assets this output depends on (their text is read by the server from the database)
     const dependencyAssetIds = (runSpec.dependsOn ?? []).map((dep) => workstreamDeliverables.find((d) => d.deliverableId === dep)?.id).filter((x): x is string => !!x);
     const runMode: ExecutionMode = isRebuild && rebuildTarget ? rebuildTarget.executionMode : executionMode;
-    const staleOfTarget = rebuildTarget ? stale.find((s) => s.deliverableId === rebuildTarget.id) : undefined;
-    // half price only for an asset made stale by a Context change, once per change
-    const halfPrice = managed && !!(isRebuild && rebuildTarget && halfPriceRebuildAvailable(rebuildTarget, staleOfTarget));
 
     lastRun.current = { rebuild: isRebuild, target: rebuildTarget };
     setGenError(null);
@@ -212,13 +194,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
       let runPreview = preview;
       if (isRebuild && rebuildTarget) {
         runPreview = await previewPlan({ executionMode: runMode, jobKind: runSpec.type === 'Asset' ? 'asset' : 'deliverable', text: `${runSpec.title}\n${runSpec.acceptanceCriteria.join('\n')}`, workspaceId: currentWorkspace.id }, ctl.signal);
-      }
-      const base = runPreview ? previewCredits({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, plan: runPreview.plan }) : calculateCreditCost({ deliverableType: runSpec.type, baseCreditCost: runSpec.baseCreditCost, executionMode: runMode });
-      const cost = halfPrice ? rebuildCredits(base) : base;
-      if (managed && currentWorkspace.creditsRemaining < cost) {
-        toast.show({ intent: 'warning', message: 'اعتبار ناکافی است. می‌توانی از «مصرف» بستهٔ اعتباری تهیه کنی.' });
-        onOpenLedger();
-        return;
       }
       setStageLabel('در حال آماده‌سازی…');
 
@@ -253,17 +228,15 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
         usage: result.usage,
         validationFailed: result.validationFailed,
         executionMode: runMode,
-        creditCost: managed ? cost : 0,
         usedContext: result.usedContext,
         usedFileChunks: result.usedFileChunks,
         checks: result.checks,
         critiqueFeedback: result.critiqueFeedback,
         rebuildCount: isRebuild && rebuildTarget ? rebuildTarget.rebuildCount + 1 : 0,
-        halfPriceUsedFor: halfPrice ? staleOfTarget?.signature : rebuildTarget?.halfPriceUsedFor,
         createdAt: new Date().toISOString(),
       };
 
-      onSaveDeliverable(newDeliverable, newDeliverable.creditCost, result.usage, isRebuild ? 'rebuild' : 'new');
+      onSaveDeliverable(newDeliverable, result.usage, isRebuild ? 'rebuild' : 'new');
       setActiveTab('history');
     } catch (err) {
       const info = asAiError(err);
@@ -301,12 +274,6 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
     onAddContextObject({ workspaceId: currentWorkspace.id, type: gap.importance === 'required' ? 'Decision' : 'Fact', status: 'Confirmed', provenance: 'User Input', title: gap.label, content: text, nodeId: resolveNodeId(nodes, gap.nodeId), slotKey: gap.key });
     setAnswers((m) => { const n = { ...m }; delete n[gap.key]; return n; });
   };
-  const modeCost = (m: ExecutionMode) =>
-    calculateCreditCost({
-      deliverableType: currentDeliverableSpec.type,
-      executionMode: m,
-      baseCreditCost: currentDeliverableSpec.baseCreditCost,
-    });
 
   return (
     <div className="flex flex-col gap-stack-lg">
@@ -435,11 +402,9 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   {managed && <div className="flex flex-col gap-stack-sm" role="group" aria-label="نحوهٔ اجرا">
                     <Switch
                       checked={executionMode === 'sensitive' || executionMode === 'critique'}
-                      disabled={!importantMode}
-                      onChange={(e) => setExecutionMode(e.target.checked && importantMode ? importantMode : 'auto')}
+                      onChange={(e) => setExecutionMode(e.target.checked ? importantMode : 'auto')}
                       label="این خروجی مهم است (بررسی دقیق‌تر)"
                     />
-                    {!importantMode && <span className="body-sm text-text-subtle">بررسی دقیق‌تر در پلن فعلی فعال نیست.</span>}
                     <div className="flex flex-wrap items-center gap-inline-sm">
                       <Button variant="ghost" size="sm" iconEnd={manualModeOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={manualModeOpen} onClick={() => setManualModeOpen((v) => !v)}>تغییر دستی</Button>
                       {executionMode !== 'auto' && executionMode !== 'sensitive' && (
@@ -448,10 +413,10 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                     </div>
                     {manualModeOpen && (
                       <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
-                        <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" meta={managed ? `${formatNumber(modeCost('fast'))} اعتبار` : undefined} selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
-                        <OptionCard title="خودکار" description="پیشنهاد مبدأ" meta={managed ? `${formatNumber(modeCost('auto'))} اعتبار` : undefined} selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
-                        <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" meta={managed ? `${formatNumber(modeCost('critique'))} اعتبار` : undefined} selected={executionMode === 'critique'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('critique')} onClick={() => setExecutionMode('critique')} />
-                        <OptionCard title="حساس" description="بررسی دقیق + جای خالی + تناقض" meta={managed ? `${formatNumber(modeCost('sensitive'))} اعتبار` : undefined} selected={executionMode === 'sensitive'} disabled={!PLANS[currentWorkspace.planId].allowedModes.includes('sensitive')} onClick={() => setExecutionMode('sensitive')} />
+                        <OptionCard title="سریع" description="تک‌مرحله‌ای، ارزان‌تر" selected={executionMode === 'fast'} onClick={() => setExecutionMode('fast')} />
+                        <OptionCard title="خودکار" description="پیشنهاد مبدأ" selected={executionMode === 'auto'} onClick={() => setExecutionMode('auto')} />
+                        <OptionCard title="عمیق" description="پیش‌نویس، نقد و اصلاح" selected={executionMode === 'critique'} onClick={() => setExecutionMode('critique')} />
+                        <OptionCard title="حساس" description="بررسی دقیق + جای خالی + تناقض" selected={executionMode === 'sensitive'} onClick={() => setExecutionMode('sensitive')} />
                       </div>
                     )}
                   </div>}
@@ -474,17 +439,13 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 <div className="body-sm flex flex-col gap-stack-xs">
                   {previewState === 'loading' ? (
                     <span className="inline-flex items-center gap-inline-xs text-text-subtle"><Spinner size="sm" label="در حال تعیین حالت" />در حال تعیین حالت اجرا…</span>
-                  ) : managed ? (
-                    <span className="label-md tabular-nums text-text-default">{`${formatNumber(chargedPreview)} اعتبار`}</span>
                   ) : null}
                   {preview && previewState === 'ready' && (
                     <span className="body-sm text-text-subtle" data-testid="auto-reason">
                       {executionMode === 'auto' ? 'مبدأ خودش انتخاب کرد: ' : 'حالت انتخابی: '}{preview.plan.reason}
-                      {managed && planMode !== executionMode && ` (قیمت‌گذاری در سطح «${planMode === 'critique' ? 'عمیق' : planMode === 'fast' ? 'سریع' : planMode === 'sensitive' ? 'حساس' : 'متعادل'}»)`}
                     </span>
                   )}
                   {!ai.available && previewState === 'idle' && <span className="body-sm text-text-subtle">هوش مصنوعی فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.</span>}
-                  {managed && <span className="body-sm text-text-subtle">موجودی فعلی: {formatNumber(currentWorkspace.creditsRemaining)} اعتبار · حدود {formatNumber(remainingOutputsEstimate)} خروجی کامل دیگر</span>}
                 </div>
                 {isGenerating ? (
                   <Button variant="secondary" size="lg" iconStart="X" onClick={() => abortRef.current?.abort()}>توقف</Button>

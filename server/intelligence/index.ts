@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import type { PlanId } from '../../src/types/index.ts';
 import { consoleCallLog } from './callLog.ts';
 import { loadIntelligenceConfig, type IntelligenceConfig } from './config.ts';
 import { SqliteEmbeddingStore } from './embeddingStore.ts';
@@ -22,10 +21,10 @@ export { IntelligenceStore } from './store.ts';
 export interface Intelligence {
   readonly enabled: boolean;
   readonly config: IntelligenceConfig;
-  findRelated(input: { scope: Scope; query: string; items: Item[]; excludeIds?: string[]; plan?: PlanId }, recipe?: string): ReturnType<typeof findRelated>;
-  whatIsThis(input: { text: string; plan?: PlanId }, recipe?: string): ReturnType<typeof whatIsThis>;
-  whereTo(input: { scope: Scope; text: string; sections: Section[]; items: Item[]; itemSection: Record<string, string>; excludeIds?: string[]; plan?: PlanId }, recipe?: string): ReturnType<typeof whereTo>;
-  transcribe(input: { audio: Omit<TranscriptionInput, 'language'>; plan?: PlanId }, recipe?: string): ReturnType<typeof transcribe>;
+  findRelated(input: { scope: Scope; query: string; items: Item[]; excludeIds?: string[] }, recipe?: string): ReturnType<typeof findRelated>;
+  whatIsThis(input: { text: string }, recipe?: string): ReturnType<typeof whatIsThis>;
+  whereTo(input: { scope: Scope; text: string; sections: Section[]; items: Item[]; itemSection: Record<string, string>; excludeIds?: string[] }, recipe?: string): ReturnType<typeof whereTo>;
+  transcribe(input: { audio: Omit<TranscriptionInput, 'language'> }, recipe?: string): ReturnType<typeof transcribe>;
 }
 
 export interface CreateOptions {

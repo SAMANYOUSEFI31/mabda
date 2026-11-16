@@ -144,7 +144,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Asset',
         description: 'گزاره یکپارچه و دقیق از اینکه برای چه کسی، چه ارزشی با چه تمایزی خلق می‌کنید.',
         order: 1,
-        baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
         acceptanceCriteria: [
           'عدم وجود ادعاهای عمومی یا مبالغه‌آمیز',
           'اشاره صریح به مخاطب هدف و مسئله اصلی',
@@ -158,7 +157,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'تحلیل عمیق انگیزه‌ها، ترس‌ها، جایگزین‌های فعلی و معیارهای تصمیم‌گیری مشتری.',
         order: 2,
-        baseCreditCost: { fast: 2, auto: 5, critique: 20, sensitive: 40 },
         acceptanceCriteria: [
           'جداسازی واقعیات رفتاری از فرضیات سطحی دموگرافیک',
           'تعیین هزینهٔ عدم اقدام برای مشتری',
@@ -171,7 +169,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: '۴ ستون موضوعی پیوسته که اعتماد مخاطب را به راه‌حل شما به صورت طبیعی می‌سازد.',
         order: 3,
-        baseCreditCost: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
         acceptanceCriteria: [
           'هر ستون باید به یکی از موانع یا تمایزات کلیدی متصل باشد',
           'پرهیز از کلی‌گویی و ارائه زوایای دید غیرمنتظره',
@@ -184,7 +181,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'ایده‌های آماده تولید برای لینکدین، اینستاگرام یا خبرنامه بر پایهٔ فکت‌ها و تصمیمات واقعی.',
         order: 4,
-        baseCreditCost: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
         acceptanceCriteria: [
           'دارای قلاب (جملهٔ جذب) قوی مبتنی بر درد مشتری',
           'متصل به تجربیات و تصمیمات مندرج در درخت دانش',
@@ -197,7 +193,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'گام‌های ۳۰ روزه برای تست موقعیت‌یابی و دریافت بازخورد واقعی از بازار.',
         order: 5,
-        baseCreditCost: { fast: 2, auto: 5, critique: 20, sensitive: 40 },
         acceptanceCriteria: [
           'معیارهای سنجش پذیرش شفاف (شاخص‌های کلیدی)',
           'ترتیب منطقی بدون وابستگی به سرمایه سنگین',
@@ -246,7 +241,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Asset',
         description: 'فرمول ۳ خطی بایو: کیستی + چه دردی حل می‌کنی + آفر اصلی و لینک.',
         order: 1,
-        baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
         acceptanceCriteria: ['زیر ۱۵۰ کاراکتر', 'قلاب فوری بدون ایموجی‌های زائد'],
       },
       {
@@ -255,7 +249,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'سناریوهای ریلز ۳۰ ثانیه‌ای با ساختار: هوک، چالش، راه‌حل اختصاصی.',
         order: 2,
-        baseCreditCost: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
         acceptanceCriteria: ['هوک ۳ ثانیه اول', 'انطباق با محدودیت‌ها و تعاریف ثبت‌شده'],
       },
     ],
@@ -301,7 +294,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Asset',
         description: 'تایتل لینکدین و بخش «دربارهٔ من» بدون کلمات کلیشه‌ای مانند «باانگیزه و خلاق».',
         order: 1,
-        baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
         acceptanceCriteria: ['تمرکز بر نتیجه تجاری برای کارفرما'],
       },
       {
@@ -310,7 +302,6 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'شرح خدمات، دستاوردها، زمان‌بندی و شرایط همکاری.',
         order: 2,
-        baseCreditCost: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
         acceptanceCriteria: ['سکوهای قیمتی شفاف', 'تعهدات مشخص بدون اضافه‌کاری بدون فاکتور'],
       },
     ],

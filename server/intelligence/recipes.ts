@@ -6,8 +6,6 @@ import { lexicalRank } from './lexical.ts';
 import { cosine, normalizeForHash, rrf, sha1, toFloat32, type Ranked } from './math.ts';
 import type { EmbeddingKey, EmbeddingStore, JudgmentAnswer, JudgmentQuestion, ModelEntry, Specialists, TranscriptionInput } from './types.ts';
 import { embeddingKeyId } from './types.ts';
-import type { PlanId } from '../../src/types/index.ts';
-import { hasIntelligenceCapability } from '../../src/core/entitlements.ts';
 
 /**
  * اجرای دستورپخت‌ها. هیچ مدل یا آستانه‌ای در این فایل نیست: هرچه هست از `config/recipes.json` و `models.json` می‌آید.
@@ -48,10 +46,6 @@ const recipeOf = <K extends RecipeConfig['kind']>(cfg: IntelligenceConfig, name:
   if (!r || r.kind !== kind) throw new IntelligenceError('bad_request', { detail: `دستورپخت «${name}» از نوع ${kind} نیست` });
   return r as Extract<RecipeConfig, { kind: K }>;
 };
-
-function gate(r: RecipeConfig, plan: PlanId | undefined): void {
-  if (plan && !hasIntelligenceCapability(plan, r.capability)) throw new IntelligenceError('disabled');
-}
 
 const modelOf = (cfg: IntelligenceConfig, key: string): ModelEntry => {
   const m = cfg.models[key];
@@ -120,9 +114,8 @@ async function embeddingRank(env: Env, scope: Scope, modelKey: string, query: st
   return { ranked, cosines: best };
 }
 
-export async function findRelated(env: Env, name: string, input: { scope: Scope; query: string; items: Item[]; excludeIds?: string[]; plan?: PlanId }): Promise<FindRelatedResult> {
+export async function findRelated(env: Env, name: string, input: { scope: Scope; query: string; items: Item[]; excludeIds?: string[] }): Promise<FindRelatedResult> {
   const r = recipeOf(env.cfg, name, 'findRelated');
-  gate(r, input.plan);
   const exclude = new Set(input.excludeIds ?? []);
   const items = input.items.filter((i) => !exclude.has(i.id) && i.text.trim());
   const stages: string[] = [];
@@ -220,9 +213,8 @@ function ensureFits(model: ModelEntry, state: string, extra: string): void {
   }
 }
 
-export async function whatIsThis(env: Env, name: string, input: { text: string; plan?: PlanId }): Promise<{ recipe: string; version: number; answers: Judged[] }> {
+export async function whatIsThis(env: Env, name: string, input: { text: string }): Promise<{ recipe: string; version: number; answers: Judged[] }> {
   const r: WhatIsThisRecipe = recipeOf(env.cfg, name, 'whatIsThis');
-  gate(r, input.plan);
   const model = modelOf(env.cfg, r.judge.model);
   ensureFits(model, input.text, JSON.stringify(r.questions));
   const out = await instrument({ ...env.call, recipe: name, stage: 'judge' }, 'judgment', model, () => env.specialists.judgment(r.judge.model).decide(input.text, r.questions));
@@ -254,11 +246,10 @@ export interface WhereToResult {
   related: FindRelatedResult;
 }
 
-export async function whereTo(env: Env, name: string, input: { scope: Scope; text: string; sections: Section[]; items: Item[]; itemSection: Record<string, string>; excludeIds?: string[]; plan?: PlanId }): Promise<WhereToResult> {
+export async function whereTo(env: Env, name: string, input: { scope: Scope; text: string; sections: Section[]; items: Item[]; itemSection: Record<string, string>; excludeIds?: string[] }): Promise<WhereToResult> {
   const r: WhereToRecipe = recipeOf(env.cfg, name, 'whereTo');
-  gate(r, input.plan);
   const sections = new Map(input.sections.map((s) => [s.id, s]));
-  const related = await findRelated(env, r.related, { scope: input.scope, query: input.text, items: input.items, excludeIds: input.excludeIds, plan: input.plan });
+  const related = await findRelated(env, r.related, { scope: input.scope, query: input.text, items: input.items, excludeIds: input.excludeIds });
   if (!r.judge) {
     // بدون داور (خط پایهٔ ارزیابی): بخشِ بهترین مورد مرتبط؛ «مطمئن نیست» یعنی آن مورد «قوی» نبود
     const top = related.items.find((x) => input.itemSection[x.id]);
@@ -310,9 +301,8 @@ export async function whereTo(env: Env, name: string, input: { scope: Scope; tex
 
 // ───────────── صدا را به متن تبدیل کن ─────────────
 
-export async function transcribe(env: Env, name: string, input: { audio: Omit<TranscriptionInput, 'language'>; plan?: PlanId }): Promise<{ recipe: string; version: number; text: string }> {
+export async function transcribe(env: Env, name: string, input: { audio: Omit<TranscriptionInput, 'language'> }): Promise<{ recipe: string; version: number; text: string }> {
   const r: TranscribeRecipe = recipeOf(env.cfg, name, 'transcribe');
-  gate(r, input.plan);
   const model = modelOf(env.cfg, r.model);
   const lim = model.limits;
   if (lim?.maxAudioBytes && input.audio.data.byteLength > lim.maxAudioBytes) throw new IntelligenceError('input_too_long', { specialist: 'transcription', modelKey: model.key, detail: 'اندازهٔ فایل صدا از سقف مدل بیشتر است' });

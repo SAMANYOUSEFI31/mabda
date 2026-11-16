@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 import type { ReadyScope } from '../shared';
 import { Shortcuts } from '../../components/shell/Shortcuts';
 
-export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsPlanModalOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
+export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
 
 /** the places under «منبع»: the top level; when the tree has one root (as the work tree «کسب‌وکار» does), the level under it */
 const topSections = (nodes: ReadyScope['nodes']) => {
@@ -21,7 +21,7 @@ const topSections = (nodes: ReadyScope['nodes']) => {
   return roots.length === 1 && kids(roots[0].id).length ? kids(roots[0].id) : roots;
 };
 
-export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsPlanModalOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
+export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* WCAG 2.4.1: the first Tab offers to skip the bars and lands in the page itself */}
@@ -38,7 +38,6 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         onOpenArchive={() => setArchiveOpen(true)}
         onDeleteDemo={workspaces.some((w) => w.isDemo && !w.archivedAt) ? () => setDemoDelete(true) : undefined}
         onResetDemo={() => { if (workspaces.some((w) => w.isDemo)) setDemoConfirm(true); else void handleResetDemo(); }}
-        onOpenPlanModal={() => setIsPlanModalOpen(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
         onOpenLedger={() => setActiveTab('ledger')}
         onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}

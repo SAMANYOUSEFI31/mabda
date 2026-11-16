@@ -10,7 +10,7 @@ const U = 'person_x';
 function fresh() {
   const db = new Database(':memory:'); migrate(db);
   const repo = new Repo(db);
-  repo.saveWorkspace(U, { id: 'w1', name: 'w1', slug: 'w1', description: '', planId: 'pro', creditsRemaining: 100, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
+  repo.saveWorkspace(U, { id: 'w1', name: 'w1', slug: 'w1', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
   const s = { userId: U, workspaceId: 'w1' };
   const top = repo.createNode(s, { label: 'فروشگاه' });
   const sub = repo.createNode(s, { parentId: top.id, label: 'مشتری ویژه' });

@@ -47,7 +47,6 @@ export function WorkstreamsPage({ currentWorkspace, data, deliverables, handleJu
             pendingRebuild={pendingRebuild}
             onPendingRebuildHandled={() => setPendingRebuild(null)}
             onOpenContextModal={(obj) => openContext(obj)}
-            onOpenLedger={() => setActiveTab('ledger')}
             onOpenPack={setPackTarget}
             onOpenImport={() => setIsImportOpen(true)}
           /></PageSuspense>

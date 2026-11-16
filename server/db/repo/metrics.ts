@@ -6,7 +6,6 @@
 import { tehranDay } from '../../../src/core/tehranDate.ts';
 import type { Repo } from './index.ts';
 import { ChangeMeta, RepoError, Scope, newId, now } from './shared.ts';
-import { can } from '../../../src/core/entitlements.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../../src/core/metrics.ts';
 import type { Measurement, MeasurementSource, Metric, MetricDirection } from '../../../src/types/index.ts';
 

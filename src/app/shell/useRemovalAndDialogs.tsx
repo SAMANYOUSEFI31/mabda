@@ -75,7 +75,7 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     toast.show({ intent: 'success', message: 'فضای نمونه حذف شد. هر وقت خواستی از منوی حساب دوباره ساخته می‌شود.' });
   };
 
-  /** create or replace a custom spec (the server enforces Pro+ and refuses dependency cycles) */
+  /** create or replace a custom spec (the server refuses dependency cycles) */
   const addSpec = async (spec: WorkstreamSpec) => {
     const r = await attempt(() => dataApi.saveSpec(wid, spec));
     if (r) patch((d) => ({ ...d, specs: d.specs.some((x) => x.id === spec.id) ? d.specs.map((x) => (x.id === spec.id ? spec : x)) : [spec, ...d.specs] }));

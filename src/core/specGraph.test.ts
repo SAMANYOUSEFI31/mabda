@@ -6,7 +6,7 @@ import { WORKSTREAM_SPECS } from './specs';
 import type { ContextObject, DeliverableSpec, WorkstreamSpec } from '../types';
 
 const d = (id: string, order: number, dependsOn: string[] = []): DeliverableSpec => ({
-  id, title: `خروجی ${id}`, type: 'Asset', description: '', order, dependsOn, baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 }, acceptanceCriteria: ['معیار'],
+  id, title: `خروجی ${id}`, type: 'Asset', description: '', order, dependsOn, acceptanceCriteria: ['معیار'],
 });
 
 test('topological order: dependencies first, author order kept where the graph allows', () => {

@@ -15,7 +15,7 @@ const S = { userId: U, workspaceId: 'w1' };
 const mk = () => {
   const db = new Database(':memory:'); migrate(db);
   const repo = new Repo(db);
-  const ws: Workspace = { id: 'w1', name: 'w', slug: 'w', description: '', planId: 'starter', creditsRemaining: 100, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' };
+  const ws: Workspace = { id: 'w1', name: 'w', slug: 'w', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' };
   repo.saveWorkspace(U, ws);
   return { repo, svc: new DocImportService(repo) };
 };

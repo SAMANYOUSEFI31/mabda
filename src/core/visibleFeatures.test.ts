@@ -37,3 +37,9 @@ test('the table view is not a primary view; nothing is removed (it is listed und
   assert.deepEqual([...MORE_CONTEXT_VIEWS], ['table']);
   assert.equal(new Set([...PRIMARY_CONTEXT_VIEWS, ...MORE_CONTEXT_VIEWS]).size, 4);
 });
+
+test('weekly review: the window is the same seven Tehran calendar days the weekly review reads (CORE-04)', () => {
+  // NOW = 2026-06-10 13:30 Tehran; the review window starts at 2026-06-03 00:00 Tehran (= 2026-06-02T20:30Z)
+  assert.equal(visibleFeatures(empty({ changes: [{ objectId: 'o1', at: '2026-06-02T21:00:00Z' }] })).weeklyReview, true, 'early on the seventh day back still counts');
+  assert.equal(visibleFeatures(empty({ changes: [{ objectId: 'o1', at: '2026-06-02T20:00:00Z' }] })).weeklyReview, false, 'the eighth day back does not');
+});

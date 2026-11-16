@@ -112,7 +112,7 @@ export function calculateReadinessAndGaps(
 
   // 1. Check Required Contexts
   for (const req of spec.requiredContext) {
-    const found = findForRequired(req, objects);
+    const found = findForRequired(req, objects, now);
     const judged = found && ambiguity[found.id]?.version === found.version ? ambiguity[found.id] : undefined;
 
     if (!found) {

@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INTELLIGENCE_CAPABILITIES } from '../../src/core/entitlements.config.ts';
-import type { IntelligenceCapability } from '../../src/core/entitlements.config.ts';
+/** capabilities of the intelligence layer: a recipe names ONE of these in `capability` (a feature key, not a plan: every person has all of them) */
+export type IntelligenceCapability = 'suggestRelated' | 'suggestKind' | 'suggestPlace' | 'voiceNote';
+export const INTELLIGENCE_CAPABILITIES: IntelligenceCapability[] = ['suggestRelated', 'suggestKind', 'suggestPlace', 'voiceNote'];
 import type { JudgmentQuestion, ModelEntry } from './types.ts';
 
 /**
@@ -12,8 +13,6 @@ import type { JudgmentQuestion, ModelEntry } from './types.ts';
  * عوض کردن مدل یا حذف یک مرحله فقط تغییر همین دو فایل است.
  */
 
-/** «کدام پلن» فقط در src/core/entitlements.config.ts (قانون ۵)؛ دستورپخت فقط کلید قابلیت می‌آورد */
-export type { IntelligenceCapability };
 
 export interface FinderConfig {
   specialist: 'lexical' | 'embedding';
@@ -29,7 +28,7 @@ export interface FindRelatedRecipe {
   kind: 'findRelated';
   description: string;
   version: number;
-  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  /** کلید قابلیت (INTELLIGENCE_CAPABILITIES) */
   capability: IntelligenceCapability;
   finders: FinderConfig[];
   fusion: { method: 'rrf'; k: number };
@@ -50,7 +49,7 @@ export interface WhatIsThisRecipe {
   kind: 'whatIsThis';
   description: string;
   version: number;
-  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  /** کلید قابلیت (INTELLIGENCE_CAPABILITIES) */
   capability: IntelligenceCapability;
   judge: { model: string };
   questions: JudgmentQuestion[];
@@ -62,7 +61,7 @@ export interface WhereToRecipe {
   kind: 'whereTo';
   description: string;
   version: number;
-  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  /** کلید قابلیت (INTELLIGENCE_CAPABILITIES) */
   capability: IntelligenceCapability;
   /** نام دستورپخت «مرتبط‌ها» که نامزدها را می‌سازد */
   related: string;
@@ -85,7 +84,7 @@ export interface TranscribeRecipe {
   kind: 'transcribe';
   description: string;
   version: number;
-  /** کلید قابلیت در entitlements.config (intelligence)؛ پلن‌ها آنجا مشخص می‌شوند */
+  /** کلید قابلیت (INTELLIGENCE_CAPABILITIES) */
   capability: IntelligenceCapability;
   model: string;
   language: string;
@@ -127,7 +126,7 @@ export function validateConfig(cfg: IntelligenceConfig): string[] {
     if (m.kind === 'embedding' && !m.maxInputTokens) bad.push(`مدل ${key}: maxInputTokens لازم است`);
   }
   for (const [name, r] of Object.entries(cfg.recipes)) {
-    if (!INTELLIGENCE_CAPABILITIES.includes(r.capability)) bad.push(`دستورپخت ${name}: capability نامعتبر یا ناموجود در entitlements.config`);
+    if (!INTELLIGENCE_CAPABILITIES.includes(r.capability)) bad.push(`دستورپخت ${name}: capability نامعتبر یا ناموجود در INTELLIGENCE_CAPABILITIES`);
     for (const ref of modelRefs(r)) {
       const m = cfg.models[ref.key];
       if (!m) bad.push(`دستورپخت ${name}: مدل «${ref.key}» در models.json نیست`);

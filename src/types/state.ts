@@ -48,20 +48,17 @@ export interface FileChargeInfo {
   remainingBefore: number;
   withinQuota: boolean;
   excessTokens: number;
-  credits: number;
 }
 
 export interface FileQuotaInfo extends FileChargeInfo {
   period: string;
   used: number;
-  plan: string;
 }
 
 export interface ProcessedFile {
   file: StoredFile;
   created: ContextObject[];
   charge: FileChargeInfo;
-  creditCost: number;
   usage: UsageSummary;
   truncated: boolean;
   workspace: Workspace;
@@ -77,7 +74,6 @@ export interface CoachResultInfo {
 export interface CoachQuota { used: number; limit: number; remaining: number }
 
 export interface UsageInfo {
-  planId: import('./index').PlanId;
   month: string;
   objects: number;
   fileTokens: number;
@@ -89,11 +85,7 @@ export interface CostReportRowInfo {
   userId: string;
   workspaceId: string;
   name: string;
-  planId: import('./index').PlanId;
-  priceUsd: number;
   ourCostUsd: number;
-  ratio: number;
-  warn: boolean;
   lines: Array<{ category: 'judgments' | 'fileProcessing' | 'coach' | 'generation'; costUsd: number; calls: number }>;
 }
 

@@ -46,7 +46,7 @@ export function registerMetricsRoutes(ctx: RouteContext): void {
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.extract(aiUser, { kind: 'note', text: note.content, nodeId: note.nodeId, nodes: repo.listNodes(s).map((n) => ({ id: n.id, label: n.label })) }, ctl.signal);
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'AI Suggested', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'note', at: new Date().toISOString() } }));
-    const ledger = repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'استخراج از یادداشت', mode: 'note_extract', creditCost: 0, usage: r.usage, id: newId('led') }));
+    const ledger = repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: 'استخراج از یادداشت', mode: 'note_extract', usage: r.usage, id: newId('led') }));
     res.json({ created, ledger, usage: r.usage });
   }));
 }

@@ -9,13 +9,13 @@ import { applyDemo } from './demo.ts';
 import { treeOrder } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
+import { LIMITS } from '../../src/core/limits.ts';
 
 const U = 'local';
-const ws = (id: string, plan: Workspace['planId'] = 'pro'): Workspace => ({ id, name: id, slug: id, description: '', planId: plan, creditsRemaining: 100, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
+const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
 const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
 const del = (id: string, used: Array<[string, number]>): GeneratedDeliverable => ({
-  id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: `دارایی ${id}`, content: 'm', executionMode: 'auto', creditCost: 2,
-  usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
+  id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: `دارایی ${id}`, content: 'm', executionMode: 'auto', usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
 });
 
 test('migrations apply in order, are idempotent, and keep existing rows (v1 → latest)', () => {
@@ -248,24 +248,28 @@ test('file usage counters are per workspace and month', () => {
   assert.equal(repo.fileUsage(s, '2026-11'), 0);
 });
 
-test('plan limits: workspaces and active objects are enforced (archived/superseded do not count); import is exempt', () => {
-  const { repo, s } = fresh();
-  // pro = 3 workspaces
-  repo.saveWorkspace(U, ws('w2'));
-  repo.saveWorkspace(U, ws('w3'));
-  assert.throws(() => repo.saveWorkspace(U, ws('w4')), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف فضا/.test(e.message));
+test('fair-use limits: workspaces and active objects are enforced (archived/superseded do not count); the message offers archiving, never a plan', () => {
+  const { repo } = fresh();
+  for (let i = 2; i <= LIMITS.workspaces; i++) repo.saveWorkspace(U, ws(`w${i}`));
+  assert.throws(() => repo.saveWorkspace(U, ws('wx')), (e) => e instanceof RepoError && e.code === 'forbidden' && /بایگانی/.test(e.message) && !/پلن/.test(e.message));
   repo.saveWorkspace(U, { ...ws('w3'), name: 'renamed' }); // updating is fine
   const st = { userId: U, workspaceId: 'w2' };
-  repo.saveWorkspace(U, ws('w2', 'starter')); // 400 objects
-  assert.equal(repo.objectSlots(st), 400);
+  assert.equal(repo.objectSlots(st), LIMITS.maxObjects);
   const input = { type: 'Fact' as const, provenance: 'User Input' as const, title: 't', content: 'c', nodeId: 'business' };
-  for (let i = 0; i < 400; i++) repo.db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,1)').run(`o${i}`, U, 'w2', 'Fact', 'Confirmed', 'User Input', 't', 'c', 'business', 't', 't');
+  const ins = repo.db.prepare('INSERT INTO context_objects (id,user_id,workspace_id,type,status,provenance,title,content,node_id,created_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,1)');
+  repo.db.transaction(() => { for (let i = 0; i < LIMITS.maxObjects; i++) ins.run(`o${i}`, U, 'w2', 'Fact', 'Confirmed', 'User Input', 't', 'c', 'business', 't', 't'); })();
   assert.equal(repo.objectSlots(st), 0);
-  assert.throws(() => repo.createObject(st, input), (e) => e instanceof RepoError && e.code === 'forbidden' && /سقف قلم دانش/.test(e.message));
+  assert.throws(() => repo.createObject(st, input), (e) => e instanceof RepoError && e.code === 'forbidden' && /بایگانی/.test(e.message) && !/پلن|ارتقا/.test(e.message));
   repo.updateObject(st, 'o0', { status: 'Archived' });
   assert.equal(repo.objectSlots(st), 1, 'archiving frees a slot');
   assert.doesNotThrow(() => repo.createObject(st, input));
-  void s;
+});
+
+test('fields of the removed subscription model are never stored, whatever a client sends', () => {
+  const { repo } = fresh();
+  const saved = repo.saveWorkspace(U, { ...ws('w1'), planId: 'max', creditsRemaining: 999 } as unknown as Workspace);
+  assert.equal('planId' in saved, false);
+  assert.equal('creditsRemaining' in repo.getWorkspace(U, 'w1')!, false);
 });
 
 test('slotKey: stored, patchable, inherited by the superseding object; migration 6 is forward-only and keeps old rows', () => {
@@ -383,7 +387,7 @@ test('depends_on: set/validated through the repo, carried over on supersede, and
   repo.setDependencies(s, budget.id, [channel.id]); // a cycle is allowed
   repo.setDependencies(s, budget.id, []);
 
-  const del = { id: 'a1', workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: 'برنامه کانال', content: 'm', executionMode: 'auto', creditCost: 1, usedContext: [{ id: channel.id, version: 1 }], rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() } as unknown as GeneratedDeliverable;
+  const del = { id: 'a1', workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: 'برنامه کانال', content: 'm', executionMode: 'auto', usedContext: [{ id: channel.id, version: 1 }], rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() } as unknown as GeneratedDeliverable;
   repo.saveDeliverable(s, del);
   assert.deepEqual(repo.computeStale(s).map((x) => x.deliverableId), [], 'fresh');
   const edited = repo.updateObject(s, budget.id, { content: 'بودجهٔ تازه' });
@@ -402,19 +406,20 @@ test('depends_on: set/validated through the repo, carried over on supersede, and
 test('showcase workspace: decided by the server only, never counted (workspace allowance, object cap, admin usage); reset deletes all its data and nothing else', () => {
   const db = new Database(':memory:'); migrate(db);
   const repo = new Repo(db);
-  repo.saveWorkspace(U, ws('w1', 'starter'));
+  repo.saveWorkspace(U, ws('w1'));
   const demo = applyDemo(repo, U, new Date('2026-03-10T08:00:00Z'));
   assert.equal(demo.isDemo, true);
   // a client cannot claim the flag on a normal workspace, nor drop it from the showcase one
-  assert.equal(repo.saveWorkspace(U, { ...ws('w2', 'pro'), isDemo: true } as Workspace).isDemo, undefined);
+  assert.equal(repo.saveWorkspace(U, { ...ws('w2'), isDemo: true } as Workspace).isDemo, undefined);
   assert.equal(repo.saveWorkspace(U, { ...demo, isDemo: false }).isDemo, true);
   assert.equal(repo.getWorkspace(U, 'w2')!.isDemo, undefined);
   // workstream library: only real library ids survive; the showcase has none of the built-ins; absent = unchanged behaviour
   assert.deepEqual(repo.getWorkspace(U, 'ws_demo')!.enabledSpecIds, []);
-  assert.deepEqual(repo.saveWorkspace(U, { ...ws('w2', 'pro'), enabledSpecIds: ['freelance_profile', 'nope', 'freelance_profile'] }).enabledSpecIds, ['freelance_profile']);
-  assert.equal(repo.saveWorkspace(U, { ...ws('w2', 'pro') }).enabledSpecIds, undefined);
-  // the allowance only counts real workspaces: starter allows 1 and w1 is it, w2 (pro, allows 3) still fits next to the showcase
-  assert.throws(() => repo.saveWorkspace(U, ws('w3', 'starter')), RepoError);
+  assert.deepEqual(repo.saveWorkspace(U, { ...ws('w2'), enabledSpecIds: ['freelance_profile', 'nope', 'freelance_profile'] }).enabledSpecIds, ['freelance_profile']);
+  assert.equal(repo.saveWorkspace(U, { ...ws('w2') }).enabledSpecIds, undefined);
+  // the limit only counts real workspaces: fill it next to the showcase, then one more is refused
+  for (let i = 3; i <= LIMITS.workspaces; i++) repo.saveWorkspace(U, ws(`w${i}`));
+  assert.throws(() => repo.saveWorkspace(U, ws('wx')), RepoError);
   // no object cap, never in the admin usage
   const s = { userId: U, workspaceId: demo.id };
   assert.ok(repo.objectSlots(s) > 100_000);

@@ -13,7 +13,6 @@ import {
   fillsItem,
   extractQuantities,
 } from './contextEngine';
-import { calculateCreditCost, checkChatFairUse, chatCountToday } from './creditEngine';
 import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from './specs';
 import { ContextObject } from '../types';
 
@@ -23,49 +22,6 @@ test('getAncestorNodeIds traverses parent branches up to root', () => {
 
   const brandChain = getAncestorNodeIds('content', DEFAULT_TREE_NODES);
   assert.deepEqual(brandChain, ['content', 'brand', 'business']);
-});
-
-test('calculateCreditCost applies 10% auto discount and 50% rebuild discount correctly', () => {
-  // Fast mode on Deliverable base = 18
-  const fastCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'fast',
-  });
-  assert.equal(fastCost, 18);
-
-  // Auto mode base = 26, with 10% discount -> 26 * 0.9 = 23.4 rounded to 23
-  const autoCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'auto',
-  });
-  assert.equal(autoCost, 23);
-
-  // Critique mode base = 50
-  const critiqueCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'critique',
-  });
-  assert.equal(critiqueCost, 50);
-
-  // Rebuild after context change = 50% of 23 = 12
-  const rebuildCost = calculateCreditCost({
-    deliverableType: 'Deliverable',
-    executionMode: 'auto',
-    isRebuildAfterContextChange: true,
-  });
-  assert.equal(rebuildCost, 12);
-});
-
-test('chat fair-use is soft only: it degrades, it never blocks; the count resets each day', () => {
-  const under = checkChatFairUse('pro', 40);
-  assert.equal(under.isSoftExceeded, false);
-  assert.equal(under.remaining, 30);
-  assert.equal(checkChatFairUse('pro', 75).isSoftExceeded, true);
-  assert.equal(checkChatFairUse('pro', 5000).isSoftExceeded, true);
-  assert.equal('allowed' in checkChatFairUse('pro', 5000), false);
-  assert.equal(chatCountToday(60, '2026-11-01', '2026-11-01'), 60);
-  assert.equal(chatCountToday(60, '2026-10-31', '2026-11-01'), 0);
-  assert.equal(chatCountToday(14, undefined, '2026-11-01'), 0);
 });
 
 test('calculateReadinessAndGaps detects missing required items and calculates score', () => {
@@ -209,4 +165,14 @@ test('readiness: the answer of a Gap (title = label, slotKey = key) closes the g
   const answered = obj({ id: 'a', title: 'یک عنوان کاملاً دلخواه', content: 'سولوفاندرهای ایرانی', slotKey: item.key });
   assert.equal(gapOf([answered]), undefined);
   assert.equal(gapOf([{ ...answered, slotKey: undefined }])?.status, 'missing', 'without the slot (and without the title) it is a gap again');
+});
+
+test('readiness judges validity at the given `now`, not the wall clock (CORE-05)', () => {
+  const spec = { ...WORKSTREAM_SPECS[0], requiredContext: [{ key: 'aud', label: 'مخاطب اصلی', description: 'مخاطب' }] } as typeof WORKSTREAM_SPECS[0];
+  const item = obj({ id: 'a', title: 'مخاطب اصلی', content: 'فریلنسرها', validUntil: '2030-01-01' });
+  // still valid today, but already expired at the `now` this call asks about
+  const later = calculateReadinessAndGaps(spec, [item], [], {}, '2031-01-01T00:00:00Z');
+  assert.equal(later.gaps.find((g) => g.key === 'aud')?.status, 'missing');
+  const before = calculateReadinessAndGaps(spec, [item], [], {}, '2029-01-01T00:00:00Z');
+  assert.notEqual(before.gaps.find((g) => g.key === 'aud')?.status, 'missing');
 });

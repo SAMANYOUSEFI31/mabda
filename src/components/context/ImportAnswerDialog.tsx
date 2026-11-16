@@ -97,7 +97,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     const asset: GeneratedDeliverable = {
       id: clientId('del_paste'), workspaceId, workstreamId: forOutput ? res!.packSpecId! : 'external',
       deliverableId: forOutput ? res!.packDeliverableId! : `external_${Date.now()}`, title: b.title, content: b.markdown,
-      executionMode: 'auto', creditCost: 0, usedContext: res?.usedContext ?? [], rebuildCount: 0, createdAt: at(),
+      executionMode: 'auto', usedContext: res?.usedContext ?? [], rebuildCount: 0, createdAt: at(),
       source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() }, ...(res?.packId ? { sourcePackId: res.packId } : {}),
     };
     if (await onSaveAsset(asset)) mark(b.id, 'در کتابخانهٔ دارایی‌ها ذخیره شد');

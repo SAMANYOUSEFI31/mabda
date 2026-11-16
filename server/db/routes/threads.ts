@@ -29,7 +29,7 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
       type: b.proposal!.type, status: 'Proposed', provenance: 'AI Suggested', title: b.proposal!.title, content: b.proposal!.content, nodeId: node.id,
       source: { kind: 'chat', label: `گفتگوی متمرکز · ${node.label}`, at, ...(b.proposal!.reason ? { reason: b.proposal!.reason } : {}) },
     }));
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `گفتگوی متمرکز · ${node.label}`, mode: 'thread', usage: r.usage, id: newId('led') }));
     res.json({ blocks, markdown: r.markdown, created, ledger: repo.listLedger(s) });
   }));
 
@@ -44,7 +44,7 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.threadSummary(aiUserOf(req), { nodeLabel: node.label, transcript }, ctl.signal);
     const note = repo.createNote(s, node.id, `خلاصهٔ گفتگوی متمرکز:\n${r.summary}`);
-    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `خلاصهٔ گفتگوی متمرکز · ${node.label}`, mode: 'thread', creditCost: 0, usage: r.usage, id: newId('led') }));
+    repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `خلاصهٔ گفتگوی متمرکز · ${node.label}`, mode: 'thread', usage: r.usage, id: newId('led') }));
     res.json({ note, ledger: repo.listLedger(s) });
   }));
 }

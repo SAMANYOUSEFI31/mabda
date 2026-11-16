@@ -54,7 +54,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     assert.equal(done.type, 'done');
     const used = done.result.usedContext as Array<{ id: string; version: number }>;
     assert.ok(used.some((u) => u.id === 'ctx_audience' && u.version === 1));
-    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', creditCost: 2, usedContext: used, rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() };
+    const asset = { id: 'del_new', workspaceId: 'ws_studio', workstreamId: 'main_positioning', deliverableId: 'x', title: 'پروفایل مشتری', content: done.result.markdown, executionMode: 'auto', usedContext: used, rebuildCount: 0, createdAt: new Date(Date.now() - 60_000).toISOString() };
     const saved = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', asset);
     assert.equal(saved.json.stale.length, 0);
 
@@ -70,7 +70,7 @@ test('scenario: change the audience → assets become stale with a reason → re
     const ev2 = await t.ndjson('/ai/generate', { workspaceId: 'ws_studio', deliverableId: 'x', deliverableTitle: 'پروفایل مشتری', deliverableType: 'Asset', acceptanceCriteria: ['معیار'], userMode: 'auto', targetNodeId: 'content' });
     const used2 = ev2.at(-1).result.usedContext as Array<{ id: string; version: number }>;
     assert.equal(used2.find((u) => u.id === 'ctx_audience')!.version, 2);
-    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, halfPriceUsedFor: 'sig', createdAt: new Date().toISOString() });
+    const rebuilt = await t.call('PUT', '/workspaces/ws_studio/deliverables/del_new', { ...asset, usedContext: used2, rebuildCount: 1, createdAt: new Date().toISOString() });
     assert.ok(!rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_new'));
     assert.ok(rebuilt.json.stale.some((s: any) => s.deliverableId === 'del_inst_1'), 'the other asset is still stale');
   } finally { t.close(); }
@@ -179,10 +179,10 @@ test('files over the API: 25MB cap and type check', async () => {
 
 const specOf = (id: string, deps: Array<[string, string[]]>) => ({
   id, title: 'جریان سفارشی', target: 'هدف', description: '', requiredContext: [], suggestedContext: [], optionalContext: [], guardrails: ['بدون وعدهٔ بی‌پشتوانه'],
-  deliverables: deps.map(([did, dependsOn], i) => ({ id: did, title: `خروجی ${did}`, type: 'Asset', description: '', order: i + 1, dependsOn, outputBand: 'short', baseCreditCost: { fast: 1, auto: 2, critique: 10, sensitive: 20 }, acceptanceCriteria: ['معیار'] })),
+  deliverables: deps.map(([did, dependsOn], i) => ({ id: did, title: `خروجی ${did}`, type: 'Asset', description: '', order: i + 1, dependsOn, outputBand: 'short', acceptanceCriteria: ['معیار'] })),
 });
 
-test('custom specs: Pro and above only, cycles are refused with the cycle named', async () => {
+test('custom specs: every workspace may make one (no plan); cycles are refused with the cycle named', async () => {
   const t = await boot(() => decide);
   try {
     await t.call('POST', '/bootstrap', {});
@@ -192,9 +192,7 @@ test('custom specs: Pro and above only, cycles are refused with the cycle named'
     const cyc = await t.call('PUT', '/workspaces/ws_studio/specs/s2', specOf('s2', [['a', ['b']], ['b', ['a']]]));
     assert.equal(cyc.status, 400);
     assert.match(cyc.json.error.message, /چرخه‌ای/);
-    const starter = await t.call('PUT', '/workspaces/ws_course/specs/s3', specOf('s3', [['a', []]]));
-    assert.equal(starter.status, 403);
-    assert.match(starter.json.error.message, /Pro/);
+    assert.equal((await t.call('PUT', '/workspaces/ws_course/specs/s3', specOf('s3', [['a', []]]))).status, 200, 'the personal sample may make one too');
     assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.specs.length, 1);
   } finally { t.close(); }
 });
@@ -208,7 +206,7 @@ test('gap: ambiguity is judged once per object version and cached; editing the o
     const calls = t.p.calls.length;
     await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_audience'] });
     assert.equal(t.p.calls.length, calls, 'cached: no second model call');
-    assert.ok(r1.json.ledger.some((l: any) => l.mode === 'gap_judge' && l.creditCost === 0));
+    assert.ok(r1.json.ledger.some((l: any) => l.mode === 'gap_judge'));
     await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'مخاطب دقیق‌تر: طراحان فریلنسر ارشد' });
     await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_audience'] });
     assert.equal(t.p.calls.length, calls + 1);
@@ -216,14 +214,16 @@ test('gap: ambiguity is judged once per object version and cached; editing the o
   } finally { t.close(); }
 });
 
-test('Context Coach: separate daily cap per plan, counted only after a successful answer', async () => {
+test('Context Coach: separate daily fair-use cap, counted only after a successful answer', async () => {
   let fail = false;
+  const coachCap = LIMITS.coachPerDay;
+  LIMITS.coachPerDay = 5;
   const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('ambiguities') ? (fail ? Object.assign(new Error('x'), { status: 500 }) : { questions: ['چه کسی؟'], ambiguities: [], proposals: [{ type: 'Fact', title: 'الف', content: 'ب', nodeId: 'business' }] }) : decide));
   try {
     await t.call('POST', '/bootstrap', {});
     const q0 = (await t.call('GET', '/workspaces/ws_course/coach/quota')).json;
-    assert.deepEqual([q0.limit, q0.used], [5, 0], 'starter: 5 per day');
-    assert.equal((await t.call('GET', '/workspaces/ws_studio/coach/quota')).json.limit, 15, 'pro: 15 per day');
+    assert.deepEqual([q0.limit, q0.used], [5, 0], 'the cap is read from LIMITS');
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/coach/quota')).json.limit, 5, 'the same for every workspace');
     fail = true;
     assert.notEqual((await t.call('POST', '/workspaces/ws_course/coach', { scope: 'node', nodeId: 'me', text: 'متن' })).status, 200);
     assert.equal((await t.call('GET', '/workspaces/ws_course/coach/quota')).json.used, 0, 'failed answers are not counted');
@@ -237,71 +237,61 @@ test('Context Coach: separate daily cap per plan, counted only after a successfu
     assert.ok(!st.objects.some((o: any) => o.title === 'الف'), 'no coach proposal became an object');
     assert.ok(st.ledger.some((l: any) => l.mode === 'coach'));
     assert.equal((await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'onboarding', nodeId: 'business', text: 'متن' })).status, 200, 'the other workspace has its own cap');
-  } finally { t.close(); }
+  } finally { LIMITS.coachPerDay = coachCap; t.close(); }
 });
 
-import { ENTITLEMENTS_CONFIG } from '../src/core/entitlements.config.ts';
+import { LIMITS } from '../src/core/limits.ts';
 
-test('judgements we pay for are capped per plan per day; the usage endpoint shows every meter', async () => {
+test('judgements we pay for are capped per day (fair use); the usage endpoint shows every meter', async () => {
   const t = await boot((c) => (isCheckCall(c) ? answerChecks(c) : decide));
-  const cfgPlan = ENTITLEMENTS_CONFIG.plans.pro;
-  const before = cfgPlan.decisionJudgmentsPerDay;
-  cfgPlan.decisionJudgmentsPerDay = 2;
+  const before = LIMITS.decisionJudgmentsPerDay;
+  LIMITS.decisionJudgmentsPerDay = 2;
   try {
     await t.call('POST', '/bootstrap', {});
     const r = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_domain', 'ctx_audience', 'ctx_problem'] });
     assert.equal(r.json.limited, true);
-    assert.equal(Object.keys(r.json.judgments).length, 2, 'only the 2 judgements the plan allows today were made');
+    assert.equal(Object.keys(r.json.judgments).length, 2, 'only the 2 judgements the limit allows today were made');
     const u = (await t.call('GET', '/workspaces/ws_studio/usage')).json;
     assert.equal(u.judgmentsToday, 2);
-    assert.deepEqual([u.planId, u.objects > 0, u.coachToday, u.fileTokens], ['pro', true, 0, 0]);
+    assert.deepEqual([u.objects > 0, u.coachToday, u.fileTokens], [true, 0, 0]);
+    assert.equal('planId' in u, false);
     assert.equal('byokCostUsd' in u, false);
     const again = await t.call('POST', '/workspaces/ws_studio/gap/judge', { objectIds: ['ctx_problem'] });
     assert.equal(again.json.limited, true);
     assert.equal(Object.keys(again.json.judgments).length, 2, 'nothing more today');
-  } finally { cfgPlan.decisionJudgmentsPerDay = before; t.close(); }
+  } finally { LIMITS.decisionJudgmentsPerDay = before; t.close(); }
 });
 
-test('plan limits over the API: object cap (403 with a Persian message) and workspace cap', async () => {
+test('fair-use limits over the API: object cap (403 with a Persian message) and workspace cap', async () => {
   const t = await boot(() => decide);
   try {
     await t.call('POST', '/bootstrap', {});
+    const wsCap = LIMITS.workspaces;
+    LIMITS.workspaces = 2;
     const created: string[] = [];
     for (let i = 0; i < 3; i++) {
-      const r = await t.call('PUT', `/workspaces/ws_x${i}`, { id: `ws_x${i}`, name: `x${i}`, slug: `x${i}`, description: '', planId: 'starter', creditsRemaining: 1, todayChatCount: 0, createdAt: new Date().toISOString() });
+      const r = await t.call('PUT', `/workspaces/ws_x${i}`, { id: `ws_x${i}`, name: `x${i}`, slug: `x${i}`, description: '', todayChatCount: 0, createdAt: new Date().toISOString() });
       created.push(String(r.status));
+      if (r.status === 403) assert.match(r.json.error.message, /بایگانی/);
     }
-    assert.deepEqual(created, ['403', '403', '403'], 'the user already has 2 workspaces; a Starter workspace allows 1');
-    const cap = ENTITLEMENTS_CONFIG.plans.starter.maxObjects;
+    LIMITS.workspaces = wsCap;
+    assert.deepEqual(created, ['403', '403', '403'], 'the user already has 2 workspaces and the limit is 2');
+    const cap = LIMITS.maxObjects;
     // the personal sample already holds some objects: the cap leaves room for exactly one more
     const held = (await t.call('GET', '/workspaces/ws_course/state')).json.objects.filter((o: any) => o.status !== 'Archived' && o.status !== 'Superseded').length;
-    ENTITLEMENTS_CONFIG.plans.starter.maxObjects = held + 1;
+    LIMITS.maxObjects = held + 1;
     try {
       const ok = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'الف', content: 'ب', nodeId: 'me' });
       assert.equal(ok.status, 200);
       const over = await t.call('POST', '/workspaces/ws_course/objects', { type: 'Fact', provenance: 'User Input', title: 'پ', content: 'ت', nodeId: 'me' });
       assert.equal(over.status, 403);
-      assert.match(over.json.error.message, /سقف قلم دانش/);
-    } finally { ENTITLEMENTS_CONFIG.plans.starter.maxObjects = cap; }
+      assert.match(over.json.error.message, /سقف/);
+      assert.doesNotMatch(over.json.error.message, /پلن|ارتقا/);
+    } finally { LIMITS.maxObjects = cap; }
   } finally { t.close(); }
 });
 
-test('the change-impact engine is an entitlement: without it nothing is flagged stale', async () => {
-  const t = await boot(() => decide);
-  const plan = ENTITLEMENTS_CONFIG.plans.pro;
-  try {
-    await t.call('POST', '/bootstrap', {});
-    plan.engines.changeImpact = false;
-    const edit = await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'مخاطب تازه' });
-    assert.equal(edit.json.impact.count, 0);
-    assert.deepEqual(edit.json.stale, []);
-    assert.deepEqual((await t.call('GET', '/workspaces/ws_studio/state')).json.stale, []);
-    plan.engines.changeImpact = true;
-    assert.ok((await t.call('GET', '/workspaces/ws_studio/state')).json.stale.length >= 1, 'switched back on, the history was kept');
-  } finally { plan.engines.changeImpact = true; t.close(); }
-});
-
-test('manager ledger: real cost per workspace vs plan price; off unless MABDA_ADMIN', async () => {
+test('manager ledger: real cost per workspace (no plan price); off unless MABDA_ADMIN', async () => {
   const off = await boot(() => decide);
   try {
     await off.call('POST', '/bootstrap', {});
@@ -311,14 +301,13 @@ test('manager ledger: real cost per workspace vs plan price; off unless MABDA_AD
   try {
     await t.call('POST', '/bootstrap', {});
     await t.call('POST', '/workspaces/ws_studio/coach', { scope: 'node', nodeId: 'business', text: 'متن' });
-    await t.call('POST', '/workspaces/ws_studio/ledger', { id: 'led_byok', timestamp: new Date().toISOString(), workspaceId: 'ws_studio', action: 'x', mode: 'auto', creditCost: 0, inputTokens: 1, outputTokens: 1, estimatedAiCostUsd: 5, status: 'completed', byok: true });
+    await t.call('POST', '/workspaces/ws_studio/ledger', { id: 'led_byok', timestamp: new Date().toISOString(), workspaceId: 'ws_studio', action: 'x', mode: 'auto', inputTokens: 1, outputTokens: 1, estimatedAiCostUsd: 5, status: 'completed', byok: true });
     const r = (await t.call('GET', '/admin/cost-report')).json;
     const row = r.rows.find((x: any) => x.workspaceId === 'ws_studio');
-    assert.equal(row.priceUsd, 24);
+    assert.equal('priceUsd' in row, false);
     assert.ok(row.ourCostUsd > 0 && row.ourCostUsd < 1, 'only the coach call is ours');
     assert.equal('byokCostUsd' in row, false, 'legacy user-paid cost is not exposed as a current product metric');
     assert.deepEqual(row.lines.map((l: any) => l.category).includes('coach'), true);
-    assert.equal(row.warn, false);
   } finally { t.close(); }
 });
 
@@ -388,7 +377,7 @@ test('semantic contradictions: code picks candidate pairs, the decision layer ju
     assert.equal(pj.conflict, true);
     assert.match(pj.reason, /^دلیل رد p\d$/);
     assert.ok(!JSON.stringify(r1).includes('probability'), 'no confidence in the payload');
-    assert.ok(r1.ledger.some((l: any) => l.mode === 'contradiction' && l.creditCost === 0));
+    assert.ok(r1.ledger.some((l: any) => l.mode === 'contradiction'));
     assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 0, 'cached for these versions');
     // scoped call (what the client sends after an edit): only pairs that involve the named objects
     await t.call('PATCH', `/workspaces/ws_studio/objects/${x.id}`, { content: 'فریلنسرهای طراح و برنامه‌نویس' });
@@ -398,9 +387,6 @@ test('semantic contradictions: code picks candidate pairs, the decision layer ju
     assert.ok((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', { objectIds: [x.id] })).json.judged >= 1);
     await t.call('PATCH', `/workspaces/ws_studio/objects/${y.id}`, { content: 'سازمان‌های بزرگ و دولتی' });
     assert.equal((await t.call('POST', '/workspaces/ws_studio/contradictions/judge', {})).json.judged, 1, 'an edited object is judged again');
-
-    // plan gate
-    assert.equal((await t.call('POST', '/workspaces/ws_course/contradictions/judge', {})).status, 403);
 
     // resolve: keep x → y becomes Superseded by x (history kept, relationship added), the pair is resolved
     const res = (await t.call('POST', '/workspaces/ws_studio/contradictions/resolve', { aId: x.id, bId: y.id, action: 'keep', keepId: x.id })).json;
@@ -414,8 +400,8 @@ test('semantic contradictions: code picks candidate pairs, the decision layer ju
 });
 
 test('contradiction resolution «both are right»: one object moves to another node and the pair is resolved; the daily judgement cap limits the run', async () => {
-  const cap = ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay;
-  ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay = 1;
+  const cap = LIMITS.decisionJudgmentsPerDay;
+  LIMITS.decisionJudgmentsPerDay = 1;
   const t = await boot((c) => (isCheckCall(c) ? answerChecks(c, []) : decide));
   try {
     await t.call('POST', '/bootstrap', {});
@@ -429,7 +415,7 @@ test('contradiction resolution «both are right»: one object moves to another n
     assert.equal(res.objects.find((o: any) => o.id === b.id).nodeId, 'offer');
     assert.equal(res.objects.find((o: any) => o.id === b.id).status, 'Confirmed', 'nothing is superseded or deleted');
     assert.equal(res.pairJudgments.find((j: any) => j.resolution === 'separated').conflict, false);
-  } finally { ENTITLEMENTS_CONFIG.plans.pro.decisionJudgmentsPerDay = cap; t.close(); }
+  } finally { LIMITS.decisionJudgmentsPerDay = cap; t.close(); }
 });
 
 test('memory import: PROPOSED + Imported objects, each quote is kept only if it really occurs in the pasted text; an AI error is a structured error and creates nothing', async () => {

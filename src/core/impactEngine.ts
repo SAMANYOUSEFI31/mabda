@@ -137,11 +137,6 @@ export function newlyStale(before: StaleAsset[], after: StaleAsset[]): StaleAsse
   return after.filter((s) => was.get(s.deliverableId) !== s.signature);
 }
 
-/** The half-price rebuild is allowed once per distinct change set. */
-export function halfPriceRebuildAvailable(d: Pick<GeneratedDeliverable, 'halfPriceUsedFor'>, stale: StaleAsset | undefined): boolean {
-  return !!stale && d.halfPriceUsedFor !== stale.signature;
-}
-
 /** Sentence for the toast after a change. Empty when nothing is affected. */
 export function impactMessage(count: number): string {
   return count > 0 ? `این تغییر روی ${fa(count)} دارایی اثر دارد.` : '';

@@ -316,12 +316,6 @@ export interface DeliverableSpec {
   dependsOn?: string[];
   /** length of the output; default depends on the type */
   outputBand?: OutputBandId;
-  baseCreditCost: {
-    fast: number;
-    auto: number;
-    critique: number;
-    sensitive: number;
-  };
   acceptanceCriteria: string[];
 }
 
@@ -369,14 +363,11 @@ export interface GeneratedDeliverable {
   title: string;
   content: string;
   executionMode: ExecutionMode;
-  creditCost: number;
   /** the exact objects (id + version) injected into the model — Context Replay and the impact engine read this */
   usedContext: UsedContextRef[];
   /** knowledge this output was built from that was later erased for good (permanent delete): the output keeps its text; Replay says «N منبع حذف‌شده» */
   removedSources?: number;
   usedFileChunks?: UsedFileChunk[];
-  /** staleness signature for which the one-time half-price rebuild was already used */
-  halfPriceUsedFor?: string;
   /** made outside Mabda (for example a pasted answer): which AI, and the Context pack it was built from */
   source?: ObjectSource;
   sourcePackId?: string;
@@ -417,7 +408,6 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   executionMode: 'auto' | 'deep';
-  creditCost: number;
   suggestions?: ContextSuggestion[];
   /** structured answer (Markdown blocks); `content` is the same text as Markdown */
   blocks?: ContentBlock[];
@@ -446,29 +436,12 @@ export interface ChatSession {
   messages: ChatMessage[];
 }
 
-export type PlanId = 'starter' | 'pro' | 'max';
-
-export interface WorkspacePlan {
-  id: PlanId;
-  title: string;
-  priceMonthlyUsd: number;
-  creditsMonthly: number;
-  workspaceLimit: number;
-  dailyChatLimit: number;
-  allowedModes: ExecutionMode[];
-  /** may create and edit custom workstream specs */
-  customSpecs: boolean;
-  /** Context Coach sessions per day (separate from chat) */
-  coachDailyLimit: number;
-}
-
 export interface LedgerEntry {
   id: string;
   timestamp: string;
   workspaceId: string;
   action: string;
   mode: ExecutionMode | 'chat_auto' | 'chat_deep' | 'file_processing' | 'note_extract' | 'gap_judge' | 'coach' | 'import_parse' | 'contradiction' | 'memory_import' | 'thread' | 'asset_extract';
-  creditCost: number;
   inputTokens: number;
   outputTokens: number;
   estimatedAiCostUsd: number;
@@ -511,12 +484,10 @@ export interface Workspace {
   name: string;
   slug: string;
   description: string;
-  planId: PlanId;
-  creditsRemaining: number;
   todayChatCount: number;
   /** YYYY-MM-DD (Tehran) the count belongs to; a different day means the count is 0 */
   chatCountDay?: string;
-  /** the built-in showcase workspace: never counted against the plan (workspaces, objects, files) or the account's usage; set only by the server */
+  /** the built-in showcase workspace: never counted against the fair-use limits (workspaces, objects, files) or the account's usage; set only by the server */
   isDemo?: boolean;
   /** which built-in workstreams of the library this workspace shows. Absent = all of them (workspaces that existed before the library keep their behaviour); new workspaces start with none */
   enabledSpecIds?: string[];

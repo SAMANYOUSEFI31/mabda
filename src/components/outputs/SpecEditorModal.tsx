@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import type { DeliverableSpec, OutputBandId, PlanId, TreeNode, WorkstreamSpec } from '../../types';
-import { PLANS } from '../../core/creditEngine';
+import type { DeliverableSpec, OutputBandId, TreeNode, WorkstreamSpec } from '../../types';
 import { flatten } from '../../core/nodeTree';
 import { validateSpec, wouldCreateCycle } from '../../core/specGraph';
 import { Alert, Button, Card, Checkbox, Dialog, IconButton, Select, TextField, Textarea, formatNumber } from '../../ui';
@@ -14,13 +13,11 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSaveSpec: (spec: WorkstreamSpec) => Promise<boolean> | boolean;
-  planId: PlanId;
   nodes: TreeNode[];
   /** every spec the user can copy from (built-in + custom) */
   specs: WorkstreamSpec[];
   /** a custom spec to edit; undefined = new */
   initial?: WorkstreamSpec;
-  onUpgrade: () => void;
 }
 
 /** The form state is built from `initial` every time the dialog opens. */
@@ -34,10 +31,6 @@ interface CtxItem { uid: string; key: string; label: string; description: string
 interface DelItem { id: string; title: string; type: 'Asset' | 'Deliverable'; description: string; band: OutputBandId; dependsOn: string[]; criteria: Line[] }
 interface Draft { title: string; target: string; description: string; required: CtxItem[]; suggested: CtxItem[]; optional: CtxItem[]; deliverables: DelItem[]; guardrails: Line[] }
 
-const COST: Record<'Asset' | 'Deliverable', DeliverableSpec['baseCreditCost']> = {
-  Asset: { fast: 1, auto: 2, critique: 10, sensitive: 20 },
-  Deliverable: { fast: 18, auto: 26, critique: 50, sensitive: 80 },
-};
 const BAND_OPTIONS = [
   { value: 'short', label: 'کوتاه' },
   { value: 'medium', label: 'متوسط' },
@@ -76,7 +69,7 @@ function toSpec(d: Draft, id: string): WorkstreamSpec {
     guardrails: d.guardrails.map((g) => g.text.trim()).filter(Boolean),
     deliverables: d.deliverables.map((x, i) => ({
       id: x.id, title: x.title.trim(), type: x.type, description: x.description.trim(), order: i + 1,
-      dependsOn: x.dependsOn.length ? x.dependsOn : undefined, outputBand: x.band, baseCreditCost: COST[x.type],
+      dependsOn: x.dependsOn.length ? x.dependsOn : undefined, outputBand: x.band,
       acceptanceCriteria: x.criteria.map((c) => c.text.trim()).filter(Boolean),
     })),
   };
@@ -106,22 +99,13 @@ function Rows<T extends { uid?: string; id?: string }>({ items, onChange, render
   );
 }
 
-const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, planId, nodes, specs, initial, onUpgrade }) => {
-  const allowed = PLANS[planId].customSpecs;
+const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initial }) => {
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
   const [copyFrom, setCopyFrom] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const specId = React.useRef(initial?.id ?? `spec_custom_${uid()}`).current;
 
-  if (!allowed) {
-    return (
-      <Dialog open onClose={onClose} size="sm" title="جریان کار سفارشی از پلن Pro" description={`پلن فعلی این فضا ${PLANS[planId].title} است.`}
-        footer={<><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" onClick={() => { onClose(); onUpgrade(); }}>ارتقای پلن</Button></>}>
-        <p className="body-md text-text-default">ساخت و ویرایش جریان کار با خروجی‌های وابسته، معیار پذیرش و خط قرمز در پلن‌های Pro و Max فعال است. جریان‌های آماده در همهٔ پلن‌ها در دسترس‌اند.</p>
-      </Dialog>
-    );
-  }
 
   const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));

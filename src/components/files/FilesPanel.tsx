@@ -10,14 +10,13 @@ import type { FileChargeInfo, FileQuotaInfo } from '../../types/state';
 import { flatten } from '../../core/nodeTree';
 import { useAiStatus } from '../../services/aiStatus';
 import { DangerDialog } from '../shared/Removal';
-import { Alert, Badge, Button, Card, Dialog, EmptyState, IconButton, Progress, Select, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Card, EmptyState, IconButton, Progress, Select, formatNumber } from '../../ui';
 
 interface Props {
   files: StoredFile[];
   nodes: TreeNode[];
   quota: FileQuotaInfo | null;
-  credits: number;
-  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'credits' | 'blocked' } | undefined>;
+  onUpload: (file: File, nodeId: string) => Promise<{ file: StoredFile; charge: FileChargeInfo; policy: 'ok' | 'blocked' } | undefined>;
   onProcess: (fileId: string) => Promise<void>;
   onDelete: (fileId: string) => Promise<void>;
 }
@@ -32,7 +31,7 @@ const STATUS: Record<StoredFile['status'], { label: string; intent: 'neutral' | 
 const kb = (n: number) => (n >= 1024 * 1024 ? `${formatNumber(Math.round((n / 1024 / 1024) * 10) / 10)} مگابایت` : `${formatNumber(Math.max(1, Math.round(n / 1024)))} کیلوبایت`);
 
 /** Upload txt / md / pdf / docx (≤ 25MB). Processed once on the cheap tier: summary, Proposed objects, ~800-token chunks. */
-export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUpload, onProcess, onDelete }) => {
+export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onProcess, onDelete }) => {
   const ai = useAiStatus();
   const managed = ai.managedEnabled;
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -40,7 +39,6 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
   const [pendingDelete, setPendingDelete] = useState<StoredFile | null>(null);
   const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<{ file: StoredFile; charge: FileChargeInfo } | null>(null);
 
   const run = async (id: string, fn: () => Promise<void>) => {
     setBusy(id);
@@ -55,8 +53,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
       if (!r) return;
       setBlocked(null);
       if (!managed) return; // processing is Mabda's own AI: frozen with MABDA_MANAGED_AI off, the file is only stored
-      if (r.policy === 'blocked') setBlocked(`«${r.file.name}» از سهمیهٔ ماهانهٔ پردازش فایل بیشتر است؛ ماه بعد ادامه بده یا پلن را ارتقا بده.`);
-      else if (r.policy === 'credits') setConfirm(r);
+      if (r.policy === 'blocked') setBlocked(`«${r.file.name}» از سهمیهٔ ماهانهٔ پردازش فایل بیشتر است؛ ماه بعد ادامه بده.`);
       else await run(r.file.id, () => onProcess(r.file.id));
     });
   };
@@ -88,7 +85,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
         <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
           <Progress value={Math.min(used, total)} max={total} label="سهمیهٔ پردازش فایل این ماه" showValue={false} intent={used >= total ? 'warning' : 'neutral'} />
           <span className="body-sm text-text-subtle">
-            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. {managed ? 'بیش از سهمیه، هر ۲۰ هزار توکن ۲ اعتبار.' : 'سهمیه هر ماه تازه می‌شود.'}
+            {formatNumber(used)} از {formatNumber(total)} توکن مصرف شده است. سهمیه هر ماه تازه می‌شود.
           </span>
         </div>
       )}
@@ -122,34 +119,6 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, credits, onUp
         </ul>
       )}
 
-      <Dialog
-        open={!!confirm}
-        onClose={() => setConfirm(null)}
-        size="sm"
-        title="پردازش فراتر از سهمیه"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirm(null)}>بعداً</Button>
-            <Button
-              variant="secondary"
-              disabled={!!confirm && credits < confirm.charge.credits}
-              onClick={async () => { const c = confirm; setConfirm(null); if (c) await run(c.file.id, () => onProcess(c.file.id)); }}
-            >
-              پردازش با {confirm ? formatNumber(confirm.charge.credits) : ''} اعتبار
-            </Button>
-          </>
-        }
-      >
-        {confirm && (
-          <div className="flex flex-col gap-stack-sm">
-            <p className="body-md text-text-default">
-              «{confirm.file.name}» حدود {formatNumber(confirm.file.tokens)} توکن است و {formatNumber(confirm.charge.excessTokens)} توکنش از سهمیهٔ ماهانه بیشتر می‌شود.
-            </p>
-            <p className="body-md text-text-default">هزینه: {formatNumber(confirm.charge.credits)} اعتبار (موجودی: {formatNumber(credits)}).</p>
-            {credits < confirm.charge.credits && <Alert intent="warning">اعتبار کافی نیست؛ از «مصرف» اعتبار بگیر یا پلن را ارتقا بده.</Alert>}
-          </div>
-        )}
-      </Dialog>
       <DangerDialog
         open={!!pendingDelete} onClose={() => setPendingDelete(null)} title={`حذف «${pendingDelete?.name ?? ''}»`}
         description="فایل و متن پردازش‌شده‌اش پاک می‌شود. دانشی که از آن ساخته شده می‌ماند و منبعش را نگه می‌دارد. این کار برنمی‌گردد؛ اگر لازم شد دوباره بارگذاری کن."

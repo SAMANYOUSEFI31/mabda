@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bm25Rank, chunkText, selectWithinBudget, tokenize } from './retrieval';
-import { fileProcessingCharge, FILE_QUOTA_TOKENS } from './creditEngine';
 import { estimateTokens } from './tokens';
 
 test('chunks are ~800 tokens and keep paragraph order', () => {
@@ -45,16 +44,3 @@ test('budget: only whole chunks that fit, best first', () => {
 
 test('estimateTokens is monotonic', () => assert.ok(estimateTokens('aaaa') < estimateTokens('aaaa'.repeat(10))));
 
-test('file quota: within, straddling and over (2 credits per started 20k tokens)', () => {
-  assert.equal(FILE_QUOTA_TOKENS.starter, 150_000);
-  assert.equal(FILE_QUOTA_TOKENS.pro, 500_000);
-  assert.equal(FILE_QUOTA_TOKENS.max, 1_500_000);
-  const within = fileProcessingCharge('starter', 100_000, 50_000);
-  assert.deepEqual([within.withinQuota, within.credits, within.excessTokens], [true, 0, 0]);
-  const straddle = fileProcessingCharge('starter', 140_000, 30_000); // 10k inside, 20k over
-  assert.deepEqual([straddle.excessTokens, straddle.credits], [20_000, 2]);
-  const started = fileProcessingCharge('pro', 500_000, 20_001); // 2 started units
-  assert.equal(started.credits, 4);
-  const full = fileProcessingCharge('max', 1_500_000, 100_000);
-  assert.deepEqual([full.excessTokens, full.credits], [100_000, 10]);
-});

@@ -16,8 +16,6 @@ const ws = (id: string): Workspace => ({
   name: id,
   slug: id,
   description: '',
-  planId: 'pro',
-  creditsRemaining: 100,
   todayChatCount: 0,
   createdAt: '2026-01-01T00:00:00Z',
 });

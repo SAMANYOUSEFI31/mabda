@@ -262,7 +262,7 @@ export const dataApi = {
     const form = new FormData();
     form.set('file', file);
     if (nodeId) form.set('nodeId', nodeId);
-    return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'credits' | 'blocked' }>('POST', `${ws(id)}/files`, form);
+    return call<{ file: StoredFile; charge: FileChargeInfo; period: string; policy: 'ok' | 'blocked' }>('POST', `${ws(id)}/files`, form);
   },
   processFile: (id: string, fileId: string) => call<ProcessedFile>('POST', `${ws(id)}/files/${fileId}/process`, {}),
   deleteFile: (id: string, fileId: string) => call<{ ok: true }>('DELETE', `${ws(id)}/files/${fileId}`),

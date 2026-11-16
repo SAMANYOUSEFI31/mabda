@@ -4,22 +4,19 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import type { PlanId } from '../../types';
 import type { UsageInfo } from '../../types/state';
-import { meters } from '../../core/entitlements';
+import { meters } from '../../core/limits';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Card, Progress, formatNumber, Caution } from '../../ui';
 
 interface Props {
   workspaceId: string;
-  planId: PlanId;
   /** changes whenever the workspace data changes, to refresh the meters */
   refreshKey: unknown;
-  onOpenPlans: () => void;
 }
 
-/** What this plan has used: objects, file quota, today's judgements and Coach. */
-export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, onOpenPlans }) => {
+/** What this workspace has used against the fair-use limits: objects, file quota, today's judgements and Coach. */
+export const UsagePanel: React.FC<Props> = ({ workspaceId, refreshKey }) => {
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +29,7 @@ export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, o
   if (error) return <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={load}>دوباره</Button>}>{error}</Alert>;
   if (!usage) return <p className="body-sm text-text-subtle">در حال خواندن مصرف…</p>;
 
-  const rows = meters(planId, { objects: usage.objects, fileTokens: usage.fileTokens, judgmentsToday: usage.judgmentsToday, coachToday: usage.coachToday });
-  const anyNear = rows.some((r) => r.nearLimit);
+  const rows = meters({ objects: usage.objects, fileTokens: usage.fileTokens, judgmentsToday: usage.judgmentsToday, coachToday: usage.coachToday });
 
   return (
     <div className="flex flex-col gap-stack-lg">
@@ -49,8 +45,6 @@ export const UsagePanel: React.FC<Props> = ({ workspaceId, planId, refreshKey, o
           </Card>
         ))}
       </div>
-
-      {anyNear && <Button variant="secondary" iconEnd="ArrowLeft" onClick={onOpenPlans}>مقایسهٔ پلن‌ها</Button>}
     </div>
   );
 };

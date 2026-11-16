@@ -5,7 +5,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
-import { PLANS } from '../../core/creditEngine';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
@@ -25,7 +24,6 @@ interface AppNavigationProps {
   /** the showcase can be wiped with one confirm (absent when there is none) */
   onDeleteDemo?: () => void;
   onOpenArchive: () => void;
-  onOpenPlanModal: () => void;
   onOpenAccountModal: () => void;
   /** Ctrl/⌘+K: the global search and commands */
   onOpenSearch: () => void;
@@ -149,15 +147,12 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <IconButton icon="PanelRight" label={docked || overlay ? 'باریک کردن نوار کناری' : 'باز کردن نوار کناری'} aria-expanded={docked || overlay} aria-keyshortcuts={"Control+\\ Meta+\\"} variant="ghost" onClick={toggleDock} />
   );
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
-  const plan = PLANS[currentWorkspace.planId] || PLANS.pro;
-  const planName = plan.title.split(' ')[0];
-
   const ai = useAiStatus();
   const { session, signOut } = useSession();
   const [peopleOpen, setPeopleOpen] = useState(false);
   const online = session?.mode === 'invite';
-  // AI-04: plans and credits are frozen and never shown unless managed AI is on (CLAUDE.md 5b); the account line says whose it is
-  const accountLine = ai.managedEnabled ? `پلن ${planName}` : online ? (session?.user?.name ?? '') : 'روی همین دستگاه';
+  // the account line says whose it is (there is no plan to name: the subscription model was removed)
+  const accountLine = online ? (session?.user?.name ?? '') : 'روی همین دستگاه';
   const [theme, setTheme] = useTheme();
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
@@ -171,7 +166,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
     ...(online && session?.user?.role === 'owner' ? [{ label: 'افراد آزمون', icon: 'Link2' as const, onSelect: () => setPeopleOpen(true) }] : []),
-    ...(ai.managedEnabled ? [{ label: 'پلن و ارتقا', icon: 'CreditCard' as const, onSelect: p.onOpenPlanModal }, { label: 'مصرف', icon: 'Wallet' as const, onSelect: p.onOpenLedger }] : []),
+    ...(ai.managedEnabled ? [{ label: 'مصرف', icon: 'Wallet' as const, onSelect: p.onOpenLedger }] : []),
     ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
     { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },

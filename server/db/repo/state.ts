@@ -15,7 +15,7 @@ export const stateMethods = {
       workspace: this.getWorkspace(s.userId, s.workspaceId)!,
       nodes: this.listNodes(s), objects, samples: this.listSampleObjects(s), relationships: this.listRelationships(s), notes: this.listNotes(s), thoughts: this.listThoughts(s, { includeResolved: true }),
       deliverables, ledger: this.listLedger(s), sessions: this.listSessions(s), specs: this.listSpecs(s), files: this.listFiles(s),
-      stale: this.impactEnabled(s) ? this.computeStale(s, deliverables.filter((d) => !d.archivedAt)) : [],
+      stale: this.computeStale(s, deliverables.filter((d) => !d.archivedAt)),
       judgments: this.listJudgments(s),
       pairJudgments: this.listPairJudgments(s),
       changes: this.listChanges(s),

@@ -22,7 +22,7 @@
 
 | چیز | چیست | کد | جدول |
 | --- | --- | --- | --- |
-| **Workspace** | مرز حقیقت؛ هیچ داده‌ای از آن بیرون نمی‌رود | `server/db/repo.ts` (بخش workspaces)، `src/core/entitlements*.ts` | `workspaces` |
+| **Workspace** | مرز حقیقت؛ هیچ داده‌ای از آن بیرون نمی‌رود | `server/db/repo.ts` (بخش workspaces)، `src/core/limits.ts` | `workspaces` |
 | **بخش (Node)** | جایگاه در درخت؛ دامنه و ارث‌بری. ترتیب فقط نمایش است | `src/core/nodeTree.ts`، `nodeMove.ts`، `nodeFocus.ts`؛ repo: tree nodes | `tree_nodes` |
 | **ماده (Material)** | ورودی خام: یادداشت، فایل. **پاسخ AI واردشده و متن چسبانده‌شده هویت جدا ندارند** (تفاوت ۲) | `notes`: repo «notes & thoughts»؛ فایل: `server/files/*`، repo «files» | `notes`، `files`، `file_chunks` |
 | **فکر (Thought)** | واحد فکرِ حل‌نشده با هویت پایدار؛ ممکن است هرگز دانش نشود | `src/core/thinkingMarkers.ts`، `thoughts.ts`، `thinkingSpace.ts`؛ repo: `syncNoteThoughts`، `reviseThought`، … | `thoughts` |
@@ -104,7 +104,7 @@
 کد: `server/intelligence/`. قراردادش:
 - **فقط می‌خواند، و فقط از راه «پیشنهاد ← تأیید» می‌نویسد.** هیچ پیشنهادی حقیقت، رابطه یا ساختار نمی‌سازد؛ بی‌لمس کاربر اعمال نمی‌شود. تنها جاهایی که این لایه می‌نویسد جدول‌های خودش است: `intelligence_embeddings`، `intelligence_suggestions`، `intelligence_reactions` (migration 25).
 - **موتورهای قطعی از آن خبر ندارند** (Gap، Readiness، تناقض، اثر، `effectiveFor`، `decisionGraph`)؛ جهت وابستگی فقط از لایهٔ هوش به `src/core` است (مثلاً BM25). بدون کلید (`LIARA_BASE_URL` و `LIARA_API_KEY`) خاموش است و محصول دقیقاً مثل قبل کار می‌کند؛ هیچ مسیر یا رابطی هنوز آن را صدا نمی‌زند.
-- AI مولد و گفتگویی فعلاً در محصول نیست (`docs/later.md`)؛ این لایه فقط مدل‌های **غیرمولد** دارد. کد `creditEngine` و AI مدیریت‌شده **فریز** است و این لایه به آن وصل نیست.
+- AI مولد و گفتگویی فعلاً در محصول نیست (`docs/later.md`)؛ این لایه فقط مدل‌های **غیرمولد** دارد. AI مدیریت‌شده **فریز** است و این لایه به آن وصل نیست (مدل اشتراک و اعتبار حذف شد).
 
 **ترکیب** (هر چهار تنظیم‌محورند: داده، نه کد):
 
@@ -125,7 +125,7 @@
 - **embedding بر اساس شناسه و نسخهٔ متن نگه داشته می‌شود** (کلید: فضا، چیز، تکه، هشِ متن+نسخهٔ تکه‌کننده+مدل). با حذف دائمی ریشه (دانش، فکر، یادداشت، فایل) یا حذف فضا، بردارها و پیشنهادهای آن با trigger پاک می‌شوند.
 - **«پیشنهاد» و «واکنش»** (پذیرفت، رد کرد، عوض کرد + آنچه جایش برگزید) در مدل داده جا دارند (`server/intelligence/store.ts`)؛ فقط شناسه، برچسب و امتیاز، نه متن کاربر. برای ارزیابی و بهبود پس از عرضه لازم‌اند.
 - جاهای فعلی که به این لایه نزدیک‌اند: `server/ai/*` (فریز)، `server/db/aiContext.ts`، `src/core/judgePolicy.ts`.
-- **پلن:** دستورپخت فقط یک کلید `capability` دارد (`suggestRelated`، `suggestKind`، `suggestPlace`، `voiceNote`)؛ «کدام پلن این قابلیت را دارد» طبق قانون ۵ فقط در `src/core/entitlements.config.ts` (`intelligence`) است و `hasIntelligenceCapability` در `entitlements.ts` می‌خواندش. فعلاً همهٔ پلن‌ها همهٔ قابلیت‌ها را دارند؛ قیمت‌گذاری تصمیم باز است.
+- **قابلیت:** دستورپخت فقط یک کلید `capability` دارد (`suggestRelated`، `suggestKind`، `suggestPlace`، `voiceNote`، فهرست در `server/intelligence/config.ts`). پلنی نیست که آن را ببندد: همه همهٔ قابلیت‌ها را دارند.
 - ارائه‌دهنده و شکل دقیق درخواست/پاسخ: `docs/intelligence-providers.md`. **پاسخ rerank و decisions در مستندات لیارا نیامده**؛ تجزیه‌گر تحمل‌پذیر است و با کلید واقعی از راه ارزیابی تأیید می‌شود.
 
 ## ۹. تفاوت‌ها با پیشنهاد اولیه (کد و spine مقدم)
@@ -167,7 +167,7 @@
 | --- | --- |
 | `index.ts` | کلاس `Repo` (db، transaction) و ترکیب حوزه‌ها |
 | `shared.ts` | Scope، RepoError، newId، now، ChangeMeta، تبدیل ردیف→نوع و کمکی‌های مشترک |
-| `workspaces.ts` | Workspace، سقف پلن، پرچم نمونه |
+| `workspaces.ts` | Workspace، سقف‌های منصفانه، پرچم نمونه |
 | `nodes.ts` | درخت بخش‌ها: ساخت، نام، جابه‌جایی، حذف با انتقال |
 | `objects.ts` | دانش: نسخه‌ها، پیش‌نویس، نمونه، جایگزینی، پیامد هر نوشتن |
 | `changes.ts` | Change log فقط‌افزودنی |
@@ -249,7 +249,7 @@
 | `context/` | `ContextPackDialog`، `AiRequestDialog`، `ImportAnswerDialog`، `SavedPacksDialog`، `ScopeExplain`، `NodeThreadPanel`، `SmartChat` |
 | `outputs/` | `AssetLibrary`، `WorkstreamStudio`، `SpecEditorModal`، `SpecLibraryDialog`، `ContextReplayCard` |
 | `canvas/` | `ContextCanvas` و اجزایش (لبه، بازرس، کارت، نقشهٔ کوچک، لایهٔ نمای کلی، اتصال)، `usePanZoom` |
-| `metrics/`، `files/`، `workspace/` | شاخص‌ها؛ `FilesPanel`؛ حساب، پلن، مصرف و دفتر |
+| `metrics/`، `files/`، `workspace/` | شاخص‌ها؛ `FilesPanel`؛ حساب، مصرف و دفتر |
 
 هشدار «import دوگانه»ی `AccountModal` (هم lazy هم static) با جدا کردن ثابت `WIPE_WORDS` در `workspace/wipeWords.ts` رفع شد.
 
@@ -268,7 +268,7 @@
 | ساختار و کاربرد | `nodeTree`، `specs`، `specLibrary`، `starters`، `startTemplate`، `templates`، `quickStartSummary`، `seedData`، `demoData`، `removal`، `globalSearch` | درخت، شروع‌های آماده، حذف و برگرداندن |
 | تاریخچه و بازبینی | `changeLog`، `changeDigest`، `weeklyReview`، `inheritNotice` | Change log، بازبینی هفتگی |
 | شاخص (خارج دامنه) | `metrics`، `metricsText` | اندازه‌گیری، نه دانش |
-| پلن، سهمیه، هزینه | `entitlements`، `entitlements.config`، `creditEngine` (فریز)، `usage`، `ledger`، `costReport`، `judgePolicy`، `visibleFeatures` | سهمیه و سقف‌ها؛ فقط `entitlements.config` عددها را دارد |
+| سقف منصفانه، سهمیه، هزینه | `limits`، `usage`، `ledger`، `costReport`، `judgePolicy`، `visibleFeatures` | سقف‌ها برای همه یکسان؛ فقط `limits.ts` عددها را دارد؛ پلن و اعتبار نیست |
 
 ## بدهی آگاهانه
 
@@ -294,5 +294,5 @@
 ### بدهی آگاهانهٔ آزمون ۱۰ نفره
 - **یک فرایند، SQLite روی یک دیسک.** برای ۱۰ نفر کافی و اندازه‌گیری شده: بزرگ‌ترین سند مجاز (۲٬۰۰۰ بند، حدود ۴۵۶KB) ۲۲۷ms پردازش می‌شود و درخواست نفر دیگر حداکثر ۱۴ms منتظر می‌ماند؛ پنج سند هم‌زمان: ۵۳۱ms، انتظار دیگران حداکثر ۱۳۵ms؛ PDF سیصدصفحه‌ای ۱٫۶s (`scripts/measure-docload.ts`). پس worker و صف (RES-03) لازم نشد. **کی بازبینی:** انتظار دیگران از ۵۰۰ms بگذرد یا افراد از ده‌ها بیشتر شوند.
 - **قاعدهٔ تا مهاجرت:** کد تازه همیشه `user_id` دارد و دستور مخصوص SQLite اضافه نمی‌کند (`docs/later.md → Postgres`).
-- **سقف ۲۰ فضا در برگرداندن پشتیبان** (`RESTORE_WORKSPACE_CAP`): نگهبان دیسک است، نه پلن؛ پلن‌ها فریزند و برگرداندن هرگز به پلنِ داخل فایل وابسته نیست.
+- **سقف فضا در برگرداندن پشتیبان** (`RESTORE_WORKSPACE_CAP` = `LIMITS.workspaces`): نگهبان دیسک است، همان سقف ساختن فضا؛ هیچ چیز داخل فایل به‌عنوان سهمیه خوانده نمی‌شود.
 - **CSRF ورود:** کسی می‌تواند مرورگر دیگری را با لینک خودش وارد کند؛ پذیرفته شد چون فقط دادهٔ مهاجم دیده می‌شود و «خروج از این دستگاه» و نام نفر در منو آن را آشکار می‌کند.

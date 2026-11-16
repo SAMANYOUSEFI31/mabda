@@ -9,7 +9,7 @@ import type { FileService } from '../files/service.ts';
 import type { Workspace } from '../../src/types/index.ts';
 
 const U = 'local';
-const ws: Workspace = { id: 'w1', name: 'w', slug: 'w', description: '', planId: 'max', creditsRemaining: 1, todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' };
+const ws: Workspace = { id: 'w1', name: 'w', slug: 'w', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' };
 const NOW = new Date('2026-06-01T10:00:00Z');
 
 /** nodes: 1 · 2 (2.1 · 2.2 (2.2.1)) · 3  — all user nodes under «business» */

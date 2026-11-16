@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from '../../types';
-import { GeneratedDeliverable, LedgerEntry, PlanId, Workspace } from '../../types';
-import { PLANS, chatCountToday, tehranDay } from '../../core/creditEngine';
+import { GeneratedDeliverable, LedgerEntry, Workspace } from '../../types';
+import { LIMITS, chatCountToday, workspaceLimitMessage } from '../../core/limits';
+import { tehranDay } from '../../core/tehranDate';
 import { currentSpecIds, starterSpecIds } from '../../core/specs';
 import { dataApi } from '../../services/dataApi';
 import { formatNumber } from '../../ui';
@@ -20,7 +21,7 @@ export type WorkspaceAssetsScope = ReturnType<typeof useWorkspaceAssets>;
 
 export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
   const { ai, attempt, currentWorkspace, data, liveWorkspaces, newWsName, patch, reload, setActiveTab, setCurrentWorkspaceId, setData, setIsNewWorkspaceModalOpen, setNewWsName, setWs, specs, toast, updateWorkspace, wid, workspacesRef } = p;
-  // ── assets, ledger, credits ──────────────────────────────────────────────────────────────────────
+  // ── assets and the usage ledger ──────────────────────────────────────────────────────────────────────
   const persistDeliverable = async (del: GeneratedDeliverable) => {
     const r = await attempt(() => dataApi.saveDeliverable(wid, del));
     if (!r) return false;
@@ -32,17 +33,13 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     if (r) patch((d) => ({ ...d, ledger: [entry, ...d.ledger.filter((x) => x.id !== entry.id)] }));
   };
 
-  // usage is provider metadata returned by the server; credits are shown and charged only when managed AI is enabled
-  const handleSaveDeliverable = async (del: GeneratedDeliverable, creditCostIn: number, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
-    let creditCost = creditCostIn;
+  // usage is provider metadata returned by the server (real tokens and cost; no credits exist)
+  const handleSaveDeliverable = async (del: GeneratedDeliverable, usage: UsageSummary, kind: 'new' | 'rebuild' = 'new') => {
     if (!(await persistDeliverable(del))) return;
-    creditCost = ai.managedEnabled ? creditCost : 0;
-    if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
       action: `${kind === 'rebuild' ? 'بازسازی' : 'تولید'}: ${del.title} (${del.executionMode})`,
       mode: del.executionMode,
-      creditCost,
       usage,
       plan: del.plan,
       id: clientId('led'),
@@ -50,23 +47,19 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
 
-  /** A finished chat turn: ledger row with real provider usage and the credits the turn cost. */
-  const handleRecordChatUsage = async (result: GenerationResult, creditCostIn: number, deep: boolean) => {
-    let creditCost = creditCostIn;
-    creditCost = ai.managedEnabled ? creditCost : 0;
-    if (creditCost > 0) await updateWorkspace((w) => ({ ...w, creditsRemaining: Math.max(0, w.creditsRemaining - creditCost) }));
+  /** A finished chat turn: ledger row with real provider usage. */
+  const handleRecordChatUsage = async (result: GenerationResult, deep: boolean) => {
     await persistLedger(ledgerEntryFromUsage({
       workspaceId: wid,
       action: deep ? 'گفتگوی عمیق' : 'گفتگوی خودکار',
       mode: deep ? 'chat_deep' : 'chat_auto',
-      creditCost,
       usage: result.usage,
       plan: result.plan,
       id: clientId('led_chat'),
     }));
   };
 
-  /** Save one chat block as an asset (Markdown). No credits: the AI cost was already recorded with the chat turn. */
+  /** Save one chat block as an asset (Markdown). The AI cost was already recorded with the chat turn. */
   const handleSaveBlockAsAsset = async (block: ContentBlock, source: { title: string; plan?: AiPlan; usage?: UsageSummary; usedContext?: UsedContextRef[] }) => {
     const now = new Date().toISOString();
     const asset: GeneratedDeliverable = {
@@ -79,7 +72,6 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       blocks: [block],
       plan: source.plan,
       executionMode: 'auto',
-      creditCost: 0,
       usedContext: source.usedContext ?? [],
       rebuildCount: 0,
       createdAt: now,
@@ -92,22 +84,12 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     void updateWorkspace((w) => ({ ...w, todayChatCount: chatCountToday(w.todayChatCount, w.chatCountDay, day) + 1, chatCountDay: day }));
   };
 
-  const handleChangePlan = (planId: PlanId) => {
-    void updateWorkspace((w) => ({ ...w, planId, creditsRemaining: w.creditsRemaining + PLANS[planId].creditsMonthly }));
-    toast.show({ intent: 'success', message: `پلن این فضا به ${PLANS[planId].title} تغییر یافت.` });
-  };
-
   /** the workspace's library workstreams: the explicit list, saved on the workspace */
   const handleSetLibrarySpecs = async (ids: string[]) => { await updateWorkspace((w) => ({ ...w, enabledSpecIds: ids })); };
   /** «شروع سریع» builds on the positioning workstream: bring it into the workspace (once) */
   const ensureLibrarySpec = (id: string) => {
     const w = workspacesRef.current.find((x) => x.id === wid);
     if (w && !currentSpecIds(w).includes(id)) void handleSetLibrarySpecs([...currentSpecIds(w), id]);
-  };
-
-  const handleAddCredits = (amount: number) => {
-    void updateWorkspace((w) => ({ ...w, creditsRemaining: w.creditsRemaining + amount }));
-    toast.show({ intent: 'success', message: `${formatNumber(amount)} اعتبار به حساب این فضا اضافه شد.` });
   };
 
   // the showcase workspace: the same action builds it and resets it (all of ITS data is rebuilt; other workspaces are untouched)
@@ -124,7 +106,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       setActiveTab('home');
       await reload(r.workspaceId);
       setDemoConfirm(false);
-      toast.show({ intent: 'success', message: 'فضای نمونه آماده است؛ داده‌هایش ساختگی‌اند و در پلن و مصرف حساب شمرده نمی‌شوند.' });
+      toast.show({ intent: 'success', message: 'فضای نمونه آماده است؛ داده‌هایش ساختگی‌اند و در سقف‌ها و مصرف حساب شمرده نمی‌شوند.' });
     } finally { setDemoBusy(false); }
   };
 
@@ -132,12 +114,9 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     e.preventDefault();
     if (!newWsName.trim()) return;
 
-    const currentPlan = PLANS[currentWorkspace?.planId ?? 'pro'] || PLANS.pro;
-    if (liveWorkspaces.filter((w) => !w.isDemo).length >= currentPlan.workspaceLimit) {
-      toast.show({
-        intent: 'warning',
-        message: `سقف فضا در پلن ${currentPlan.title} (${formatNumber(currentPlan.workspaceLimit)} عدد) پر شده است. برای افزودن، پلنت را ارتقا بده.`,
-      });
+    // the same fair-use limit the server enforces (archived and the showcase do not count): say it before the form is lost
+    if (liveWorkspaces.filter((w) => !w.isDemo && !w.archivedAt).length >= LIMITS.workspaces) {
+      toast.show({ intent: 'warning', message: workspaceLimitMessage() });
       return;
     }
 
@@ -150,8 +129,6 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       name: newWsName.trim(),
       slug: newWsName.trim().toLowerCase().replace(/\s+/g, '-'),
       description: { personal: 'فضای شخصی در مبدأ', work: 'فضا در مبدأ', project: 'فضای پروژه در مبدأ', empty: 'فضا در مبدأ' }[purpose],
-      planId: currentWorkspace?.planId ?? 'pro',
-      creditsRemaining: 150,
       todayChatCount: 0,
       enabledSpecIds: starterSpecIds(purpose), // personal / project: the ones written for it; work / empty: none, «شروع سریع» or the library brings them in
       createdAt: new Date().toISOString(),
@@ -202,5 +179,5 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     return true;
   };
 
-  return { persistDeliverable, persistLedger, handleSaveDeliverable, handleRecordChatUsage, handleIncrementChatCount, handleChangePlan, handleSetLibrarySpecs, ensureLibrarySpec, handleAddCredits, demoConfirm, setDemoConfirm, demoBusy, handleResetDemo, handleCreateWorkspace, extractingAssetId, handleExtractFromAsset, handleExportAllData, handleRestoreBackup };
+  return { persistDeliverable, persistLedger, handleSaveDeliverable, handleRecordChatUsage, handleIncrementChatCount, handleSetLibrarySpecs, ensureLibrarySpec, demoConfirm, setDemoConfirm, demoBusy, handleResetDemo, handleCreateWorkspace, extractingAssetId, handleExtractFromAsset, handleExportAllData, handleRestoreBackup };
 }

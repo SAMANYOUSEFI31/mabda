@@ -20,12 +20,12 @@ export const ledgerMethods = {
   },
 
   /** manager ledger input: every workspace (any user) with the ledger rows of one month */
-  ledgerByWorkspaceForMonth(this: Repo, month: string): Array<{ userId: string; workspaceId: string; name: string; planId: Workspace['planId']; entries: LedgerEntry[] }> {
+  ledgerByWorkspaceForMonth(this: Repo, month: string): Array<{ userId: string; workspaceId: string; name: string; entries: LedgerEntry[] }> {
     const rows = this.db.prepare('SELECT user_id, id, data FROM workspaces ORDER BY user_id, created_at').all() as Array<{ user_id: string; id: string; data: string }>;
     return rows.filter((r) => !(JSON.parse(r.data) as Workspace).isDemo).map((r) => {
       const ws = JSON.parse(r.data) as Workspace;
       const entries = (this.db.prepare('SELECT data FROM ledger WHERE workspace_id = ? AND user_id = ? AND created_at LIKE ?').all(r.id, r.user_id, `${month}%`) as Array<{ data: string }>).map((x) => JSON.parse(x.data) as LedgerEntry);
-      return { userId: r.user_id, workspaceId: r.id, name: ws.name, planId: ws.planId, entries };
+      return { userId: r.user_id, workspaceId: r.id, name: ws.name, entries };
     });
   },
 };
