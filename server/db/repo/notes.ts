@@ -27,6 +27,7 @@ export const notesMethods = {
 
   createNote(this: Repo, s: Scope, nodeId: string, content: string): Note {
     this.assertWorkspace(s);
+    this.assertRoom(s.userId, content.length * 2); // the note and the thoughts read from it
     nodeId = this.placeNode(s, nodeId);
     const t = now();
     const n: Note = { id: newId('note'), workspaceId: s.workspaceId, nodeId, content, createdAt: t, updatedAt: t };
@@ -40,6 +41,7 @@ export const notesMethods = {
   updateNote(this: Repo, s: Scope, id: string, content: string): Note {
     const cur = this.getNote(s, id);
     if (!cur) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
+    this.assertRoom(s.userId, (content.length - cur.content.length) * 2);
     const t = now();
     const updated = { ...cur, content, updatedAt: t };
     this.db.transaction(() => {

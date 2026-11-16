@@ -91,6 +91,12 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   const ws0 = b.workspace as Workspace;
   if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `${RESTORE_CAP_FA} فضا داری و این سقف برگرداندن است؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
 
+  // the text it brings counts against this person's shared-disk cap (src/core/limits.ts), like any other write
+  const TEXT_COLS: Record<string, string[]> = { context_objects: ['title', 'content'], context_object_versions: ['title', 'content'], notes: ['content'], thoughts: ['text'], file_chunks: ['text'], files: ['raw_text'], deliverables: ['data'] };
+  let incoming = 0;
+  for (const [t, cols] of Object.entries(TEXT_COLS)) for (const r of b.tables![t] ?? []) for (const c of cols) if (typeof r[c] === 'string') incoming += (r[c] as string).length;
+  repo.assertRoom(userId, incoming);
+
   // a new id for every row that has its own global id (the workspace too); tree nodes are keyed by workspace already
   const suffix = `_r${crypto.randomBytes(4).toString('hex')}`;
   const ids = new Set<string>([ws0.id]);

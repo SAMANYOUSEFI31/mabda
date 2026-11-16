@@ -9,6 +9,7 @@ import { MentionTextarea } from '../shared/MentionTextarea';
 import { NoteLines } from './NoteLines';
 import { canSplit } from '../../core/thinkingMarkers';
 import { Badge, Button, IconButton, Textarea, formatJalaliDate } from '../../ui';
+import { useAiStatus } from '../../services/aiStatus';
 
 interface Props {
   nodeId: string;
@@ -27,6 +28,7 @@ interface Props {
 
 /** Free-form notes of one node. They are not injected automatically; «استخراج» reads one only on explicit click. */
 export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
+  const { managedEnabled } = useAiStatus(); // «استخراج» reads a note with the managed AI: with it off it is not offered
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,9 +70,9 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="caption text-text-subtle">{formatJalaliDate(n.updatedAt)}</span>
                     <div className="flex items-center gap-inline-xs">
-                      <Button size="sm" variant="secondary" iconStart="FolderInput" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
+                      {managedEnabled && <Button size="sm" variant="secondary" iconStart="FolderInput" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
                         استخراج
-                      </Button>
+                      </Button>}
                       <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => setEditing({ id: n.id, text: n.content })} />
                       <IconButton icon="Trash2" label="حذف یادداشت" size="sm" onClick={() => onDelete(n.id)} />
                     </div>

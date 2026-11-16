@@ -130,6 +130,7 @@ export const objectsMethods = {
     if (!input.title.trim()) throw new RepoError('invalid', 'عنوان لازم است.');
     if (!CONTEXT_TYPES.includes(input.type)) throw new RepoError('invalid', 'نوع Context باید واقعیت، تصمیم یا خط قرمز باشد؛ خروجی‌ها Context نیستند.');
     if (!input.provenance) throw new RepoError('invalid', 'هیچ Objectی بدون منبع (provenance) ذخیره نمی‌شود.');
+    this.assertRoom(s.userId, (input.title.length + String(input.content ?? '').length) * 2); // the object and its first version
     const promotedThought = input.source?.thoughtId ? this.getThought(s, input.source.thoughtId) : undefined;
     if (input.source?.thoughtId && !promotedThought) throw new RepoError('not_found', 'فکر مبدأ پیدا نشد.');
     if (promotedThought) {

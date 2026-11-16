@@ -5,7 +5,7 @@
  */
 import type { Repo } from './index.ts';
 import { RepoError, Scope, now } from './shared.ts';
-import { LIMITS, objectsRemaining, workspaceLimitMessage } from '../../../src/core/limits.ts';
+import { LIMITS, objectsRemaining, storageAllows, storageLimitMessage, workspaceLimitMessage } from '../../../src/core/limits.ts';
 import { LIBRARY, startTemplateFor } from '../../../src/core/specs.ts';
 import type { Workspace } from '../../../src/types/index.ts';
 
@@ -84,5 +84,23 @@ export const workspacesMethods = {
   objectSlots(this: Repo, s: Scope): number { return this.isDemo(s) ? 1_000_000 : objectsRemaining(this.countActiveObjects(s)); },
 
   /** the showcase workspace (see Workspace.isDemo) */
+  /** characters of text this person keeps in ALL their workspaces (every version of knowledge, notes, thoughts, outputs, text read
+   *  from files): what LIMITS.storedTextPerPerson caps. A plain sum; ten people's rows read in a few milliseconds. */
+  storedText(this: Repo, userId: string): number {
+    const sum = (sql: string) => ((this.db.prepare(sql).get(userId) as { n: number | null }).n ?? 0);
+    return sum('SELECT SUM(LENGTH(content) + LENGTH(title)) AS n FROM context_object_versions WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(content) + LENGTH(title)) AS n FROM context_objects WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(content)) AS n FROM notes WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(text)) AS n FROM thoughts WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(text)) AS n FROM file_chunks WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(raw_text)) AS n FROM files WHERE user_id = ?')
+      + sum('SELECT SUM(LENGTH(data)) AS n FROM deliverables WHERE user_id = ?');
+  },
+
+  /** refuse a write that would take this person past the shared-disk cap (removing text is always allowed) */
+  assertRoom(this: Repo, userId: string, added: number): void {
+    if (added > 0 && !storageAllows(this.storedText(userId), added)) throw new RepoError('forbidden', storageLimitMessage());
+  },
+
   isDemo(this: Repo, s: Scope): boolean { return !!this.getWorkspace(s.userId, s.workspaceId)?.isDemo; },
 };

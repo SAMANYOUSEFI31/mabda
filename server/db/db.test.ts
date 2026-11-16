@@ -907,3 +907,21 @@ test('Thought promotion creates only Proposed Knowledge with provenance; user co
   assert.equal(repo.getObject(s, proposal.id)?.status, 'Confirmed', 'Truth authority remains the existing explicit user status change');
   assert.equal(repo.listThoughts(s).some((t) => t.id === thought.id), false, 'resolved Thoughts are not listed as open');
 });
+
+test('the text one person keeps is capped across ALL their workspaces, not per workspace; deleting makes room (#63 audit carry-over)', () => {
+  const db = new Database(':memory:'); migrate(db); const repo = new Repo(db);
+  const keep = LIMITS.storedTextPerPerson;
+  try {
+    for (const id of ['wa', 'wb']) repo.saveWorkspace('p1', { id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as never);
+    const a = { userId: 'p1', workspaceId: 'wa' }, b = { userId: 'p1', workspaceId: 'wb' };
+    LIMITS.storedTextPerPerson = 1_000;
+    const note = repo.createNote(a, repo.listNodes(a)[0].id, 'x'.repeat(400));
+    assert.ok(repo.storedText('p1') >= 400);
+    assert.throws(() => repo.createNote(b, repo.listNodes(b)[0].id, 'y'.repeat(400)), /حذف کن/, 'another workspace does not reset the cap');
+    repo.updateNote(a, note.id, 'کوتاه'); // shrinking is always allowed
+    assert.doesNotThrow(() => repo.createNote(b, repo.listNodes(b)[0].id, 'y'.repeat(400)));
+    // another person is not affected
+    repo.saveWorkspace('p2', { id: 'wc', name: 'wc', slug: 'wc', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as never);
+    assert.doesNotThrow(() => repo.createNote({ userId: 'p2', workspaceId: 'wc' }, repo.listNodes({ userId: 'p2', workspaceId: 'wc' })[0].id, 'z'.repeat(400)));
+  } finally { LIMITS.storedTextPerPerson = keep; }
+});

@@ -9,7 +9,7 @@
  */
 import { formatNumber } from '../ui/format';
 
-export interface Limits { workspaces: number; maxObjects: number; fileTokensPerMonth: number; decisionJudgmentsPerDay: number; coachPerDay: number; chatPerDay: number }
+export interface Limits { workspaces: number; maxObjects: number; storedTextPerPerson: number; fileTokensPerMonth: number; decisionJudgmentsPerDay: number; coachPerDay: number; chatPerDay: number }
 
 /** (a plain object so a test can lower one number and see every reader follow it) */
 export const LIMITS: Limits = {
@@ -17,6 +17,9 @@ export const LIMITS: Limits = {
   workspaces: 20,
   /** active Context objects per workspace (Archived/Superseded and sample objects do not count): an abuse guard, saving Context is free */
   maxObjects: 8_000,
+  /** characters of text one person keeps across ALL their workspaces (knowledge, notes, thoughts, outputs, text read from files):
+   *  the per-workspace caps multiply by `workspaces`, this one does not; it is what protects the shared disk */
+  storedTextPerPerson: 30_000_000,
   /** tokens of extracted file text processed per workspace per month */
   fileTokensPerMonth: 1_500_000,
   /** decision-layer judgements per workspace per day (Gap ambiguity, semantic contradiction) the platform pays for */
@@ -60,6 +63,9 @@ export const objectsRemaining = (activeObjects: number) => Math.max(0, LIMITS.ma
 
 /** what to say when a cap is reached: the number, and a way out that is the person's own (archive), never a purchase */
 export const workspaceLimitMessage = () => `${formatNumber(LIMITS.workspaces)} فضا داری و این سقف است؛ برای فضای تازه، اول یکی را بایگانی یا حذف کن.`;
+export const storageLimitMessage = () => `متن‌هایی که در همهٔ فضاهایت نگه داشته‌ای به سقف ${formatNumber(LIMITS.storedTextPerPerson)} نویسه رسیده است؛ برای جای تازه، فایل، یادداشت یا فضایی را که لازم نداری حذف کن.`;
+/** would adding `added` characters to what this person keeps (`stored`) pass the cap? Removing text is always allowed. */
+export const storageAllows = (stored: number, added: number): boolean => added <= 0 || stored + added <= LIMITS.storedTextPerPerson;
 export const objectLimitMessage = () => `این فضا ${formatNumber(LIMITS.maxObjects)} قلم دانش فعال دارد و این سقف است؛ موارد قدیمی را بایگانی کن.`;
 
 /** Today's chat count: a count recorded on another day is yesterday's, i.e. zero. `today` = YYYY-MM-DD (Tehran). */

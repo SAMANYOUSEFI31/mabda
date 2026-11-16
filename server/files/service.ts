@@ -53,6 +53,7 @@ export class FileService {
   async upload(s: Scope, f: { name: string; mime: string; buffer: Buffer; nodeId?: string }): Promise<UploadResult> {
     this.repo.assertWorkspace(s);
     const text = await extractText(f.buffer, f.name);
+    this.repo.assertRoom(s.userId, text.length * 2); // the file's text and the pieces it is cut into
     const tokens = estimateTokens(text);
     const file = this.repo.createFile(s, { name: f.name, mime: f.mime, sizeBytes: f.buffer.length, nodeId: f.nodeId, rawText: text, tokens });
     const period = periodOf(this.clock());

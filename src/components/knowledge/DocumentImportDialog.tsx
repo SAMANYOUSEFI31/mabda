@@ -9,6 +9,7 @@ import type { DocumentImportResult, DocumentPreviewInfo } from '../../services/d
 import { mergeWithNext, splitAt } from '../../core/docImportEdit';
 import type { ImportChunk } from '../../core/docImportEdit';
 import { Alert, Badge, Button, Checkbox, Dialog, Switch, Textarea, formatJalaliDate, formatNumber, useToast, Caution } from '../../ui';
+import { useAiStatus } from '../../services/aiStatus';
 
 interface Props {
   workspaceId: string;
@@ -28,6 +29,7 @@ const PREVIEW_CHARS = 420;
  * → step 3 saved. By default everything lands in the default place («تازه‌ها»). The whole text stays as a source file.
  */
 export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, onImported, onSwitch }) => {
+  const { managedEnabled } = useAiStatus(); // reading another tool's memory needs the managed AI; the document import itself does not
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
@@ -94,7 +96,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
               {file && <Button size="sm" variant="ghost" onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ''; }}>برداشتن فایل</Button>}
             </div>
             <Textarea label={file ? 'یا متن را بچسبان (با فایل انتخاب‌شده کاری ندارد)' : 'یا متن را بچسبان'} dir="auto" rows={9} value={text} disabled={!!file} onChange={(e) => setText(e.target.value)} hint="متن بی‌تیتر و نامرتب هم درست وارد می‌شود." />
-            <div><Button size="sm" variant="ghost" iconStart="FolderInput" onClick={onSwitch}>به‌جای این، حافظهٔ ابزار دیگر را وارد کن</Button></div>
+            {managedEnabled && <div><Button size="sm" variant="ghost" iconStart="FolderInput" onClick={onSwitch}>به‌جای این، حافظهٔ ابزار دیگر را وارد کن</Button></div>}
           </div>
         )}
 
