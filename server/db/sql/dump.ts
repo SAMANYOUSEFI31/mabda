@@ -42,14 +42,22 @@ export function* dumpLines(db: SqlDatabase): Generator<string> {
   }
 }
 
+/**
+ * One consistent copy: every table is read inside one snapshot, synchronously (nothing else runs on the shared connection
+ * meanwhile), into a plain file; only then is it compressed, in the background. So a write that lands during a backup is either
+ * wholly in it or wholly not — never a version without its object, or a link without one end.
+ */
 export async function writeDump(db: SqlDatabase, file: string): Promise<void> {
-  const gz = zlib.createGzip();
-  const out = fs.createWriteStream(file);
-  const done = new Promise<void>((resolve, reject) => { out.on('finish', resolve); out.on('error', reject); gz.on('error', reject); });
-  gz.pipe(out);
-  for (const line of dumpLines(db)) if (!gz.write(`${line}\n`)) await new Promise((r) => gz.once('drain', r));
-  gz.end();
-  await done;
+  const plain = `${file}.jsonl`;
+  const fd = fs.openSync(plain, 'w');
+  try { db.readSnapshot(() => { for (const line of dumpLines(db)) fs.writeSync(fd, `${line}\n`); }); } finally { fs.closeSync(fd); }
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const out = fs.createWriteStream(file);
+      out.on('finish', resolve); out.on('error', reject);
+      fs.createReadStream(plain).on('error', reject).pipe(zlib.createGzip()).on('error', reject).pipe(out);
+    });
+  } finally { fs.rmSync(plain, { force: true }); }
 }
 
 export function readDumpFile(file: string): { header: { format: string; schemaVersion: number }; rows: Array<{ t: string; r: Record<string, unknown> }> } {
@@ -87,8 +95,10 @@ export function loadRows(db: SqlDatabase, rows: Iterable<{ t: string; r: Record<
 
 /** every row of `from` into `to` (which is emptied first) */
 export function copyDatabase(from: SqlDatabase, to: SqlDatabase): { rows: number } {
-  const lines = dumpLines(from);
-  const header = JSON.parse(lines.next().value as string);
-  const rows = (function* () { for (const l of lines) { const x = JSON.parse(l); yield x as { t: string; r: Record<string, unknown> }; } })();
-  return loadRows(to, rows, header.schemaVersion);
+  return from.readSnapshot(() => {
+    const lines = dumpLines(from);
+    const header = JSON.parse(lines.next().value as string);
+    const rows = (function* () { for (const l of lines) yield JSON.parse(l) as { t: string; r: Record<string, unknown> }; })();
+    return loadRows(to, rows, header.schemaVersion);
+  });
 }

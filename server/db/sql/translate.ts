@@ -56,15 +56,59 @@ export function translateQuery(sql: string, schema: SchemaLookup): string {
   } else if (IGNORE.test(out)) {
     out = out.replace(IGNORE, 'INSERT INTO ').replace(/;\s*$/, '') + ' ON CONFLICT DO NOTHING';
   }
-  return numberPlaceholders(out);
+  return numberPlaceholders(sqliteOrder(out));
 }
 
-/** DDL written for SQLite (migrations, the schema of a fresh SQLite) → Postgres */
+/**
+ * ORDER BY as SQLite does it. (1) SQLite puts NULL first going up and last going down; Postgres the opposite — so every term
+ * gets NULLS FIRST / NULLS LAST. (2) Rows that tie on every term come out in the order they were written in SQLite (rowid);
+ * in Postgres in no fixed order — so a plain single-table SELECT gets the hidden `rowid` as a last tie-break (write order, as
+ * SQLite's sorter gives it; where SQLite walks an index backwards its tie order differs and is not promised by SQLite either). Without these, a list of versions, thoughts or changes with equal times could come out in another order.
+ */
+export function sqliteOrder(sql: string): string {
+  const top = /^\s*SELECT\b/i.test(sql) && !/\bJOIN\b|\bGROUP\s+BY\b|\bDISTINCT\b|\bUNION\b|\browid\b/i.test(sql) && /\bFROM\s+"?\w+"?(\s+\w+)?\s*(WHERE|ORDER|LIMIT|$)/i.test(sql);
+  let out = '', i = 0;
+  const re = /\bORDER\s+BY\s+/gi;
+  for (let m = re.exec(sql); m; m = re.exec(sql)) {
+    // depth of this ORDER BY: 0 = the statement itself, > 0 = a sub-select
+    let depth = 0;
+    for (const ch of sql.slice(0, m.index)) depth += ch === '(' ? 1 : ch === ')' ? -1 : 0;
+    const start = m.index + m[0].length;
+    let j = start, d = 0;
+    const terms: string[] = []; let from = start;
+    for (; j < sql.length; j++) {
+      const ch = sql[j];
+      if (ch === '(') d++;
+      else if (ch === ')') { if (d === 0) break; d--; }
+      else if (ch === ',' && d === 0) { terms.push(sql.slice(from, j)); from = j + 1; }
+      else if (d === 0 && /^\s(LIMIT|OFFSET)\b/i.test(sql.slice(j, j + 8))) break;
+    }
+    terms.push(sql.slice(from, j));
+    const fixed = terms.map((t) => {
+      const term = t.trim();
+      if (/\bNULLS\s+(FIRST|LAST)\b/i.test(term)) return term;
+      return /\bDESC$/i.test(term) ? `${term} NULLS LAST` : `${term} NULLS FIRST`;
+    });
+    if (top && depth === 0) fixed.push('rowid');
+    out += sql.slice(i, start) + fixed.join(', ') + (sql.slice(j, j + 1).match(/\S/) ? ' ' : '');
+    i = j;
+    re.lastIndex = j;
+  }
+  return out + sql.slice(i);
+}
+
+/**
+ * DDL written for SQLite (migrations, the schema of a fresh SQLite) → Postgres. Types are written in capitals in the
+ * migrations, column names in lower case (`text TEXT`), so only the capitals are types.
+ * TEXT compares byte by byte (COLLATE "C"), as SQLite's BINARY does: sorting, `=`, `<`, LIKE and unique keys give the same answer on
+ * both engines whatever locale the host's database was created with.
+ */
 export function translateDdl(sql: string): string {
   return mapCode(sql, (code) => code
-    .replace(/\bINTEGER\b/gi, 'BIGINT')
-    .replace(/\bREAL\b/gi, 'DOUBLE PRECISION')
-    .replace(/\bBLOB\b/gi, 'BYTEA'));
+    .replace(/\bINTEGER\b/g, 'BIGINT')
+    .replace(/\bREAL\b/g, 'DOUBLE PRECISION')
+    .replace(/\bBLOB\b/g, 'BYTEA')
+    .replace(/\bTEXT\b/g, 'TEXT COLLATE "C"'));
 }
 
 /**

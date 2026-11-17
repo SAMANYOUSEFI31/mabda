@@ -46,6 +46,8 @@ export interface SqlDatabase extends SqlLike {
   tables(): string[];
   /** the columns of one table, in order; `pk` is the 1-based position in the primary key, 0 = not part of it */
   columns(table: string): Column[];
+  /** runs `fn` (synchronously) over one consistent view of the data: no write that lands meanwhile is half-seen */
+  readSnapshot<T>(fn: () => T): T;
   /** the tables a row of `table` points to (foreign keys): those are filled first when data is copied in */
   parents(table: string): string[];
   /** after a permanent delete: make the removed rows unreadable in the storage itself (best the engine allows) */

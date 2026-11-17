@@ -32,6 +32,9 @@ export class SqliteDatabase implements SqlDatabase {
   /** fold the write-ahead log into the file, so the zeroed pages are what is on disk (an in-memory database has no log) */
   flushErased() { try { this.raw.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* no log */ } }
 
+  /** a read transaction: SQLite (WAL) keeps the view it began with */
+  readSnapshot<T>(fn: () => T): T { return this.raw.transaction(fn).deferred(); }
+
   parents(table: string): string[] {
     return [...new Set((this.raw.prepare(`PRAGMA foreign_key_list(${JSON.stringify(table)})`).all() as Array<{ table: string }>).map((f) => f.table))];
   }

@@ -7,6 +7,7 @@
  * (an off-host copy: a disk can be lost too). Bringing one back = one setting in the host's dashboard (MABDA_RESTORE_FROM), applied
  * once at start-up, after the current database is itself saved aside.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -87,7 +88,7 @@ export function restoreIfAsked(dbFile: string, env: NodeJS.ProcessEnv = process.
 }
 
 /** a dump (.jsonl.gz) is loaded into the open database, whichever engine; a .sqlite file on SQLite is swapped before opening */
-export const restoresIntoOpenDatabase = (env: NodeJS.ProcessEnv = process.env, onPostgres = false) => onPostgres || /\.jsonl\.gz$/i.test((env.MABDA_RESTORE_FROM ?? '').trim());
+export const restoresIntoOpenDatabase = (env: NodeJS.ProcessEnv = process.env, onPostgres = false) => onPostgres || /\.jsonl\.gz$|^postgres(ql)?:\/\//i.test((env.MABDA_RESTORE_FROM ?? '').trim());
 
 /**
  * The same setting, applied to the open database (Postgres always; SQLite for a dump): MABDA_RESTORE_FROM names a dump
@@ -104,14 +105,24 @@ export async function restoreIntoIfAsked(db: SqlDatabase, env: NodeJS.ProcessEnv
   const { migrate } = await import('./db/migrations.ts');
   const { DEFAULT_DB_PATH } = await import('./db/database.ts');
   const dir = backupDirFor(DEFAULT_DB_PATH, env);
-  const src = path.isAbsolute(asked) ? asked : path.join(dir, asked);
+  // a Postgres address: the live data of that database, copied at this moment (the way back from Postgres loses nothing)
+  const fromPostgres = /^postgres(ql)?:\/\//i.test(asked);
+  const src = fromPostgres ? asked : path.isAbsolute(asked) ? asked : path.join(dir, asked);
+  // what is remembered and printed: never a database address with its password
+  const label = fromPostgres ? `Postgres ${new URL(asked).host}${new URL(asked).pathname}` : src;
+  const mark = fromPostgres ? `postgres:${crypto.createHash('sha256').update(asked).digest('hex')}` : src;
   const MARK = "SELECT value FROM kv WHERE user_id = '__system__' AND key = 'restored_from'";
-  if ((db.prepare(MARK).get() as { value: string } | undefined)?.value === src) return {};
-  if (!fs.existsSync(src)) return { error: `MABDA_RESTORE_FROM: ${src} was not found. Nothing was changed.` };
+  if ((db.prepare(MARK).get() as { value: string } | undefined)?.value === mark) return {};
+  if (fromPostgres && db.dialect === 'postgres') return { error: 'MABDA_RESTORE_FROM names a Postgres database while DATABASE_URL is set; to go back to SQLite, remove DATABASE_URL first. Nothing was changed.' };
+  if (!fromPostgres && !fs.existsSync(src)) return { error: `MABDA_RESTORE_FROM: ${src} was not found. Nothing was changed.` };
   fs.mkdirSync(dir, { recursive: true });
   await db.backupTo(path.join(dir, `before-restore-${now.toISOString().replace(/[:.]/g, '-')}${db.backupExt}`));
   let rows: number;
-  if (src.endsWith('.jsonl.gz')) {
+  if (fromPostgres) {
+    const { PostgresDatabase } = await import('./db/sql/postgres.ts');
+    const pg = new PostgresDatabase(asked);
+    try { migrate(pg); rows = copyDatabase(pg, db).rows; } finally { pg.close(); }
+  } else if (src.endsWith('.jsonl.gz')) {
     const d = readDumpFile(src);
     rows = loadRows(db, d.rows, d.header.schemaVersion).rows;
   } else {
@@ -122,6 +133,6 @@ export async function restoreIntoIfAsked(db: SqlDatabase, env: NodeJS.ProcessEnv
     const lite = SqliteDatabase.open(copy);
     try { migrate(lite); rows = copyDatabase(lite, db).rows; } finally { lite.close(); for (const f of [copy, `${copy}-wal`, `${copy}-shm`]) fs.rmSync(f, { force: true }); }
   }
-  db.prepare("INSERT OR REPLACE INTO kv (user_id, key, value) VALUES ('__system__', 'restored_from', ?)").run(src);
-  return { restored: src, rows };
+  db.prepare("INSERT OR REPLACE INTO kv (user_id, key, value) VALUES ('__system__', 'restored_from', ?)").run(mark);
+  return { restored: label, rows };
 }

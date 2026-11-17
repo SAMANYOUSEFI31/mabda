@@ -18,7 +18,7 @@ export class PostgresError extends Error {
   constructor(message: string, readonly code?: string, readonly sql?: string) { super(message); }
 }
 
-type Reply = { ok: true; rows: Array<Record<string, unknown>>; changes: number } | { ok: false; message: string; code?: string };
+type Reply = ({ ok: true; rows: Array<Record<string, unknown>>; changes: number } | { ok: false; message: string; code?: string }) & { id?: number };
 
 /** the synchronous bridge to the worker: one request at a time, a timeout so a lost database never hangs the process forever */
 class SyncBridge {
@@ -36,15 +36,29 @@ class SyncBridge {
   /** round trips to the database so far (scripts/measure-pg.ts) */
   static calls = 0;
 
+  private nextId = 0;
+
+  /**
+   * One request, one reply: each request has an id and only the reply with that id is accepted. A late reply to a request
+   * that timed out is dropped (it must never be read as the answer to the next one — that would hand one person's rows to
+   * another), and the connection that was busy with it is thrown away (`reset`), so nothing it was doing gets committed.
+   */
   call(req: Record<string, unknown>): Reply {
     SyncBridge.calls++;
+    const id = ++this.nextId;
+    const deadline = Date.now() + this.timeoutMs;
     Atomics.store(this.flag, 0, 0);
-    this.worker.postMessage(req);
-    const waited = Atomics.wait(this.flag, 0, 0, this.timeoutMs);
-    if (waited === 'timed-out') throw new PostgresError(`Postgres did not answer within ${this.timeoutMs} ms`, 'MABDA_TIMEOUT', String(req.sql ?? req.op));
-    const msg = receiveMessageOnPort(this.port);
-    if (!msg) throw new PostgresError('Postgres bridge: no reply', 'MABDA_BRIDGE');
-    return msg.message as Reply;
+    this.worker.postMessage({ ...req, id });
+    for (;;) {
+      // read what is already there before sleeping: a reply posts its message first and raises the flag after
+      for (let m = receiveMessageOnPort(this.port); m; m = receiveMessageOnPort(this.port)) if ((m.message as Reply).id === id) return m.message as Reply;
+      const left = deadline - Date.now();
+      if (left <= 0 || Atomics.wait(this.flag, 0, 0, left) === 'timed-out') {
+        this.worker.postMessage({ op: 'reset' });
+        throw new PostgresError(`Postgres did not answer within ${this.timeoutMs} ms`, 'MABDA_TIMEOUT', String(req.sql ?? req.op));
+      }
+      Atomics.store(this.flag, 0, 0); // woken by a stale reply (dropped above on the next pass) or ours
+    }
   }
 
   terminate() { void this.worker.terminate(); }
@@ -79,23 +93,26 @@ export class PostgresDatabase implements SqlDatabase {
   /** tables with deleted or overwritten rows since the last flushErased */
   private readonly erased = new Set<string>();
   readonly schema: string;
+  private readonly timeoutMs: number;
 
   /** one connection (one worker) per database address, shared by every adapter on it */
   private static bridges = new Map<string, SyncBridge>();
   private static bridgeFor(url: string, timeoutMs: number): SyncBridge {
-    let b = PostgresDatabase.bridges.get(url);
+    const key = `${timeoutMs}|${url}`;
+    let b = PostgresDatabase.bridges.get(key);
     if (!b) {
       b = new SyncBridge(url, timeoutMs);
       const r = b.call({ op: 'connect' });
       if (!r.ok) { b.terminate(); throw new PostgresError(`could not connect to Postgres: ${r.message}`, r.code); }
-      PostgresDatabase.bridges.set(url, b);
+      PostgresDatabase.bridges.set(key, b);
     }
     return b;
   }
 
   constructor(private readonly url: string, opts: PostgresOptions = {}) {
     this.schema = opts.schema ?? 'public';
-    this.bridge = PostgresDatabase.bridgeFor(url, opts.timeoutMs ?? 15_000);
+    this.timeoutMs = opts.timeoutMs ?? 15_000;
+    this.bridge = PostgresDatabase.bridgeFor(url, this.timeoutMs);
     this.bridge.users++;
     this.enter(true);
   }
@@ -154,18 +171,29 @@ export class PostgresDatabase implements SqlDatabase {
     return ((...args: Parameters<F>) => {
       const sp = `sp_${this.depth}`;
       this.query(this.depth === 0 ? 'BEGIN' : `SAVEPOINT ${sp}`);
+      const outer = this.depth === 0;
       this.depth++;
+      let out: ReturnType<F>;
       try {
-        const out = fn(...args) as ReturnType<F>;
-        this.depth--;
-        this.query(this.depth === 0 ? 'COMMIT' : `RELEASE SAVEPOINT ${sp}`);
-        return out;
+        out = fn(...args) as ReturnType<F>;
+        this.query(outer ? 'COMMIT' : `RELEASE SAVEPOINT ${sp}`);
       } catch (e) {
-        this.depth--;
-        try { this.query(this.depth === 0 ? 'ROLLBACK' : `ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* the original error matters more */ }
+        // a failed COMMIT lands here too: the transaction is rolled back, never left open on the connection
+        try { this.query(outer ? 'ROLLBACK' : `ROLLBACK TO SAVEPOINT ${sp}`); } catch { /* the original error matters more */ }
         throw e;
+      } finally {
+        this.depth--;
       }
+      return out;
     }) as unknown as Transaction<F>;
+  }
+
+  /** REPEATABLE READ: every statement inside sees the data as it was at the first one */
+  readSnapshot<T>(fn: () => T): T {
+    if (this.depth > 0) return fn();
+    this.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    this.depth++;
+    try { const out = fn(); this.query('COMMIT'); return out; } catch (e) { try { this.query('ROLLBACK'); } catch { /* the original error matters more */ } throw e; } finally { this.depth--; }
   }
 
   tables(): string[] {
@@ -211,7 +239,7 @@ export class PostgresDatabase implements SqlDatabase {
     if (--this.bridge.users > 0) return;
     try { this.bridge.call({ op: 'end' }); } catch { /* already gone */ }
     this.bridge.terminate();
-    PostgresDatabase.bridges.delete(this.url);
+    PostgresDatabase.bridges.delete(`${this.timeoutMs}|${this.url}`);
   }
 }
 
