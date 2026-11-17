@@ -270,6 +270,12 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-tab:active:not(:disabled){background:var(--interaction-pressed)}
 .mb-tab:is([aria-selected=true],[aria-checked=true]){background:var(--tabs-selected-surface);color:var(--text-default);box-shadow:var(--tabs-selected-shadow),inset 0 0 0 var(--border-width-thin) var(--border-default)}
 .mb-tab:disabled{color:var(--text-disabled);cursor:not-allowed}
+/* VIS-04: a tab bar CHANGES WHAT IS SHOWN (role=tablist), a segmented control changes HOW the same thing is shown (role=radiogroup).
+   They were one pill tray, so «سند» stacked three identical trays. Tabs are now a line under the words, the selected one inked;
+   the segmented control keeps the tray. */
+.mb-tabs[role=tablist]{background:transparent;border:0;border-block-end:var(--border-width-thin) solid var(--border-subtle);border-radius:0;padding:0;gap:var(--inline-sm)}
+.mb-tabs[role=tablist] .mb-tab{border-radius:0;padding-inline:var(--inset-sm);box-shadow:none;margin-block-end:calc(var(--border-width-thin) * -1);border-block-end:var(--border-width-thick) solid transparent}
+.mb-tabs[role=tablist] .mb-tab[aria-selected=true]{background:transparent;box-shadow:none;border-block-end-color:var(--border-bold);font-weight:600}
 .mb-tabpanel{margin-block-start:var(--stack-sm);padding:var(--inset-lg);color:var(--text-subtle);background:var(--card-surface);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--card-radius)}
 
 /* ---------- BottomNav ---------- */
@@ -512,6 +518,17 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-knowledge[data-knowledge=proposed],.mb-knowledge[data-knowledge=sample]{background:var(--bg-neutral-subtle)}
 .mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
+/* «نقطه و قلم» (ui-audit.md, card study 1405/08/26): the passage's extent is the stroke the reed pen draws on from its dot, a
+   hairline under the hanging nuqta down to the passage's last line. No box (identity.md: truth is text), yet each passage reads as
+   one unit and the break in the stroke is the boundary. A border, not a background, so forced colours keep it. */
+.mb-knowledge:has(>.mb-knowledge__nuqta)::before{content:"";position:absolute;inset-inline-start:calc(var(--space-3) + var(--nuqta-size-md) / 2 - var(--border-width-thin) / 2);inset-block:calc(var(--space-3) + 0.5rem + var(--nuqta-size-md) + var(--space-1)) var(--space-3);border-inline-start:var(--border-width-thin) solid var(--border-default);pointer-events:none}
+/* proximity: the space between two passages is clearly more than a line of their text, so the meta line belongs to its own passage */
+.mb-margin:has(>.mb-margin__row>.mb-margin__text>.mb-knowledge){gap:var(--space-5)}
+.mb-knowledge__go{display:none}
+@media (pointer:coarse){
+  .mb-knowledge.mb-card--interactive{padding-inline-end:var(--space-8)!important}
+  .mb-knowledge__go{display:flex;position:absolute;inset-inline-end:var(--space-2);inset-block-start:50%;translate:0 -50%;color:var(--icon-subtle)}
+}
 /* identity.md «متن و حاشیه»: a truth is a passage of the text, never a card. Hovering it marks the passage like a reader's pencil
    (a quiet tint), no border, no shadow, no press-shrink; the focus ring still shows for the keyboard */
 .mb-knowledge.mb-card--interactive[data-force~=hover]{border-color:transparent;box-shadow:none;background-image:linear-gradient(var(--interaction-hover),var(--interaction-hover))}
