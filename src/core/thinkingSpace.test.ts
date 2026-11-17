@@ -41,6 +41,18 @@ test('filters: by kind and by node (a node with its whole sub-tree)', () => {
   assert.equal(openThoughtCount({ objects, notes }, 'content'), 0);
 });
 
+test('NEW-08: the chips count what the section filter will show (not the whole space); the kind filter does not change them', () => {
+  const objects = [o('b', { status: 'Proposed', nodeId: 'offer' }), o('c', { status: 'Proposed', nodeId: 'brand' })];
+  const base = { objects, notes, nodes: DEFAULT_TREE_NODES };
+  const brand = thinkingSpace(base, { nodeId: 'brand' });
+  assert.deepEqual(brand.counts, { waiting: 1, idea: 0, question: 1, assumption: 0, open_decision: 0 });
+  assert.deepEqual(thinkingSpace(base, { nodeId: 'brand', kind: 'idea' }).counts, brand.counts);
+  for (const k of ['waiting', 'idea', 'question', 'assumption', 'open_decision'] as const) {
+    const shown = thinkingSpace(base, { nodeId: 'product', kind: k });
+    assert.equal(shown.waiting.length + shown.thoughts.length + shown.assumptions.length, thinkingSpace(base, { nodeId: 'product' }).counts[k], `chip ${k} = what it shows`);
+  }
+});
+
 test('guessThoughtKind / composeThought: the marker is written for the user; a question mark makes a question; brackets typed by hand are not doubled', () => {
   assert.equal(guessThoughtKind('قیمت را چقدر بگذاریم؟'), 'question');
   assert.equal(guessThoughtKind('Should we?'), 'question');
