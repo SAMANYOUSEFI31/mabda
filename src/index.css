@@ -45,7 +45,10 @@
 @media (min-width: 768px), (pointer: fine) { html { scrollbar-gutter: stable; } } /* phones draw overlay bars that take no room; a narrow desk window (or 200% zoom) still has a classic bar */
 * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
 :where(.mb-dialog__body, .mb-sidebar__nav, .mb-table-wrap, pre, [data-scroll-x], [role=listbox], [role=menu]):hover { --scroll-thumb: var(--border-input); }
-.mb-dialog__body, .mb-sidebar__nav { scrollbar-gutter: stable; }
+.mb-dialog__body { scrollbar-gutter: stable; }
+/* the sidebar's rows keep the search field's width: no gutter is held for a bar that only appears in a very short window
+   (shared edges, Gestalt). When it does appear, the rows narrow once by its width; nothing else moves. */
+.mb-sidebar__nav { scrollbar-gutter: auto; }
 @media (hover: none) { * { scrollbar-color: auto; } }
 @media (forced-colors: active) { * { scrollbar-color: auto; } }
 
