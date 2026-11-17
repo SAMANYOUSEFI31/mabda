@@ -73,7 +73,7 @@ export async function embedItems(env: Env, scope: Scope, modelKey: string, items
   const { budget, meter } = chunkBudget(model, model.inputPrefix?.passage.length ?? 0);
   const entries: Array<{ item: Item; key: EmbeddingKey; text: string }> = [];
   for (const item of items) {
-    for (const c of chunkByStructure(item.text, budget, meter)) {
+    for (const c of chunkByStructure(item.text, budget, meter, { overlap: true })) {
       const textHash = sha1(`${CHUNKER_VERSION}|${model.id}|${normalizeForHash(c.text)}`);
       entries.push({ item, text: c.text, key: { workspaceId: scope.workspaceId, userId: scope.userId, itemKind: item.kind, itemId: item.id, chunkIndex: c.index, textHash, modelKey } });
     }
@@ -100,7 +100,7 @@ async function embeddingRank(env: Env, scope: Scope, modelKey: string, query: st
   const provider = env.specialists.embedding(modelKey);
   const corpus = await embedItems(env, scope, modelKey, items, recipe);
   const { budget, meter } = chunkBudget(model, model.inputPrefix?.[queryRole].length ?? 0);
-  const qChunks = chunkByStructure(query, budget, meter).map((c) => c.text);
+  const qChunks = chunkByStructure(query, budget, meter, { overlap: true }).map((c) => c.text);
   if (!qChunks.length) return { ranked: [], cosines: new Map() };
   const q = await instrument({ ...env.call, recipe, stage: 'embed-query' }, 'embedding', model, () => provider.embed(qChunks, queryRole));
   const qv = q.value.map(toFloat32);
@@ -155,7 +155,7 @@ export async function findRelated(env: Env, name: string, input: { scope: Scope;
     const docs: Array<{ id: string; text: string }> = [];
     for (const f of fused) {
       const it = byId.get(f.id)!;
-      if (model.maxInputTokens) { const { budget, meter } = chunkBudget(model); for (const c of chunkByStructure(it.text, budget, meter)) docs.push({ id: it.id, text: c.text }); }
+      if (model.maxInputTokens) { const { budget, meter } = chunkBudget(model); for (const c of chunkByStructure(it.text, budget, meter, { overlap: true })) docs.push({ id: it.id, text: c.text }); }
       else docs.push({ id: it.id, text: it.text });
     }
     const out = await instrument({ ...env.call, recipe: name, stage: 'rerank' }, 'rerank', model, () => provider.rerank(input.query, docs.map((d) => d.text), docs.length));
