@@ -22,3 +22,9 @@ services:
         value: /var/data/backups
       - key: MABDA_MANAGED_AI
         value: "false"
+      # Postgres (optional; docs/deploy.md → «انتقال داده به Postgres»). Without DATABASE_URL the data stays in SQLite on the disk.
+      # The database is created by hand in the dashboard (same region), so no paid resource appears by itself on Apply:
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: mabda-db
+      #     property: connectionString

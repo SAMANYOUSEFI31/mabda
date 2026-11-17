@@ -98,7 +98,7 @@
 ## ۸. محورهای کناری
 
 ### الف) زیرساخت فنی و سازگاری
-`lineHash` و تجزیه‌گر خطوط قدیمی (`thinkingMarkers.ts`)، migrationها (`server/db/migrations.ts`، فقط رو به جلو)، تطبیق نرم خط ویرایش‌شده با فکر (`syncNoteThoughts`: شباهت واژه‌ها + لنگر خط)، منبع قدیمی `mcp`/`byok` فقط برای خواندن رکوردهای قدیمی (`docs/spine.md → پس از P5`)، `check:design`، `bannedWords.json`.
+`lineHash` و تجزیه‌گر خطوط قدیمی (`thinkingMarkers.ts`)، migrationها (`server/db/migrations.ts`، فقط رو به جلو)، درگاه ذخیره‌سازی (`server/db/sql/`، پایین‌تر)، تطبیق نرم خط ویرایش‌شده با فکر (`syncNoteThoughts`: شباهت واژه‌ها + لنگر خط)، منبع قدیمی `mcp`/`byok` فقط برای خواندن رکوردهای قدیمی (`docs/spine.md → پس از P5`)، `check:design`، `bannedWords.json`.
 
 ### ب) لایهٔ هوش (اسکلت ساخته شده؛ بدون هیچ قابلیت در رابط)
 کد: `server/intelligence/`. قراردادش:
@@ -208,6 +208,7 @@
 - `server/auth/http.ts`: حالت «local» (یک نفر، بدون ورود) یا «invite» (`MABDA_OWNER_CODE`)؛ ورود با لینک شخصی (`/#join=<کد>` ← کوکی HttpOnly)، سرآیندهای امنیتی، بررسی Origin، محدودیت تلاش. `userIdOf(req)` **تنها منبع** شناسهٔ کاربر در همهٔ لایه‌ها (داده، فایل، AI؛ Context هوش مصنوعی هم با `sourceFor(userId)` برای همان نفر خوانده می‌شود، نه یک کاربر ثابت). رضایت آگاهانهٔ هر نفر روی خود حساب (`accounts.consented_at`، `POST /api/consent`). `MABDA_PROXY_HOPS`: شمار proxyهای جلوی سرور، تا محدودیت تلاش برای هر نفر جدا بماند. `accounts.ts`: حساب‌ها و نشست‌ها (فقط SHA-256). `owner.ts`: «افراد آزمون» (`/api/owner`).
 - هر دستور SQL روی دادهٔ کاربر شرط `user_id` دارد (`server/db/userScope.test.ts` به‌طور ایستا اجبار می‌کند). `claimId` (`repo/shared.ts`) نمی‌گذارد upsert ردیف کس دیگری را بگیرد. `server/db/userIds.ts`: شناسه‌های نمونه و بذر برای هر نفر یکتا.
 - `server/backup.ts`: پشتیبان روزانهٔ کل پایگاه (۱۴ روز) و برگرداندن با `MABDA_RESTORE_FROM`. `server/db/workspaceBackup.ts`: پشتیبان یک فضا، **از روی schema** (هر جدول با `workspace_id` و `user_id`)، برگرداندن همیشه به فضای تازه با شناسه‌های تازه.
+- **درگاه ذخیره‌سازی (`server/db/sql/`، الگوی Adapter، ۱۴۰۵/۰۸/۲۶).** جنس: زیرساخت. هدف: میزبانی (Render، میزبان ایرانی، سرور شخصی) یک تنظیم باشد نه تغییر کد. `types.ts` رابط `SqlDatabase` است (prepare/exec/transaction به‌علاوهٔ آنچه بین موتورها فرق دارد: `tables`، `columns`، `parents`، `flushErased`، `backupTo`)؛ `sqlite.ts` و `postgres.ts` دو پیاده‌سازی‌اند و هیچ کد دیگری `if (sqlite)` ندارد. انتخاب فقط در `server/db/database.ts` (`DATABASE_URL`). Postgres هم‌زمان می‌ماند چون همهٔ لایهٔ داده هم‌زمان نوشته شده: یک worker اتصال `pg` را دارد و رشتهٔ اصلی منتظر پاسخ می‌ماند (`Atomics.wait`)؛ پس **پایگاه باید در همان مرکز داده باشد**. schema در Postgres دستی نوشته نمی‌شود: از SQLite تازه در همان نسخه ترجمه می‌شود (`pgSchema.ts`)، پس دو موتور از هم جدا نمی‌افتند. `translate.ts` فقط سه شکل را ترجمه می‌کند (`?`، `INSERT OR IGNORE`، `INSERT OR REPLACE`)؛ بقیهٔ SQL باید قابل‌حمل باشد (upsert با ستون جدول‌دار: `file_usage.tokens`، نه `tokens`). `dump.ts` نسخهٔ قابل‌حمل همهٔ جدول‌هاست: انتقال SQLite → Postgres، پشتیبان روزانهٔ Postgres و برگرداندن. سنجه: کل تست‌ها روی هر دو موتور (`MABDA_TEST_DATABASE_URL=postgres://… bun run test`)، و `server/db/sql/engines.test.ts` (هم‌شکلی schema، رفت‌وبرگشت داده، تراکنش، انتقال یک‌باره).
 - `server/diagnostics.ts`: خطاهای مرورگر (`src/services/errorReport.ts`) و سرور، بدون متن کاربر. `src/app/shell/RootBoundary.tsx` (هیچ خطایی صفحهٔ سفید نمی‌گذارد) و `SessionGate.tsx` (صفحهٔ ورود). `src/services/deadline.ts`: مهلت و لغو هر درخواست.
 
 ### منبع یکتای قاعده‌های هسته (آزمون ۱۰ نفره، بخش «ب»)
@@ -293,6 +294,6 @@
 
 ### بدهی آگاهانهٔ آزمون ۱۰ نفره
 - **یک فرایند، SQLite روی یک دیسک.** برای ۱۰ نفر کافی و اندازه‌گیری شده: بزرگ‌ترین سند مجاز (۲٬۰۰۰ بند، حدود ۴۵۶KB) ۲۲۷ms پردازش می‌شود و درخواست نفر دیگر حداکثر ۱۴ms منتظر می‌ماند؛ پنج سند هم‌زمان: ۵۳۱ms، انتظار دیگران حداکثر ۱۳۵ms؛ PDF سیصدصفحه‌ای ۱٫۶s (`scripts/measure-docload.ts`). پس worker و صف (RES-03) لازم نشد. **کی بازبینی:** انتظار دیگران از ۵۰۰ms بگذرد یا افراد از ده‌ها بیشتر شوند.
-- **قاعدهٔ تا مهاجرت:** کد تازه همیشه `user_id` دارد و دستور مخصوص SQLite اضافه نمی‌کند (`docs/later.md → Postgres`).
+- **قاعدهٔ SQL قابل‌حمل:** کد تازه همیشه `user_id` دارد و فقط SQL می‌نویسد که روی هر دو موتور درست است (جز سه شکلی که `server/db/sql/translate.ts` ترجمه می‌کند). خواندن schema فقط با `db.tables()` / `db.columns()`، نه `sqlite_master` یا `PRAGMA`. migration تازه باید روی هر دو اجرا شود؛ تست‌ها روی Postgres این را می‌گیرند.
 - **سقف فضا در برگرداندن پشتیبان** (`RESTORE_WORKSPACE_CAP` = `LIMITS.workspaces`): نگهبان دیسک است، همان سقف ساختن فضا؛ هیچ چیز داخل فایل به‌عنوان سهمیه خوانده نمی‌شود.
 - **CSRF ورود:** کسی می‌تواند مرورگر دیگری را با لینک خودش وارد کند؛ پذیرفته شد چون فقط دادهٔ مهاجم دیده می‌شود و «خروج از این دستگاه» و نام نفر در منو آن را آشکار می‌کند.
