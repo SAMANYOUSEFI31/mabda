@@ -3,6 +3,7 @@
  * only relevant chunks inside the context budget are injected.
  */
 
+import { persianFold } from './persianFold';
 import { estimateTokens } from './tokens';
 
 export const CHUNK_TARGET_TOKENS = 800;
@@ -50,13 +51,7 @@ const STOP = new Set(['و', 'در', 'به', 'از', 'که', 'این', 'آن', '�
 
 /** Persian-aware normalization: Arabic ي/ك → ی/ک, all digits → latin, ZWNJ → space, diacritics out, lower-case. */
 export function normalizeText(s: string): string {
-  return s
-    .replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/[ۀة]/g, 'ه')
-    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/[ً-ٰٟـ]/g, '')
-    .replace(/[‌‏‎]/g, ' ')
-    .toLowerCase();
+  return persianFold(s);
 }
 
 /** the Persian plural suffix, written apart (after a ZWNJ, which normalizeText makes a space) or joined («مشتریها»): it is not a word */

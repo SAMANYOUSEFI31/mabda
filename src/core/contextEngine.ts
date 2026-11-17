@@ -12,6 +12,7 @@ import {  ContextObject,
   TreeNode,
   WorkstreamSpec,
 } from '../types';
+import { persianFold } from './persianFold';
 import { isValidKnowledge } from './validity';
 import { governanceOf } from './coGoverning';
 import type { GovernanceInput } from './coGoverning';
@@ -46,16 +47,7 @@ const activeOf = (objects: ContextObject[], now: Date | string | number = Date.n
 
 /** Persian-aware normalisation for title matching: ی/ک variants, ZWNJ, diacritics, case, spacing. */
 export function normalizeFa(text: string): string {
-  return text
-    .replace(/[\u064B-\u065F\u0670\u0654]/g, '') // harakat + hamza-above (حوزهٔ -> حوزه)
-    .replace(/\u200c/g, ' ') // ZWNJ
-    .replace(/ي/g, 'ی')
-    .replace(/ك/g, 'ک')
-    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)) // «۵۰۰» and «500» are the same number
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  return persianFold(text).replace(/\s+/g, ' ').trim();
 }
 
 /** «مخاطب اصلی» -> «مخاطب اصلی» : the part of a label a human would actually type as a title. */

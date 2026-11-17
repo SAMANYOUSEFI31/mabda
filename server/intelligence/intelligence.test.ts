@@ -68,11 +68,19 @@ test('chunker: a long unordered text is cut within the budget and no word is los
   const m = charMeter(2);
   const words = Array.from({ length: 900 }, (_, i) => `واژه${i}`);
   const text = words.join(' ') + '.';
-  const chunks = chunkByStructure(text, 100, m);
+  const chunks = chunkByStructure(text, 100, m, { overlap: true });
   assert.ok(chunks.length > 1);
   for (const c of chunks) assert.ok(c.tokens <= 100, `chunk ${c.index}: ${c.tokens}`);
-  const back = chunks.map((c) => c.text).join(' ').split(/\s+/).filter(Boolean).map((w) => w.replace(/\.$/, ''));
-  assert.deepEqual(back, words);
+  const seen = new Set(chunks.flatMap((c) => c.text.split(/\s+/).filter(Boolean).map((w) => w.replace(/\.$/, ''))));
+  for (const w of words) assert.ok(seen.has(w), `${w} lost`);
+  const plain = chunkByStructure(text, 100, m);
+  assert.deepEqual(plain.map((c) => c.text).join(' ').split(/\s+/).filter(Boolean).map((w) => w.replace(/\.$/, '')), words, 'without overlap (document import) the chunks partition the text');
+  // overlap: each later chunk begins with the end of the one before it (a window cut is never a hard wall)
+  const windowed = chunkByStructure(words.join(' '), 100, m, { overlap: true });
+  for (let i = 1; i < windowed.length; i++) {
+    const first = windowed[i].text.split(' ')[0];
+    assert.ok(windowed[i - 1].text.includes(first), `chunk ${i} does not overlap chunk ${i - 1}`);
+  }
 });
 
 test('chunker: explicit headings and bullets are the boundaries; a text without spaces is still cut by measured length', () => {

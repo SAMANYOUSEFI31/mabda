@@ -13,8 +13,8 @@ export interface TokenMeter { count(text: string): number }
 /** سنجش محافظه‌کارانه: توکن ≈ نویسه ÷ charsPerToken، گرد به بالا. با ارزیابی (نسبت توکن واقعی به تخمین) کالیبره می‌شود. */
 export const charMeter = (charsPerToken: number): TokenMeter => ({ count: (t) => Math.ceil(t.length / charsPerToken) });
 
-/** ۲: مرز جمله بر فاصله مقدم شد (مرز تکه‌ها عوض شد، پس embeddingهای ذخیره‌شده دوباره ساخته می‌شوند) */
-export const CHUNKER_VERSION = 2;
+/** ۲: مرز جمله بر فاصله مقدم شد؛ ۳: همپوشانی ~۱۰٪ در برش پنجرهٔ نویسه (مرز تکه‌ها عوض شد، پس embeddingهای ذخیره‌شده دوباره ساخته می‌شوند) */
+export const CHUNKER_VERSION = 3;
 
 export interface Chunk { index: number; text: string; tokens: number }
 
@@ -35,6 +35,17 @@ export function cutWindow(text: string, maxChars: number): [string, string] {
   let at = maxChars;
   for (const marks of tiers) { const i = last(marks); if (i > half) { at = i + 1; break; } }
   return [text.slice(0, at).trim(), text.slice(at).trim()];
+}
+
+const OVERLAP_RATIO = 0.1;
+
+/** انتهای `text` به طول حداکثر `max` نویسه، شروع‌شده از آغاز یک واژه (وسط واژه نمی‌بُرد)؛ اگر مرز واژه‌ای نبود، خالی */
+export function overlapTail(text: string, max: number): string {
+  if (max < 2 || text.length <= 1) return '';
+  const tail = text.slice(-max);
+  const sp = tail.indexOf(' ');
+  if (text.length <= max || sp < 0) return '';
+  return tail.slice(sp + 1).trim();
 }
 
 /** تیتر صریح مارک‌داون: هر تیتر یک بخش جدید را آغاز می‌کند */
@@ -65,9 +76,11 @@ function splitByBullets(text: string): string[] {
 
 /**
  * متن را به تکه‌هایی می‌شکند که هرکدام در `budgetTokens` (طبق `meter`) جا شوند.
+ * با `overlap` هر پنجرهٔ نویسه با انتهای قبلی شروع می‌شود (برای embedding)؛ بدون آن تکه‌ها افراز بدون تکرارند (واردکردن سند).
  * تکه‌های کوچک‌ِ همسایه تا سقف بودجه به هم می‌چسبند تا تکه‌ها ریز نشوند؛ ترتیب متن حفظ می‌شود.
  */
-export function chunkByStructure(input: string, budgetTokens: number, meter: TokenMeter): Chunk[] {
+export function chunkByStructure(input: string, budgetTokens: number, meter: TokenMeter, opts: { overlap?: boolean } = {}): Chunk[] {
+  const overlapRatio = opts.overlap ? OVERLAP_RATIO : 0; // همپوشانی فقط برای embedding؛ واردکردن سند باید متن را بدون تکرار افراز کند
   const text = input.replace(/\r\n?/g, '\n').trim();
   if (!text) return [];
   if (!(budgetTokens > 0)) throw new RangeError('budgetTokens باید مثبت باشد');
@@ -83,12 +96,22 @@ export function chunkByStructure(input: string, budgetTokens: number, meter: Tok
     if (level === 1) { const p = splitByBlankLines(t); p.length > 1 ? p.forEach((x) => emit(x, 2)) : emit(t, 2); return; }
     if (level === 2) { const p = splitByBullets(t); p.length > 1 ? p.forEach((x) => emit(x, 3)) : emit(t, 3); return; }
     // آخرین راه: پنجرهٔ نویسه بر اساس بودجهٔ توکن
+    // هر پنجرهٔ بعدی با انتهای پنجرهٔ قبلی (~۱۰٪، از مرز واژه) شروع می‌شود تا جمله‌ای که وسطش بریده شد در هر دو تکه معنا داشته باشد
     let rest = t;
     let maxChars = Math.max(1, Math.floor((t.length * budgetTokens) / Math.max(1, meter.count(t))));
+    let prev = '';
     while (rest) {
-      let [head, tail] = cutWindow(rest, maxChars);
-      while (head.length > 1 && !fit(head)) { maxChars = Math.max(1, Math.floor(maxChars * 0.8)); [head, tail] = cutWindow(rest, maxChars); }
-      pieces.push(head || rest.slice(0, 1));
+      let lead = overlapTail(prev, Math.floor(maxChars * overlapRatio));
+      let [head, tail] = cutWindow(rest, Math.max(1, maxChars - lead.length));
+      let piece = lead ? `${lead} ${head}` : head;
+      while (piece.length > 1 && !fit(piece)) {
+        maxChars = Math.max(1, Math.floor(maxChars * 0.8));
+        lead = overlapTail(prev, Math.floor(maxChars * overlapRatio));
+        [head, tail] = cutWindow(rest, Math.max(1, maxChars - lead.length));
+        piece = lead ? `${lead} ${head}` : head;
+      }
+      pieces.push(piece || rest.slice(0, 1));
+      prev = head;
       rest = head ? tail : rest.slice(1).trim();
     }
   };
