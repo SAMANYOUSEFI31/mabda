@@ -161,10 +161,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
-                <li key={o.id} data-knowledge="stale" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
-            <Nuqta state="stale" className="mb-knowledge__nuqta" />
-                  <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">{reasonOf(o.id) || 'چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.'}</span><span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span></span>
-                  <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>بازبینی</Button>
+                <li key={o.id}>
+                  <Card padding="md" knowledge="stale" onClick={() => p.onOpenObject(o)} className="flex flex-col gap-stack-xs">
+                    <span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">{reasonOf(o.id) || 'چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.'}</span><span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span>
+                  </Card>
                 </li>
               ))}
             </ul>
@@ -207,10 +207,11 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <p className="body-sm text-text-subtle">تأییدشده‌اند و در خروجی‌ها در بخش جدای «فرض» می‌آیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (
-              <li key={o.id} data-knowledge="truth" className="mb-knowledge flex flex-wrap items-center justify-between gap-inline-sm p-inset-md">
-            <Nuqta state="truth" className="mb-knowledge__nuqta" />
-                <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">فرض · {nodeLabel(o.nodeId)}</span></span>
-                <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
+              <li key={o.id}>
+                {/* a knowledge item shown as itself opens by itself, the same as in «منبع حقیقت»: the whole card, with its hover */}
+                <Card padding="md" knowledge="truth" onClick={() => p.onOpenObject(o)} className="flex flex-col gap-stack-xs">
+                  <span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">فرض · {nodeLabel(o.nodeId)}</span>
+                </Card>
               </li>
             ))}
           </ul>
@@ -230,13 +231,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <ul className="flex flex-col gap-stack-xs">
               {truthAnchors.slice(0, 8).map((o) => (
                 <li key={o.id}>
-                  <Card padding="md" knowledge="truth" className="flex flex-wrap items-start justify-between gap-inline-sm">
-                    <div className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
-                      <span className="headline text-text-default">{o.title}</span>
-                      <p className="body-md whitespace-pre-wrap text-text-default">{o.content}</p>
-                      <span className="body-sm text-text-subtle">{TYPE_META[o.type].label}{o.assumption ? ' · فرض' : ''}{o.nodeId !== p.nodeId ? ` · از بخش «${nodeLabel(o.nodeId)}»` : ''}</span>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
+                  <Card padding="md" knowledge="truth" onClick={() => p.onOpenObject(o)} className="flex flex-col gap-stack-xs">
+                    <span className="headline text-text-default">{o.title}</span>
+                    <p className="body-md whitespace-pre-wrap text-text-default">{o.content}</p>
+                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label}{o.assumption ? ' · فرض' : ''}{o.nodeId !== p.nodeId ? ` · از بخش «${nodeLabel(o.nodeId)}»` : ''}</span>
                   </Card>
                 </li>
               ))}
