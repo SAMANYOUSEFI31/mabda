@@ -177,7 +177,7 @@ try {
     const made = page.getByTestId('quickstart-made');
     await made.waitFor();
     assert.match(await made.innerText(), /تأییدشده/);
-    assert.ok(await made.getByRole('button', { name: 'ببین' }).count() >= 1);
+    assert.ok(await made.getByRole('button', { name: 'باز کردن' }).count() >= 1);
     await shot('8-quickstart-made');
     await page.getByRole('button', { name: 'تمام شد' }).click();
 

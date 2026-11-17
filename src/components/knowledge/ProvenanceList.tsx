@@ -17,7 +17,7 @@ export const ProvenanceList: React.FC<{ provenance: Provenance; onOpen: (l: Prov
       {provenance.links.map((l, i) => (
         <li key={`${l.kind}-${i}`} className="body-sm flex flex-wrap items-center justify-between gap-inline-sm text-text-default">
           <span className="flex min-w-space-0 items-center gap-inline-xs"><Icon name={ICON[l.kind]} size="md" className="shrink-0 text-icon-subtle" /><span>{l.text}</span></span>
-          {l.target && <Button size="sm" variant="ghost" onClick={() => onOpen(l)}>{l.target.type === 'output' ? 'ببین' : 'برو'}</Button>}
+          {l.target && <Button size="sm" variant="ghost" onClick={() => onOpen(l)}>باز کردن</Button>}
         </li>
       ))}
     </ul>

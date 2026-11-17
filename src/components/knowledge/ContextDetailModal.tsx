@@ -557,7 +557,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             <section className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md" aria-label="فکرهای باز دربارهٔ این" data-testid="thoughts-about">
               <h4 className="label-md text-text-default">فکرهای باز دربارهٔ این ({formatNumber(about.length)})</h4>
               <ul className="flex flex-col gap-stack-xs">{about.slice(0, 5).map((t) => <li key={t.key} className="body-sm text-text-default">{stripAbout(t.text) || t.text}</li>)}</ul>
-              {onOpenThinking && <div><Button type="button" size="sm" variant="ghost" iconStart="Lightbulb" onClick={onOpenThinking}>دیدن در فضای فکر</Button></div>}
+              {onOpenThinking && <div><Button type="button" size="sm" variant="ghost" iconStart="Lightbulb" onClick={onOpenThinking}>باز کردن در فضای فکر</Button></div>}
             </section>
           );
         })()}

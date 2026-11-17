@@ -56,7 +56,7 @@ try {
     await nav('خانه', 'خانه');
     // the home says it in ONE line («N سؤال یا تصمیم باز…» + «ببین»); the full list is under «همه»
     await page.getByText(/سؤال یا تصمیم باز در یادداشت/).waitFor();
-    await page.getByRole('button', { name: 'ببین' }).first().click();
+    await page.getByRole('button', { name: 'باز کردن' }).first().click();
     const space = page.getByTestId('thinking-space');
     await space.waitFor();
     await space.getByText(Q).first().waitFor();

@@ -246,7 +246,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
                     <span className="body-sm text-text-default">{i.title} <span className="caption text-text-subtle">· {i.nodeLabel}</span></span>
                     <span className="flex items-center gap-inline-xs">
                       <span className="caption text-text-subtle" data-testid="included-from">{i.from} · {INCLUDE_REASON_FA[i.reason]}</span>
-                      {i.type === 'Constraint' && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id)}>ببین و ویرایش</Button>}
+                      {i.type === 'Constraint' && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`باز کردن یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id)}>ببین و ویرایش</Button>}
                       {i.reason === 'manual' && <Button size="sm" variant="ghost" onClick={() => setExtraIds((x) => x.filter((id) => id !== i.id))}>برداشتن</Button>}
                     </span>
                   </li>

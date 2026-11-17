@@ -56,7 +56,7 @@ export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects
                     {e.reviewAssets.length > 0 && (
                       <li className="flex flex-wrap items-center gap-inline-sm ps-inset-lg">
                         <span className="body-sm text-text-default">نیاز به بازبینی: {e.reviewAssets.map((a) => `«${a.title}»`).join('، ')}</span>
-                        <Button size="sm" variant="ghost" onClick={onOpenAssets}>مشاهده و بازسازی</Button>
+                        <Button size="sm" variant="ghost" onClick={onOpenAssets}>باز کردن خروجی‌ها</Button>
                       </li>
                     )}
                   </React.Fragment>

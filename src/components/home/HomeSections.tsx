@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { HomeAction, HomeSections as Sections } from '../../core/homeActions';
-import { Button, Icon, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliShort, formatNumber } from '../../ui';
+import { Button, Icon, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliDate, formatNumber } from '../../ui';
 import type { IconName, NuqtaState, TallyRow } from '../../ui';
 
 const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp' };
@@ -82,7 +82,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
       {!sections.empty && recent.length > 0 && (
         <div className="flex flex-col gap-stack-xs">
           <p className="caption text-text-subtle">آخرین تغییرها</p>
-          {recent.map((c) => <MarginNote key={c.id} icon="History"><span className="flex flex-col"><span className="line-clamp-2">{c.text}</span><span className="caption text-text-subtle">{formatJalaliShort(c.at)}</span></span></MarginNote>)}
+          {recent.map((c) => <MarginNote key={c.id} icon="History"><span className="flex flex-col"><span className="line-clamp-2">{c.text}</span><span className="caption text-text-subtle">{formatJalaliDate(c.at)}</span></span></MarginNote>)}
         </div>
       )}
     </div>
@@ -109,7 +109,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
                     {recent.map((c) => (
                       <li key={c.id} className="flex items-baseline justify-between gap-inline-md py-stack-xs">
                         <span className="body-md min-w-space-0 text-text-default">{c.text}</span>
-                        <span className="caption shrink-0 text-text-subtle">{formatJalaliShort(c.at)}</span>
+                        <span className="caption shrink-0 text-text-subtle">{formatJalaliDate(c.at)}</span>
                       </li>
                     ))}
                   </ul>
@@ -129,11 +129,12 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
               )} />
             </>
           )}
+          {/* the end of the to-do, in the text column: it follows what it opens more of, never the (taller) margin beside it */}
+          <div>
+            <Button size="sm" variant="ghost" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
+          </div>
         </div>
       </MarginItem>
-      <div>
-        <Button size="sm" variant="ghost" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
-      </div>
     </MarginList>
   );
 };

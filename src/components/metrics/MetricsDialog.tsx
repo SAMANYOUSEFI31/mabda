@@ -112,7 +112,7 @@ const Body: React.FC<Props> = ({ onClose, metrics, measurements, objects, change
                       <span className="label-md text-text-default">{r.decision.title}</span>
                       <span className="flex items-center gap-inline-xs">
                         {r.verdict ? <Badge icon={false}>{VERDICT_FA[r.verdict]}</Badge> : <Badge intent="neutral" icon={false}>{r.reading.state === 'due' ? 'موعدش رسیده' : 'باز'}</Badge>}
-                        <Button size="sm" variant="ghost" onClick={() => onOpenObject(r.decision)}>باز کن</Button>
+                        <Button size="sm" variant="ghost" onClick={() => onOpenObject(r.decision)}>باز کردن</Button>
                       </span>
                     </div>
                     {m && <p className="body-sm text-text-default">{expectationSentence({ metric: m.name, direction: r.expectation.direction, target: r.expectation.targetValue !== undefined ? fmt(r.expectation.targetValue) : undefined, unit: m.unit, by: formatJalaliDate(r.expectation.by) })}</p>}

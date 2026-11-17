@@ -163,7 +163,7 @@ try {
     await account(`فکر ${width}`);
     await page.getByText(`خانه: فکر ${width}`).waitFor();
     await nav('خانه', 'خانه');
-    await page.getByRole('button', { name: 'ببین' }).first().click();
+    await page.getByRole('button', { name: 'باز کردن' }).first().click();
     const sp = page.getByTestId('thinking-space');
     await sp.waitFor();
     await sp.locator('li', { hasText: 'قیمت پایهٔ کارگاه' }).getByRole('button', { name: 'به دانش ببر' }).click();

@@ -91,7 +91,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
                   {g.entries.slice(0, 6).map((e) => (
                     <li key={e.change.id} className="body-sm flex flex-wrap items-center justify-between gap-inline-sm text-text-default">
                       <span>{CHANGE_KIND_FA[e.change.kind]}: «{e.title}»{e.change.reason ? ` — ${e.change.reason}` : ''}</span>
-                      <span className="flex items-center gap-inline-xs text-text-subtle">{formatJalaliDate(e.change.at)}<Button size="sm" variant="ghost" onClick={() => open(e.change.objectId)}>باز کن</Button></span>
+                      <span className="flex items-center gap-inline-xs text-text-subtle">{formatJalaliDate(e.change.at)}<Button size="sm" variant="ghost" onClick={() => open(e.change.objectId)}>باز کردن</Button></span>
                     </li>
                   ))}
                 </ul>
@@ -112,7 +112,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
                 <li key={r.object.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md sm:flex-row sm:items-center sm:justify-between">
                   <span className="body-md text-text-default">«{r.object.title}» به {r.dependencyTitles.map((t) => `«${t}»`).join('، ')} وابسته است و آن تغییر کرده.</span>
                   <span className="flex gap-inline-xs">
-                    <Button size="sm" variant="ghost" onClick={() => open(r.object.id)}>باز کن</Button>
+                    <Button size="sm" variant="ghost" onClick={() => open(r.object.id)}>باز کردن</Button>
                     <Button size="sm" variant="secondary" loading={busy === r.object.id} onClick={() => run(r.object.id, [r.object.id], onAcceptReview)}>بدون تغییر بپذیر</Button>
                   </span>
                 </li>
@@ -134,7 +134,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
                     <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
                       <span className="flex flex-col gap-stack-xs"><span className="body-md text-text-default">«{title(u.ids[0])}»</span>{data.structure[u.ids[0]] ? <span className="body-sm text-text-subtle">{STRUCTURE_REASON}</span> : null}</span>
                       <span className="flex gap-inline-xs">
-                        <Button size="sm" variant="ghost" onClick={() => open(u.ids[0])}>باز کن</Button>
+                        <Button size="sm" variant="ghost" onClick={() => open(u.ids[0])}>باز کردن</Button>
                         <Button size="sm" variant="secondary" disabled={!notDone(u.ids).length} loading={busy === u.ids[0]} onClick={() => run(u.ids[0], notDone(u.ids), onConfirm)}>تأیید</Button>
                       </span>
                     </li>

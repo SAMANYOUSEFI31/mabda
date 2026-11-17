@@ -55,7 +55,7 @@ export const InheritNoticeList: React.FC<Props> = ({ notices, onSeen, onOpenSect
                         {s.overlapping.map((o) => (
                           <li key={o.id} className="body-sm flex flex-wrap items-center justify-between gap-inline-sm text-text-subtle">
                             <span>هم‌موضوع: «{o.title}»</span>
-                            <Button size="sm" variant="ghost" onClick={() => onOpenObject(o.id)}>باز کن</Button>
+                            <Button size="sm" variant="ghost" onClick={() => onOpenObject(o.id)}>باز کردن</Button>
                           </li>
                         ))}
                       </ul>

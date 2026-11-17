@@ -210,7 +210,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                   {made.rows.map((r) => (
                     <li key={r.nodeId} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-md">
                       <span className="body-md text-text-default">«{r.label}»: {r.confirmed > 0 ? `${formatNumber(r.confirmed)} تأییدشده` : ''}{r.confirmed > 0 && r.proposed > 0 ? '، ' : ''}{r.proposed > 0 ? `${formatNumber(r.proposed)} پیشنهادی` : ''}</span>
-                      <Button size="sm" variant="ghost" onClick={() => { onClose(); onGoToNode(r.nodeId); }}>ببین</Button>
+                      <Button size="sm" variant="ghost" onClick={() => { onClose(); onGoToNode(r.nodeId); }}>باز کردن</Button>
                     </li>
                   ))}
                 </ul>

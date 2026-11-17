@@ -127,7 +127,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   items={[
                     // «ساخت بخش» is used now and then: under «بیشتر», not on every row
                     ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),
-                    ...(it.id ? [{ label: 'دیدن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
+                    ...(it.id ? [{ label: 'باز کردن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
                     ...(!done && onRevise ? [{ label: 'بازنگری متن یا نوع', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setManage({ item: it, mode: 'revise' }); } }] : []),
                     ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'Network' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
                   ]}
