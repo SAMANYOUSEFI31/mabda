@@ -19,26 +19,30 @@ interface DocReaderProps {
   header?: React.ReactNode;
   /** «با ارجاع‌ها»: the parent rebuilds `markdown` with the reference lines */
   refs?: { checked: boolean; onChange: (on: boolean) => void };
+  /** the whole document when this one is a part of it (a tab): copy and download it from the same menu (DATA-03) */
+  whole?: { markdown: () => string; fileName: string };
+  /** one quiet line above the document (e.g. how many suggestions wait outside it) */
+  notice?: React.ReactNode;
 }
 
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const indent = (level: number) => (level <= 1 ? '' : level === 2 ? 'ps-inset-md' : level === 3 ? 'ps-inset-xl' : 'ps-inset-2xl');
 
 /** A Markdown document the way people want to read it: typeset by default, raw source one click away, copy and download. With an outline: where you are, and a stable link to every section. */
-export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty, outline, header, refs }) => {
+export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty, outline, header, refs, whole, notice }) => {
   const toast = useToast();
   const [view, setView] = useState<'read' | 'source'>('read');
   const [active, setActive] = useState<string | undefined>(outline?.[0]?.id);
   const items = useMemo(() => outline ?? [], [outline]);
 
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(markdown); toast.show({ intent: 'success', message: 'متن Markdown کپی شد.' }); }
+  const copy = async (text = markdown, what = 'متن Markdown') => {
+    try { await navigator.clipboard.writeText(text); toast.show({ intent: 'success', message: `${what} کپی شد.` }); }
     catch { toast.show({ intent: 'danger', message: 'کپی انجام نشد؛ مرورگر اجازه نداد.' }); }
   };
-  const download = () => {
-    const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
+  const download = (text = markdown, name = fileName) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
-    a.href = url; a.download = `${fileName}.md`; a.click();
+    a.href = url; a.download = `${name}.md`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -118,13 +122,18 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
             align="end"
             trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ سند" size="sm" />}
             items={[
-              { label: 'کپی متن (Markdown)', icon: 'Copy', onSelect: () => { void copy(); } },
-              { label: 'دانلود .md', icon: 'Download', onSelect: download },
+              { label: whole ? 'کپی این بخش (Markdown)' : 'کپی متن (Markdown)', icon: 'Copy', onSelect: () => { void copy(); } },
+              { label: whole ? 'دانلود این بخش (.md)' : 'دانلود .md', icon: 'Download', onSelect: () => download() },
+              ...(whole ? [
+                { label: 'کپی کل سند (Markdown)', icon: 'Copy' as const, onSelect: () => { void copy(whole.markdown(), 'کل سند'); } },
+                { label: 'دانلود کل سند (.md)', icon: 'Download' as const, onSelect: () => download(whole.markdown(), whole.fileName) },
+              ] : []),
               ...(withOutline ? [{ label: 'پیوند این بخش', icon: 'Link2' as const, disabled: !active, onSelect: () => { void copyLink(); } }] : []),
             ]}
           />
         </div>
       </div>
+      {notice}
       {withOutline && (
         <div data-pin="sub" className="doc-bar flex items-center gap-inline-sm lg:hidden">
           <Menu

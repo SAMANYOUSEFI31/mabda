@@ -201,7 +201,7 @@ export interface AiRequestResult {
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 /** a user's text must not be able to close our tags */
 const safe = (s: string) => s.replace(/<(\/?)(document|documents|data)\b/gi, '‹$1$2');
-const SOURCE_FA: Record<ContextObject['provenance'], string> = { Onboarding: 'راه‌اندازی اولیه', 'User Input': 'ورودی کاربر', 'AI Suggested': 'پیشنهاد AI (تأییدشده)', 'Asset Derived': 'برگرفته از دارایی', Imported: 'واردشده' };
+const SOURCE_FA: Record<ContextObject['provenance'], string> = { Onboarding: 'راه‌اندازی اولیه', 'User Input': 'ورودی کاربر', 'AI Suggested': 'پیشنهاد ابزار (تأییدشده)', 'Asset Derived': 'برگرفته از دارایی', Imported: 'واردشده' };
 
 /** `fct_1@v2` */
 export const refOf = (o: Pick<ContextObject, 'id' | 'version'>) => `${o.id}@v${o.version}`;
@@ -372,7 +372,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   ];
   const parts = [
     ...(input.packId ? [`<!-- mabda-pack:${input.packId} -->`] : []),
-    `# درخواست برای AI — ${KIND_LABEL[kind]} — ${input.workspaceName}`,
+    `# درخواست برای ابزار دیگر — ${KIND_LABEL[kind]} — ${input.workspaceName}`,
     '> اسناد زیر منبع حقیقت من‌اند. فقط «واقعیت‌های تأییدشده» واقعیت‌اند؛ فرض‌ها جدا و بدون وزن واقعیت آمده‌اند. قواعد و درخواست من بعد از اسناد است.',
     dataText,
     ...(thoughtSection ? [thoughtSection] : []),

@@ -116,6 +116,6 @@ export function reachSentence(o: Pick<ContextObject, 'nodeId' | 'type' | 'reach'
   const name = label(nodes, o.nodeId);
   const subs = nodes.some((n) => n.parentId === o.nodeId);
   return reachOf(o) === 'global'
-    ? 'این خط قرمز در همهٔ بسته‌ها و درخواست‌های AI می‌آید، هر بخشی که باشند.'
+    ? 'این خط قرمز در همهٔ بسته‌ها و درخواست‌ها می‌آید، هر بخشی که باشند.'
     : `این خط قرمز فقط در بسته‌ها و درخواست‌هایی می‌آید که دامنه‌شان «${name}»${subs ? ' یا یکی از زیربخش‌هایش' : ''} را بخواند (انتخاب مستقیم، یا بخش بالاترش با «با زیربخش‌ها»).`;
 }

@@ -24,7 +24,7 @@ export interface SpaceView {
   assumptions: ContextObject[];
   /** waiting item id → how many waiting items of its sub-sections come after it (the «اول این را روشن کن» line; display order only) */
   structure: Record<string, number>;
-  /** the unfiltered counts (the chips) */
+  /** the counts of the chips: in the view's section (its whole sub-tree, the same scope as the lists), whatever kind is picked */
   counts: Record<SpaceKind, number>;
 }
 
@@ -55,6 +55,7 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
   // a thought is also in the view of every section / knowledge it names with @«…» (its «دربارهٔ»), not only its home
   const inScope = (t: NoteThinkingItem) => !ids || thoughtInScope(t, ids, objects, nodes);
   const k = filter.kind;
+  const thoughtsScoped = thoughtsAll.filter(inScope);
   // the order of «منتظر تصمیم تو»: the upper section's item before its sub-sections' (ties only; depends_on layers come first)
   const layers = layerIndex(planDecisions(objects, input.relationships ?? []));
   const structure: Record<string, number> = {};
@@ -71,12 +72,13 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
     waiting: waitingOrdered,
     thoughts: !k || (k !== 'waiting' && k !== 'assumption') ? thoughtsAll.filter((t) => inScope(t) && (!k || t.kind === k)) : k === 'assumption' ? thoughtsAll.filter((t) => inScope(t) && t.kind === 'assumption') : [],
     assumptions: !k || k === 'assumption' ? assumptionsAll.filter((o) => inNode(o.nodeId)) : [],
+    // a chip says how many it will show when tapped: the section filter applies to the counts too (NEW-08), the kind filter does not
     counts: {
-      waiting: waitingAll.length,
-      idea: thoughtsAll.filter((t) => t.kind === 'idea').length,
-      question: thoughtsAll.filter((t) => t.kind === 'question').length,
-      assumption: thoughtsAll.filter((t) => t.kind === 'assumption').length + assumptionsAll.length,
-      open_decision: thoughtsAll.filter((t) => t.kind === 'open_decision').length,
+      waiting: waitingAll.filter((w) => inNode(w.object.nodeId)).length,
+      idea: thoughtsScoped.filter((t) => t.kind === 'idea').length,
+      question: thoughtsScoped.filter((t) => t.kind === 'question').length,
+      assumption: thoughtsScoped.filter((t) => t.kind === 'assumption').length + assumptionsAll.filter((o) => inNode(o.nodeId)).length,
+      open_decision: thoughtsScoped.filter((t) => t.kind === 'open_decision').length,
     },
   };
 }

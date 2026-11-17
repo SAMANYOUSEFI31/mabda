@@ -100,7 +100,20 @@ export function contextToMarkdown(input: { nodes: TreeNode[]; objects: ContextOb
 }
 
 /** a section of the document that is its own tab: the first-level sections of the tree */
-export interface DocTab { id: string; nodeId: string; label: string; /** the root's own objects (not its children) */ own?: boolean }
+export interface DocTab { id: string; nodeId: string; label: string; /** the root's own objects (not its children) */ own?: boolean; /** the whole document in one (NEW-07): read, copy or download all sections at once */ whole?: boolean }
+
+export const WHOLE_TAB_ID = 'whole';
+/** «کل سند» as the last tab, only when there is more than one tab (with one, that tab already is the whole document) */
+export const withWholeTab = (tabs: DocTab[]): DocTab[] => (tabs.length > 1 ? [...tabs, { id: WHOLE_TAB_ID, nodeId: '', label: 'کل سند', whole: true }] : tabs);
+
+/**
+ * Suggestions that wait in a tab's scope. The document is only approved truth (LOGIC-02), so a new person whose knowledge is all
+ * still «پیشنهاد» would read empty sections and think it was lost; the reader says how many wait and where, without writing them in.
+ */
+export function pendingInTab(tab: DocTab, nodes: TreeNode[], objects: ContextObject[]): number {
+  const scope = tab.whole ? null : new Set(tab.own ? [tab.nodeId] : subtreeIds(nodes, tab.nodeId));
+  return objects.filter((o) => o.status === 'Proposed' && !o.sample && (!scope || scope.has(o.nodeId))).length;
+}
 
 /**
  * Tabs = the first-level sections. With one root (the usual tree) they are the root's children; the root's own objects get a
@@ -125,5 +138,5 @@ export function tabOfAnchor(anchor: string, tabs: DocTab[], nodes: TreeNode[], o
   // the nearest tab on the way up; the root's own tab only holds objects of the root itself
   const own = tabs.find((t) => t.own);
   if (own && nodeIdOf === own.nodeId) return own;
-  return tabs.find((t) => !t.own && up.has(t.nodeId));
+  return tabs.find((t) => !t.own && !t.whole && up.has(t.nodeId));
 }

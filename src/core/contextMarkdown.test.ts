@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contextDoc, contextToMarkdown, docTabs, nodeAnchor, objectAnchor, tabOfAnchor } from './contextMarkdown';
+import { contextDoc, contextToMarkdown, docTabs, nodeAnchor, objectAnchor, pendingInTab, tabOfAnchor, withWholeTab } from './contextMarkdown';
 import { DEFAULT_TREE_NODES } from './specs';
 import type { ContextObject } from '../types';
 
@@ -119,4 +119,20 @@ test('a relation to a suggestion is not written into the export (a suggestion is
   assert.ok(!contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: objs, nodeId: 'brand', relationships, refs: true }).includes('وابسته به'));
   const okObjs = [objs[0], { ...objs[1], status: 'Confirmed' as const }];
   assert.match(contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: okObjs, nodeId: 'brand', relationships, refs: true }), /وابسته به: «پیشنهاد قیمت»/);
+});
+
+test('NEW-07: «کل سند» is the last tab only when there are several; an anchor never lands on it', () => {
+  const tabs = withWholeTab(docTabs(DEFAULT_TREE_NODES, []));
+  assert.equal(tabs.at(-1)?.label, 'کل سند');
+  assert.equal(withWholeTab(tabs.slice(0, 1)).length, 1);
+  const child = tabs[0];
+  assert.equal(tabOfAnchor(nodeAnchor(child.nodeId), tabs, DEFAULT_TREE_NODES, [])?.id, child.id);
+});
+
+test('LOGIC-02 follow-up: the reader counts the suggestions a tab holds (they are never written into the document)', () => {
+  const tabs = withWholeTab(docTabs(DEFAULT_TREE_NODES, []));
+  const first = tabs[0];
+  const objects = [o({ id: 'p1', status: 'Proposed', nodeId: first.nodeId }), o({ id: 'p2', status: 'Proposed', nodeId: tabs[1].nodeId }), o({ id: 'c', nodeId: first.nodeId })];
+  assert.equal(pendingInTab(first, DEFAULT_TREE_NODES, objects), 1);
+  assert.equal(pendingInTab(tabs.at(-1)!, DEFAULT_TREE_NODES, objects), 2);
 });

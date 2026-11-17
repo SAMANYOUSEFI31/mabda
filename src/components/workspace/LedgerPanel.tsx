@@ -31,7 +31,7 @@ export const LedgerPanel: React.FC<LedgerPanelProps> = ({ currentWorkspace, ledg
       <Card padding="xl" className="flex flex-col gap-stack-lg">
         <div className="border-b border-border-default pb-inset-lg">
           <h2 className="heading-sm text-text-default">مصرف</h2>
-          <p className="body-sm mt-stack-xs text-text-subtle">سقف‌های منصفانهٔ روزانه و هزینهٔ واقعی هر فراخوانی AI؛ هیچ مصرفی پنهان نیست.</p>
+          <p className="body-sm mt-stack-xs text-text-subtle">سقف‌های منصفانهٔ روزانه و هزینهٔ واقعی هر فراخوانی هوش مصنوعی؛ هیچ مصرفی پنهان نیست.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-inline-lg sm:grid-cols-4">

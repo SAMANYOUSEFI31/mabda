@@ -11,7 +11,7 @@ export const CATEGORY_LABEL: Record<CostCategory, string> = {
   judgments: 'قضاوت‌های لایهٔ تصمیم',
   fileProcessing: 'پردازش فایل',
   coach: 'مربی دانش',
-  generation: 'خروجی و گفتگو (AI مدیریت‌شده)',
+  generation: 'خروجی و گفتگو (هوش مصنوعی مدیریت‌شده)',
 };
 
 export function categoryOf(mode: LedgerEntry['mode']): CostCategory {

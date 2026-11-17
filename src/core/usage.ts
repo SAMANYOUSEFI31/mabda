@@ -30,7 +30,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'dialog.memory', label: 'وارد کردن حافظه', level: 3 },
   { key: 'action.record', label: 'دانش ثبت شد', level: 1 },
   { key: 'action.ai-copy', label: 'درخواست کپی شد', level: 1 },
-  { key: 'action.ai-answer', label: 'درخواست AI همین‌جا جواب گرفت', level: 1 },
+  { key: 'action.ai-answer', label: 'درخواست همین‌جا جواب گرفت', level: 1 },
   { key: 'action.home-todo', label: 'یکی از کارهای خانه انجام شد', level: 1 },
   { key: 'action.accept-proposal', label: 'پیشنهاد تأیید شد', level: 2 },
   { key: 'action.mention-link', label: 'رابطه از ارجاع @ ساخته شد', level: 3 },

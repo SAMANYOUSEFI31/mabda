@@ -39,7 +39,7 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
   /** returns false when saving failed (the error toast is already shown): a caller that keeps a draft must not clear it. `quiet`: the caller shows its own confirmation (ثبت سریع) */
   const handleSaveThought = async (nodeId: string, content: string, quiet = false): Promise<boolean> => {
     if (!(await handleAddNote(nodeId, content))) return false;
-    if (!quiet) toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش و فقط با انتخاب صریح تو به AI می‌رسد.' });
+    if (!quiet) toast.show({ intent: 'success', message: 'فکر ثبت شد؛ در «فضای فکر» می‌بینی‌اش و تا خودت نخواهی از اینجا بیرون نمی‌رود.' });
     return true;
   };
   const handleSaveAiThought = async (parentIds: string[], nodeId: string, text: string): Promise<boolean> => {
@@ -53,7 +53,7 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
   const handleSaveThoughts = async (notes: Array<{ nodeId: string; content: string }>, count: number, quiet = false): Promise<boolean> => {
     for (const n of notes) if (!(await handleAddNote(n.nodeId, n.content))) return false;
     if (quiet) return true;
-    toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان و فقط با انتخاب صریح تو به AI می‌رسند.` });
+    toast.show({ intent: 'success', message: `${formatNumber(count)} فکر ثبت شد؛ در «فضای فکر» می‌بینی‌شان و تا خودت نخواهی از اینجا بیرون نمی‌روند.` });
     return true;
   };
   // «گزینه‌های تصمیم باز»: the options are lines under the decision in its note; choosing makes a PROPOSED decision, the others stay in its record

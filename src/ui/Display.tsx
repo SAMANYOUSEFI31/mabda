@@ -112,6 +112,9 @@ export function Card({ interactive = false, href, selected, knowledge, padding =
   if (knowledge) (rest as Record<string, unknown>)['data-knowledge'] = knowledge;
   // «مورد دانش»: one Nuqta component (shape + readable name) hangs at the inline start; samples are not knowledge, so none
   if (knowledge && knowledge !== 'sample') children = <><Nuqta state={knowledge} className="mb-knowledge__nuqta" />{children}</>;
+  // VIS-03: a passage has no box, so on a touch screen (no hover) nothing says it opens; a quiet chevron at the inline end does,
+  // only where the pointer is coarse (components.css), never a frame
+  if (knowledge && isInteractive) children = <>{children}<span className="mb-knowledge__go" aria-hidden="true"><Icon name="ChevronLeft" size="sm" /></span></>;
   if (href) return <a href={href} className={cls} onClick={onClick} data-knowledge={knowledge}>{children}</a>;
   if (isInteractive) {
     return (

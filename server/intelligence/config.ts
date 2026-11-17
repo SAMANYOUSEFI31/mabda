@@ -22,6 +22,12 @@ export interface FinderConfig {
   weight: number;
   /** نقش متن پرس‌وجو برای مدل‌های دارای پیشوند: پرس‌وجو/سند. پیش‌فرض 'query'؛ ارزیابی هر دو را می‌سنجد. */
   queryRole?: 'query' | 'passage';
+  /**
+   * کف شباهت کسینوسی (فقط embedding): موردی که شباهتش کمتر است در ترکیب رتبه‌ها شرکت نمی‌کند، چون RRF فقط رتبه را می‌بیند و
+   * بی‌ربط‌ترین مورد هم رتبه‌ای می‌گیرد. عدد به مدل بستگی دارد (کسینوس E5 برای متن بی‌ربط هم بالای ۰٫۷ است)، پس از ارزیابی می‌آید،
+   * نه یک عدد ثابت در کد. null یا نبودن = هنوز سنجیده نشده، بی‌کف.
+   */
+  minCosine?: number | null;
 }
 
 export interface FindRelatedRecipe {
@@ -135,6 +141,7 @@ export function validateConfig(cfg: IntelligenceConfig): string[] {
     if (r.kind === 'findRelated') {
       if (!r.finders.length) bad.push(`دستورپخت ${name}: دست‌کم یک یابنده لازم است`);
       for (const f of r.finders) if (f.specialist === 'embedding' && !f.model) bad.push(`دستورپخت ${name}: یابندهٔ embedding بی‌مدل`);
+      for (const f of r.finders) if (f.minCosine != null && (f.specialist !== 'embedding' || f.minCosine < -1 || f.minCosine > 1)) bad.push(`دستورپخت ${name}: minCosine فقط برای embedding و میان -۱ و ۱`);
       if ((r.tiers.strong === null) !== (r.tiers.weak === null)) bad.push(`دستورپخت ${name}: آستانه‌ها باید هر دو null یا هر دو عدد باشند`);
       if (r.tiers.strong !== null && r.tiers.weak !== null && r.tiers.weak > r.tiers.strong) bad.push(`دستورپخت ${name}: آستانهٔ weak از strong بیشتر است`);
     }

@@ -27,7 +27,12 @@ const ChangesPanel = lazyNamed(() => import('../../components/knowledge/ChangesP
 
 export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' | 'canJudge' | 'changesOpen' | 'contradictions' | 'currentWorkspace' | 'data' | 'deliverables' | 'dueAssumptions' | 'dueDecisions' | 'dueProps' | 'expRows' | 'expectationsDueCount' | 'flips' | 'focusNodeId' | 'goFocus' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleCheckContradictions' | 'handleConvertItem' | 'handleDeriveThought' | 'handleHomeAct' | 'handleKeepContradiction' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSaveContextObject' | 'handleSeparateContradiction' | 'homeAllOpen' | 'homePlan' | 'homeView' | 'openThinkingSpace' | 'inheritNotices' | 'judgedToday' | 'judging' | 'markInheritSeen' | 'nodes' | 'openContext' | 'quietMetrics' | 'reviewNeeds' | 'setActiveTab' | 'setAiRequest' | 'setChangesOpen' | 'setCompare' | 'setContextViewMode' | 'setHomeAllOpen' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsPacksOpen' | 'setMetricsOpen' | 'setPackTarget' | 'setWeeklyOpen' | 'stale' | 'tally' | 'thinking' | 'vf' | 'waiting' | 'waitingOrdered' | 'weekly' | 'weeklyDue' | 'wid' | 'workspaceContexts'>;
 
+/** something of hers is already here: knowledge, a thought, a note or a to-do. Only with none of it is Home the empty page (UX-05). */
+export const homeHasStarted = (p: { knowledge: number; actions: number; openThoughts: number; notes: number }): boolean => p.knowledge + p.actions + p.openThoughts + p.notes > 0;
+
 export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
+  const openThoughts = (data?.thoughts ?? []).filter((t) => t.status === 'open');
+  const started = homeHasStarted({ knowledge: workspaceContexts.length, actions: homePlan.total, openThoughts: openThoughts.length, notes: data?.notes?.length ?? 0 });
   return (
         <div className="space-y-stack-lg">
           <div className="flex flex-row items-start justify-between gap-inline-md">
@@ -54,7 +59,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               />}
             </div>
           </div>
-          {workspaceContexts.length === 0 && (
+          {!started && (
             <EmptyState
               title="از همین‌جا شروع کن"
               description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
@@ -63,13 +68,14 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               )}
             />
           )}
-          {(workspaceContexts.length > 0 || homePlan.total > 0) && (
+          {started && (
             <HomeSections
               sections={homeView}
               onAct={handleHomeAct}
               onAnswerGap={(g) => { const at = { ...g, nodeId: resolveNodeId(nodes, g.nodeId) }; openContext(gapDraft(at, wid), at.nodeId); }}
               truthCount={workspaceContexts.filter((o) => o.status === 'Confirmed').length}
-              thoughts={(data?.thoughts ?? []).filter((t) => t.status === 'open').sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
+              thoughts={openThoughts.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
+              openThoughtCount={openThoughts.length}
               onOpenThinking={() => openThinkingSpace()}
               recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
               allOpen={homeAllOpen}

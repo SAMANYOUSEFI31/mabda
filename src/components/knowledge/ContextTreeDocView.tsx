@@ -10,7 +10,7 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -102,15 +102,20 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
     return notes.length ? <>{notes}</> : undefined;
   };
-  const card = (obj: ContextObject) => (
-    <MarginItem key={obj.id} margin={marginFor(obj)}>
-      <Card padding="md" knowledge={displayState(obj, conflictWith)} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
-        <h4 className="headline text-balance text-text-default">{obj.title}</h4>
-        <p className="body-reading text-pretty text-text-default">{obj.content}</p>
-        <p className="body-sm text-text-subtle">{obj.assumption ? 'فرض' : TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
-      </Card>
-    </MarginItem>
-  );
+  const card = (obj: ContextObject) => {
+    const state = displayState(obj, conflictWith);
+    // VIS-05: the exceptions (conflict, stale) print the nuqta's own name first in the trace line, so the shape is learnt beside its word
+    const exception = state === 'conflict' || state === 'stale' ? `${NUQTA_LABEL[state]} · ` : '';
+    return (
+      <MarginItem key={obj.id} margin={marginFor(obj)}>
+        <Card padding="md" knowledge={state} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
+          <h4 className="headline text-balance text-text-default">{obj.title}</h4>
+          <p className="body-reading text-pretty text-text-default">{obj.content}</p>
+          <p className="body-sm mt-stack-xs text-text-subtle">{exception && <span className="font-bold text-text-default">{exception}</span>}{obj.assumption ? 'فرض' : TYPE_META[obj.type].label} · نسخهٔ {formatNumber(obj.version)} · از «{PROVENANCE_LABEL[obj.provenance]}»</p>
+        </Card>
+      </MarginItem>
+    );
+  };
 
   const sampleCard = (obj: ContextObject) => (
     <Card key={obj.id} padding="lg" onClick={() => props.onSelectObject(obj)} knowledge="sample" className="flex flex-col gap-stack-sm">
