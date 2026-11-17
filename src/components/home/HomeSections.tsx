@@ -21,6 +21,8 @@ interface Props {
   /** confirmed truths in this space: the one number of the margin */
   truthCount: number;
   thoughts: Array<{ id: string; text: string; at: string }>;
+  /** all open thoughts (the margin lists only the latest few) */
+  openThoughtCount?: number;
   onOpenThinking: () => void;
   /** for «همه‌چیز به‌روز است.»: the latest changes, one line each */
   recent: Array<{ id: string; text: string; at: string }>;
@@ -62,7 +64,7 @@ function Section<T>({ id, title, items, render }: { id: string; title: string; i
 const dot = (state: NuqtaState) => <Nuqta state={state} size="sm" label={false} />;
 
 /** «خانه» (patterns.md §۸): what waits for her, what is missing, what is out of date; in the margin, the latest thoughts and one number. */
-export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, truthCount, thoughts, onOpenThinking, recent, allOpen, onToggleAll }) => {
+export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, truthCount, thoughts, openThoughtCount = thoughts.length, onOpenThinking, recent, allOpen, onToggleAll }) => {
   const margin = (
     <>
       <MarginNote lead={dot('truth')}>{formatNumber(truthCount)} حقیقت در این فضا</MarginNote>
@@ -79,7 +81,15 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
     <MarginList label="آنچه الان به تو نیاز دارد">
       <MarginItem margin={margin}>
         <div className="flex flex-col gap-stack-lg">
-          {sections.empty ? (
+          {sections.empty && truthCount === 0 ? (
+            // UX-05: she has written thoughts or notes but nothing is truth yet. «همه‌چیز به‌روز است» would be false comfort;
+            // the next step is to settle one thought into the source
+            <section aria-labelledby="home-first" className="flex flex-col gap-stack-sm">
+              <h2 id="home-first" className="heading-sm text-text-default">{openThoughtCount > 0 ? `${formatNumber(openThoughtCount)} فکر باز داری؛ هنوز هیچ‌کدام حقیقت نشده است.` : 'یادداشت‌هایت اینجاست؛ هنوز چیزی حقیقت نشده است.'}</h2>
+              <p className="body-md text-text-subtle">وقتی یکی روشن شد، در «فکر» آن را حقیقت کن تا در منبع بنشیند و هر خروجی از آن ساخته شود.</p>
+              <div><Button size="sm" variant="secondary" iconEnd="ChevronLeft" onClick={onOpenThinking}>رفتن به فکرها</Button></div>
+            </section>
+          ) : sections.empty ? (
             <section aria-labelledby="home-clear" className="flex flex-col gap-stack-sm">
               <h2 id="home-clear" className="heading-sm text-text-default">همه‌چیز به‌روز است.</h2>
               {recent.length > 0 && (
