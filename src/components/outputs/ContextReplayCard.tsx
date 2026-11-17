@@ -175,7 +175,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             })}
             <div>
               <Button variant="ghost" size="sm" iconEnd={showRawContext ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showRawContext} onClick={() => setShowRawContext(!showRawContext)}>
-                {showRawContext ? 'بستن ورودی‌ها' : 'مشاهدهٔ ورودی‌ها'}
+                {showRawContext ? 'بستن ورودی‌ها' : 'باز کردن ورودی‌ها'}
               </Button>
             </div>
             {showRawContext && (

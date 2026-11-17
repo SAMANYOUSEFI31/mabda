@@ -43,17 +43,17 @@ function allActions(input: HomeInput): HomeAction[] {
     const d = titleOfAsset.get(s.deliverableId);
     if (!d) continue;
     const recent = input.now.getTime() - new Date(d.createdAt).getTime() <= RECENT_DAYS * 86_400_000;
-    all.push({ id: `stale:${d.id}`, kind: 'stale', text: `خروجی ${q(d.title)} دیگر به‌روز نیست${s.reasons[0] ? `: ${s.reasons[0].message}` : '.'}`, button: 'ببین', target: { type: 'asset', id: d.id }, score: recent ? 95 : 70 });
+    all.push({ id: `stale:${d.id}`, kind: 'stale', text: `خروجی ${q(d.title)} دیگر به‌روز نیست${s.reasons[0] ? `: ${s.reasons[0].message}` : '.'}`, button: 'باز کردن', target: { type: 'asset', id: d.id }, score: recent ? 95 : 70 });
   }
   // two items often share a title («اجارهٔ ماهانه» written twice with different amounts): then the sentence names it once
   for (const c of input.contradictions) all.push({ id: `contradiction:${c.id}`, kind: 'contradiction', text: c.titleA.trim() === c.titleB.trim() ? `دو مورد ${q(c.titleA)} با هم نمی‌خوانند.` : `${q(c.titleA)} و ${q(c.titleB)} با هم نمی‌خوانند.`, button: 'بررسی', target: { type: 'contradictions' }, score: 85 });
-  for (const r of input.reviews) all.push({ id: `review:${r.id}`, kind: 'review', text: `${q(r.title)} به‌خاطر تغییر ${r.because.map(q).join('، ')} نیاز به نگاه دارد.`, button: 'باز کن', target: { type: 'object', id: r.id }, score: 80 });
+  for (const r of input.reviews) all.push({ id: `review:${r.id}`, kind: 'review', text: `${q(r.title)} به‌خاطر تغییر ${r.because.map(q).join('، ')} نیاز به نگاه دارد.`, button: 'باز کردن', target: { type: 'object', id: r.id }, score: 80 });
   for (const d of input.ready) all.push({ id: `ready:${d.id}`, kind: 'ready', text: `تصمیم ${q(d.title)} آماده است؛ هرچه به آن تکیه دارد تأیید شده.`, button: 'تصمیم بگیر', target: { type: 'object', id: d.id }, score: 70 });
   if (input.proposedCount > 0) all.push({ id: 'proposals', kind: 'proposals', text: `${fa(input.proposedCount)} پیشنهاد منتظر تأیید توست.`, button: 'مرور کن', target: { type: 'proposals' }, score: 60 });
   if (input.weekly.due) all.push({ id: 'weekly', kind: 'weekly', text: `بازبینی هفتگی: ${fa(input.weekly.changes)} تغییر در این هفته بوده.`, button: 'شروع (۵ دقیقه)', target: { type: 'weekly' }, score: 55 });
-  if (input.dueCount > 0) all.push({ id: 'due', kind: 'due', text: `${fa(input.dueCount)} مورد موعد بازبینی دارد.`, button: 'ببین', target: { type: 'due' }, score: 50 });
+  if (input.dueCount > 0) all.push({ id: 'due', kind: 'due', text: `${fa(input.dueCount)} مورد موعد بازبینی دارد.`, button: 'باز کردن', target: { type: 'due' }, score: 50 });
 
-  if ((input.openThinking ?? 0) > 0) all.push({ id: 'thinking', kind: 'thinking', text: `${fa(input.openThinking!)} سؤال یا تصمیم باز در یادداشت‌هایت مانده است.`, button: 'ببین', target: { type: 'thinking' }, score: 45 });
+  if ((input.openThinking ?? 0) > 0) all.push({ id: 'thinking', kind: 'thinking', text: `${fa(input.openThinking!)} سؤال یا تصمیم باز در یادداشت‌هایت مانده است.`, button: 'باز کردن', target: { type: 'thinking' }, score: 45 });
 
   all.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   return all;

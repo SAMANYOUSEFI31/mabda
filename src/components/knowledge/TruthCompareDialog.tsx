@@ -133,7 +133,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                   <section className="flex flex-col gap-stack-xs rounded-control border border-border-warning-subtle bg-bg-warning-subtle p-inset-md" aria-label="خروجی‌های اثرپذیر" data-testid="compare-outputs">
                     <h3 className="label-md text-text-default">{formatNumber(outputs.length)} خروجی از این تغییرها قدیمی می‌شود</h3>
                     <ul className="flex flex-col gap-stack-xs">{outputs.slice(0, 6).map((o) => <li key={o.id} className="body-sm text-text-default">{o.title} <span className="text-text-subtle">— از روی «{o.because.slice(0, 2).join('»، «')}»{o.because.length > 2 ? ` و ${formatNumber(o.because.length - 2)} مورد دیگر` : ''}</span></li>)}</ul>
-                    {p.onOpenAssets && <div><Button size="sm" variant="ghost" iconStart="Package" onClick={() => { p.onClose(); p.onOpenAssets?.(); }}>دیدن خروجی‌ها</Button></div>}
+                    {p.onOpenAssets && <div><Button size="sm" variant="ghost" iconStart="Package" onClick={() => { p.onClose(); p.onOpenAssets?.(); }}>باز کردن خروجی‌ها</Button></div>}
                   </section>
                 )}
                 <div className="flex flex-col gap-stack-md">

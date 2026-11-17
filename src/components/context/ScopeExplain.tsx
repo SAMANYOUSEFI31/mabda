@@ -47,7 +47,7 @@ export const ScopeExplain: React.FC<Props> = ({ explain, onOpenObject, onAdd, sh
                     <span className="body-sm text-text-default">{i.title}</span>
                     <span className="caption text-text-subtle" data-testid="explain-from">{i.from}{i.note ? ` · ${i.note}` : ''}</span>
                   </span>
-                  {i.editable && i.id && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`ببین یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id!)}>ببین و ویرایش</Button>}
+                  {i.editable && i.id && onOpenObject && <Button size="sm" variant="ghost" iconStart="Pencil" aria-label={`باز کردن یا ویرایش خط قرمز «${i.title}»`} onClick={() => onOpenObject(i.id!)}>ببین و ویرایش</Button>}
                 </li>
               ))}
             </ul>

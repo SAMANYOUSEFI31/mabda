@@ -88,7 +88,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
               <li key={r.id} className="flex flex-col gap-stack-xs sm:flex-row sm:items-center sm:justify-between">
                 <span className="body-md text-text-default">«{r.title}» به {r.dependencyTitles.map((t) => `«${t}»`).join('، ')} وابسته است و آن تغییر کرده.</span>
                 <span className="flex gap-inline-xs">
-                  <Button size="sm" variant="ghost" onClick={() => onOpenObject(r.id)}>باز کن</Button>
+                  <Button size="sm" variant="ghost" onClick={() => onOpenObject(r.id)}>باز کردن</Button>
                   <Button size="sm" variant="secondary" onClick={() => onAcceptReview(r.id)}>بدون تغییر بپذیر</Button>
                 </span>
               </li>
@@ -108,7 +108,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
                 {waiting.ready.map((u) => (
                   <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="flex flex-col gap-stack-xs"><span className="body-md text-text-default">{names(u.ids)} — هرچه به آن تکیه دارد تأیید شده است.</span>{structure[u.ids[0]] ? <span className="body-sm text-text-subtle">{STRUCTURE_REASON}</span> : null}</span>
-                    <Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کن</Button>
+                    <Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کردن</Button>
                   </li>
                 ))}
               </ul>
@@ -132,7 +132,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
                   <li key={u.ids.join('+')} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
                     <span className="body-md text-text-default">{names(u.ids)}</span>
                     <span className="body-sm text-text-subtle">هرکدام روی دیگری سوار است، پس نمی‌شود اول یکی را قطعی کرد. این‌ها را با هم بررسی کن و با هم تأیید کن.{u.blockedBy.length ? ` فعلاً منتظر ${names(u.blockedBy)} هم هستند.` : ''}</span>
-                    <span><Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کن</Button></span>
+                    <span><Button size="sm" variant="ghost" onClick={() => onOpenObject(u.ids[0])}>باز کردن</Button></span>
                   </li>
                 ))}
               </ul>

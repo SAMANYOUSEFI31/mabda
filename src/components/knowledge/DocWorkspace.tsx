@@ -62,7 +62,7 @@ export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, a
       notice={pending > 0 ? (
         <p className="body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" role="status">
           <span>{formatNumber(pending)} پیشنهاد {tab.whole ? 'در این فضا' : 'در این بخش'} منتظر تأیید توست؛ سند فقط حقیقتِ تأییدشده را دارد.</span>
-          {onOpenSuggestions && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" onClick={onOpenSuggestions}>دیدن پیشنهادها</Button>}
+          {onOpenSuggestions && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" onClick={onOpenSuggestions}>باز کردن پیشنهادها</Button>}
         </p>
       ) : undefined}
       empty={empty}

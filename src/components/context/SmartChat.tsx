@@ -26,7 +26,7 @@ import { BlockView } from '../shared/BlockView';
 import { flatten, subtreeIds, ancestorIds } from '../../core/nodeTree';
 import {
   Badge, Button, Card, Dialog, Icon, IconButton, Markdown, Select, Spinner, Switch, TextField,
-  formatJalaliShort, formatNumber, formatTime, useToast,
+  formatJalaliDate, formatNumber, formatTime, useToast,
 } from '../../ui';
 import type { IconName } from '../../ui';
 
@@ -479,7 +479,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
                           <span className="label-md truncate text-text-default">{sess.title}</span>
                           <span className="caption flex justify-between gap-inline-sm text-text-subtle">
                             <span>{formatNumber(sess.messages.length)} پیام</span>
-                            <span>{formatJalaliShort(sess.updatedAt)}</span>
+                            <span>{formatJalaliDate(sess.updatedAt)}</span>
                           </span>
                         </button>
                         <IconButton

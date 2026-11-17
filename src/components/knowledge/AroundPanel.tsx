@@ -52,7 +52,7 @@ export const AroundPanel: React.FC<Props> = ({ object, around, allObjects, onOpe
                   </span>
                   <span className="flex flex-wrap items-center gap-inline-xs">
                     {i.object && <><TypeBadge value={i.object.type} /><StatusBadge value={i.object.status} /></>}
-                    {canGo(i) && <Button size="sm" variant="ghost" onClick={() => go(i)}>{i.target?.type === 'output' ? 'ببین' : 'برو'}</Button>}
+                    {canGo(i) && <Button size="sm" variant="ghost" onClick={() => go(i)}>باز کردن</Button>}
                   </span>
                 </li>
               ))}
@@ -97,7 +97,7 @@ const Related: React.FC<{ object: ContextObject; allObjects: ContextObject[]; co
           return (
             <li key={s.objectId} className="flex flex-wrap items-center justify-between gap-inline-sm">
               <span className="flex items-center gap-inline-xs body-md text-text-default"><Icon name="Link2" size="md" className="text-icon-subtle" />{s.label}</span>
-              {o && onOpenObject && <Button size="sm" variant="ghost" onClick={() => onOpenObject(o)}>برو</Button>}
+              {o && onOpenObject && <Button size="sm" variant="ghost" onClick={() => onOpenObject(o)}>باز کردن</Button>}
             </li>
           );
         })}

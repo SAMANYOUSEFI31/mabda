@@ -45,8 +45,9 @@ export function StateTally({ rows, layout = 'list', label = 'در این فضا'
         {shown.map((r) => (
           <li key={r.label}>
             {r.onSelect ? (
-              <button type="button" onClick={r.onSelect} className={cx('body-sm flex min-h-touch w-full items-center gap-inline-sm rounded-control-sm px-inset-xs text-start text-text-default hover:bg-interaction-hover')}>
-                <Lead row={r} /><span className="flex-1">{text(r)}</span><Icon name="ChevronLeft" size="sm" className="text-icon-subtle" />
+              <button type="button" onClick={r.onSelect} className={cx('body-sm inline-flex min-h-touch items-center gap-inline-sm rounded-control-sm px-inset-xs text-start text-text-default hover:bg-interaction-hover')}>
+                {/* the arrow follows the words (not the far edge of the column): it reads as part of the line it opens */}
+                <Lead row={r} /><span>{text(r)}</span><Icon name="ChevronLeft" size="sm" className="text-icon-subtle" />
               </button>
             ) : (
               <span className="body-sm flex min-h-touch items-center gap-inline-sm px-inset-xs text-text-default"><Lead row={r} />{text(r)}</span>
