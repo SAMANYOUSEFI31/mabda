@@ -1,20 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import Database from 'better-sqlite3';
+import type { SqlDatabase } from './sql/types.ts';
 import { migrate } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
 import { archiveDeliverable, archiveWorkspace, archivedObjects, deleteDeliverable, deleteWorkspace, listRemovals, purgeImpact, purgeObject, removeNode, restoreDeliverable, restoreObject, restoreTarget, undoRemoval, wipeUser } from './removal.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
+import { openDatabase } from './database.ts';
 
 const U = 'local';
 const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
-const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
+const fresh = () => { const db = openDatabase(':memory:'); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
 const del = (id: string, title: string, content: string, used: Array<[string, number]> = []): GeneratedDeliverable => ({
   id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title, content, executionMode: 'auto', usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
 } as GeneratedDeliverable);
 /** every row of every table, as text — what «no trace anywhere» is measured against */
-const dump = (db: Database.Database) => (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>)
-  .map((t) => `## ${t.name}\n${(db.prepare(`SELECT * FROM ${t.name}`).all() as unknown[]).map((r) => JSON.stringify(r)).join('\n')}`).join('\n');
+const dump = (db: SqlDatabase) => db.tables()
+  .map((t) => `## ${t}\n${(db.prepare(`SELECT * FROM ${t}`).all() as unknown[]).map((r) => JSON.stringify(r)).join('\n')}`).join('\n');
 
 const SECRET = 'کارت-6037-9971-2345-6789-نشانهٔ-یکتا';
 const SECRET_PERSIAN_DIGITS = 'شمارهٔ کارت من ۶۰۳۷-۹۹۷۱-۲۳۴۵-۶۷۸۹ است';
@@ -192,8 +193,8 @@ test('workspace: archive keeps everything; delete removes EVERY row of it from E
   assert.ok(!text.includes('w1-یکتا'), 'no word of the deleted workspace is anywhere');
   assert.ok(text.includes('w2-یکتا'), 'the other workspace is untouched');
   assert.equal(repo.getWorkspace(U, 'w1'), undefined);
-  for (const t of (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>).map((x) => x.name)) {
-    const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name);
+  for (const t of db.tables()) {
+    const cols = db.columns(t).map((c) => c.name);
     if (cols.includes('workspace_id')) assert.equal((db.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE workspace_id = 'w1'`).get() as { n: number }).n, 0, `${t} has no row of w1`);
   }
 });

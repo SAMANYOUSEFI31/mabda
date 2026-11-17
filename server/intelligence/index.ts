@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 import { consoleCallLog } from './callLog.ts';
 import { loadIntelligenceConfig, type IntelligenceConfig } from './config.ts';
 import { SqliteEmbeddingStore } from './embeddingStore.ts';
@@ -32,7 +32,7 @@ export interface CreateOptions {
   /** برای آزمون و ارزیابی؛ پیش‌فرض ارائه‌دهندهٔ لیارا از env */
   specialists?: Specialists;
   store?: EmbeddingStore;
-  db?: Database.Database;
+  db?: SqlLike;
   log?: CallLog;
   env?: Record<string, string | undefined>;
 }
@@ -64,4 +64,4 @@ export function createIntelligence(opts: CreateOptions = {}): Intelligence {
 }
 
 /** ساخت ذخیرهٔ پیشنهاد/واکنش روی پایگاه‌داده */
-export const createSuggestionStore = (db: Database.Database): IntelligenceStore => new IntelligenceStore(db);
+export const createSuggestionStore = (db: SqlLike): IntelligenceStore => new IntelligenceStore(db);

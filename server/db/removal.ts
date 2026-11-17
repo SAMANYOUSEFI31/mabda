@@ -15,7 +15,7 @@ import type { Repo, Scope } from './repo.ts';
 
 const now = () => new Date().toISOString();
 /** after an erase for good: the write-ahead log is folded into the file and emptied, so the old pages do not linger in it */
-const flushErased = (repo: Repo) => { try { repo.db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* an in-memory database has no log */ } };
+const flushErased = (repo: Repo, tables?: string[]) => repo.db.flushErased(tables);
 const rows = <T = Record<string, unknown>>(repo: Repo, sql: string, ...args: unknown[]) => repo.db.prepare(sql).all(...args) as T[];
 
 // ───────────────────────────── permanent delete of one piece of knowledge ─────────────────────────────
@@ -309,8 +309,8 @@ export function deleteDeliverable(repo: Repo, s: Scope, id: string) {
 // ───────────────────────────── workspaces and the whole account ─────────────────────────────
 
 /** every table that has a column — found in the schema itself, so a table added tomorrow is covered without anyone remembering */
-const tablesWith = (repo: Repo, column: string): string[] => rows<{ name: string }>(repo, "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'schema_migrations'")
-  .map((t) => t.name).filter((t) => rows<{ name: string }>(repo, `PRAGMA table_info(${t})`).some((c) => c.name === column));
+const tablesWith = (repo: Repo, column: string): string[] => repo.db.tables()
+  .filter((t) => t !== 'schema_migrations' && repo.db.columns(t).some((c) => c.name === column));
 
 export function archiveWorkspace(repo: Repo, userId: string, id: string, archive: boolean): Workspace {
   const ws = repo.getWorkspace(userId, id);

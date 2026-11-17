@@ -9,7 +9,7 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 import { Accounts, AuthError, OWNER_ID, sha256 } from './accounts.ts';
 import type { Account, Role } from './accounts.ts';
 import { OWNER_NOTICE_VERSION } from '../../src/core/ownerNotice.ts';
@@ -115,7 +115,7 @@ const sameSecret = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(
  */
 const toUser = (a: Account): RequestUser => ({ id: a.id, role: a.role, name: a.name, consented: a.role === 'owner' || (a.consentVersion ?? 0) >= OWNER_NOTICE_VERSION });
 
-export function installAuth(app: express.Express, db: Database.Database, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
+export function installAuth(app: express.Express, db: SqlLike, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
   const accounts = new Accounts(db, opts.clock);
   const ipKey = (req: Request) => req.ip ?? 'unknown';
 

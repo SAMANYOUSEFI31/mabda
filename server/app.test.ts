@@ -14,7 +14,7 @@ const KEY = 'AIzaSy' + 'x'.repeat(30);
 const AI_USER = 'user-12345678';
 
 async function boot(script: (c: { kind: string; schema?: unknown; prompt: { user: string; prefix?: string } }) => unknown, opts: { admin?: boolean } = {}) {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const p = new MockProvider((c) => script(c as never));
   p.models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'];
   const sessions = new SessionResolver({ managedEnabled: true, managedKey: KEY, cfg, factory: () => p });
@@ -312,6 +312,7 @@ test('manager ledger: real cost per workspace (no plan price); off unless MABDA_
 });
 
 import { PACK_MARKER_RE } from '../src/core/contextPack.ts';
+import { openDatabase } from './db/database.ts';
 
 test('Context pack: built on the server, size reported, lineage stored; Starter spec/limits do not matter for reading', async () => {
   const t = await boot(() => decide);

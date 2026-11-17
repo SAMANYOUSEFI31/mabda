@@ -5,10 +5,11 @@ import Database from 'better-sqlite3';
 import { migrate } from './migrations.ts';
 import { Repo } from './repo.ts';
 import type { Workspace } from '../../src/types/index.ts';
+import { openDatabase } from './database.ts';
 
 const U = 'person_x';
 function fresh() {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const repo = new Repo(db);
   repo.saveWorkspace(U, { id: 'w1', name: 'w1', slug: 'w1', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as Workspace);
   const s = { userId: U, workspaceId: 'w1' };

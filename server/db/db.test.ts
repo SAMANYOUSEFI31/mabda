@@ -10,10 +10,11 @@ import { treeOrder } from '../../src/core/nodeTree.ts';
 import { computeStaleAssets } from '../../src/core/impactEngine.ts';
 import type { GeneratedDeliverable, Workspace } from '../../src/types/index.ts';
 import { LIMITS } from '../../src/core/limits.ts';
+import { openDatabase } from './database.ts';
 
 const U = 'local';
 const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
-const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
+const fresh = () => { const db = openDatabase(':memory:'); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { db, repo, s: { userId: U, workspaceId: 'w1' } }; };
 const del = (id: string, used: Array<[string, number]>): GeneratedDeliverable => ({
   id, workspaceId: 'w1', workstreamId: 'x', deliverableId: 'd', title: `دارایی ${id}`, content: 'm', executionMode: 'auto', usedContext: used.map(([i, version]) => ({ id: i, version })), rebuildCount: 0, createdAt: '2026-02-01T00:00:00Z',
 });
@@ -100,9 +101,9 @@ test('every table carries user_id and workspace_id', () => {
   // usage_events is per install and holds only a feature key, a number and a time: it has no workspace (and no data of one).
   // accounts / auth_sessions are sign-in, not content (their column is account_id on purpose: no content sweep touches them);
   // client_errors belongs to a person (user_id) but to no workspace.
-  const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('schema_migrations','kv','sqlite_sequence','usage_events','accounts','auth_sessions','client_errors')").all() as Array<{ name: string }>).map((t) => t.name);
+  const tables = db.tables().filter((t) => !['schema_migrations', 'kv', 'usage_events', 'accounts', 'auth_sessions', 'client_errors'].includes(t));
   for (const t of tables) {
-    const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map((c) => c.name);
+    const cols = db.columns(t).map((c) => c.name);
     assert.ok(cols.includes('user_id') && cols.includes('workspace_id'), `${t} lacks user_id/workspace_id`);
   }
 });
@@ -227,14 +228,14 @@ test('an object cannot be saved without provenance or into a missing node', () =
 });
 
 test('legacy import is one-time, keeps ids, converts usedContextIds → usedContext, and seeds on first run', () => {
-  const db = new Database(':memory:'); migrate(db); const repo = new Repo(db);
+  const db = openDatabase(':memory:'); const repo = new Repo(db);
   const payload = seedPayload();
   const first = importLegacy(repo, U, payload);
   assert.ok(!('skipped' in first) && first.workspaces === 2 && first.objects >= 8);
   assert.deepEqual(importLegacy(repo, U, payload), { skipped: true });
   assert.equal(repo.listWorkspaces(U).length, 2);
   const legacyDel = { ...payload.deliverables![0], usedContext: undefined, usedContextIds: ['ctx_domain', 'ctx_audience'] } as never;
-  const db2 = new Database(':memory:'); migrate(db2); const repo2 = new Repo(db2);
+  const db2 = openDatabase(':memory:'); const repo2 = new Repo(db2);
   importLegacy(repo2, U, { ...payload, deliverables: [legacyDel] });
   assert.deepEqual(repo2.listDeliverables({ userId: U, workspaceId: 'ws_studio' })[0].usedContext, [{ id: 'ctx_domain', version: 1 }, { id: 'ctx_audience', version: 1 }]);
   assert.equal(repo2.state({ userId: U, workspaceId: 'ws_studio' }).stale.length, 0, 'imported assets are not falsely stale');
@@ -404,7 +405,7 @@ test('depends_on: set/validated through the repo, carried over on supersede, and
 });
 
 test('showcase workspace: decided by the server only, never counted (workspace allowance, object cap, admin usage); reset deletes all its data and nothing else', () => {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const repo = new Repo(db);
   repo.saveWorkspace(U, ws('w1'));
   const demo = applyDemo(repo, U, new Date('2026-03-10T08:00:00Z'));
@@ -909,7 +910,7 @@ test('Thought promotion creates only Proposed Knowledge with provenance; user co
 });
 
 test('the text one person keeps is capped across ALL their workspaces, not per workspace; deleting makes room (#63 audit carry-over)', () => {
-  const db = new Database(':memory:'); migrate(db); const repo = new Repo(db);
+  const db = openDatabase(':memory:'); const repo = new Repo(db);
   const keep = LIMITS.storedTextPerPerson;
   try {
     for (const id of ['wa', 'wb']) repo.saveWorkspace('p1', { id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' } as never);

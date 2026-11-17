@@ -14,7 +14,7 @@ export const canvasMethods = {
 
   saveCanvasItem(this: Repo, s: Scope, view: 'decisions' | 'free', itemRef: string, v: { lane?: string; rank?: number; x?: number; y?: number }) {
     this.db.prepare(`INSERT INTO canvas_view_items (user_id, workspace_id, view, item_ref, lane, rank, x, y) VALUES (?,?,?,?,?,?,?,?)
-      ON CONFLICT(workspace_id, view, item_ref) DO UPDATE SET lane = COALESCE(excluded.lane, lane), rank = COALESCE(excluded.rank, rank), x = COALESCE(excluded.x, x), y = COALESCE(excluded.y, y)`)
+      ON CONFLICT(workspace_id, view, item_ref) DO UPDATE SET lane = COALESCE(excluded.lane, canvas_view_items.lane), rank = COALESCE(excluded.rank, canvas_view_items.rank), x = COALESCE(excluded.x, canvas_view_items.x), y = COALESCE(excluded.y, canvas_view_items.y)`)
       .run(s.userId, s.workspaceId, view, itemRef, v.lane ?? null, v.rank ?? null, v.x ?? null, v.y ?? null);
   },
 

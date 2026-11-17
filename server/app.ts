@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from './db/sql/types.ts';
 import { adminEnabled, createAiRouter } from './ai/routes.ts';
 import type { AiService } from './ai/service.ts';
 import type { SessionResolver } from './ai/session.ts';
@@ -30,7 +30,7 @@ export interface AppOptions {
 export const proxyHopsFrom = (v: string | undefined): number => { const n = Number(v); return Number.isInteger(n) && n >= 1 && n <= 5 ? n : 1; };
 
 /** Wires sign-in, storage and the (frozen) AI. `opts` lets tests inject a mock-backed AiService / session resolver and the auth mode. */
-export function createApp(db: Database.Database, opts: AppOptions = {}) {
+export function createApp(db: SqlLike, opts: AppOptions = {}) {
   const app = express();
   const mode: AuthMode = opts.auth ?? { mode: 'local' };
   // the host's proxy terminates HTTPS: trust exactly the proxies in front (Render: one), so req.ip / req.secure are the visitor's

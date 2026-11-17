@@ -60,10 +60,10 @@ export const workspacesMethods = {
   resetWorkspaceData(this: Repo, s: Scope) {
     this.assertWorkspace(s);
     this.db.transaction(() => {
-      const tables = (this.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>).map((t) => t.name);
+      const tables = this.db.tables();
       for (const t of tables) {
         if (t === 'workspaces' || t === 'mcp_tokens' || t === 'schema_migrations' || t === 'templates') continue; // (a template belongs to the user, not to the workspace it was saved from)
-        const cols = (this.db.prepare(`PRAGMA table_info(${JSON.stringify(t)})`).all() as Array<{ name: string }>).map((c) => c.name);
+        const cols = this.db.columns(t).map((c) => c.name);
         if (cols.includes('workspace_id') && cols.includes('user_id')) this.db.prepare(`DELETE FROM ${JSON.stringify(t)} WHERE workspace_id = ? AND user_id = ?`).run(s.workspaceId, s.userId);
       }
       this.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(s.userId, `weekly_review:${s.workspaceId}`);

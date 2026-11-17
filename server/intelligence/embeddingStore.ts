@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 import { embeddingKeyId, type EmbeddingKey, type EmbeddingStore } from './types.ts';
 
 /** حافظه (آزمون و اسکریپت ارزیابی) */
@@ -33,7 +33,7 @@ const fromBlob = (b: Buffer): Float32Array => new Float32Array(b.buffer.slice(b.
  * بردار فقط یک مشتق است و هیچ‌جا حقیقت نیست.
  */
 export class SqliteEmbeddingStore implements EmbeddingStore {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: SqlLike) {}
 
   async getMany(keys: EmbeddingKey[]): Promise<Map<string, Float32Array>> {
     const out = new Map<string, Float32Array>();

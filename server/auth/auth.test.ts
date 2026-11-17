@@ -7,12 +7,13 @@ import { migrate } from '../db/migrations.ts';
 import { resolveAuthMode } from './http.ts';
 import type { AiService } from '../ai/service.ts';
 import { OWNER_NOTICE_VERSION } from '../../src/core/ownerNotice.ts';
+import { openDatabase } from '../db/database.ts';
 
 const OWNER_CODE = 'owner-code-for-tests-0123456789';
 
 /** a server in the invite mode, and a small browser per person (keeps its own cookie, sends a same-site Origin) */
 async function boot(service?: AiService) {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const { app, accounts, repo } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE }, ...(service ? { service } : {}) });
   const server = app.listen(0);
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -245,7 +246,7 @@ test('the AI context is read for the person asking, never for one fixed person (
 
 test('sign-in limit behind more than one proxy: with the right hop count two visitors are two addresses', async () => {
   const run = async (proxyHops: number) => {
-    const db = new Database(':memory:'); migrate(db);
+    const db = openDatabase(':memory:');
     const { app } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE }, proxyHops });
     const server = app.listen(0);
     const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

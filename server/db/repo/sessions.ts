@@ -15,7 +15,7 @@ export const sessionsMethods = {
   saveSession(this: Repo, s: Scope, c: ChatSession): ChatSession {
     this.assertWorkspace(s);
     claimId(this.db, 'chat_sessions', c.id, s);
-    this.db.prepare('INSERT INTO chat_sessions (id, user_id, workspace_id, data, updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at WHERE user_id = excluded.user_id')
+    this.db.prepare('INSERT INTO chat_sessions (id, user_id, workspace_id, data, updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at WHERE chat_sessions.user_id = excluded.user_id')
       .run(c.id, s.userId, s.workspaceId, JSON.stringify({ ...c, workspaceId: s.workspaceId }), c.updatedAt);
     return c;
   },

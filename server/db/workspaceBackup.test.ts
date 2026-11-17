@@ -6,12 +6,13 @@ import { Repo } from './repo.ts';
 import { applyDemo } from './demo.ts';
 import { exportWorkspace, restoreWorkspace, workspaceTables, RESTORE_WORKSPACE_CAP } from './workspaceBackup.ts';
 import type { WorkspaceBackup } from './workspaceBackup.ts';
+import { openDatabase } from './database.ts';
 
 const NOW = new Date('2026-11-15T08:00:00Z');
 
 /** a rich workspace: the showcase plus thoughts with revisions, a derived thought, a relation to a thought, the weekly mark */
 function rich() {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const repo = new Repo(db);
   const ws = applyDemo(repo, 'person_a_0001', NOW);
   const s = { userId: 'person_a_0001', workspaceId: ws.id };
