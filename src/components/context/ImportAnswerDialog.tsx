@@ -138,7 +138,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge intent="neutral" icon={false}>{METHOD_FA[res.method]}</Badge>
               <Badge intent="neutral" icon={false}>{formatNumber(blocks.length)} بلوک</Badge>
-              {res.packId ? <Badge icon="Link2">اصالت: {formatNumber(res.usedContext.length)} قلم دانش از «{res.packTitle}»</Badge> : <Caution>بدون بستهٔ مبدأ: شباهت در همهٔ دانش دیده می‌شود</Caution>}
+              {res.packId ? <Badge icon="Link2">اصالت: {formatNumber(res.usedContext.length)} حقیقت از «{res.packTitle}»</Badge> : <Caution>بدون بستهٔ مبدأ: شباهت در همهٔ دانش دیده می‌شود</Caution>}
             </div>
             {res.warning && <Alert intent="warning">{res.warning}</Alert>}
             {ready.length > 1 && (

@@ -1,4 +1,4 @@
-import { Fragment, useId, useRef, useState } from 'react';
+import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
@@ -265,4 +265,40 @@ export function Breadcrumb({ items, label = 'مسیر صفحه', className }: { 
       </ol>
     </nav>
   );
+}
+
+/**
+ * The sidebar's «you are here» glides from the old place to the new one (motion.md «نشانگر ناوبری»: the same rule as a tab's
+ * indicator — base, ease-standard, transform only). One fill moves; the items do not. It follows the direct children of the nav
+ * that carry aria-current (the top places); a nested place (a section of «منبع») keeps its own still fill and the glide fades.
+ * Reduced motion: the duration tokens make it a short fade-free jump (components.css). Forced colours: hidden, the item's own
+ * Highlight shows.
+ */
+export function useNavGlide<T extends HTMLElement>() {
+  // callback refs: the sidebar and the rail mount and unmount as the width changes, so the glide is set up per element
+  const [nav, ref] = useState<T | null>(null);
+  const [g, glideRef] = useState<HTMLSpanElement | null>(null);
+  useLayoutEffect(() => {
+    if (!nav || !g) return;
+    const place = () => {
+      const cur = nav.querySelector<HTMLElement>(':scope > [aria-current=page]');
+      if (!cur) { g.style.opacity = '0'; return; }
+      // measured from the boxes (not offsetLeft): a scroll bar on the start or end side would otherwise shift it
+      const rtl = getComputedStyle(nav).direction === 'rtl';
+      const n = nav.getBoundingClientRect(); const c = cur.getBoundingClientRect();
+      const edge = parseFloat(getComputedStyle(nav).borderInlineStartWidth) || 0;
+      const start = rtl ? (n.x + n.width) - edge - (c.x + c.width) : c.x - n.x - edge;
+      g.style.opacity = '1';
+      g.style.inlineSize = `${c.width}px`;
+      g.style.blockSize = `${c.height}px`;
+      g.style.transform = `translate(${rtl ? -start : start}px, ${c.top - n.top - nav.clientTop + nav.scrollTop}px)`;
+    };
+    place();
+    // the first place is set still; only a change of place moves
+    const raf = requestAnimationFrame(() => { g.dataset.ready = 'true'; });
+    const ro = new ResizeObserver(place); ro.observe(nav);
+    const mo = new MutationObserver(place); mo.observe(nav, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-current'] });
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); mo.disconnect(); };
+  }, [nav, g]);
+  return { ref, glide: <span ref={glideRef} aria-hidden="true" className="mb-nav-glide" /> };
 }

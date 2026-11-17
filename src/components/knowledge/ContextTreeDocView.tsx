@@ -10,7 +10,8 @@ import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
-import { Badge, Button, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { spaceTally } from '../../core/spaceTally';
+import { Badge, Button, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -242,13 +243,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               </section>
             )}
 
-            {/* a calm invitation, not a section: raw thought and a file can be added right here, whatever is or is not above */}
-            <div className="flex flex-wrap items-center gap-inline-xs" data-testid="node-invite">
-              {props.openCount(node.id) === 0 && nodeNotes.length === 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" onClick={() => props.onNewThought(node.id)}>فکر تازه‌ای داری؟ بنویس</Button>}
-              <Button size="sm" variant="ghost" iconStart="Upload" onClick={() => document.getElementById(`node-file-${node.id}`)?.click()}>افزودن فایل یا متن</Button>
-              <input id={`node-file-${node.id}`} type="file" className="sr-only" tabIndex={-1} aria-label={`انتخاب فایل برای ${node.label}`} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void props.onUploadFile(f, node.id); }} />
-            </div>
-
+            {/* no «فکر تازه / فایل» row under every section: the section's «افزودن» opens the one add box, whose فکر · حقیقت · فایل
+                switch already holds both (patterns.md §۳ «one way for one thing»); the same two links in every section were noise */}
             {/* از کجا آمده: the files of this node and where the proposals came from */}
             {(nodeFiles.length > 0 || sources.length > 0) && (
               <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
@@ -298,11 +294,12 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         <div>
           <h2 className="heading-sm text-text-default">ساختار منبع حقیقت</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
-            هر بخش شاخه‌ای از درخت است و هر کارت یک قلم دانش. برای خواندن پیوسته، «خواندن سند» را بزن.
+            هر بخش شاخه‌ای از درخت است با حقیقت‌هایش. برای خواندن پیوسته، «سند» را بزن.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
-          {activeObjects.length > 0 && <Badge intent="neutral" icon={false}>{formatNumber(activeObjects.length)} قلم دانش فعال</Badge>}
+          {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
+          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <StateTally layout="inline" label="در این منبع" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} />; })()}
           {pastToggle}
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>

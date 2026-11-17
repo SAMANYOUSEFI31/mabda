@@ -11,7 +11,7 @@ export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard }
 export type { TextFieldProps, TextareaProps, SelectProps, SelectOption } from './Forms.tsx';
 export { Dialog, Toast, ToastProvider, useToast, Popover, Menu, MenuChoiceRow } from './Overlay.tsx';
 export type { DialogProps, MenuItem, MenuChoice } from './Overlay.tsx';
-export { Tabs, SegmentedControl, Table, List, ListItem, BottomNav, NavItem, Breadcrumb } from './Navigation.tsx';
+export { Tabs, SegmentedControl, Table, List, ListItem, BottomNav, NavItem, Breadcrumb, useNavGlide } from './Navigation.tsx';
 export type { TabItem, TableColumn } from './Navigation.tsx';
 export * from './format.ts';
 export * from './mabda.tsx';
@@ -22,3 +22,5 @@ export type { ThemePref } from './theme.ts';
 export { Nuqta, NUQTA_LABEL } from './Nuqta.tsx';
 export { MarginList, MarginItem, MarginNote } from './Margin.tsx';
 export type { NuqtaState, NuqtaSize, NuqtaProps } from './Nuqta.tsx';
+export { StateTally } from './Tally.tsx';
+export type { TallyRow } from './Tally.tsx';

@@ -75,7 +75,7 @@ try {
     {
       step(`[${width}] a sample output from the same knowledge (real generate path)`);
       await page.getByRole('button', { name: 'ساخت جملهٔ موقعیت‌یابی' }).click();
-      await page.getByText(/این خروجی از .* قلم دانش ساخته شد/).waitFor({ timeout: 60000 });
+      await page.getByText(/این خروجی از .* حقیقت ساخته شد/).waitFor({ timeout: 60000 });
       const dels = (await api('/workspaces/ws_studio/state')).deliverables;
       assert.ok(dels.some((d) => d.usedContext.length > 0), 'the sample is saved with its lineage');
     }

@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { useSession } from '../../app/shell/SessionGate';
@@ -147,6 +147,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     <IconButton icon="PanelRight" label={docked || overlay ? 'باریک کردن نوار کناری' : 'باز کردن نوار کناری'} aria-expanded={docked || overlay} aria-keyshortcuts={"Control+\\ Meta+\\"} variant="ghost" onClick={toggleDock} />
   );
   const inOutputs = activeTab === 'assets' || activeTab === 'workstreams';
+  const sideGlide = useNavGlide<HTMLElement>();
+  const railGlide = useNavGlide<HTMLElement>();
   const ai = useAiStatus();
   const { session, signOut } = useSession();
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -206,7 +208,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       </div>
 
       {/* the only part that scrolls (navigation.md): vertical only, never sideways */}
-      <nav className="mb-sidebar__nav flex min-h-space-0 flex-1 flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
+      <nav ref={sideGlide.ref} className="mb-sidebar__nav mb-nav-glided flex min-h-space-0 flex-1 flex-col gap-stack-xs" aria-label="بخش‌های اصلی نرم‌افزار">
+          {sideGlide.glide}
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
           {/* counters only for «منتظر تو» (navigation.md): a destination never shows how much it holds */}
           <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
@@ -265,7 +268,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <Menu label="فضاها" filter={{ label: 'جست‌وجوی فضا' }} trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
           {toggleButton}
           <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />
-          <nav className="mb-rail__nav flex min-h-space-0 w-full flex-1 flex-col overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
+          <nav ref={railGlide.ref} className="mb-rail__nav mb-nav-glided flex min-h-space-0 w-full flex-1 flex-col overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
+            {railGlide.glide}
             <NavItem compact icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
             <NavItem compact icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
             <NavItem compact icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />

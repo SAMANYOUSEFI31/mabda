@@ -55,7 +55,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
   };
   const handleNoteToKnowledge = async (id: string, type: 'Fact' | 'Decision' | 'Constraint') => {
     const r = await attempt(() => dataApi.freeNoteToKnowledge(wid, id, type));
-    if (r) { applyBundle(r); toast.show({ intent: 'success', message: 'یک قلم پیشنهادی ساخته شد؛ در ستون «در فکر» منتظر تأیید توست.' }); }
+    if (r) { applyBundle(r); toast.show({ intent: 'success', message: 'یک پیشنهاد ساخته شد؛ در ستون «در فکر» منتظر تأیید توست.' }); }
   };
   const handleAutoLayout = async () => {
     const a = await attempt(() => dataApi.canvasReset(wid));

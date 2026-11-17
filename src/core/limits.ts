@@ -52,7 +52,7 @@ const meter = (key: Meter['key'], label: string, unit: string, used: number, lim
 /** The four meters the usage panel shows, in a stable order. */
 export function meters(u: UsageNumbers): Meter[] {
   return [
-    meter('objects', 'قلم دانش', 'قلم', u.objects, LIMITS.maxObjects),
+    meter('objects', 'دانش', 'مورد', u.objects, LIMITS.maxObjects),
     meter('fileTokens', 'پردازش فایل این ماه', 'توکن', u.fileTokens, LIMITS.fileTokensPerMonth),
     meter('judgments', 'قضاوت‌های امروز (لایهٔ تصمیم)', 'قضاوت', u.judgmentsToday, LIMITS.decisionJudgmentsPerDay),
     meter('coach', 'مربی دانش امروز', 'جلسه', u.coachToday, LIMITS.coachPerDay),
@@ -66,7 +66,7 @@ export const workspaceLimitMessage = () => `${formatNumber(LIMITS.workspaces)} �
 export const storageLimitMessage = () => `متن‌هایی که در همهٔ فضاهایت نگه داشته‌ای به سقف ${formatNumber(LIMITS.storedTextPerPerson)} نویسه رسیده است؛ برای جای تازه، فایل، یادداشت یا فضایی را که لازم نداری حذف کن.`;
 /** would adding `added` characters to what this person keeps (`stored`) pass the cap? Removing text is always allowed. */
 export const storageAllows = (stored: number, added: number): boolean => added <= 0 || stored + added <= LIMITS.storedTextPerPerson;
-export const objectLimitMessage = () => `این فضا ${formatNumber(LIMITS.maxObjects)} قلم دانش فعال دارد و این سقف است؛ موارد قدیمی را بایگانی کن.`;
+export const objectLimitMessage = () => `این فضا ${formatNumber(LIMITS.maxObjects)} دانش فعال دارد و این سقف است؛ موارد قدیمی را بایگانی کن.`;
 
 /** Today's chat count: a count recorded on another day is yesterday's, i.e. zero. `today` = YYYY-MM-DD (Tehran). */
 export function chatCountToday(todayChatCount: number, chatCountDay: string | undefined, today: string): number {

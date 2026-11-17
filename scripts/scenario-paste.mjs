@@ -75,7 +75,7 @@ try {
   await page.getByRole('textbox', { name: 'پاسخ AI' }).fill(answer);
   await page.getByRole('button', { name: 'تبدیل به بلوک' }).click();
   await page.getByText('بر اساس سرتیترها').waitFor();
-  await page.getByText(/اصالت: .* قلم دانش از/).waitFor();
+  await page.getByText(/اصالت: .* حقیقت از/).waitFor();
   await shot('2-blocks');
 
   step('blocks → Context (Proposed) and → asset with the pack lineage');

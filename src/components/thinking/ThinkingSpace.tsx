@@ -23,6 +23,7 @@ interface Props {
   onCompareIfApproved?: () => void;
   onOptions?: (item: NoteThinkingItem) => void;
   optionCount?: (item: NoteThinkingItem) => number;
+  optionTitles?: (item: NoteThinkingItem) => string[];
   thoughts?: NoteThinkingItem[];
   objects: ContextObject[];
   notes: Note[];
@@ -59,6 +60,7 @@ const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
 export const ThinkingSpace: React.FC<Props> = (p) => {
   const [kind, setKind] = useState<SpaceKind | 'all'>('all');
   const [selectMode, setSelectMode] = useState(false);
+  const [anchorsOpen, setAnchorsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [synthesis, setSynthesis] = useState<{ text: string; kind: ThoughtKind; nodeId: string } | null>(null);
   const [synthesisBusy, setSynthesisBusy] = useState(false);
@@ -76,7 +78,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     }
     return [...anchors.values()];
   }, [p.nodeId, p.objects, p.nodes, p.relationships]);
-  useEffect(() => { setSelectMode(false); setSelectedIds([]); }, [kind, p.nodeId]);
+  useEffect(() => { setSelectMode(false); setSelectedIds([]); setAnchorsOpen(false); }, [kind, p.nodeId]);
   const toggleSelection = (id: string, selected: boolean) => setSelectedIds((ids) => selected ? [...new Set([...ids, id])] : ids.filter((x) => x !== id));
   const startSynthesis = () => {
     if (selectedThoughts.length < 2) return;
@@ -129,33 +131,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         </div>
       </div>}
 
-      {p.nodeId && truthAnchors.length > 0 && (
-        <section className="flex flex-col gap-stack-sm" aria-label="دانش مرتبط برای فکر کردن">
-          <div className="flex flex-col gap-stack-xs">
-            <h3 className="label-md text-text-default">دانش مرتبط برای فکر کردن ({formatNumber(truthAnchors.length)})</h3>
-            <p className="body-sm text-text-subtle">دانش تأییدشدهٔ این بخش، زیربخش‌ها و قواعدی که از بالا به آن می‌رسند؛ این‌ها همان حقیقت‌اند و فقط برای خواندن اینجا آمده‌اند.</p>
-          </div>
-          <ul className="flex flex-col gap-stack-xs">
-            {truthAnchors.slice(0, 8).map((o) => (
-              <li key={o.id}>
-                <Card padding="md" knowledge="truth" className="flex flex-wrap items-start justify-between gap-inline-sm">
-                  <div className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
-                    <span className="headline text-text-default">{o.title}</span>
-                    <p className="body-md whitespace-pre-wrap text-text-default">{o.content}</p>
-                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label}{o.assumption ? ' · فرض' : ''}{o.nodeId !== p.nodeId ? ` · از بخش «${nodeLabel(o.nodeId)}»` : ''}</span>
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>دیدن دانش</Button>
-                </Card>
-              </li>
-            ))}
-          </ul>
-          {truthAnchors.length > 8 && <p className="caption text-text-subtle">۸ مورد نخست از {formatNumber(truthAnchors.length)} مورد مؤثر نمایش داده شده‌اند.</p>}
-        </section>
-      )}
-
       {empty && (nothingYet || (kind === 'all' && !p.nodeId)
         ? <EmptyState title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={p.onNewThought && <Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>فکر تازه</Button>} />
-        : empty && <EmptyState kind="filtered" title="با این فیلتر فکری نیست" action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
+        : empty && <EmptyState kind="filtered" title={kind === 'all' ? 'در این بخش فکری نیست' : 'با این فیلتر فکری نیست'} action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
@@ -216,6 +194,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             onToSection={p.onToSection}
             onOptions={p.onOptions}
             optionCount={p.optionCount}
+            optionTitles={p.optionTitles}
             selectedIds={selectedIds}
             onToggleSelection={selectMode ? toggleSelection : undefined}
           />
@@ -235,6 +214,35 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {/* the section's truth, for reference only: it is NOT part of «فکر», so it is not counted in the chips, sits after the lists
+          and stays folded until asked for (with «همهٔ بخش‌ها» it would be the whole source, so it is offered for one section only) */}
+      {p.nodeId && kind === 'all' && truthAnchors.length > 0 && (
+        <section className="flex flex-col gap-stack-sm border-t border-border-subtle pt-stack-md" aria-label="حقیقتِ این بخش، برای مرجع">
+          <div>
+            <Button size="sm" variant="ghost" iconEnd={anchorsOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={anchorsOpen} aria-controls="thinking-anchors" onClick={() => setAnchorsOpen((v) => !v)}>
+              حقیقتِ این بخش، برای مرجع ({formatNumber(truthAnchors.length)})
+            </Button>
+          </div>
+          {anchorsOpen && <div id="thinking-anchors" className="flex flex-col gap-stack-sm">
+            <p className="body-sm text-text-subtle">دانش تأییدشدهٔ این بخش، زیربخش‌ها و قواعدی که از بالا به آن می‌رسند؛ فکر نیستند و در شمارش بالا نمی‌آیند، فقط برای فکر کردن کنار دستت‌اند.</p>
+            <ul className="flex flex-col gap-stack-xs">
+              {truthAnchors.slice(0, 8).map((o) => (
+                <li key={o.id}>
+                  <Card padding="md" knowledge="truth" className="flex flex-wrap items-start justify-between gap-inline-sm">
+                    <div className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
+                      <span className="headline text-text-default">{o.title}</span>
+                      <p className="body-md whitespace-pre-wrap text-text-default">{o.content}</p>
+                      <span className="body-sm text-text-subtle">{TYPE_META[o.type].label}{o.assumption ? ' · فرض' : ''}{o.nodeId !== p.nodeId ? ` · از بخش «${nodeLabel(o.nodeId)}»` : ''}</span>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+            {truthAnchors.length > 8 && <p className="caption text-text-subtle">۸ مورد نخست از {formatNumber(truthAnchors.length)} مورد مؤثر نمایش داده شده‌اند.</p>}
+          </div>}
         </section>
       )}
       {synthesis && (

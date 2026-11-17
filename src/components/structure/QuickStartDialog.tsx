@@ -243,7 +243,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
               {sample ? (
                 <div className="flex flex-col gap-stack-sm">
                   <div className="rounded-control border border-border-default bg-surface-sunken p-inset-lg"><Markdown>{sample.content}</Markdown></div>
-                  <p className="body-sm text-text-subtle">این خروجی از {formatNumber(sample.usedContext.length)} قلم دانش ساخته شد؛ اگر یکی را عوض کنی، خروجی «نیاز به بازبینی» می‌گیرد.</p>
+                  <p className="body-sm text-text-subtle">این خروجی از {formatNumber(sample.usedContext.length)} حقیقت ساخته شد؛ اگر یکی را عوض کنی، خروجی «نیاز به بازبینی» می‌گیرد.</p>
                 </div>
               ) : (
                 <div><Button variant="secondary" iconStart="Eye" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>

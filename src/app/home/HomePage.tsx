@@ -18,6 +18,7 @@ import { convertedTo } from '../../core/thinkingMarkers';
 import { gapAnswer, gapDraft } from '../../core/homeActions';
 import { resolveNodeId } from '../../core/nodeTree';
 import { CHANGE_KIND_FA } from '../../core/changeLog';
+import { spaceTally } from '../../core/spaceTally';
 import { Button, Card, EmptyState, IconButton, Menu, formatNumber } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -32,6 +33,15 @@ export const homeHasStarted = (p: { knowledge: number; actions: number; openThou
 
 export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
   const openThoughts = (data?.thoughts ?? []).filter((t) => t.status === 'open');
+  const count = spaceTally(workspaceContexts, openThoughts.length);
+  // «در این فضا»: each state once, with the word «منبع حقیقت» and «فکر» use for it, and a way to where those things are
+  const stateRows = [
+    { state: 'truth' as const, count: count.truth, label: 'حقیقت', always: true, onSelect: () => { setActiveTab('context'); setContextViewMode('doc'); } },
+    { state: 'stale' as const, count: count.stale, label: 'قدیمی', onSelect: () => openThinkingSpace() },
+    { state: 'proposed' as const, count: count.proposed, label: 'پیشنهاد منتظر تأیید', onSelect: () => openThinkingSpace() },
+    { state: 'thought' as const, count: count.thoughts, label: 'فکر باز', onSelect: () => openThinkingSpace() },
+    { icon: 'Package' as const, count: deliverables.length, label: 'خروجی', onSelect: () => setActiveTab('assets') },
+  ];
   const started = homeHasStarted({ knowledge: workspaceContexts.length, actions: homePlan.total, openThoughts: openThoughts.length, notes: data?.notes?.length ?? 0 });
   return (
         <div className="space-y-stack-lg">
@@ -73,7 +83,8 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               sections={homeView}
               onAct={handleHomeAct}
               onAnswerGap={(g) => { const at = { ...g, nodeId: resolveNodeId(nodes, g.nodeId) }; openContext(gapDraft(at, wid), at.nodeId); }}
-              truthCount={workspaceContexts.filter((o) => o.status === 'Confirmed').length}
+              truthCount={count.truth}
+              tally={stateRows}
               thoughts={openThoughts.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
               openThoughtCount={openThoughts.length}
               onOpenThinking={() => openThinkingSpace()}

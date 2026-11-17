@@ -75,7 +75,7 @@ const Importer: React.FC<Props & { onSwitch: () => void }> = ({ workspaceId, onC
           <div className="flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge icon={false}>{formatNumber(result.created.length)} پیشنهاد در صندوق</Badge>
-              {result.skipped > 0 && <Caution>{formatNumber(result.skipped)} مورد به‌خاطر سقف قلم‌های دانش این فضا ثبت نشد</Caution>}
+              {result.skipped > 0 && <Caution>{formatNumber(result.skipped)} مورد به‌خاطر سقف دانش این فضا ثبت نشد</Caution>}
               {result.truncated && <Caution>فقط بخش ابتدایی متن خوانده شد</Caution>}
             </div>
             {result.created.length === 0 && <p className="body-md text-text-subtle">چیز قابل‌استفاده‌ای در این متن پیدا نشد.</p>}

@@ -120,7 +120,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
         add={() => ({ uid: uid(), key: '', label: '', description: '', nodeId: defaultNodeId(nodes) })} // the branch the picker shows is the one saved
         render={(it, patch) => (
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
-            <TextField label="نام قلم دانش" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
+            <TextField label="نام دانش لازم" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
             <Select label="شاخه" value={it.nodeId} onChange={(e) => patch({ nodeId: e.target.value })} options={nodeOptions} />
             <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش جای خالی)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
           </div>
