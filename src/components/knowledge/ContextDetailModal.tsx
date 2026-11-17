@@ -291,7 +291,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   };
 
   const title_ = isSupersedingMode
-    ? 'جایگزینی تصمیم — حفظ تاریخچه'
+    ? 'جایگزین کردن — قبلی در تاریخچه می‌ماند'
     : isEditing
     ? 'ویرایش دانش'
     : 'افزودن';
@@ -317,14 +317,14 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 side="top"
                 trigger={<Button type="button" variant="ghost" iconStart="Ellipsis">بیشتر</Button>}
                 items={[
-                  { label: 'جایگزینی تصمیم', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
+                  { label: 'جایگزین کردن', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
                   { label: 'بایگانی', icon: 'Archive', onSelect: () => { onArchive(object.id); onClose(); } },
                 ]}
               />
             )}
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             <Button variant="primary" type="submit" form="context-detail-form">
-              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : 'افزودن'}
+              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : object ? 'افزودن' : 'افزودن حقیقت'}
             </Button>
           </>
         )
@@ -421,11 +421,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {isSupersedingMode && (
           <Card padding="md" className="flex flex-col gap-stack-sm">
             <TextField
-              label="دلیل جایگزینی تصمیم قبلی"
+              label="دلیل جایگزین کردن"
               value={supersedeReason}
               onChange={(e) => setSupersedeReason(e.target.value)}
               placeholder="مثلاً: عدد تازه‌تری پیدا کردم"
-              hint="تصمیم قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
+              hint="مورد قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچهٔ منبع حقیقت می‌ماند."
             />
           </Card>
         )}

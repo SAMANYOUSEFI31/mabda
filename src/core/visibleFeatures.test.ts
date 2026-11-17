@@ -5,7 +5,7 @@ import type { FeatureState } from './visibleFeatures';
 
 const NOW = new Date('2026-06-10T10:00:00Z');
 const day = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
-const empty = (p: Partial<FeatureState> = {}): FeatureState => ({ now: NOW, changes: [], relationships: [], contradictions: 0, metrics: 0, savedPacks: 0, proposed: 0, ...p });
+const empty = (p: Partial<FeatureState> = {}): FeatureState => ({ now: NOW, changes: [], relationships: [], contradictions: 0, metrics: 0, savedPacks: 0, proposed: 0, confirmed: 0, ...p });
 
 test('a new workspace shows none of the level-2 features', () => {
   assert.deepEqual(visibleFeatures(empty()), { weeklyReview: false, waitingDecisions: false, contradictions: false, metrics: false, packs: false, proposals: false });
@@ -24,6 +24,7 @@ test('waiting decisions need a dependency; contradictions, metrics, packs and pr
   assert.equal(visibleFeatures(empty({ contradictions: 1 })).contradictions, true);
   assert.equal(visibleFeatures(empty({ metrics: 2 })).metrics, true);
   assert.equal(visibleFeatures(empty({ savedPacks: 1 })).packs, true);
+  assert.equal(visibleFeatures(empty({ confirmed: 1 })).packs, true, 'one approved knowledge is enough to make a pack from');
   assert.equal(visibleFeatures(empty({ proposed: 3 })).proposals, true);
 });
 

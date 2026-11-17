@@ -49,7 +49,7 @@ if (restoreAfterOpen) {
 }
 
 const backupDir = backupDirFor(DEFAULT_DB_PATH);
-if (process.env.NODE_ENV === 'production' || process.env.MABDA_BACKUP_DIR) scheduleDailyBackups(db, backupDir);
+const stopBackups = process.env.NODE_ENV === 'production' || process.env.MABDA_BACKUP_DIR ? scheduleDailyBackups(db, backupDir) : () => {};
 const publicOrigin = process.env.MABDA_PUBLIC_URL?.trim() || undefined;
 const { app, aiSessions } = createApp(db, { auth, backupDir, publicOrigin, proxyHops: proxyHopsFrom(process.env.MABDA_PROXY_HOPS) });
 console.log(`[auth] ${auth.mode === 'invite' ? 'invite mode: every person signs in with their own link' : 'local mode: one person on this computer'}`);
@@ -93,9 +93,26 @@ async function startServer() {
   }
 
   await verifyManagedModels();
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Mabda server is running at http://0.0.0.0:${PORT} [mode: ${isDev ? 'dev' : 'prod'}]`);
   });
+
+  // A host (Render, Liara, Docker…) stops the old process with SIGTERM on every deploy and restart. Stop taking new
+  // requests, let the ones in flight finish, then close the database (SQLite writes its WAL back; the Postgres worker
+  // ends its connection). A request that hangs does not hold the deploy: after 10 s the process exits anyway.
+  let stopping = false;
+  const shutdown = (signal: string) => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`[server] ${signal}: finishing open requests, then closing the database`);
+    stopBackups();
+    const done = (code: number) => { try { db.close(); } catch (e) { console.error('[db] close failed:', (e as Error).message); } process.exit(code); };
+    setTimeout(() => { console.warn('[server] requests still open after 10 s; closing anyway'); done(1); }, 10_000).unref();
+    server.close(() => done(0));
+    server.closeIdleConnections?.();
+  };
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
 }
 
 startServer();

@@ -32,6 +32,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const vf = visibleFeatures({
     now: new Date(), changes: data?.changes ?? [], relationships: data?.relationships ?? [], contradictions: contradictions.length,
     metrics: (data?.metrics ?? []).filter((m) => !m.archived).length, savedPacks: savedPackCount, proposed: workspaceContexts.filter((o) => o.status === 'Proposed').length,
+    confirmed: workspaceContexts.filter((o) => o.status === 'Confirmed').length,
   });
   const homeInput = useMemo(() => ({
     now: new Date(),

@@ -63,6 +63,20 @@ export function useAppCore() {
   }, [setWs]);
   // switching spaces keeps the page she was on until the new one arrives (patterns.md §5: nothing jumps, no full-screen wait)
   useEffect(() => { if (currentWorkspaceId) void reload(currentWorkspaceId); }, [currentWorkspaceId, reload]);
+  // back to a tab that was hidden for a while (the laptop after the phone, the phone after a call): the space is read again,
+  // quietly. A failed read keeps what is on screen and says nothing — it is not something she asked for.
+  useEffect(() => {
+    let hiddenAt = 0;
+    const on = () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      const id = wanted.current;
+      if (!id || !hiddenAt || Date.now() - hiddenAt < 30_000) return;
+      hiddenAt = 0;
+      dataApi.state(id).then((st) => { if (wanted.current === id) { setData(st); setWs(workspacesRef.current.map((w) => (w.id === id ? st.workspace : w))); } }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, [setWs]);
 
   /** archived workspaces are out of the menu (nothing is deleted); the list the app works with is the live one */
   const liveWorkspaces = workspaces.filter((w) => !w.archivedAt);

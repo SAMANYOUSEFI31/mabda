@@ -139,7 +139,7 @@ try {
     let dlg = page.getByRole('dialog', { name: 'افزودن' });
     const long = Array.from({ length: 12 }, (_, i) => `خط ${i + 1} از متن بلند ${width}`).join('\n') + '\n\n   ```نامرتب```  ';
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(long);
-    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن فکر$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('۱ مورد ثبت شد'));
     assert.ok((await state()).notes.some((n) => n.content.includes(`خط 12 از متن بلند ${width}`)), 'nothing of a long text is lost');
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(`الف ${width}\nب ${width}\nج ${width}`);
@@ -171,7 +171,7 @@ try {
     step(`[${width}] تکراریِ دقیقاً یکسان (نرمال‌سازی فارسی) هشدار می‌دهد، ثبت را نمی‌بندد؛ لایهٔ هوش خاموش = هیچ اثری`);
     const dupText = `قيمت اشتراك را بالا ببريم ${width}`;
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(dupText);
-    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن فکر$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('مورد ثبت شد'));
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(`قیمت اشتراک را بالا ببریم ${width}`);
     await dlg.getByText('تکراری است').waitFor();
@@ -197,7 +197,7 @@ try {
     await shot('4-in-section');
     const t3 = `داخل بخش ${uniq()}`;
     await dlg.getByLabel('چه چیزی به ذهنت رسید؟').fill(t3);
-    await dlg.getByRole('button', { name: /^افزودن$/ }).click();
+    await dlg.getByRole('button', { name: /^افزودن فکر$/ }).click();
     await page.waitForFunction(() => document.body.innerText.includes('مورد ثبت شد'));
     assert.equal((await state()).notes.find((n) => n.content.includes(t3)).nodeId, nodeId);
     void nodeBtn;

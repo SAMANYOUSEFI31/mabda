@@ -16,6 +16,8 @@ export interface FeatureState {
   metrics: number;
   savedPacks: number;
   proposed: number;
+  /** approved knowledge (Confirmed): what a pack is made of */
+  confirmed: number;
 }
 
 export interface VisibleFeatures {
@@ -26,7 +28,7 @@ export interface VisibleFeatures {
   contradictions: boolean;
   /** a metric is defined: its card and «انتظار در برابر نتیجه» */
   metrics: boolean;
-  /** one is saved */
+  /** one is saved, or there is approved knowledge to make one from (its entry sits where its contents live: «منبع حقیقت») */
   packs: boolean;
   proposals: boolean;
 }
@@ -42,7 +44,7 @@ export function visibleFeatures(s: FeatureState): VisibleFeatures {
     waitingDecisions: s.relationships.some((r) => r.type === 'depends_on'),
     contradictions: s.contradictions > 0,
     metrics: s.metrics > 0,
-    packs: s.savedPacks > 0,
+    packs: s.savedPacks > 0 || s.confirmed > 0,
     proposals: s.proposed > 0,
   };
 }
