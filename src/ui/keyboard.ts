@@ -11,12 +11,19 @@ export function installKeyboard(): () => void {
   const root = document.documentElement;
   const typing = (e: Element | null) => !!e && ((e as HTMLElement).isContentEditable || (/^(INPUT|TEXTAREA)$/.test(e.tagName) && !/^(checkbox|radio|button|submit|file|range|color)$/.test((e as HTMLInputElement).type)));
   let frame = 0;
+  // the height with no keyboard: the tallest visible part seen at this width (a turn of the phone starts it again).
+  // Not window.innerHeight: with `interactive-widget=resizes-content` (index.html) Android shrinks the layout viewport too,
+  // so innerHeight and the visible part fall together and the keyboard would never be noticed — the bottom bar then sat
+  // on top of the field she was typing in.
+  let full = 0, fullAt = 0;
   const update = () => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
       root.style.setProperty('--vv-h', `${Math.round(vv.height)}px`);
       root.style.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
-      const open = window.innerHeight - vv.height > 120 && typing(document.activeElement);
+      if (Math.round(vv.width) !== fullAt) { fullAt = Math.round(vv.width); full = 0; }
+      full = Math.max(full, vv.height, window.innerHeight);
+      const open = full - vv.height > 120 && typing(document.activeElement);
       root.toggleAttribute('data-keyboard', open);
       // the field stays where she can see it: inside the visible part, not under the keyboard or above the top
       const a = document.activeElement as HTMLElement | null;
