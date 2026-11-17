@@ -1,4 +1,6 @@
-import type Database from 'better-sqlite3';
+import { asSql } from './sql/sqlite.ts';
+import { postgresSchemaAt } from './sql/pgSchema.ts';
+import type { SqlDatabase, SqlLike } from './sql/types.ts';
 
 /**
  * Forward-only, versioned migrations. Every table carries user_id + workspace_id so the same schema moves to
@@ -8,7 +10,8 @@ import type Database from 'better-sqlite3';
 export interface Migration {
   version: number;
   name: string;
-  up(db: Database.Database): void;
+  /** written in SQLite's SQL; on Postgres it runs through the adapter (types translated), so it must stay portable */
+  up(db: SqlDatabase): void;
 }
 
 type LegacyThinkingItem = { kind: 'idea' | 'question' | 'assumption' | 'open_decision'; inferred?: boolean; text: string; line: number; hash: string };
@@ -786,11 +789,27 @@ export const MIGRATIONS: Migration[] = [
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
 
-/** Applies pending migrations inside one transaction each. Returns the versions applied. */
-export function migrate(db: Database.Database, target = LATEST_VERSION): number[] {
+/**
+ * Applies pending migrations inside one transaction each. Returns the versions applied.
+ * A new, empty Postgres database gets the whole schema at once, derived from SQLite at `target` (sql/pgSchema.ts); after that,
+ * Postgres and SQLite take the same migrations one by one.
+ */
+export function migrate(handle: SqlLike, target = LATEST_VERSION): number[] {
+  const db = asSql(handle);
   db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
   const done = new Set((db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>).map((r) => r.version));
   const applied: number[] = [];
+  if (db.dialect === 'postgres' && done.size === 0 && db.tables().length === 1) {
+    const ddl = postgresSchemaAt(target, migrate).filter((sql) => !/^CREATE TABLE schema_migrations\b/.test(sql));
+    db.transaction(() => {
+      const pg = db as SqlDatabase & { query(sql: string): unknown; forgetShapes(): void };
+      for (const sql of ddl) pg.query(sql);
+      pg.forgetShapes();
+      const ins = db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)');
+      for (const m of MIGRATIONS) if (m.version <= target) { ins.run(m.version, m.name, new Date().toISOString()); applied.push(m.version); }
+    })();
+    return applied;
+  }
   for (const m of MIGRATIONS) {
     if (m.version > target || done.has(m.version)) continue;
     db.transaction(() => {
@@ -802,6 +821,6 @@ export function migrate(db: Database.Database, target = LATEST_VERSION): number[
   return applied;
 }
 
-export const currentVersion = (db: Database.Database): number => {
+export const currentVersion = (db: SqlLike): number => {
   try { return (db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number | null }).v ?? 0; } catch { return 0; }
 };
