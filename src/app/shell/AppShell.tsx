@@ -64,7 +64,8 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         {/* Main Canvas */}
         <main id="main" tabIndex={-1} className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
-          {children}
+          {/* keyed by the page: a new page fades in place (motion.md «رفتن بین صفحه‌ها») */}
+          <div key={activeTab === 'workstreams' ? 'assets' : activeTab} className="mb-page-enter space-y-stack-lg">{children}</div>
         </main>
       </div>
 

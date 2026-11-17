@@ -139,7 +139,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
             ردپای دانش و معیارها
           </Button>
-          <span className="body-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} قلم از دانش تو ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
+          <span className="body-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} حقیقت ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
         </div>
         {traceOpen && (
           <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
@@ -150,7 +150,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                   variant="secondary"
                   size="sm"
                   className="h-auto min-h-touch-comfortable max-w-full flex-wrap whitespace-normal py-inset-xs text-start"
-                  title="مشاهده و اصلاح این قلم دانش"
+                  title="دیدن و اصلاح این دانش"
                   onClick={() => onOpenContextObject(ctx)}
                 >
                   {ctx.title}

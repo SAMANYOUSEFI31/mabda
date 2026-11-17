@@ -49,6 +49,7 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
         onNewThought={() => requestAdd({ kind: 'thought', nodeId: spaceNode })}
         onCompareIfApproved={() => setCompare({ mode: 'pending', scopeNodeId: spaceNode })}
         onOptions={(item) => setOptionsItemKey(item.key)}
+        optionTitles={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).map((o) => o.title)}
         optionCount={(item) => optionsOf((data?.notes ?? []).find((n) => n.id === item.noteId)?.content ?? '', item.endLine ?? item.line, workspaceContexts, nodes).length}
         onToKnowledge={handleConvertItem}
         onReviseThought={handleReviseThought}

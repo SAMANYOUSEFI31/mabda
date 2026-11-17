@@ -217,11 +217,8 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
     </div>
   );
 
-  /** the one action in the top bar that fits the current page */
-  const pageAction: PageAction | undefined =
-    // «افزودن» (patterns.md §۳): one word; the kind it opens with follows the page
-    activeTab === 'context' || activeTab === 'home' || activeTab === 'thinking' ? { label: 'افزودن', icon: 'Plus', onClick: () => requestAdd({ kind: defaultAddKind(activeTab) }) }
-    : activeTab === 'workstreams' ? { label: 'جریان سفارشی', icon: 'Plus', onClick: () => openSpecEditor() }
-    : undefined;
+  /** the top bar's one action: «افزودن», on every page, as the phone bar's centre tile is (one face, one place; color.md «سه نقش تأکید»).
+   *  A page's own way to make its own things («جریان کار تازه» in «خروجی‌ها») stays in that page, scoped and secondary. */
+  const pageAction: PageAction = { label: 'افزودن', icon: 'Plus', onClick: () => requestAdd({ kind: defaultAddKind(activeTab) }) };
   return { demoDelete, setDemoDelete, handleArchiveWorkspace, handleDeleteWorkspace, handleDeleteEverything, handleArchiveDeliverable, handleDeleteDeliverable, handleDeleteDemo, addSpec, openSpecEditor, handleJudge, handleSaveProposals, handleAcceptProposal, handleRejectProposal, handleReplaceWithProposal, handleProposeFromImport, handleProposeBatch, handleDraftFromImport, setLedger, thinkingBadge, scopeChip, renderCanvas, pageAction };
 }

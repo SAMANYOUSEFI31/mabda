@@ -30,13 +30,15 @@ interface Props {
   /** an open decision: its options side by side (the count is how many it has) */
   onOptions?: (item: NoteThinkingItem) => void;
   optionCount?: (item: NoteThinkingItem) => number;
+  /** the titles of an open decision's options (shown under it) */
+  optionTitles?: (item: NoteThinkingItem) => string[];
   empty?: string;
 }
 
 /**
  * Persisted Thoughts are presented in the existing compact list; promotion always requires an explicit Knowledge type.
  */
-export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspaceId, onConvert, onGoToNode, onToSection, onRevise, onDerive, onOptions, optionCount, empty, selectedIds = [], onToggleSelection }) => {
+export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspaceId, onConvert, onGoToNode, onToSection, onRevise, onDerive, onOptions, optionCount, optionTitles, empty, selectedIds = [], onToggleSelection }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const [manage, setManage] = useState<{ item: NoteThinkingItem; mode: 'revise' | 'derive' } | null>(null);
   const [draftText, setDraftText] = useState('');
@@ -90,6 +92,13 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                 {THINKING_LABEL[it.kind]}{done ? ' · به منبع رفت' : ''}{nodes ? ` · ${label(it.nodeId)}` : ''}
                 {nodes && (() => { const t = aboutTargets(it.text, objects, nodes, it); return t.length ? ` · دربارهٔ ${t.map((x) => x.label).join('، ')}` : ''; })()}
               </span>
+              {/* UX-STR-01: an open decision shows what it is choosing between, not only how many */}
+              {!done && it.kind === 'open_decision' && (optionTitles?.(it).length ?? 0) > 0 && (
+                <ul className="flex flex-col gap-stack-xs" aria-label="گزینه‌ها">
+                  {optionTitles!(it).slice(0, 4).map((t, i) => <li key={i} className="body-sm flex items-start gap-inline-xs text-text-default"><span aria-hidden className="text-text-subtle">–</span><span className="line-clamp-1">{t}</span></li>)}
+                  {optionTitles!(it).length > 4 && <li className="caption text-text-subtle">و {formatNumber(optionTitles!(it).length - 4)} گزینهٔ دیگر</li>}
+                </ul>
+              )}
               {it.sourceState === 'line_deleted' && <Badge intent="neutral" icon="Info">خط از یادداشت حذف شد؛ فکر می‌ماند</Badge>}
               {it.sourceState === 'note_deleted' && <Badge intent="neutral" icon="Info">یادداشتش حذف شد؛ فکر می‌ماند</Badge>}
               {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
@@ -104,7 +113,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   align="end"
                   trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>به دانش ببر</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
-                    label: `قلم پیشنهادی: ${type === 'Fact' ? 'واقعیت' : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}`,
+                    label: `پیشنهاد: ${type === 'Fact' ? 'واقعیت' : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}`,
                     icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Shield',
                     onSelect: () => void run(it, type),
                   }))}

@@ -779,7 +779,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 ...(layoutEff === 'free' && (ctx.item.noteId || ctx.item.objectId) ? [['جابه‌جا کن به بخش…', () => setMoveTo({ noteId: ctx.item.noteId, objectId: ctx.item.objectId, itemId: ctx.item.id, nodeId: ctx.item.nodeId ?? '' })]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId && mode === 'truth' ? [['دور این مورد', () => enterLineage(ctx.item.objectId!)]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], ...(mode === 'thinking' ? [[placedIds.has(ctx.item.objectId) ? 'از بوم فکر بردار' : 'بگذار در بوم فکر', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] : [])] as Array<[string, () => void]> : []),
-                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['تبدیل به قلم دانش', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
+                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['به دانش ببر', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
               ] as Array<[string, () => void]>).map(([label, fn]) => <button key={label} type="button" role="menuitem" autoFocus={label.startsWith('انتخاب')} className="body-sm rounded-control-sm px-inset-sm py-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { setCtx(null); fn(); }}>{label}</button>)}
             </div>
           )}
@@ -889,10 +889,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         )}
       </Dialog>
 
-      <Dialog open={!!toKnowledge} onClose={() => setToKnowledge(null)} size="sm" title="تبدیل به قلم دانش">
+      <Dialog open={!!toKnowledge} onClose={() => setToKnowledge(null)} size="sm" title="به دانش ببر">
         {toKnowledge && (
           <div className="flex flex-col gap-stack-md">
-            <p className="body-md text-text-default">یک قلم «پیشنهادی» ساخته می‌شود؛ تا تأیید نکنی واقعیت نیست. یادداشت سر جایش می‌ماند.</p>
+            <p className="body-md text-text-default">یک «پیشنهاد» ساخته می‌شود؛ تا تأیید نکنی واقعیت نیست. یادداشت سر جایش می‌ماند.</p>
             <div className="flex flex-wrap gap-inline-xs">{([['Fact', 'واقعیت'], ['Decision', 'تصمیم'], ['Constraint', 'خط قرمز']] as const).map(([t, label]) => <Button key={t} size="sm" variant="secondary" onClick={async () => { const id = toKnowledge; setToKnowledge(null); await p.onNoteToKnowledge(id, t); }}>{label}</Button>)}</div>
           </div>
         )}

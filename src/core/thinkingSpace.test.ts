@@ -85,3 +85,23 @@ test('the showcase in the thinking space: open questions, an assumption and the 
   assert.ok(v.waiting.length >= 3 && v.thoughts.some((t) => t.kind === 'question') && v.thoughts.some((t) => t.kind === 'open_decision') && v.thoughts.some((t) => t.kind === 'idea'));
   assert.ok(v.assumptions.length >= 1);
 });
+
+test('one logic for every filter: «همه (N)» is exactly what «همه» lists, each chip is exactly what it lists, in every section and in «همهٔ بخش‌ها»', () => {
+  const objects = [
+    o('a'), o('b', { status: 'Proposed', nodeId: 'offer' }), o('c', { status: 'Needs Review', nodeId: 'brand' }),
+    o('d', { draft: { title: 'x', content: 'نسخهٔ تازه', at: '2026-01-02' }, nodeId: 'offer' }), o('e', { assumption: true, nodeId: 'offer' }),
+  ];
+  const base = { objects, notes, nodes: DEFAULT_TREE_NODES };
+  const shown = (v: ReturnType<typeof thinkingSpace>) => v.waiting.length + v.thoughts.length + v.assumptions.length;
+  for (const nodeId of [undefined, ...DEFAULT_TREE_NODES.map((n) => n.id)]) {
+    const all = thinkingSpace(base, { nodeId });
+    assert.equal(shown(all), Object.values(all.counts).reduce((a, b) => a + b, 0), `«همه» in ${nodeId ?? 'همهٔ بخش‌ها'}`);
+    for (const kind of ['waiting', 'idea', 'question', 'assumption', 'open_decision'] as const) {
+      const v = thinkingSpace(base, { nodeId, kind });
+      assert.equal(shown(v), all.counts[kind], `${kind} in ${nodeId ?? 'همهٔ بخش‌ها'}`);
+      assert.deepEqual(v.counts, all.counts, 'the kind filter never changes the counts');
+    }
+    // «همهٔ بخش‌ها» holds everything every section holds
+    if (nodeId) for (const k of Object.keys(all.counts) as Array<keyof typeof all.counts>) assert.ok(all.counts[k] <= thinkingSpace(base).counts[k]);
+  }
+});
