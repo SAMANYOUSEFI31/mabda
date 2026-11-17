@@ -60,6 +60,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               approvals={approvals}
               fileName={currentWorkspace.name}
               empty={<EmptyState title="هنوز دانشی ثبت نشده است" />}
+              onOpenSuggestions={() => openThinkingSpace()}
             /></PageSuspense>
           ) : contextViewMode === 'doc' ? (
             <ContextTreeDocView
