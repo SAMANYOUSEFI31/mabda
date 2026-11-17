@@ -9,9 +9,9 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createApp, proxyHopsFrom } from './server/app.ts';
-import { DEFAULT_DB_PATH, openDatabase } from './server/db/database.ts';
+import { DEFAULT_DB_PATH, databaseUrl, openDatabase } from './server/db/database.ts';
 import { resolveAuthMode } from './server/auth/http.ts';
-import { backupDirFor, restoreIfAsked, scheduleDailyBackups } from './server/backup.ts';
+import { backupDirFor, restoreIfAsked, restoreIntoIfAsked, restoresIntoOpenDatabase, scheduleDailyBackups } from './server/backup.ts';
 import { decommissionLegacyByok } from './server/ai/decommission.ts';
 
 
@@ -27,12 +27,27 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const auth = resolveAuthMode(process.env);
 if ('fatal' in auth) { console.error(`[auth] ${auth.fatal}`); process.exit(1); }
 
-// a backup named in MABDA_RESTORE_FROM replaces the database once, before it is opened
-const restore = restoreIfAsked(DEFAULT_DB_PATH);
-if (restore.error) { console.error(`[backup] ${restore.error}`); process.exit(1); }
-if (restore.restored) console.log(`[backup] restored the database from ${restore.restored}`);
+// which engine holds the data is one setting: DATABASE_URL = Postgres, otherwise SQLite on the disk (server/db/database.ts)
+const onPostgres = !!databaseUrl();
+const restoreAfterOpen = restoresIntoOpenDatabase(process.env, onPostgres);
+
+// SQLite: a .sqlite backup named in MABDA_RESTORE_FROM replaces the database file once, before it is opened
+if (!restoreAfterOpen) {
+  const restore = restoreIfAsked(DEFAULT_DB_PATH);
+  if (restore.error) { console.error(`[backup] ${restore.error}`); process.exit(1); }
+  if (restore.restored) console.log(`[backup] restored the database from ${restore.restored}`);
+}
 
 const db = openDatabase();
+console.log(`[db] ${db.dialect === 'postgres' ? 'Postgres (DATABASE_URL)' : `SQLite (${DEFAULT_DB_PATH})`}`);
+
+// otherwise the same setting loads a dump — or, on Postgres, an old SQLite file (the move) — once, into the open database
+if (restoreAfterOpen) {
+  const restore = await restoreIntoIfAsked(db);
+  if (restore.error) { console.error(`[backup] ${restore.error}`); process.exit(1); }
+  if (restore.restored) console.log(`[backup] restored ${restore.rows} rows from ${restore.restored}`);
+}
+
 const backupDir = backupDirFor(DEFAULT_DB_PATH);
 if (process.env.NODE_ENV === 'production' || process.env.MABDA_BACKUP_DIR) scheduleDailyBackups(db, backupDir);
 const publicOrigin = process.env.MABDA_PUBLIC_URL?.trim() || undefined;
