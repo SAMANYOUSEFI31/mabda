@@ -80,7 +80,7 @@ export function mapBlock(block: ParsedBlock, ctx: MapContext): BlockMapping {
   if (!isContextKind(block.kind)) return { ...base, action: 'ignore', nodeId: '', basis: 'none', reason: 'این دانش نیست؛ با دکمه‌های خودش ذخیره می‌شود.' };
   const byId = new Map(ctx.objects.map((o) => [o.id, o]));
   const placed = meta.place ? nodeByPath(ctx.nodes, meta.place) : undefined;
-  const placeNote = meta.place && !placed ? ` بخش «${meta.place}» که AI نوشت پیدا نشد.` : '';
+  const placeNote = meta.place && !placed ? ` بخش «${meta.place}» که در پاسخ آمده پیدا نشد.` : '';
   const sameText = (o: ContextObject) => norm(`${o.title}\n${o.content}`) === norm(`${block.title}\n${body}`) || norm(o.content) === norm(body);
   let unknownRef = '';
 
@@ -93,14 +93,14 @@ export function mapBlock(block: ParsedBlock, ctx: MapContext): BlockMapping {
       const head = headOf(hit, byId);
       const target = head ?? hit;
       const stale = m ? Number(m[2]) < hit.version : false;
-      const note = stale ? ` AI نسخهٔ ${m![2]} را دیده؛ الان نسخهٔ ${hit.version} است.` : '';
+      const note = stale ? ` پاسخ نسخهٔ ${m![2]} را دیده؛ الان نسخهٔ ${hit.version} است.` : '';
       if (head && head.status === 'Confirmed') {
-        if (sameText(head)) return { ...base, action: 'duplicate', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `AI نوشته این «${head.title}» است و متنش همان است که الان داریم.` };
-        return { ...base, action: 'update', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `AI نوشته این به‌روزرسانی «${head.title}» است${head.id !== hit.id ? ' (که جایگزین شده)' : ''}.${note}` };
+        if (sameText(head)) return { ...base, action: 'duplicate', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `پاسخ می‌گوید این «${head.title}» است و متنش همان است که الان داریم.` };
+        return { ...base, action: 'update', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `پاسخ می‌گوید این به‌روزرسانی «${head.title}» است${head.id !== hit.id ? ' (که جایگزین شده)' : ''}.${note}` };
       }
-      if (head) return { ...base, action: 'duplicate', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `AI نوشته این دربارهٔ «${head.title}» است که هنوز در انتظار تأیید است؛ اول آن را تأیید کن.` };
+      if (head) return { ...base, action: 'duplicate', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `پاسخ می‌گوید این دربارهٔ «${head.title}» است که هنوز در انتظار تأیید است؛ اول آن را تأیید کن.` };
       unknownRef = `«${target.title}» بایگانی یا جایگزین‌شده و بدون نسخهٔ فعلی است.`;
-    } else unknownRef = `شناسهٔ «${meta.ref}» که AI نوشت در منبع نیست.`;
+    } else unknownRef = `شناسهٔ «${meta.ref}» که در پاسخ آمده در منبع نیست.`;
   }
 
   // ۲) similarity, only among what the pack was built from (or everything when there is no pack)
@@ -120,7 +120,7 @@ export function mapBlock(block: ParsedBlock, ctx: MapContext): BlockMapping {
   }
 
   // ۳) new — the section: the one she named, else where the most similar knowledge lives, else none
-  if (placed) return { ...base, action: 'new', nodeId: placed.id, basis: 'explicit', reason: `${unknownRef ? `${unknownRef} ` : ''}تازه است؛ بخش را AI نوشته: «${meta.place}».` };
+  if (placed) return { ...base, action: 'new', nodeId: placed.id, basis: 'explicit', reason: `${unknownRef ? `${unknownRef} ` : ''}تازه است؛ بخش را پاسخ گفته: «${meta.place}».` };
   const votes = new Map<string, number>();
   for (const x of scored.slice(0, 3)) votes.set(x.o.nodeId, (votes.get(x.o.nodeId) ?? 0) + x.score);
   const top = [...votes].sort((a, b) => b[1] - a[1])[0];

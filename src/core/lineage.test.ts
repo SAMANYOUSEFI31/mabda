@@ -91,7 +91,7 @@ test('provenance: a note that is gone is said so; an AI source names itself; an 
   const gone = provenanceOf({ objectId: 'a', objects: [obj('a', 'root', { source: { kind: 'note', noteId: 'missing' } as never })], relationships: [], notes: [], deliverables: [] });
   assert.match(gone.links[0].text, /دیگر نیست/);
   const ai = provenanceOf({ objectId: 'b', objects: [obj('b', 'root', { source: { kind: 'mcp', label: 'Claude' } as never, version: 3 })], relationships: [], notes: [], deliverables: [{ id: 'd', title: 'خروجی', usedContext: [{ id: 'b', version: 2 }] }] as never });
-  assert.match(ai.links[0].text, /AI بیرونی \(«Claude»\)/);
+  assert.match(ai.links[0].text, /ابزار دیگر \(«Claude»\)/);
   assert.match(ai.links[1].text, /نسخهٔ 2/);
 });
 

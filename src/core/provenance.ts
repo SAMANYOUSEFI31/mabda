@@ -22,7 +22,7 @@ export interface ProvenanceLink {
 export interface Provenance { links: ProvenanceLink[]; /** the pieces, grouped for a sentence like «از فکر X آمد؛ در ۲ خروجی رفت» */ counts: { outputs: number; replaced: number } }
 
 const SOURCE_FA: Record<NonNullable<ContextObject['source']>['kind'], string> = {
-  mcp: 'AI بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودت', asset: 'خروجی ساخته‌شده',
+  mcp: 'ابزار دیگر', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودت', asset: 'خروجی ساخته‌شده',
 };
 
 export function provenanceOf(input: { objectId: string; objects: ContextObject[]; relationships: ContextRelationship[]; notes: Pick<Note, 'id' | 'nodeId' | 'content'>[]; deliverables: Array<Pick<GeneratedDeliverable, 'id' | 'title' | 'usedContext' | 'archivedAt'>> }): Provenance {

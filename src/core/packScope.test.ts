@@ -146,7 +146,7 @@ test('relationOf / fromText / reachSentence: the words the user reads', () => {
   assert.equal(fromText(c, sc, nodes), 'از زیربخش «آفر و قیمت‌گذاری»');
   assert.equal(relationOf(objects.find((x) => x.id === 'c_global')!, sc, nodes), 'global');
   assert.equal(relationOf(objects.find((x) => x.id === 'f_brand')!, scopeSeeds(nodes, [], false), nodes), 'whole');
-  assert.match(reachSentence(objects.find((x) => x.id === 'c_global')!, nodes), /همهٔ بسته‌ها و درخواست‌های AI/);
+  assert.match(reachSentence(objects.find((x) => x.id === 'c_global')!, nodes), /همهٔ بسته‌ها و درخواست‌ها می‌آید/);
   assert.match(reachSentence(c, nodes), /«آفر و قیمت‌گذاری»/);
   assert.match(reachSentence(objects.find((x) => x.id === 'c_prod')!, nodes), /زیربخش/);
   assert.match(leftWhy('scope', c, nodes), /فقط این بخش/);
