@@ -10,11 +10,12 @@ import { extractText, FileExtractError } from './extract.ts';
 import type { ExtractResult } from '../ai/service.ts';
 import { estimateTokens } from '../../src/core/tokens.ts';
 import { LIMITS } from '../../src/core/limits.ts';
+import { openDatabase } from '../db/database.ts';
 
 const U = 'local';
 const S = { userId: U, workspaceId: 'w1' };
 const mk = () => {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const repo = new Repo(db);
   repo.saveWorkspace(U, { id: 'w1', name: 'w', slug: 'w', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' });
   return repo;

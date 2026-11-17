@@ -11,7 +11,7 @@
  */
 import { tehranDay } from '../../src/core/tehranDate.ts';
 import crypto from 'node:crypto';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 
 export type Role = 'owner' | 'tester';
 export interface Account { id: string; name: string; role: Role; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; /** the notice version accepted (src/core/ownerNotice.ts) */ consentVersion?: number; hasLink: boolean }
@@ -36,7 +36,7 @@ const rowToAccount = (r: Record<string, unknown>): Account => ({
 });
 
 export class Accounts {
-  constructor(private readonly db: Database.Database, private readonly clock: () => Date = () => new Date()) {}
+  constructor(private readonly db: SqlLike, private readonly clock: () => Date = () => new Date()) {}
 
   list(): Account[] {
     return (this.db.prepare('SELECT * FROM accounts ORDER BY created_at, id').all() as Array<Record<string, unknown>>).map(rowToAccount);

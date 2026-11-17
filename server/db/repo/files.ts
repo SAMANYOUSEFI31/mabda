@@ -84,7 +84,7 @@ export const filesMethods = {
   },
 
   addFileUsage(this: Repo, s: Scope, period: string, tokens: number): number {
-    this.db.prepare('INSERT INTO file_usage (user_id, workspace_id, period, tokens) VALUES (?,?,?,?) ON CONFLICT(workspace_id, period) DO UPDATE SET tokens = tokens + excluded.tokens').run(s.userId, s.workspaceId, period, tokens);
+    this.db.prepare('INSERT INTO file_usage (user_id, workspace_id, period, tokens) VALUES (?,?,?,?) ON CONFLICT(workspace_id, period) DO UPDATE SET tokens = file_usage.tokens + excluded.tokens').run(s.userId, s.workspaceId, period, tokens);
     return this.fileUsage(s, period);
   },
 };

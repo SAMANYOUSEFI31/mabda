@@ -6,7 +6,7 @@ import { tehranDay } from '../../src/core/tehranDate.ts';
 import fs from 'node:fs';
 import express from 'express';
 import type { Request } from 'express';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 import type { Accounts } from './accounts.ts';
 import { AuthError } from './accounts.ts';
 import { requireOwner } from './http.ts';
@@ -18,7 +18,7 @@ const originOf = (req: Request, publicOrigin?: string) => publicOrigin?.replace(
 /** the personal link: the code is in the #fragment, which browsers never send to a server, so it is not in any request log */
 export const inviteLink = (origin: string, code: string) => `${origin}/#join=${code}`;
 
-export function createOwnerRouter(deps: { db: Database.Database; mode: AuthMode; accounts: Accounts; errors: ErrorLog; backupDir?: string; publicOrigin?: string }): express.Router {
+export function createOwnerRouter(deps: { db: SqlLike; mode: AuthMode; accounts: Accounts; errors: ErrorLog; backupDir?: string; publicOrigin?: string }): express.Router {
   const { accounts, errors } = deps;
   const r = express.Router();
   r.use(requireOwner);
@@ -50,7 +50,7 @@ export function createOwnerRouter(deps: { db: Database.Database; mode: AuthMode;
     try {
       if (!deps.backupDir) return void res.status(404).json({ error: { code: 'not_found', message: 'پایگاه‌داده در حافظه است؛ پشتیبانی برای دانلود نیست.' } });
       const file = await freshCopy(deps.db, deps.backupDir);
-      res.download(file, `mabda-${tehranDay()}.sqlite`, () => fs.rmSync(file, { force: true }));
+      res.download(file, `mabda-${tehranDay()}${file.endsWith(".jsonl.gz") ? ".jsonl.gz" : ".sqlite"}`, () => fs.rmSync(file, { force: true }));
     } catch (e) { next(e); }
   });
   return r;

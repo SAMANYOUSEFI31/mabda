@@ -1,4 +1,5 @@
-import type Database from 'better-sqlite3';
+import type { SqlDatabase, SqlLike } from '../sql/types.ts';
+import { asSql } from '../sql/sqlite.ts';
 import { workspacesMethods } from './workspaces.ts';
 import { nodesMethods } from './nodes.ts';
 import { objectsMethods } from './objects.ts';
@@ -26,7 +27,9 @@ export * from './shared.ts';
  * mixed into this class, so `repo.createObject(...)`, `repo.transaction(...)` and every cross-domain call are unchanged.
  */
 export class Repo {
-  constructor(readonly db: Database.Database) {}
+  /** the storage adapter (SQLite or Postgres, server/db/sql); a raw better-sqlite3 handle is wrapped */
+  readonly db: SqlDatabase;
+  constructor(db: SqlLike) { this.db = asSql(db); }
 
   /** run several writes as one unit (all or none) */
   transaction<T>(fn: () => T): T { return this.db.transaction(fn)(); }

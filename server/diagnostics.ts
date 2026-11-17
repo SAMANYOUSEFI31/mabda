@@ -7,7 +7,7 @@
  * not trusted), keeps the last 2000 reports and prints one line to the host's log.
  */
 import crypto from 'node:crypto';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from './db/sql/types.ts';
 
 export interface ErrorReport { id: string; userId: string; source: 'client' | 'server'; name: string; message: string; stack?: string; path?: string; agent?: string; createdAt: string }
 
@@ -41,7 +41,7 @@ export const scrubPath = (v: unknown): string | undefined => (typeof v === 'stri
 const scrubName = (v: unknown) => (typeof v === 'string' && /^[A-Za-z][A-Za-z0-9_.]{0,59}$/.test(v) ? v : 'Error');
 
 export class ErrorLog {
-  constructor(private readonly db: Database.Database, private readonly clock: () => Date = () => new Date()) {}
+  constructor(private readonly db: SqlLike, private readonly clock: () => Date = () => new Date()) {}
 
   record(userId: string, source: 'client' | 'server', raw: { name?: unknown; message?: unknown; stack?: unknown; path?: unknown; agent?: unknown }): ErrorReport {
     const r: ErrorReport = {

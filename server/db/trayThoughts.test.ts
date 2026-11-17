@@ -12,10 +12,11 @@ import { thinkingSpace } from '../../src/core/thinkingSpace.ts';
 import { thoughtItem } from '../../src/core/thinkingMarkers.ts';
 import type { NoteThinkingItem } from '../../src/core/thinkingMarkers.ts';
 import type { Workspace } from '../../src/types/index.ts';
+import { openDatabase } from './database.ts';
 
 const U = 'local';
 const ws = (id: string): Workspace => ({ id, name: id, slug: id, description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' } as Workspace);
-const fresh = () => { const db = new Database(':memory:'); migrate(db); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { repo, s: { userId: U, workspaceId: 'w1' } }; };
+const fresh = () => { const db = openDatabase(':memory:'); const repo = new Repo(db); repo.saveWorkspace(U, ws('w1')); return { repo, s: { userId: U, workspaceId: 'w1' } }; };
 
 /** the thinking space's open thoughts, and the tray, for the same data */
 function views(repo: Repo, s: { userId: string; workspaceId: string }) {

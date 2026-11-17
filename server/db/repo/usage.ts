@@ -13,14 +13,14 @@ export const usageMethods = {
   },
 
   addDailyUsage(this: Repo, s: Scope, day: string, kind: string, n = 1): number {
-    this.db.prepare('INSERT INTO daily_usage (user_id, workspace_id, day, kind, count) VALUES (?,?,?,?,?) ON CONFLICT(workspace_id, day, kind) DO UPDATE SET count = count + excluded.count').run(s.userId, s.workspaceId, day, kind, n);
+    this.db.prepare('INSERT INTO daily_usage (user_id, workspace_id, day, kind, count) VALUES (?,?,?,?,?) ON CONFLICT(workspace_id, day, kind) DO UPDATE SET count = daily_usage.count + excluded.count').run(s.userId, s.workspaceId, day, kind, n);
     return this.dailyUsage(s, day, kind);
   },
 
   bumpUsage(this: Repo, userId: string, feature: unknown): void {
     if (!isFeatureKey(feature)) throw new RepoError('invalid', 'امکان ناشناخته.');
     const t = now();
-    this.db.prepare('INSERT INTO usage_events (user_id, feature, count, last_at) VALUES (?,?,1,?) ON CONFLICT(user_id, feature) DO UPDATE SET count = count + 1, last_at = excluded.last_at').run(userId, feature, t);
+    this.db.prepare('INSERT INTO usage_events (user_id, feature, count, last_at) VALUES (?,?,1,?) ON CONFLICT(user_id, feature) DO UPDATE SET count = usage_events.count + 1, last_at = excluded.last_at').run(userId, feature, t);
   },
 
   listUsage(this: Repo, userId: string): Array<{ feature: string; count: number; lastAt: string }> {

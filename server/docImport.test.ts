@@ -9,11 +9,12 @@ import { IMPORT_BUDGET_TOKENS, locateInSource, planChunks } from './docimport/pl
 import { htmlToText, readDocument } from './docimport/readers.ts';
 import { registerSlotProvider } from '../src/core/suggestionSlots.ts';
 import type { Workspace } from '../src/types/index.ts';
+import { openDatabase } from './db/database.ts';
 
 const U = 'local';
 const S = { userId: U, workspaceId: 'w1' };
 const mk = () => {
-  const db = new Database(':memory:'); migrate(db);
+  const db = openDatabase(':memory:');
   const repo = new Repo(db);
   const ws: Workspace = { id: 'w1', name: 'w', slug: 'w', description: '', todayChatCount: 0, createdAt: '2026-01-01T00:00:00Z' };
   repo.saveWorkspace(U, ws);

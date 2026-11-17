@@ -7,13 +7,17 @@
  * (an off-host copy: a disk can be lost too). Bringing one back = one setting in the host's dashboard (MABDA_RESTORE_FROM), applied
  * once at start-up, after the current database is itself saved aside.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { tehranDay } from '../src/core/tehranDate.ts';
+import { asSql } from './db/sql/sqlite.ts';
+import type { SqlDatabase, SqlLike } from './db/sql/types.ts';
 
 export const KEEP_DAYS = 14;
-const NAME = /^mabda-(\d{4}-\d{2}-\d{2})\.sqlite$/;
+/** SQLite copies are database files (.sqlite); Postgres copies are portable dumps (.jsonl.gz, server/db/sql/dump.ts) */
+const NAME = /^mabda-(\d{4}-\d{2}-\d{2})\.(sqlite|jsonl\.gz)$/;
 
 export const backupDirFor = (dbFile: string, env: NodeJS.ProcessEnv = process.env) => env.MABDA_BACKUP_DIR || path.join(path.dirname(dbFile), 'backups');
 
@@ -26,27 +30,29 @@ export function listBackups(dir: string): Array<{ file: string; day: string; byt
 }
 
 /** today's copy (Tehran day), if it is not there yet; then only the newest KEEP_DAYS are kept */
-export async function dailyBackup(db: Database.Database, dir: string, now: Date = new Date()): Promise<string | undefined> {
+export async function dailyBackup(handle: SqlLike, dir: string, now: Date = new Date()): Promise<string | undefined> {
+  const db = asSql(handle);
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `mabda-${tehranDay(now)}.sqlite`);
+  const file = path.join(dir, `mabda-${tehranDay(now)}${db.backupExt}`);
   if (fs.existsSync(file)) return undefined;
   const tmp = `${file}.part`;
-  await db.backup(tmp);
+  await db.backupTo(tmp);
   fs.renameSync(tmp, file); // a half-written copy never has the final name
   for (const old of listBackups(dir).slice(KEEP_DAYS)) fs.rmSync(old.file, { force: true });
   return file;
 }
 
 /** a fresh copy for the owner to download (not kept) */
-export async function freshCopy(db: Database.Database, dir: string, now: Date = new Date()): Promise<string> {
+export async function freshCopy(handle: SqlLike, dir: string, now: Date = new Date()): Promise<string> {
+  const db = asSql(handle);
   fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `download-${now.toISOString().replace(/[:.]/g, '-')}.sqlite`);
-  await db.backup(file);
+  const file = path.join(dir, `download-${now.toISOString().replace(/[:.]/g, '-')}${db.backupExt}`);
+  await db.backupTo(file);
   return file;
 }
 
 /** checks every hour whether today's backup exists; the timer never keeps the process alive */
-export function scheduleDailyBackups(db: Database.Database, dir: string, clock: () => Date = () => new Date()): () => void {
+export function scheduleDailyBackups(db: SqlLike, dir: string, clock: () => Date = () => new Date()): () => void {
   const run = () => { dailyBackup(db, dir, clock()).then((f) => { if (f) console.log(`[backup] saved ${path.basename(f)}`); }).catch((e) => console.error('[backup] failed:', (e as Error).message)); };
   run();
   const t = setInterval(run, 60 * 60 * 1000);
@@ -79,4 +85,54 @@ export function restoreIfAsked(dbFile: string, env: NodeJS.ProcessEnv = process.
   fs.copyFileSync(src, dbFile);
   fs.writeFileSync(marker, src);
   return { restored: src };
+}
+
+/** a dump (.jsonl.gz) is loaded into the open database, whichever engine; a .sqlite file on SQLite is swapped before opening */
+export const restoresIntoOpenDatabase = (env: NodeJS.ProcessEnv = process.env, onPostgres = false) => onPostgres || /\.jsonl\.gz$|^postgres(ql)?:\/\//i.test((env.MABDA_RESTORE_FROM ?? '').trim());
+
+/**
+ * The same setting, applied to the open database (Postgres always; SQLite for a dump): MABDA_RESTORE_FROM names a dump
+ * (.jsonl.gz) from the backup folder, or — on Postgres — a SQLite file: the old database of a SQLite install, which is how an
+ * existing install moves its data into Postgres. A Postgres dump loaded into SQLite is the way back. Before anything is replaced the current data is dumped aside (before-restore-…). Applied once:
+ * the name of what was restored is kept in the database itself (kv, user `__system__`), so a forgotten setting does nothing
+ * on the next start.
+ */
+export async function restoreIntoIfAsked(db: SqlDatabase, env: NodeJS.ProcessEnv = process.env, now: Date = new Date()): Promise<{ restored?: string; error?: string; rows?: number }> {
+  const asked = (env.MABDA_RESTORE_FROM ?? '').trim();
+  if (!asked) return {};
+  const { copyDatabase, loadRows, readDumpFile } = await import('./db/sql/dump.ts');
+  const { SqliteDatabase } = await import('./db/sql/sqlite.ts');
+  const { migrate } = await import('./db/migrations.ts');
+  const { DEFAULT_DB_PATH } = await import('./db/database.ts');
+  const dir = backupDirFor(DEFAULT_DB_PATH, env);
+  // a Postgres address: the live data of that database, copied at this moment (the way back from Postgres loses nothing)
+  const fromPostgres = /^postgres(ql)?:\/\//i.test(asked);
+  const src = fromPostgres ? asked : path.isAbsolute(asked) ? asked : path.join(dir, asked);
+  // what is remembered and printed: never a database address with its password
+  const label = fromPostgres ? `Postgres ${new URL(asked).host}${new URL(asked).pathname}` : src;
+  const mark = fromPostgres ? `postgres:${crypto.createHash('sha256').update(asked).digest('hex')}` : src;
+  const MARK = "SELECT value FROM kv WHERE user_id = '__system__' AND key = 'restored_from'";
+  if ((db.prepare(MARK).get() as { value: string } | undefined)?.value === mark) return {};
+  if (fromPostgres && db.dialect === 'postgres') return { error: 'MABDA_RESTORE_FROM names a Postgres database while DATABASE_URL is set; to go back to SQLite, remove DATABASE_URL first. Nothing was changed.' };
+  if (!fromPostgres && !fs.existsSync(src)) return { error: `MABDA_RESTORE_FROM: ${src} was not found. Nothing was changed.` };
+  fs.mkdirSync(dir, { recursive: true });
+  await db.backupTo(path.join(dir, `before-restore-${now.toISOString().replace(/[:.]/g, '-')}${db.backupExt}`));
+  let rows: number;
+  if (fromPostgres) {
+    const { PostgresDatabase } = await import('./db/sql/postgres.ts');
+    const pg = new PostgresDatabase(asked);
+    try { migrate(pg); rows = copyDatabase(pg, db).rows; } finally { pg.close(); }
+  } else if (src.endsWith('.jsonl.gz')) {
+    const d = readDumpFile(src);
+    rows = loadRows(db, d.rows, d.header.schemaVersion).rows;
+  } else {
+    // a SQLite file: read from a private copy brought to the current schema (the original stays as it was)
+    const copy = path.join(dir, `.restore-${process.pid}.sqlite`);
+    fs.copyFileSync(src, copy);
+    for (const extra of ['-wal', '-shm']) if (fs.existsSync(src + extra)) fs.copyFileSync(src + extra, copy + extra);
+    const lite = SqliteDatabase.open(copy);
+    try { migrate(lite); rows = copyDatabase(lite, db).rows; } finally { lite.close(); for (const f of [copy, `${copy}-wal`, `${copy}-shm`]) fs.rmSync(f, { force: true }); }
+  }
+  db.prepare("INSERT OR REPLACE INTO kv (user_id, key, value) VALUES ('__system__', 'restored_from', ?)").run(mark);
+  return { restored: label, rows };
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type Database from 'better-sqlite3';
+import type { SqlLike } from '../db/sql/types.ts';
 
 /**
  * «پیشنهاد» و «واکنش کاربر به پیشنهاد» (migration 25). فقط جدول‌های خود لایهٔ هوش؛ هیچ حقیقت، رابطه یا ساختاری نمی‌نویسد.
@@ -36,7 +36,7 @@ export interface SuggestionRow {
 }
 
 export class IntelligenceStore {
-  constructor(private readonly db: Database.Database, private readonly now: () => string = () => new Date().toISOString()) {}
+  constructor(private readonly db: SqlLike, private readonly now: () => string = () => new Date().toISOString()) {}
 
   recordSuggestion(s: Scope, input: SuggestionInput): string {
     const id = `sug_${randomUUID()}`;

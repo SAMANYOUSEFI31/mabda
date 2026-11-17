@@ -37,13 +37,12 @@ export interface WorkspaceBackup {
 }
 
 type Col = { name: string; pk: number };
-const columnsOf = (repo: Repo, table: string): Col[] => repo.db.prepare(`PRAGMA table_info(${JSON.stringify(table)})`).all() as Col[];
+const columnsOf = (repo: Repo, table: string): Col[] => repo.db.columns(table);
 const q = (name: string) => JSON.stringify(name);
 
 /** the tables that hold one workspace's rows, read from the schema itself */
 export function workspaceTables(repo: Repo): string[] {
-  return (repo.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as Array<{ name: string }>)
-    .map((t) => t.name)
+  return repo.db.tables()
     .filter((t) => !LEFT_OUT.has(t) && (() => { const c = columnsOf(repo, t).map((x) => x.name); return c.includes('workspace_id') && c.includes('user_id'); })());
 }
 
