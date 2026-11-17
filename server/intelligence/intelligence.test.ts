@@ -7,7 +7,7 @@ import { migrate } from '../db/migrations.ts';
 import { Repo } from '../db/repo.ts';
 import { purgeObject } from '../db/removal.ts';
 import { MemoryCallLog } from './callLog.ts';
-import { charMeter, chunkByStructure } from './chunker.ts';
+import { charMeter, chunkByStructure, cutWindow } from './chunker.ts';
 import { loadIntelligenceConfig, modelRefs, RECIPES_FILE, validateConfig, withRecipe, type FindRelatedRecipe, type IntelligenceConfig, type WhereToRecipe, type WhatIsThisRecipe } from './config.ts';
 import { MemoryEmbeddingStore, SqliteEmbeddingStore } from './embeddingStore.ts';
 import { IntelligenceError } from './errors.ts';
@@ -86,6 +86,28 @@ test('chunker: explicit headings and bullets are the boundaries; a text without 
   assert.ok(s.every((x) => x.tokens <= 100));
   assert.equal(s.map((x) => x.text).join('').length, 1000);
   assert.deepEqual(chunkByStructure('   ', 100, m), []);
+});
+
+test('chunker: a long sentence is cut at a sentence end before a comma, at a comma before a space, never inside a word (algorithm 7)', () => {
+  const sentence = 'جملهٔ اول کوتاه است. ' + 'واژه '.repeat(8) + 'و، ' + 'دیگر '.repeat(3);
+  const [head] = cutWindow(sentence, sentence.length - 4);
+  assert.equal(head, 'جملهٔ اول کوتاه است. ' + 'واژه '.repeat(8).trim() + ' و،', 'the comma (in the second half) wins over the last space');
+  const two = 'الف '.repeat(10) + 'پایان جمله. ' + 'ب '.repeat(5);
+  assert.ok(cutWindow(two, two.length - 2)[0].endsWith('پایان جمله.'), 'the sentence end wins over a later comma or space');
+  const zwnj = 'گفته‌می‌شود'.repeat(10);
+  const [h, t] = cutWindow(zwnj, 50);
+  assert.equal(h + t, zwnj, 'nothing lost; a half-space is not a place to cut');
+  assert.equal(h.length, 50);
+});
+
+test('findRelated: an embedding floor from config keeps a far item out of the fusion; null keeps the old behaviour', async () => {
+  const off = mk();
+  const all = await findRelated(off.env, 'findRelated', { scope, query: 'قیمت اشتراک ماهانه', items });
+  assert.throws(() => withRecipe<FindRelatedRecipe>(baseCfg(), 'findRelated', (r) => { r.finders = r.finders.map((f) => f.specialist === 'embedding' ? { ...f, minCosine: 1.01 } : f); }), /minCosine/, 'a floor above 1 is rejected');
+  const cfg2 = withRecipe<FindRelatedRecipe>(baseCfg(), 'findRelated', (r) => { r.finders = r.finders.map((f) => f.specialist === 'embedding' ? { ...f, minCosine: 0.9999 } : { ...f, weight: 0 }); r.ranker = undefined; });
+  assert.deepEqual(validateConfig(cfg2), []);
+  const floored = await findRelated(mk({}, cfg2).env, 'findRelated', { scope, query: 'قیمت اشتراک ماهانه', items });
+  assert.ok(floored.items.length < all.items.length, `${floored.items.length} < ${all.items.length}`);
 });
 
 test('math: rrf prefers items ranked high in several lists; cosine of identical vectors is 1', () => {

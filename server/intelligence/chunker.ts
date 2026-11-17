@@ -13,19 +13,27 @@ export interface TokenMeter { count(text: string): number }
 /** سنجش محافظه‌کارانه: توکن ≈ نویسه ÷ charsPerToken، گرد به بالا. با ارزیابی (نسبت توکن واقعی به تخمین) کالیبره می‌شود. */
 export const charMeter = (charsPerToken: number): TokenMeter => ({ count: (t) => Math.ceil(t.length / charsPerToken) });
 
-export const CHUNKER_VERSION = 1;
+/** ۲: مرز جمله بر فاصله مقدم شد (مرز تکه‌ها عوض شد، پس embeddingهای ذخیره‌شده دوباره ساخته می‌شوند) */
+export const CHUNKER_VERSION = 2;
 
 export interface Chunk { index: number; text: string; tokens: number }
 
 const HEADING = /^\s{0,3}(#{1,6})\s+\S/;
 const BULLET = /^\s*(?:[-*•·]|\d+[.)]|[۰-۹]+[.)])\s+\S/;
 
-/** پنجرهٔ نویسه که از ابتدا شروع می‌شود و از آخرین مرز جمله/فاصله در نیمهٔ دوم پنجره می‌برد */
-function cutWindow(text: string, maxChars: number): [string, string] {
+/**
+ * پنجرهٔ نویسه که از ابتدا شروع می‌شود و در نیمهٔ دوم پنجره می‌بُرد، به ترتیب ترجیح: پایان خط یا جمله (. ؟ ? ! ؛ ;)،
+ * سپس ویرگول (، ,)، سپس فاصله؛ فقط اگر هیچ‌کدام در نیمهٔ دوم نبود، سر حد پنجره. پیش‌تر همهٔ مرزها با هم مقایسه می‌شدند و
+ * آخرین «فاصله» تقریباً همیشه برنده بود، پس مرز جمله عملاً ترجیحی نداشت (بررسی دوم بیرونی، الگوریتم ۷).
+ */
+export function cutWindow(text: string, maxChars: number): [string, string] {
   if (text.length <= maxChars) return [text, ''];
   const window = text.slice(0, maxChars);
-  const best = Math.max(window.lastIndexOf('. '), window.lastIndexOf('؟ '), window.lastIndexOf('! '), window.lastIndexOf('؛ '), window.lastIndexOf('\n'), window.lastIndexOf('. '), window.lastIndexOf(' '));
-  const at = best > maxChars * 0.5 ? best + 1 : maxChars;
+  const last = (marks: string[]) => Math.max(...marks.map((m) => window.lastIndexOf(m)));
+  const half = maxChars * 0.5;
+  const tiers = [['\n'], ['. ', '؟ ', '? ', '! ', '؛ ', '; '], ['، ', ', '], [' ']];
+  let at = maxChars;
+  for (const marks of tiers) { const i = last(marks); if (i > half) { at = i + 1; break; } }
   return [text.slice(0, at).trim(), text.slice(at).trim()];
 }
 

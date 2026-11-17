@@ -133,7 +133,9 @@ export async function findRelated(env: Env, name: string, input: { scope: Scope;
       ranked.forEach((x, i) => lexRanks.set(x.id, i + 1));
       lists.push({ ranked, weight: f.weight });
     } else {
-      const { ranked, cosines } = await embeddingRank(env, input.scope, f.model!, input.query, f.queryRole ?? 'query', items, name);
+      const { ranked: all, cosines } = await embeddingRank(env, input.scope, f.model!, input.query, f.queryRole ?? 'query', items, name);
+      // the floor comes from config (measured per model); below it an item gets no rank from this finder at all
+      const ranked = f.minCosine == null ? all : all.filter((x) => x.score >= f.minCosine!);
       stages.push(`embedding:${f.model}`);
       ranked.forEach((x, i) => { embRanks.set(x.id, { ...(embRanks.get(x.id) ?? {}), [f.model!]: i + 1 }); embCos.set(x.id, { ...(embCos.get(x.id) ?? {}), [f.model!]: cosines.get(x.id) ?? 0 }); });
       lists.push({ ranked, weight: f.weight });
