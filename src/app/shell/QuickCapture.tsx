@@ -102,7 +102,7 @@ function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: 
   const add = async () => { if (!file) { setErr('هنوز فایلی انتخاب نکرده‌ای.'); return; } setBusy(true); try { await onUpload(file, node); onClose(); } finally { setBusy(false); } };
   return (
     <Dialog open onClose={onClose} size="md" title="افزودن" description={ADD_DESCRIPTION} dirty={!!file} steady
-      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن</Button></>}>
+      footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن فایل</Button></>}>
       <div className="flex flex-col gap-stack-md">
         <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />
         {/* the browser's own picker says «No file chosen» in English: a Persian row instead, the real input stays for the keyboard */}

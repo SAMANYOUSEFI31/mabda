@@ -114,7 +114,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
       // × / Esc with words in the box asks first; «دور بریز» empties it (the draft lives in the caller, so «ادامه» loses nothing)
       dirty={!!text.trim()} onDiscard={() => { onTextChange(''); setPerLine(false); }}
       description={ADD_DESCRIPTION}
-      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن'}</Button></>}
+      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {
         if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;

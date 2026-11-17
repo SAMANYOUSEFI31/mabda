@@ -95,6 +95,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="TriangleAlert">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
     else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="Lightbulb">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
     else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="History">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
+    // a change she wrote and kept as a draft: said where the text is, not only inside the dialog (Nielsen 1: the state is visible)
+    if (obj.draft) notes.push(<MarginNote key="d" lead={<Nuqta state="proposed" size="sm" />} action={<button type="button" className="body-sm inline-flex min-h-touch min-w-touch items-center justify-center text-text-default underline underline-offset-2" onClick={() => props.onSelectObject(obj)}>دیدن تغییر</button>}>تغییری نوشته‌ای که هنوز جایگزین نشده؛ تا تأییدش نکنی، همین متن معتبر است.</MarginNote>);
     const other = conflictWith.get(obj.id);
     if (other) notes.push(<MarginNote key="c" lead={<Nuqta state="conflict" size="sm" />}>با «{other.title}» در بخش «{nodeName(other.nodeId)}» نمی‌خواند؛ یکی را نگه دار.</MarginNote>);
     // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
@@ -152,7 +154,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <div className="flex flex-wrap items-center gap-inline-xs">
             {/* one main action; everything else is under «⋯» */}
             <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button>
-            {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>باز کردن</Button>}
+            {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>رفتن به بخش</Button>}
             <Menu
               label={`عملیات بخش ${node.label}`}
               align="end"
