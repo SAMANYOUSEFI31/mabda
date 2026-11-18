@@ -22,6 +22,9 @@ import { letterKeysOn } from '../../core/shortcuts';
 
 const QuickCaptureDialog = lazyNamed(() => import('../../components/thinking/QuickCaptureDialog'), 'QuickCaptureDialog');
 
+const DRAFT_KEY = 'mabda.quickDraft';
+const readDraft = (): string => { try { return sessionStorage.getItem(DRAFT_KEY) ?? ''; } catch { return ''; } };
+
 export type QuickCaptureProps = Pick<ReadyScope, 'activeTab' | 'data' | 'focusNodeId' | 'handleSaveThought' | 'handleSaveThoughts' | 'handleUploadFile' | 'nodes' | 'openContext' | 'workspaceContexts'>;
 
 const PREF = 'mabda.quickCapture.continuous';
@@ -29,7 +32,9 @@ const readContinuous = () => { try { return localStorage.getItem(PREF) !== 'off'
 
 export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, handleSaveThoughts, handleUploadFile, nodes, openContext, workspaceContexts }: QuickCaptureProps) {
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState('');
+  // the unsent text survives a refresh (sessionStorage: it goes with the tab, so it never lingers on a shared device)
+  const [text, setText] = useState(readDraft);
+  useEffect(() => { try { if (text) sessionStorage.setItem(DRAFT_KEY, text); else sessionStorage.removeItem(DRAFT_KEY); } catch { /* optional */ } }, [text]);
   const [node, setNode] = useState('');
   const [continuous, setContinuous] = useState(readContinuous);
   const here = defaultSectionFor(focusNodeId, nodes);

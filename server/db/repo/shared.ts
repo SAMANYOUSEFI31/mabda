@@ -5,7 +5,8 @@ import crypto from 'node:crypto';
 
 export interface Scope { userId: string; workspaceId: string }
 
-export type RepoErrorCode = 'not_found' | 'invalid' | 'forbidden';
+export type RepoErrorCode = 'not_found' | 'invalid' | 'forbidden' | 'conflict';
+export const CHANGED_ELSEWHERE = 'این مورد در دستگاه یا زبانهٔ دیگری تغییر کرده؛ نسخهٔ تازه آمد. تغییرت را دوباره بزن.';
 export class RepoError extends Error {
   constructor(public code: RepoErrorCode, message: string) { super(message); }
 }

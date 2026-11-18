@@ -162,7 +162,7 @@ export const dataApi = {
 
   createObject: (id: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; source?: ObjectSource; slotKey?: string; reach?: ContextObject['reach']; validUntil?: string; assumption?: boolean; reviewBy?: string; record?: import('../types').DecisionRecord; facets?: string[]; examples?: import('../types').RedlineExample[] }) =>
     call<{ object: ContextObject; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/objects`, input),
-  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; facets?: string[] | null; examples?: import('../types').RedlineExample[] | null; reason?: string; asDraft?: boolean }) =>
+  updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; facets?: string[] | null; examples?: import('../types').RedlineExample[] | null; reason?: string; asDraft?: boolean; expectedUpdatedAt?: string }) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
   approveDraft: (id: string, objectId: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/draft/approve`, {}),
   rejectDraft: (id: string, objectId: string) => call<{ object: ContextObject }>('DELETE', `${ws(id)}/objects/${objectId}/draft`),
@@ -172,7 +172,7 @@ export const dataApi = {
   objectVersions: (id: string, objectId: string) => call<{ versions: Array<{ version: number; type: string; title: string; content: string; createdAt: string }> }>('GET', `${ws(id)}/objects/${objectId}/versions`).then((r) => r.versions),
 
   createNote: (id: string, nodeId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes`, { nodeId, content }),
-  updateNote: (id: string, noteId: string, content: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('PATCH', `${ws(id)}/notes/${noteId}`, { content }),
+  updateNote: (id: string, noteId: string, content: string, expectedUpdatedAt?: string) => call<{ note: Note; thoughts: import('../types').Thought[] }>('PATCH', `${ws(id)}/notes/${noteId}`, { content, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }),
   deleteNote: (id: string, noteId: string, removeThoughts = false) => call<{ ok: true; note?: Note; position?: { x?: number; y?: number }; keptThoughts: number; removedThoughts: number; thoughts: import('../types').Thought[] }>('DELETE', `${ws(id)}/notes/${noteId}${removeThoughts ? '?thoughts=remove' : ''}`),
   extractDeliverable: (id: string, deliverableId: string) => call<{ created: ContextObject[]; found: number; skipped: number; ledger: LedgerEntry[] }>('POST', `${ws(id)}/deliverables/${deliverableId}/extract`, {}),
   extractNote: (id: string, noteId: string) => call<{ created: ContextObject[]; ledger: LedgerEntry; usage: UsageSummary }>('POST', `${ws(id)}/notes/${noteId}/extract`, {}),

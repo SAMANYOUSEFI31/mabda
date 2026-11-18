@@ -765,3 +765,23 @@ test('retired integration APIs are absent and generic object creation cannot wri
     assert.equal(object.status, 400);
   } finally { t.close(); }
 });
+
+test('two devices: an edit made from an older copy is refused with 409 (objects and notes); without the field nothing changes', async () => {
+  const t = await boot(() => ({}));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const st = (await t.call('GET', '/workspaces/ws_studio/state')).json;
+    const old = st.objects.find((o: any) => o.id === 'ctx_audience').updatedAt;
+    const first = await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'نسخهٔ دستگاه اول', expectedUpdatedAt: old });
+    assert.equal(first.status, 200);
+    const stale = await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'نسخهٔ دستگاه دوم', expectedUpdatedAt: old });
+    assert.equal(stale.status, 409);
+    assert.equal(stale.json.error.code, 'conflict');
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/state')).json.objects.find((o: any) => o.id === 'ctx_audience').content, 'نسخهٔ دستگاه اول');
+    assert.equal((await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'بدون بررسی' })).status, 200);
+
+    const note = (await t.call('POST', '/workspaces/ws_studio/notes', { nodeId: 'brand', content: 'الف' })).json.note;
+    assert.equal((await t.call('PATCH', `/workspaces/ws_studio/notes/${note.id}`, { content: 'ب', expectedUpdatedAt: note.updatedAt })).status, 200);
+    assert.equal((await t.call('PATCH', `/workspaces/ws_studio/notes/${note.id}`, { content: 'ج', expectedUpdatedAt: 'old' })).status, 409);
+  } finally { t.close(); }
+});
