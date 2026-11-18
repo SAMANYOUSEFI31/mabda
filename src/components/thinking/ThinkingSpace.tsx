@@ -118,10 +118,11 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   return (
     <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
-      {nothingYet ? null : <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
+      {nothingYet ? null : <div className="flex flex-col gap-stack-sm lg:flex-row lg:items-end">
         {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
-            wider: they wrap, which never happens there in practice (decisions.md §۳۶) */}
-        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:flex-wrap sm:overflow-visible sm:px-space-0">
+            from 768 to 1023 the row has the page to itself (the section picker goes under it), so one row fits; from 1024 they sit
+            beside the picker (decisions.md §۳۶، §۳۸) */}
+        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0 lg:flex-wrap lg:overflow-visible">
           {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
               six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
           {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
@@ -130,7 +131,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             </Button>
           ))}
         </div>
-        <div className="flex items-end gap-inline-xs sm:ms-auto">
+        <div className="flex items-end gap-inline-xs lg:ms-auto">
           {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
           {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
           <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} /></div>
@@ -142,9 +143,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         : empty && <EmptyState kind="filtered" title={kind === 'all' ? 'در این بخش فکری نیست' : 'با این فیلتر فکری نیست'} action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
 
       {view.waiting.length > 0 && (
-        <section className="flex flex-col gap-stack-md" aria-label="منتظر تصمیم تو">
+        <section className="flex flex-col gap-stack-md" aria-label="منتظر تو">
           <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-            <h2 className="title text-text-default">منتظر تصمیم تو ({formatNumber(view.waiting.length)})</h2>
+            <h2 className="heading-sm text-text-default">منتظر تو ({formatNumber(view.waiting.length)})</h2>
             {previewItems.length > 0 && <Menu label="اگر همه را تأیید کنم" align="end" trigger={<Button size="sm" variant="ghost" iconStart="Eye">اگر همه را تأیید کنم</Button>} items={previewItems} />}
           </div>
           {drafts.map((o) => (
@@ -157,13 +158,14 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               {o.draft!.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{o.draft!.reason}</p>}
               <p className="body-sm text-text-subtle">تا تأیید نشود، خروجی‌ها و بسته‌ها همان متن تأییدشده را می‌بینند.</p>
               <div className="flex flex-wrap gap-inline-sm">
-                <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>تأیید و جایگزین کن</Button>
-                <Button size="sm" variant="ghost" iconStart="X" onClick={() => void p.onRejectDraft(o.id)}>رد کن</Button>
-                <Button size="sm" variant="ghost" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
+                <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>تأیید</Button>
+                {/* the same three, in the same order, as every waiting proposal: decide, change, refuse (§۳۷) */}
+                <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => p.onOpenObject(o)}>ویرایش</Button>
+                <Button size="sm" variant="ghost" iconStart="X" onClick={() => void p.onRejectDraft(o.id)}>رد</Button>
               </div>
             </Card>
           ))}
-          {proposalsHere.length > 0 && <ProposalInbox {...p.proposals} objects={proposalsHere} nodes={p.nodes} keepOrder hints={proposalHints} />}
+          {proposalsHere.length > 0 && <ProposalInbox {...p.proposals} objects={proposalsHere} nodes={p.nodes} keepOrder nested hints={proposalHints} />}
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
@@ -188,7 +190,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.thoughts.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
-          <h2 className="title text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h2>
+          <h2 className="heading-sm text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h2>
           {selectMode && selectedThoughts.length > 0 && (
             <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
@@ -217,7 +219,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
 
       {view.assumptions.length > 0 && (
         <section className="flex flex-col gap-stack-sm" aria-label="فرض‌های فعال">
-          <h2 className="title text-text-default">فرض‌های فعال ({formatNumber(view.assumptions.length)})</h2>
+          <h2 className="heading-sm text-text-default">فرض‌های فعال ({formatNumber(view.assumptions.length)})</h2>
           <p className="body-sm text-text-subtle">تأییدشده‌اند و در خروجی‌ها در بخش جدای «فرض» می‌آیند؛ واقعیت نیستند.</p>
           <ul className="flex flex-col gap-stack-xs">
             {view.assumptions.map((o) => (

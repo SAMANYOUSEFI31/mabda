@@ -169,7 +169,7 @@ try {
     await sp.locator('li', { hasText: 'قیمت پایهٔ کارگاه' }).getByRole('button', { name: 'پیشنهاد به حقیقت' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).first().click();
     await page.waitForTimeout(700);
-    await sp.getByText('منتظر تصمیم تو').first().waitFor();
+    await sp.getByText('منتظر تو').first().waitFor();
     await sp.getByRole('button', { name: 'تأیید', exact: true }).first().click();
     await page.waitForTimeout(600);
     assert.ok((await state()).objects.some((o) => o.title.includes('قیمت پایهٔ کارگاه') || o.content.includes('قیمت پایهٔ کارگاه')), 'decided: it is knowledge now');
