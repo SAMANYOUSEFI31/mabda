@@ -41,7 +41,8 @@ export const addSwitchable = (): boolean => switchable;
 /** is a real dialog open? (the inert copy that plays a dialog's exit does not count) */
 export function dialogOpen(): boolean {
   if (typeof document === 'undefined') return false;
-  return [...document.querySelectorAll('[role="dialog"],[role="alertdialog"]')].some((d) => !d.closest('[inert]'));
+  // a full-screen canvas is a dialog that HOSTS «افزودن» (data-add-host): its own add opens above it instead of being refused
+  return [...document.querySelectorAll('[role="dialog"],[role="alertdialog"]')].some((d) => !d.closest('[inert]') && !d.hasAttribute('data-add-host'));
 }
 
 /** the words she was writing, carried across «فکر · حقیقت · فایل»: a file has no text, so they wait here until she comes back
@@ -53,3 +54,11 @@ export const carryAddText = (from: AddKind, to: AddKind, text: string | undefine
   if (to !== 'file') carried = '';
   return out;
 };
+
+/** «افزودن ← فایل» → «تکه‌تکه به یادداشت‌ها»: the file she already picked waits here for «وارد کردن سند», so she does not pick it twice */
+let pendingImport: File | null = null;
+export const setPendingImportFile = (f: File | null): void => { pendingImport = f; };
+/** read without clearing (a state initializer may run twice); clear with setPendingImportFile(null) once mounted */
+export const pendingImportFile = (): File | null => pendingImport;
+/** the files «وارد کردن سند» can read (DocumentImportDialog's picker) */
+export const importableFile = (name: string): boolean => /\.(txt|md|pdf|docx)$/i.test(name);
