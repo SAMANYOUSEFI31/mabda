@@ -216,7 +216,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {/* the truth stays clean: what is still a thought or a suggestion is NOT listed here — one calm counter opens it in the thinking space,
                 where it is already filtered to this node. The raw notes of the node are one closed click away. */}
             {(props.openCount(node.id) > 0 || nodeNotes.length > 0 || notesOpen) && (
-              <section className="flex flex-col gap-stack-sm" aria-label="فکر و یادداشت">
+              <section className="flex flex-col gap-stack-sm" aria-label={`فکر و یادداشتِ ${node.label}`}>
                 <div className="flex flex-wrap items-center gap-inline-xs">
                   {props.openCount(node.id) > 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" data-testid="open-thoughts" onClick={() => props.onOpenThinking(node.id)}>{formatNumber(props.openCount(node.id))} فکر باز</Button>}
                   {(nodeNotes.length > 0 || notesOpen) && <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>}
