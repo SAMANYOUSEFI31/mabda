@@ -3,6 +3,7 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
+import { nowIso } from '../clock.ts';
 import type { ThinkingKind } from '../../../src/core/thinkingMarkers.ts';
 import { CHANGED_ELSEWHERE, RepoError } from '../repo.ts';
 import { findItem, headingSections, parseThinking } from '../../../src/core/thinkingMarkers.ts';
@@ -63,7 +64,7 @@ export function registerNotesThoughtsRoutes(ctx: RouteContext): void {
     const title = guessTitle(thought.text);
     const object = repo.createObject(s, {
       type, status: 'Proposed', provenance: 'User Input', title, content: thought.text, nodeId: thought.nodeId,
-      source: { kind: 'note', thoughtId: thought.id, ...(thought.sourceNoteId ? { noteId: thought.sourceNoteId } : {}), ...(thought.sourceLineKey ? { lineKey: thought.sourceLineKey } : {}), quote: thought.text, at: new Date().toISOString() },
+      source: { kind: 'note', thoughtId: thought.id, ...(thought.sourceNoteId ? { noteId: thought.sourceNoteId } : {}), ...(thought.sourceLineKey ? { lineKey: thought.sourceLineKey } : {}), quote: thought.text, at: nowIso() },
     }, metaOf(b));
     res.json({ object, objects: repo.listObjects(s), thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
@@ -104,7 +105,7 @@ export function registerNotesThoughtsRoutes(ctx: RouteContext): void {
     const title = guessTitle(thought.text);
     const object = repo.createObject(s, {
       type: b.type as import('../../../src/types/index.ts').ContextType, status: 'Proposed', provenance: 'User Input', title, content: thought.text, nodeId: thought.nodeId,
-      source: { kind: 'note', label: 'یادداشت', thoughtId: thought.id, noteId: note.id, lineKey: thought.sourceLineKey, quote: thought.text, at: new Date().toISOString() },
+      source: { kind: 'note', label: 'یادداشت', thoughtId: thought.id, noteId: note.id, lineKey: thought.sourceLineKey, quote: thought.text, at: nowIso() },
     }, metaOf(b));
     res.json({ object, objects: repo.listObjects(s), thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));

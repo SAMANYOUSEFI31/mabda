@@ -1,3 +1,4 @@
+import { nowIso } from './clock.ts';
 import type { ContextObject, GeneratedDeliverable, TreeNode, Workspace } from '../../src/types/index.ts';
 import { containsAny, needlesOf, nodeRemovalPlan, scrubLines } from '../../src/core/removal.ts';
 import type { NodeRemovalPlan, RemovalMode } from '../../src/core/removal.ts';
@@ -13,7 +14,7 @@ import type { Repo, Scope } from './repo.ts';
  *  · permanent delete — only from the archive; no trace of the text in any table (see `purgeObject`)
  */
 
-const now = () => new Date().toISOString();
+const now = () => nowIso();
 /** after an erase for good: the write-ahead log is folded into the file and emptied, so the old pages do not linger in it */
 const flushErased = (repo: Repo, tables?: string[]) => repo.db.flushErased(tables);
 const rows = <T = Record<string, unknown>>(repo: Repo, sql: string, ...args: unknown[]) => repo.db.prepare(sql).all(...args) as T[];

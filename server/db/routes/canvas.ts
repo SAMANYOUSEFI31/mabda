@@ -4,6 +4,7 @@
  */
 import type { Lane } from '../../../src/core/canvasModel.ts';
 import type { RouteContext } from './context.ts';
+import { nowIso } from '../clock.ts';
 import type { Scope } from '../repo.ts';
 import { RepoError } from '../repo.ts';
 import { buildCanvasModel, moveEffect, rankBetween } from '../../../src/core/canvasModel.ts';
@@ -103,7 +104,7 @@ export function registerCanvasRoutes(ctx: RouteContext): void {
     if (!note) throw new RepoError('not_found', 'یادداشت پیدا نشد.');
     const first = note.content.split('\n').find((l) => l.trim())?.trim() ?? 'یادداشت';
     const type = ['Fact', 'Decision', 'Constraint'].includes(String(body(req).type)) ? String(body(req).type) as 'Fact' | 'Decision' | 'Constraint' : 'Fact';
-    const object = repo.createObject(s, { type, status: 'Proposed', provenance: 'User Input', title: first.length > 70 ? `${first.slice(0, 70)}…` : first, content: note.content, nodeId: note.nodeId, source: { kind: 'note', label: 'بوم فکر آزاد', at: new Date().toISOString() } });
+    const object = repo.createObject(s, { type, status: 'Proposed', provenance: 'User Input', title: first.length > 70 ? `${first.slice(0, 70)}…` : first, content: note.content, nodeId: note.nodeId, source: { kind: 'note', label: 'بوم فکر آزاد', at: nowIso() } });
     res.json({ object, ...canvasBundle(s) });
   }));
 

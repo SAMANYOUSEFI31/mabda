@@ -3,6 +3,7 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
+import { nowIso } from '../clock.ts';
 import { RepoError, newId } from '../repo.ts';
 import { clampProposal } from '../../ai/service.ts';
 import { ledgerEntryFromUsage } from '../../../src/core/ledger.ts';
@@ -22,7 +23,7 @@ export function registerThreadsRoutes(ctx: RouteContext): void {
     const ctl = new AbortController();
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const r = await ai.threadTurn(aiUserOf(req), { message, nodeId: node.id, nodeLabel: node.label, contextList: ctx.contextList ?? [], nodeLabels: ctx.nodeLabels, excerpts: ctx.excerpts, history }, ctl.signal);
-    const at = new Date().toISOString();
+    const at = nowIso();
     const blocks = r.blocks.map((b) => clampProposal(b, [node.id], node.id));
     const room = repo.objectSlots(s);
     const created = blocks.filter((b) => b.proposal).slice(0, room).map((b) => repo.createObject(s, {

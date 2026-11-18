@@ -5,6 +5,7 @@
 import type { RouteContext } from './context.ts';
 import type { Workspace } from '../../../src/types/index.ts';
 import { applyDemo } from '../demo.ts';
+import { applyLifeSample } from '../lifeSample/index.ts';
 import { RepoError } from '../repo.ts';
 
 export function registerDemoRoutes(ctx: RouteContext): void {
@@ -12,6 +13,12 @@ export function registerDemoRoutes(ctx: RouteContext): void {
   router.post('/demo/reset', wrap((req, res) => {
     const demo = applyDemo(repo, userOf(req), clock());
     res.json({ workspaces: repo.listWorkspaces(userOf(req)), workspaceId: demo.id });
+  }));
+
+  // the long-use sample «زندگی من»: eight weeks of one person's use, told through these same routes (docs/life-sample.md); replaces that space
+  router.post('/demo/life/reset', wrap(async (req, res) => {
+    const ws = await applyLifeSample(repo, userOf(req), clock());
+    res.json({ workspaces: repo.listWorkspaces(userOf(req)), workspaceId: ws.id });
   }));
 
   router.get('/workspaces', wrap((req, res) => { res.json({ workspaces: repo.listWorkspaces(userOf(req)) }); }));

@@ -4,6 +4,7 @@
  */
 import multer from 'multer';
 import type { RouteContext } from './context.ts';
+import { nowIso } from '../clock.ts';
 import { DocImportService } from '../../docimport/service.ts';
 import { MAX_FILE_BYTES } from '../../files/extract.ts';
 import { AiError } from '../../ai/errors.ts';
@@ -58,7 +59,7 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
     const r = await ai.extract(aiUserOf(req), { kind: plain ? 'note' : 'memory', text, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
-    const at = new Date().toISOString();
+    const at = nowIso();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'paste', label: sourceName, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     repo.addDailyUsage(s, today(), 'judge', 1);
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: plain ? 'وارد کردن متن چسبانده‌شده' : `وارد کردن حافظهٔ ${label}`, mode: 'memory_import', usage: r.usage, id: newId('led') }));
@@ -78,7 +79,7 @@ export function registerMemoryRoutes(ctx: RouteContext): void {
     res.on('close', () => { if (!res.writableEnded) ctl.abort('client'); });
     const nodes = repo.listNodes(s).map((n) => ({ id: n.id, label: n.label }));
     const r = await ai.extract(aiUserOf(req), { kind: 'note', text: del.content, nodeId: defaultNodeId(repo.listNodes(s)), nodes }, ctl.signal);
-    const at = new Date().toISOString();
+    const at = nowIso();
     const created = r.objects.slice(0, repo.objectSlots(s)).map((o) => repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Asset Derived', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'asset', label: del.title, at, ...(o.quote ? { quote: o.quote } : {}) } }));
     repo.addLedger(s, ledgerEntryFromUsage({ workspaceId: s.workspaceId, action: `پیشنهاد دانش از «${del.title}»`, mode: 'asset_extract', usage: r.usage, id: newId('led') }));
     res.json({ created, found: r.objects.length, skipped: r.objects.length - created.length, ledger: repo.listLedger(s) });

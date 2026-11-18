@@ -1,4 +1,5 @@
 /** Shared context of the route files (server/db/routes/*): see docs/architecture.md → «نقشهٔ پوشه‌ها». */
+import { currentDate } from '../clock.ts';
 import { tehranDay } from '../../../src/core/tehranDate.ts';
 import type { ContextSource } from '../../ai/routes.ts';
 import type { AiService } from '../../ai/service.ts';
@@ -24,7 +25,7 @@ export interface DataRouterDeps { repo: Repo; ai: AiService; files?: FileService
 /** Everything the route files share: the dependencies, the request helpers and the helpers that more than one route file uses. Built once per router. */
 export function makeRouteContext(deps: DataRouterDeps) {
   const { repo, ai } = deps;
-  const clock = deps.clock ?? (() => new Date());
+  const clock = deps.clock ?? currentDate;
   const files = deps.files ?? new FileService(repo, (aiUser, req) => ai.extract(aiUser, req));
   const router = express.Router();
   const scopeOf = (req: Request): Scope => {

@@ -1,6 +1,7 @@
 [
  "POST /bootstrap",
  "POST /demo/reset",
+ "POST /demo/life/reset",
  "GET /workspaces",
  "PUT /workspaces/:wid",
  "GET /workspaces/:wid/state",
