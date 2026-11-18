@@ -88,7 +88,7 @@ const TIPS = [
   'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
 const TIPS_THINKING = [
-  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز «افزودن فکر» را بزن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
+  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز «افزودن» را بزن. کارت حقیقت را از «⋯» کنارشان بیاور.',
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی (در بوم فکر: «ساخت بخش از این موارد»)'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
@@ -668,7 +668,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
           {(only || onlyReview || showPending || rowsBy === 'facet') && !lineage && <span role="status" data-testid="filter-active" className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default">نما فیلتر دارد: {[only === 'constraint' ? 'فقط خط قرمزها' : only === 'pending' ? 'فقط پیشنهادها' : '', onlyReview ? 'فقط نیاز به بازبینی' : '', showPending ? 'با آنچه در راه است' : '', rowsBy === 'facet' ? 'ردیف‌ها: بُعد' : ''].filter(Boolean).join(' · ')}</span>}
-          {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Workflow" className="h-auto max-w-full whitespace-normal py-inset-xs text-start" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم، نمای کلی حقیقت چه می‌شود؟</Button>}
+          {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Eye" aria-label="اگر همه را تأیید کنم، نمای کلی حقیقت" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم</Button>}
         </div>
       )}
       {tip !== undefined && !stageEmpty && (
