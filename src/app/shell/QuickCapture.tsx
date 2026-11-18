@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QUICK_CAPTURE_EVENT, defaultSectionFor } from '../../core/quickCapture';
-import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, markAddSwitchable, requestAdd, setPendingAddText } from '../../core/addRequest';
+import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, importableFile, markAddSwitchable, requestAdd, setPendingAddText, setPendingImportFile } from '../../core/addRequest';
 import type { AddRequest } from '../../core/addRequest';
 import { AddKindSwitch } from '../../components/shared/AddKindSwitch';
 import { Button, Dialog, Select } from '../../ui';
@@ -26,12 +26,12 @@ const QuickCaptureDialog = lazyNamed(() => import('../../components/thinking/Qui
 const DRAFT_KEY = 'mabda.quickDraft';
 const readDraft = (): string => { try { return sessionStorage.getItem(DRAFT_KEY) ?? ''; } catch { return ''; } };
 
-export type QuickCaptureProps = Pick<ReadyScope, 'activeTab' | 'data' | 'focusNodeId' | 'handleSaveThought' | 'handleSaveThoughts' | 'handleUploadFile' | 'nodes' | 'openContext' | 'workspaceContexts'>;
+export type QuickCaptureProps = Pick<ReadyScope, 'activeTab' | 'data' | 'focusNodeId' | 'handleSaveThought' | 'handleSaveThoughts' | 'handleUploadFile' | 'nodes' | 'openContext' | 'setActiveTab' | 'setIsMemoryOpen' | 'workspaceContexts'>;
 
 const PREF = 'mabda.quickCapture.continuous';
 const readContinuous = () => { try { return localStorage.getItem(PREF) !== 'off'; } catch { return true; } };
 
-export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, handleSaveThoughts, handleUploadFile, nodes, openContext, workspaceContexts }: QuickCaptureProps) {
+export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, handleSaveThoughts, handleUploadFile, nodes, openContext, setActiveTab, setIsMemoryOpen, workspaceContexts }: QuickCaptureProps) {
   const [open, setOpen] = useState(false);
   // the unsent text survives a refresh (sessionStorage: it goes with the tab, so it never lingers on a shared device)
   const [text, setText] = useState(readDraft);
@@ -96,13 +96,13 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
           switcher={scoped ? undefined : <AddKindSwitch value="thought" text={text} nodeId={node} onLeave={() => { setOpen(false); setText(''); /* the words travel with the switch (carryAddText), also across «فایل» */ }} />}
         />
       </Deferred>
-      {fileOpen && <FileAdd nodeId={fileOpen.nodeId} scoped={fileOpen.scoped} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} />}
+      {fileOpen && <FileAdd nodeId={fileOpen.nodeId} scoped={fileOpen.scoped} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} onImportInstead={(f) => { setFileOpen(null); setPendingImportFile(f); setActiveTab('context'); setIsMemoryOpen(true); }} />}
     </>
   );
 }
 
 /** «فایل» side of «افزودن»: pick a file and where it belongs; extracting knowledge from it stays in «فایل‌ها» */
-function FileAdd({ nodeId, scoped, nodes, onClose, onUpload }: { nodeId: string; scoped: boolean; nodes: QuickCaptureProps['nodes']; onClose: () => void; onUpload: QuickCaptureProps['handleUploadFile'] }) {
+function FileAdd({ nodeId, scoped, nodes, onClose, onUpload, onImportInstead }: { nodeId: string; scoped: boolean; nodes: QuickCaptureProps['nodes']; onClose: () => void; onUpload: QuickCaptureProps['handleUploadFile']; onImportInstead: (f: File) => void }) {
   const [file, setFile] = useState<File | null>(null);
   const pick = useRef<HTMLInputElement>(null);
   const [node, setNode] = useState(nodeId);
@@ -124,6 +124,14 @@ function FileAdd({ nodeId, scoped, nodes, onClose, onUpload }: { nodeId: string;
           <input ref={pick} type="file" className="sr-only" tabIndex={-1} aria-labelledby="file-add-label" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErr(''); }} />
           {err && <span className="body-sm text-text-danger" role="alert">{err}</span>}
         </div>
+        {/* the other door for the same file (decisions.md §۶): keeping it as a source here, or breaking its text into notes there.
+            Said only once a readable file is picked, so the plain «keep this file» path stays one step */}
+        {file && importableFile(file.name) && (
+          <div className="flex flex-wrap items-center gap-inline-xs">
+            <span className="body-sm text-text-subtle">این فایل کنار بخش نگه داشته می‌شود. می‌خواهی متنش به یادداشت‌های جدا تکه شود؟</span>
+            <Button size="sm" variant="ghost" iconStart="FolderInput" onClick={() => onImportInstead(file)}>وارد کردن سند به‌جایش</Button>
+          </div>
+        )}
         <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))} />
       </div>
     </Dialog>
