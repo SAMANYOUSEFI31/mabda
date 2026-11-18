@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ContextObject, PackSelection, SavedPack, TreeNode } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { KIND_LABEL } from '../../core/aiRequest';
 import type { RequestKind } from '../../core/aiRequest';
 import { Alert, Badge, Button, Checkbox, Dialog, EmptyState, Spinner, TextField, Textarea, formatNumber, useToast } from '../../ui';
@@ -99,7 +99,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
             ? <TextField label={`درخواست (${KIND_LABEL[editing.kind]})`} value={editing.template ?? ''} onChange={(e) => setEditing({ ...editing, template: e.target.value })} hint="هر بار با دانش همان روز ساخته می‌شود؛ بخش اول دامنه است." />
             : <Textarea label="دستور کوتاه همراه بسته (اختیاری)" rows={2} value={editing.instruction} onChange={(e) => setEditing({ ...editing, instruction: e.target.value })} placeholder="مثلاً: فقط از همین بسته کار کن و اگر چیزی کم بود بپرس." />}
           <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">برای کدام بخش‌ها؟ (هیچ‌کدام = کل درخت)</legend>
-            <div className="grid grid-cols-1 gap-inline-xs">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${'— '.repeat(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
+            <div className="grid grid-cols-1 gap-inline-xs">{flatten(nodes).map(({ node, depth }) => <Checkbox key={node.id} label={`${treeIndent(depth)}${node.label}`} checked={editing.selection.nodeIds.includes(node.id)} onChange={() => toggle('nodeIds', node.id)} />)}</div>
           </fieldset>
           {facetNames.length > 0 && (
             <fieldset className="flex flex-col gap-stack-xs"><legend className="label-md text-text-default">فقط این بُعدها (هیچ‌کدام = همه)</legend>

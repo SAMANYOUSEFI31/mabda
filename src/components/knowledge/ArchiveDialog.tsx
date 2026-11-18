@@ -8,7 +8,7 @@ import type { ContextObject, GeneratedDeliverable, TreeNode, Workspace } from '.
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Select, Spinner, StatusBadge, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { DangerDialog, PurgeDialog } from '../shared/Removal';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 
 type Section = 'knowledge' | 'removals' | 'outputs' | 'workspaces';
 interface Props {
@@ -41,7 +41,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   const [dropOut, setDropOut] = useState<GeneratedDeliverable | null>(null);
   /** knowledge whose section is gone: where she wants it back (default: the server's nearest living section above) */
   const [dest, setDest] = useState<Record<string, string>>({});
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const load = useCallback(async () => { try { setData(await dataApi.archive(workspaceId)); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); } }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? 'بخش حذف‌شده';

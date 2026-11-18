@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { TreeNode } from '../../types';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { Select } from '../../ui';
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
  */
 export const PlacePicker: React.FC<Props> = ({ nodes, value, onChange, label }) => {
   const [open, setOpen] = useState(false);
-  const options = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  const options = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const name = nodes.find((n) => n.id === value)?.label ?? '';
   if (options.length < 2) return null;
   return (

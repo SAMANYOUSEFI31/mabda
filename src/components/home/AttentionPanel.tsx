@@ -70,7 +70,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
           <h2 className="heading-sm text-text-default">همهٔ کارها</h2>
         </div>
         <p className="body-sm text-text-subtle">
-          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم وارد منبع حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}
+          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}
         </p>
       </div>
 

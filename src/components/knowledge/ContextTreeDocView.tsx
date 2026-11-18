@@ -294,17 +294,17 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   }
   return (
     // no frame around the tree: the knowledge cards are the only raised surface, so «raised = recorded» reads at a glance
-    <section className="flex flex-col gap-stack-xl" aria-label="ساختار منبع حقیقت">
+    <section className="flex flex-col gap-stack-xl" aria-label="ساختار حقیقت">
       <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="heading-sm text-text-default">ساختار منبع حقیقت</h2>
+          <h2 className="heading-sm text-text-default">ساختار حقیقت</h2>
           <p className="body-sm mt-stack-xs text-text-subtle">
             هر بخش شاخه‌ای از درخت است با حقیقت‌هایش. برای خواندن پیوسته، «سند» را بزن.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
           {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
-          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <StateTally layout="inline" label="در این منبع" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} />; })()}
+          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} />; })()}
           {pastToggle}
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>

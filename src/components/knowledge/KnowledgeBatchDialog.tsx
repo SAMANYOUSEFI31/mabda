@@ -8,7 +8,7 @@ import type { ContextType, TreeNode } from '../../types';
 import { parseKnowledgeBatch } from '../../core/knowledgeBatch';
 import { insertSoftBreak, joinToPrevious, splitFromPrevious } from '../../core/batchLines';
 import { TYPE_CHIP_FA } from '../../core/knowledgeGuess';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { Button, Dialog, IconButton, SegmentedControl, Select, Textarea, formatNumber } from '../../ui';
 
 export interface BatchProposal { type: ContextType; title: string; content: string; nodeId: string }
@@ -40,7 +40,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
   };
   useEffect(() => { if (open) { setText(''); setNode(''); setKind({}); setLineNode({}); setDropped(new Set()); } }, [open]);
   const lines = parseKnowledgeBatch(text).filter((l) => !dropped.has(l.id));
-  const sections = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
+  const sections = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   const save = async () => {
     if (!lines.length) return;
     setBusy(true);

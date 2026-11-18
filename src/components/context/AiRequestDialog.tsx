@@ -222,7 +222,10 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           <p id="ai-scope-hint" className="body-sm text-text-subtle">{scopes.length === 0 ? 'هیچ بخشی انتخاب نشده: کل این فضا می‌آید.' : `${formatNumber(scopes.length)} بخش: دانش خودشان، آنچه از بالا به ارث می‌برند و خط قرمزهای «همه‌جا».`}</p>
           <div className="flex max-h-overlay-xs flex-col overflow-y-auto rounded-control border border-border-default p-inset-sm" data-testid="ai-scope-list">
             {tree.map(({ node: n, depth }) => (
-              <Checkbox key={n.id} className={depth ? (depth === 1 ? 'ps-inset-lg' : 'ps-inset-2xl') : undefined} label={n.label} checked={scopes.includes(n.id)} onChange={(e) => toggleScope(n.id, e.target.checked)} />
+              // one equal, clearly visible step per level (it stopped growing after two levels and deep levels looked flat, §۳۵)
+              <div key={n.id} style={depth ? { paddingInlineStart: `calc(var(--space-6) * ${depth})` } : undefined}>
+                <Checkbox label={n.label} checked={scopes.includes(n.id)} onChange={(e) => toggleScope(n.id, e.target.checked)} />
+              </div>
             ))}
           </div>
           {scopes.length > 0 && <div><Button size="sm" variant="ghost" onClick={() => { setScopes([]); setExtraIds([]); }}>کل فضا</Button></div>}

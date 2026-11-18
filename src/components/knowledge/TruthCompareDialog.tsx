@@ -6,7 +6,7 @@
 import { tehranDay } from '../../core/tehranDate';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } from '../../types';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { affectedOutputs, approvalMoments, compareDays, compareTruth, customRange, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
 import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatJalaliDateTime, formatNumber, useToast } from '../../ui';
@@ -129,7 +129,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
               </div>
             )}
           </div>
-          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />
+          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))]} />
         </div>
 
         {mode === 'approval' && !range && <Alert intent="info">هنوز تأییدی ثبت نشده که با آن مقایسه کنیم.</Alert>}
@@ -139,7 +139,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
           <div className="flex flex-col gap-stack-lg" aria-live="polite">
             {result.counts.total === 0 ? (
               <div className="rounded-control border border-border-subtle bg-surface-sunken p-inset-lg" data-testid="compare-empty">
-                <p className="body-md text-text-default">{mode === 'pending' ? 'چیزی در انتظار تأیید نیست؛ منبع همین است که هست.' : 'در این بازه چیزی عوض نشده است.'}</p>
+                <p className="body-md text-text-default">{mode === 'pending' ? 'چیزی در انتظار تأیید نیست؛ حقیقت همین است که هست.' : 'در این بازه چیزی عوض نشده است.'}</p>
               </div>
             ) : (
               <>

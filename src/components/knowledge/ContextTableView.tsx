@@ -125,7 +125,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       {filteredObjects.length > 0 && (
         <div className="hidden md:block">
           <Table
-            caption="دانش این منبع"
+            caption="دانش این فضا"
             rows={rows}
             onRowClick={(row) => onSelectObject(row)}
             columns={[
