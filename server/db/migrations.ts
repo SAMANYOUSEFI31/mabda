@@ -785,6 +785,32 @@ export const MIGRATIONS: Migration[] = [
       db.exec('UPDATE accounts SET consent_version = 1 WHERE consented_at IS NOT NULL');
     },
   },
+  {
+    version: 30,
+    name: 'activity_events: an append-only log of what testers did (page, action, time), never what they wrote',
+    up(db) {
+      // Raw behaviour for the user test (docs/test-data.md): one row per thing that happened, so questions nobody has asked yet
+      // can still be answered later. `space_id`, not `workspace_id`, on purpose: deleting a workspace must not erase the record
+      // that it was made and deleted, and a workspace backup is the person's content, not our log. `user_id` keeps it in
+      // «حذف همهٔ داده‌ها» (the person's right to erase their trace).
+      db.exec(`
+        CREATE TABLE activity_events (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          session_id TEXT,             -- one browser tab's visit (src/services/activity.ts); NULL = unknown
+          space_id TEXT,               -- the workspace it happened in, if any
+          kind TEXT NOT NULL CHECK (kind IN ('action', 'ui')),
+          name TEXT NOT NULL,          -- action: "METHOD /route/:template"; ui: view, dialog_open, heartbeat, …
+          status INTEGER,              -- action: the HTTP answer (2xx done, 4xx refused, 5xx broke)
+          ms INTEGER,                  -- action: server time; dialog_close: how long it was open
+          props TEXT,                  -- small JSON of enum-like values and numbers only (never text the person wrote)
+          created_at TEXT NOT NULL     -- server clock
+        );
+        CREATE INDEX idx_activity_user_at ON activity_events(user_id, created_at);
+        CREATE INDEX idx_activity_at ON activity_events(created_at);
+      `);
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

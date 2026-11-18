@@ -60,7 +60,7 @@ test('Thought backfill preserves notes, stable legacy identity, classification a
   insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
     source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
 
-  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29]);
+  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const thoughts = repo.listThoughts(s, { includeResolved: true });
@@ -84,7 +84,7 @@ test('MCP token shutdown revokes active tokens once and preserves historical tok
     .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
   db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
     .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
-  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29]);
+  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30]);
   const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
   assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
     ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
@@ -100,8 +100,9 @@ test('every table carries user_id and workspace_id', () => {
   const { db } = fresh();
   // usage_events is per install and holds only a feature key, a number and a time: it has no workspace (and no data of one).
   // accounts / auth_sessions are sign-in, not content (their column is account_id on purpose: no content sweep touches them);
-  // client_errors belongs to a person (user_id) but to no workspace.
-  const tables = db.tables().filter((t) => !['schema_migrations', 'kv', 'usage_events', 'accounts', 'auth_sessions', 'client_errors'].includes(t));
+  // client_errors belongs to a person (user_id) but to no workspace. activity_events (the test record) belongs to a person and
+  // names its workspace as space_id on purpose: deleting a workspace keeps the record that it existed (migration 30).
+  const tables = db.tables().filter((t) => !['schema_migrations', 'kv', 'usage_events', 'accounts', 'auth_sessions', 'client_errors', 'activity_events'].includes(t));
   for (const t of tables) {
     const cols = db.columns(t).map((c) => c.name);
     assert.ok(cols.includes('user_id') && cols.includes('workspace_id'), `${t} lacks user_id/workspace_id`);
