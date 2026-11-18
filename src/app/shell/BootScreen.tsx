@@ -23,7 +23,7 @@ export function BootScreen({ boot, currentWorkspaceId, loadError, reload, startu
       <div className="min-h-screen bg-surface-page">
         <div className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl">
           <ErrorState
-            title="منبع باز نشد"
+            title="فضا باز نشد"
             description="به سرور نرسیدیم. چیزی از نوشته‌هایت پاک نشده است؛ اتصال را بررسی کن و دوباره امتحان کن."
             onRetry={() => void retry()}
             retrying={retrying}
@@ -65,7 +65,7 @@ function ShellSkeleton() {
           <Skeleton width="var(--space-40)" /><Skeleton variant="rect" width="var(--space-24)" height="var(--space-10)" />
         </div>
         <main className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1">
-          <PageSkeleton label="در حال آوردن منبع" />
+          <PageSkeleton label="در حال آوردن فضا" />
         </main>
       </div>
       <div aria-hidden="true" className="mb-bottomnav fixed bottom-space-0 start-space-0 end-space-0 h-space-20 md:hidden" />

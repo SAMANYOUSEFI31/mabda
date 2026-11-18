@@ -57,7 +57,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'ai-request', title: 'درخواست برای ابزار دیگر', keywords: ['پرامپت', 'ممیزی', 'سؤال', 'کپی', 'ابزار'] },
   { id: 'go-archive', title: 'رفتن به بایگانی', keywords: ['بایگانی', 'حذف', 'برگرداندن', 'حذف دائمی', 'سطل'] },
   { id: 'go-home', title: 'رفتن به خانه', keywords: ['خانه', 'شروع'] },
-  { id: 'go-context', title: 'رفتن به منبع حقیقت', keywords: ['دانش', 'درخت', 'ساختار'] },
+  { id: 'go-context', title: 'رفتن به حقیقت', keywords: ['منبع حقیقت', 'دانش', 'درخت', 'ساختار'] },
   { id: 'go-doc', title: 'رفتن به سند', keywords: ['خواندن', 'متن'] },
   { id: 'go-canvas', title: 'رفتن به نمای کلی حقیقت', keywords: ['نمای کلی', 'نقشه', 'رابطه', 'وابستگی', 'بوم'] },
   { id: 'go-assets', title: 'رفتن به خروجی‌ها', keywords: ['دارایی', 'خروجی', 'قدیمی'] },

@@ -101,7 +101,7 @@ try {
       await shot('file-orphan');
     });
     await tryStep('archive-dest', async () => {
-      await page.getByRole('button', { name: 'کارهای دیگر منبع حقیقت' }).click(); await page.getByRole('menuitem', { name: 'بایگانی و حذف‌های اخیر' }).click();
+      await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).click(); await page.getByRole('menuitem', { name: 'بایگانی و حذف‌های اخیر' }).click();
       await page.getByTestId('archive-knowledge').waitFor();
       await page.getByLabel('برگردان به').first().waitFor();
       await shot('archive-dest');

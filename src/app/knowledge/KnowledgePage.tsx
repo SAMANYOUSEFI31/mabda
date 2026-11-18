@@ -38,9 +38,9 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             <div className="flex flex-wrap items-center gap-inline-sm max-md:w-full">
               {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
               <Menu
-                label="کارهای دیگر منبع حقیقت"
+                label="کارهای دیگر حقیقت"
                 align="end"
-                trigger={<IconButton icon="Ellipsis" label="کارهای دیگر منبع حقیقت" variant="secondary" />}
+                trigger={<IconButton icon="Ellipsis" label="کارهای دیگر حقیقت" variant="secondary" />}
                 items={[
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => document.getElementById('source-files')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }] : []),
@@ -49,7 +49,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 ]}
               />
               <SegmentedControl
-                label="نمای منبع حقیقت"
+                label="نمای حقیقت"
                 fullWidth="phone"
                 value={contextViewMode}
                 onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas')}

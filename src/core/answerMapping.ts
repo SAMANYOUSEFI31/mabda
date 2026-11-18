@@ -100,7 +100,7 @@ export function mapBlock(block: ParsedBlock, ctx: MapContext): BlockMapping {
       }
       if (head) return { ...base, action: 'duplicate', targetId: head.id, nodeId: head.nodeId, basis: 'explicit', staleRef: stale, reason: `پاسخ می‌گوید این دربارهٔ «${head.title}» است که هنوز در انتظار تأیید است؛ اول آن را تأیید کن.` };
       unknownRef = `«${target.title}» بایگانی یا جایگزین‌شده و بدون نسخهٔ فعلی است.`;
-    } else unknownRef = `شناسهٔ «${meta.ref}» که در پاسخ آمده در منبع نیست.`;
+    } else unknownRef = `شناسهٔ «${meta.ref}» که در پاسخ آمده در این فضا نیست.`;
   }
 
   // ۲) similarity, only among what the pack was built from (or everything when there is no pack)

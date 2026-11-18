@@ -132,7 +132,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.unroute(STATE);
   await page.route(/\/api\/bootstrap/, (r) => r.abort());
   await page.reload();
-  await page.getByText('منبع باز نشد').waitFor({ timeout: 8000 });
+  await page.getByText('فضا باز نشد').waitFor({ timeout: 8000 });
   await page.getByText('جزئیات').click();
   await shot('error-boot');
   await page.unroute(/\/api\/bootstrap/);

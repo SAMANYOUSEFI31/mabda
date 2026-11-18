@@ -65,7 +65,7 @@ try {
     await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('نام بسته').fill('پاسخ به مشتری');
-    for (const label of ['پشتیبانی و پس از فروش', 'اشتراک ماهانه']) await dlg.getByRole('checkbox', { name: new RegExp(`^(— )*${label}$`) }).evaluate((n) => n.click());
+    for (const label of ['پشتیبانی و پس از فروش', 'اشتراک ماهانه']) await dlg.getByRole('checkbox', { name: new RegExp(`^[\u2003– ]*${label}$`) }).evaluate((n) => n.click());
     const prev = dlg.getByTestId('pack-preview');
     await prev.getByTestId('scope-explain').waitFor();
     await page.waitForTimeout(600);
