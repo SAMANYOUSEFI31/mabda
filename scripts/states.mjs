@@ -25,7 +25,7 @@ const start = async () => {
   return base;
 };
 const OUT = process.env.SCREENS_OUT || 'docs/screens';
-const VIEWS = [['home', 'خانه', 'خانه'], ['context', 'منبع', 'منبع حقیقت'], ['thinking', 'فکر', 'فکر'], ['assets', 'خروجی‌ها', 'خروجی‌ها']];
+const VIEWS = [['home', 'خانه', 'خانه'], ['context', 'حقیقت', 'حقیقت'], ['thinking', 'فکر', 'فکر'], ['assets', 'خروجی‌ها', 'خروجی‌ها']];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
 const STATE = /\/api\/workspaces\/[^/]+\/state/;
 
@@ -54,7 +54,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   // full: the sample space
   await views('full');
   // floating layers (overlays.md «جای لایه‌های شناور»): the canvas «گزینه‌ها» popover, and a section's «…» menu opened low on the page
-  await go('منبع', 'منبع حقیقت');
+  await go('حقیقت', 'حقیقت');
   await page.locator('main .mb-seg [role=radio]', { hasText: 'نمای کلی' }).first().click(); await page.waitForTimeout(900);
   await page.locator('main').getByRole('button', { name: /^گزینه‌ها/ }).first().click().catch(() => {}); await shot('canvas-options');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
@@ -65,7 +65,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // a section, away to «فکر», and back: the page is where it was (layout.md «بی‌جابه‌جایی»)
   await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click().catch(() => {}); await page.waitForTimeout(700);
-  await go('فکر', 'فکر'); await page.waitForTimeout(500); await go('منبع', 'منبع حقیقت'); await shot('section-back');
+  await go('فکر', 'فکر'); await page.waitForTimeout(500); await go('حقیقت', 'حقیقت'); await shot('section-back');
   await go('خانه', 'خانه');
 
   // empty: a new space

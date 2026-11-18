@@ -46,7 +46,7 @@ for (const width of SIZES) for (const scheme of SCHEMES) {
   await page.goto(BASE, { waitUntil: 'networkidle' }); await page.waitForTimeout(1200);
   for (const f of await page.evaluate(measure)) out.push(`${width} ${scheme} forced: ${f}`);
   // the current place in a nested section too (the sidebar expands «منبع»)
-  const src = page.locator('nav button:visible, .mb-bottomnav__item:visible').filter({ hasText: 'منبع' }).or(page.locator('nav button[aria-label^="منبع"]:visible')).first();
+  const src = page.locator('nav button:visible, .mb-bottomnav__item:visible').filter({ hasText: 'حقیقت' }).or(page.locator('nav button[aria-label^="حقیقت"]:visible')).first();
   if (await src.count()) { await src.click(); await page.waitForTimeout(900); for (const f of await page.evaluate(measure)) out.push(`${width} ${scheme} forced, «منبع»: ${f}`); }
   // the gallery shows it (gallery.py «state-forced»)
   await page.screenshot({ path: `docs/screens/state-forced-${width}${scheme === 'dark' ? '-dark' : ''}.png` });

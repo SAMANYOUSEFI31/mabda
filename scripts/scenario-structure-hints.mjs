@@ -129,7 +129,7 @@ try {
 
     // ── ج
     step(`[${width}] ج: a new price decision in «بستهٔ هدیه» → "depends on" is suggested, not made`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
     await dlg.getByLabel('چه چیزی درست است؟').fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');

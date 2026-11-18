@@ -70,7 +70,7 @@ for (const [id, d] of Object.entries(DIRECTIONS)) {
       const nav = (label) => page.locator(w < 768 ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${label}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${label}")`).first().click();
       await nav('خانه'); await page.waitForTimeout(500);
       await page.screenshot({ path: `${OUT}/${id}-home-${w}-${scheme}.png` });
-      await nav(w < 768 ? 'منبع' : 'منبع حقیقت'); await page.waitForTimeout(900);
+      await nav('حقیقت'); await page.waitForTimeout(900);
       await page.screenshot({ path: `${OUT}/${id}-source-${w}-${scheme}.png` });
       await page.close();
     }

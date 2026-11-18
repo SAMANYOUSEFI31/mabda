@@ -88,7 +88,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] map, board, history`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
     const layoutTab = async (n) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${n}$`) }).first().evaluate((x) => x.click()); await page.waitForTimeout(450); };
     await page.getByRole('application', { name: /نمای کلی حقیقت/ }).waitFor();
@@ -97,7 +97,7 @@ try {
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click()); await page.waitForTimeout(400);
     await shot('4-free');
     assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => /شاید یک اشتراک هدیه/.test(n.content)), 'the free notes are in the showcase');
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('ساختار');
     await page.getByRole('heading', { name: 'اشتراک ماهانه' }).first().waitFor();
     await page.getByText('بستهٔ اشتراک', { exact: true }).first().waitFor().catch(() => {});
@@ -127,7 +127,7 @@ try {
 
     step(`[${width}] reset twice = the same state`);
     const a = JSON.stringify(await api('/workspaces/ws_demo/state'));
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await account('بازسازی فضای نمونه');
     await page.getByRole('dialog').getByText('بازنشانی فضای نمونه؟').waitFor();
     await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();

@@ -59,7 +59,7 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
   step('Context Coach right after creating a node');
-  await nav('منبع حقیقت');
+  await nav('حقیقت');
   await page.getByRole('button', { name: 'عملیات بخش محتوا و بازاریابی' }).click();
   await page.getByRole('menuitem', { name: 'افزودن زیربخش' }).click();
   await page.getByLabel('نام بخش').fill('کمپین عرضه');

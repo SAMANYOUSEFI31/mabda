@@ -57,7 +57,7 @@ try {
     const nodes = async () => (await api(`/workspaces/${wid}/state`)).nodes;
 
     step(`[${width}] the five nodes are ordinary: no «سیستمی» badge, no lock`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('heading', { name: 'آفر و قیمت‌گذاری' }).first().waitFor();
     assert.equal(await page.getByText('سیستمی', { exact: true }).count(), 0, 'no node is marked as locked');
     await shot('1-structure');
@@ -88,13 +88,13 @@ try {
     assert.ok(st.objects.length >= 2 && st.objects.every((o) => ids.has(o.nodeId)), 'every answer is in a node that exists');
 
     step(`[${width}] the starter «خدمات» brings a node of its own and puts its examples there`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     const ap = await (await fetch(`${BASE}/api/workspaces/${wid}/starters/services/apply`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).json();
     assert.ok(ap.added >= 6 && ap.nodes.filter((n) => n.label === 'بسته‌های خدمت').length === 1, 'one node «بسته‌های خدمت» — the one she built is reused');
     await page.reload({ waitUntil: 'networkidle' });
     await account(`استودیو ${width}`); // a reload opens the first workspace; go back to hers
     await page.getByText(`خانه: استودیو ${width}`).waitFor();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await shot('3-service-start');
 
     step(`[${width}] the only root cannot be deleted; with a second main section the old root goes — its content moves, with a reason on record`);

@@ -47,7 +47,7 @@ try {
     await api('/workspaces/ws_studio/notes', 'POST', { nodeId: 'business', content: `فکرهای امروز\n[سؤال] ${Q}\n[تصمیم باز] ${D}\n[فرض] ${A}\n[ایده] ${I}\nاین [فرض] وسط خط است ${unique}` });
     await page.reload({ waitUntil: 'networkidle' });
     await page.getByText(/^خانه: /).waitFor();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().evaluate((n) => n.click());
     await page.getByTestId('open-thoughts').first().waitFor();
     await shot('1-node');
@@ -67,7 +67,7 @@ try {
 
     step(`[${width}] convert the assumption: the form is PREFILLED, saved as PROPOSED, flagged, with the note line as its quote`);
     const row = space.locator('li').filter({ hasText: A });
-    await row.getByRole('button', { name: 'به دانش ببر' }).click();
+    await row.getByRole('button', { name: 'پیشنهاد به حقیقت' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).first().click();
     await page.waitForTimeout(800);
     const st1 = await api('/workspaces/ws_studio/state');

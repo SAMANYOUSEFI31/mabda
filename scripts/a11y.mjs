@@ -69,8 +69,8 @@ for (const width of SIZES) for (const scheme of SCHEMES) {
     }
     note(`${tag} home keyboard`, [...bad]);
   }
-  for (const [name, where] of [['فکر', 'thinking'], ['منبع', 'context'], ['خروجی', 'assets']]) { await tab(name); await audit(where); }
-  await tab('منبع');
+  for (const [name, where] of [['فکر', 'thinking'], ['حقیقت', 'context'], ['خروجی', 'assets']]) { await tab(name); await audit(where); }
+  await tab('حقیقت');
   const table = page.getByRole('radio', { name: 'جدول' }).or(page.getByRole('tab', { name: 'جدول' })).first();
   if (await table.isVisible().catch(() => false)) { await table.click(); await audit('context table'); }
   await tab('خانه');

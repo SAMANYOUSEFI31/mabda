@@ -84,7 +84,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] a note: a line that ends with «؟» is a question by itself; «علامت بزن» writes the marker for me`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: /^یادداشت‌ها/ }).first().click();
     await page.getByLabel('یادداشت تازه').first().fill('آیا کلاس صبح بگذاریم؟\nاعضا بیشتر شب می‌آیند');
     await page.getByRole('button', { name: 'افزودن یادداشت' }).first().click();

@@ -88,7 +88,7 @@ try {
   await shot('3-imported');
   await page.keyboard.press('Escape');
 
-  await nav('منبع حقیقت');
+  await nav('حقیقت');
   await page.reload({ waitUntil: 'networkidle' });
   await page.getByText(/[2۲] پیشنهاد منتظر تأیید توست/).first().waitFor(); // the home says it in one line…
   await page.locator('button[aria-controls="home-all"]').click(); // …and the inbox itself is under «همه»

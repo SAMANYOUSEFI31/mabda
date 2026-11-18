@@ -49,7 +49,7 @@ try {
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
 
     step(`[${width}] the document: first-level sections are tabs`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('سند');
     const tabs = page.locator('[role=tablist][aria-label="بخش‌های سند"] [role=tab]');
     await tabs.first().waitFor();

@@ -145,7 +145,7 @@ try {
     const objs = (await state()).objects;
     assert.equal(objs.find((o) => o.id === a.id).status, 'Confirmed');
     assert.equal(objs.find((o) => o.id === b.id).status, 'Confirmed');
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('بوم');
     await page.getByTestId('canvas-stage').waitFor();
     await page.waitForTimeout(600);
@@ -166,7 +166,7 @@ try {
     await page.getByRole('button', { name: 'باز کردن' }).first().click();
     const sp = page.getByTestId('thinking-space');
     await sp.waitFor();
-    await sp.locator('li', { hasText: 'قیمت پایهٔ کارگاه' }).getByRole('button', { name: 'به دانش ببر' }).click();
+    await sp.locator('li', { hasText: 'قیمت پایهٔ کارگاه' }).getByRole('button', { name: 'پیشنهاد به حقیقت' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'ذخیره' }).first().click();
     await page.waitForTimeout(700);
     await sp.getByText('منتظر تصمیم تو').first().waitFor();

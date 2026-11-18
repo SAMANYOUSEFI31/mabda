@@ -71,7 +71,7 @@ try {
     await call('PATCH', `/workspaces/${wid}/objects/${obj.id}`, { content: `شمارهٔ کارت من ${CARD} است (ویرایش).`, reason: 'اصلاح' });
     await call('POST', `/workspaces/${wid}/notes`, { nodeId: product.id, content: `یادداشت\nکارت ${CARD} را اشتباهی نوشتم\nخط بی‌خطر` });
     await reselect();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('ساختار');
     await page.getByRole('button', { name: 'شمارهٔ کارت اشتباهی' }).first().click().catch(async () => { await page.getByText('شمارهٔ کارت اشتباهی').first().click(); });
     const detail = page.getByRole('dialog').last();
@@ -109,7 +109,7 @@ try {
     await call('POST', `/workspaces/${wid}/objects`, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'سرفصل جلسه', content: 'سه جلسه', nodeId: sub1.id });
     await call('POST', `/workspaces/${wid}/objects`, { type: 'Constraint', status: 'Confirmed', provenance: 'User Input', title: 'خط قرمز فقط کارگاه', content: 'تخفیف گروهی نداریم', nodeId: ws1.id, reach: 'position' });
     await reselect();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('ساختار');
     await page.getByRole('button', { name: 'عملیات بخش کارگاه' }).click();
     await page.getByRole('menuitem', { name: 'حذف' }).click();

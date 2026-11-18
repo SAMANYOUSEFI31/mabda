@@ -67,7 +67,7 @@ async function scenario(width, tag) {
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.getByText('خانه: استودیو').waitFor();
-  await goTab('منبع حقیقت', 'منبع');
+  await goTab('حقیقت', 'حقیقت');
 
   step('tree: user node under «محتوا», rename a node of the default start, a note and «استخراج»');
   await page.getByRole('button', { name: 'عملیات بخش محتوا و بازاریابی' }).click();
@@ -126,7 +126,7 @@ async function scenario(width, tag) {
   assert.equal(await page.getByText('به‌روز نیست', { exact: true }).count(), 0, 'nothing is stale yet');
 
   step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
-  await goTab('منبع حقیقت', 'منبع');
+  await goTab('حقیقت', 'حقیقت');
   await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
   await page.getByRole('dialog').getByLabel('چه چیزی درست است؟').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('dialog').getByRole('radio', { name: 'همین حالا جایگزین شود' }).click(); // approved knowledge: an edit is a DRAFT unless she replaces it now
