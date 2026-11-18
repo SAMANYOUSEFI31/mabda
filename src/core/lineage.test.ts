@@ -136,3 +136,9 @@ test('connect: an indirect duplicate and an unapproved end only add a note; noth
   assert.deepEqual(connectionUndo({ type: 'depends_on', fromId: 'A', toId: 'Z' }, rs), { type: 'setDependencies', objectId: 'A', targetIds: ['M'] });
   assert.deepEqual(connectionUndo({ type: 'overrides', fromId: 'A', toId: 'B' }, rs), { type: 'removeRelation', relType: 'overrides', fromId: 'A', toId: 'B' });
 });
+
+test('provenance: an example Mabda wrote says so, never «خودت مستقیم نوشته‌ای»', () => {
+  const p = provenanceOf({ objectId: 's', objects: [obj('s', 'root', { provenance: 'Sample' })], relationships: [], notes: [], deliverables: [] });
+  assert.equal(p.links.length, 1);
+  assert.match(p.links[0].text, /مبدأ نوشته، نه تو/);
+});

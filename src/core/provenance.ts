@@ -31,6 +31,8 @@ export function provenanceOf(input: { objectId: string; objects: ContextObject[]
   if (!o) return { links: [], counts: { outputs: 0, replaced: 0 } };
   const links: ProvenanceLink[] = [];
 
+  // Mabda's own example says so first: it is never «خودت مستقیم نوشته‌ای»
+  if (o.provenance === 'Sample') links.push({ kind: 'source', text: 'نمونه‌ای است که مبدأ نوشته، نه تو؛ اگر متنش را بازنویسی کنی، مال خودت می‌شود' });
   const src = o.source;
   if (src?.kind === 'note' && src.noteId) {
     const note = input.notes.find((n) => n.id === src.noteId);

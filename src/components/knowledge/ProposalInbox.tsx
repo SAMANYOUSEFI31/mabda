@@ -115,7 +115,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             {o.source?.reason && <p className="body-sm text-text-subtle">دلیل پیشنهاد: {o.source.reason}</p>}
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
               <span className="body-sm text-text-subtle">
-                منبع: {o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
+                منبع: {o.provenance === 'Sample' ? `${PROVENANCE_LABEL.Sample} · ${formatJalaliDate(o.createdAt)}` : o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
               </span>
               <div className="flex flex-wrap items-center gap-inline-xs">
                 {(() => {

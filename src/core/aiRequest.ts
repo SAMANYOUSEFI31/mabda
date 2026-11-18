@@ -201,7 +201,7 @@ export interface AiRequestResult {
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 /** a user's text must not be able to close our tags */
 const safe = (s: string) => s.replace(/<(\/?)(document|documents|data)\b/gi, '‹$1$2');
-const SOURCE_FA: Record<ContextObject['provenance'], string> = { Onboarding: 'راه‌اندازی اولیه', 'User Input': 'ورودی کاربر', 'AI Suggested': 'پیشنهاد ابزار (تأییدشده)', 'Asset Derived': 'برگرفته از دارایی', Imported: 'واردشده' };
+const SOURCE_FA: Record<ContextObject['provenance'], string> = { Onboarding: 'راه‌اندازی اولیه', 'User Input': 'ورودی کاربر', 'AI Suggested': 'پیشنهاد ابزار (تأییدشده)', 'Asset Derived': 'برگرفته از دارایی', Imported: 'واردشده', Sample: 'نمونهٔ مبدأ' };
 
 /** `fct_1@v2` */
 export const refOf = (o: Pick<ContextObject, 'id' | 'version'>) => `${o.id}@v${o.version}`;

@@ -98,6 +98,7 @@ export const PROVENANCE_LABEL: Record<ContextProvenance, string> = {
   'AI Suggested': 'پیشنهاد هوش مصنوعی',
   'Asset Derived': 'برگرفته از یک خروجی',
   Imported: 'وارد شده از بیرون',
+  Sample: 'نمونهٔ مبدأ',
 };
 
 export const CONTEXT_TYPE_OPTIONS = (Object.keys(TYPE_META) as ContextType[]).map((value) => ({ value, label: TYPE_META[value].label }));
