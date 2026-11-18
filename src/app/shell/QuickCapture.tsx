@@ -11,12 +11,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QUICK_CAPTURE_EVENT, defaultSectionFor } from '../../core/quickCapture';
-import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, requestAdd, setPendingAddText } from '../../core/addRequest';
+import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, markAddSwitchable, requestAdd, setPendingAddText } from '../../core/addRequest';
 import type { AddRequest } from '../../core/addRequest';
 import { AddKindSwitch } from '../../components/shared/AddKindSwitch';
 import { Button, Dialog, Select } from '../../ui';
 import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
+import { flatten } from '../../core/nodeTree';
 import type { ReadyScope } from '../shared';
 import { letterKeysOn } from '../../core/shortcuts';
 
@@ -32,24 +33,27 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
   const [text, setText] = useState('');
   const [node, setNode] = useState('');
   const [continuous, setContinuous] = useState(readContinuous);
+  /** opened from a scoped «+ فکر» (the thinking page): locked to «فکر», no switch */
+  const [scoped, setScoped] = useState(false);
   const here = defaultSectionFor(focusNodeId, nodes);
 
   /** opening picks the place from where she is NOW; an unsent draft is kept (Esc never loses it) */
-  const show = (prefill?: string) => {
+  const show = (prefill?: string, isScoped = false) => {
     setNode(here);
+    setScoped(isScoped);
     if (prefill?.trim()) setText((t) => (t.trim() ? `${t}\n${prefill}` : prefill));
     setOpen(true);
   };
   // «افزودن» (patterns.md §۳): one event for every entry; `N` opens it with the kind that fits this page
-  const [fileOpen, setFileOpen] = useState<{ nodeId: string } | null>(null);
+  const [fileOpen, setFileOpen] = useState<{ nodeId: string; scoped: boolean } | null>(null);
   const tab = useRef(activeTab); tab.current = activeTab;
   useEffect(() => {
     const onAdd = (e: Event) => {
       if (dialogOpen()) return;
       const r = (e as CustomEvent<AddRequest>).detail;
-      if (r.kind === 'thought') { show(r.text); if (r.nodeId) setNode(r.nodeId); }
-      else if (r.kind === 'truth') { setPendingAddText(r.text ?? ''); openContext(null, r.nodeId || undefined); }
-      else setFileOpen({ nodeId: r.nodeId || here || nodes[0]?.id || '' });
+      if (r.kind === 'thought') { show(r.text, !!r.scoped); if (r.nodeId) setNode(r.nodeId); }
+      else if (r.kind === 'truth') { setPendingAddText(r.text ?? ''); markAddSwitchable(!r.scoped); openContext(null, r.nodeId || undefined); }
+      else setFileOpen({ nodeId: r.nodeId || here || nodes[0]?.id || '', scoped: !!r.scoped });
     };
     const onN = (e: KeyboardEvent) => {
       if (e.code !== 'KeyN' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
@@ -84,16 +88,16 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
           text={text} onTextChange={setText} node={node} onNodeChange={setNode}
           continuous={continuous} onContinuousChange={(on) => { setContinuous(on); try { localStorage.setItem(PREF, on ? 'on' : 'off'); } catch { /* a per-viewer convenience only */ } }}
           onSave={handleSaveThought} onSaveMany={handleSaveThoughts}
-          switcher={<AddKindSwitch value="thought" text={text} nodeId={node} onLeave={() => { setOpen(false); setText(''); /* the words travel with the switch (carryAddText), also across «فایل» */ }} />}
+          switcher={scoped ? undefined : <AddKindSwitch value="thought" text={text} nodeId={node} onLeave={() => { setOpen(false); setText(''); /* the words travel with the switch (carryAddText), also across «فایل» */ }} />}
         />
       </Deferred>
-      {fileOpen && <FileAdd nodeId={fileOpen.nodeId} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} />}
+      {fileOpen && <FileAdd nodeId={fileOpen.nodeId} scoped={fileOpen.scoped} nodes={nodes} onClose={() => setFileOpen(null)} onUpload={handleUploadFile} />}
     </>
   );
 }
 
 /** «فایل» side of «افزودن»: pick a file and where it belongs; extracting knowledge from it stays in «فایل‌ها» */
-function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: QuickCaptureProps['nodes']; onClose: () => void; onUpload: QuickCaptureProps['handleUploadFile'] }) {
+function FileAdd({ nodeId, scoped, nodes, onClose, onUpload }: { nodeId: string; scoped: boolean; nodes: QuickCaptureProps['nodes']; onClose: () => void; onUpload: QuickCaptureProps['handleUploadFile'] }) {
   const [file, setFile] = useState<File | null>(null);
   const pick = useRef<HTMLInputElement>(null);
   const [node, setNode] = useState(nodeId);
@@ -101,10 +105,10 @@ function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: 
   const [err, setErr] = useState('');
   const add = async () => { if (!file) { setErr('هنوز فایلی انتخاب نکرده‌ای.'); return; } setBusy(true); try { await onUpload(file, node); onClose(); } finally { setBusy(false); } };
   return (
-    <Dialog open onClose={onClose} size="md" title="افزودن" description={ADD_DESCRIPTION} dirty={!!file} steady
+    <Dialog open onClose={onClose} size="md" title={scoped ? 'افزودن فایل' : 'افزودن'} description={scoped ? 'فایل کنار دانش این بخش نگه داشته می‌شود؛ استخراج دانش از آن در «فایل‌ها» است.' : ADD_DESCRIPTION} dirty={!!file} steady={!scoped}
       footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن فایل</Button></>}>
       <div className="flex flex-col gap-stack-md">
-        <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />
+        {!scoped && <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />}
         {/* the browser's own picker says «No file chosen» in English: a Persian row instead, the real input stays for the keyboard */}
         <div className="flex flex-col gap-stack-xs">
           <span id="file-add-label" className="label-md text-text-default">کدام فایل؟</span>
@@ -115,7 +119,7 @@ function FileAdd({ nodeId, nodes, onClose, onUpload }: { nodeId: string; nodes: 
           <input ref={pick} type="file" className="sr-only" tabIndex={-1} aria-labelledby="file-add-label" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErr(''); }} />
           {err && <span className="body-sm text-text-danger" role="alert">{err}</span>}
         </div>
-        <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
+        <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))} />
       </div>
     </Dialog>
   );

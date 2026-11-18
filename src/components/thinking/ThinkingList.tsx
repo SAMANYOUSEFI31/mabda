@@ -113,7 +113,8 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   align="end"
                   trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>به دانش ببر</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
-                    label: `پیشنهاد: ${type === 'Fact' ? 'واقعیت' : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}`,
+                    // where it lands is said, not assumed: the proposal goes to the thought's section (it is changeable when approving)
+                    label: `پیشنهاد ${type === 'Fact' ? (it.kind === 'assumption' ? 'فرض' : 'واقعیت') : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}${nodes ? ` در «${label(it.nodeId)}»` : ''}`,
                     icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Shield',
                     onSelect: () => void run(it, type),
                   }))}

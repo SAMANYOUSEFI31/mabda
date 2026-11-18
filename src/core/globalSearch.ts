@@ -64,7 +64,7 @@ export const COMMANDS: SearchCommand[] = [
   { id: 'go-workstreams', title: 'ساخت خروجی (جریان‌های کار)', keywords: ['جریان', 'ساخت', 'بساز'] },
   { id: 'metrics', title: 'شاخص‌ها و اعداد', keywords: ['نتیجه', 'عدد', 'نمودار'] },
   { id: 'packs', title: 'بسته‌های دانش', keywords: ['کپی', 'بسته'] },
-  { id: 'import', title: 'وارد کردن متن آماده', keywords: ['چسباندن', 'پاسخ', 'ابزار'] },
+  { id: 'import', title: 'وارد کردن پاسخ ابزار دیگر', keywords: ['چسباندن', 'پاسخ', 'ابزار'] },
 ];
 
 /** extra palette commands from other features («ثبت سریع» …): they register once and show up in the palette next to the built-in ones */

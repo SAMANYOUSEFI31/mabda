@@ -80,7 +80,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   };
   return (
     <Dialog
-      open={open} onClose={onClose} size="md" title="فکر تازه" description="یک فکر یا چند فکر؛ هر خط یک فکر. هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز. جدا از دانش می‌ماند و فقط با انتخاب صریح تو در یک درخواست می‌آید."
+      open={open} onClose={onClose} size="md" title="افزودن فکر" description="یک فکر یا چند فکر؛ هر خط یک فکر. هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز. جدا از دانش می‌ماند و فقط با انتخاب صریح تو در یک درخواست می‌آید."
       footer={<><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (batch && lines.length === 0)} onClick={save}>{batch ? `ذخیرهٔ ${formatNumber(lines.length)} فکر` : 'ذخیره'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {

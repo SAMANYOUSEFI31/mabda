@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
 import React, { useEffect, useMemo, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
@@ -153,7 +154,8 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           </div>
           <div className="flex flex-wrap items-center gap-inline-xs">
             {/* one main action; everything else is under «⋯» */}
-            <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن</Button>
+            {/* a scoped add: it says WHAT it adds (this list is truth) and opens locked to it, on this section (docs/ux/decisions.md §۲) */}
+            <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن حقیقت به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن حقیقت</Button>
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>رفتن به بخش</Button>}
             <Menu
               label={`عملیات بخش ${node.label}`}
@@ -165,6 +167,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
                 ...(managedEnabled ? [{ label: 'گفتگوی متمرکز', icon: 'Pencil' as const, onSelect: () => props.onOpenThread(node.id) }] : []),
                 { divider: true },
+                { label: 'افزودن فایل به این بخش', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: node.id, scoped: true }) },
                 { label: 'افزودن زیربخش', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
                 ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Target' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
                 { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },

@@ -110,7 +110,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       const r = await dataApi.aiRequest(workspaceId, { kind, request, ...requestScope, extraIds, thoughtIds, packId, record: true });
       try { await navigator.clipboard.writeText(r.markdown); } catch { const ta = document.createElement('textarea'); ta.value = r.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
       setResult(r); setCopied(true); track('action.ai-copy');
-      toast.show({ intent: 'success', message: 'کپی شد. در هر ابزاری که می‌خواهی بچسبان؛ جوابش را که گرفتی، «وارد کردن متن آماده» را بزن.' });
+      toast.show({ intent: 'success', message: 'کپی شد. در هر ابزاری که می‌خواهی بچسبان؛ جوابش را که گرفتی، «وارد کردن پاسخ ابزار دیگر» را بزن.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
   /** «همین‌جا جواب بده» uses Mabda's platform AI route; failures stay explicit and retryable. */
@@ -167,7 +167,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="ghost" />}
             items={[
               { label: 'ذخیره به‌عنوان درخواست', icon: 'Package', disabled: !ready || thoughtIds.length > 0, onSelect: () => { void save(); } },
-              { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
+              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
             ]}
           />
           {/* internal AI is frozen (MABDA_MANAGED_AI): «همین‌جا جواب بده» exists only with the flag on; otherwise the copy is the only action */}

@@ -7,10 +7,11 @@ import { ADD_DESCRIPTION } from '../../core/addRequest';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, Thought, TreeNode } from '../../types';
 import { Alert, Button, Checkbox, Dialog, Select, formatNumber } from '../../ui';
-import { composeThought, guessThoughtKind } from '../../core/thoughts';
+import { THINKING_FA, THOUGHT_KINDS, composeThought, guessThoughtKind } from '../../core/thoughts';
+import type { ThinkingKind } from '../../core/thinkingMarkers';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak } from '../../core/batchLines';
-import { flatten } from '../../core/nodeTree';
+import { defaultNodeId, flatten } from '../../core/nodeTree';
 import { findExactDuplicate, findNearDuplicate } from '../../core/quickCapture';
 import { getSlotProvider } from '../../core/suggestionSlots';
 import type { SlotSuggestion } from '../../core/suggestionSlots';
@@ -58,6 +59,11 @@ function useSlot(slot: 'place' | 'duplicate', text: string, node: string, enable
  */
 export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, objects, thoughts, text, onTextChange, node, onNodeChange, continuous, onContinuousChange, onSave, onSaveMany, switcher }) => {
   const [perLine, setPerLine] = useState(false);
+  // the kind is guessed from the text (؟ → سؤال, otherwise ایده) and SHOWN, like the type of new knowledge: she sees it and can change it
+  const [kind, setKind] = useState<ThinkingKind>('idea');
+  const [kindTouched, setKindTouched] = useState(false);
+  useEffect(() => { if (!kindTouched) setKind(guessThoughtKind(text)); }, [text, kindTouched]);
+  useEffect(() => { if (open && !text.trim()) setKindTouched(false); }, [open, text]);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -68,7 +74,11 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   const split = perLine && several;
   const lines = split ? parseThoughtBatch(text) : [];
   const count = split ? lines.length : 1;
-  const sectionOptions = useMemo(() => [{ value: '', label: 'تازه‌ها — جایش را بعداً مشخص می‌کنم' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))], [nodes]);
+  // there is no «no place» in the data: a thought with no section chosen lands in the default section (the first one). The list says so
+  // by name instead of promising a «تازه‌ها» that does not exist (docs/ux/decisions.md §۷)
+  const fallback = defaultNodeId(nodes);
+  const sectionOptions = useMemo(() => flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === fallback ? ' (پیش‌فرض)' : ''}` })), [nodes, fallback]);
+  const shownNode = node || fallback;
   const exact = useMemo(() => (open ? findExactDuplicate(text, thoughts, objects) : null), [open, text, thoughts, objects]);
   const slotDup = useSlot('duplicate', text, node, open && !exact);
   // with the intelligence layer off the slot is silent; the deterministic word-overlap check still gives the soft hint
@@ -95,7 +105,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
         if (!notes.length) return;
         ok = await onSaveMany(notes, lines.length, true);
       } else {
-        const content = composeThought(text, guessThoughtKind(text));
+        const content = composeThought(text, kind);
         if (!content) return;
         ok = await onSave(node, content, true);
       }
@@ -103,6 +113,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
       setSaved((n) => n + count);
       onTextChange('');
       setPerLine(false);
+      setKindTouched(false);
       if (continuous) focusBox(); else onClose();
     } finally { setBusy(false); }
   };
@@ -110,10 +121,10 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   return (
     <Dialog
-      open={open} onClose={onClose} size="md" title="افزودن" steady
+      open={open} onClose={onClose} size="md" title={switcher ? 'افزودن' : 'افزودن فکر'} steady={!!switcher}
       // × / Esc with words in the box asks first; «دور بریز» empties it (the draft lives in the caller, so «ادامه» loses nothing)
       dirty={!!text.trim()} onDiscard={() => { onTextChange(''); setPerLine(false); }}
-      description={ADD_DESCRIPTION}
+      description={switcher ? ADD_DESCRIPTION : 'هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز.'}
       footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {
@@ -127,15 +138,26 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
             label="چه چیزی به ذهنت رسید؟" rows={4} value={text} onValueChange={onTextChange} objects={objects}
             placeholder="هر طولی، هر شکلی؛ مرتب نبودنش مشکلی نیست."
             // a keyboard hint only where there is a keyboard; Persian first so the line reads in order (Latin keys sit at the end of each part)
-            hint={touch ? (split ? 'هر خط یک فکر جدا می‌شود.' : 'متنی که با ؟ تمام شود «سؤال» می‌شود.')
-              : split ? 'فکر بعدی با Enter · خط تازه در همین فکر با Shift+Enter · ثبت با Ctrl/⌘+Enter' : 'ثبت با Ctrl/⌘+Enter · متنی که با ؟ تمام شود «سؤال» می‌شود.'}
+            hint={touch ? (split ? 'هر خط یک فکر جدا می‌شود.' : undefined)
+              : split ? 'فکر بعدی با Enter · خط تازه در همین فکر با Shift+Enter · ثبت با Ctrl/⌘+Enter' : 'ثبت با Ctrl/⌘+Enter'}
           />
           <div className="flex flex-wrap items-center gap-inline-sm">
             {several && <Checkbox label="هر خط یک فکر جدا" checked={perLine} onChange={(e) => setPerLine(e.target.checked)} />}
             {split && <Button type="button" size="sm" variant="ghost" iconStart="CornerDownLeft" onClick={softBreak}>خط تازه در همین فکر</Button>}
           </div>
         </div>
-        <Select label="کجا برود؟ (اختیاری)" value={node} onChange={(e) => onNodeChange(e.target.value)} options={sectionOptions} hint={node ? 'همین بخشی که الان در آن هستی؛ می‌توانی عوضش کنی.' : 'بدون انتخاب، در «تازه‌ها» می‌ماند تا بعداً جایش را بگذاری.'} />
+        {!split && (
+          // the same «انتخاب بزرگ» chips as the type of new knowledge (ContextDetailModal): one pattern for «what kind is this?»
+          <div className="flex flex-col gap-stack-xs">
+            <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
+              {THOUGHT_KINDS.map((k) => (
+                <Button key={k} type="button" size="sm" role="radio" aria-checked={kind === k} variant={kind === k ? 'secondary' : 'ghost'} iconStart={kind === k ? 'Check' : undefined} onClick={() => { setKind(k); setKindTouched(true); }}>{THINKING_FA[k]}</Button>
+              ))}
+            </div>
+            {!kindTouched && text.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
+          </div>
+        )}
+        <Select label="کجا برود؟" value={shownNode} onChange={(e) => onNodeChange(e.target.value)} options={sectionOptions} hint={node ? undefined : `اگر جای دیگری انتخاب نکنی، در «${nodes.find((n) => n.id === fallback)?.label ?? ''}» می‌ماند.`} />
         {placeNode && (
           <div className="flex flex-wrap items-center gap-inline-sm" data-testid="quick-capture-place">
             <span className="body-sm text-text-subtle">جای پیشنهادی: {placeNode.label}</span>

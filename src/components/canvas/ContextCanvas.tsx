@@ -87,7 +87,7 @@ const TIPS = [
   'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
 const TIPS_THINKING = [
-  'فکرها و پیشنهادها در «تازه‌ها» کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «فکر تازه» در فهرست فکرها استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
+  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «افزودن» استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی (در بوم فکر: «ساخت بخش از این موارد»)'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
@@ -883,7 +883,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">
-            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز از «فکر تازه» استفاده کن." />
+            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز از «افزودن» استفاده کن." />
             <Select label="به کدام بخش مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
           </div>
         )}

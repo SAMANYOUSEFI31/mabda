@@ -112,7 +112,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
                 «{preview.duplicate.name}» در {formatJalaliDate(preview.duplicate.importedAt)} با {formatNumber(preview.duplicate.noteCount)} یادداشت وارد شد؛ دوباره نمی‌سازم. برای وارد کردن دوباره، فایل قبلی را از «فایل‌ها» حذف کن.
               </Alert>
             )}
-            <p className="body-sm text-text-subtle">همه به «تازه‌ها» می‌روند. متن کامل سند به‌عنوان منبع در «فایل‌ها» می‌ماند و هر یادداشت جای خودش را در آن نشان می‌دهد؛ پس کنار گذاشتن یا ادغام کردن چیزی را گم نمی‌کند.</p>
+            <p className="body-sm text-text-subtle">همه به بخش پیش‌فرض (اولین بخش درخت) می‌روند. متن کامل سند به‌عنوان منبع در «فایل‌ها» می‌ماند و هر یادداشت جای خودش را در آن نشان می‌دهد؛ پس کنار گذاشتن یا ادغام کردن چیزی را گم نمی‌کند.</p>
 
             {sectionNames.length > 0 && (
               <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
@@ -169,7 +169,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
           <div className="flex flex-col gap-stack-sm">
             {done.duplicate
               ? <Alert intent="info" title="این سند از قبل وارد شده بود">چیز تازه‌ای ساخته نشد؛ {formatNumber(done.notes.length)} یادداشت قبلی سر جایش است.</Alert>
-              : <Alert intent="success" title={`${formatNumber(done.notes.length)} یادداشت ساخته شد`}>{withSections && sectionNames.length ? 'در بخش‌های پیشنهادی و زیر بخش پیش‌فرض. ' : 'در «تازه‌ها»، بخش پیش‌فرض. '}متن کامل سند در «فایل‌ها» نگه داشته شد.</Alert>}
+              : <Alert intent="success" title={`${formatNumber(done.notes.length)} یادداشت ساخته شد`}>{withSections && sectionNames.length ? 'در بخش‌های پیشنهادی و زیر بخش پیش‌فرض. ' : 'در بخش پیش‌فرض (اولین بخش درخت). '}متن کامل سند در «فایل‌ها» نگه داشته شد.</Alert>}
             <p className="body-sm text-text-subtle">جملهٔ پرسشی هر یادداشت خودش «سؤال» می‌شود؛ بقیه فقط یادداشت‌اند تا خودت مرتب‌شان کنی.</p>
           </div>
         )}
