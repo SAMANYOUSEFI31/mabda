@@ -16,6 +16,7 @@ import { WorkstreamsPage } from './outputs/WorkstreamsPage';
 import { useEffect } from 'react';
 import { ErrorState } from '../ui';
 import { flashScrollbar } from '../ui/scrollbars';
+import { logUi, setActivitySpace } from '../services/activity';
 import type { AppScope, ReadyScope } from './shared';
 
 /**
@@ -27,6 +28,14 @@ export function AppView(p: AppScope) {
   // a page opened: its bar shows for a moment, so a long page says so (layout.md «اسکرول و نوار اسکرول», goal 2)
   const shown = p.data ? `${p.activeTab}:${p.currentWorkspace?.id}` : '';
   useEffect(() => { if (shown) flashScrollbar(); }, [shown]);
+  // the user-test record: which screen, in which space, with a section in focus or not (src/services/activity.ts)
+  const firstRun = p.boot.status === 'ready' && p.liveWorkspaces.length === 0;
+  const screen = firstRun ? 'first-run' : p.data ? `${p.activeTab}|${p.currentWorkspace?.id ?? ''}|${p.focusNodeId ? 1 : 0}` : '';
+  useEffect(() => {
+    if (!screen) return;
+    setActivitySpace(firstRun ? undefined : p.currentWorkspace?.id);
+    logUi('view', { tab: firstRun ? 'first-run' : p.activeTab, section: !!p.focusNodeId, sample: !!p.currentWorkspace?.isDemo });
+  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
   if (p.boot.status === 'ready' && p.liveWorkspaces.length === 0) return <FirstRunScreen {...p} />;
   if (p.boot.status !== 'ready' || !p.currentWorkspace || !p.data) return <BootScreen {...p} />;
   const ready: ReadyScope = { ...p, data: p.data, currentWorkspace: p.currentWorkspace };

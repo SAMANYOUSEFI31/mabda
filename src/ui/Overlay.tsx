@@ -106,6 +106,15 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     };
   }, [open, inline]);
 
+  // the user-test record (src/services/activity.ts) hears which dialog opened and for how long; only a plain-text title is sent
+  useEffect(() => {
+    if (!open || inline || typeof title !== 'string') return;
+    const at = Date.now();
+    const say = (o: boolean) => { try { window.dispatchEvent(new CustomEvent('mabda:dialog', { detail: { open: o, title, ms: Date.now() - at } })); } catch { /* optional */ } };
+    say(true);
+    return () => say(false);
+  }, [open, inline, title]);
+
   // the footer's height, for a toast that has to sit just above it on a phone (components.css, «--dialog-foot»)
   useEffect(() => {
     if (!open || inline || typeof ResizeObserver === 'undefined') return;
