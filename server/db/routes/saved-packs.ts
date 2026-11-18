@@ -3,6 +3,7 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
+import { nowIso } from '../clock.ts';
 import type { SavedPack } from '../../../src/types/index.ts';
 import type { Scope } from '../repo.ts';
 import { RepoError } from '../repo.ts';
@@ -27,7 +28,7 @@ export function registerSavedPacksRoutes(ctx: RouteContext): void {
   router.post('/workspaces/:wid/saved-packs/preview', wrap((req, res) => {
     const s = scopeOf(req);
     const b = body(req);
-    const t = new Date().toISOString();
+    const t = nowIso();
     const draft = repo.draftSavedPack(s, { selection: b.selection as never, instruction: typeof b.instruction === 'string' ? b.instruction : '', kind: b.kind, template: b.template });
     const r = renderSavedPack(repo, s, { ...draft, id: 'preview', workspaceId: s.workspaceId, name: 'preview', createdAt: t, updatedAt: t }, clock());
     res.json({ markdown: r.markdown, tokens: r.tokens, chars: r.chars, counts: r.counts, explain: r.explain });

@@ -2,6 +2,7 @@
 import { isIsoDate } from '../../../src/core/metrics.ts';
 import type { ContextChangeActor, ContextChangeKind, ContextObject, ContextProvenance, ContextStatus, ContextType, DecisionRecord, FileStatus, Metric, MetricExpectation, Note, ObjectDraft, ObjectSource, RedlineExample, StoredFile, Thought, ThoughtKind, TreeNode } from '../../../src/types/index.ts';
 import crypto from 'node:crypto';
+import { nowIso } from '../clock.ts';
 
 export interface Scope { userId: string; workspaceId: string }
 
@@ -22,7 +23,7 @@ export function claimId(db: { prepare(sql: string): { get(...a: unknown[]): unkn
 }
 
 export const newId = (prefix: string) => `${prefix}_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
-export const now = () => new Date().toISOString();
+export const now = () => nowIso();
 
 /** who did it and why — optional on every mutating call; the actor is otherwise inferred from the object's `source` (none = the user) */
 export interface ChangeMeta { actor?: ContextChangeActor; label?: string; reason?: string; kind?: ContextChangeKind }

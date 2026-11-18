@@ -1,3 +1,4 @@
+import { nowIso } from '../db/clock.ts';
 import type { ContextObject, StoredFile } from '../../src/types/index.ts';
 import { chunkText, bm25Rank, selectWithinBudget } from '../../src/core/retrieval.ts';
 import { estimateTokens } from '../../src/core/tokens.ts';
@@ -95,7 +96,7 @@ export class FileService {
     const created: ContextObject[] = this.repo.db.transaction(() => {
       this.repo.saveChunks(s, fileId, chunkText(fileId, text));
       // the object limit: keep what fits (never fail the whole file over it)
-      const objs = res.objects.slice(0, this.repo.objectSlots(s)).map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'file', label: file.name, at: new Date().toISOString() } }));
+      const objs = res.objects.slice(0, this.repo.objectSlots(s)).map((o) => this.repo.createObject(s, { type: o.type, status: 'Proposed', provenance: 'Imported', title: o.title, content: o.content, nodeId: o.nodeId, source: { kind: 'file', label: file.name, at: nowIso() } }));
       const summary = (res.summary ?? 'خلاصه‌ای تولید نشد.') + (res.truncated ? '\n\n(خلاصه و پیشنهادها فقط از بخش ابتدایی فایل ساخته شد؛ کل فایل برای بازیابی قطعه‌بندی شده است.)' : '');
       this.repo.setFileStatus(s, fileId, 'ready', { summary });
       if (!this.repo.isDemo(s)) this.repo.addFileUsage(s, period, file.tokens);
