@@ -28,7 +28,9 @@ function Shape({ state }: { state: NuqtaState }) {
     case 'stale': return <><path d="M6 .6 10.5 5.1h-9z" fill="currentColor" /><path d="M1.5 6.9h9L6 11.4z" fill="currentColor" /></>;
     case 'conflict': return <><path d="M4.2 2.2 8 6 4.2 9.8.4 6z" fill="currentColor" /><path d="M7.8 2.9 10.9 6 7.8 9.1 4.7 6z" {...line} /></>;
     case 'past': return <><path d={OUTLINE} {...line} /><path d="M3.9 6h4.2" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" /></>;
-    case 'gap': return <path d={OUTLINE} {...line} strokeDasharray="2.2 1.6" />;
+    // the thought's outline, interrupted: eight equal strokes locked to the geometry (pathLength 16, one stroke centred on each corner
+    // and each side's middle), so it is symmetric at every size; a free «2.2 1.6» dash fell on the corners unevenly (decisions.md §۲۳)
+    case 'gap': return <path d={OUTLINE} {...line} pathLength={16} strokeDasharray="1 1" strokeDashoffset={0.5} />;
   }
 }
 
