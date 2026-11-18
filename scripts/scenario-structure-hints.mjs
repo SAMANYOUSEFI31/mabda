@@ -95,7 +95,7 @@ try {
     assert.match(sentence, /حاکم است/);
     assert.equal(await page.getByTestId('inherit-notices').locator('[role=alert]').count(), 0, 'not an alert');
     await shot('1-notice');
-    await page.getByTestId('inherit-notices').getByRole('button', { name: 'ببین کجاها' }).click();
+    await page.getByTestId('inherit-notices').getByRole('button', { name: 'نشان دادن جاها' }).click();
     const where = (await page.getByTestId('inherit-notices').innerText()).replace(/\s+/g, ' ');
     assert.match(where, /بستهٔ هدیه/); assert.match(where, /اشتراک سالانه/);
     assert.match(where, /هم‌موضوع: «قیمت بستهٔ هدیه»/, 'the same-topic knowledge of the sub-section is named');
@@ -119,11 +119,11 @@ try {
     await mk(sub, 'قیمت اشتراک تازه', 'Proposed');
     await enter();
     await nav('فکر', 'فکر');
-    await page.getByRole('region', { name: 'منتظر تصمیم تو' }).or(page.locator('section[aria-label="منتظر تصمیم تو"]')).first().waitFor();
-    const titles = await page.locator('section[aria-label="منتظر تصمیم تو"] #proposal-inbox li > div:first-child .label-md').allInnerTexts();
+    await page.getByRole('region', { name: 'منتظر تو' }).or(page.locator('section[aria-label="منتظر تو"]')).first().waitFor();
+    const titles = await page.locator('section[aria-label="منتظر تو"] #proposal-inbox li > div:first-child .label-md').allInnerTexts();
     console.log('   order:', titles.join(' | '));
     assert.deepEqual(titles, ['قیمت اشتراک تازه', 'قیمت بستهٔ هدیه تازه'], 'the upper section first even though the lower was added first');
-    const sec = (await page.locator('section[aria-label="منتظر تصمیم تو"]').innerText()).replace(/\s+/g, ' ');
+    const sec = (await page.locator('section[aria-label="منتظر تو"]').innerText()).replace(/\s+/g, ' ');
     assert.match(sec, /زیربخش‌ها از این ارث می‌برند؛ اول این را روشن کن/);
     await shot('3-order');
 

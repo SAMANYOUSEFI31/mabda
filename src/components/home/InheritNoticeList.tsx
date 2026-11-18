@@ -38,7 +38,7 @@ export const InheritNoticeList: React.FC<Props> = ({ notices, onSeen, onOpenSect
                 <span>{inheritSentence(n, formatNumber)}{n.everywhere ? ' (خط قرمز است و جاهای دیگر هم اثر دارد.)' : ''}</span>
               </span>
               <span className="flex items-center gap-inline-xs">
-                <Button size="sm" variant="ghost" aria-expanded={open === n.key} onClick={() => setOpen(open === n.key ? null : n.key)}>{open === n.key ? 'ببند' : 'ببین کجاها'}</Button>
+                <Button size="sm" variant="ghost" aria-expanded={open === n.key} onClick={() => setOpen(open === n.key ? null : n.key)}>{open === n.key ? 'بستن' : 'نشان دادن جاها'}</Button>
                 <Button size="sm" variant="secondary" onClick={() => onSeen(n.key)}>دیدم</Button>
               </span>
             </div>
