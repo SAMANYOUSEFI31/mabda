@@ -298,11 +298,18 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     onClose();
   };
 
+  // the verb names what is being added: an assumption is not «truth» yet (decisions.md §۱)
+  const addLabel = type === 'Fact' && assumption ? 'افزودن فرض' : 'افزودن حقیقت';
   const title_ = isSupersedingMode
     ? 'جایگزین کردن — قبلی در تاریخچه می‌ماند'
     : isEditing
     ? 'ویرایش دانش'
-    : switchable ? 'افزودن' : 'افزودن حقیقت';
+    : switchable ? 'افزودن' : addLabel;
+  // a waiting draft and nothing else touched: the one decision of this view is the draft, so the main button IS «تأیید پیش‌نویس»;
+  // a «ذخیرهٔ تغییرات» there read as «confirmed» while it confirmed nothing (decisions.md §۱۲). Any other change brings «ذخیره» back.
+  const approveMode = isEditing && !!object?.draft && !onDraft && !textChanged && !moreOpen && !isSupersedingMode && !!onApproveDraft
+    && type === object.type && nodeId === object.nodeId && assumption === (object.assumption === true);
+  const saveLabel = confirmedEdit && textChanged ? (applyNow ? 'ذخیره و جایگزین کن' : 'ذخیرهٔ پیش‌نویس') : 'ذخیرهٔ تغییرات';
 
   return (
     <Dialog
@@ -331,9 +338,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               />
             )}
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
-            <Button variant="primary" type="submit" form="context-detail-form">
-              {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? 'ذخیرهٔ تغییرات' : object ? 'افزودن' : 'افزودن حقیقت'}
-            </Button>
+            {approveMode
+              ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { await onApproveDraft!(object!.id); onClose(); }}>تأیید و جایگزین کن</Button>
+              : <Button variant="primary" type="submit" form="context-detail-form">
+                  {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? saveLabel : addLabel}
+                </Button>}
           </>
         )
       }
@@ -370,7 +379,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea
           id="context-content"
-          label="چه چیزی درست است؟"
+          label={type === 'Fact' && assumption ? 'چه چیزی را فرض می‌کنی؟' : 'چه چیزی درست است؟'}
           required
           error={contentError || undefined}
           rows={isEditing ? 5 : 6}
@@ -401,9 +410,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             items={flatten(nodes).map(({ node, depth }) => ({ label: `${'— '.repeat(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => { setNodeId(node.id); setNodePicked(true); } }))}
           />
         </div>
-        {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
         {type === 'Fact' && assumption && <p className="body-sm text-text-subtle">فرض یعنی هنوز ثابت نشده: هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید و جدا، زیر «فرض‌های فعال» می‌آید. تاریخ بازبینی‌اش در «جزئیات بیشتر» است.</p>}
+        {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
         {linkSuggestions.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
             {linkSuggestions.map((sg) => (
@@ -445,7 +454,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               <p className="body-sm text-text-default">{onDraft ? 'بالا پیش‌نویس را ویرایش می‌کنی. تا تأیید نشود، خروجی‌ها و بسته‌ها متنِ تأییدشده را می‌بینند.' : 'بالا متن تأییدشده است، همان که خروجی‌ها و بسته‌ها می‌بینند. پیش‌نویس در برابرش:'}</p>
               <BeforeAfter before={object.content} after={object.draft.content} />
               <div className="flex flex-wrap gap-inline-sm">
-                {onApproveDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>تأیید و جایگزین کن</Button>}
+                {onApproveDraft && !approveMode && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>تأیید و جایگزین کن</Button>}
                 {!onDraft && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={continueDraft}>ادامهٔ ویرایش پیش‌نویس</Button>}
                 {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد کن</Button>}
               </div>

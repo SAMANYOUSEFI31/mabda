@@ -488,6 +488,11 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-switch__input:checked+.mb-switch__track .mb-switch__thumb{background:HighlightText}
   .mb-progress__track{border:var(--border-width-thin) solid ButtonText}
   .mb-progress__bar{forced-color-adjust:none;background:Highlight}
+  /* the one primary of a view keeps its rank without colour: filled with the text colour (inverted), like a default button,
+     so it never reads as one more framed button (decisions.md, follow-up of #75) */
+  .mb-btn--primary:not(:disabled){forced-color-adjust:none;background:ButtonText;color:ButtonFace;border-color:ButtonText}
+  .mb-btn--primary:not(:disabled) *{color:ButtonFace}
+  @media (hover:hover){.mb-btn--primary:hover:not(:disabled){background:Highlight;color:HighlightText;border-color:Highlight}.mb-btn--primary:hover:not(:disabled) *{color:HighlightText}}
   /* «where am I» without colour: the current place in the sidebar, the rail and the phone bar */
   :is(.mb-bottomnav__item,button,a)[aria-current]:not([aria-current=false]),
   .mb-tab:is([aria-selected=true],[aria-checked=true]),.mb-tag--toggle.is-selected,.mb-li.is-selected .mb-li__row,.mb-card.is-selected,.mb-iconbtn.is-selected{outline:var(--border-width-thick) solid Highlight;outline-offset:calc(var(--border-width-thick) * -1)}
