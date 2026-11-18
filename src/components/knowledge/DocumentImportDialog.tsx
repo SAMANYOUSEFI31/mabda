@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { pendingImportFile, setPendingImportFile } from '../../core/addRequest';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import type { DocumentImportResult, DocumentPreviewInfo } from '../../services/dataApi';
 import { mergeWithNext, splitAt } from '../../core/docImportEdit';
@@ -33,7 +34,8 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(pendingImportFile);
+  useEffect(() => { setPendingImportFile(null); }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewInfo | null>(null);

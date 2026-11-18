@@ -42,9 +42,11 @@ export function DateField({ label, value, onValueChange, hint, error, min, max, 
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('pointerdown', onDown);
-    return () => document.removeEventListener('pointerdown', onDown);
+    // closes on the outside CLICK, not on pointerdown: the month sits in the flow, so closing it at pointerdown moved whatever was
+    // below it (the second date field's calendar button on a phone) out from under the finger, and that click opened nothing
+    const onOut = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('click', onOut);
+    return () => document.removeEventListener('click', onOut);
   }, [open]);
   useEffect(() => { if (open) requestAnimationFrame(() => grid.current?.querySelector<HTMLButtonElement>('[tabindex="0"]')?.focus({ preventScroll: true })); }, [open, cursor]);
   // in the flow: bring the whole month into view once, when it opens

@@ -229,8 +229,9 @@ export function presetMoments(now: Date, milestones: string[]): { weekAgo: strin
   return { weekAgo, ...(lastApproval ? { lastApproval } : {}), startOfMonth };
 }
 
-/** «از روز X تا روز Y» as two moments: the END of each Tehran day (a picked day includes all of that day, nothing of the next) */
-export const customRange = (fromDay: string, toDay: string): { a: string; b: string } => ({ a: tehranDayEnd(fromDay), b: tehranDayEnd(toDay) });
+/** «از روز X تا روز Y» as two moments: the START of X and the END of Y in Tehran, so both picked days are inside the range
+ * (it used to be the end of X, so the changes of X itself were left out and the approval chips set X one day early to make up for it) */
+export const customRange = (fromDay: string, toDay: string): { a: string; b: string } => ({ a: tehranDayStart(fromDay), b: tehranDayEnd(toDay) });
 /** the days the date fields offer: today (the latest allowed) and the first day of this Jalali month */
 export const compareDays = (now: Date): { today: string; monthStart: string; weekAgo: string } => ({ today: tehranDay(now), monthStart: jalaliMonthStart(now), weekAgo: addDays(tehranDay(now), -7) });
 

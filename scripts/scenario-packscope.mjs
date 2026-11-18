@@ -124,7 +124,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] «درخواست برای ابزار دیگر» has the same switch and says where each thing came from`);
-    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first().click();
     const rq = page.getByRole('dialog');
     await rq.getByLabel('درباره کجا؟').selectOption({ label: '— اشتراک ماهانه' }).catch(async () => { await rq.getByLabel('درباره کجا؟').selectOption({ index: 1 }); });
     await rq.getByLabel('درخواستت را در یک خط بنویس').fill('به مشتری ناراضی از ارسال چه بگویم؟');

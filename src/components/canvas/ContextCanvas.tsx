@@ -17,6 +17,7 @@ import { clusterItems, edgeBudget, lodOf } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
 import { flatten } from '../../core/nodeTree';
+import { requestAdd } from '../../core/addRequest';
 import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
 import { CanvasItemCard, CanvasNoteCard, FACET_TINT } from './CanvasItemCard';
@@ -87,7 +88,7 @@ const TIPS = [
   'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
 const TIPS_THINKING = [
-  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز از «افزودن» استفاده کن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
+  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز «افزودن فکر» را بزن. کارت حقیقت را با «بگذار در بوم فکر» کنارشان بیاور.',
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی (در بوم فکر: «ساخت بخش از این موارد»)'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
@@ -593,10 +594,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
-      {mode === 'thinking' && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => setNewNote({ content: '', nodeId: '', x: 0, y: 0 })}>یادداشت آزاد</Button>}
+      {/* the canvas's own add, in its own kind and in BOTH normal and full screen (decisions.md §۱۱): full screen covers the top bar's
+          «افزودن», and a free note (double-click, or «⋯») is canvas-only scratch, so it is not the first thing to offer */}
+      <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => requestAdd({ kind: mode === 'thinking' ? 'thought' : 'truth', scoped: true })}>{mode === 'thinking' ? 'افزودن فکر' : 'افزودن حقیقت'}</Button>
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
         {!sheet && <IconButton icon="PanelLeft" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
+          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           ...(mode === 'thinking' ? [{ label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
           ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, onSelect: () => zoomAt(1 / 1.25) }, { divider: true } as const] : []),
@@ -641,7 +645,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const rootClass = fullscreen ? 'fixed top-space-0 bottom-space-0 start-space-0 end-space-0 z-dialog flex flex-col gap-stack-sm bg-surface-page p-inset-md' : 'flex flex-col gap-stack-md rounded-container border border-border-default bg-surface-raised p-inset-lg';
   const viewLabel = mode === 'truth' ? 'نمای کلی حقیقت' : 'بوم فکر';
   const body = (
-    <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} aria-label={viewLabel} data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
+    <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} data-add-host={fullscreen ? '' : undefined} aria-label={viewLabel} data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
       {!sheet && toolbar}
       {lineage && (
         <div className="flex flex-wrap items-center gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="lineage-bar" role="status">
@@ -883,7 +887,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">
-            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز از «افزودن» استفاده کن." />
+            <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز «افزودن فکر» را بزن." />
             <Select label="به کدام بخش مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
           </div>
         )}

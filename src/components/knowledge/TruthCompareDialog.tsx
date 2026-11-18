@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { addDays, tehranDay } from '../../core/tehranDate';
+import { tehranDay } from '../../core/tehranDate';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } from '../../types';
 import { flatten } from '../../core/nodeTree';
 import { affectedOutputs, approvalMoments, compareDays, compareTruth, customRange, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
-import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
+import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatJalaliDateTime, formatNumber, useToast } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
 export type CompareMode = 'week' | 'approval' | 'pending' | 'custom';
@@ -40,13 +40,12 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
   const [mode, setMode] = useState<CompareMode>(p.mode ?? 'week');
   const [scope, setScope] = useState(p.scopeNodeId ?? '');
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
-  const [more, setMore] = useState(false);
   /** «اگر تأیید کنم»: the waiting items the person leaves OUT of this what-if */
   const [skip, setSkip] = useState<Set<string>>(new Set());
   /** a section the person opened (true) or folded (false); the first three are open until then */
   const [fold, setFold] = useState<Record<string, boolean>>({});
   const [shown, setShown] = useState<Record<string, number>>({});
-  useEffect(() => { if (p.open) { setMode(p.mode ?? 'week'); setScope(p.scopeNodeId ?? ''); setFold({}); setShown({}); setSkip(new Set()); setMore(false); } }, [p.open, p.mode, p.scopeNodeId]);
+  useEffect(() => { if (p.open) { setMode(p.mode ?? 'week'); setScope(p.scopeNodeId ?? ''); setFold({}); setShown({}); setSkip(new Set()); setFrom(''); setTo(''); } }, [p.open, p.mode, p.scopeNodeId]);
 
   const now = useMemo(() => new Date(), [p.open]); // eslint-disable-line react-hooks/exhaustive-deps
   const moments = useMemo(() => approvalMoments(p.changes, 8, p.objects), [p.changes, p.objects]);
@@ -85,6 +84,20 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
   };
   const open = (d: TruthDelta) => { const o = byId.get(d.id); if (o) { p.onClose(); p.onOpenObject(o); } };
   const days = compareDays(now);
+  /** one chip per day (approvals are one per minute, so a busy day used to show twice) */
+  const momentDays = useMemo(() => { const seen = new Set<string>(); return moments.filter((m) => { const d = tehranDay(m); if (seen.has(d)) return false; seen.add(d); return true; }).slice(0, 3); }, [moments]);
+  /** «دلخواه» starts from the days of what she was looking at, so changing one end does not start from nothing */
+  const choose = (m: CompareMode) => {
+    if (m === 'custom' && !from && !to) {
+      setFrom(mode === 'approval' && preset.lastApproval ? tehranDay(preset.lastApproval) : days.weekAgo);
+      setTo(days.today);
+    }
+    setMode(m);
+  };
+  const rangeSentence = mode === 'week' ? `از ${formatJalaliDate(preset.weekAgo)} تا امروز، ${formatJalaliDate(now)}`
+    : mode === 'approval' ? (preset.lastApproval ? `از پیش از آخرین تأیید (${formatJalaliDateTime(moments[0])}) تا امروز` : '')
+    : mode === 'pending' ? 'امروز، در برابر وقتی همهٔ منتظرها تأیید شوند'
+    : from && to ? `از آغاز ${formatJalaliDate(from)} تا پایان ${formatJalaliDate(to)}` : '';
 
   return (
     <Dialog
@@ -93,25 +106,27 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
       footer={<><Button variant="ghost" onClick={p.onClose}>بستن</Button><Button variant="secondary" iconStart="Copy" disabled={!counted || counted.counts.total === 0} onClick={() => void copy()}>کپی Markdown</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
-        <div className="flex flex-col gap-stack-sm">
-          <SegmentedControl label="کدام دو لحظه؟" value={mode === 'custom' ? '' : mode} onChange={(v) => setMode(v as CompareMode)} items={[{ id: 'week', label: 'هفتهٔ پیش' }, { id: 'approval', label: 'آخرین تأیید' }, { id: 'pending', label: 'اگر تأیید کنم' }]} />
-          <p className="caption text-text-subtle">{range ? `از ${mode === 'pending' ? 'امروز' : mode === 'week' ? 'هفتهٔ پیش' : mode === 'approval' ? 'پیش از آخرین تأیید' : 'روز اول'} تا ${mode === 'pending' ? 'اگر همهٔ منتظرها تأیید شوند' : 'امروز'}` : ''}</p>
-          <div className="flex flex-wrap items-end gap-inline-md">
-            <div className="min-w-space-0 flex-1"><Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'کل منبع' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} /></div>
-            <Button size="sm" variant="ghost" iconStart={more ? 'ChevronUp' : 'ChevronDown'} aria-expanded={more} onClick={() => setMore((v) => !v)}>تاریخ دلخواه</Button>
+        {/* two questions, two groups (decisions.md «مقایسهٔ منبع»): WHEN (one choice; the date fields exist only for «دلخواه», so a
+            preset never sits next to empty or stale dates) and WHERE. The sentence under the choice always names the real days. */}
+        <div className="flex flex-col gap-stack-md">
+          <div className="flex flex-col gap-stack-sm">
+            <SegmentedControl label="کدام دو لحظه؟" className="grid w-full grid-cols-2 md:inline-flex md:w-auto" value={mode} onChange={(v) => choose(v as CompareMode)} items={[{ id: 'week', label: 'هفتهٔ پیش' }, { id: 'approval', label: 'آخرین تأیید' }, { id: 'pending', label: 'اگر تأیید کنم' }, { id: 'custom', label: 'دلخواه' }]} />
+            <p className="caption text-text-subtle" data-testid="compare-range">{rangeSentence}</p>
+            {mode === 'custom' && (
+              <div className="flex flex-col gap-stack-sm rounded-control border border-border-subtle p-inset-md" data-testid="custom-dates">
+                <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
+                  <DateField label="از روز" hint="خود این روز هم حساب است." value={from} max={to || days.today} onValueChange={setFrom} />
+                  <DateField label="تا روز" value={to} max={days.today} min={from || undefined} onValueChange={setTo} />
+                </div>
+                <div className="flex flex-wrap items-center gap-inline-xs">
+                  <span className="caption text-text-subtle">زودتر:</span>
+                  <Button size="sm" variant="ghost" onClick={() => { setFrom(days.monthStart); setTo(days.today); }}>از اول ماه</Button>
+                  {momentDays.map((m) => <Button key={m} size="sm" variant="ghost" aria-label={`از روز تأیید ${formatJalaliDate(m)} تا امروز`} onClick={() => { setFrom(tehranDay(m)); setTo(days.today); }}>از تأیید {formatJalaliDate(m)}</Button>)}
+                </div>
+              </div>
+            )}
           </div>
-          {more && (
-            <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2" data-testid="custom-dates">
-              <DateField label="از روز" value={from} max={days.today} onValueChange={(v) => { setFrom(v); setMode('custom'); }} />
-              <DateField label="تا روز" value={to} max={days.today} min={from || undefined} onValueChange={(v) => { setTo(v); setMode('custom'); }} />
-            </div>
-          )}
-          {more && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">زودتر:</span><Button size="sm" variant="ghost" onClick={() => { setFrom(days.monthStart); setTo(days.today); setMode('custom'); }}>از اول ماه</Button></div>}
-          {moments.length > 0 && more && (
-            <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">لحظه‌های تأیید:</span>
-              {moments.slice(0, 5).map((m) => <Button key={m} size="sm" variant="ghost" onClick={() => { setFrom(addDays(tehranDay(m), -1)); setTo(days.today); setMode('custom'); }}>{formatJalaliDate(m)}</Button>)}
-            </div>
-          )}
+          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'کل منبع' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />
         </div>
 
         {mode === 'approval' && !range && <Alert intent="info">هنوز تأییدی ثبت نشده که با آن مقایسه کنیم.</Alert>}

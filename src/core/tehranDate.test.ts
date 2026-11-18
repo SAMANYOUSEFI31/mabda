@@ -35,6 +35,11 @@ test('CORE-01: a picked date means all of that day in Tehran, not a day earlier'
   const y = obj({ id: 'y', createdAt: AFTER_MIDNIGHT.toISOString() });
   const r = customRange('2026-11-14', '2026-11-15');
   assert.equal(truthAt({ objects: [y], changes: [created] }, r.b).has('y'), false);
+  // «از روز ۲۵ آبان»: a change at 00:30 on the 25th IS in it (the range starts at the start of the picked day, not its end)
+  const r2 = customRange('2026-11-16', '2026-11-16');
+  assert.equal(r2.a, tehranDayStart('2026-11-16'));
+  assert.equal(truthAt({ objects: [y], changes: [created] }, r2.a).has('y'), false);
+  assert.equal(truthAt({ objects: [y], changes: [created] }, r2.b).has('y'), true);
 });
 
 test('CORE-02: «today» for engines is the Tehran day', () => {
