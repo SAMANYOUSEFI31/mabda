@@ -8,7 +8,6 @@
  "POST /workspaces/:wid/nodes/from-items",
  "PATCH /workspaces/:wid/nodes/:id",
  "POST /workspaces/:wid/nodes/:id/move",
- "GET /workspaces/:wid/nodes/:id/removal-plan",
  "DELETE /workspaces/:wid/nodes/:id",
  "POST /workspaces/:wid/removals/:id/undo",
  "GET /workspaces/:wid/archive",

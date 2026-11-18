@@ -3,7 +3,7 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
-import { planNodeRemoval, removeNode, undoRemoval } from '../removal.ts';
+import { removeNode, undoRemoval } from '../removal.ts';
 
 export function registerNodesRoutes(ctx: RouteContext): void {
   const { repo, files, router, scopeOf, body, wrap, stale } = ctx;
@@ -16,11 +16,8 @@ export function registerNodesRoutes(ctx: RouteContext): void {
   }));
   router.patch('/workspaces/:wid/nodes/:id', wrap((req, res) => { const s = scopeOf(req); repo.updateNode(s, req.params.id, body(req)); res.json({ nodes: repo.listNodes(s) }); }));
   router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined) }); }));
-  // a node delete is planned (the plan is the dialog's preview), done in one transaction and recorded so it can be undone
+  // a node delete is previewed on the client (src/core/removal.ts planRemoval), done here in one transaction and recorded so it can be undone
   const modeOf = (v: unknown): 'move' | 'archive' => (v === 'archive' ? 'archive' : 'move');
-  router.get('/workspaces/:wid/nodes/:id/removal-plan', wrap((req, res) => {
-    res.json({ plan: planNodeRemoval(repo, scopeOf(req), req.params.id, { mode: modeOf(req.query.mode), transferTo: typeof req.query.transferTo === 'string' && req.query.transferTo ? req.query.transferTo : undefined }) });
-  }));
   router.delete('/workspaces/:wid/nodes/:id', wrap((req, res) => {
     const s = scopeOf(req);
     const r = removeNode(repo, s, req.params.id, { mode: modeOf(req.query.mode), transferTo: typeof req.query.transferTo === 'string' && req.query.transferTo ? req.query.transferTo : undefined });
