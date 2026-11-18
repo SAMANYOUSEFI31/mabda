@@ -49,5 +49,5 @@
 - `bun run typecheck` · `bun run test` · `bun run build` — هر سه باید سبز باشند (build اول `check:design` را اجرا می‌کند).
 - `bun run tokens` — CSS و تم Tailwind را از توکن‌های DTCG می‌سازد (build با `--check` stale بودن را رد می‌کند).
 - `bun run check:design` — هر hex/rgb/رنگ arbitrary/پالت خام/left-right فیزیکی در `src` را رد می‌کند.
-- `bun run screens` — اسکرین‌شات ۳۹۰ و ۱۲۸۰، روشن و تیره، در `docs/screens/` + ممیزی خودکار (سرریز، اندازهٔ متن، touch target، کنتراست، تعداد primary).
+- `bun run screens` — (خروجی در `docs/screens/` که تصویرهایش gitignore است؛ جای نگهداری: مخزن `mabda-assets`، `docs/screens/README.md`) اسکرین‌شات ۳۹۰ و ۱۲۸۰، روشن و تیره، در `docs/screens/` + ممیزی خودکار (سرریز، اندازهٔ متن، touch target، کنتراست، تعداد primary).
 - تست‌ها با `node:test` نوشته شده و با `tsx` اجرا می‌شوند.

@@ -16,3 +16,7 @@ scripts/eval-intelligence/audio/*
 !scripts/eval-intelligence/audio/README.md
 !scripts/eval-intelligence/audio/.gitkeep
 docs/screens/gallery.html
+
+# تصویرهای سنگین در مخزن جدا نگه داشته می‌شوند (docs/screens/README.md)
+docs/screens/**/*.png
+docs/screens/**/*.jpg
