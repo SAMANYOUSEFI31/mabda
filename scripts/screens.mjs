@@ -254,7 +254,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
-  await page.getByRole('button', { name: /^افزودن به / }).first().click(); await shoot('dialog-context'); await closeDialog();
+  await page.getByRole('button', { name: /^افزودن حقیقت به / }).first().click(); await shoot('dialog-context'); await closeDialog();
 
   await goTab(TABS[2]); await shoot('workstreams-create');
   await page.getByRole("tab", { name: /چه چیزی کم است/ }).click(); await shoot('workstreams-gap');

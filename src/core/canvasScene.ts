@@ -166,7 +166,7 @@ export function buildScene(layout: CanvasLayout, input: SceneInput, opts: SceneO
       const x0 = items.length ? Math.max(...items.map((i) => i.x + i.w)) + 80 : 40;
       let y = 60;
       for (const it of loose) { it.x = x0; it.y = y; y += it.h + 24; items.push(it); }
-      boxes.push({ id: 'zone:tray', kind: 'zone', label: 'تازه‌ها — هنوز جایی نگذاشته‌ای', depth: 0, x: x0 - 20, y: 10, w: Math.max(...loose.map((i) => i.w)) + 40, h: y - 10, hint: 'فکرهای باز و پیشنهادها. هر کدام را بکش و جایی بگذار؛ تا نگذاری فقط اینجا دیده می‌شود.' });
+      boxes.push({ id: 'zone:tray', kind: 'zone', label: 'هنوز روی بوم نیامده', depth: 0, x: x0 - 20, y: 10, w: Math.max(...loose.map((i) => i.w)) + 40, h: y - 10, hint: 'فکرهای باز و پیشنهادهایی که هنوز روی بوم نگذاشته‌ای. هر کدام را بکش و روی بوم بگذار؛ بخشش عوض نمی‌شود مگر آن را درون قاب بخش دیگری بگذاری.' });
     }
   }
   const present = new Set(items.map((i) => i.objectId));

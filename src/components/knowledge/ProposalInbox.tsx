@@ -44,7 +44,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
       trigger={<Button variant="ghost" size="sm" iconEnd="ChevronDown">آوردن یا بردن دانش</Button>}
       items={[
         { label: 'کپی کل دانش برای استفاده در هر ابزار', icon: 'Copy', onSelect: onOpenPack },
-        { label: 'وارد کردن متن آماده', icon: 'Upload', onSelect: onOpenImport },
+        { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: onOpenImport },
         { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: onOpenMemory },
       ]}
     />

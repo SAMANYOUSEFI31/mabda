@@ -24,7 +24,7 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'dialog.search', label: 'جستجوی سراسری', level: 1 },
   { key: 'dialog.quickstart', label: 'شروع سریع', level: 1 },
   { key: 'dialog.packs', label: 'بسته‌های دانش', level: 2 },
-  { key: 'dialog.import', label: 'وارد کردن متن آماده', level: 2 },
+  { key: 'dialog.import', label: 'وارد کردن پاسخ ابزار دیگر', level: 2 },
   { key: 'dialog.metrics', label: 'شاخص‌ها', level: 2 },
   { key: 'dialog.weekly', label: 'بازبینی هفتگی', level: 2 },
   { key: 'dialog.memory', label: 'وارد کردن حافظه', level: 3 },

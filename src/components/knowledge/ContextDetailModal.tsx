@@ -29,7 +29,7 @@ import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
-import { ADD_DESCRIPTION } from '../../core/addRequest';
+import { ADD_DESCRIPTION, addSwitchable, markAddSwitchable } from '../../core/addRequest';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
 import type { ContextChange, Note } from '../../types';
 import { MX } from '../../core/metricsText';
@@ -96,20 +96,19 @@ const TYPE_OPTIONS = [
   { value: 'Decision', label: 'تصمیم آگاهانه' },
   { value: 'Constraint', label: 'خط قرمز' },
 ];
-const STATUS_OPTIONS = [
-  { value: 'Confirmed', label: 'حقیقت (فعال)' },
-  { value: 'Proposed', label: 'پیشنهاد (وارد خروجی نمی‌شود)' },
-  { value: 'Needs Review', label: 'قدیمی (باید دوباره دیده شود)' },
-  { value: 'Superseded', label: 'گذشته (جایگزین شد)' },
-  { value: 'Archived', label: 'گذشته (بایگانی)' },
+/**
+ * The state of a piece of knowledge is a LIFECYCLE moved by actions (approve, replace, archive, restore), not a field to pick:
+ * «گذشته» without a successor or an archive entry was a broken state, and «قدیمی» is set by the engines. The only choice the form
+ * still offers is the one that has no other door: turning a proposal into truth (docs/ux/decisions.md §۱). Where it came from
+ * («منبع») is a record, shown on the card, never an input.
+ */
+const PROPOSAL_STATUS_OPTIONS = [
+  { value: 'Proposed', label: 'پیشنهاد (هنوز وارد خروجی‌ها نمی‌شود)' },
+  { value: 'Confirmed', label: 'حقیقت (تأییدش می‌کنم)' },
 ];
-const PROVENANCE_OPTIONS = [
-  { value: 'User Input', label: 'نوشتهٔ خودت' },
-  { value: 'Onboarding', label: 'شروع سریع' },
-  { value: 'AI Suggested', label: 'پیشنهادی که تأیید کردی' },
-  { value: 'Asset Derived', label: 'برگرفته از یک خروجی' },
-  { value: 'Imported', label: 'وارد شده از بیرون' },
-];
+/** «فرض» is a kind she picks, next to «واقعیت», not a box that says the chip she picked was wrong (stored as a Fact + assumption) */
+type KindChip = ContextType | 'Assumption';
+const KIND_CHIPS: Array<{ id: KindChip; label: string }> = [{ id: 'Fact', label: 'واقعیت' }, { id: 'Assumption', label: 'فرض' }, { id: 'Decision', label: 'تصمیم' }, { id: 'Constraint', label: 'خط قرمز' }];
 
 const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   conflicts,
@@ -142,11 +141,16 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   onPatchObject,
 }) => {
   const isEditing = !!object && object.id !== ''; // id '' = a prefilled draft (e.g. from an AI block)
+  // the kind switch only when opened from the global «افزودن»; a section's «+ حقیقت» is locked to «حقیقت» (addRequest.ts)
+  const [switchable] = useState(() => !object && addSwitchable());
+  useEffect(() => () => markAddSwitchable(false), []);
 
-  // opening a knowledge that has a draft continues the DRAFT (the approved text is shown next to it, below)
-  const [title, setTitle] = useState(object?.draft?.title ?? object?.title ?? '');
+  // opening a knowledge that has a waiting draft shows what she clicked: the CONFIRMED text, the same as the card. The draft is shown
+  // against it in the notice below, with «ادامهٔ ویرایش پیش‌نویس» to bring it into the editor (docs/ux/decisions.md §۱۲)
+  const [title, setTitle] = useState(object?.title ?? '');
   // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳)
-  const [content, setContent] = useState(() => object?.draft?.content ?? object?.content ?? (object ? '' : takePendingAddText()));
+  const [content, setContent] = useState(() => object?.content ?? (object ? '' : takePendingAddText()));
+  const [onDraft, setOnDraft] = useState(false);
   useEffect(() => () => clearPendingAddText(), []);
   const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
@@ -166,7 +170,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [reach, setReach] = useState<'global' | 'position'>(object?.reach ?? (object?.type === 'Constraint' || !object ? 'global' : 'position'));
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
-  const [examples, setExamples] = useState<RedlineExample[]>(object?.draft?.examples ?? object?.examples ?? []); // a waiting draft keeps its examples too
+  const [examples, setExamples] = useState<RedlineExample[]>(object?.examples ?? []); // the draft's examples come with «ادامهٔ ویرایش پیش‌نویس»
+  const continueDraft = () => { if (!object?.draft) return; setContent(object.draft.content); setTitle(object.draft.title ?? object.title); if (object.draft.examples) setExamples(object.draft.examples); setOnDraft(true); };
   const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
@@ -255,14 +260,17 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       return;
     }
 
+    const keepDraft = !!object?.draft && !onDraft && !textChanged && confirmedEdit;
     const updated: ContextDraft = {
       id: isEditing ? object!.id : undefined,
       workspaceId: object?.workspaceId || workspaceId,
       type,
       status,
       provenance,
-      title: finalTitle,
-      content: content.trim(),
+      // a waiting draft she did not touch (the editor still shows the confirmed text) is sent back as it was: saving the type or the
+      // place must not throw her draft away (a direct write of the text clears it on the server)
+      title: keepDraft ? (object!.draft!.title ?? finalTitle) : finalTitle,
+      content: keepDraft ? object!.draft!.content : content.trim(),
       nodeId,
       supersededById: object?.supersededById,
       source: object?.source,
@@ -294,17 +302,17 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     ? 'جایگزین کردن — قبلی در تاریخچه می‌ماند'
     : isEditing
     ? 'ویرایش دانش'
-    : 'افزودن';
+    : switchable ? 'افزودن' : 'افزودن حقیقت';
 
   return (
     <Dialog
       open
       onClose={onClose}
       size="md"
-      steady={!object}
-      dirty={content.trim() !== (object?.draft?.content ?? object?.content ?? '').trim() || title !== (object?.draft?.title ?? object?.title ?? '')}
+      steady={switchable}
+      dirty={content.trim() !== ((onDraft ? object?.draft?.content : undefined) ?? object?.content ?? '').trim() || title !== ((onDraft ? object?.draft?.title : undefined) ?? object?.title ?? '')}
       title={title_}
-      description={isEditing ? undefined : object ? 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود تعیین کرد.' : ADD_DESCRIPTION}
+      description={isEditing ? undefined : switchable ? ADD_DESCRIPTION : 'هر چه درست است بنویس؛ نوع و جایش را بعد هم می‌شود عوض کرد.'}
       footer={
         isEditing && tab !== 'edit' ? (
           // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button
@@ -353,7 +361,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
       )}
       <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
-        {!object && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
+        {switchable && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
@@ -381,9 +389,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         />
         <div className="flex flex-wrap items-center gap-inline-sm">
           <div role="radiogroup" aria-label="نوع" className="flex flex-wrap gap-inline-xs">
-            {(['Fact', 'Decision', 'Constraint'] as ContextType[]).map((t) => (
-              <Button key={t} type="button" size="sm" role="radio" aria-checked={type === t} variant={type === t ? 'secondary' : 'ghost'} iconStart={type === t ? 'Check' : undefined} onClick={() => { setType(t); setTypeTouched(true); }}>{TYPE_CHIP_FA[t]}</Button>
-            ))}
+            {KIND_CHIPS.map(({ id, label }) => {
+              const on = id === 'Assumption' ? type === 'Fact' && assumption : type === id && !(id === 'Fact' && assumption);
+              return <Button key={id} type="button" size="sm" role="radio" aria-checked={on} variant={on ? 'secondary' : 'ghost'} iconStart={on ? 'Check' : undefined} onClick={() => { setType(id === 'Assumption' ? 'Fact' : id); setAssumption(id === 'Assumption'); setTypeTouched(true); }}>{label}</Button>;
+            })}
           </div>
           <Menu
             label="این دانش در کدام بخش باشد؟"
@@ -393,7 +402,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           />
         </div>
         {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
-        {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ هر کدام درست نیست، عوضش کن.</p>}
+        {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
+        {type === 'Fact' && assumption && <p className="body-sm text-text-subtle">فرض یعنی هنوز ثابت نشده: هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید و جدا، زیر «فرض‌های فعال» می‌آید. تاریخ بازبینی‌اش در «جزئیات بیشتر» است.</p>}
         {linkSuggestions.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
             {linkSuggestions.map((sg) => (
@@ -432,10 +442,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {object?.draft && (
           <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
             <div className="flex flex-col gap-stack-sm">
-              <p className="body-sm text-text-default">تا تأیید نشود، خروجی‌ها و بسته‌ها همین متنِ تأییدشده را می‌بینند. پایین، متن تأییدشده در برابر پیش‌نویس است.</p>
+              <p className="body-sm text-text-default">{onDraft ? 'بالا پیش‌نویس را ویرایش می‌کنی. تا تأیید نشود، خروجی‌ها و بسته‌ها متنِ تأییدشده را می‌بینند.' : 'بالا متن تأییدشده است، همان که خروجی‌ها و بسته‌ها می‌بینند. پیش‌نویس در برابرش:'}</p>
               <BeforeAfter before={object.content} after={object.draft.content} />
               <div className="flex flex-wrap gap-inline-sm">
                 {onApproveDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>تأیید و جایگزین کن</Button>}
+                {!onDraft && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={continueDraft}>ادامهٔ ویرایش پیش‌نویس</Button>}
                 {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد کن</Button>}
               </div>
             </div>
@@ -444,6 +455,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {confirmedEdit && textChanged && (
           <div className="flex flex-col gap-stack-xs" data-testid="draft-choice">
             <SegmentedControl label="این تغییر" value={applyNow ? 'now' : 'draft'} onChange={(v) => setApplyNow(v === 'now')} items={[{ id: 'draft', label: 'پیش‌نویس بماند' }, { id: 'now', label: 'همین حالا جایگزین شود' }]} />
+            {object?.draft && !onDraft && !applyNow && <p className="body-sm text-text-default">این متن جای پیش‌نویسی را می‌گیرد که منتظر بود.</p>}
             <p className="body-sm text-text-subtle">{applyNow ? 'متن تازه فوراً جای متن تأییدشده می‌نشیند و خروجی‌ها همین را می‌بینند.' : 'متن تأییدشده همان می‌ماند و خروجی‌ها و بسته‌ها هنوز آن را می‌بینند؛ وقتی پیش‌نویس را تأیید کنی جایش را می‌گیرد.'}</p>
           </div>
         )}
@@ -452,10 +464,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
         {moreOpen && (
           <div id="context-more" className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
-            <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
-              <Select label="وضعیت" value={status} onChange={(e) => setStatus(e.target.value as ContextStatus)} options={STATUS_OPTIONS} />
-              <Select label="منبع" value={provenance} onChange={(e) => setProvenance(e.target.value as ContextProvenance)} options={PROVENANCE_OPTIONS} />
-            </div>
+            {object?.status === 'Proposed' && <Select label="وضعیت" value={status} onChange={(e) => setStatus(e.target.value as ContextStatus)} options={PROPOSAL_STATUS_OPTIONS} />}
         {type === 'Constraint' && (
           <div className="flex flex-col gap-stack-xs">
             <SegmentedControl label="محدودهٔ اثر این خط قرمز" value={reach} onChange={(v) => setReach(v as 'global' | 'position')} items={[{ id: 'global', label: 'همه‌جا' }, { id: 'position', label: 'فقط این بخش و زیرشاخه‌ها' }]} />
@@ -487,13 +496,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           {facets.length > 0 && <div className="flex flex-wrap gap-inline-xs">{facets.map((f) => <Button key={f} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`حذف بُعد ${f}`} onClick={() => setFacets((l) => l.filter((x) => x !== f))}>{f}</Button>)}</div>}
           {knownFacets.filter((f) => !facets.includes(f)).length > 0 && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">پیشنهاد از بُعدهای موجود:</span>{knownFacets.filter((f) => !facets.includes(f)).slice(0, 8).map((f) => <Button key={f} type="button" size="sm" variant="ghost" onClick={() => addFacet(f)}>{f}</Button>)}</div>}
         </div>
-        {type === 'Fact' && (
-          <div className="flex flex-col gap-stack-xs rounded-control border border-border-default p-inset-lg">
-            <Checkbox label="این یک فرض است، نه واقعیت" checked={assumption} onChange={(e) => setAssumption(e.target.checked)} />
-            <p className="body-sm text-text-subtle">فرض هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید (حتی اگر تأییدشده باشد)؛ در بخش جدای «فرض‌های فعال» می‌آید.</p>
-            {assumption && <DateField label="بازبینی تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
-          </div>
-        )}
+        {type === 'Fact' && assumption && <DateField label="بازبینی این فرض تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
         {type === 'Decision' && (
           <div className="flex flex-col gap-stack-sm">
             <div><Button type="button" size="sm" variant="ghost" iconStart={recordOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={recordOpen} onClick={() => setRecordOpen((v) => !v)}>رکورد تصمیم (اختیاری)</Button></div>
