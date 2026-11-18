@@ -60,7 +60,7 @@ test('Thought backfill preserves notes, stable legacy identity, classification a
   insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
     source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
 
-  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30]);
+  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const thoughts = repo.listThoughts(s, { includeResolved: true });
@@ -84,7 +84,7 @@ test('MCP token shutdown revokes active tokens once and preserves historical tok
     .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
   db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
     .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
-  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30]);
+  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
   const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
   assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
     ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
@@ -951,4 +951,23 @@ test('a file with no section gets one; an unknown section is refused (NEW-05)', 
   const node = repo.listNodes(s)[0].id;
   assert.equal(repo.moveFile(s, f.id, node).nodeId, node);
   assert.throws(() => repo.moveFile(s, f.id, 'nope'));
+});
+
+test('migration 31: untouched examples (first-run spaces, showcase) become «Sample»; one the person wrote over stays hers', () => {
+  const db = openDatabase(':memory:');
+  const repo = new Repo(db);
+  importLegacy(repo, U, seedPayload(U), 'seed');
+  applyDemo(repo, U, new Date('2026-11-18T10:00:00Z'));
+  const all = () => db.prepare('SELECT id, provenance FROM context_objects').all() as Array<{ id: string; provenance: string }>;
+  assert.ok(all().length > 20 && all().every((r) => r.provenance === 'Sample'), 'new builds are stored as Sample');
+  // a database from before: the old provenance, one example already rewritten by the person
+  db.prepare("UPDATE context_objects SET provenance = 'User Input'").run();
+  db.prepare("UPDATE context_objects SET content = 'نوشتهٔ خودم' WHERE id = 'ctx_domain'").run();
+  db.prepare('DELETE FROM schema_migrations WHERE version = 31').run();
+  assert.deepEqual(migrate(db), [31]);
+  const after = new Map(all().map((r) => [r.id, r.provenance]));
+  assert.equal(after.get('ctx_domain'), 'User Input');
+  assert.equal(after.get('ctx_life_9'), 'Sample');
+  assert.ok([...after.values()].filter((p) => p === 'Sample').length >= all().length - 1);
+  db.close();
 });
