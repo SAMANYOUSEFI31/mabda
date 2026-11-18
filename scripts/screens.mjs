@@ -309,7 +309,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByRole('button', { name: /^رفتن به بخش/ }).first().click(); await shoot('context-focus');
   await page.getByTestId('sub-section').first().click(); await shoot('context-focus-deep');
   await page.getByRole('button', { name: /^برگشت به/ }).first().click(); await page.getByRole('button', { name: /^برگشت به/ }).first().click({ timeout: 1500 }).catch(() => {});
-  await page.getByRole('radiogroup', { name: 'نمای منبع حقیقت' }).getByRole('radio', { name: 'نمای کلی' }).click();
+  await page.getByRole('radiogroup', { name: 'نمای حقیقت' }).getByRole('radio', { name: 'نمای کلی' }).click();
   const layoutTab = async (name) => { await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()); await page.waitForTimeout(500); };
   await page.getByTestId('canvas-stage').waitFor();
   await page.waitForTimeout(500); await shoot('canvas-relations');
@@ -352,7 +352,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click();
   await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
   await page.getByRole('dialog').getByLabel('نام بسته').fill('پاسخ به مشتری');
-  await page.getByRole('dialog').getByRole('checkbox', { name: /^(— )*پشتیبانی و پس از فروش$/ }).evaluate((n) => n.click());
+  await page.getByRole('dialog').getByRole('checkbox', { name: /^[\u2003– ]*پشتیبانی و پس از فروش$/ }).evaluate((n) => n.click());
   await page.getByTestId('explain-group-guardrail').waitFor(); await page.waitForTimeout(500);
   await shoot('dialog-pack-edit'); await closeDialog();
   // the global search: a few letters, grouped results (the keyboard shortcut on desktop, the header button on phones)

@@ -23,7 +23,7 @@ import { asAiError, streamChat } from '../../services/apiClient';
 import { useAiStatus } from '../../services/aiStatus';
 import { AiErrorNotice, PlanLine } from '../shared/AiNotices';
 import { BlockView } from '../shared/BlockView';
-import { flatten, subtreeIds, ancestorIds } from '../../core/nodeTree';
+import { flatten, treeIndent, subtreeIds, ancestorIds } from '../../core/nodeTree';
 import {
   Badge, Button, Card, Dialog, Icon, IconButton, Markdown, Select, Spinner, Switch, TextField,
   formatJalaliDate, formatNumber, formatTime, useToast,
@@ -77,7 +77,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         id: 'msg_welcome',
         role: 'assistant',
         content: `سلام! من موتور هوشمند «مبدأ» هستم.
-من مستقیماً به درخت منبع حقیقت تو متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
+من مستقیماً به درخت حقیقت تو متصلم. هر نکته، تصمیم یا خط قرمزی که در جریان گفت‌وگو مطرح کنید، به عنوان «قلم دانش» استخراج می‌شود تا در سندها و خروجی‌های بعدی استفاده شود و هرگز گم نشود.
 
 دربارهٔ کدام بخش صحبت کنیم؟`,
         timestamp: new Date().toISOString(),
@@ -160,7 +160,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         {
           id: `msg_welcome_${Date.now()}`,
           role: 'assistant',
-          content: 'نشست گفتگوی جدید باز شد. هر تصمیم یا فرضیه‌ای که در این نشست مطرح کنید، آماده استخراج و ثبت در منبع حقیقت است.',
+          content: 'نشست گفتگوی جدید باز شد. هر تصمیم یا فرضیه‌ای که در این نشست مطرح کنید، آماده استخراج و افزودن به حقیقت است.',
           timestamp: new Date().toISOString(),
           executionMode: 'auto',
           },
@@ -357,7 +357,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
     },
     {
       label: 'ممیزی تناقضات در وعده‌ها',
-      text: 'لطفاً تمام ادعاها و تصمیماتی که تا الان در منبع حقیقت ثبت کرده‌ایم را بازبینی کن و اگر تناقضی هست نشان بده.',
+      text: 'لطفاً تمام ادعاها و تصمیماتی که تا الان در حقیقت ثبت کرده‌ایم را بازبینی کن و اگر تناقضی هست نشان بده.',
       icon: 'Search',
     },
     {
@@ -410,7 +410,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
               label="محدودهٔ گفتگو"
               value={activeSession.scopeNodeId ?? ''}
               onChange={(e) => handleScope(e.target.value)}
-              options={[{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]}
+              options={[{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]}
             />
           </div>
           <div className="sm:flex-1">

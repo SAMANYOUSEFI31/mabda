@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, Thought, TreeNode } from '../../types';
-import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, ROOT_TARGET, subtreeIds } from '../../core/nodeTree';
+import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, treeIndent, ROOT_TARGET, subtreeIds } from '../../core/nodeTree';
 import { moveEffect } from '../../core/nodeMove';
 import { Alert, Button, Dialog, RadioGroup, Select, TextField, Textarea, formatNumber } from '../../ui';
 import { nodeRemovalPlan } from '../../core/removal';
@@ -46,7 +46,7 @@ interface Props {
 }
 
 const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
-  flatten(nodes).filter(({ node }) => !exclude.has(node.id)).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  flatten(nodes).filter(({ node }) => !exclude.has(node.id)).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
 
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
@@ -116,7 +116,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         >
           <TextField id="node-label" label="نام بخش" required autoFocus value={label} error={labelError || undefined} onChange={(e) => { setLabel(e.target.value); if (labelError && e.target.value.trim()) setLabelError(''); }} placeholder="مثلاً: کمپین پاییز" />
           {state.kind === 'create' && state.chooseParent && (
-            <Select label="زیر کدام بخش؟" value={createParent} onChange={(e) => setCreateParent(e.target.value)} options={[{ value: '', label: 'بخش اصلی (سطح اول)' }, ...flatten(nodes).map((x) => ({ value: x.node.id, label: `${'— '.repeat(x.depth)}${x.node.label}` }))]} />
+            <Select label="زیر کدام بخش؟" value={createParent} onChange={(e) => setCreateParent(e.target.value)} options={[{ value: '', label: 'بخش اصلی (سطح اول)' }, ...flatten(nodes).map((x) => ({ value: x.node.id, label: `${treeIndent(x.depth)}${x.node.label}` }))]} />
           )}
           <Textarea label="توضیح کوتاه (اختیاری)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </form>

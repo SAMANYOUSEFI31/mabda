@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import type { ContextObject, TreeNode } from '../../types';
 import { composeThought, guessThoughtKind, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import type { ThinkingKind } from '../../core/thinkingMarkers';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { Button, Dialog, IconButton, SegmentedControl, Select, formatNumber } from '../../ui';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak, joinToPrevious, splitFromPrevious } from '../../core/batchLines';
@@ -62,7 +62,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   useEffect(() => { if (open) { setText(initialText ?? ''); setKind(initialKind ?? 'idea'); setTouched(!!initialKind); setNode(nodeId); setDefKind('idea'); setAbout(initialAbout ?? []); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId, initialKind, initialAbout, initialText]);
   const batch = !!onSaveMany && isBatch(text);
   const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
-  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
+  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   useEffect(() => { if (!touched) setKind(guessThoughtKind(text)); }, [text, touched]);
 
   const save = async () => {

@@ -7,7 +7,7 @@ import { defaultNodeId } from '../../core/nodeTree';
 import React, { useRef, useState } from 'react';
 import type { StoredFile, TreeNode } from '../../types';
 import type { FileChargeInfo, FileQuotaInfo } from '../../types/state';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { useAiStatus } from '../../services/aiStatus';
 import { DangerDialog } from '../shared/Removal';
 import { Alert, Badge, Button, Card, EmptyState, IconButton, Progress, Select, formatNumber } from '../../ui';
@@ -41,7 +41,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
   const [pendingDelete, setPendingDelete] = useState<StoredFile | null>(null);
   const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const nodeLabel = (id?: string) => (id ? nodes.find((n) => n.id === id)?.label : undefined);
 
   const run = async (id: string, fn: () => Promise<void>) => {

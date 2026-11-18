@@ -17,7 +17,7 @@ import { AddKindSwitch } from '../../components/shared/AddKindSwitch';
 import { Button, Dialog, Select } from '../../ui';
 import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import type { ReadyScope } from '../shared';
 import { letterKeysOn } from '../../core/shortcuts';
 
@@ -132,7 +132,7 @@ function FileAdd({ nodeId, scoped, nodes, onClose, onUpload, onImportInstead }: 
             <Button size="sm" variant="ghost" iconStart="FolderInput" onClick={() => onImportInstead(file)}>وارد کردن سند به‌جایش</Button>
           </div>
         )}
-        <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))} />
+        <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))} />
       </div>
     </Dialog>
   );

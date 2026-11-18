@@ -96,7 +96,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
             // the next step is to settle one thought into the source
             <section aria-labelledby="home-first" className="flex flex-col gap-stack-sm">
               <h2 id="home-first" className="heading-sm text-text-default">{openThoughtCount > 0 ? `${formatNumber(openThoughtCount)} فکر باز داری؛ هنوز هیچ‌کدام حقیقت نشده است.` : 'یادداشت‌هایت اینجاست؛ هنوز چیزی حقیقت نشده است.'}</h2>
-              <p className="body-md text-text-subtle">وقتی یکی روشن شد، در «فکر» آن را حقیقت کن تا در منبع بنشیند و هر خروجی از آن ساخته شود.</p>
+              <p className="body-md text-text-subtle">وقتی یکی روشن شد، در «فکر» تأییدش کن تا حقیقت شود و هر خروجی از آن ساخته شود.</p>
               <div><Button size="sm" variant="secondary" iconEnd="ChevronLeft" onClick={onOpenThinking}>رفتن به فکرها</Button></div>
             </section>
           ) : sections.empty ? (

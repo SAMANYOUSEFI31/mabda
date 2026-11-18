@@ -35,7 +35,7 @@ export const SHORTCUTS: Array<{ keys: string[]; label: string; letter?: boolean 
   { keys: ['Ctrl', 'J'], label: 'افزودن فکر' },
   { keys: ['G', 'H'], label: 'خانه', letter: true },
   { keys: ['G', 'T'], label: 'فکر', letter: true },
-  { keys: ['G', 'S'], label: 'منبع', letter: true },
+  { keys: ['G', 'S'], label: 'حقیقت', letter: true },
   { keys: ['G', 'O'], label: 'خروجی‌ها', letter: true },
   { keys: ['G', '1…9'], label: 'رفتن به فضای اول تا نهم', letter: true },
   { keys: ['Ctrl', '\\'], label: 'باز و باریک کردن نوار کناری' },

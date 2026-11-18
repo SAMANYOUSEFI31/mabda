@@ -11,7 +11,7 @@ import { THINKING_FA, THOUGHT_KINDS, composeThought, guessThoughtKind } from '..
 import type { ThinkingKind } from '../../core/thinkingMarkers';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak } from '../../core/batchLines';
-import { defaultNodeId, flatten } from '../../core/nodeTree';
+import { defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
 import { findExactDuplicate, findNearDuplicate } from '../../core/quickCapture';
 import { getSlotProvider } from '../../core/suggestionSlots';
 import type { SlotSuggestion } from '../../core/suggestionSlots';
@@ -77,7 +77,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   // there is no «no place» in the data: a thought with no section chosen lands in the default section (the first one). The list says so
   // by name instead of promising a «تازه‌ها» that does not exist (docs/ux/decisions.md §۷)
   const fallback = defaultNodeId(nodes);
-  const sectionOptions = useMemo(() => flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}${n.id === fallback ? ' (پیش‌فرض)' : ''}` })), [nodes, fallback]);
+  const sectionOptions = useMemo(() => flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}${n.id === fallback ? ' (پیش‌فرض)' : ''}` })), [nodes, fallback]);
   const shownNode = node || fallback;
   const exact = useMemo(() => (open ? findExactDuplicate(text, thoughts, objects) : null), [open, text, thoughts, objects]);
   const slotDup = useSlot('duplicate', text, node, open && !exact);

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { DeliverableSpec, OutputBandId, TreeNode, WorkstreamSpec } from '../../types';
-import { defaultNodeId, flatten } from '../../core/nodeTree';
+import { defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
 import { validateSpec, wouldCreateCycle } from '../../core/specGraph';
 import { Alert, Button, Card, Checkbox, Dialog, IconButton, Select, TextField, Textarea, formatNumber } from '../../ui';
 
@@ -107,7 +107,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
   const specId = React.useRef(initial?.id ?? `spec_custom_${uid()}`).current;
 
 
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }));
+  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
   const graph = draft.deliverables.map((d, i) => ({ id: d.id, order: i + 1, dependsOn: d.dependsOn }));
   const titleOf = (id: string) => draft.deliverables.find((d) => d.id === id)?.title.trim() || 'خروجی بدون عنوان';

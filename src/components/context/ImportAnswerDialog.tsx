@@ -11,7 +11,7 @@ import { contextTypeOf, isContextKind } from '../../core/answerParser';
 import { ACTION_FA, mapAnswer } from '../../core/answerMapping';
 import type { BlockMapping, MapAction } from '../../core/answerMapping';
 import { PACK_MARKER_RE } from '../../core/contextPack';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
 import { clientId } from '../../core/ids';
@@ -107,7 +107,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     try { if (await onSaveAsset(asset)) mark(b.id, 'در کتابخانهٔ دارایی‌ها ذخیره شد'); } finally { setSavingAsset(null); }
   };
 
-  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))];
+  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   const actionOptions = (m: BlockMapping) => [
     { value: 'new', label: ACTION_FA.new },
     ...(m.targetId ? [{ value: 'update', label: `${ACTION_FA.update} «${titleOf(m.targetId)}»` }, { value: 'duplicate', label: `${ACTION_FA.duplicate} «${titleOf(m.targetId)}»` }] : []),

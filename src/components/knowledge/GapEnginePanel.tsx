@@ -68,7 +68,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
         {readiness.gaps.length === 0 ? (
           <div className="flex flex-col items-center gap-stack-sm rounded-control-sm border border-border-success-subtle bg-surface-sunken p-inset-xl text-center">
             <Icon name="CircleCheck" size="2xl" className="text-icon-success" />
-            <p className="title text-text-success">هیچ جای خالی‌ای نیست! تمام مؤلفه‌های لازم و پیشنهادی در منبع حقیقت ثبت شده‌اند.</p>
+            <p className="title text-text-success">هیچ جای خالی‌ای نیست! تمام مؤلفه‌های لازم و پیشنهادی ثبت شده‌اند.</p>
             <p className="body-sm text-text-subtle">می‌توانی خروجی‌های این جریان کاری را با حداکثر انسجام و غنای تخصصی تولید کنی.</p>
           </div>
         ) : (

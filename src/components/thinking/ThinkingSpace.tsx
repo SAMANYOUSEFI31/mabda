@@ -10,7 +10,7 @@ import { effectiveObjects } from '../../core/effectiveContext';
 import { THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
-import { flatten, subtreeIds } from '../../core/nodeTree';
+import { flatten, treeIndent, subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Select, Textarea, formatNumber, Nuqta, TYPE_META } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
@@ -119,11 +119,13 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
       {nothingYet ? null : <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
-        <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
+        {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
+            wider: they wrap, which never happens there in practice (decisions.md §۳۶) */}
+        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:flex-wrap sm:overflow-visible sm:px-space-0">
           {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
               six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
           {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
-            <Button key={c.id} size="sm" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
+            <Button key={c.id} size="sm" className="shrink-0" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
               {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
             </Button>
           ))}
@@ -131,7 +133,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <div className="flex items-end gap-inline-xs sm:ms-auto">
           {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
           {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
-          <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
+          <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} /></div>
         </div>
       </div>}
 
@@ -267,7 +269,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <div className="flex flex-col gap-stack-md">
             <Textarea label="نتیجهٔ تازه" rows={4} value={synthesis.text} onChange={(e) => setSynthesis({ ...synthesis, text: e.target.value })} />
             <SegmentedControl label="نوع فکر" value={synthesis.kind} onChange={(value) => setSynthesis({ ...synthesis, kind: value as ThoughtKind })} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
-            <Select label="بخش فکر تازه" value={synthesis.nodeId} onChange={(e) => setSynthesis({ ...synthesis, nodeId: e.target.value })} options={flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))} />
+            <Select label="بخش فکر تازه" value={synthesis.nodeId} onChange={(e) => setSynthesis({ ...synthesis, nodeId: e.target.value })} options={flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))} />
           </div>
         </Dialog>
       )}

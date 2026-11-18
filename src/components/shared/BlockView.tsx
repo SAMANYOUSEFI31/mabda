@@ -39,13 +39,13 @@ export const BlockView: React.FC<BlockViewProps> = ({ block, onAddToContext, onS
       {block.proposal && onApproveProposal && (
         <Card padding="md" className="flex flex-col gap-stack-sm">
           <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-            <span className="label-md text-text-default">پیشنهاد ثبت در منبع حقیقت: {block.proposal.title}</span>
+            <span className="label-md text-text-default">پیشنهاد افزودن به حقیقت: {block.proposal.title}</span>
             <TypeBadge value={block.proposal.type} />
           </div>
           <p className="body-sm text-text-subtle">{block.proposal.content}</p>
           {block.proposal.reason && <p className="caption text-text-subtle">{block.proposal.reason}</p>}
           <div className="flex flex-wrap items-center gap-inline-sm">
-            <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onApproveProposal(block)}>تأیید و افزودن به منبع حقیقت</Button>
+            <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onApproveProposal(block)}>تأیید و افزودن به حقیقت</Button>
             {onDismissProposal && <Button size="sm" variant="ghost" onClick={() => onDismissProposal(block)}>رد کردن</Button>}
           </div>
         </Card>

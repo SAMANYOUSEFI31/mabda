@@ -147,6 +147,12 @@ export function movedNodeTree(nodes: TreeNode[], id: string, parentId: string, i
   return moved.map((n) => ({ ...n, ...(orders.has(n.id) ? { order: orders.get(n.id)! } : {}) }));
 }
 
+/**
+ * the indent before a section's name in a native picker (<select> cannot pad its options): two em-spaces per level and one dash,
+ * so each level steps in by the same, clearly visible amount; a dash per level («— — ») read as one flat column (decisions.md §۳۵)
+ */
+export const treeIndent = (depth: number): string => (depth > 0 ? `${'\u2003'.repeat(2 * depth - 1)}– ` : '');
+
 /** flattened for pickers: depth-first with depth */
 export function flatten(nodes: TreeNode[]): Array<{ node: TreeNode; depth: number }> {
   const out: Array<{ node: TreeNode; depth: number }> = [];

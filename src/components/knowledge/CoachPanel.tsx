@@ -119,7 +119,7 @@ export const CoachPanel: React.FC<Props> = ({ workspaceId, scope, nodeId, nodes,
               <div><Button variant="secondary" iconStart="Plus" loading={saving} disabled={picked.size === 0} onClick={save}>افزودن به‌عنوان پیشنهاد</Button></div>
             </div>
           )}
-          {saved > 0 && <Alert intent="success">{formatNumber(saved)} مورد پیشنهادی ثبت شد؛ در منبع حقیقت منتظر تأیید توست.</Alert>}
+          {saved > 0 && <Alert intent="success">{formatNumber(saved)} مورد پیشنهادی ثبت شد و منتظر تأیید توست.</Alert>}
           {result.questions.length === 0 && result.ambiguities.length === 0 && result.proposals.length === 0 && <p className="body-sm text-text-subtle">مربی دانش چیزی برای روشن‌کردن پیدا نکرد.</p>}
         </div>
       )}

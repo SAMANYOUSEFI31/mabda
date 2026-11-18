@@ -16,7 +16,7 @@ import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
 import { clusterItems, edgeBudget, lodOf } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
-import { flatten } from '../../core/nodeTree';
+import { flatten, treeIndent } from '../../core/nodeTree';
 import { requestAdd } from '../../core/addRequest';
 import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
@@ -801,7 +801,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
       {mode === 'thinking' && (
         <Dialog open={anchorOpen} onClose={() => setAnchorOpen(false)} size="sm" title="کارت حقیقت را کنار فکرها بیاور"
-          description="همان کارتِ منبع حقیقت است، نه کپی؛ اینجا فقط جایش را عوض می‌کنی و متنش از اینجا ویرایش نمی‌شود."
+          description="همان کارتِ حقیقت است، نه کپی؛ اینجا فقط جایش را عوض می‌کنی و متنش از اینجا ویرایش نمی‌شود."
           footer={<><Button variant="ghost" onClick={() => setAnchorOpen(false)}>انصراف</Button><Button variant="primary" disabled={!anchorId} onClick={() => { void p.onPlaceObject(anchorId, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); setAnchorOpen(false); }}>بگذار روی بوم فکر</Button></>}>
           <Select label="کدام کارت؟" value={anchorId} onChange={(e) => setAnchorId(e.target.value)} options={[{ value: '', label: 'یکی را انتخاب کن' }, ...placeable(p.objects.filter((o) => o.status === 'Confirmed' && !o.sample), p.canvas.free).map((o) => ({ value: o.id, label: o.title }))]} />
         </Dialog>
@@ -880,7 +880,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {fromItems && (
           <div className="flex flex-col gap-stack-sm">
             <TextField label="نام بخش" required autoFocus value={fromItems.label} onChange={(e) => setFromItems({ ...fromItems, label: e.target.value })} />
-            <Select label="زیر کدام بخش" value={fromItems.parentId} onChange={(e) => setFromItems({ ...fromItems, parentId: e.target.value })} options={[{ value: '', label: 'بخش اصلی تازه' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} />
+            <Select label="زیر کدام بخش" value={fromItems.parentId} onChange={(e) => setFromItems({ ...fromItems, parentId: e.target.value })} options={[{ value: '', label: 'بخش اصلی تازه' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />
             <ul className="body-sm flex flex-col gap-stack-xs text-text-subtle" aria-label="موارد انتخاب‌شده">{picked.slice(0, 6).map((i) => <li key={i.id}>{i.label}</li>)}{picked.length > 6 && <li>و {formatNumber(picked.length - 6)} مورد دیگر</li>}</ul>
           </div>
         )}

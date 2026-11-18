@@ -563,6 +563,13 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-drawer{animation:mb-panel-ltr var(--duration-moderate) var(--ease-enter)}
 [dir=ltr] .mb-drawer{animation-name:mb-panel}
 .mb-drawer-scrim{animation:mb-fade var(--duration-base) var(--ease-standard)}
+/* §۳۶: a sideways strip of chips shows no bar of its own; the cut chip at the edge is the cue */
+.mb-chip-strip{scrollbar-width:none;overscroll-behavior-inline:contain}
+.mb-chip-strip::-webkit-scrollbar{display:none}
+/* §۳۳: the space name over the page once its title has scrolled away, rail only */
+.mb-rail-title{position:fixed;inset-block-start:0;inset-inline-start:var(--sidebar-rail);inset-inline-end:0;z-index:var(--layer-sticky);animation:mb-rail-title-in var(--duration-fast) var(--ease-enter)}
+@keyframes mb-rail-title-in{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){.mb-rail-title{animation:none}}
 .mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2);padding-block:var(--inset-lg);gap:var(--stack-md)}
 .mb-rail__nav{gap:var(--stack-xs)}
 /* a short window (a phone or a tablet on its side): all seven rail controls fit without the destinations scrolling under the search
