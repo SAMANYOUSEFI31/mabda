@@ -8,7 +8,7 @@ import type { ContextObject, ExpectationVerdict } from '../../types';
 import type { ExpectationRow } from '../../core/metrics';
 import { suggestVerdict } from '../../core/metrics';
 import { afterSentence, expectationSentence, MX, VERDICT_FA } from '../../core/metricsText';
-import { AssumptionBadge, Badge, Button, Textarea, formatJalaliDate, formatNumber, Caution } from '../../ui';
+import { AssumptionBadge, Badge, Button, Textarea, formatJalaliDate, formatNumber, Caution, sampleMark } from '../../ui';
 
 interface Props {
   assumptions: ContextObject[];
@@ -43,7 +43,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                 <span className="label-md text-text-default">{o.title}</span>
                 <span className="flex items-center gap-inline-xs"><AssumptionBadge object={o} /><Caution>موعد {formatJalaliDate(o.reviewBy!)}</Caution></span>
               </div>
-              <p className="body-sm text-text-subtle">{titleOfNode(o.nodeId)} · {o.content}</p>
+              <p className="body-sm text-text-subtle">{titleOfNode(o.nodeId)}{sampleMark(o)} · {o.content}</p>
               <div className="flex flex-wrap gap-inline-xs">
                 <Button size="sm" variant="secondary" loading={busy === `s${o.id}`} onClick={() => run(`s${o.id}`, () => onStillAssumed(o.id))}>هنوز فرض است</Button>
                 <Button size="sm" variant="secondary" loading={busy === `c${o.id}`} onClick={() => run(`c${o.id}`, () => onConfirmed(o.id))}>واقعیت شد</Button>

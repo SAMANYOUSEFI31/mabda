@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META } from '../../ui';
+import { Badge, Button, Card, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
 
 const KIND_FA: Record<ObjectSource['kind'], string> = {
   mcp: 'ابزار بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
@@ -80,7 +80,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <div className="flex flex-col gap-stack-xs">
                 <span className="headline text-text-default">{o.title}</span>
-                <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {label(o.nodeId)}</span>
+                <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {label(o.nodeId)}{sampleMark(o)}</span>
               </div>
             </div>
             {hints?.[o.id] && <p className="body-sm text-text-subtle">{hints[o.id]}</p>}
