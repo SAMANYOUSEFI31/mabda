@@ -4,7 +4,7 @@
  */
 import type { RouteContext } from './context.ts';
 import type { ThinkingKind } from '../../../src/core/thinkingMarkers.ts';
-import { RepoError } from '../repo.ts';
+import { CHANGED_ELSEWHERE, RepoError } from '../repo.ts';
 import { findItem, headingSections, parseThinking } from '../../../src/core/thinkingMarkers.ts';
 import { guessTitle } from '../../../src/core/knowledgeGuess.ts';
 
@@ -69,6 +69,8 @@ export function registerNotesThoughtsRoutes(ctx: RouteContext): void {
   }));
   router.patch('/workspaces/:wid/notes/:id', wrap((req, res) => {
     const s = scopeOf(req);
+    const expected = body(req).expectedUpdatedAt;
+    if (typeof expected === 'string') { const cur = repo.getNote(s, req.params.id); if (cur && cur.updatedAt !== expected) throw new RepoError('conflict', CHANGED_ELSEWHERE); }
     const note = repo.updateNote(s, req.params.id, String(body(req).content ?? ''));
     res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));

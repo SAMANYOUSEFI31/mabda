@@ -3,6 +3,7 @@
  * Registered on the shared router by routes.ts in the original order (Express matches in order).
  */
 import type { RouteContext } from './context.ts';
+import { CHANGED_ELSEWHERE, RepoError } from '../repo.ts';
 
 export function registerObjectsRoutes(ctx: RouteContext): void {
   const { repo, router, scopeOf, body, metaOf, wrap, stale } = ctx;
@@ -14,7 +15,9 @@ export function registerObjectsRoutes(ctx: RouteContext): void {
   }));
   router.patch('/workspaces/:wid/objects/:id', wrap((req, res) => {
     const s = scopeOf(req);
-    const { change: _c, reason: _r, ...patch } = body(req);
+    const { change: _c, reason: _r, expectedUpdatedAt, ...patch } = body(req);
+    // optimistic check (phone + laptop): an edit made from a copy older than what is stored is refused, never silently overwritten
+    if (typeof expectedUpdatedAt === 'string') { const cur = repo.getObjectAny(s, req.params.id); if (cur && cur.updatedAt !== expectedUpdatedAt) throw new RepoError('conflict', CHANGED_ELSEWHERE); }
     const r = repo.updateObject(s, req.params.id, patch, metaOf(body(req)));
     res.json({ ...r, stale: stale(s) });
   }));

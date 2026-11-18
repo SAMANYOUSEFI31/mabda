@@ -9,7 +9,7 @@ import type { NodeDialogState } from '../../components/structure/NodeDialogs';
 import type { PackTarget } from '../../components/context/ContextPackDialog';
 import { ContextObject, GeneratedDeliverable, ThoughtKind, Workspace, WorkstreamSpec } from '../../types';
 import { approvalsOf } from '../../core/versionHistory';
-import { dataApi } from '../../services/dataApi';
+import { dataApi, DataApiError } from '../../services/dataApi';
 import { defaultNodeId } from '../../core/nodeTree';
 import { useAiStatus } from '../../services/aiStatus';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -88,7 +88,12 @@ export function useAppCore() {
 
   /** run an API call; failures are shown (never swallowed, never replaced by fake data) */
   const attempt = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
-    try { return await fn(); } catch (e) { toast.show({ intent: 'danger', message: errText(e) }); return undefined; }
+    try { return await fn(); } catch (e) {
+      toast.show({ intent: 'danger', message: errText(e) });
+      // a conflict (409): the stored copy is newer than the one she edited, so the screen takes the stored one
+      if (e instanceof DataApiError && e.status === 409 && wid) void reload(wid);
+      return undefined;
+    }
   };
 
   const updateWorkspace = async (fn: (w: Workspace) => Workspace, id = wid) => {

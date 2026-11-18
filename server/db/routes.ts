@@ -64,7 +64,7 @@ export function createDataRouter(deps: DataRouterDeps): { router: Router; files:
   // ── errors ───────────────────────────────────────────────────────────
   router.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof AuthError) return void res.status(err.code === 'unauthenticated' ? 401 : 400).json({ error: { code: err.code, message: err.message } });
-    if (err instanceof RepoError) return void res.status(err.code === 'not_found' ? 404 : err.code === 'forbidden' ? 403 : 400).json({ error: { code: err.code, message: err.message } });
+    if (err instanceof RepoError) return void res.status(err.code === 'not_found' ? 404 : err.code === 'forbidden' ? 403 : err.code === 'conflict' ? 409 : 400).json({ error: { code: err.code, message: err.message } });
     if (err instanceof FileExtractError) return void res.status(422).json({ error: { code: 'unreadable', message: err.message } });
     if (err instanceof multer.MulterError) return void res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: { code: err.code, message: err.code === 'LIMIT_FILE_SIZE' ? 'حجم فایل بیشتر از ۲۵ مگابایت است.' : 'ارسال فایل نامعتبر بود.' } });
     // anything that is not a known, explained refusal is a fault: it is reported (no user text: server/diagnostics.ts)

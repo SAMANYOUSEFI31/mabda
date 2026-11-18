@@ -77,7 +77,7 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     return !!r;
   };
   const handleUpdateNote = async (id: string, content: string) => {
-    const r = await attempt(() => dataApi.updateNote(wid, id, content));
+    const r = await attempt(() => dataApi.updateNote(wid, id, content, data?.notes.find((n) => n.id === id)?.updatedAt));
     if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
   };
   /**
