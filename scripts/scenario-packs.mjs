@@ -60,7 +60,7 @@ try {
     await page.getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'بسته‌های دانش' }).click(); // level 3 until one is saved
     await page.getByRole('button', { name: 'بستهٔ تازه' }).click();
     await page.getByLabel('نام بسته').fill('برای متن تبلیغ');
-    await page.getByLabel('دستور کوتاه برای AI (اختیاری)').fill('فقط از همین بسته کار کن.');
+    await page.getByLabel('دستور کوتاه همراه بسته (اختیاری)').fill('فقط از همین بسته کار کن.');
     await page.getByRole('button', { name: 'ذخیرهٔ بسته' }).click();
     await page.getByText('برای متن تبلیغ').first().waitFor();
     await page.getByText(/توکن/).first().waitFor();

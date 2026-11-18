@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../database.ts';
 import { Repo } from '../repo.ts';
-import { applyLifeSample, lifeSampleOf } from './index.ts';
+import { applyLifeSample, lifeSampleOf, ensureOwnerSample } from './index.ts';
 import { openDriver } from './driver.ts';
 import { importLegacy, seedPayload } from '../legacy.ts';
 import { RepoError } from '../repo.ts';
@@ -133,4 +133,20 @@ test('the reset route: owner or the one local person only; off in production unl
   assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'test' }), 200);
   assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'production' }), 403, 'production needs MABDA_ALLOW_SAMPLES');
   assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'production', MABDA_ALLOW_SAMPLES: '1' }), 200);
+});
+
+test('the owner\'s copy: once, only for the owner (or local person) and only with the flag; never a tester; never touches «زندگی من»', async () => {
+  const on = { MABDA_ALLOW_SAMPLES: '1' } as NodeJS.ProcessEnv;
+  const repo = fresh(); const u = 'owner-1';
+  const mine = course(repo, u);
+  assert.equal(await ensureOwnerSample(repo, u, 'owner', NOW, {} as NodeJS.ProcessEnv), false, 'flag off');
+  assert.equal(await ensureOwnerSample(repo, 't-1', 'tester', NOW, on), false, 'tester');
+  assert.equal(lifeSampleOf(repo, 't-1'), undefined);
+  assert.equal(await ensureOwnerSample(repo, u, 'owner', NOW, on), true);
+  const ws = lifeSampleOf(repo, u)!;
+  assert.ok(ws && repo.getNote({ userId: u, workspaceId: mine.wid }, mine.noteId), 'their own space is untouched');
+  assert.equal(await ensureOwnerSample(repo, u, 'owner', NOW, on), false, 'only once');
+  // deleted by the person → not brought back on the next load
+  repo.db.prepare('DELETE FROM kv WHERE user_id = ? AND key = ?').run(u, 'life_sample_workspace');
+  assert.equal(await ensureOwnerSample(repo, u, 'owner', NOW, on), false);
 });

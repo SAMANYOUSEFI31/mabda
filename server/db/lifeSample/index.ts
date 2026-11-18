@@ -51,3 +51,18 @@ export async function applyLifeSample(repo: Repo, userId: string, now: Date = ne
   } finally { running.delete(userId); await driver.close(); }
   return repo.getWorkspace(userId, wid)!;
 }
+
+const offeredKey = 'life_sample_offered';
+export const samplesAllowed = (env: NodeJS.ProcessEnv = process.env) => /^(1|on|true|yes)$/i.test(env.MABDA_ALLOW_SAMPLES ?? '');
+
+/**
+ * The owner's own copy, made once without anyone typing a command: on the owner's first load after the host set
+ * `MABDA_ALLOW_SAMPLES`. Never for a tester; never when the flag is off; never again after it was offered once (a person who
+ * deletes it does not get it back; the reset route still rebuilds it on request). A failure is logged and not retried on every load.
+ */
+export async function ensureOwnerSample(repo: Repo, userId: string, role: string | undefined, now: Date = new Date(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+  if ((role !== 'owner' && role !== 'local') || !samplesAllowed(env)) return false;
+  if (repo.db.prepare('SELECT 1 FROM kv WHERE user_id = ? AND key = ?').get(userId, offeredKey)) return false;
+  repo.db.prepare('INSERT OR REPLACE INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, offeredKey, JSON.stringify({ at: now.toISOString() }));
+  try { await applyLifeSample(repo, userId, now); return true; } catch (e) { console.error('[life-sample] owner sample failed:', e instanceof Error ? e.message : e); return false; }
+}
