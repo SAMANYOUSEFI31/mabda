@@ -121,7 +121,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {nothingYet ? null : <div className="flex flex-col gap-stack-sm lg:flex-row lg:items-end">
         {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
             from 768 to 1023 the row has the page to itself (the section picker goes under it), so one row fits; from 1024 they sit
-            beside the picker (decisions.md §۳۶، §۳۸) */}
+            beside the picker (decisions.md §۳۶، §۳۹) */}
         <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0 lg:flex-wrap lg:overflow-visible">
           {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
               six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
@@ -158,8 +158,8 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               {o.draft!.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{o.draft!.reason}</p>}
               <p className="body-sm text-text-subtle">تا تأیید نشود، خروجی‌ها و بسته‌ها همان متن تأییدشده را می‌بینند.</p>
               <div className="flex flex-wrap gap-inline-sm">
-                <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>تأیید</Button>
-                {/* the same three, in the same order, as every waiting proposal: decide, change, refuse (§۳۷) */}
+                <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>جایگزینی</Button>
+                {/* the same three, in the same order, as every waiting proposal: decide, change, refuse (§۳۸) */}
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => p.onOpenObject(o)}>ویرایش</Button>
                 <Button size="sm" variant="ghost" iconStart="X" onClick={() => void p.onRejectDraft(o.id)}>رد</Button>
               </div>

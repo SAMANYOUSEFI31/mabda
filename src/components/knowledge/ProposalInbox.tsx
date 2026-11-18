@@ -28,7 +28,7 @@ interface Props {
   keepOrder?: boolean;
   /** id → one line about the order («زیربخش‌ها از این ارث می‌برند…») */
   hints?: Record<string, string>;
-  /** inside «منتظر تو» on «فکر»: a sub-heading under that section, not a peer of it (decisions.md §۳۷) */
+  /** inside «منتظر تو» on «فکر»: a sub-heading under that section, not a peer of it (decisions.md §۳۸) */
   nested?: boolean;
 }
 
@@ -67,7 +67,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
     <section id="proposal-inbox" className="flex flex-col gap-stack-lg" aria-label="صندوق پیشنهادها">
       <div className={`flex flex-col justify-between gap-inline-md md:flex-row md:items-center ${nested ? '' : 'border-b border-border-default pb-inset-lg'}`}>
         <div className="flex flex-col gap-stack-xs">
-          {/* one count format everywhere: «عنوان (n)» (§۳۷) */}
+          {/* one count format everywhere: «عنوان (n)» (§۳۸) */}
           {nested
             ? <h3 className="headline text-text-default">پیشنهادها ({formatNumber(pending.length)})</h3>
             : <h2 className="heading-sm text-text-default">صندوق پیشنهادها ({formatNumber(pending.length)})</h2>}
@@ -123,7 +123,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
               <div className="flex flex-wrap items-center gap-inline-xs">
                 {(() => {
                   const replaces = proposalContext(o, objects).replaces;
-                  // components.md «گروه دکمه»: at most three side by side, the rest under «⋯» (§۳۷). The decision and its two
+                  // components.md «گروه دکمه»: at most three side by side, the rest under «⋯» (§۳۸). The decision and its two
                   // everyday alternatives stay visible; «کنار قبلی» and an optional reason are rare, so they wait in «⋯»
                   const reasonOpen = reasons[o.id] !== undefined;
                   const more = [
@@ -137,7 +137,10 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
                         : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید</Button>}
                       <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
                       <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o, reasonOf(o.id))}>رد</Button>
-                      <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={more} />
+                      {/* a menu of one is a click for nothing: with only the optional reason left, it is its own quiet icon button */}
+                      {more.length > 1
+                        ? <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={more} />
+                        : <IconButton icon="MessageSquare" size="sm" label={`${more[0].label} برای «${o.title}»`} aria-expanded={reasonOpen} onClick={more[0].onSelect} />}
                     </>
                   );
                 })()}

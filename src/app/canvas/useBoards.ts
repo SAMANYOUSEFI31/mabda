@@ -63,7 +63,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     if (b) applyBundle(b);
   };
 
-  /** «تأیید و جایگزین کن» / «رد کن» for the unapproved rewrite of a confirmed knowledge */
+  /** «جایگزینی» / «رد» for the unapproved rewrite of a confirmed knowledge */
   const handleApproveDraft = async (objectId: string) => {
     const r = await attempt(() => dataApi.approveDraft(wid, objectId));
     if (!r) return;

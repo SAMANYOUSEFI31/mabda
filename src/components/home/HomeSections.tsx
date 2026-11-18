@@ -76,7 +76,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
         <div className="flex flex-col gap-stack-xs">
           <p className="caption text-text-subtle">آخرین فکرها</p>
           {thoughts.map((t) => <MarginNote key={t.id} lead={dot('thought')}><span className="line-clamp-2">{t.text}</span></MarginNote>)}
-          {/* a text button in the flow lines its words up with the text above it, not with its own padding (§۳۹) */}
+          {/* a text button in the flow lines its words up with the text above it, not with its own padding (§۴۰) */}
           <div><Button size="sm" variant="ghost" className="-ms-inset-md" onClick={onOpenThinking}>همهٔ فکرها</Button></div>
         </div>
       )}

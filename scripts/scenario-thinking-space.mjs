@@ -129,7 +129,7 @@ try {
     await page.keyboard.press('Escape');
     await palette('فضای فکر', 'رفتن به فکر');
     await page.getByTestId('thinking-space').getByText('۱ تغییر در انتظار تأیید').waitFor();
-    await page.getByTestId('thinking-space').getByRole('button', { name: 'تأیید', exact: true }).first().click();
+    await page.getByTestId('thinking-space').getByRole('button', { name: 'جایگزینی', exact: true }).first().click();
     await page.waitForTimeout(700);
     assert.equal((await state()).objects[0].content, 'قیمت اشتراک سه‌ماهه ۱٫۴ میلیون تومان است.', 'approved: it replaced the text');
 
