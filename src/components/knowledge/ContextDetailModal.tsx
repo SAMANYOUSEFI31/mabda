@@ -339,7 +339,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             )}
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             {approveMode
-              ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { await onApproveDraft!(object!.id); onClose(); }}>تأیید پیش‌نویس</Button>
+              ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { await onApproveDraft!(object!.id); onClose(); }}>تأیید و جایگزین کن</Button>
               : <Button variant="primary" type="submit" form="context-detail-form">
                   {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? saveLabel : addLabel}
                 </Button>}
