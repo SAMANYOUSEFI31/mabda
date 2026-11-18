@@ -72,9 +72,15 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const docked = roomy && (pref ? pref === 'docked' : wide);
   const [overlay, setOverlay] = useState(false);
   // «کاغذ کالک» only while content passes under a bar: the top bar once scrolled, the bottom bar until the end (navigation.md)
-  const [under, setUnder] = useState({ top: false, bottom: true });
+  // titleGone: the page's own title («خانه: فضا») has scrolled out of view; in the rail nothing else names the space (decisions.md §۳۳)
+  const [under, setUnder] = useState({ top: false, bottom: true, titleGone: false });
   useEffect(() => {
-    const on = () => { const d = document.documentElement; const y = window.scrollY; const next = { top: y > 0, bottom: d.scrollHeight - window.innerHeight - y > 1 }; setUnder((u) => (u.top === next.top && u.bottom === next.bottom ? u : next)); };
+    const on = () => {
+      const d = document.documentElement; const y = window.scrollY;
+      const h1 = document.querySelector('#main h1');
+      const next = { top: y > 0, bottom: d.scrollHeight - window.innerHeight - y > 1, titleGone: !!h1 && h1.getBoundingClientRect().bottom < 0 };
+      setUnder((u) => (u.top === next.top && u.bottom === next.bottom && u.titleGone === next.titleGone ? u : next));
+    };
     on(); window.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on);
     const ro = new ResizeObserver(on); ro.observe(document.body);
     return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); ro.disconnect(); };
@@ -221,7 +227,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <NavItem icon="BookOpen" label="حقیقت" selected={activeTab === 'context' && !p.sections.some((n) => n.id === p.focusNodeId)} expanded={activeTab === 'context' && p.sections.length > 0} onClick={() => { go('context'); p.onOpenSection(null); }} />
           {/* the sidebar holds PLACES, never views or actions (navigation.md): only «منبع» has places inside it, its sections */}
           {activeTab === 'context' && p.sections.length > 0 && (
-            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های منبع">
+            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های حقیقت">
               {p.sections.map((n) => <NavItem nested key={n.id} label={n.label} selected={p.focusNodeId === n.id} onClick={() => { setOverlay(false); p.onOpenSection(n.id); }} />)}
             </div>
           )}
@@ -294,6 +300,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <aside ref={drawerRef} role="dialog" aria-modal="true" data-testid="sidebar-overlay" className="mb-drawer absolute bottom-space-0 top-space-0 start-space-0 flex w-sidebar flex-col border-e border-border-default bg-surface-overlay p-inset-lg shadow-overlay" aria-label="نوار کناری">
             {sidebar}
           </aside>
+        </div>
+      )}
+
+      {/* Rail only: once the page title scrolls away, a compact bar names the space again, like a large title collapsing into
+          the toolbar (Apple HIG «Navigation bars»). The open sidebar already shows the name, so it never appears there (§۳۳). */}
+      {!docked && under.titleGone && (
+        <div data-testid="rail-title" data-under className="mb-glass mb-rail-title hidden items-center border-b border-border-default px-inset-lg py-inset-xs md:flex">
+          <span className="flex min-w-space-0 max-w-full items-center">{workspacePicker(true)}</span>
         </div>
       )}
 
