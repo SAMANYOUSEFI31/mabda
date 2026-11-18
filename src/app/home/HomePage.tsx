@@ -45,21 +45,22 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
   const started = homeHasStarted({ knowledge: workspaceContexts.length, actions: homePlan.total, openThoughts: openThoughts.length, notes: data?.notes?.length ?? 0 });
   return (
         <div className="space-y-stack-lg">
-          <div className="flex flex-row items-start justify-between gap-inline-md">
+          <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">فقط آنچه الان ارزش دارد؛ بقیه یک کلیک پایین‌تر است.</p>
             </div>
             <div className="flex flex-wrap items-center gap-inline-sm">
-              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's);
-                  taking the truth to another tool is one of the occasional things, so it sits in «بیشتر» */}
+              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
+              {/* the one outward step of the core loop (truth → another tool) is visible, as a quiet secondary; the rest are occasional
+                  and stay in «بیشتر» (decisions.md §۴): weekly review and stale outputs already come to «منتظر تو» when they are due */}
+              {workspaceContexts.length > 0 && <Button variant="secondary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای ابزار دیگر</Button>}
               {workspaceContexts.length > 0 && <Menu
                 label="بیشتر"
                 align="end"
                 trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
                 items={[
                   { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
-                  { label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => setAiRequest({ scopeNodeId: '' }) },
                   { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
                   { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
                   { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },

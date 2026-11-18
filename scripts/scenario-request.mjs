@@ -47,7 +47,7 @@ try {
     await page.getByText(/^خانه: /).waitFor();
 
     step(`[${width}] one click opens it with «سؤال» chosen; one line later the preview is ready`);
-    await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first().click();
     const dlg = page.getByRole('dialog');
     await dlg.waitFor();
     assert.equal(await dlg.locator('[role=radio][aria-checked=true]').innerText(), 'سؤال');

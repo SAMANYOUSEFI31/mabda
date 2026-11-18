@@ -25,7 +25,7 @@ const account = async (name) => {
     };
 const askHere = async (text) => {
   await page.locator('nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("خانه")').click();
-  await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first().click();
   await page.getByLabel('درخواستت را در یک خط بنوی').fill(text);
   await page.getByRole('dialog').getByRole('button', { name: 'همین‌جا جواب بده' }).click();
 };
