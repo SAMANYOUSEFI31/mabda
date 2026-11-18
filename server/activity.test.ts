@@ -132,5 +132,13 @@ test('Mabda\'s examples: stored as «Sample», never counted as the person\'s ow
     k = (await owner.call('GET', '/owner/activity/kpis')).json;
     p = k.people.find((x: any) => x.name === 'ب');
     assert.equal(p.confirms, 1, 'only her own confirmed item'); assert.equal(p.activated, true);
+    // the rewritten example is hers in the measures too, as on the screen: confirming it again after a change counts
+    await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { status: 'Proposed' });
+    await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { status: 'Confirmed' });
+    k = (await owner.call('GET', '/owner/activity/kpis')).json;
+    assert.equal(k.people.find((x: any) => x.name === 'ب').confirms, 2);
+    // a client's own id is not used for a new row
+    const withId = await a.call('POST', `/workspaces/${life.id}/objects`, { id: 'ctx_domain', type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'شناسهٔ ادعایی', content: 'x', nodeId: proposed.nodeId });
+    assert.notEqual(withId.json.object.id, 'ctx_domain');
   } finally { t.close(); }
 });

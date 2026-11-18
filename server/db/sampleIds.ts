@@ -12,6 +12,7 @@ import type { ContextObject } from '../../src/types/index.ts';
 const SUFFIX = /_[0-9a-f]{10}$/;
 let ids: Set<string> | undefined;
 let texts: Map<string, { title: string; content: string }> | undefined;
+let noteTexts: Map<string, string> | undefined;
 
 function baseIds(): Set<string> {
   if (ids) return ids;
@@ -21,6 +22,7 @@ function baseIds(): Set<string> {
     ...demo.objects.map((o) => o.id), ...demo.notes.map((n) => n.id),
   ]);
   texts = new Map([...INITIAL_CONTEXT_OBJECTS, ...demo.objects].map((o) => [o.id, { title: o.title, content: o.content }]));
+  noteTexts = new Map([...INITIAL_NOTES, ...demo.notes].map((n) => [n.id, n.content]));
   return ids;
 }
 
@@ -38,3 +40,12 @@ export const isSeededSpaceId = (id: unknown): boolean => typeof id === 'string' 
 
 /** example objects are stored with the provenance that says so */
 export const asSample = <T extends Pick<ContextObject, 'provenance'>>(o: T): T => ({ ...o, provenance: 'Sample' });
+
+/**
+ * One rule for «whose is it», shared by the screen and the test measures: an example stays Mabda's until the person writes over
+ * its text; from then on it is hers. A note has no provenance column, so a note is an example while its text is still the code's.
+ */
+export function isSampleNote(note: { id: string; content: string } | undefined): boolean {
+  if (!note || !isSeededId(note.id)) return false;
+  return noteTexts!.get(note.id.replace(SUFFIX, '')) === note.content;
+}

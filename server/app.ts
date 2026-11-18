@@ -13,7 +13,7 @@ import type { AuthMode } from './auth/http.ts';
 import { createOwnerRouter } from './auth/owner.ts';
 import { ErrorLog } from './diagnostics.ts';
 import { ActivityLog } from './activity.ts';
-import { isSeededId, isSeededSpaceId } from './db/sampleIds.ts';
+import { isSampleNote, isSeededSpaceId } from './db/sampleIds.ts';
 import { lifeSampleOf } from './db/lifeSample/index.ts';
 
 export interface AppOptions {
@@ -55,8 +55,11 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
       if (repo.getWorkspace(userId, wid)?.isDemo || lifeSampleOf(repo, userId)?.id === wid) out.sample = true;
       if (isSeededSpaceId(wid)) out.seededSpace = true;
       if (itemId) {
-        const thought = itemId.startsWith('th') ? repo.getThought(s, itemId) : undefined;
-        if (isSeededId(itemId) || repo.getObjectAny(s, itemId)?.provenance === 'Sample' || (thought && isSeededId(thought.sourceNoteId))) out.sampleItem = true;
+        // the same rule the screen shows (server/db/sampleIds.ts): an example written over is hers, in the UI and in the measures
+        const obj = repo.getObjectAny(s, itemId);
+        const thought = obj ? undefined : repo.getThought(s, itemId);
+        const note = obj || thought ? undefined : repo.getNote(s, itemId);
+        if (obj ? obj.provenance === 'Sample' : thought ? isSampleNote(thought.sourceNoteId ? repo.getNote(s, thought.sourceNoteId) : undefined) : isSampleNote(note)) out.sampleItem = true;
       }
     } catch { /* unknown: recorded without it */ }
     return out;
