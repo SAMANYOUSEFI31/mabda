@@ -125,7 +125,9 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
       // × / Esc with words in the box asks first; «دور بریز» empties it (the draft lives in the caller, so «ادامه» loses nothing)
       dirty={!!text.trim()} onDiscard={() => { onTextChange(''); setPerLine(false); }}
       description={switcher ? ADD_DESCRIPTION : 'هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز.'}
-      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button></>}
+      // «باز بماند» sits by the button it changes (like «Create more» beside «Create»): never below the fold of the body
+      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button>
+        <div className="flex items-center md:order-first md:me-auto"><Checkbox label="بعد از ثبت باز بماند" checked={continuous} onChange={(e) => onContinuousChange(e.target.checked)} /></div></>}
     >
       <div className="flex flex-col gap-stack-md" onKeyDown={(e) => {
         if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
@@ -171,7 +173,6 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
         )}
         {!exact && maybeDup && <p className="body-sm text-text-subtle" data-testid="quick-capture-maybe-dup">شاید تکراری باشد: {maybeDup.label}</p>}
         {saved > 0 && <p className="body-sm text-text-subtle" role="status">{formatNumber(saved)} مورد ثبت شد.</p>}
-        <Checkbox label="بعد از ثبت باز بماند تا مورد بعدی را بنویسم" checked={continuous} onChange={(e) => onContinuousChange(e.target.checked)} />
       </div>
     </Dialog>
   );
