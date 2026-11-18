@@ -140,11 +140,18 @@ test('SQLite: MABDA_RESTORE_FROM with a dump loads it into the open database onc
   b.close();
 });
 
+/**
+ * The killer needs its OWN connection: adapters on the same address share one (PostgresDatabase.bridges), so when the test
+ * database is itself named `postgres` the old `…/postgres` address was the test's own connection and it terminated itself.
+ * An application_name makes the address different without changing the database.
+ */
+const killerUrl = () => { const u = new URL(PG!); u.pathname = '/postgres'; u.searchParams.set('application_name', 'mabda_test_killer'); return u.toString(); };
+
 test('Postgres: a dropped connection is opened again; one lost inside a transaction saves nothing of it', pgOnly, () => {
   const pg = freshPg();
   try {
     // only this test's own connection (other test files run at the same time on the same database)
-    const kill = () => { const pid = (pg.query('SELECT pg_backend_pid() AS pid')[0] as { pid: number }).pid; const killer = new PostgresDatabase(PG!.replace(/\/[^/]*$/, '/postgres')); try {
+    const kill = () => { const pid = (pg.query('SELECT pg_backend_pid() AS pid')[0] as { pid: number }).pid; const killer = new PostgresDatabase(killerUrl()); try {
       killer.query('SELECT pg_terminate_backend($1)', [pid]);
       // termination is asynchronous: wait until that backend is really gone
       for (let i = 0; i < 200 && killer.query('SELECT 1 FROM pg_stat_activity WHERE pid = $1', [pid]).length; i++) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
