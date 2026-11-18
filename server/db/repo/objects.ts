@@ -13,7 +13,7 @@ import { resolveNodeId } from '../../../src/core/nodeTree.ts';
 import { canHaveExamples, cleanExamples } from '../../../src/core/redlineExamples.ts';
 import { reasonAllowed } from '../../../src/core/versionHistory.ts';
 import type { ContextChange, ContextObject, ContextType, ExpectationVerdict, GeneratedDeliverable, ObjectDraft } from '../../../src/types/index.ts';
-import { isSeededId } from '../sampleIds.ts';
+import { isSampleNote } from '../sampleIds.ts';
 
 export const objectsMethods = {
   setDraft(this: Repo, s: Scope, id: string, draft: ObjectDraft | null) {
@@ -155,8 +155,8 @@ export const objectsMethods = {
       };
     }
     // a person never claims `Sample`; knowledge made from one of Mabda's example notes is Mabda's example too (sampleIds.ts)
-    if (input.provenance === 'Sample' && !input.id) input = { ...input, provenance: 'User Input' };
-    if (input.provenance === 'User Input' && isSeededId(input.source?.noteId)) input = { ...input, provenance: 'Sample' };
+    if (input.provenance === 'Sample') input = { ...input, provenance: 'User Input' };
+    if (input.provenance === 'User Input' && input.source?.noteId && isSampleNote(this.getNote(s, input.source.noteId))) input = { ...input, provenance: 'Sample' };
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), ...(canHaveExamples({ type: input.type, reach: scopeFields(input).reach }) && cleanExamples(input.examples) ? { examples: cleanExamples(input.examples) } : {}), createdAt: t, updatedAt: t };

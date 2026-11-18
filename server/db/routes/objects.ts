@@ -9,7 +9,8 @@ export function registerObjectsRoutes(ctx: RouteContext): void {
   const { repo, router, scopeOf, body, metaOf, wrap, stale } = ctx;
   router.post('/workspaces/:wid/objects', wrap((req, res) => {
     const s = scopeOf(req);
-    const { change: _c, reason: _r, ...input } = body(req);
+    // the server names a new row and its origin's «Sample»: a client's `id` is never used, and it cannot claim to be an example
+    const { change: _c, reason: _r, id: _id, ...input } = body(req);
     const object = repo.createObject(s, input as never, metaOf(body(req)));
     res.json({ object, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
