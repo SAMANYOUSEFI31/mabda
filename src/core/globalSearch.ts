@@ -48,7 +48,7 @@ export type SearchGroups = Record<SearchKind, SearchHit[]>;
 export interface SearchCommand { id: string; title: string; keywords?: string[]; /** a command registered from outside (`registerPaletteCommand`) carries its own action */ run?: () => void }
 /** the shortcuts of the palette; the UI binds each id to an action */
 export const COMMANDS: SearchCommand[] = [
-  { id: 'compare', title: 'مقایسهٔ منبع در دو لحظه', keywords: ['چه عوض شد', 'تغییر', 'هفتهٔ پیش', 'قبل و بعد', 'اگر تأیید کنم'] },
+  { id: 'compare', title: 'مقایسهٔ حقیقت در دو لحظه', keywords: ['چه عوض شد', 'تغییر', 'هفتهٔ پیش', 'قبل و بعد', 'مقایسهٔ منبع'] },
   { id: 'thought', title: 'افزودن فکر', keywords: ['فکر تازه', 'ایده', 'سؤال', 'فرض', 'تصمیم باز', 'یادداشت', 'فکر خام', 'فوری', 'Ctrl+J'] },
   { id: 'go-thinking', title: 'رفتن به فکر', keywords: ['فضای فکر', 'فکرها', 'پیشنهاد', 'منتظر', 'ایده', 'سؤال'] },
   { id: 'go-thinking-canvas', title: 'رفتن به بوم فکر', keywords: ['فکر', 'بوم', 'آزاد', 'تابلو', 'چیدن'] },
