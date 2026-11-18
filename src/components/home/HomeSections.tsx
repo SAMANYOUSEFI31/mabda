@@ -54,7 +54,7 @@ function Section<T>({ id, title, items, render }: { id: string; title: string; i
       <ul className="mb-stagger flex flex-col divide-y divide-border-subtle">{shown.map(render)}</ul>
       {items.length > FIRST && (
         <div className="pt-stack-xs">
-          <Button size="sm" variant="ghost" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>
+          <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>
             {all ? 'کمتر' : `${formatNumber(items.length - FIRST)} مورد دیگر`}
           </Button>
         </div>
@@ -76,7 +76,8 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
         <div className="flex flex-col gap-stack-xs">
           <p className="caption text-text-subtle">آخرین فکرها</p>
           {thoughts.map((t) => <MarginNote key={t.id} lead={dot('thought')}><span className="line-clamp-2">{t.text}</span></MarginNote>)}
-          <div><Button size="sm" variant="ghost" onClick={onOpenThinking}>همهٔ فکرها</Button></div>
+          {/* a text button in the flow lines its words up with the text above it, not with its own padding (§۳۹) */}
+          <div><Button size="sm" variant="ghost" className="-ms-inset-md" onClick={onOpenThinking}>همهٔ فکرها</Button></div>
         </div>
       )}
       {!sections.empty && recent.length > 0 && (
@@ -131,7 +132,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
           )}
           {/* the end of the to-do, in the text column: it follows what it opens more of, never the (taller) margin beside it */}
           <div>
-            <Button size="sm" variant="ghost" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
+            <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
           </div>
         </div>
       </MarginItem>
