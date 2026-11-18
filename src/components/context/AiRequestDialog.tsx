@@ -46,7 +46,6 @@ interface Props {
 }
 
 const SHOWN = 40;
-const THOUGHT_SECTIONS_SCOPE = '__selected_thought_sections__';
 const newPackId = () => `rq_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /**
@@ -65,9 +64,10 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const [past, setPast] = useState<string | null>(null);
   const [kind, setKind] = useState<RequestKind>(initialKind ?? 'question');
   const [request, setRequest] = useState(initialRequest ?? '');
-  const [scope, setScope] = useState(initialThoughtIds?.length ? THOUGHT_SECTIONS_SCOPE : scopeNodeId ?? '');
+  /** «درباره کجا؟»: one or more sections (none = the whole space). A saved pack is this same selection with a name (decisions.md §۲۴) */
+  const [scopes, setScopes] = useState<string[]>(() => scopeNodeId ? [scopeNodeId] : []);
   /** the same switch as a saved pack's: the sub-sections of the section are read too (src/core/packScope.ts) */
-  const [withChildren, setWithChildren] = useState(true);
+  const [withChildren, setWithChildren] = useState(!initialThoughtIds?.length);
   const [extraIds, setExtraIds] = useState<string[]>([]);
   const [thoughtIds] = useState(initialThoughtIds ?? []);
   const [result, setResult] = useState<Result | null>(null);
@@ -78,17 +78,27 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const [savedAsThought, setSavedAsThought] = useState(false);
   const packId = useMemo(newPackId, []);
   const meta = REQUEST_KINDS.find((k) => k.kind === kind)!;
-  const hasKids = !!scope && nodes.some((n) => n.parentId === scope);
+  const hasKids = scopes.some((id) => nodes.some((n) => n.parentId === id));
   const selectedThoughts = thoughts.filter((t) => t.id && thoughtIds.includes(t.id));
   const thoughtScopeNodeIds = [...new Set(selectedThoughts.map((t) => t.nodeId))];
-  const usesThoughtSections = scope === THOUGHT_SECTIONS_SCOPE;
   const hasMissingThoughts = selectedThoughts.length !== thoughtIds.length;
-  const options = useMemo(() => [
-    ...(thoughtIds.length ? [{ value: THOUGHT_SECTIONS_SCOPE, label: `بخش‌های فکرهای انتخاب‌شده (${formatNumber(thoughtScopeNodeIds.length)})` }] : []),
-    { value: '', label: 'کل این فضا' },
-    ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` })),
-  ], [nodes, thoughtIds.length, thoughtScopeNodeIds.length]);
-  const requestScope = usesThoughtSections ? { scopeNodeIds: thoughtScopeNodeIds, withChildren: false } : { scopeNodeId: scope || undefined, withChildren };
+  // opened from selected thoughts: their sections are the starting selection (once known)
+  useEffect(() => { if (thoughtIds.length && thoughtScopeNodeIds.length) setScopes((s) => (s.length ? s : thoughtScopeNodeIds)); }, [thoughtScopeNodeIds.join()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tree = useMemo(() => flatten(nodes), [nodes]);
+  const scopeKey = scopes.join();
+  const requestScope = { scopeNodeIds: scopes, withChildren };
+  const toggleScope = (id: string, on: boolean) => { setScopes((s) => (on ? [...s, id] : s.filter((x) => x !== id))); setExtraIds([]); };
+  /** a saved request is a starting point: it fills the kind, the line and the sections, all still editable */
+  const [packs, setPacks] = useState<Array<{ id: string; name: string; kind?: RequestKind; template?: string; selection: { nodeIds: string[]; withChildren?: boolean } }>>([]);
+  useEffect(() => { let live = true; dataApi.listSavedPacks(workspaceId).then((r) => { if (live) setPacks(r.packs); }).catch(() => { /* optional: the picker just does not show */ }); return () => { live = false; }; }, [workspaceId]);
+  const startFrom = (id: string) => {
+    const pk = packs.find((x) => x.id === id); if (!pk) return;
+    if (pk.kind) setKind(pk.kind);
+    setRequest(pk.template ?? '');
+    setScopes(pk.selection.nodeIds.filter((n) => nodes.some((x) => x.id === n)));
+    setWithChildren(pk.selection.withChildren !== false);
+    setExtraIds([]);
+  };
 
   // the preview follows the choices; typing waits a moment so every key does not ask the server
   useEffect(() => {
@@ -101,9 +111,10 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
     }, result ? 300 : 0);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId, kind, request, scope, withChildren, extraIds, thoughtIds, packId]);
+  }, [workspaceId, kind, request, scopeKey, withChildren, extraIds, thoughtIds, packId]);
 
-  const ready = request.trim().length > 0 && !hasMissingThoughts;
+  // the line is optional (decisions.md §۲۴): many people ask in the other tool itself; the text then keeps a «درخواست من» place for it
+  const ready = !hasMissingThoughts;
   const copy = async () => {
     setBusy('copy');
     try {
@@ -115,26 +126,26 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   };
   /** «همین‌جا جواب بده» uses Mabda's platform AI route; failures stay explicit and retryable. */
   const answerHere = async () => {
-    if (!ready) return;
+    if (!ready || !request.trim()) return;
     if (!ai.available) { setAnswerError({ kind: 'disabled', message: 'هوش مصنوعی فعلاً در دسترس نیست. بعداً دوباره تلاش کن.', retryable: false } as AiErrorInfo); setAnswer(null); return; }
     setAnswerError(null); setSavedAsThought(false); setAnswer({ blocks: [], text: '', streaming: true }); setBusy('answer');
     let live: ContentBlock[] = [];
     try {
       const res = await streamChat(
-        { message: request.trim(), workspaceId, scopeNodeId: usesThoughtSections ? undefined : scope || undefined, scopeNodeIds: usesThoughtSections ? thoughtScopeNodeIds : undefined, focusNodeIds: usesThoughtSections ? thoughtScopeNodeIds : [], chatMode: MODE_OF[kind], thoughtIds, deep: false },
+        { message: request.trim(), workspaceId, scopeNodeId: scopes.length === 1 ? scopes[0] : undefined, scopeNodeIds: scopes.length > 1 ? scopes : undefined, focusNodeIds: scopes.length > 1 ? scopes : [], chatMode: MODE_OF[kind], thoughtIds, deep: false },
         { onBlock: (b) => { live = [...live, b]; setAnswer({ blocks: live, text: '', streaming: true }); } },
       );
       setAnswer({ blocks: res.blocks, text: res.markdown, streaming: false });
       const now = new Date().toISOString();
       const user: ChatMessage = { id: `msg_u_${Date.now()}`, role: 'user', content: request.trim(), timestamp: now, executionMode: 'auto' };
       const asst: ChatMessage = { id: `msg_a_${Date.now()}`, role: 'assistant', content: res.markdown, timestamp: now, executionMode: 'auto', blocks: res.blocks, plan: res.plan, usage: res.usage, usedContext: res.usedContext };
-      onSaveSession({ id: `sess_${Date.now()}`, workspaceId, title: request.trim().slice(0, 30), createdAt: now, updatedAt: now, chatMode: MODE_OF[kind], selectedNodeIds: usesThoughtSections ? thoughtScopeNodeIds : [], ...(!usesThoughtSections && scope ? { scopeNodeId: scope } : {}), messages: [user, asst] });
+      onSaveSession({ id: `sess_${Date.now()}`, workspaceId, title: request.trim().slice(0, 30), createdAt: now, updatedAt: now, chatMode: MODE_OF[kind], selectedNodeIds: scopes.length > 1 ? scopes : [], ...(scopes.length === 1 ? { scopeNodeId: scopes[0] } : {}), messages: [user, asst] });
       onAnswered(res); track('action.ai-answer');
     } catch (e) { setAnswer(null); setAnswerError(asAiError(e)); } finally { setBusy(null); }
   };
   const saveAsThought = async () => {
     if (!answer?.text || !thoughtIds.length || !onSaveAsThought) return;
-    const nodeId = selectedThoughts[0]?.nodeId ?? (scope || nodes[0]?.id);
+    const nodeId = selectedThoughts[0]?.nodeId ?? (scopes[0] || nodes[0]?.id);
     if (!nodeId) return;
     setSavingThought(true);
     try { if (await onSaveAsThought(thoughtIds, nodeId, answer.text)) setSavedAsThought(true); }
@@ -143,7 +154,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const save = async () => {
     setBusy('save');
     try {
-      await dataApi.createSavedPack(workspaceId, { name: `${KIND_LABEL[kind]} — ${request.trim().slice(0, 40)}`, instruction: '', selection: { nodeIds: scope ? [scope] : [], facets: [], statuses: [], includeAssumptions: true, withChildren }, kind, template: request.trim() });
+      await dataApi.createSavedPack(workspaceId, { name: request.trim() ? `${KIND_LABEL[kind]} — ${request.trim().slice(0, 40)}` : `${KIND_LABEL[kind]} — ${scopes.length ? scopes.map((id) => nodes.find((n) => n.id === id)?.label ?? '').join('، ').slice(0, 40) : 'کل فضا'}`, instruction: '', selection: { nodeIds: scopes, facets: [], statuses: [], includeAssumptions: true, withChildren }, kind, template: request.trim() });
       toast.show({ intent: 'success', message: 'درخواست ذخیره شد؛ در «بسته‌های دانش» هر بار با دانش روز ساخته می‌شود.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'ذخیره نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
@@ -156,7 +167,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
 
   return (
     <Dialog
-      open onClose={onClose} size="xl" title="درخواست برای ابزار دیگر" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'نوع کار را انتخاب کن و یک خط بنویس؛ مبدأ پرامپت اصولی را از دانش تأییدشدهٔ تو می‌چیند.'}
+      open onClose={onClose} size="xl" title="درخواست برای ابزار دیگر" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'مبدأ از دانش تأییدشدهٔ تو متنی آماده می‌کند که در هر ابزار هوش مصنوعی بچسبانی. نوع کار قالب جواب را تعیین می‌کند.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>بستن</Button>
@@ -177,6 +188,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       }
     >
       <div className="flex flex-col gap-stack-md">
+        {packs.length > 0 && !thoughtIds.length && <Select label="شروع از درخواست ذخیره‌شده (اختیاری)" value="" onChange={(e) => startFrom(e.target.value)} options={[{ value: '', label: 'از صفر' }, ...packs.map((x) => ({ value: x.id, label: x.name }))]} />}
         <div role="radiogroup" aria-label="نوع کار" className="grid grid-cols-2 gap-inline-sm sm:grid-cols-3">
           {REQUEST_KINDS.map((k) => (
             <Button key={k.kind} size="md" className={`w-full ${k.kind === kind ? '' : 'border border-border-default'}`} variant={k.kind === kind ? 'secondary' : 'ghost'} iconStart={k.kind === kind ? 'Check' : undefined} role="radio" aria-checked={k.kind === kind} onClick={() => { setKind(k.kind); setExtraIds([]); }}>{k.label}</Button>
@@ -201,12 +213,21 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           </section>
         )}
         <TextField
-          id="ai-request-line" label="درخواستت را در یک خط بنویس" value={request} onChange={(e) => setRequest(e.target.value)}
+          id="ai-request-line" label="درخواستت در یک خط (اختیاری)" value={request} onChange={(e) => setRequest(e.target.value)}
           placeholder={`مثلاً: ${meta.example}`} maxLength={500}
-          hint={request ? undefined : <Button size="sm" variant="ghost" onClick={() => setRequest(meta.example)}>استفاده از نمونه</Button>}
+          hint={request ? undefined : 'خالی هم بماند، متن کپی می‌شود و درخواستت را در خود آن ابزار می‌نویسی.'}
         />
-        <Select label="درباره کجا؟" value={scope} options={options} onChange={(e) => { setScope(e.target.value); setExtraIds([]); }} hint={usesThoughtSections ? 'دانش تأییدشدهٔ مؤثر در بخش‌های فکرهای انتخاب‌شده می‌آید؛ برای گسترش زمینه، کل کسب‌وکار یا یک بخش دیگر را انتخاب کن.' : 'دانش خود این بخش + آنچه از بالا به ارث می‌برد + خط قرمزهای «همه‌جا». بخش‌های هم‌سطح نمی‌آیند.'}/>
-        {hasKids && <Checkbox label="زیربخش‌هایش هم بیایند" checked={withChildren} onChange={(e) => { setWithChildren(e.target.checked); setExtraIds([]); }} hint="همان قاعدهٔ «بسته‌های دانش». بودجهٔ توکن نگه‌دار است: اگر جا نشد، مرتبط‌ترین‌ها می‌آیند و بقیه با دلیل کنار می‌مانند." />}
+        <fieldset className="flex flex-col gap-stack-xs" aria-describedby="ai-scope-hint">
+          <legend className="label-md text-text-default">درباره کجا؟</legend>
+          <p id="ai-scope-hint" className="body-sm text-text-subtle">{scopes.length === 0 ? 'هیچ بخشی انتخاب نشده: کل این فضا می‌آید.' : `${formatNumber(scopes.length)} بخش: دانش خودشان، آنچه از بالا به ارث می‌برند و خط قرمزهای «همه‌جا».`}</p>
+          <div className="flex max-h-overlay-xs flex-col overflow-y-auto rounded-control border border-border-default p-inset-sm" data-testid="ai-scope-list">
+            {tree.map(({ node: n, depth }) => (
+              <Checkbox key={n.id} className={depth ? (depth === 1 ? 'ps-inset-lg' : 'ps-inset-2xl') : undefined} label={n.label} checked={scopes.includes(n.id)} onChange={(e) => toggleScope(n.id, e.target.checked)} />
+            ))}
+          </div>
+          {scopes.length > 0 && <div><Button size="sm" variant="ghost" onClick={() => { setScopes([]); setExtraIds([]); }}>کل فضا</Button></div>}
+        </fieldset>
+        {hasKids && <Checkbox label="زیربخش‌هایشان هم بیایند" checked={withChildren} onChange={(e) => { setWithChildren(e.target.checked); setExtraIds([]); }} hint="بودجهٔ متن ثابت است: اگر همه جا نشد، مرتبط‌ترین‌ها می‌آیند و بقیه با دلیل کنار می‌مانند." />}
 
         {ai.managedEnabled && answerError && <AiErrorNotice error={answerError} onRetry={answerHere} retrying={busy === 'answer'} />}
         {ai.managedEnabled && answer && (
