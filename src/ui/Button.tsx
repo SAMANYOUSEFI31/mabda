@@ -56,7 +56,7 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   icon: IconName;
   /** accessible name (also used as tooltip title) */
   label: string;
-  variant?: 'ghost' | 'secondary' | 'primary' | 'danger';
+  variant?: 'ghost' | 'secondary' | 'primary' | 'danger' | 'inverse';
   size?: 'sm' | 'md' | 'lg';
   /** toggle button: aria-pressed + selected surface */
   selected?: boolean;

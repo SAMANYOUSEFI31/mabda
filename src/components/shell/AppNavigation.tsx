@@ -42,10 +42,12 @@ interface AppNavigationProps {
   focusNodeId: string | null;
   /** open a section of «منبع» (null = the whole source) */
   onOpenSection: (id: string | null) => void;
+  /** «افزودن»: the one global entry (patterns.md §۳), at the head of the sidebar on a computer, the ink tile of the phone bar */
+  addAction?: { label: string; onClick: () => void };
 }
 
 /**
- * Shell navigation: four destinations (خانه، فکر، منبع حقیقت، خروجی‌ها). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). The sidebar lists PLACES, never views or actions:
+ * Shell navigation: four destinations (خانه، فکر، حقیقت، خروجی‌ها; decisions.md §۲۷). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). The sidebar lists PLACES, never views or actions:
  * only «منبع» has places inside it (its top-level sections), shown while it is active; views switch on the page itself. Everything that is not daily work lives in the one «حساب کاربری» menu,
  * which is also the only place the plan is shown.
  */
@@ -200,6 +202,9 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           {toggleButton}
         </div>
 
+        {/* VIS-02: «افزودن» has one face on every device, the ink of the phone bar's tile; here it heads the places it adds to */}
+        {p.addAction && <Button variant="inverse" iconStart="Plus" fullWidth aria-keyshortcuts="N" onClick={p.addAction.onClick}>{p.addAction.label}</Button>}
+
         <button type="button" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K" className="label-md flex min-h-touch w-full items-center gap-inline-md rounded-control border border-border-default bg-surface-raised px-inset-md text-start text-text-subtle transition-colors hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed">
           <Icon name="Search" size="lg" className="text-icon-subtle" />
           <span className="flex-1">جستجو</span>
@@ -213,7 +218,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <NavItem icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
           {/* counters only for «منتظر تو» (navigation.md): a destination never shows how much it holds */}
           <NavItem icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
-          <NavItem icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context' && !p.sections.some((n) => n.id === p.focusNodeId)} expanded={activeTab === 'context' && p.sections.length > 0} onClick={() => { go('context'); p.onOpenSection(null); }} />
+          <NavItem icon="BookOpen" label="حقیقت" selected={activeTab === 'context' && !p.sections.some((n) => n.id === p.focusNodeId)} expanded={activeTab === 'context' && p.sections.length > 0} onClick={() => { go('context'); p.onOpenSection(null); }} />
           {/* the sidebar holds PLACES, never views or actions (navigation.md): only «منبع» has places inside it, its sections */}
           {activeTab === 'context' && p.sections.length > 0 && (
             <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های منبع">
@@ -267,12 +272,16 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         <aside data-testid="sidebar-rail" className={`mb-rail sticky top-space-0 z-dropdown hidden h-screen shrink-0 flex-col items-center border-e border-border-default bg-surface-sunken md:flex ${moved.current ? 'mb-side-close' : ''}`} style={{ '--side-from': width ? `${width}px` : 'var(--sidebar-width)' } as React.CSSProperties} aria-label="نوار کناری باریک">
           <Menu label="فضاها" filter={{ label: 'جست‌وجوی فضا' }} trigger={<button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} title={currentWorkspace.name} className="grid min-h-touch min-w-touch place-items-center rounded-control transition-colors hover:bg-interaction-hover active:bg-interaction-pressed"><BrandMark /></button>} items={workspaceItems} />
           {toggleButton}
+          {p.addAction && <IconButton icon="Plus" label={p.addAction.label} aria-keyshortcuts="N" variant="inverse" onClick={p.addAction.onClick} />}
           <IconButton icon="Search" label="جستجو" aria-keyshortcuts="Control+K Meta+K" variant="ghost" onClick={p.onOpenSearch} />
+          {/* in the rail every control is the same icon button, so only a line tells the actions from the places (decisions.md §۳۱);
+              the open sidebar needs none: its add, search box and place rows already differ in shape */}
+          <div role="separator" className="w-space-6 border-t border-border-default" />
           <nav ref={railGlide.ref} className="mb-rail__nav mb-nav-glided flex min-h-space-0 w-full flex-1 flex-col overflow-y-auto" aria-label="بخش‌های اصلی نرم‌افزار">
             {railGlide.glide}
             <NavItem compact icon="House" label="خانه" selected={activeTab === 'home'} onClick={() => go('home')} />
             <NavItem compact icon="Lightbulb" label="فکر" selected={activeTab === 'thinking'} onClick={() => go('thinking')} />
-            <NavItem compact icon="BookOpen" label="منبع حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />
+            <NavItem compact icon="BookOpen" label="حقیقت" selected={activeTab === 'context'} onClick={() => go('context')} />
             <NavItem compact icon="Package" label="خروجی‌ها" selected={inOutputs} onClick={() => go('assets')} />
           </nav>
           <Menu label="حساب کاربری" side="top" trigger={<IconButton icon="User" label={accountLine ? `حساب کاربری، ${accountLine}` : 'حساب کاربری'} variant="ghost" />} items={accountItems} />
@@ -317,7 +326,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           { id: 'thinking', label: 'فکر', icon: 'Lightbulb' },
           // capture lives in the bar itself: always reachable, and it never floats over the page
           { id: 'capture', label: 'افزودن', icon: 'Plus', action: true, testId: 'quick-capture-fab' },
-          { id: 'context', label: 'منبع', icon: 'BookOpen' },
+          { id: 'context', label: 'حقیقت', icon: 'BookOpen' },
           { id: 'assets', label: 'خروجی‌ها', icon: 'Package' },
         ]}
       />

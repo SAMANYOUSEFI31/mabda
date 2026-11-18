@@ -7,7 +7,6 @@
 
 import { AiStatusBanner } from '../../components/shared/AiNotices';
 import { AppNavigation } from '../../components/shell/AppNavigation';
-import { TopStatusBar } from '../../components/shell/TopStatusBar';
 import type { ReactNode } from 'react';
 import type { ReadyScope } from '../shared';
 import { Shortcuts } from '../../components/shell/Shortcuts';
@@ -49,17 +48,12 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         contextCount={workspaceContexts.length}
         deliverablesCount={deliverables.length}
         thinkingCount={thinkingBadge}
+        addAction={pageAction}
       />
 
       <Shortcuts onGoTab={setActiveTab} onGoSpace={(i) => { const ws = liveWorkspaces[i]; if (ws) { setChatScope(undefined); setCurrentWorkspaceId(ws.id); } }} />
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-space-0">
-        {/* Desktop Minimal Top Status Bar with Breadcrumbs & Quick Actions */}
-        <TopStatusBar
-          currentWorkspace={currentWorkspace}
-          activeTab={activeTab}
-          action={pageAction}
-        />
 
         {/* Main Canvas */}
         <main id="main" tabIndex={-1} className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
