@@ -5,7 +5,8 @@
 
 export type ContextType = 'Fact' | 'Decision' | 'Constraint';
 export type ContextStatus = 'Confirmed' | 'Proposed' | 'Needs Review' | 'Superseded' | 'Archived';
-export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported';
+/** `Sample`: written by Mabda as an example (first-run spaces, the showcase, the long-use sample), never by the person; only the server sets it */
+export type ContextProvenance = 'Onboarding' | 'User Input' | 'AI Suggested' | 'Asset Derived' | 'Imported' | 'Sample';
 export type ThoughtKind = 'idea' | 'question' | 'assumption' | 'open_decision';
 
 /** Where a suggestion came from — legacy source kinds remain readable for stored records. */

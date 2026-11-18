@@ -12,7 +12,7 @@ import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
 import { flatten, treeIndent, subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Select, Textarea, formatNumber, Nuqta, TYPE_META } from '../../ui';
+import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Select, Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -150,7 +150,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {drafts.map((o) => (
             <Card key={o.id} padding="md" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                <span className="flex flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">تغییرِ {TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span></span>
+                <span className="flex flex-col gap-stack-xs"><span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">تغییرِ {TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}{sampleMark(o)}</span></span>
               </div>
               {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
@@ -173,7 +173,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
                   <Card padding="md" knowledge="stale" className="flex flex-col gap-stack-xs">
                     <span className="headline text-text-default">{o.title}</span>
                     <span className="body-sm text-text-default">{reasonOf(o.id) || 'چیزی که این حقیقت به آن تکیه دارد عوض شده است.'}</span>
-                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span>
+                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}{sampleMark(o)}</span>
                     <div className="flex flex-wrap gap-inline-sm">
                       {p.onAcceptReview && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => p.onAcceptReview!(o.id)}>هنوز درست است</Button>}
                       <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => p.onOpenObject(o)}>ویرایش</Button>
@@ -224,7 +224,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               <li key={o.id}>
                 {/* a knowledge item shown as itself opens by itself, the same as in «منبع حقیقت»: the whole card, with its hover */}
                 <Card padding="md" knowledge="truth" onClick={() => p.onOpenObject(o)} className="flex flex-col gap-stack-xs">
-                  <span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">فرض · {nodeLabel(o.nodeId)}</span>
+                  <span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">فرض · {nodeLabel(o.nodeId)}{sampleMark(o)}</span>
                 </Card>
               </li>
             ))}

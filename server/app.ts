@@ -13,6 +13,8 @@ import type { AuthMode } from './auth/http.ts';
 import { createOwnerRouter } from './auth/owner.ts';
 import { ErrorLog } from './diagnostics.ts';
 import { ActivityLog } from './activity.ts';
+import { isSampleNote, isSeededSpaceId } from './db/sampleIds.ts';
+import { lifeSampleOf } from './db/lifeSample/index.ts';
 
 export interface AppOptions {
   sessions?: SessionResolver; service?: AiService; clock?: () => Date; admin?: boolean;
@@ -46,7 +48,22 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
   const repo = new Repo(db);
   const errors = new ErrorLog(db, opts.clock);
   // the user-test record (server/activity.ts, docs/test-data.md): one row per changing request, written when its answer goes out
-  const activity = new ActivityLog(db, opts.clock, (userId, wid) => { try { return !!repo.getWorkspace(userId, wid)?.isDemo; } catch { return false; } });
+  const activity = new ActivityLog(db, opts.clock, (userId, wid, itemId) => {
+    const out: Record<string, boolean> = {};
+    try {
+      const s = { userId, workspaceId: wid };
+      if (repo.getWorkspace(userId, wid)?.isDemo || lifeSampleOf(repo, userId)?.id === wid) out.sample = true;
+      if (isSeededSpaceId(wid)) out.seededSpace = true;
+      if (itemId) {
+        // the same rule the screen shows (server/db/sampleIds.ts): an example written over is hers, in the UI and in the measures
+        const obj = repo.getObjectAny(s, itemId);
+        const thought = obj ? undefined : repo.getThought(s, itemId);
+        const note = obj || thought ? undefined : repo.getNote(s, itemId);
+        if (obj ? obj.provenance === 'Sample' : thought ? isSampleNote(thought.sourceNoteId ? repo.getNote(s, thought.sourceNoteId) : undefined) : isSampleNote(note)) out.sampleItem = true;
+      }
+    } catch { /* unknown: recorded without it */ }
+    return out;
+  });
   app.use('/api', activity.middleware());
   const { accounts } = installAuth(app, db, mode, { clock: opts.clock, publicOrigin: opts.publicOrigin });
 

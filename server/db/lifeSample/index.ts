@@ -44,6 +44,8 @@ export async function applyLifeSample(repo: Repo, userId: string, now: Date = ne
       throw e;
     }
     repo.db.transaction(() => {
+      // the story was told through the product's own routes, which record what a person writes; it is Mabda's example
+      repo.db.prepare("UPDATE context_objects SET provenance = 'Sample' WHERE workspace_id = ? AND user_id = ?").run(wid, userId);
       repo.db.prepare('INSERT OR REPLACE INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, markerKey, JSON.stringify({ id: wid }));
     })();
     // only now the old copy goes (the one the seeder made — never any other space)

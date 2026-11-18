@@ -4,6 +4,7 @@ import { LIBRARY } from '../../src/core/specs.ts';
 import type { Repo } from './repo.ts';
 import { LOCAL_USER } from '../auth/http.ts';
 import { idSuffixFor, idsOf, remapIds } from './userIds.ts';
+import { asSample } from './sampleIds.ts';
 
 /** Everything the old localStorage-based client kept. Sent once by the browser to POST /api/bootstrap. */
 export interface LegacyPayload {
@@ -71,7 +72,8 @@ export function importLegacy(repo: Repo, userId: string, payload: LegacyPayload,
  */
 export function seedPayload(userId: string = LOCAL_USER): LegacyPayload {
   const raw: LegacyPayload = {
-    workspaces: INITIAL_WORKSPACES, contextObjects: INITIAL_CONTEXT_OBJECTS, relationships: INITIAL_RELATIONSHIPS,
+    // pre-written by Mabda: stored as `Sample` so it is never shown as the person's own writing (server/db/sampleIds.ts)
+    workspaces: INITIAL_WORKSPACES, contextObjects: INITIAL_CONTEXT_OBJECTS.map(asSample), relationships: INITIAL_RELATIONSHIPS,
     deliverables: INITIAL_DELIVERABLES, ledger: INITIAL_LEDGER, notes: INITIAL_NOTES,
   };
   return remapIds(raw, idsOf(raw.workspaces, raw.contextObjects, raw.relationships, raw.deliverables, raw.ledger, raw.notes), idSuffixFor(userId));

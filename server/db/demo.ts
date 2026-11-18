@@ -2,6 +2,7 @@ import type { Repo } from './repo.ts';
 import type { Workspace } from '../../src/types/index.ts';
 import { buildDemo, DEMO_ID, tehranAt } from '../../src/core/demoData.ts';
 import { idSuffixFor, idsOf, remapIds } from './userIds.ts';
+import { asSample } from './sampleIds.ts';
 
 /** the one showcase workspace of an account (the local user's id; everyone else's carries their suffix: demoWorkspaceIdFor) */
 export const DEMO_WORKSPACE_ID = DEMO_ID;
@@ -27,7 +28,7 @@ export function applyDemo(repo: Repo, userId: string, now: Date): Workspace {
     repo.saveWorkspace(userId, exists ? { ...repo.getWorkspace(userId, wsId)!, ...ws, createdAt: repo.getWorkspace(userId, wsId)!.createdAt } : ws, { demo: true, skipLimit: true });
     if (exists) repo.resetWorkspaceData(s);
     for (const n of data.nodes) repo.importNode(s, n);
-    for (const o of data.objects) repo.importObject(s, o, { silent: true });
+    for (const o of data.objects) repo.importObject(s, asSample(o), { silent: true });
     for (const v of data.versions) repo.importVersion(s, v);
     for (const r of data.relationships) repo.importRelationship(s, r);
     for (const c of data.changes) repo.importChange(s, c);

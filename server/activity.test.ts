@@ -105,3 +105,40 @@ test('the test record: actions and screens are logged without text, only after c
     assert.deepEqual(left.map((x) => x.name), ['POST /account/delete-all'], 'only the erase itself is recorded after the erase');
   } finally { t.close(); }
 });
+
+test('Mabda\'s examples: stored as «Sample», never counted as the person\'s own work; writing over one makes it hers', async () => {
+  const t = await boot();
+  try {
+    const owner = t.browser(); await owner.join(OWNER_CODE);
+    const a = t.browser();
+    await a.join((await owner.call('POST', '/owner/people', { name: 'ب' })).json.link.split('#join=')[1]);
+    await a.call('POST', '/consent', {});
+    const ws = (await a.call('POST', '/bootstrap', {})).json.workspaces;
+    const life = ws.find((w: any) => w.slug === 'my-life');
+    const st = (await a.call('GET', `/workspaces/${life.id}/state`)).json;
+    assert.ok(st.objects.length > 0 && st.objects.every((o: any) => o.provenance === 'Sample'), 'every pre-written item says it is an example');
+    const proposed = st.objects.find((o: any) => o.status === 'Proposed' && !o.sample);
+    assert.ok(proposed);
+    // confirming a ready-made suggestion: recorded, but not activation
+    assert.equal((await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { status: 'Confirmed' })).json.object.provenance, 'Sample');
+    let k = (await owner.call('GET', '/owner/activity/kpis')).json;
+    let p = k.people.find((x: any) => x.name === 'ب');
+    assert.equal(p.confirms, 0); assert.equal(p.activated, false);
+    // a client cannot claim «Sample» for its own writing
+    const mine = await a.call('POST', `/workspaces/${life.id}/objects`, { type: 'Fact', status: 'Confirmed', provenance: 'Sample', title: 'مال خودم', content: 'نوشتهٔ خودم', nodeId: proposed.nodeId });
+    assert.equal(mine.json.object.provenance, 'User Input');
+    // writing over an example's text makes it hers
+    assert.equal((await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { content: 'متن خودم' })).json.object.provenance, 'User Input');
+    k = (await owner.call('GET', '/owner/activity/kpis')).json;
+    p = k.people.find((x: any) => x.name === 'ب');
+    assert.equal(p.confirms, 1, 'only her own confirmed item'); assert.equal(p.activated, true);
+    // the rewritten example is hers in the measures too, as on the screen: confirming it again after a change counts
+    await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { status: 'Proposed' });
+    await a.call('PATCH', `/workspaces/${life.id}/objects/${proposed.id}`, { status: 'Confirmed' });
+    k = (await owner.call('GET', '/owner/activity/kpis')).json;
+    assert.equal(k.people.find((x: any) => x.name === 'ب').confirms, 2);
+    // a client's own id is not used for a new row
+    const withId = await a.call('POST', `/workspaces/${life.id}/objects`, { id: 'ctx_domain', type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'شناسهٔ ادعایی', content: 'x', nodeId: proposed.nodeId });
+    assert.notEqual(withId.json.object.id, 'ctx_domain');
+  } finally { t.close(); }
+});

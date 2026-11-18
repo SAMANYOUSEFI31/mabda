@@ -13,6 +13,7 @@ import { resolveNodeId } from '../../../src/core/nodeTree.ts';
 import { canHaveExamples, cleanExamples } from '../../../src/core/redlineExamples.ts';
 import { reasonAllowed } from '../../../src/core/versionHistory.ts';
 import type { ContextChange, ContextObject, ContextType, ExpectationVerdict, GeneratedDeliverable, ObjectDraft } from '../../../src/types/index.ts';
+import { isSampleNote } from '../sampleIds.ts';
 
 export const objectsMethods = {
   setDraft(this: Repo, s: Scope, id: string, draft: ObjectDraft | null) {
@@ -72,7 +73,7 @@ export const objectsMethods = {
     const dup = this.db.prepare('SELECT 1 FROM context_objects WHERE workspace_id = ? AND user_id = ? AND node_id = ? AND title = ? AND sample = 1').get(s.workspaceId, s.userId, input.nodeId, input.title.trim());
     if (dup) return undefined;
     const t = input.at ?? now();
-    const o: ContextObject = { id: input.id ?? newId('smp'), workspaceId: s.workspaceId, type: input.type, status: 'Confirmed', provenance: 'User Input', title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, sample: true, ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
+    const o: ContextObject = { id: input.id ?? newId('smp'), workspaceId: s.workspaceId, type: input.type, status: 'Confirmed', provenance: 'Sample', title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, sample: true, ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), createdAt: t, updatedAt: t };
     this.insertObject(s, o);
     return o;
   },
@@ -153,6 +154,9 @@ export const objectsMethods = {
         ...(promotedThought.kind === 'assumption' ? { assumption: true } : {}),
       };
     }
+    // a person never claims `Sample`; knowledge made from one of Mabda's example notes is Mabda's example too (sampleIds.ts)
+    if (input.provenance === 'Sample') input = { ...input, provenance: 'User Input' };
+    if (input.provenance === 'User Input' && input.source?.noteId && isSampleNote(this.getNote(s, input.source.noteId))) input = { ...input, provenance: 'Sample' };
     if (this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
     const t = now();
     const o: ContextObject = { id: input.id ?? newId('ctx'), workspaceId: s.workspaceId, type: input.type, status: input.status ?? 'Confirmed', provenance: input.provenance, title: input.title.trim(), content: input.content, nodeId: input.nodeId, version: 1, ...(input.source ? { source: input.source } : {}), ...(input.slotKey?.trim() ? { slotKey: input.slotKey.trim() } : {}), ...scopeFields(input), ...thinkingFields(input), ...(cleanFacets(input.facets) ? { facets: cleanFacets(input.facets) } : {}), ...(canHaveExamples({ type: input.type, reach: scopeFields(input).reach }) && cleanExamples(input.examples) ? { examples: cleanExamples(input.examples) } : {}), createdAt: t, updatedAt: t };
@@ -224,6 +228,9 @@ export const objectsMethods = {
       delete next.sample;
       const stillSample = !!cur.sample && next.title === cur.title && next.content === cur.content && next.type === cur.type && next.status === cur.status && JSON.stringify(next.examples ?? null) === JSON.stringify(cur.examples ?? null);
       if (stillSample) next.sample = true;
+      // `Sample` (Mabda's example) is set by the server only: a patch can't claim it or drop it, but writing over the text makes it hers
+      next.provenance = patch.provenance === 'Sample' || cur.provenance === 'Sample' ? cur.provenance : next.provenance;
+      if (cur.provenance === 'Sample' && (next.title !== cur.title || next.content !== cur.content)) next.provenance = 'User Input';
       else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
       const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || JSON.stringify(next.examples ?? null) !== JSON.stringify(cur.examples ?? null) || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;

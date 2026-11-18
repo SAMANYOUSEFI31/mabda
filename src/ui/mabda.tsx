@@ -98,7 +98,14 @@ export const PROVENANCE_LABEL: Record<ContextProvenance, string> = {
   'AI Suggested': 'پیشنهاد هوش مصنوعی',
   'Asset Derived': 'برگرفته از یک خروجی',
   Imported: 'وارد شده از بیرون',
+  Sample: 'نمونهٔ مبدأ',
 };
+
+/**
+ * The one quiet marker of Mabda's own example, appended to a knowledge item's meta line (type · section) everywhere it is listed:
+ * same text style as the rest of the line, no badge, no colour (it is a fact about the author, not a state). Empty for her own items.
+ */
+export const sampleMark = (o: Pick<ContextObject, 'provenance'>): string => (o.provenance === 'Sample' ? ` · ${PROVENANCE_LABEL.Sample}` : '');
 
 export const CONTEXT_TYPE_OPTIONS = (Object.keys(TYPE_META) as ContextType[]).map((value) => ({ value, label: TYPE_META[value].label }));
 export const CONTEXT_STATUS_OPTIONS = (Object.keys(STATUS_META) as ContextStatus[]).map((value) => ({ value, label: STATUS_META[value].label }));

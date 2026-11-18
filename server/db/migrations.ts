@@ -1,6 +1,7 @@
 import { asSql } from './sql/sqlite.ts';
 import { postgresSchemaAt } from './sql/pgSchema.ts';
 import type { SqlDatabase, SqlLike } from './sql/types.ts';
+import { seededText } from './sampleIds.ts';
 
 /**
  * Forward-only, versioned migrations. Every table carries user_id + workspace_id so the same schema moves to
@@ -809,6 +810,22 @@ export const MIGRATIONS: Migration[] = [
         CREATE INDEX idx_activity_user_at ON activity_events(user_id, created_at);
         CREATE INDEX idx_activity_at ON activity_events(created_at);
       `);
+    },
+  },
+  {
+    version: 31,
+    name: 'provenance Sample: knowledge Mabda wrote as an example is marked so (never shown as the person\'s own writing)',
+    up(db) {
+      // the examples are known by their ids (server/db/sampleIds.ts); only an untouched one (the code's own text) is marked, so
+      // an example the person already wrote over stays hers. The long-use sample's space is known by its marker row.
+      const rows = db.prepare("SELECT id, title, content FROM context_objects WHERE provenance IN ('User Input', 'Onboarding')").all() as Array<{ id: string; title: string; content: string }>;
+      const mark = db.prepare("UPDATE context_objects SET provenance = 'Sample' WHERE id = ?");
+      for (const r of rows) { const t = seededText(r.id); if (t && t.title === r.title && t.content === r.content) mark.run(r.id); }
+      // a grey example of a starter or template (`sample = 1`) is Mabda's until the person writes over it (which clears the flag)
+      db.prepare("UPDATE context_objects SET provenance = 'Sample' WHERE sample = 1").run();
+      for (const k of db.prepare("SELECT user_id, value FROM kv WHERE key = 'life_sample_workspace'").all() as Array<{ user_id: string; value: string }>) {
+        try { db.prepare("UPDATE context_objects SET provenance = 'Sample' WHERE workspace_id = ? AND user_id = ?").run((JSON.parse(k.value) as { id: string }).id, k.user_id); } catch { /* an unreadable marker marks nothing */ }
+      }
     },
   },
 ];

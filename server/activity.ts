@@ -22,7 +22,7 @@ const SKIP = /^\/api\/(activity|client-errors|owner|usage|health|join|logout|ses
 const newId = () => `act_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
 
 export class ActivityLog {
-  constructor(private readonly db: SqlLike, private readonly clock: () => Date = () => new Date(), private readonly isSample?: (userId: string, spaceId: string) => boolean) {}
+  constructor(private readonly db: SqlLike, private readonly clock: () => Date = () => new Date(), private readonly classify?: (userId: string, spaceId: string, itemId?: string) => Props) {}
 
   record(e: { userId: string; sessionId?: string; spaceId?: string; kind: ActivityKind; name: string; status?: number; ms?: number; props?: Props; at?: string }): void {
     this.db.prepare('INSERT INTO activity_events (id, user_id, session_id, space_id, kind, name, status, ms, props, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(
@@ -86,7 +86,8 @@ export class ActivityLog {
           const spaceId = params.wid ?? req.params?.wid;
           const props: Props = { ...(actionProps(req.body) ?? {}), ...result };
           if (params.id && SPACE.test(params.id)) props.id = params.id;
-          if (spaceId && this.isSample?.(userId, spaceId)) props.sample = true;
+          // whose item it was: an example space or one of Mabda's example items is not the person's own work (sampleIds.ts)
+          if (spaceId) Object.assign(props, this.classify?.(userId, spaceId, params.id ?? (result.objectId as string | undefined)) ?? {});
           const ms = Number(process.hrtime.bigint() - start) / 1e6;
           this.record({ userId, sessionId: req.get('x-mabda-session') ?? undefined, spaceId, kind: 'action', name, status: res.statusCode, ms, props: Object.keys(props).length ? props : undefined });
         } catch { /* the record must never break the product */ }
