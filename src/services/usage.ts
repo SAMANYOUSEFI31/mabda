@@ -1,5 +1,6 @@
 import type { FeatureInfo } from '../core/usage';
 import { isFeatureKey } from '../core/usage';
+import { logUi } from './activity';
 
 /**
  * Counts that a feature was opened or used (only its catalog KEY goes to this install's server — never text or data).
@@ -7,6 +8,7 @@ import { isFeatureKey } from '../core/usage';
  */
 export function track(feature: string): void {
   if (!isFeatureKey(feature) || typeof fetch === 'undefined') return;
+  logUi('feature', { key: feature });
   void fetch('/api/usage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ feature }) }).catch(() => { /* optional */ });
 }
 export type { FeatureInfo };

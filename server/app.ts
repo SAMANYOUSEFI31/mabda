@@ -12,6 +12,7 @@ import { installAuth, rateLimit, securityHeaders, userIdOf } from './auth/http.t
 import type { AuthMode } from './auth/http.ts';
 import { createOwnerRouter } from './auth/owner.ts';
 import { ErrorLog } from './diagnostics.ts';
+import { ActivityLog } from './activity.ts';
 
 export interface AppOptions {
   sessions?: SessionResolver; service?: AiService; clock?: () => Date; admin?: boolean;
@@ -44,14 +45,24 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
   app.use((req, res, next) => (req.path === '/api/backup/restore' ? next() : json(req, res, next)));
   const repo = new Repo(db);
   const errors = new ErrorLog(db, opts.clock);
+  // the user-test record (server/activity.ts, docs/test-data.md): one row per changing request, written when its answer goes out
+  const activity = new ActivityLog(db, opts.clock, (userId, wid) => { try { return !!repo.getWorkspace(userId, wid)?.isDemo; } catch { return false; } });
+  app.use('/api', activity.middleware());
   const { accounts } = installAuth(app, db, mode, { clock: opts.clock, publicOrigin: opts.publicOrigin });
+
+  // screens, dialogs and visits from the browser (src/services/activity.ts): signed-in only, at most 60 batches a minute per person
+  app.post('/api/activity', rateLimit({ windowMs: 60_000, max: 60, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
+    // nothing before the person has accepted the notice that says it is recorded (src/core/ownerNotice.ts)
+    if (req.mabdaUser && !req.mabdaUser.consented) return void res.json({ ok: true, recorded: 0 });
+    res.json({ ok: true, recorded: activity.recordUi(userIdOf(req), req.get('x-mabda-session') ?? undefined, req.body ?? {}) });
+  });
 
   // error reports from the browser (src/app/shell/errorReport.ts): signed-in only, at most 20 a minute per person
   app.post('/api/client-errors', rateLimit({ windowMs: 60_000, max: 20, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
     errors.record(userIdOf(req), 'client', req.body ?? {});
     res.json({ ok: true });
   });
-  app.use('/api/owner', createOwnerRouter({ db, mode, accounts, errors, backupDir: opts.backupDir, publicOrigin: opts.publicOrigin }));
+  app.use('/api/owner', createOwnerRouter({ db, mode, accounts, errors, activity, backupDir: opts.backupDir, publicOrigin: opts.publicOrigin }));
 
   let aiRef: AiService | undefined;
   const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), opts.clock);
@@ -81,5 +92,5 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
     res.json({ status: 'ok', managedAi: ai.sessions.managedEnabled, timestamp: new Date().toISOString() });
   });
 
-  return { app, repo, files, aiSessions: ai.sessions, accounts, errors };
+  return { app, repo, files, aiSessions: ai.sessions, accounts, errors, activity };
 }

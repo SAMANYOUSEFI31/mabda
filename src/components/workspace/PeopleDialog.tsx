@@ -1,11 +1,12 @@
 /**
  * «افراد آزمون» (only the owner, only online with sign-in): make a personal link for each tester, replace a lost link, turn a
- * person off, see what broke on testers' devices, and take a copy of the whole database. Built only from src/ui.
+ * person off, see what broke on testers' devices, read the test's measures and export its raw record, and take a copy of the whole database. Built only from src/ui.
  */
 import { OWNER_NOTICE_VERSION } from '../../core/ownerNotice';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Dialog, EmptyState, ErrorState, List, ListItem, PageSkeleton, TextField, formatJalaliDateTime } from '../../ui';
 import { ownerApi } from '../../services/dataApi';
+import { TestDataSection } from './TestDataSection';
 import type { ErrorReportInfo, PersonInfo } from '../../services/dataApi';
 
 interface Props { open: boolean; onClose: () => void }
@@ -96,6 +97,8 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
             </List>
           )}
         </section>
+
+        <TestDataSection open={open} />
 
         <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-labelledby="backup-h">
           <h3 id="backup-h" className="label-md text-text-default">پشتیبان کل داده‌ها</h3>

@@ -21,6 +21,7 @@ import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
 import { SIGNED_OUT_EVENT } from './session';
 import { deadline } from './deadline';
+import { visitHeader } from './activity';
 
 /**
  * The only way the UI reads or writes data. The server (SQLite) is the source of truth — there is no localStorage copy
@@ -50,7 +51,7 @@ async function call<T>(method: string, path: string, body?: unknown, extraHeader
   try {
     res = await fetch(base + path, {
       method, signal,
-      headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'x-mabda-user': getUserId(), ...extraHeaders },
+      headers: { ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'x-mabda-user': getUserId(), ...visitHeader(), ...extraHeaders },
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
   } catch {
@@ -119,6 +120,9 @@ export const ownerApi = {
   errors: () => call<{ errors: ErrorReportInfo[] }>('GET', '/owner/errors'),
   /** the whole database, every person's data (a download, not JSON) */
   backupUrl: '/api/owner/backup',
+  /** the user-test record (server/activity.ts): measures computed from the raw events, and the raw events as a download */
+  activityKpis: () => call<import('../core/activity').Kpis>('GET', '/owner/activity/kpis'),
+  activityExportUrl: (format: 'csv' | 'json') => `/api/owner/activity/export${format === 'csv' ? '?format=csv' : ''}`,
 };
 
 export const dataApi = {
