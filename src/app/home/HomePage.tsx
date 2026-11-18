@@ -48,7 +48,6 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
-              <p className="text-body-sm text-text-subtle mt-stack-xs">فقط آنچه الان ارزش دارد؛ بقیه یک کلیک پایین‌تر است.</p>
             </div>
             <div className="flex flex-wrap items-center gap-inline-sm">
               {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
@@ -60,12 +59,14 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
                 align="end"
                 trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
                 items={[
-                  { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
-                  { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+                  // grouped by job (decisions.md §۲۶): the request's other half and its saved form, then the looks back at the truth.
+                  // «شروع سریع» lives once, in the account menu («راهنما و شروع سریع»)
                   { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
-                  { label: 'مقایسهٔ منبع', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
+                  { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+                  { divider: true },
+                  { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                   { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                  { label: 'شروع سریع', icon: 'Compass', onSelect: () => setIsOnboardingOpen(true) },
+                  { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
                 ]}
               />}
             </div>

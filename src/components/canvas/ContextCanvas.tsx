@@ -594,23 +594,26 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
-      {/* the canvas's own add, in its own kind and in BOTH normal and full screen (decisions.md §۱۱): full screen covers the top bar's
-          «افزودن», and a free note (double-click, or «⋯») is canvas-only scratch, so it is not the first thing to offer */}
-      <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => requestAdd({ kind: mode === 'thinking' ? 'thought' : 'truth', scoped: true })}>{mode === 'thinking' ? 'افزودن فکر' : 'افزودن حقیقت'}</Button>
+      {/* the canvas's own add, in its own kind, only in full screen (decisions.md §۱۸, re-decided in §۲۸): there the layer covers the
+          sidebar's «افزودن» and the phone bar; in the normal view that one is beside it, and two adds side by side ask «which one?».
+          A free note (double-click where it should go, or «⋯») is the canvas's own scratch, so it is not the first thing offered */}
+      {fullscreen && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => requestAdd({ kind: mode === 'thinking' ? 'thought' : 'truth', scoped: true })}>{mode === 'thinking' ? 'افزودن فکر' : 'افزودن حقیقت'}</Button>}
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
         {!sheet && <IconButton icon="PanelLeft" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
         <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
-          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }] : []),
+          // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
+          // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
+          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
+          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, onSelect: () => zoomAt(1 / 1.25) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
-          ...(mode === 'thinking' ? [{ label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }] : []),
-          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, onSelect: () => zoomAt(1 / 1.25) }, { divider: true } as const] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
+          { divider: true, heading: 'فایل JSON Canvas' },
+          { label: 'خروجی گرفتن', icon: 'Download', onSelect: exportCanvas },
+          { label: 'وارد کردن', icon: 'Upload', onSelect: () => fileInput.current?.click() },
           { divider: true },
-          { label: 'خروجی JSON Canvas', icon: 'Download', onSelect: exportCanvas },
-          { label: 'ورود JSON Canvas', icon: 'Upload', onSelect: () => fileInput.current?.click() },
           { label: 'میان‌برها (؟)', icon: 'Keyboard', onSelect: () => setHelpOpen(true) },
-          ...(fullscreen ? [{ divider: true } as const, { label: 'تمام‌صفحهٔ مرورگر (اختیاری)', icon: 'Maximize' as const, onSelect: browserFullscreen }] : []),
+          ...(fullscreen ? [{ label: 'تمام‌صفحهٔ مرورگر (اختیاری)', icon: 'Maximize' as const, onSelect: browserFullscreen }] : []),
         ]} />
       </span>
     </div>
@@ -783,7 +786,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 ...(layoutEff === 'free' && (ctx.item.noteId || ctx.item.objectId) ? [['جابه‌جا کن به بخش…', () => setMoveTo({ noteId: ctx.item.noteId, objectId: ctx.item.objectId, itemId: ctx.item.id, nodeId: ctx.item.nodeId ?? '' })]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId && mode === 'truth' ? [['دور این مورد', () => enterLineage(ctx.item.objectId!)]] as Array<[string, () => void]> : []),
                 ...(ctx.item.objectId ? [['باز کردن', () => { const o = objectById.get(ctx.item.objectId!); if (o) p.onOpenObject(o); }], ['انتقال و اتصال', () => setActions(ctx.item.objectId!)], ...(mode === 'thinking' ? [[placedIds.has(ctx.item.objectId) ? 'از بوم فکر بردار' : 'بگذار در بوم فکر', () => { const id = ctx.item.objectId!; if (placedIds.has(id)) void p.onUnplaceObject(id); else { void p.onPlaceObject(id, 40, 40); setLayout('free'); } }]] : [])] as Array<[string, () => void]> : []),
-                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['به دانش ببر', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
+                ...(ctx.item.kind === 'note' && ctx.item.noteId ? [['پیشنهاد به حقیقت', () => setToKnowledge(ctx.item.noteId!)], ...(p.onNoteToSection ? [['ساخت بخش از این فکر', () => p.onNoteToSection!(ctx.item.noteId!)]] : [])] as Array<[string, () => void]> : []),
               ] as Array<[string, () => void]>).map(([label, fn]) => <button key={label} type="button" role="menuitem" autoFocus={label.startsWith('انتخاب')} className="body-sm rounded-control-sm px-inset-sm py-inset-sm text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { setCtx(null); fn(); }}>{label}</button>)}
             </div>
           )}
@@ -893,7 +896,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         )}
       </Dialog>
 
-      <Dialog open={!!toKnowledge} onClose={() => setToKnowledge(null)} size="sm" title="به دانش ببر">
+      <Dialog open={!!toKnowledge} onClose={() => setToKnowledge(null)} size="sm" title="پیشنهاد به حقیقت">
         {toKnowledge && (
           <div className="flex flex-col gap-stack-md">
             <p className="body-md text-text-default">یک «پیشنهاد» ساخته می‌شود؛ تا تأیید نکنی واقعیت نیست. یادداشت سر جایش می‌ماند.</p>

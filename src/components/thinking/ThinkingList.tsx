@@ -9,7 +9,7 @@ import { convertedTo } from '../../core/thinkingMarkers';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { promotionTypesForThought, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { aboutTargets, stripAbout } from '../../core/thoughtAbout';
-import { Badge, Button, Checkbox, Dialog, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
+import { Badge, Button, Checkbox, Dialog, IconButton, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
 
@@ -111,7 +111,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                 <Menu
                   label="انتقال فکر به دانش"
                   align="end"
-                  trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>به دانش ببر</Button>}
+                  trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>پیشنهاد به حقیقت</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
                     // where it lands is said, not assumed: the proposal goes to the thought's section (it is changeable when approving)
                     label: `پیشنهاد ${type === 'Fact' ? (it.kind === 'assumption' ? 'فرض' : 'واقعیت') : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}${nodes ? ` در «${label(it.nodeId)}»` : ''}`,
@@ -124,7 +124,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                 <Menu
                   label="کارهای بیشتر برای فکر"
                   align="end"
-                  trigger={<Button size="sm" variant="ghost">بیشتر</Button>}
+                  trigger={<IconButton icon="Ellipsis" size="sm" label="کارهای بیشتر برای فکر" />}
                   items={[
                     // «ساخت بخش» is used now and then: under «بیشتر», not on every row
                     ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),

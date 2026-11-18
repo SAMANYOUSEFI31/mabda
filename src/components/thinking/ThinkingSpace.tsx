@@ -44,6 +44,8 @@ interface Props {
   onSynthesizeThought?: (parentIds: string[], nodeId: string, kind: ThoughtKind, text: string) => Promise<boolean>;
   onThinkWithAi?: (thoughtIds: string[]) => void;
   onOpenObject: (o: ContextObject) => void;
+  /** «هنوز درست است»: a truth that was flagged for review stays as it is, recorded in its history */
+  onAcceptReview?: (id: string) => void;
   onApproveDraft: (id: string) => Promise<void>;
   onRejectDraft: (id: string) => Promise<void>;
   proposals: Omit<ProposalProps, 'objects' | 'nodes' | 'keepOrder' | 'hints'>;
@@ -118,7 +120,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
       {nothingYet ? null : <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-end">
         <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
-          {CHIPS.map((c) => (
+          {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
+              six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
+          {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
             <Button key={c.id} size="sm" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
               {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
             </Button>
@@ -127,7 +131,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <div className="flex items-end gap-inline-xs sm:ms-auto">
           {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
           {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
-          <div className="w-overlay-xs max-w-full"><Select label="دربارهٔ" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
+          <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${'— '.repeat(depth)}${node.label}` }))]} /></div>
         </div>
       </div>}
 
@@ -162,8 +166,16 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
                 <li key={o.id}>
-                  <Card padding="md" knowledge="stale" onClick={() => p.onOpenObject(o)} className="flex flex-col gap-stack-xs">
-                    <span className="headline text-text-default">{o.title}</span><span className="body-sm text-text-subtle">{reasonOf(o.id) || 'چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.'}</span><span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span>
+                  {/* a review waits for a DECISION, like a draft (decisions.md §۲۹): it says why and offers both ways out. A bare
+                      clickable card opened the truth and left it waiting, so acting on it seemed to change nothing */}
+                  <Card padding="md" knowledge="stale" className="flex flex-col gap-stack-xs">
+                    <span className="headline text-text-default">{o.title}</span>
+                    <span className="body-sm text-text-default">{reasonOf(o.id) || 'چیزی که این حقیقت به آن تکیه دارد عوض شده است.'}</span>
+                    <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {nodeLabel(o.nodeId)}</span>
+                    <div className="flex flex-wrap gap-inline-sm">
+                      {p.onAcceptReview && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => p.onAcceptReview!(o.id)}>هنوز درست است</Button>}
+                      <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => p.onOpenObject(o)}>ویرایش</Button>
+                    </div>
                   </Card>
                 </li>
               ))}
