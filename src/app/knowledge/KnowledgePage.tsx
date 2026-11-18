@@ -26,7 +26,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">
-                منبع حقیقت: {currentWorkspace.name}
+                حقیقت: {currentWorkspace.name}
               </h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">
                 «مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد.»

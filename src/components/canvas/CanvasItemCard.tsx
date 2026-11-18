@@ -121,7 +121,7 @@ interface NoteProps { item: SceneItem; selected: boolean; dimmed: boolean; lod: 
   onSelect: (id: string, additive: boolean) => void; onPointerDown: (e: React.PointerEvent, item: SceneItem) => void; onFocus: (item: SceneItem) => void; onKey: (e: React.KeyboardEvent, item: SceneItem) => void;
   onEdit: (item: SceneItem) => void; onEditText: (text: string) => void; onSave: () => void; onCancel: () => void; onConvert: (item: SceneItem) => void; onDelete: (item: SceneItem) => void }
 
-/** a free note: it is never knowledge, and says so — «به دانش ببر» makes a PROPOSED object */
+/** a free note: it is never knowledge, and says so — «پیشنهاد به حقیقت» makes a PROPOSED object */
 export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
   const { item } = p;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
@@ -144,7 +144,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
               {p.selected && (
                 <span className="flex items-center">
                   <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => p.onEdit(item)} />
-                  <IconButton icon="Lightbulb" label="به دانش ببر" size="sm" onClick={() => p.onConvert(item)} />
+                  <IconButton icon="Lightbulb" label="پیشنهاد به حقیقت" size="sm" onClick={() => p.onConvert(item)} />
                   <IconButton icon="Trash2" label="حذف یادداشت" size="sm" onClick={() => p.onDelete(item)} />
                 </span>
               )}

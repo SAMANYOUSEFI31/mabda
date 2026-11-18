@@ -19,7 +19,7 @@ const SIZES = process.env.ALL_WIDTHS
   : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
-  { id: 'context', label: 'منبع', desktopLabel: 'منبع حقیقت' },
+  { id: 'context', label: 'حقیقت', desktopLabel: 'حقیقت' },
   { id: 'workstreams', label: 'خروجی‌ها', then: 'build' },
   { id: 'assets', label: 'خروجی‌ها' },
   { id: 'thinking', label: 'فکر' },

@@ -37,6 +37,7 @@ const PER_GROUP = 8;
  */
 export const TruthCompareDialog: React.FC<Props> = (p) => {
   const toast = useToast();
+  const whatIf = p.mode === 'pending';
   const [mode, setMode] = useState<CompareMode>(p.mode ?? 'week');
   const [scope, setScope] = useState(p.scopeNodeId ?? '');
   const [from, setFrom] = useState(''); const [to, setTo] = useState('');
@@ -75,7 +76,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
   const top = counted ? mostImportant(counted) : undefined;
   const byId = useMemo(() => new Map(p.objects.map((o) => [o.id, o])), [p.objects]);
   const scopeLabel = scope ? p.nodes.find((n) => n.id === scope)?.label : '';
-  const title = `مقایسهٔ منبع${scopeLabel ? ` — ${scopeLabel}` : ''}: ${range?.label ?? ''}`;
+  const title = `مقایسهٔ حقیقت${scopeLabel ? ` — ${scopeLabel}` : ''}: ${range?.label ?? ''}`;
 
   const copy = async () => {
     if (!counted) return;
@@ -101,8 +102,8 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
 
   return (
     <Dialog
-      open={p.open} onClose={p.onClose} size="xl" title="منبع چه عوض شد؟"
-      description="دو لحظه را مقایسه کن؛ افزوده، حذف، تغییر و جابه‌جایی، بخش‌به‌بخش."
+      open={p.open} onClose={p.onClose} size="xl" title={whatIf ? 'اگر همه را تأیید کنم' : 'حقیقت چه عوض شد؟'}
+      description={whatIf ? 'حقیقت امروز در برابر وقتی همهٔ پیشنهادها و پیش‌نویس‌های منتظر تأیید شوند؛ هر کدام را می‌شود از این فرض بیرون گذاشت.' : 'دو لحظه را مقایسه کن؛ افزوده، حذف، تغییر و جابه‌جایی، بخش‌به‌بخش.'}
       footer={<><Button variant="ghost" onClick={p.onClose}>بستن</Button><Button variant="secondary" iconStart="Copy" disabled={!counted || counted.counts.total === 0} onClick={() => void copy()}>کپی Markdown</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
@@ -110,8 +111,10 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
             preset never sits next to empty or stale dates) and WHERE. The sentence under the choice always names the real days. */}
         <div className="flex flex-col gap-stack-md">
           <div className="flex flex-col gap-stack-sm">
-            <SegmentedControl label="کدام دو لحظه؟" className="grid w-full grid-cols-2 md:inline-flex md:w-auto" value={mode} onChange={(v) => choose(v as CompareMode)} items={[{ id: 'week', label: 'هفتهٔ پیش' }, { id: 'approval', label: 'آخرین تأیید' }, { id: 'pending', label: 'اگر تأیید کنم' }, { id: 'custom', label: 'دلخواه' }]} />
-            <p className="caption text-text-subtle" data-testid="compare-range">{rangeSentence}</p>
+            {/* «اگر تأیید کنم» is another question (a what-if, not two moments in time): it opens from «فکر», where the waiting items
+                are, with no time choice (decisions.md §۲۵) */}
+            {!whatIf && <SegmentedControl label="کدام دو لحظه؟" value={mode} onChange={(v) => choose(v as CompareMode)} items={[{ id: 'week', label: 'هفتهٔ پیش' }, { id: 'approval', label: 'آخرین تأیید' }, { id: 'custom', label: 'دلخواه' }]} />}
+            {!whatIf && <p className="caption text-text-subtle" data-testid="compare-range">{rangeSentence}</p>}
             {mode === 'custom' && (
               <div className="flex flex-col gap-stack-sm rounded-control border border-border-subtle p-inset-md" data-testid="custom-dates">
                 <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
@@ -126,7 +129,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
               </div>
             )}
           </div>
-          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'کل منبع' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />
+          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${'— '.repeat(depth)}${n.label}` }))]} />
         </div>
 
         {mode === 'approval' && !range && <Alert intent="info">هنوز تأییدی ثبت نشده که با آن مقایسه کنیم.</Alert>}

@@ -53,7 +53,7 @@ try {
     const objs = (await api('/workspaces/ws_demo/state')).objects;
 
     step(`[${width}] الف: «قیمت اشتراک چه تغییری کرد و چرا؟» — the card → «نسخه‌ها»: a one-line summary above the before/after, the newest drafts open, any two versions comparable`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('heading', { name: 'قیمت اشتراک ماهانه' }).first().waitFor();
     const dlg = page.getByRole('dialog');
     // the showcase has two cards with this title (they contradict each other): the one that was rewritten has the diff
@@ -85,7 +85,7 @@ try {
     await page.waitForTimeout(600);
     assert.ok((await api('/workspaces/ws_demo/state')).notes.some((n) => n.content.includes('پنجشنبه')), 'the note is saved');
     await shot('3-raw-thought');
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
 
     step(`[${width}] ج: «دانشی ثبت کن که به خط قرمز تخفیف تکیه دارد» — «بیشتر» has both directions, with search; saved as depends_on`);
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش)$/ }).first().click();
@@ -110,7 +110,7 @@ try {
     assert.equal(st.relationships.filter((r) => !['depends_on', 'supersedes', 'overrides'].includes(r.type)).length, 0, 'no new kind of relation');
 
     step(`[${width}] د: «در بوم ببین چه چیزی به لحن پاسخ وابسته است» — the card, the inspector sentence, lines in two layers`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('بوم');
     await page.getByTestId('canvas-stage').waitFor();
     await page.getByTestId('canvas-toolbar').getByRole('textbox', { name: 'جستجوی کارت' }).fill('لحن پاسخ');

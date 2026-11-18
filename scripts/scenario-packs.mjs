@@ -41,12 +41,12 @@ try {
     const wid = (await api('/workspaces')).workspaces[0].id;
 
     step(`[${width}] an example starter: grey «نمونه» cards appear, never knowledge`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: 'ساخت دانش' }).count(); // (no-op: keeps the nav settled)
     const before = (await api(`/workspaces/${wid}/state`)).objects.length;
     await api(`/workspaces/${wid}/starters/services/apply`, 'POST', {});
     await page.reload({ waitUntil: 'networkidle' });
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByText('نمونه‌ها (جزو دانش نیستند)').first().waitFor();
     assert.ok((await page.getByText('نمونه', { exact: true }).count()) >= 1, 'the «نمونه» badge is visible');
     const st = await api(`/workspaces/${wid}/state`);
@@ -76,7 +76,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] map: the overview has rows = sections; «بُعد» makes the rows facets; colouring by facet shows the name`);
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.locator('[role=radio]').filter({ hasText: /^نمای کلی$/ }).first().evaluate((n) => n.click());
     await page.getByRole('application', { name: /نمای کلی حقیقت/ }).waitFor();
     await page.getByRole('button', { name: /^گزینه‌ها/ }).click();

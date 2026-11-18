@@ -58,7 +58,7 @@ try {
       await page.getByText(/فکر ثبت شد/).waitFor();
       return steps;
     };
-    const start = { home: async () => { await home(); }, tree: async () => { await home(); await nav('منبع حقیقت', 'منبع'); await radio('ساختار'); }, canvas: async () => { await home(); await nav('منبع حقیقت', 'منبع'); await radio('نمای کلی'); await page.getByTestId('canvas-stage').waitFor(); }, thinkingCanvas: async () => { await home(); await nav('فکر', 'فکر'); await radio('بوم'); await page.getByTestId('canvas-stage').waitFor(); } };
+    const start = { home: async () => { await home(); }, tree: async () => { await home(); await nav('حقیقت', 'حقیقت'); await radio('ساختار'); }, canvas: async () => { await home(); await nav('حقیقت', 'حقیقت'); await radio('نمای کلی'); await page.getByTestId('canvas-stage').waitFor(); }, thinkingCanvas: async () => { await home(); await nav('فکر', 'فکر'); await radio('بوم'); await page.getByTestId('canvas-stage').waitFor(); } };
     const label = { home: 'خانه', tree: 'درخت (منبع ← ساختار)', canvas: 'بوم (منبع ← نمای کلی)', thinkingCanvas: 'بوم فکر' };
     for (const k of ['home', 'tree', 'canvas', 'thinkingCanvas']) {
       step(`[${width}] قبل از تغییر، شروع از ${label[k]}`);
@@ -184,7 +184,7 @@ try {
 
     step(`[${width}] داخل یک بخش: همان بخش پیش‌فرض است`);
     await home();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('ساختار');
     const nodeBtn = page.locator('[data-node-id], [data-testid^="node-"]').first();
     const st0 = await state();

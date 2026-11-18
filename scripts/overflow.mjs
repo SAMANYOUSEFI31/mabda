@@ -242,7 +242,7 @@ for (const { width: w0, height, touch } of SIZES) {
     await grip.dblclick().catch(() => {}); await settle();
     base = null; // the sidebar's own width moves main by design; measure sideways moves from here
   }
-  const PAGES = [['home', 'خانه'], ['thinking', 'فکر'], ['context', width < 768 ? 'منبع' : 'منبع حقیقت'], ['assets', 'خروجی‌ها']];
+  const PAGES = [['home', 'خانه'], ['thinking', 'فکر'], ['context', 'حقیقت'], ['assets', 'خروجی‌ها']];
   for (const [id, label] of PAGES) {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
     await nav.getByRole('button', { name: label, exact: true }).first().click().catch(() => {});
@@ -287,19 +287,19 @@ for (const { width: w0, height, touch } of SIZES) {
   // inside a section of the structure view: its path bar pins under the app's bar
   {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
-    await nav.getByRole('button', { name: width < 768 ? 'منبع' : 'منبع حقیقت', exact: true }).first().click().catch(() => {}); await settle();
+    await nav.getByRole('button', { name: 'حقیقت', exact: true }).first().click().catch(() => {}); await settle();
     await page.locator('main .mb-seg [role=radio]').filter({ hasText: 'ساختار' }).first().click().catch(() => {}); await settle();
     await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click({ timeout: 3000 }).catch(() => {}); await settle();
     if (await page.getByTestId('focus-bar').count()) { await check('context › section'); await pinCheck('context › section'); } else note(`${label} context › section`, ['walk could not enter a section']);
     // away and back: the section comes back as it was, without the page slipping
     await nav.getByRole('button', { name: 'فکر', exact: true }).first().click().catch(() => {}); await settle(); await check('thinking (from a section)');
-    await nav.getByRole('button', { name: width < 768 ? 'منبع' : 'منبع حقیقت', exact: true }).first().click().catch(() => {}); await settle(); await check('context › section (back)');
+    await nav.getByRole('button', { name: 'حقیقت', exact: true }).first().click().catch(() => {}); await settle(); await check('context › section (back)');
     await page.getByTestId('focus-bar').getByRole('button', { name: /^برگشت/ }).first().click().catch(() => {}); await settle();
   }
   // the knowledge edit dialog (it has tabs: «ویرایش · نسخه‌ها · اطراف این مورد»), opened from the first row of the table view
   {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
-    await nav.getByRole('button', { name: width < 768 ? 'منبع' : 'منبع حقیقت', exact: true }).first().click().catch(() => {}); await settle();
+    await nav.getByRole('button', { name: 'حقیقت', exact: true }).first().click().catch(() => {}); await settle();
     await page.locator('main .mb-seg [role=radio]').filter({ hasText: 'جدول' }).first().click().catch(() => {}); await settle();
     // wide: the row's «ویرایش»; phone: the rows are cards, each one opens its knowledge
     const edit = width < 768 ? page.locator('main .md\\:hidden [role=button][data-knowledge]') : page.locator('main').getByRole('button', { name: 'ویرایش', exact: true });

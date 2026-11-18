@@ -85,7 +85,7 @@ try {
     await account(wsName); await page.getByText(`خانه: ${wsName}`).waitFor();
 
     await tryStep('past', async () => {
-      await nav('منبع حقیقت', 'منبع'); await radio('ساختار');
+      await nav('حقیقت', 'حقیقت'); await radio('ساختار');
       await page.getByRole('switch', { name: /^نمایش گذشته‌ها/ }).or(page.getByRole('checkbox', { name: /^نمایش گذشته‌ها/ })).first().click();
       await page.getByText('دورهٔ پایه ۲ میلیون تومان است.').first().scrollIntoViewIfNeeded();
       await shot('past');

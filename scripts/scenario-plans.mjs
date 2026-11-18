@@ -50,7 +50,7 @@ async function run(managed, port, fakePort) {
       console.log('• run A: managed AI OFF');
       assert.equal(await page.getByText(CREDIT_TEXT).count(), 0, 'no credit number on the first screen');
       // a subscription-included judgement on OUR key: Context Coach (no user key at all)
-      await nav('منبع حقیقت');
+      await nav('حقیقت');
       await page.getByRole('button', { name: 'عملیات بخش برند و پیام' }).click();
       await page.getByRole('menuitem', { name: 'مربی دانش' }).click();
       await page.getByRole('button', { name: 'از مربی دانش بپرس' }).click();

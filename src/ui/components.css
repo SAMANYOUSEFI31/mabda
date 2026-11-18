@@ -331,6 +331,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-menu__item.is-danger,.mb-menu__item.is-danger .mb-icon{color:var(--text-danger)}
 .mb-menu__item:disabled{color:var(--text-disabled);cursor:not-allowed}
 .mb-menu__sep{block-size:var(--border-width-thin);margin-block:var(--space-1);background:var(--border-subtle)}
+.mb-menu__head{padding-inline:var(--inset-md);padding-block:var(--space-1) 0;color:var(--text-subtle)}
 
 /* ---------- Alert / Toast ---------- */
 .mb-alert{display:flex;align-items:flex-start;gap:var(--inline-md);padding:var(--inset-lg);border-radius:var(--card-radius);border:var(--border-width-thin) solid}

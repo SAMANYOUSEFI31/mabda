@@ -91,7 +91,7 @@ try {
     await space.getByRole('radio', { name: /^سؤال/ }).click();
     assert.equal(await space.getByText('یک بستهٔ هدیه با قیمت ثابت').count(), 0, 'the filter shows only questions');
     await space.getByRole('radio', { name: /^همه/ }).click();
-    await space.locator('li', { hasText: 'قیمت اشتراک سه‌ماهه چقدر' }).getByRole('button', { name: 'به دانش ببر' }).click();
+    await space.locator('li', { hasText: 'قیمت اشتراک سه‌ماهه چقدر' }).getByRole('button', { name: 'پیشنهاد به حقیقت' }).click();
     const form = page.getByRole('dialog');
     assert.equal(await form.getByLabel('چه چیزی درست است؟').inputValue(), 'قیمت اشتراک سه‌ماهه چقدر باشد؟', 'the text is prefilled');
     await form.getByLabel('چه چیزی درست است؟').fill('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.');
@@ -106,7 +106,7 @@ try {
     await page.waitForTimeout(700);
     objs = (await state()).objects;
     assert.equal(objs[0].status, 'Confirmed');
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await radio('ساختار');
     await page.getByText('قیمت اشتراک سه‌ماهه ۱٫۱ میلیون تومان است.').first().waitFor();
     assert.equal(await page.getByTestId('open-thoughts').count() >= 1, true, 'the node says «N فکر باز» (the idea is still open)');
@@ -141,7 +141,7 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     await account(`فکر ${width}`);
     await page.getByText(`خانه: فکر ${width}`).waitFor();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: 'عملیات بخش کارگاه' }).first().evaluate((n) => n.click());
     await page.getByRole('menuitem', { name: 'جابه‌جایی…' }).click();
     await page.getByRole('dialog').getByLabel('کجا برود؟').selectOption({ label: 'سطح اصلی (بخش اصلی)' });
@@ -156,7 +156,7 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     await account(`فکر ${width}`);
     await page.getByText(`خانه: فکر ${width}`).waitFor();
-    await nav('منبع حقیقت', 'منبع');
+    await nav('حقیقت', 'حقیقت');
     await page.locator('[role=radio]').filter({ hasText: /^بوم$/ }).first().evaluate((n) => n.click());
     await page.getByTestId('canvas-stage').waitFor();
     await page.waitForTimeout(500);

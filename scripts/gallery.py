@@ -34,9 +34,9 @@ TITLE = {
   'add-discard': 'افزودن: پرسش پیش از دور ریختن متن', 'add-toast': 'افزودن: پیام خطا با برگهٔ باز (نوشته می‌ماند)', 'clear-home': 'خانه: همه‌چیز به‌روز است', 'canvas-options': 'نمای کلی: «گزینه‌ها» باز (بالای همه‌چیز)', 'menu-low': 'منوی «…» بخش، باز از پایین صفحه', 'section-back': 'بازگشت به «منبع» پس از رفتن به بخش و «فکر»', 'keyboard': 'افزودن با صفحه‌کلید باز (فیلد دیده می‌ماند)', 'forced': 'رنگ‌های اجباری سیستم: «منبع» جاری در نوار کناری، نوار باریک و نوار پایین',
 }
 STATE = {'empty': 'خالی', 'loading': 'در حال آمدن', 'full': 'کامل', 'partial': 'ناقص', 'error': 'خطا (در جای صفحه)', 'error-boot': 'خطا (پیش از آمدن فضا)'}
-VIEW = {'home': 'خانه', 'context': 'منبع', 'thinking': 'فکر', 'assets': 'خروجی‌ها'}
+VIEW = {'home': 'خانه', 'context': 'حقیقت', 'thinking': 'فکر', 'assets': 'خروجی‌ها'}
 GROUPS = [
-  ('home', 'خانه', r'^(home|weekly)'), ('context', 'منبع حقیقت', r'^(context|canvas-(relations|inspector|lineage)|life-truth)'),
+  ('home', 'خانه', r'^(home|weekly)'), ('context', 'حقیقت', r'^(context|canvas-(relations|inspector|lineage)|life-truth)'),
   ('thinking', 'فکر', r'^(thinking|canvas-free|canvas-fullscreen|life-thinking)'), ('assets', 'خروجی‌ها', r'^(assets|workstreams)'),
   ('add', 'افزودن', r'^add-'), ('dialogs', 'پنجره‌ها', r'^dialog-'), ('nav', 'منوها و نوار کناری', r'^(menu|sidebar|drawer)'), ('ledger', 'مصرف', r'^ledger'),
   ('states', 'پنج حالت هر نما', r'^state-'),

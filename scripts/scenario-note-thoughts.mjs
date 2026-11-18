@@ -68,7 +68,7 @@ try {
     step(`[${width}] ب: delete a note with two open thoughts`);
     const note = (await call('POST', `/workspaces/${wid}/notes`, { nodeId: root, content: '[ایده] قیمت اشتراک ماهانه\n[سؤال] ارسال چطور باشد؟' })).note;
     await enter();
-    await nav('منبع', 'منبع حقیقت');
+    await nav('حقیقت', 'حقیقت');
     await page.waitForTimeout(1200);
     if (process.env.DEBUG_NOTE) { await shot('dbg'); console.log((await page.locator('main').innerText()).replace(/\s+/g, ' ').slice(0, 700)); }
     await click(page.getByRole('button', { name: /^یادداشت‌ها/ }).first());

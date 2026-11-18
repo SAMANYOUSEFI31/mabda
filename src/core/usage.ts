@@ -11,7 +11,7 @@ export interface FeatureInfo { key: string; label: string; level: FeatureLevel }
 /** every feature that is counted, with its level in docs/design-principles.md */
 export const FEATURES: FeatureInfo[] = [
   { key: 'view.home', label: 'خانه', level: 1 },
-  { key: 'view.context', label: 'منبع حقیقت', level: 1 },
+  { key: 'view.context', label: 'حقیقت', level: 1 },
   { key: 'view.workstreams', label: 'جریان‌های کار', level: 1 },
   { key: 'view.assets', label: 'دارایی‌ها', level: 1 },
   { key: 'view.ledger', label: 'مصرف', level: 3 },

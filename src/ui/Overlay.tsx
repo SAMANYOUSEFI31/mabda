@@ -1,4 +1,4 @@
-import { cloneElement, createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, cloneElement, createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresence } from './presence.ts';
@@ -392,7 +392,7 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
 /* ---------------- Menu ---------------- */
 /** choice: a row of mutually exclusive options shown together (e.g. appearance); choosing one does not close the menu */
 export interface MenuChoice { value: string; label: string }
-export interface MenuItem { label?: ReactNode; /** plain text the menu's search matches (when `label` is not a string) */ text?: string; /** never hidden by the search */ keep?: boolean; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean; choice?: { options: MenuChoice[]; value: string; onChoose: (value: string) => void } }
+export interface MenuItem { label?: ReactNode; /** plain text the menu's search matches (when `label` is not a string) */ text?: string; /** never hidden by the search */ keep?: boolean; icon?: IconName; onSelect?: () => void; disabled?: boolean; intent?: 'danger'; divider?: boolean; /** with `divider`: a small name for the group that follows (Apple HIG menus: only when it helps scanning a long menu) */ heading?: string; choice?: { options: MenuChoice[]; value: string; onChoose: (value: string) => void } }
 
 /** a labelled group of radio items; used inside Menu and in drawers so both read the same */
 export function MenuChoiceRow({ item, labelId }: { item: MenuItem; labelId: string }) {
@@ -499,7 +499,7 @@ export function Menu({ trigger, items: allItems, label = 'منو', align = 'star
             </div>
           )}
           {searchable && q && items.every((it) => it.keep || it.divider) && <p role="none" className="mb-menu__empty body-sm">چیزی پیدا نشد.</p>}
-          {items.map((it, i) => it.divider ? <div key={i} role="separator" className="mb-menu__sep" /> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (
+          {items.map((it, i) => it.divider ? <Fragment key={i}><div role="separator" className="mb-menu__sep" />{it.heading && !q && <div role="none" className="mb-menu__head caption">{it.heading}</div>}</Fragment> : it.choice ? <MenuChoiceRow key={i} item={it} labelId={`${id}-c${i}`} /> : (
             <button key={i} type="button" role="menuitem" tabIndex={-1} disabled={it.disabled}
               className={cx('mb-menu__item', 'body-md', it.intent === 'danger' && 'is-danger')}
               onClick={() => { it.onSelect?.(); close(true); }}>
