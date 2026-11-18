@@ -73,3 +73,16 @@ test('CSV: one line per event, quoted where needed, with a BOM for spreadsheets'
   assert.equal(head, 'at,tehran_day,user_id,person,role,session_id,space_id,kind,name,category,status,ms,props');
   assert.equal(line, '2026-11-20T06:30:00.000Z,2026-11-20,a,الف,tester,,,ui,view,,,,"{""tab"":""home"",""x"":1}"');
 });
+
+test('an action on one of Mabda\'s examples is recorded but is not the person\'s own work', () => {
+  const evs: ActivityEvent[] = [
+    ev('a', '2026-11-20T06:30:00.000Z', 'session_start'),
+    ev('a', '2026-11-20T06:31:00.000Z', 'POST /workspaces/:wid/objects/:id/draft/approve', { props: { sampleItem: true } }),
+    ev('a', '2026-11-20T06:32:00.000Z', 'POST /workspaces/:wid/notes', { props: { sample: true } }),
+    ev('a', '2026-11-20T06:33:00.000Z', 'PATCH /workspaces/:wid/objects/:id', { props: { status: 'Confirmed', sampleItem: true } }),
+  ];
+  const a = computeKpis(evs, persons).people.find((p) => p.id === 'a')!;
+  assert.equal(a.actions, 3);
+  assert.equal(a.confirms, 0); assert.equal(a.captures, 0); assert.equal(a.activated, false);
+  assert.equal(a.sampleShare, 1);
+});

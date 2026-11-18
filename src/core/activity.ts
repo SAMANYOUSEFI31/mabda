@@ -94,14 +94,20 @@ export function categoryOf(name: string): ActionCategory {
 
 /** a knowledge item became the person's truth: approved, accepted on review, or created / patched as Confirmed */
 export function isConfirm(e: ActivityEvent): boolean {
-  if (e.kind !== 'action' || !ok(e)) return false;
+  if (!isOwnAction(e)) return false;
   if (categoryOf(e.name) === 'confirm') return true;
   return /^(POST|PATCH) \/workspaces\/:wid\/objects(\/:id)?$/.test(e.name) && e.props?.status === 'Confirmed';
 }
 const ok = (e: ActivityEvent) => e.status === undefined || (e.status >= 200 && e.status < 300);
 const isAction = (e: ActivityEvent) => e.kind === 'action' && ok(e);
-const isCapture = (e: ActivityEvent) => isAction(e) && (categoryOf(e.name) === 'capture' || categoryOf(e.name) === 'knowledge');
-const isKnowledge = (e: ActivityEvent) => isAction(e) && categoryOf(e.name) === 'knowledge';
+/**
+ * An action on something Mabda wrote as an example (the showcase or long-use sample space, or a pre-written item anywhere,
+ * server/db/sampleIds.ts) is real use and stays in the record, but it is not the person's OWN work: confirming a ready-made
+ * suggestion is not activation. Every «own» measure below counts only these.
+ */
+export const isOwnAction = (e: ActivityEvent) => isAction(e) && e.props?.sample !== true && e.props?.sampleItem !== true;
+const isCapture = (e: ActivityEvent) => isOwnAction(e) && (categoryOf(e.name) === 'capture' || categoryOf(e.name) === 'knowledge');
+const isKnowledge = (e: ActivityEvent) => isOwnAction(e) && categoryOf(e.name) === 'knowledge';
 
 // ── the measures ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -187,6 +193,7 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
   const people: PersonKpis[] = [...known.values()].map((p) => {
     const evs = byUser.get(p.id) ?? [];
     const actions = evs.filter(isAction);
+    const own = actions.filter(isOwnAction);
     const first = evs[0]?.at; const last = evs[evs.length - 1]?.at;
     const days = new Set(evs.map((e) => tehranDay(e.at)));
     const firstDay = first ? tehranDay(first) : undefined;
@@ -194,7 +201,7 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
     const firstCapture = evs.find(isCapture)?.at; const firstConfirm = evs.find(isConfirm)?.at;
     const tabs: Record<string, number> = {};
     for (const e of evs) if (e.kind === 'ui' && e.name === 'view' && typeof e.props?.tab === 'string') tabs[e.props.tab] = (tabs[e.props.tab] ?? 0) + 1;
-    const inSample = actions.filter((e) => e.props?.sample === true).length;
+    const inSample = actions.filter((e) => !isOwnAction(e)).length;
     const ttfc = first && firstConfirm ? minutes(first, firstConfirm) : undefined;
     const hasCaptureBeforeConfirm = !!firstConfirm && evs.some((e) => isCapture(e) && e.at <= firstConfirm);
     return {
@@ -202,8 +209,8 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
       activeDays: days.size, sessions: sessionsOf(evs), activeMinutes: activeMinutesOf(evs),
       actions: actions.length,
       captures: evs.filter(isCapture).length, knowledge: evs.filter(isKnowledge).length, confirms: evs.filter(isConfirm).length,
-      edits: actions.filter((e) => categoryOf(e.name) === 'edit').length, removes: actions.filter((e) => categoryOf(e.name) === 'remove').length,
-      outputs: actions.filter((e) => categoryOf(e.name) === 'output').length,
+      edits: own.filter((e) => categoryOf(e.name) === 'edit').length, removes: own.filter((e) => categoryOf(e.name) === 'remove').length,
+      outputs: own.filter((e) => categoryOf(e.name) === 'output').length,
       ...(first && firstCapture ? { minutesToFirstCapture: minutes(first, firstCapture) } : {}),
       ...(ttfc !== undefined ? { minutesToFirstConfirm: ttfc } : {}),
       activated: ttfc !== undefined && ttfc <= ACTIVATION_MIN,
@@ -257,7 +264,7 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
   for (const [uid, evs] of byUser) {
     if (!testers.some((t) => t.id === uid)) continue;
     for (const e of evs) {
-      if (isAction(e)) categories[categoryOf(e.name)]++;
+      if (isOwnAction(e)) categories[categoryOf(e.name)]++;
       if (e.kind === 'ui' && e.name === 'view' && typeof e.props?.tab === 'string') {
         const t = tabs.get(e.props.tab) ?? { people: new Set(), views: 0 }; t.people.add(uid); t.views++; tabs.set(e.props.tab, t);
       }
