@@ -72,7 +72,7 @@ export async function openDriver(repo: Repo, userId: string): Promise<Driver> {
     upload: (p, f, fields = {}) => {
       const form = new FormData();
       for (const [k, v] of Object.entries(fields)) form.set(k, v);
-      form.set('file', new Blob([f.text], { type: f.mime }), Buffer.from(f.name, 'utf8').toString('latin1'));
+      form.set('file', new Blob([f.text], { type: f.mime }), f.name); // the filename goes out as UTF-8, like a browser's
       return call('POST', p, undefined, form);
     },
     close: () => new Promise((resolve) => { server.close(() => resolve()); server.closeAllConnections?.(); }),

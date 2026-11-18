@@ -59,6 +59,7 @@ test('the long-use sample shows every state through the product\'s own engines',
   assert.ok(st.metrics.length >= 3 && st.measurements.length >= 15);
   assert.ok(repo.listSavedPacks(s).length >= 4 && st.files.length >= 1 && st.weeklyReviewAt);
 
+  assert.deepEqual(st.files.map((f) => f.name), ['نتیجهٔ آزمایش مهر.txt'], 'the Persian file name arrives intact');
   assert.equal(ws.slug, 'life-sample'); assert.notEqual(ws.id, 'ws_course');
 });
 
