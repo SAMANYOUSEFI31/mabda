@@ -84,7 +84,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
 
   // ═══ هفتهٔ ۸ — روز اول: فضا، شاخه‌ها، اصول ═══════════════════════════════════════════════
   at(56, 9, 0);
-  await api.put(b, { id: wid, name: 'زندگی من', slug: 'my-life', description: 'سلامت، کار، پول، خانه و برنامه‌هایم؛ یک‌جا و درست.', purpose: 'personal', enabledSpecIds: starterSpecIds('personal'), todayChatCount: 0, createdAt: new Date(tehranAt(now, 56, 9, 0)).toISOString() });
+  await api.put(b, { id: wid, name: 'زندگی من (نمونهٔ کامل)', slug: 'life-sample', description: 'سلامت، کار، پول، خانه و برنامه‌هایم؛ یک‌جا و درست.', purpose: 'personal', enabledSpecIds: starterSpecIds('personal'), todayChatCount: 0, createdAt: new Date(tehranAt(now, 56, 9, 0)).toISOString() });
 
   at(56, 9, 20);
   await section('values', 'me', 'ارزش‌ها و اصول', 'اصولی که با آن‌ها «بله» و «نه» می‌گویم');

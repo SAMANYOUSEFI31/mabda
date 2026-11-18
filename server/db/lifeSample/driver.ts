@@ -6,6 +6,7 @@
  * It is a separate Express app on a loopback port that lives only for the run: the public server never learns about the fake
  * clock, and a request of someone else in flight is not affected (the moment travels in an AsyncLocalStorage, server/db/clock.ts).
  */
+import crypto from 'node:crypto';
 import express from 'express';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
@@ -19,6 +20,8 @@ export class SampleApiError extends Error {
 }
 
 export interface Driver {
+  /** where the private gateway listens (tests only: a call without the run's secret must be refused) */
+  base: string;
   /** the moment of the following steps (each call inside advances by a second, so the order of steps is the order of history) */
   at(when: Date): void;
   get<T = any>(path: string): Promise<T>;
@@ -32,6 +35,9 @@ export interface Driver {
 
 export async function openDriver(repo: Repo, userId: string): Promise<Driver> {
   const app = express();
+  // the loopback port is not a door: every call must carry this run's own secret (nothing else on the machine can drive it)
+  const secret = crypto.randomBytes(24).toString('hex');
+  app.use((req, res, next) => { const t = String(req.headers['x-sample-token'] ?? ''); if (t.length === secret.length && crypto.timingSafeEqual(Buffer.from(t), Buffer.from(secret))) return next(); res.status(401).json({ error: { code: 'unauthenticated', message: 'not the sample builder' } }); });
   app.use(express.json({ limit: '10mb' }));
   // who: this person. when: the story's moment, read from a header only this private app understands.
   app.use((req, _res, next) => {
@@ -49,13 +55,14 @@ export async function openDriver(repo: Repo, userId: string): Promise<Driver> {
   let cursor = new Date();
   const stamp = () => { cursor = new Date(cursor.getTime() + 1000); return cursor.toISOString(); };
   async function call<T>(method: string, path: string, body?: unknown, raw?: FormData): Promise<T> {
-    const r = await fetch(base + path, { method, headers: { 'x-sample-at': stamp(), ...(raw ? {} : { 'content-type': 'application/json' }) }, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)) });
+    const r = await fetch(base + path, { method, headers: { 'x-sample-token': secret, 'x-sample-at': stamp(), ...(raw ? {} : { 'content-type': 'application/json' }) }, body: raw ?? (body === undefined ? undefined : JSON.stringify(body)) });
     const text = await r.text();
     const json = text ? JSON.parse(text) : {};
     if (!r.ok) throw new SampleApiError(r.status, method, path, json?.error?.message ?? text);
     return json as T;
   }
   return {
+    base,
     at: (when) => { cursor = when; },
     get: (p) => call('GET', p),
     post: (p, b) => call('POST', p, b ?? {}),

@@ -6,7 +6,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../database.ts';
 import { Repo } from '../repo.ts';
-import { applyLifeSample, lifeWorkspaceIdFor } from './index.ts';
+import { applyLifeSample, lifeSampleOf } from './index.ts';
+import { openDriver } from './driver.ts';
+import { importLegacy, seedPayload } from '../legacy.ts';
+import { RepoError } from '../repo.ts';
 import { needsReview } from '../../../src/core/decisionGraph.ts';
 import { assumptionsDue, decisionsDue } from '../../../src/core/assumptions.ts';
 import { candidatePairs } from '../../../src/core/contradictionCandidates.ts';
@@ -22,7 +25,7 @@ test('the long-use sample shows every state through the product\'s own engines',
   const objs = st.objects;
   const has = (f: (o: (typeof objs)[number]) => boolean) => objs.filter(f).length;
 
-  assert.equal(ws.name, 'زندگی من'); assert.equal(ws.purpose, 'personal');
+  assert.equal(ws.name, 'زندگی من (نمونهٔ کامل)'); assert.equal(ws.purpose, 'personal');
   assert.ok(st.nodes.length >= 30, 'sub-branches at several depths');
   const depth = (id: string): number => { const n = st.nodes.find((x) => x.id === id)!; return n.parentId ? 1 + depth(n.parentId) : 1; };
   assert.ok(Math.max(...st.nodes.map((n) => depth(n.id))) >= 4);
@@ -56,12 +59,77 @@ test('the long-use sample shows every state through the product\'s own engines',
   assert.ok(st.metrics.length >= 3 && st.measurements.length >= 15);
   assert.ok(repo.listSavedPacks(s).length >= 4 && st.files.length >= 1 && st.weeklyReviewAt);
 
-  // building again replaces the space (the same step as «delete the space, make it again»); another person's data is untouched
-  await applyLifeSample(repo, 'u-other', NOW);
-  const otherCount = repo.listObjects({ userId: 'u-other', workspaceId: lifeWorkspaceIdFor('u-other') }).length;
-  const again = await applyLifeSample(repo, 'u-life', NOW);
-  assert.equal(repo.listObjects({ userId: 'u-life', workspaceId: again.id }).length, objs.length);
-  assert.equal(repo.listObjects({ userId: 'u-other', workspaceId: lifeWorkspaceIdFor('u-other') }).length, otherCount);
-  assert.notEqual(lifeWorkspaceIdFor('u-other'), again.id);
-  assert.equal(repo.listWorkspaces('u-life').filter((w) => w.name === 'زندگی من').length, 1);
+  assert.equal(ws.slug, 'life-sample'); assert.notEqual(ws.id, 'ws_course');
+});
+
+const fresh = () => new Repo(openDatabase(':memory:'));
+const course = (repo: Repo, u: string) => {
+  // the person's own first-run «زندگی من», with a note of theirs
+  importLegacy(repo, u, seedPayload(u), 'seed');
+  const wid = repo.listWorkspaces(u).find((w) => w.name === 'زندگی من')!.id;
+  const n = repo.createNote({ userId: u, workspaceId: wid }, repo.listNodes({ userId: u, workspaceId: wid })[0].id, 'یادداشت واقعی من');
+  return { wid, noteId: n.id };
+};
+
+test('it never touches the person\'s own «زندگی من»; a rebuild replaces only the space the seeder made', async () => {
+  const repo = fresh(); const u = 'u-a';
+  const mine = course(repo, u);
+  const first = await applyLifeSample(repo, u, NOW);
+  assert.ok(repo.getNote({ userId: u, workspaceId: mine.wid }, mine.noteId), 'their note is still there');
+  assert.equal(repo.listWorkspaces(u).filter((w) => w.name === 'زندگی من').length, 1);
+  const second = await applyLifeSample(repo, u, NOW);
+  assert.notEqual(second.id, first.id);
+  assert.equal(repo.getWorkspace(u, first.id), undefined, 'the old sample is gone only after the new one is whole');
+  assert.equal(lifeSampleOf(repo, u)!.id, second.id);
+  assert.ok(repo.getNote({ userId: u, workspaceId: mine.wid }, mine.noteId));
+  // another person is untouched
+  await applyLifeSample(repo, 'u-b', NOW);
+  assert.equal(repo.listWorkspaces(u).filter((w) => w.slug === 'life-sample').length, 1);
+});
+
+test('a failed rebuild leaves the previous sample whole and no half-built space', async () => {
+  const repo = fresh(); const u = 'u-c';
+  const first = await applyLifeSample(repo, u, NOW);
+  const before = repo.listObjects({ userId: u, workspaceId: first.id }).length;
+  // a story that dies half-way: the repo refuses one write
+  const orig = repo.createNote.bind(repo); let n = 0;
+  repo.createNote = ((...a: Parameters<Repo['createNote']>) => { if (++n === 5) throw new Error('boom'); return orig(...a); }) as Repo['createNote'];
+  await assert.rejects(applyLifeSample(repo, u, NOW), /خطایی در سرور/);
+  repo.createNote = orig;
+  assert.deepEqual(repo.listWorkspaces(u).filter((w) => w.slug === 'life-sample').map((w) => w.id), [first.id]);
+  assert.equal(repo.listObjects({ userId: u, workspaceId: first.id }).length, before);
+  assert.equal(lifeSampleOf(repo, u)!.id, first.id);
+});
+
+test('two builds at once for one person: the second is refused', async () => {
+  const repo = fresh(); const u = 'u-d';
+  const a = applyLifeSample(repo, u, NOW);
+  await assert.rejects(applyLifeSample(repo, u, NOW), (e: Error & { code?: string }) => e instanceof RepoError && e.code === 'conflict');
+  await a;
+  assert.equal(repo.listWorkspaces(u).filter((w) => w.slug === 'life-sample').length, 1);
+});
+
+test('the private gateway refuses a call without the run\'s secret', async () => {
+  const repo = fresh();
+  const d = await openDriver(repo, 'u-e');
+  try {
+    assert.equal((await fetch(`${d.base}/workspaces`)).status, 401);
+    assert.equal((await fetch(`${d.base}/workspaces`, { headers: { 'x-sample-token': 'x'.repeat(48) } })).status, 401);
+    assert.deepEqual((await d.get<{ workspaces: unknown[] }>('/workspaces')).workspaces, []);
+  } finally { await d.close(); }
+});
+
+test('the reset route: owner or the one local person only; off in production unless the host switches it on', async () => {
+  const { createApp } = await import('../../app.ts');
+  const call = async (auth: unknown, env: Record<string, string>) => {
+    const old = { ...process.env }; Object.assign(process.env, env);
+    try {
+      const { app } = createApp(openDatabase(':memory:'), { auth: auth as never });
+      const srv = app.listen(0); const port = (srv.address() as { port: number }).port;
+      try { return (await fetch(`http://127.0.0.1:${port}/api/demo/life/reset`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status; } finally { srv.close(); }
+    } finally { process.env = old; }
+  };
+  assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'test' }), 200);
+  assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'production' }), 403, 'production needs MABDA_ALLOW_SAMPLES');
+  assert.equal(await call({ mode: 'local' }, { NODE_ENV: 'production', MABDA_ALLOW_SAMPLES: '1' }), 200);
 });
