@@ -65,7 +65,9 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
       </div>
       <span className="body-sm text-text-subtle">بخش: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
       <p className="body-md text-text-default">{o.content}</p>
-      <div className="mt-stack-xs">
+      {/* the two claims sit side by side in a grid that makes them equally tall; the action belongs to the card's foot, so both
+          buttons share one line however long either text is (decisions.md §۴۸) */}
+      <div className="mt-auto pt-stack-xs">
         <Button variant="secondary" size="sm" fullWidth iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
       </div>
     </div>
