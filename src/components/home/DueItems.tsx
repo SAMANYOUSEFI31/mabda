@@ -84,7 +84,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                       <Button key={v} size="sm" variant="secondary" aria-pressed={suggested === v} loading={busy === `o${o.id}${v}`} onClick={() => run(`o${o.id}${v}`, async () => { await onOutcome(o.id, note.trim(), v); setText((tt) => ({ ...tt, [o.id]: '' })); })}>{VERDICT_FA[v]}{suggested === v ? ' ✓' : ''}</Button>
                     ))}
                     {/* three verdicts cover what can be concluded; what could not be concluded YET is not a fourth verdict but a later
-                        look, like «هنوز فرض است» (decisions.md §۴۸) */}
+                        look, like «هنوز فرض است» (decisions.md §۴۹) */}
                     {onTooEarly && <Button size="sm" variant="ghost" loading={busy === `t${o.id}`} onClick={() => run(`t${o.id}`, () => onTooEarly(o.id))}>هنوز زود است</Button>}
                     {suggested && <p className="body-sm w-full text-text-subtle">علامت ✓ فقط خوانش حسابی اعداد است؛ داوری با توست.</p>}
                   </div>

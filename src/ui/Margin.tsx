@@ -4,7 +4,7 @@ import { Icon, type IconName } from './Icon.tsx';
 
 /**
  * «متن و حاشیه» (patterns.md §۲, layout.md «ستون حاشیه»). The margin is switched on by the width of the content container,
- * not of the screen: from 864px of host (600 text + 40 gap + a margin of 224 to 288; decisions.md §۴۸) it sits
+ * not of the screen: from 864px of host (600 text + 40 gap + a margin of 224 to 288; decisions.md §۴۹) it sits
  * beside each item, level with it; narrower, it comes under the item, indented like the text. The page is complete without it.
  */
 export function MarginList({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
@@ -12,9 +12,9 @@ export function MarginList({ children, className, label }: { children: ReactNode
 }
 
 /** one item and its margin. Without margin content it is just the item, in the reading column. */
-export function MarginItem({ children, margin }: { children: ReactNode; margin?: ReactNode }) {
+export function MarginItem({ children, margin, onRowClick }: { children: ReactNode; margin?: ReactNode; /** notes under the item (`.mb-margin--inline`) open it too: one item, one hover, one target (pointer only; the item itself is the keyboard target) */ onRowClick?: () => void }) {
   return (
-    <div className="mb-margin__row">
+    <div className={onRowClick ? 'mb-margin__row mb-margin__row--target' : 'mb-margin__row'} onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest('button, a, input, [role=button]') && !(e.target as HTMLElement).closest('.mb-card--interactive')) onRowClick(); } : undefined}>
       <div className="mb-margin__text">{children}</div>
       {margin ? <div className="mb-margin__note">{margin}</div> : null}
     </div>

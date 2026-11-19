@@ -70,7 +70,7 @@ export const InheritNoticeList: React.FC<Props> = ({ notices, onSeen, onOpenSect
         ))}
       </ul>
       {/* the rest open here, in place (the same as every list on Home); sending her to the weekly review for news she can already
-          see was a detour (decisions.md §۴۸) */}
+          see was a detour (decisions.md §۴۹) */}
       {notices.length > max && (
         <div><Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>{all ? 'کمتر' : `${formatNumber(notices.length - max)} خبر دیگر`}</Button></div>
       )}

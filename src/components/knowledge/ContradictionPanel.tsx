@@ -66,7 +66,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
       <span className="body-sm text-text-subtle">بخش: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
       <p className="body-md text-text-default">{o.content}</p>
       {/* the two claims sit side by side in a grid that makes them equally tall; the action belongs to the card's foot, so both
-          buttons share one line however long either text is (decisions.md §۴۸) */}
+          buttons share one line however long either text is (decisions.md §۴۹) */}
       <div className="mt-auto pt-stack-xs">
         <Button variant="secondary" size="sm" fullWidth iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
       </div>
@@ -85,7 +85,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
           <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: c.itemA.title }, { value: c.itemB.id, label: c.itemB.title }]} />
         </div>
         <div className="lg:flex-1">
-          <Select label="به این بخش" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).filter(({ node }) => node.id !== moving.nodeId).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />
+          <Select label="به این بخش" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).map(({ node, depth }) => (node.id === moving.nodeId ? { value: node.id, label: `${treeIndent(depth)}${node.label} (همین‌جاست)`, disabled: true } : { value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
         </div>
         <Button variant="secondary" iconStart="Network" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
       </div>

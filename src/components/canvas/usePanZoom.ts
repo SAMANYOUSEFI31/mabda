@@ -7,8 +7,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 
 export interface View { x: number; y: number; k: number }
+// zoom range (docs/ux/decisions.md §۴۸): cards are text laid out at 1×, so past ~1.6× a title is ~22px and the view only shows one
+// card cut off; out, past «everything fits» nothing new appears, the board only shrinks into a speck. So: in up to 1.6×, out to
+// a little under the fit-all scale (never under 0.1, and never forced above 0.45 for a small board)
 const MIN_K = 0.1;
-const MAX_K = 2.5;
+const MAX_K = 1.6;
 const READABLE_K = 0.85;
 
 const pinchDistance = (pts: Map<number, { x: number; y: number }>) => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
@@ -53,9 +56,11 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
   useEffect(() => { if (measured) overview(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shapeKey, measured]);
 
+  const fitK = Math.min((size.w - inset - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1));
+  const floorK = Math.max(MIN_K, Math.min(0.45, fitK * 0.9));
   const zoomAt = useCallback((factor: number, cx = size.w / 2, cy = size.h / 2) => {
-    setView((v) => { const k = Math.min(MAX_K, Math.max(MIN_K, v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
-  }, [size.w, size.h]);
+    setView((v) => { const k = Math.min(MAX_K, Math.max(Math.min(floorK, v.k), v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
+  }, [size.w, size.h, floorK]);
   useEffect(() => { // ctrl/⌘ + wheel zooms (a plain wheel keeps scrolling the page)
     const el = box.current;
     if (!el) return;
@@ -69,6 +74,10 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomAt, remountKey]);
 
+  // how far the last gesture moved: a pan or pinch ends in a click event too, and that click must not clear the selection
+  const travel = useRef(0);
+  /** true when the gesture that just ended moved the view (more than a tap's wobble): its click is not a tap */
+  const panned = useCallback(() => travel.current > 6, []);
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, [data-no-pan]')) return; // cards and controls keep their own gestures
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -76,6 +85,7 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     d.last = { x: e.clientX, y: e.clientY };
     d.pinch = d.pts.size === 2 ? pinchDistance(d.pts) : undefined;
+    if (d.pts.size === 1) travel.current = 0;
     drag.current = d;
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -84,10 +94,12 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (d.pts.size === 2) {
       const dist = pinchDistance(d.pts);
+      travel.current = Infinity; // a pinch is never a tap
       if (d.pinch) { const r = box.current!.getBoundingClientRect(); const c = pinchCenter(d.pts); zoomAt(dist / d.pinch, c.x - r.left, c.y - r.top); }
       d.pinch = dist;
     } else if (d.last) {
       const dx = e.clientX - d.last.x, dy = e.clientY - d.last.y;
+      travel.current += Math.abs(dx) + Math.abs(dy);
       d.last = { x: e.clientX, y: e.clientY };
       setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
     }
@@ -128,5 +140,5 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     return r ? { x: (clientX - r.left - view.x) / view.k, y: (clientY - r.top - view.y) / view.k } : { x: 0, y: 0 };
   }, [view]);
 
-  return { box, view, setView, size, fit, overview, zoomAt, reveal, toStage, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown } };
+  return { box, view, setView, size, fit, overview, zoomAt, reveal, toStage, panned, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown } };
 }

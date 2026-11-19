@@ -205,9 +205,9 @@ export interface ToastProps {
   className?: string;
 }
 
-export function Toast({ intent = 'info', children, action, onClose, className, ...rest }: ToastProps & React.HTMLAttributes<HTMLDivElement>) {
+export function Toast({ intent = 'info', children, action, onClose, className, announce = true, ...rest }: ToastProps & { /** false when a persistent live region elsewhere speaks it (ToastProvider) */ announce?: boolean } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div role={intent === 'danger' ? 'alert' : 'status'} className={cx('mb-toast', `mb-toast--${intent}`, className)} {...rest}>
+    <div role={announce ? (intent === 'danger' ? 'alert' : 'status') : undefined} className={cx('mb-toast', `mb-toast--${intent}`, className)} {...rest}>
       <Icon name={STATUS_ICON[intent]} size="lg" className="mb-toast__icon" />
       <span className="mb-toast__text body-sm">{children}</span>
       {action && <Button size="sm" variant="ghost" onClick={action.onClick}>{action.label}</Button>}
@@ -246,9 +246,14 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
       {children}
       {createPortal(
       <div className="mb-toast-stack" role="region" aria-label="اعلان‌ها">
+        {/* A live region that is born already filled is often not read (VoiceOver, some NVDA builds), so two regions stay
+            mounted for the app's whole life and only their text changes; the visible toasts stay silent. */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">{items.filter((t) => t.intent !== 'danger').at(-1)?.message}</div>
+        <div className="sr-only" aria-live="assertive" aria-atomic="true">{items.filter((t) => t.intent === 'danger').at(-1)?.message}</div>
         {items.map((t) => (
           <Toast
             key={t.id}
+            announce={false}
             intent={t.intent}
             action={t.action && { label: t.action.label, onClick: () => { t.action?.onClick?.(); dismiss(t.id); } }}
             onClose={() => dismiss(t.id)}

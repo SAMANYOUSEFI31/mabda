@@ -413,7 +413,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <MonitorPanel metric={{ ...currentMonitor, name: metricLabel(currentMonitor, allObjects) }} measurements={measurements} objects={allObjects} changes={workspaceChanges} onRecord={onRecordNumber} onConfirm={onConfirmNumber ?? (async () => {})} onRemove={onRemoveNumber ?? (async () => {})} content={content} onUseText={(t) => setContent(t)} />
         )}
         {/* the waiting draft is said BEFORE the editor it is about: «ادامهٔ ویرایش پیش‌نویس» puts the draft right under this notice
-            and focuses it, so nothing changes out of sight (it sat under the editor, and the text changed above the fold; §۴۸) */}
+            and focuses it, so nothing changes out of sight (it sat under the editor, and the text changed above the fold; §۴۹) */}
         {object?.draft && (
           <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
             <div className="flex flex-col gap-stack-sm">
@@ -432,7 +432,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         <MentionTextarea
           id="context-content"
           // the question opens a blank page; on an item that exists the field holds a text, so it is named like its neighbour
-          // «عنوان»: «متن», or «متن پیش‌نویس» while the draft is in the editor (decisions.md §۴۸)
+          // «عنوان»: «متن», or «متن پیش‌نویس» while the draft is in the editor (decisions.md §۴۹)
           label={isEditing ? (onDraft ? 'متن پیش‌نویس' : 'متن') : type === 'Fact' && assumption ? 'چه چیزی را فرض می‌کنی؟' : 'چه چیزی درست است؟'}
           required
           error={contentError || undefined}

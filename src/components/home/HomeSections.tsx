@@ -5,7 +5,7 @@
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import type { HomeAction, HomeSections as Sections } from '../../core/homeActions';
-import { Button, Icon, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliDate, formatNumber } from '../../ui';
+import { Button, Icon, InfoTip, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliDate, formatNumber } from '../../ui';
 import type { IconName, NuqtaState, TallyRow } from '../../ui';
 
 const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp', monitor: 'TrendingUp', unlinked: 'Link2', drafts: 'Pencil' };
@@ -48,13 +48,13 @@ function Row({ lead, text, button, icon, onClick }: { lead: React.ReactNode; tex
   );
 }
 
-function Section<T>({ id, title, items, render }: { id: string; title: string; items: T[]; render: (t: T) => React.ReactNode }) {
+function Section<T>({ id, title, items, render, info }: { id: string; title: string; items: T[]; render: (t: T) => React.ReactNode; /** ⓘ: what this list is, for a first-time user (§۴۸) */ info?: React.ReactNode }) {
   const [all, setAll] = useState(false);
   if (items.length === 0) return null;
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <section aria-labelledby={id} className="flex flex-col">
-      <h2 id={id} className="heading-sm text-text-default">{title}</h2>
+      <div className="flex items-center gap-inline-xs"><h2 id={id} className="heading-sm text-text-default">{title}</h2>{info && <InfoTip term={title}>{info}</InfoTip>}</div>
       <ul className="mb-stagger flex flex-col divide-y divide-border-subtle">{shown.map(render)}</ul>
       {items.length > FIRST && (
         <div className="pt-stack-xs">
@@ -92,7 +92,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
   const host = useRef<HTMLDivElement>(null);
   const beside = useBeside(host);
   // each block of the margin under a hairline rule (a sidebar's rule in print): the eye finds where one ends and the next begins
-  // without a heading louder than the text it sits beside; the rows inside keep no lines of their own (decisions.md §۴۸)
+  // without a heading louder than the text it sits beside; the rows inside keep no lines of their own (decisions.md §۴۹)
   const margin = (
     <div className="mb-home-margin__blocks">
       <div className="mb-home-margin__block"><StateTally rows={tally} /></div>
@@ -114,7 +114,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
   );
   // wide: the margin beside the list, and what «جزئیات بیشتر» opens after both, at the page's width. Narrow: the margin cannot be
   // beside, so it goes AFTER what the toggle opens; before, the details opened under the whole margin, a screen below the
-  // toggle on a tablet (proximity; decisions.md §۴۴، §۴۸)
+  // toggle on a tablet (proximity; decisions.md §۴۴، §۴۹)
   return (
     <div ref={host} className="flex flex-col gap-stack-lg">
     <MarginList label="آنچه الان به تو نیاز دارد">
@@ -147,13 +147,13 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
             </section>
           ) : (
             <>
-              <Section id="home-waiting" title="منتظر تو" items={sections.waiting} render={(a) => (
+              <Section id="home-waiting" title="منتظر تو" info="کارهایی که فقط تو می‌توانی تمامشان کنی: دو حقیقت که با هم نمی‌خوانند، پیشنهادی که تأیید می‌خواهد، یا چیزی که به تغییری وابسته است. با هر کدام، آن مورد باز می‌شود." items={sections.waiting} render={(a) => (
                 <Row key={a.id} lead={<Icon name={ICON[a.kind]} size="md" />} text={a.text} button={a.button} onClick={() => onAct(a)} />
               )} />
-              <Section id="home-missing" title="چه چیزی کم است" items={sections.missing} render={(g) => (
+              <Section id="home-missing" title="چه چیزی کم است" info="جاهایی از درخت که هنوز حقیقتی ندارند ولی خروجی‌ها به آن‌ها نیاز دارند. یک جملهٔ کوتاه کافی است؛ همان‌جا ثبت می‌شود." items={sections.missing} render={(g) => (
                 <Row key={g.key} lead={dot('gap')} text={g.question || g.label} button="افزودن" icon="Plus" onClick={() => onAnswerGap(g)} />
               )} />
-              <Section id="home-stale" title="قدیمی‌شده‌ها" items={sections.stale} render={(a) => (
+              <Section id="home-stale" title="قدیمی‌شده‌ها" info="خروجی‌هایی که از نسخه‌ای ساخته شده‌اند که بعد عوض شده است. خودِ خروجی دست نمی‌خورد؛ بازش کن و ببین چه عوض شده، بعد دوباره بساز یا همان را نگه دار." items={sections.stale} render={(a) => (
                 <Row key={a.id} lead={dot('stale')} text={a.text} button={a.button} onClick={() => onAct(a)} />
               )} />
             </>

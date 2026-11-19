@@ -12,7 +12,7 @@ import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFo
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, quickMoves } from '../../core/nodeTree';
 import { spaceTally } from '../../core/spaceTally';
-import { Badge, Button, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -111,7 +111,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     // VIS-05: the exceptions (conflict, stale) print the nuqta's own name first in the trace line, so the shape is learnt beside its word
     const exception = state === 'conflict' || state === 'stale' ? `${NUQTA_LABEL[state]} · ` : '';
     return (
-      <MarginItem key={obj.id} margin={marginFor(obj)}>
+      <MarginItem key={obj.id} margin={marginFor(obj)} onRowClick={() => props.onSelectObject(obj)}>
         <Card padding="md" knowledge={state} onClick={() => props.onSelectObject(obj)} className="flex flex-col gap-stack-xs">
           <h4 className="headline text-balance text-text-default">{obj.title}</h4>
           <p className="body-reading text-pretty text-text-default">{obj.content}</p>
@@ -199,14 +199,14 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <div role="group" className="flex flex-col gap-stack-sm" aria-label="الان درست است">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h4 className="label-md text-text-default">الان درست است</h4>
-                  <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button>
+                  <span className="flex items-center"><Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button><InfoTip term="چیزهایی که اینجا اعمال می‌شود">خط قرمزها و تصمیم‌هایی که برای «همه‌جا» یا برای بخش بالاتر ثبت شده‌اند، اینجا هم معتبرند، حتی اگر در این بخش نوشته نشده باشند. هر خروجی که از این بخش ساخته شود آن‌ها را رعایت می‌کند.</InfoTip></span>
                 </div>
                 {established.length === 0 ? (
                   // «جای خالی»: a hollow gap dot and why the slot matters, not a bare «nothing yet»
                   <p className="flex items-start gap-inline-sm body-md text-text-subtle"><Nuqta state="gap" className="mt-space-1" /><span>هنوز حقیقتی اینجا نیست{node.description ? `: ${node.description}` : ''}.</span></p>
                 ) : (
                   <>
-                    <MarginList className="mb-margin--inline">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
+                    <div className="mb-items-host"><MarginList className="mb-margin--inline">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList></div>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}
@@ -304,7 +304,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
         <div className="flex flex-wrap items-center gap-inline-sm">
           {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
-          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} />; })()}
+          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <span className="flex items-center"><StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} /><InfoTip term="نشانه‌ها">◆ حقیقت: تأییدشده و منبع هر خروجی. ◇ پیشنهاد: هنوز تأیید نشده و به هیچ خروجی نمی‌رود. نشانهٔ دوتایی زرد یعنی قدیمی: چیزی که به آن تکیه دارد عوض شده و پیش از استفاده باید نگاهش کنی.</InfoTip></span>; })()}
           {pastToggle}
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>

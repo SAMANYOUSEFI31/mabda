@@ -41,7 +41,7 @@ export function actorOfSource(source?: ObjectSource): { actor: ContextChangeActo
 
 /**
  * What a decision record SAYS, without its review date: the date is a reminder for her (like an assumption's `reviewBy`), no output
- * or request reads it, so moving it («هنوز زود است») is not a new version and stales nothing (decisions.md §۴۸)
+ * or request reads it, so moving it («هنوز زود است») is not a new version and stales nothing (decisions.md §۴۹)
  */
 export const recordSays = (r: unknown): string => { if (!r || typeof r !== 'object') return 'null'; const { reviewOn: _r, ...rest } = r as Record<string, unknown>; return JSON.stringify(Object.keys(rest).length ? rest : null); };
 const onlyReviewDate = (c: { before?: Record<string, unknown>; after?: Record<string, unknown> }): boolean =>

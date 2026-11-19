@@ -606,7 +606,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-margin__icon{flex:none;margin-block-start:var(--space-0\.5);color:var(--icon-subtle)}
 }
 /* beside the text from 54rem of host (600 text + 40 gap + a margin of at least 14rem): at 58.5rem a 1024 tablet with the rail
-   (886px of frame) put the margin under a 680px column and left a fifth of the page empty beside the header (decisions.md §۴۸) */
+   (886px of frame) put the margin under a 680px column and left a fifth of the page empty beside the header (decisions.md §۴۹) */
 @container mb-margin (min-width: 54rem){
   /* the margin hugs the frame's end edge, so it ends where the page header's actions end (one frame, both edges; §۴۴) */
   .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) minmax(14rem,var(--container-margin));column-gap:var(--space-10);justify-content:space-between}
@@ -616,11 +616,27 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-margin--inline .mb-margin__row{grid-template-columns:minmax(0,var(--container-prose));justify-content:start}
   .mb-margin--inline .mb-margin__note{padding-inline-start:var(--space-8);padding-block-start:0}
 }
+/* «ساختار» on a wide screen (§۴۸): truths are short, independent units (a title, one or two lines, a trace). Past 2 × the shortest
+   comfortable measure they sit in two columns, each still a readable line (~60 characters), read across then down (RTL: start
+   column first). Below that, one column. The section's text and header keep the page width */
+.mb-items-host{container:mb-items / inline-size}
+.mb-items-host > .mb-margin--inline{max-inline-size:none}
+@container mb-items (min-width: 56rem){
+  .mb-items-host > .mb-margin--inline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-12);row-gap:var(--space-5)}
+  .mb-items-host > .mb-margin--inline .mb-margin__row{grid-template-columns:minmax(0,1fr)}
+}
+/* an item and the notes under it are one unit (common region): one hover over both, and the notes open the item too (§۴۸) */
+.mb-margin--inline .mb-margin__row--target{border-radius:var(--radius-container);cursor:pointer}
+.mb-margin--inline .mb-margin__row--target .mb-margin__note{padding-block-end:var(--space-3)}
+@media (hover:hover){
+  .mb-margin--inline .mb-margin__row--target:has(.mb-margin__note):hover{background-image:linear-gradient(var(--interaction-hover),var(--interaction-hover))}
+  .mb-margin--inline .mb-margin__row--target:has(.mb-margin__note):hover .mb-knowledge.mb-card--interactive{background-image:none}
+}
 /* the reading frame of a page whose content is text and its margin (خانه، خروجی‌ها): header, hairlines and margin share its two edges */
 @layer components{ .mb-page-frame{max-inline-size:var(--container-doc);container:mb-frame / inline-size} }
 /* one column (no margin beside it): the header, the list and what opens under it share the reading column's two edges, so the
    row buttons end where the header's actions end. Before, the header ran to the frame's edge and the column stopped at 680px
-   (206px apart at 1024 with the rail; decisions.md §۴۸) */
+   (206px apart at 1024 with the rail; decisions.md §۴۹) */
 @container mb-frame (max-width: 53.98rem){ .mb-page-frame > *{max-inline-size:var(--container-prose)} }
 /* Home's margin when it is not beside the text: after the list and what «جزئیات بیشتر» opens, its blocks side by side where two
    fit (they never expand in place, so the columns never jump), each under a hairline rule like a sidebar in print */
@@ -732,3 +748,9 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-stagger>:nth-child(7){animation-delay:calc(var(--duration-stagger) * 6)}
 .mb-stagger>:nth-child(n+8){animation-delay:calc(var(--duration-stagger) * 7)}
 }
+
+/* guided walk (Tour.tsx, §۴۸): one lit control, the rest of the page under the scrim */
+.mb-tour__spot{position:fixed;z-index:var(--layer-dialog);border-radius:var(--radius-control);box-shadow:0 0 0 100vmax var(--bg-scrim);pointer-events:none;transition:top var(--duration-base) var(--ease-standard),left var(--duration-base) var(--ease-standard),width var(--duration-base) var(--ease-standard),height var(--duration-base) var(--ease-standard)}
+.mb-tour__scrim{position:fixed;inset:0;z-index:var(--layer-dialog);background:var(--bg-scrim)}
+.mb-tour__card{position:fixed;z-index:var(--layer-popover)}
+@media (prefers-reduced-motion: reduce){.mb-tour__spot{transition:none}}

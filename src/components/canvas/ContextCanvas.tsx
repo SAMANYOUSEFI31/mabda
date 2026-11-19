@@ -118,6 +118,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [colorFacet, setColorFacet] = useState(false);
   // the overview: deeper sections opened into their own rows, one kind only, the user's row order (display only, remembered on this device)
   const [openedRows, setOpenedRows] = useState<Set<string>>(new Set());
+  const openedRowsRef = useRef(openedRows); openedRowsRef.current = openedRows;
   const [only, setOnly] = useState<'' | 'constraint' | 'pending'>('');
   const [rowsBy, setRowsBy] = useState<'domain' | 'facet'>('domain');
   const [rowOrder, setRowOrder] = useState<string[]>(() => prefs.rowOrder ?? []);
@@ -171,8 +172,26 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const facetNames = useMemo(() => [...new Set(p.objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [p.objects]);
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
-  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.8 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
+  const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
+  const { box, view, setView, size, fit, zoomAt, reveal, toStage, panned, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.8 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
+  const sceneRef = useRef(scene); sceneRef.current = scene;
+  const viewRef = useRef(view); viewRef.current = view;
+  useLayoutEffect(() => {
+    const a = rowAnchor.current;
+    if (!a) return;
+    rowAnchor.current = null;
+    const rows = scene.overview?.rows ?? [];
+    const at = rows.findIndex((r) => r.nodeId === a.id);
+    if (at < 0) return;
+    const row = rows[at];
+    // opening: what just appeared is brought on screen as far as it fits, the row it came from staying visible
+    let end = at; while (a.opening && end + 1 < rows.length && rows[end + 1].depth > row.depth) end++;
+    setView((v) => {
+      const below = (rows[end].y + rows[end].h - row.y) * v.k;
+      const screenY = a.opening ? Math.max(Math.min(a.screenY, 16), Math.min(a.screenY, size.h - 16 - below)) : a.screenY;
+      return { ...v, y: screenY - row.y * v.k };
+    });
+  }, [scene, setView, size.h]);
   const lod = lodOf(view.k);
   const overviewFar = layoutEff === 'overview' && lod === 'far';
 
@@ -190,8 +209,19 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
   // ── lines: focus mode — the selection's lines are strong, the rest dim (never hidden) ──
   const selSet = useMemo(() => new Set(selection), [selection]);
-  const emphasized = useMemo(() => new Set(scene.edges.filter((e) => selSet.has(e.influencer) || selSet.has(e.influenced)).map((e) => e.id)), [scene.edges, selSet]);
-  const neighbours = useMemo(() => { const n = new Set<string>(); for (const e of scene.edges) { if (selSet.has(e.influencer)) n.add(e.influenced); if (selSet.has(e.influenced)) n.add(e.influencer); } return n; }, [scene.edges, selSet]);
+  // a mouse resting on a card previews the same focus a click pins (owner, 2026-11-19; §۴۸). Only while nothing is selected, after a
+  // short rest so sweeping across the board does not flicker, and never for touch (a tap selects). A selection always wins
+  const [peek, setPeek] = useState<string | null>(null);
+  const peekTimer = useRef<number | undefined>(undefined);
+  const onPeek = useCallback((id: string | null) => {
+    window.clearTimeout(peekTimer.current);
+    if (id === null) { setPeek(null); return; }
+    peekTimer.current = window.setTimeout(() => setPeek(id), 160);
+  }, []);
+  useEffect(() => () => window.clearTimeout(peekTimer.current), []);
+  const focusSet = useMemo(() => (selection.length ? selSet : peek ? new Set([peek]) : selSet), [selection.length, selSet, peek]);
+  const emphasized = useMemo(() => new Set(scene.edges.filter((e) => focusSet.has(e.influencer) || focusSet.has(e.influenced)).map((e) => e.id)), [scene.edges, focusSet]);
+  const neighbours = useMemo(() => { const n = new Set<string>(); for (const e of scene.edges) { if (focusSet.has(e.influencer)) n.add(e.influenced); if (focusSet.has(e.influenced)) n.add(e.influencer); } return n; }, [scene.edges, focusSet]);
   const obstacles = useMemo(() => scene.items.map((i) => ({ x: i.x, y: i.y, w: i.w, h: i.h })), [scene.items]);
   const routed = useMemo(() => {
     const budget = edgeBudget(lod);
@@ -220,7 +250,15 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   }, [byId, setView, size.w, size.h, box, isMobile]);
 
   // ── the overview: open / close deeper rows, move a row (display only), zoom to rows ──
-  const toggleRow = useCallback((nodeId: string) => setOpenedRows((cur) => { const n = new Set(cur); if (n.has(nodeId)) n.delete(nodeId); else n.add(nodeId); return n; }), []);
+  // opening or closing a row's sub-sections keeps that row where it is on screen (§۴۸): refitting would throw the person back to
+  // the top, away from the rows they just opened
+  const rowAnchor = useRef<{ id: string; screenY: number; opening: boolean } | null>(null);
+  const toggleRow = useCallback((nodeId: string) => {
+    const row = sceneRef.current.overview?.rows.find((r) => r.nodeId === nodeId);
+    const v = viewRef.current;
+    rowAnchor.current = row ? { id: nodeId, screenY: v.y + row.y * v.k, opening: !openedRowsRef.current.has(nodeId) } : null;
+    setOpenedRows((cur) => { const n = new Set(cur); if (n.has(nodeId)) n.delete(nodeId); else n.add(nodeId); return n; });
+  }, []);
   const moveRow = useCallback((nodeId: string, dir: -1 | 1) => {
     const ids = (scene.overview?.rows ?? []).map((r) => r.nodeId);
     const i = ids.indexOf(nodeId), j = i + dir;
@@ -717,7 +755,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             role="application"
             aria-label={`${viewLabel}، چیدمان ${LAYOUT_FA[layoutEff]}. با کلیدهای جهت‌دار جابه‌جا شو؛ با Tab به کارت‌ها برو و با پیکان‌ها بین کارت‌ها حرکت کن. نمای «ساختار» جای بخش‌ها را نشان می‌دهد؛ اینجا رابطه‌های صریح دیده می‌شوند.`}
             {...handlers}
-            onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) { clearSelection(); setCtx(null); } }}
+            onClick={(e) => { if (panned()) return; /* moving around to see the links keeps what is selected */ if (!(e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) { clearSelection(); setCtx(null); } }}
             onDoubleClick={onStageDouble}
             className="relative min-w-space-0 flex-1 touch-none select-none overflow-hidden rounded-control border border-border-default bg-surface-sunken"
             style={{ blockSize: fullscreen ? undefined : fitted ? '100%' : '66vh', minBlockSize: 340 }}
@@ -744,7 +782,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 );
               })}
               {overviewFar && <OverviewFar scene={scene} k={view.k} onZoomRow={zoomRow} onZoomRows={zoomRows} />}
-              <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={selection.length > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
+              <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={focusSet.size > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
               {chipEdges.map(({ edge: e, route }) => (
                 <span key={`chip-${e.id}`} data-edge-chip={e.id} className="body-sm pointer-events-none absolute top-space-0 start-space-0 whitespace-nowrap rounded-pill border border-border-bold bg-mabda-edge-chip-bg px-inset-sm text-text-default" style={{ transform: `translate(${route.mid.x}px, ${route.mid.y}px) translate(-50%, -50%)` }}>{e.label}{e.count > 1 ? ` (${formatNumber(e.count)})` : ''}</span>
               ))}
@@ -755,18 +793,18 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                   const inGroup = !!groupDrag && !!frames.find((f) => f.nodeId === groupDrag.nodeId)?.ids.includes(i.id);
                   const at0 = i.kind === 'note' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : layout === 'free' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : i;
                   const at = inGroup ? { ...at0, x: at0.x + groupDrag!.dx, y: at0.y + groupDrag!.dy } : at0;
-                  const common = { lod, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => reveal(it.x, it.y, it.w, it.h), onKey: onCardKey };
+                  const common = { lod, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => { if (document.activeElement?.matches(':focus-visible')) reveal(it.x, it.y, it.w, it.h); }, /* keyboard focus only: a tap that pans the card away mid-press would land its click on the empty stage (§۴۸) */ onKey: onCardKey };
                   if (i.kind === 'note') {
                     return <CanvasNoteCard key={i.id} item={at} {...common} editing={editing?.id === i.id ? { text: editing.text } : undefined} onPointerDown={startDrag}
                       onEdit={(it) => setEditing({ id: it.id, text: it.summary ?? '' })} onEditText={(text) => setEditing((cur) => (cur ? { ...cur, text } : cur))}
                       onSave={async () => { if (editing && i.noteId) { await p.onUpdateNote(i.noteId, editing.text); setEditing(null); } }} onCancel={() => setEditing(null)} onConvert={(it) => setToKnowledge(it.noteId ?? null)} onDelete={(it) => it.noteId && void p.onDeleteNote(it.noteId)} />;
                   }
                   return <CanvasItemCard key={i.id} item={at} {...common} neighbour={neighbours.has(i.id)} dragging={noteDrag?.id === i.id} tint={colorFacet && i.facet ? FACET_TINT[facetNames.indexOf(i.facet) % FACET_TINT.length] : undefined}
-                    dimmed={selection.length > 0 && !showAllEdges && !selSet.has(i.id) && !neighbours.has(i.id)} onOpen={(it) => { const o = it.objectId ? objectById.get(it.objectId) : undefined; if (o) p.onOpenObject(o); else if (it.kind === 'asset' || it.kind === 'assets') p.onOpenAssets(); }}
+                    dimmed={focusSet.size > 0 && !showAllEdges && !focusSet.has(i.id) && !neighbours.has(i.id)} onPeek={i.kind === 'object' ? onPeek : undefined} onOpen={(it) => { const o = it.objectId ? objectById.get(it.objectId) : undefined; if (o) p.onOpenObject(o); else if (it.kind === 'asset' || it.kind === 'assets') p.onOpenAssets(); }}
                     onContext={(it, x, y) => setCtx({ item: it, x, y })} onPointerDown={onCardDown} onLink={i.kind === 'object' ? startLink : undefined} onActions={(it) => it.objectId && setActions(it.objectId)} />;
                 })}
             </div>
-            {layoutEff === 'overview' && <RowRail scene={scene} view={view} size={size} opened={openedRows} onToggleRow={toggleRow} onMoveRow={moveRow} />}
+            {layoutEff === 'overview' && !overviewFar && <RowRail scene={scene} view={view} size={size} opened={openedRows} onToggleRow={toggleRow} onMoveRow={moveRow} />}
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">

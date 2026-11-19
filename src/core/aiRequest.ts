@@ -348,7 +348,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const rejected = rejectedOptions(inc);
   const order = (list: ContextObject[]) => [...list].sort((a, b) => path(a.nodeId).localeCompare(path(b.nodeId)) || a.id.localeCompare(b.id));
   // what each document rests on, but only among the documents that are here: the reader (the other tool, and she in the preview)
-  // sees why two items belong together; nothing outside the pack is named, so no unrelated text comes in (decisions.md §۴۸)
+  // sees why two items belong together; nothing outside the pack is named, so no unrelated text comes in (decisions.md §۴۹)
   const here = new Map(inc.map((o) => [o.id, o]));
   const restsOn = (o: ContextObject) => rels.filter((r) => r.type === 'depends_on' && r.sourceId === o.id && here.has(r.targetId)).map((r) => refOf(here.get(r.targetId)!));
   const docs = (list: ContextObject[]) => order(list).map((o) => renderDoc(o, path(o.nodeId), restsOn(o))).join('\n');

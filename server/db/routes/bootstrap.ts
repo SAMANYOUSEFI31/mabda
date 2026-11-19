@@ -6,6 +6,7 @@ import type { LegacyPayload } from '../legacy.ts';
 import type { RouteContext } from './context.ts';
 import { importLegacy, seedPayload } from '../legacy.ts';
 import { ensureOwnerSample } from '../lifeSample/index.ts';
+import { applyDemo } from '../demo.ts';
 
 export function registerBootstrapRoutes(ctx: RouteContext): void {
   const { repo, clock, router, body, wrap, userOf } = ctx;
@@ -14,7 +15,12 @@ export function registerBootstrapRoutes(ctx: RouteContext): void {
     if (!repo.isImported(userOf(req))) {
       const legacy = body(req).legacy as LegacyPayload | undefined;
       const hasLegacy = !!legacy?.workspaces?.length;
-      imported = importLegacy(repo, userOf(req), hasLegacy ? legacy! : seedPayload(userOf(req)), hasLegacy ? 'localStorage' : 'seed');
+      // an invited tester (decisions.md §۳۷، §۴۸) starts with nothing written by anyone else in a space of their own: only the ONE
+      // marked sample (isDemo; out of every KPI) sits beside it, and the first-run screen asks what their own space is for. The
+      // local install and the owner keep the old seed, which the screenshots and the audits are written against
+      const fresh = req.mabdaUser?.role === 'tester';
+      imported = importLegacy(repo, userOf(req), hasLegacy ? legacy! : fresh ? { workspaces: [] } : seedPayload(userOf(req)), hasLegacy ? 'localStorage' : fresh ? 'fresh' : 'seed');
+      if (fresh && !hasLegacy) applyDemo(repo, userOf(req), clock());
     }
     // the owner's own full sample (docs/life-sample.md): once, only when the host switched samples on
     await ensureOwnerSample(repo, userOf(req), req.mabdaUser?.role, clock());

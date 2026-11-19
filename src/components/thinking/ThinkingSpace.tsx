@@ -149,7 +149,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             {previewItems.length > 0 && <Menu label="اگر همه را تأیید کنم" align="end" trigger={<Button size="sm" variant="ghost" iconStart="Eye">اگر همه را تأیید کنم</Button>} items={previewItems} />}
           </div>
           {/* three kinds of decision wait here, each under its own sub-heading in the same style («پیشنهادها» had one, the
-              rewrites and the reviews did not; decisions.md §۴۸). The name «منتظر تو» stays: it holds more than proposals */}
+              rewrites and the reviews did not; decisions.md §۴۹). The name «منتظر تو» stays: it holds more than proposals */}
           {drafts.length > 0 && (
             <div className="flex flex-col gap-stack-xs">
               <h3 className="headline text-text-default">تغییرها ({formatNumber(drafts.length)})</h3>

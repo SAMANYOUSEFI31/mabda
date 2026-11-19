@@ -51,7 +51,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
     return out;
   }, [specs, workspaceContexts, data.relationships]);
   // «درخواست دوباره»: the same request (kind, line, sections, hand-added items) read from today's truth, all still editable;
-  // the record keeps it since migration 33, an older one gives back its kind and line (§۴۸)
+  // the record keeps it since migration 33, an older one gives back its kind and line (§۴۹)
   const request = async (d?: GeneratedDeliverable) => {
     if (!d) { setAiRequest({ scopeNodeId: '' }); return; }
     const asked = d.sourcePackId ? await dataApi.getPack(currentWorkspace.id, d.sourcePackId).then((p) => p.request).catch(() => undefined) : undefined;
@@ -67,7 +67,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
   };
   const requestButton = <Button variant="secondary" iconStart="PackageOpen" onClick={() => void request()}>درخواست برای ابزار دیگر</Button>;
   // the loop has two halves and this page is where both live: send (the request) and bring back (the answer). The answer's way
-  // in sat under «⋯», so the path from a request to an output of her own could not be found (decisions.md §۴۸)
+  // in sat under «⋯», so the path from a request to an output of her own could not be found (decisions.md §۴۹)
   const importButton = <Button variant="secondary" iconStart="Upload" onClick={() => setIsImportOpen(true)}>وارد کردن پاسخ</Button>;
   return (
     <div className="mb-page-frame space-y-stack-lg">

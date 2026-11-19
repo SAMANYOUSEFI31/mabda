@@ -25,7 +25,7 @@ export interface HomeInput {
   /** decisions that can be decided now (everything they rest on is confirmed) */
   ready: Array<{ id: string; title: string }>;
   proposedCount: number;
-  /** rewrites of confirmed truths that wait for approval (a draft on the truth): decided in «فکر», named here (decisions.md §۴۸) */
+  /** rewrites of confirmed truths that wait for approval (a draft on the truth): decided in «فکر», named here (decisions.md §۴۹) */
   draftCount?: number;
   weekly: { due: boolean; changes: number };
   dueCount: number;

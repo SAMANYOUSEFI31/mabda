@@ -12,7 +12,7 @@ import type { NuqtaState } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
 // every field a Change can carry has a name here: a field without one used to print its raw key and value («overrides: ← dm_…»,
-// decisions.md §۴۸). A value is always said in words (a title, a date, a label), never as an id
+// decisions.md §۴۹). A value is always said in words (a title, a date, a label), never as an id
 const FIELD_FA: Record<string, string> = {
   type: 'نوع', title: 'عنوان', content: 'متن', nodeId: 'بخش', slotKey: 'جایگاه', provenance: 'منشأ', status: 'وضعیت', dependsOn: 'وابسته به',
   supersededById: 'جایگزین', supersedes: 'جایگزین‌کنندهٔ', overrides: 'در بخش خودش کنار می‌گذارد', reach: 'کجا اعمال شود', validUntil: 'اعتبار تا',
