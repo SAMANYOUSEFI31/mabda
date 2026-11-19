@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, THEME_LABEL, THEME_ORDER } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, useHints, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { useSession } from '../../app/shell/SessionGate';
@@ -19,6 +19,8 @@ interface AppNavigationProps {
   onSelectWorkspace: (ws: Workspace) => void;
   onOpenNewWorkspace: () => void;
   onOpenOnboarding: () => void;
+  /** the short guided walk again (WelcomeTour) */
+  onOpenTour?: () => void;
   /** builds (or rebuilds from nothing) the showcase workspace */
   onResetDemo: () => void;
   /** the showcase can be wiped with one confirm (absent when there is none) */
@@ -169,22 +171,26 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const [theme, setTheme] = useTheme();
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
-    ...allWorkspaces.map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
+    // one's own spaces first, the sample last (§۳۷: «جای من» before «مثال»)
+    ...[...allWorkspaces].sort((a, b) => Number(!!a.isDemo) - Number(!!b.isDemo)).map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace, keep: true },
     { divider: true, keep: true },
     { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory, keep: true },
     { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo, keep: true },
     ...(p.onDeleteDemo ? [{ label: 'حذف فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo, keep: true }] : []),
   ];
+  const [hintsOn, setHints] = useHints();
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
     ...(online && session?.user?.role === 'owner' ? [{ label: 'افراد آزمون', icon: 'Link2' as const, onSelect: () => setPeopleOpen(true) }] : []),
     ...(ai.managedEnabled ? [{ label: 'مصرف', icon: 'Wallet' as const, onSelect: p.onOpenLedger }] : []),
     ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },
+    ...(p.onOpenTour ? [{ label: 'گشت کوتاه در مبدأ', icon: 'Map' as const, onSelect: p.onOpenTour }] : []),
     { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },
     { divider: true },
     { label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
+    { label: 'راهنمای کوچک (ⓘ)', icon: 'Info', choice: { value: hintsOn ? 'on' : 'off', onChoose: (v) => setHints(v === 'on'), options: [{ value: 'on', label: 'روشن' }, { value: 'off', label: 'خاموش' }] } },
     ...(online ? [{ label: 'خروج از این دستگاه', icon: 'LogOut' as const, onSelect: () => void signOut() }] : []),
   ];
   const workspacePicker = (compact: boolean) => (
@@ -307,10 +313,12 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       )}
 
       {/* Rail only: once the page title scrolls away, a compact bar names the space again, like a large title collapsing into
-          the toolbar (Apple HIG «Navigation bars»). The open sidebar already shows the name, so it never appears there (§۳۳). */}
+          the toolbar (Apple HIG «Navigation bars»). The open sidebar already shows the name, so it never appears there (§۳۳, §۴۸). */}
       {!docked && under.titleGone && (
         <div data-testid="rail-title" data-under className="mb-glass mb-rail-title hidden items-center border-b border-border-default px-inset-lg py-inset-xs md:flex">
-          <span className="flex min-w-space-0 max-w-full items-center">{workspacePicker(true)}</span>
+          {/* a name, not a second switcher (§۴۸): the rail's mark at the top already opens the space menu, two controls for one
+              action is noise (Nielsen 8). It only answers «where am I» once the page title has gone */}
+          <span className="body-sm min-w-space-0 truncate text-text-subtle" aria-hidden="true">{currentWorkspace.name}</span>
         </div>
       )}
 

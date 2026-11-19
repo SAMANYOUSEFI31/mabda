@@ -68,10 +68,12 @@ test('two testers: each sees only their own data; ids from someone else answer �
     const a = t.browser(); await a.join((await owner.call('POST', '/owner/people', { name: 'A' })).json.link.split('#join=')[1]);
     const b = t.browser(); await b.join((await owner.call('POST', '/owner/people', { name: 'B' })).json.link.split('#join=')[1]);
 
-    // DB-PG-01: both get the first-run sample and the showcase, each under their own ids
+    // §۳۷، §۴۸: a tester starts with nothing anyone else wrote in a space of their own — only the ONE marked sample, under their own ids (DB-PG-01)
     const wa = (await a.call('POST', '/bootstrap', {})).json.workspaces;
     const wb = (await b.call('POST', '/bootstrap', {})).json.workspaces;
-    assert.equal(wa.length, 2); assert.equal(wb.length, 2);
+    assert.equal(wa.length, 1); assert.equal(wb.length, 1);
+    assert.ok(wa[0].isDemo && wb[0].isDemo, 'the only space is the marked sample');
+    assert.equal((await a.call('POST', '/bootstrap', {})).json.workspaces.length, 1, 'a second load builds nothing more');
     assert.ok(wa.every((w: any) => !wb.some((x: any) => x.id === w.id)), 'no shared workspace id');
     const da = (await a.call('POST', '/demo/reset', {})).json.workspaceId;
     const db = (await b.call('POST', '/demo/reset', {})).json.workspaceId;
@@ -101,8 +103,10 @@ test('two testers: each sees only their own data; ids from someone else answer �
     assert.equal((await a.call('GET', `/workspaces/${da}/state`)).json.deliverables.find((d: any) => d.id === aDel.id).title, aDel.title);
     // the same for a ledger line (before: «INSERT OR REPLACE» silently moved A's line to B)
     const aWs = wa[0].id;
+    // a tester's sample has no ledger of its own (§۳۷): A gets one line the way the managed AI writes it
+    t.repo.addLedger({ userId: (await a.call('GET', '/session')).json.user.id, workspaceId: aWs }, { id: 'led_a', timestamp: '2026-11-01T12:00:00Z', workspaceId: aWs, action: 'آزمون', mode: 'auto', inputTokens: 1, outputTokens: 1, estimatedAiCostUsd: 0, status: 'completed' });
     const aLedger = (await a.call('GET', `/workspaces/${aWs}/state`)).json.ledger[0];
-    assert.ok(aLedger, 'the first-run sample has ledger lines');
+    assert.ok(aLedger, 'A has a ledger line');
     assert.equal((await b.call('POST', `/workspaces/${wb[0].id}/ledger`, { ...aLedger, workspaceId: wb[0].id })).status, 403);
     assert.ok((await a.call('GET', `/workspaces/${aWs}/state`)).json.ledger.some((l: any) => l.id === aLedger.id));
 
@@ -133,7 +137,7 @@ test('CSRF: a change from another site is refused; the owner can replace a link 
     assert.equal((await t.browser().join(made.link.split('#join=')[1])).status, 401);
     const a2 = t.browser();
     assert.equal((await a2.join(fresh.split('#join=')[1])).status, 200);
-    assert.equal((await a2.call('GET', '/workspaces')).json.workspaces.length, 2, 'the same person, the same data');
+    assert.equal((await a2.call('GET', '/workspaces')).json.workspaces.length, 1, 'the same person, the same data');
 
     // off: signed out at once, the link refused; on again: the same data
     await owner.call('POST', `/owner/people/${made.person.id}/disabled`, { disabled: true });
@@ -141,7 +145,7 @@ test('CSRF: a change from another site is refused; the owner can replace a link 
     assert.equal((await t.browser().join(fresh.split('#join=')[1])).status, 401);
     await owner.call('POST', `/owner/people/${made.person.id}/disabled`, { disabled: false });
     const a3 = t.browser(); await a3.join(fresh.split('#join=')[1]);
-    assert.equal((await a3.call('GET', '/workspaces')).json.workspaces.length, 2);
+    assert.equal((await a3.call('GET', '/workspaces')).json.workspaces.length, 1);
 
     // logout ends this device's sign-in
     await a3.call('POST', '/logout', {});

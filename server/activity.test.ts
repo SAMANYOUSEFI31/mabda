@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { createApp } from './app.ts';
 import { openDatabase } from './db/database.ts';
+import { importLegacy, seedPayload } from './db/legacy.ts';
 
 const OWNER_CODE = 'owner-code-for-tests-0123456789';
 const SECRET = 'رازِ خیلی شخصی من';
 
 async function boot() {
   const db = openDatabase(':memory:');
-  const { app } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
+  const { app, repo } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
   const server = app.listen(0);
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const browser = () => {
@@ -24,7 +25,7 @@ async function boot() {
     };
     return { call, join: (code: string) => call('POST', '/join', { code }) };
   };
-  return { db, browser, close: () => server.close() };
+  return { db, repo, browser, close: () => server.close() };
 }
 
 test('the test record: actions and screens are logged without text, only after consent; the owner reads measures and exports; erase removes it', async () => {
@@ -39,8 +40,10 @@ test('the test record: actions and screens are logged without text, only after c
     assert.equal(Number((t.db.prepare("SELECT COUNT(*) AS n FROM activity_events WHERE user_id <> 'owner'").get() as { n: number }).n), 0);
     await a.call('POST', '/consent', {});
 
-    const ws = (await a.call('POST', '/bootstrap', {})).json.workspaces;
-    const own = ws.find((w: any) => !w.isDemo) ?? ws[0];
+    await a.call('POST', '/bootstrap', {});
+    // a tester starts with only the marked sample (§۳۷، §۴۸): their own space is the one the first-run screen makes
+    const own = (await a.call('PUT', '/workspaces/ws_mine', { id: 'ws_mine', name: 'زندگی من', slug: 'my', description: '', purpose: 'personal', todayChatCount: 0, createdAt: '2026-11-01T00:00:00Z' })).json;
+    assert.ok(own.id && !own.isDemo);
     const st = (await a.call('GET', `/workspaces/${own.id}/state`)).json;
     const nodeId = st.nodes[0].id;
     assert.equal((await a.call('POST', `/workspaces/${own.id}/notes`, { nodeId, content: `${SECRET}\nآیا این درست است؟` })).status, 200);
@@ -113,7 +116,12 @@ test('Mabda\'s examples: stored as «Sample», never counted as the person\'s ow
     const a = t.browser();
     await a.join((await owner.call('POST', '/owner/people', { name: 'ب' })).json.link.split('#join=')[1]);
     await a.call('POST', '/consent', {});
-    const ws = (await a.call('POST', '/bootstrap', {})).json.workspaces;
+    // testers no longer get the pre-written spaces (§۳۷); the local install and the owner still do, so the rule is checked on
+    // the same pre-written items, given to this person the way the first-run seed gives them
+    const uid = (await a.call('GET', '/session')).json.user.id;
+    t.db.prepare("DELETE FROM kv WHERE user_id = ? AND key = 'legacy_import'").run(uid);
+    importLegacy(t.repo, uid, seedPayload(uid), 'seed');
+    const ws = (await a.call('GET', '/workspaces')).json.workspaces;
     const life = ws.find((w: any) => w.slug === 'my-life');
     const st = (await a.call('GET', `/workspaces/${life.id}/state`)).json;
     assert.ok(st.objects.length > 0 && st.objects.every((o: any) => o.provenance === 'Sample'), 'every pre-written item says it is an example');

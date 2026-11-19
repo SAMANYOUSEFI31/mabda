@@ -13,7 +13,7 @@ import { KnowledgePage } from './knowledge/KnowledgePage';
 import { LedgerPage } from './workspace/LedgerPage';
 import { ThinkingPage } from './thinking/ThinkingPage';
 import { WorkstreamsPage } from './outputs/WorkstreamsPage';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ErrorState } from '../ui';
 import { useAiStatus } from '../services/aiStatus';
 import { flashScrollbar } from '../ui/scrollbars';
@@ -33,14 +33,17 @@ export function AppView(p: AppScope) {
   const shown = p.data ? `${p.activeTab}:${p.currentWorkspace?.id}` : '';
   useEffect(() => { if (shown) flashScrollbar(); }, [shown]);
   // the user-test record: which screen, in which space, with a section in focus or not (src/services/activity.ts)
-  const firstRun = p.boot.status === 'ready' && p.liveWorkspaces.length === 0;
+  // no space of their OWN yet (§۳۷، §۴۸): the first-run screen, even with the sample beside it; «دیدن نمونه» steps past it for this visit
+  const [sampleFirst, setSampleFirst] = useState(false);
+  const sample = p.liveWorkspaces.find((w) => w.isDemo);
+  const firstRun = p.boot.status === 'ready' && (p.liveWorkspaces.length === 0 || (!sampleFirst && p.liveWorkspaces.every((w) => w.isDemo)));
   const screen = firstRun ? 'first-run' : p.data ? `${p.activeTab}|${p.currentWorkspace?.id ?? ''}|${p.focusNodeId ? 1 : 0}` : '';
   useEffect(() => {
     if (!screen) return;
     setActivitySpace(firstRun ? undefined : p.currentWorkspace?.id);
     logUi('view', { tab: firstRun ? 'first-run' : p.activeTab, section: !!p.focusNodeId, sample: !!p.currentWorkspace?.isDemo });
   }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (p.boot.status === 'ready' && p.liveWorkspaces.length === 0) return <FirstRunScreen {...p} />;
+  if (firstRun) return <FirstRunScreen {...p} onOpenSample={sample ? () => { setSampleFirst(true); p.setCurrentWorkspaceId(sample.id); } : undefined} />;
   if (p.boot.status !== 'ready' || !p.currentWorkspace || !p.data) return <BootScreen {...p} />;
   const ready: ReadyScope = { ...p, data: p.data, currentWorkspace: p.currentWorkspace };
 

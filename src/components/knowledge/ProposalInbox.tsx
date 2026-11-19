@@ -116,36 +116,33 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
               );
             })()}
             {o.source?.reason && <p className="body-sm text-text-subtle">دلیل پیشنهاد: {o.source.reason}</p>}
-            <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
-              <span className="body-sm text-text-subtle">
-                منبع: {o.provenance === 'Sample' ? `${PROVENANCE_LABEL.Sample} · ${formatJalaliDate(o.createdAt)}` : o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
-              </span>
-              <div className="flex flex-wrap items-center gap-inline-xs">
-                {(() => {
-                  const replaces = proposalContext(o, objects).replaces;
-                  // components.md «گروه دکمه»: at most three side by side, the rest under «⋯» (§۳۸). The decision and its two
-                  // everyday alternatives stay visible; «کنار قبلی» and an optional reason are rare, so they wait in «⋯»
-                  const reasonOpen = reasons[o.id] !== undefined;
-                  const more = [
-                    ...(replaces ? [{ label: 'تأیید کنار قبلی', icon: 'Check' as const, onSelect: () => onAccept(o, reasonOf(o.id)) }] : []),
-                    { label: reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل', icon: 'MessageSquare' as const, onSelect: () => setReasons((r) => ({ ...r, [o.id]: r[o.id] === undefined ? '' : undefined })) },
-                  ];
-                  return (
-                    <>
-                      {replaces
-                        ? <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onReplace(o, replaces.id, reasonOf(o.id))}>جایگزینی</Button>
-                        : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید</Button>}
-                      <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
-                      <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o, reasonOf(o.id))}>رد</Button>
-                      {/* a menu of one is a click for nothing: with only the optional reason left, it is its own quiet icon button */}
-                      {more.length > 1
-                        ? <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={more} />
-                        : <IconButton icon="MessageSquare" size="sm" label={`${more[0].label} برای «${o.title}»`} aria-expanded={reasonOpen} onClick={more[0].onSelect} />}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
+            {(() => {
+              const replaces = proposalContext(o, objects).replaces;
+              // components.md «گروه دکمه»: at most three side by side, the rest under «⋯» (§۳۸). The decision and its two everyday
+              // alternatives stay together; «کنار قبلی» is rare and waits in «⋯». The optional reason is not a decision but a note ON
+              // one, so it sits with the source line, labelled like its neighbours (§۴۸: a speech bubble alone reads as «comment» or
+              // «chat»), and the three decisions never break onto two rows on a phone
+              const reasonOpen = reasons[o.id] !== undefined;
+              const toggleReason = () => setReasons((r) => ({ ...r, [o.id]: r[o.id] === undefined ? '' : undefined }));
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
+                  <span className="flex flex-wrap items-center gap-inline-sm">
+                    <span className="body-sm text-text-subtle">
+                      منبع: {o.provenance === 'Sample' ? `${PROVENANCE_LABEL.Sample} · ${formatJalaliDate(o.createdAt)}` : o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
+                    </span>
+                    <Button size="sm" variant="ghost" iconStart="MessageSquare" aria-label={`${reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'} برای «${o.title}»`} aria-expanded={reasonOpen} onClick={toggleReason}>{reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'}</Button>
+                  </span>
+                  <div className="flex flex-wrap items-center gap-inline-xs">
+                    {replaces
+                      ? <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onReplace(o, replaces.id, reasonOf(o.id))}>جایگزینی</Button>
+                      : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید</Button>}
+                    <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
+                    <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o, reasonOf(o.id))}>رد</Button>
+                    {replaces && <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={[{ label: 'تأیید کنار قبلی', icon: 'Check', onSelect: () => onAccept(o, reasonOf(o.id)) }]} />}
+                  </div>
+                </div>
+              );
+            })()}
             {reasons[o.id] !== undefined && (
               <TextField label={`دلیل برای «${o.title}»`} hint="در تاریخچهٔ تغییرها ثبت می‌شود، نه در متن." value={reasons[o.id] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.id]: e.target.value }))} />
             )}

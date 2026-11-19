@@ -13,6 +13,7 @@ import { ContradictionPanel } from '../../components/knowledge/ContradictionPane
 import { ProposalInbox } from '../../components/knowledge/ProposalInbox';
 import { ThinkingList } from '../../components/thinking/ThinkingList';
 import { LIMITS } from '../../core/limits';
+import { requestAdd } from '../../core/addRequest';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { gapAnswer, gapDraft } from '../../core/homeActions';
 import { resolveNodeId } from '../../core/nodeTree';
@@ -135,11 +136,15 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             </div>
           </div>
           {!started && (
+            // §۳۷، §۴۸: the shortest way to the first real thing is writing it, not a wizard: «شروع سریع» waits in the account menu
             <EmptyState
-              title="از همین‌جا شروع کن"
-              description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
+              title="اولین چیزی را که می‌دانی بنویس"
+              description="مثلاً «به پنی‌سیلین حساسیت دارم» یا «جلسه‌های تیم سه‌شنبه‌هاست». اول «فکر» می‌شود؛ جا و نوعش را بعد هم می‌شود تعیین کرد."
               action={(
-                <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+                <span className="flex flex-wrap items-center justify-center gap-inline-sm">
+                  <Button variant="primary" iconStart="Plus" onClick={() => requestAdd({ kind: 'thought' })}>نوشتن اولین فکر</Button>
+                  <Button variant="ghost" iconStart="FolderInput" onClick={() => setIsMemoryOpen(true)}>یا یک متن بچسبان</Button>
+                </span>
               )}
             />
           )}

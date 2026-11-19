@@ -31,25 +31,34 @@ export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: S
   const [openRow, setOpenRow] = useState<string | null>(null);
   return (
     <div className="pointer-events-none absolute top-space-0 bottom-space-0 end-space-0 start-space-0 overflow-hidden">
-      {rows.map((r) => {
+      {rows.map((r, idx) => {
+        // an opened sub-row closes from where the eye is (§۴۸): the row it was opened from may already be off screen
+        let parent: typeof r | undefined;
+        if (r.depth > 0) for (let j = idx - 1; j >= 0; j--) if (rows[j].depth < r.depth) { parent = rows[j]; break; }
         const top = view.y + r.y * view.k;
         const bottom = view.y + (r.y + r.h) * view.k;
         if (bottom < 0 || top > size.h) return null;
         const y = Math.min(Math.max(top + 4, 4), Math.max(top + 4, bottom - 64)); // stays visible while the row is on screen
-        if (compact && openRow !== r.nodeId) return (
+        // a row shorter on screen than the full label (zoomed out) gets the small tab too, or the labels pile onto each other
+        // and zoomed in past 110٪ the full label would sit on the cards' titles: the tab keeps the row's name only, a tap opens the rest
+        const tight = bottom - top < 116 || view.k > 1.1;
+        if ((compact || tight) && openRow !== r.nodeId) return (
           <button key={r.nodeId} type="button" data-testid="row-rail" data-row={r.nodeId} data-no-pan="" aria-expanded={false} onClick={() => setOpenRow(r.nodeId)} className="label-sm pointer-events-auto absolute end-space-1 text-balance rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs text-text-default shadow-raised" style={{ top: y, inlineSize: 96, minBlockSize: 44 }}>{r.label}</button>
         );
         return (
           <div key={r.nodeId} data-testid="row-rail" data-row={r.nodeId} data-no-pan="" className="pointer-events-auto absolute end-space-1 flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised px-inset-sm py-inset-xs shadow-raised" style={{ top: y, inlineSize: 168 }}>
             <span dir="rtl" className="flex items-center justify-between gap-inline-xs">
-              <span className="label-md min-w-space-0 text-balance text-text-default" style={{ paddingInlineStart: r.depth * 10 }}>{r.label}</span>
+              <span className="label-md min-w-space-0 text-balance text-text-default">{r.label}</span>
               {onMoveRow && <span className="flex shrink-0 items-center"><IconButton icon="ChevronUp" label={`ردیف «${r.label}» را بالاتر ببر`} onClick={() => onMoveRow(r.nodeId, -1)} /><IconButton icon="ChevronDown" label={`ردیف «${r.label}» را پایین‌تر ببر`} onClick={() => onMoveRow(r.nodeId, 1)} /></span>}
             </span>
+            {parent && <span dir="rtl" className="caption text-text-subtle">زیربخشِ «{parent.label}»</span>}
             <span dir="rtl" className="caption text-text-subtle">{countsText(r.counts)}</span>
             <span dir="rtl" className="flex flex-wrap gap-inline-xs">
-              {r.rolledUp > 0 && <Button size="sm" variant="ghost" aria-expanded={opened.has(r.nodeId)} onClick={() => onToggleRow(r.nodeId)}>{opened.has(r.nodeId) ? 'زیربخش‌ها را جمع کن' : `زیربخش‌ها (${formatNumber(r.rolledUp)})`}</Button>}
+              {/* once opened, its sections have rows of their own and rolledUp is 0: the way back must stay */}
+              {(r.rolledUp > 0 || opened.has(r.nodeId)) && <Button size="sm" variant="ghost" aria-expanded={opened.has(r.nodeId)} onClick={() => onToggleRow(r.nodeId)}>{opened.has(r.nodeId) ? 'زیربخش‌ها را جمع کن' : `زیربخش‌ها (${formatNumber(r.rolledUp)})`}</Button>}
+              {parent && opened.has(parent.nodeId) && <Button size="sm" variant="ghost" aria-label={`زیربخش‌های «${parent.label}» را جمع کن`} onClick={() => onToggleRow(parent.nodeId)}>جمع کن</Button>}
               {onEnterRow && <Button size="sm" variant="ghost" onClick={() => onEnterRow(r.nodeId)}>برو داخل</Button>}
-              {compact && <Button size="sm" variant="ghost" onClick={() => setOpenRow(null)}>ببند</Button>}
+              {(compact || tight) && <Button size="sm" variant="ghost" onClick={() => setOpenRow(null)}>ببند</Button>}
             </span>
           </div>
         );
@@ -69,22 +78,23 @@ export const OverviewFar: React.FC<{ scene: Scene; k: number; onZoomRows: (from:
     <>
       {ov.rows.map((r) => (
         <button key={r.nodeId} type="button" data-no-pan="" data-testid="row-summary" aria-label={`${r.label}: ${countsText(r.counts)}؛ بزرگ‌نمایی کن`} onClick={() => onZoomRow(r.nodeId)}
-          className="absolute start-space-0 flex items-center justify-between gap-inline-sm rounded-control border border-border-bold bg-surface-raised text-start text-text-default" style={{ top: r.y, inlineSize: scene.width, blockSize: r.h - 6, paddingInline: pad, fontSize: fs }}>
-          <span dir="rtl" style={{ fontWeight: 600 }}>{r.label}</span>
-          <span dir="rtl" className="text-text-subtle">{countsText(r.counts)}</span>
+          className="absolute start-space-0 flex flex-col items-end justify-center rounded-control border border-border-bold bg-surface-raised text-start text-text-default" style={{ top: r.y, inlineSize: scene.width, blockSize: r.h - 6, paddingInline: pad, fontSize: fs }}>
+          {/* label over counts, both at the reading start; the lines between rows keep to the other half, so no text sits under a line (§۴۸) */}
+          <span dir="rtl" style={{ fontWeight: 600, maxInlineSize: '50%' }}>{r.label}</span>
+          <span dir="rtl" className="text-text-subtle" style={{ maxInlineSize: '50%' }}>{countsText(r.counts)}</span>
         </button>
       ))}
       {ov.rowEdges.map((e, i) => {
         const a = rowById.get(e.from), b = rowById.get(e.to);
         if (!a || !b) return null;
-        const x = 80 + ((i * 197) % Math.max(200, scene.width - 160));
+        const x = scene.width * 0.1 + ((i * 0.09 * scene.width) % (scene.width * 0.3)); // the half away from the labels
         const y1 = a.y + a.h / 2, y2 = b.y + b.h / 2;
         return (
           <React.Fragment key={e.id}>
             <svg className="pointer-events-none absolute top-space-0 start-space-0 overflow-visible" width={scene.width} height={scene.height} aria-hidden="true"><line x1={x} y1={y1} x2={x} y2={y2} className="stroke-border-selected" strokeWidth={Math.min(8, 2 / Math.max(k, 0.15))} /></svg>
-            <button type="button" data-no-pan="" data-testid="row-edge" aria-label={`${formatNumber(e.count)} وابستگی به «${a.label}» از «${b.label}»؛ بازشان کن`} onClick={() => onZoomRows(e.from, e.to)}
+            <button type="button" dir="rtl" data-no-pan="" data-testid="row-edge" aria-label={`${formatNumber(e.count)} وابستگی به «${a.label}» از «${b.label}»؛ بازشان کن`} onClick={() => onZoomRows(e.from, e.to)}
               className="absolute rounded-pill border border-border-selected bg-bg-selected text-text-default" style={{ insetInlineStart: x, top: (y1 + y2) / 2, transform: 'translate(-50%, -50%)', fontSize: fs, paddingInline: pad, whiteSpace: 'nowrap' }}>
-              {formatNumber(e.count)} وابستگی به «{a.label}»
+              {formatNumber(e.count)} وابستگی
             </button>
           </React.Fragment>
         );

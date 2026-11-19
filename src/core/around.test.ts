@@ -35,7 +35,7 @@ test('thoughts that name it, outputs that used it (with the version) and the sou
     deliverables: [{ id: 'd1', title: 'متن تبلیغ', usedContext: [{ id: 'x', version: 0 }] }, { id: 'd2', title: 'بایگانی‌شده', usedContext: [{ id: 'x', version: 1 }], archivedAt: '2026-01-01' }],
   });
   assert.equal(group(a, 'thoughts').items.length, 2);
-  assert.equal(group(a, 'thoughts').items[0].text, 'آیا باید را عوض کنیم؟');
+  assert.equal(group(a, 'thoughts').items[0].text, 'آیا باید «عنوان x» را عوض کنیم؟');
   assert.deepEqual(group(a, 'outputs').items.map((i) => i.target), [{ type: 'output', deliverableId: 'd1' }]);
   assert.match(group(a, 'outputs').items[0].text, /نسخهٔ 0|نسخه/);
   assert.equal(group(a, 'source').items.length, 1);

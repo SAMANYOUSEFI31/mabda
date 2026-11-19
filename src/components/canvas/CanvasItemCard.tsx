@@ -50,6 +50,8 @@ interface CardProps {
   onFocus: (item: SceneItem) => void;
   onKey: (e: React.KeyboardEvent, item: SceneItem) => void;
   onActions?: (item: SceneItem) => void;
+  /** a mouse resting on the card previews its links (null when it leaves) */
+  onPeek?: (id: string | null) => void;
 }
 
 /**
@@ -77,6 +79,8 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
     <div
       data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-pending={item.pending || undefined} data-object-id={item.objectId} data-no-pan="" data-lod={lod} tabIndex={0} role={role} aria-label={aria(item)} aria-selected={p.selected}
       onPointerDown={(e) => p.onPointerDown?.(e, item)}
+      onPointerEnter={p.onPeek ? (e) => { if (e.pointerType === 'mouse' && !e.buttons) p.onPeek!(item.id); } : undefined}
+      onPointerLeave={p.onPeek ? () => p.onPeek!(null) : undefined}
       onClick={(e) => { if ((e.target as HTMLElement).closest('button')) return; p.onSelect(item.id, e.shiftKey || e.metaKey || e.ctrlKey); }}
       onDoubleClick={() => p.onOpen(item)}
       onContextMenu={(e) => { e.preventDefault(); p.onContext(item, e.clientX, e.clientY); }}
