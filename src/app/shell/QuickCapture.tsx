@@ -29,7 +29,9 @@ const readDraft = (): string => { try { return sessionStorage.getItem(DRAFT_KEY)
 export type QuickCaptureProps = Pick<ReadyScope, 'activeTab' | 'data' | 'focusNodeId' | 'handleSaveThought' | 'handleSaveThoughts' | 'handleUploadFile' | 'nodes' | 'openContext' | 'setActiveTab' | 'setIsMemoryOpen' | 'workspaceContexts'>;
 
 const PREF = 'mabda.quickCapture.continuous';
-const readContinuous = () => { try { return localStorage.getItem(PREF) !== 'off'; } catch { return true; } };
+// off unless she turned it on (§۴۸): the common case — and the very first save — is one thought, after which the dialog closes and
+// the toast says where it went; «Create more» in Linear is off by default too
+const readContinuous = () => { try { return localStorage.getItem(PREF) === 'on'; } catch { return false; } };
 
 export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, handleSaveThoughts, handleUploadFile, nodes, openContext, setActiveTab, setIsMemoryOpen, workspaceContexts }: QuickCaptureProps) {
   const [open, setOpen] = useState(false);
