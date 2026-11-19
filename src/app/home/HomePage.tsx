@@ -42,60 +42,9 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
     { icon: 'Package' as const, count: deliverables.length, label: 'خروجی', onSelect: () => setActiveTab('assets') },
   ];
   const started = homeHasStarted({ knowledge: workspaceContexts.length, actions: homePlan.total, openThoughts: openThoughts.length, notes: data?.notes?.length ?? 0 });
-  return (
-        <div className="space-y-stack-lg">
-          <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
-            <div>
-              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-inline-sm">
-              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
-              {/* the one outward step of the core loop (truth → another tool) is visible, as a quiet secondary; the rest are occasional
-                  and stay in «بیشتر» (decisions.md §۴): weekly review and stale outputs already come to «منتظر تو» when they are due */}
-              {workspaceContexts.length > 0 && <Button variant="secondary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای ابزار دیگر</Button>}
-              {workspaceContexts.length > 0 && <Menu
-                label="بیشتر"
-                align="end"
-                trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
-                items={[
-                  // grouped by job (decisions.md §۲۶): the request's other half and its saved form, then the looks back at the truth.
-                  // «شروع سریع» lives once, in the account menu («راهنما و شروع سریع»)
-                  { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
-                  { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
-                  { divider: true },
-                  { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
-                  { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                ]}
-              />}
-            </div>
-          </div>
-          {!started && (
-            <EmptyState
-              title="از همین‌جا شروع کن"
-              description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
-              action={(
-                <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
-              )}
-            />
-          )}
-          {started && (
-            <HomeSections
-              sections={homeView}
-              onAct={handleHomeAct}
-              onAnswerGap={(g) => { const at = { ...g, nodeId: resolveNodeId(nodes, g.nodeId) }; openContext(gapDraft(at, wid), at.nodeId); }}
-              truthCount={count.truth}
-              tally={stateRows}
-              thoughts={openThoughts.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
-              openThoughtCount={openThoughts.length}
-              onOpenThinking={() => openThinkingSpace()}
-              recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
-              allOpen={homeAllOpen}
-              onToggleAll={() => setHomeAllOpen((v) => !v)}
-            />
-          )}
-          {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
-          {inheritNotices.length > 0 && <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} />}
-          {homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
+  const inheritNotice = inheritNotices.length > 0 ? <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} /> : null;
+  // «جزئیات بیشتر» opens right under itself, at the page's width (proximity, decisions.md §۴۴); before the first step there is no to-do
+  const homeAll = homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
             <div id="home-all" className="flex flex-col gap-stack-lg">
           <AttentionPanel
             nodes={nodes}
@@ -157,7 +106,63 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           />}
 
             </div>
+          );
+  return (
+        <div className="mb-page-frame space-y-stack-lg">
+          <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
+            <div>
+              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-inline-sm">
+              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
+              {/* the one outward step of the core loop (truth → another tool) is visible, as a quiet secondary; the rest are occasional
+                  and stay in «بیشتر» (decisions.md §۴): weekly review and stale outputs already come to «منتظر تو» when they are due */}
+              {workspaceContexts.length > 0 && <Button variant="secondary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای ابزار دیگر</Button>}
+              {workspaceContexts.length > 0 && <Menu
+                label="بیشتر"
+                align="end"
+                trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
+                items={[
+                  // grouped by job (decisions.md §۲۶): the request's other half and its saved form, then the looks back at the truth.
+                  // «شروع سریع» lives once, in the account menu («راهنما و شروع سریع»)
+                  { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+                  { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+                  { divider: true },
+                  { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
+                  { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
+                ]}
+              />}
+            </div>
+          </div>
+          {!started && (
+            <EmptyState
+              title="از همین‌جا شروع کن"
+              description="یک جمله بنویس یا یک متن بچسبان؛ جا و نوعش را بعد هم می‌شود تعیین کرد. بعد از اولین دانش، می‌توانی بسته‌ای از آن را برای هر ابزاری که می‌خواهی کپی کنی."
+              action={(
+                <Button variant="primary" iconStart="Compass" onClick={() => setIsOnboardingOpen(true)}>شروع سریع</Button>
+              )}
+            />
           )}
+          {started && (
+            <HomeSections
+              sections={homeView}
+              onAct={handleHomeAct}
+              onAnswerGap={(g) => { const at = { ...g, nodeId: resolveNodeId(nodes, g.nodeId) }; openContext(gapDraft(at, wid), at.nodeId); }}
+              truthCount={count.truth}
+              tally={stateRows}
+              thoughts={openThoughts.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
+              openThoughtCount={openThoughts.length}
+              onOpenThinking={() => openThinkingSpace()}
+              recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
+              allOpen={homeAllOpen}
+              onToggleAll={() => setHomeAllOpen((v) => !v)}
+              more={homeAll || undefined}
+              notice={inheritNotice}
+            />
+          )}
+          {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
+          {!started && inheritNotice}
+          {!started && homeAll}
         </div>
   );
 }

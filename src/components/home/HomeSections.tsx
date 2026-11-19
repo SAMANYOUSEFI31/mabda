@@ -30,6 +30,10 @@ interface Props {
   recent: Array<{ id: string; text: string; at: string }>;
   allOpen: boolean;
   onToggleAll: () => void;
+  /** what «جزئیات بیشتر» opens: drawn directly under it, in the same column (proximity: what opens sits where it was asked for) */
+  more?: React.ReactNode;
+  /** calm news (not a task, so not in the to-do): between the to-do and «جزئیات بیشتر» */
+  notice?: React.ReactNode;
 }
 
 function Row({ lead, text, button, icon, onClick }: { lead: React.ReactNode; text: string; button: string; icon?: IconName; onClick: () => void }) {
@@ -66,7 +70,7 @@ function Section<T>({ id, title, items, render }: { id: string; title: string; i
 const dot = (state: NuqtaState) => <Nuqta state={state} size="sm" label={false} />;
 
 /** «خانه» (patterns.md §۸): what waits for her, what is missing, what is out of date; in the margin, the latest thoughts and one number. */
-export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, truthCount, tally, thoughts, openThoughtCount = thoughts.length, onOpenThinking, recent, allOpen, onToggleAll }) => {
+export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, truthCount, tally, thoughts, openThoughtCount = thoughts.length, onOpenThinking, recent, allOpen, onToggleAll, more, notice }) => {
   // the margin (identity.md «متن و حاشیه»): what the space holds, in the words of its states, and what moved last. Beside the
   // to-do on a wide page, under it on a narrow one; the page is complete without it
   const margin = (
@@ -89,6 +93,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
     </div>
   );
   return (
+    <>
     <MarginList label="آنچه الان به تو نیاز دارد">
       <MarginItem margin={margin}>
         <div className="flex flex-col gap-stack-lg">
@@ -130,12 +135,15 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
               )} />
             </>
           )}
-          {/* the end of the to-do, in the text column: it follows what it opens more of, never the (taller) margin beside it */}
-          <div>
-            <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
-          </div>
         </div>
       </MarginItem>
     </MarginList>
+    {notice}
+    {/* after the to-do AND its (often taller) margin, so what it opens comes right under it, at the page's full width (§۴۴) */}
+    <div>
+      <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
+    </div>
+    {more}
+    </>
   );
 };

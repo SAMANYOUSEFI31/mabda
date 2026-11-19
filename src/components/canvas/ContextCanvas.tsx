@@ -4,7 +4,7 @@
  */
 
 import { createPortal } from 'react-dom';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, ContextRelationship, GeneratedDeliverable, Note, TreeNode } from '../../types';
 import type { CanvasItem } from '../../types/state';
 import { LANE_FA, LANES, moveEffect } from '../../core/canvasModel';
@@ -107,6 +107,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const toast = useToast();
   const prefs = useMemo(readPrefs, []);
   const isMobile = useMedia('(max-width: 767px)');
+  const isDesktop = useMedia('(min-width: 1024px)');
   const mode = p.mode ?? 'truth';
   const layouts = MODE_LAYOUTS[mode];
   const [layout, setLayoutRaw] = useState<CanvasLayout>(() => { const l = prefs.layouts?.[mode]; return l && layouts.includes(l) ? l : layouts[0]; });
@@ -153,7 +154,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   useEffect(() => { if (p.previewNonce) setShowPending(true); }, [p.previewNonce]);
 
   const root = useRef<HTMLDivElement>(null);
-      const fileInput = useRef<HTMLInputElement>(null);
+  const stageRow = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const now = useMemo(() => new Date(), []);
 
   const layoutEff: CanvasLayout = lineage ? 'lineage' : layout;
@@ -168,7 +170,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
   const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${openedRows.size}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.55 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
+  const { box, view, setView, size, fit, zoomAt, reveal, toStage, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.8 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
   const lod = lodOf(view.k);
   const overviewFar = layoutEff === 'overview' && lod === 'far';
 
@@ -553,6 +555,30 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     setFromItems({ label: '', parentId: shared.size === 1 ? [...shared][0] : '' });
   };
   const sheet = isMobile && fullscreen;
+  // desktop, not full screen: the board reaches from where it starts to the bottom of the window, so the page itself never
+  // scrolls up and down and a long «جزئیات» scrolls inside its own column (one scroll per region; decisions.md §۴۵)
+  const [fitH, setFitH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (fullscreen || !isDesktop) { setFitH(null); return; }
+    let raf = 0;
+    const update = () => {
+      const row = stageRow.current; const card = root.current; if (!row || !card) return;
+      const main = card.closest('main');
+      const px = (el: Element | null, prop: string) => (el ? parseFloat(getComputedStyle(el).getPropertyValue(prop)) || 0 : 0);
+      const top = row.getBoundingClientRect().top + window.scrollY;
+      const reserve = px(card, 'padding-bottom') + px(card, 'border-bottom-width') + px(main, 'padding-bottom');
+      const h = Math.max(340, Math.floor(window.innerHeight - top - reserve));
+      setFitH((cur) => (cur === h ? cur : h));
+    };
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('resize', schedule);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
+    if (ro && root.current) ro.observe(root.current);
+    void document.fonts?.ready?.then(schedule);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', schedule); ro?.disconnect(); };
+  }, [fullscreen, isDesktop]);
+  const fitted = fitH !== null && !sheet && !fullscreen;
 
   const aboutText = LAYOUT_ABOUT[layoutEff];
   const optionsCount = (onlyReview ? 1 : 0) + (showPending ? 1 : 0) + (showAllEdges ? 1 : 0) + (colorFacet ? 1 : 0) + (only ? 1 : 0) + (rowsBy !== 'domain' ? 1 : 0);
@@ -592,6 +618,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />}
         <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fit} />
         {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
+        {/* how near the camera is, beside the zoom it reports (it used to float over the board's corner and cover the first column's name) */}
+        {!isMobile && <span className="caption whitespace-nowrap px-inset-xs tabular-nums text-text-subtle" data-testid="canvas-zoom-label">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span>}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
       {/* the canvas's own add, in its own kind, only in full screen (decisions.md §۱۸, re-decided in §۲۸): there the layer covers the
@@ -626,7 +654,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const stageEmpty = scene.items.length === 0;
   const floating = inspectorMode === 'floating' && !sheet;
   const inspector = (
-    <aside data-testid="canvas-inspector" data-mode={sheet ? 'sheet' : inspectorMode} className={`flex flex-col gap-stack-sm overflow-auto rounded-control border border-border-default p-inset-lg ${floating ? 'absolute end-space-2 top-space-2 z-dropdown w-overlay-xs max-w-full bg-surface-overlay shadow-raised' : `bg-surface-raised ${sheet ? 'order-last' : fullscreen ? 'w-overlay-xs shrink-0' : 'lg:w-overlay-xs lg:shrink-0'}`}`} style={sheet ? { maxBlockSize: '42vh' } : floating ? { maxBlockSize: 'calc(100% - 16px)' } : undefined} aria-label="بازرس: جزئیات مورد انتخاب‌شده" aria-live="polite">
+    <aside data-testid="canvas-inspector" data-mode={sheet ? 'sheet' : inspectorMode} className={`flex flex-col gap-stack-sm overflow-auto rounded-control border border-border-default p-inset-lg ${floating ? 'absolute end-space-2 top-space-2 z-dropdown w-overlay-xs max-w-full bg-surface-overlay shadow-raised' : `bg-surface-raised ${sheet ? 'order-last' : fullscreen ? 'w-overlay-xs shrink-0' : 'lg:h-full lg:min-h-space-0 lg:w-overlay-xs lg:shrink-0'}`}`} style={sheet ? { maxBlockSize: '42vh' } : floating ? { maxBlockSize: 'calc(100% - 16px)' } : undefined} aria-label="بازرس: جزئیات مورد انتخاب‌شده" aria-live="polite">
       <div className="flex items-center justify-between gap-inline-sm">
         <span className="label-sm text-text-subtle">جزئیات</span>
         <span className="flex items-center gap-inline-xs">
@@ -678,7 +706,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         </div>
       )}
 
-      <div className={`flex min-h-space-0 flex-1 gap-stack-md ${fullscreen && !sheet ? 'flex-row' : 'flex-col lg:flex-row'}`}>
+      <div ref={stageRow} style={fitted ? { blockSize: fitH! } : undefined} className={`flex min-h-space-0 gap-stack-md ${fitted ? 'flex-none' : 'flex-1'} ${fullscreen && !sheet ? 'flex-row' : 'flex-col lg:flex-row'}`}>
         <div className="relative flex min-w-space-0 flex-1 flex-col">
           <div
             ref={box}
@@ -690,7 +718,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             onClick={(e) => { if (!(e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) { clearSelection(); setCtx(null); } }}
             onDoubleClick={onStageDouble}
             className="relative min-w-space-0 flex-1 touch-none select-none overflow-hidden rounded-control border border-border-default bg-surface-sunken"
-            style={{ blockSize: fullscreen ? undefined : '66vh', minBlockSize: 340 }}
+            style={{ blockSize: fullscreen ? undefined : fitted ? '100%' : '66vh', minBlockSize: 340 }}
             data-testid="canvas-stage"
             data-lod={lod}
           >
@@ -750,7 +778,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               {!isMobile && size.w >= 640 && scene.items.length > 0 && (fullscreen || scene.width * view.k > size.w * 1.15 || scene.height * view.k > size.h * 1.15) && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
             </div>
             {!inspectorOpen && !sheet && <div className="absolute start-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelLeft" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
-            <div className="pointer-events-none absolute start-space-2 top-space-2" data-no-pan=""><span className="label-sm rounded-pill border border-border-default bg-surface-raised px-inset-sm text-text-subtle">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span></div>
+            
           </div>
           {layoutEff === 'overview' && scene.overview && (
             <div className="sr-only" data-testid="overview-text">

@@ -37,7 +37,7 @@ test('every date is relative to now: nothing is in the future, and shifting `now
 test('tree: four levels deep, user nodes under product and offer (subscription, workshop, support, content)', () => {
   const nodes = [...DEFAULT_TREE_NODES, ...d.nodes];
   const depth = (id: string): number => { const n = nodes.find((x) => x.id === id)!; return n.parentId ? 1 + depth(n.parentId) : 1; };
-  assert.ok(Math.max(...d.nodes.map((n) => depth(n.id))) >= 4);
+  assert.ok(Math.max(...d.nodes.map((n) => depth(n.id))) >= 6, "a deep tree: supply › beans › origins › Ethiopia");
   assert.equal(d.nodes.find((n) => n.id === 'dn_sub')!.parentId, 'product');
   assert.equal(d.nodes.find((n) => n.id === 'dn_ws')!.parentId, 'offer');
   assert.ok(d.objects.every((o) => nodes.some((n) => n.id === o.nodeId)), 'every object lives in a real node');
