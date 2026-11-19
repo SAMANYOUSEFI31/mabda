@@ -6,7 +6,7 @@ import type { WorkspacePurpose } from '../../core/specs';
  * «این فضا برای چیست؟» when a space is made (docs/ux/audience.md): personal, business, project or empty.
  * It picks the starting tree and the example in the name field; the choice travels as a hidden `purpose` field.
  */
-export function PurposeField({ onChange }: { onChange?: (purpose: WorkspacePurpose) => void }) {
+export function PurposeField({ onChange, entry }: { onChange?: (purpose: WorkspacePurpose) => void; /** the first-run screen: no «خالی» (§۳۷: Hick; it stays in «فضای تازه…») */ entry?: boolean }) {
   const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
   return (
     <div className="flex flex-col gap-stack-xs">
@@ -14,7 +14,7 @@ export function PurposeField({ onChange }: { onChange?: (purpose: WorkspacePurpo
       <SegmentedControl
         label="این فضا برای چیست؟" fullWidth value={purpose}
         onChange={(id) => { const p = id as WorkspacePurpose; setPurpose(p); onChange?.(p); }}
-        items={[{ id: 'personal', label: 'شخصی' }, { id: 'work', label: 'کسب‌وکار' }, { id: 'project', label: 'پروژه' }, { id: 'empty', label: 'خالی' }]}
+        items={[{ id: 'personal', label: 'شخصی' }, { id: 'work', label: 'کسب‌وکار' }, { id: 'project', label: 'پروژه' }, ...(entry ? [] : [{ id: 'empty', label: 'خالی' }])]}
       />
       <input type="hidden" name="purpose" value={purpose} />
     </div>
