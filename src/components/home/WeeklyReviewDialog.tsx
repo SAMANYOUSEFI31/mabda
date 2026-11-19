@@ -12,7 +12,7 @@ import type { ContextObject, GeneratedDeliverable, Measurement, Metric } from '.
 import { MetricQuickEntry } from '../metrics/MetricQuickEntry';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../../core/weeklyReview';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../../core/changeLog';
-import { Badge, Button, Dialog, Progress, ReadinessBadge, formatJalaliDate, formatNumber } from '../../ui';
+import { Badge, Button, Dialog, formatJalaliDate, formatNumber } from '../../ui';
 
 interface Props {
   open: boolean;
@@ -32,7 +32,7 @@ interface Props {
   /** what has come due (assumptions to look at again, decisions asking «نتیجه چه شد؟») */
   dueProps: React.ComponentProps<typeof DueItems>;
   /** the numbers of this week: shown as a step only when there is an active metric; recording stays optional */
-  metricsEntry?: { metrics: Metric[]; measurements: Measurement[]; onSubmit: React.ComponentProps<typeof MetricQuickEntry>['onSubmit']; onCsv: React.ComponentProps<typeof MetricQuickEntry>['onCsv'] };
+  metricsEntry?: { metrics: Metric[]; measurements: Measurement[]; objects?: Array<{ id: string; title: string }>; onSubmit: React.ComponentProps<typeof MetricQuickEntry>['onSubmit']; onCsv: React.ComponentProps<typeof MetricQuickEntry>['onCsv'] };
 }
 
 const BASE_STEPS = ['تغییرها', 'نیاز به بازبینی', 'تصمیم‌های منتظر'] as const;
@@ -169,7 +169,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
       )}
 
       {hasMetrics && step === 3 && metricsEntry && (
-        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} onSubmit={metricsEntry.onSubmit} onCsv={metricsEntry.onCsv} />
+        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} objects={metricsEntry.objects} onSubmit={metricsEntry.onSubmit} onCsv={metricsEntry.onCsv} />
       )}
 
       {step === LAST && (
@@ -177,14 +177,14 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
           <p className="body-md text-text-default">
             {handled.length ? `در این بازبینی ${formatNumber(handled.length)} مورد را پذیرفتی یا تأیید کردی.${outputs ? ` چون این موارد را تأیید کردی، ${formatNumber(outputs)} خروجی تو از آن‌ها استفاده می‌کنند.` : ''}` : 'این هفته چیزی را تغییر ندادی؛ هرچه دیدی همان‌طور که بود ماند.'}
           </p>
-          <section aria-label="آمادگی جریان‌های کار" className="flex flex-col gap-stack-sm">
-            <h3 className="title text-text-default">آمادگی برای هر جریان کار</h3>
+          {/* «این خروجی به چه حقیقت‌هایی نیاز دارد و کدام کم است» — the one part of the output workshop that helps the loop (product-scope.md) */}
+          <section aria-label="آنچه خروجی‌هایت لازم دارند" className="flex flex-col gap-stack-sm">
+            <h3 className="title text-text-default">آنچه خروجی‌هایت لازم دارند</h3>
             <ul className="flex flex-col gap-stack-sm">
               {readiness.map((r) => (
                 <li key={r.specId} className="flex flex-col gap-stack-xs">
-                  <span className="flex flex-wrap items-center justify-between gap-inline-sm"><span className="label-md text-text-default">{r.title}</span><ReadinessBadge value={r.status} /></span>
-                  <Progress value={r.score} max={100} label="آمادگی" showValue={false} intent={r.status === 'ready' ? 'success' : 'neutral'} />
-                  <span className="body-sm text-text-subtle">{r.missing ? `${formatNumber(r.missing)} مورد ضروری هنوز کم است.` : 'همهٔ موارد ضروری هست.'}</span>
+                  <span className="label-md text-text-default">{r.title}</span>
+                  <span className="body-sm text-text-subtle">{r.missing ? `${formatNumber(r.missing)} حقیقت لازم هنوز کم است.` : 'هر حقیقتی که لازم دارد، هست.'}</span>
                 </li>
               ))}
             </ul>

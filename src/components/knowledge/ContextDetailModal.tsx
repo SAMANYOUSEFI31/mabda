@@ -31,10 +31,12 @@ import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
 import { ADD_DESCRIPTION, addSwitchable, markAddSwitchable } from '../../core/addRequest';
 import { reasonAllowed, versionHistory } from '../../core/versionHistory';
-import type { ContextChange, Note } from '../../types';
+import type { ContextChange, Measurement, Note } from '../../types';
 import { MX } from '../../core/metricsText';
 import { EXAMPLE_LIMIT, EXAMPLE_MAX_CHARS, canHaveExamples, cleanExamples } from '../../core/redlineExamples';
-import { parseNumber } from '../../core/metrics';
+import { metricLabel, monitorOf, parseNumber, unlinkedMetrics } from '../../core/metrics';
+import { MonitorFields, MonitorPanel, clearPendingMonitorLink, monitorDraftOf, monitorDraftOk, takePendingMonitorLink } from '../metrics/Monitor';
+import type { MonitorDraft } from '../metrics/Monitor';
 import { dataApi } from '../../services/dataApi';
 import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
@@ -56,8 +58,18 @@ interface ContextDetailModalProps {
   workspaceId: string;
   defaultNodeId?: string;
   /** every object + the `depends_on` relations: «وابسته به» (what this decision rests on) is chosen here */
-  /** the metrics a decision can state an expectation about */
+  /** the metrics a decision can state an expectation about, and «پایش» (a number on a truth) */
   metrics?: Metric[];
+  measurements?: Measurement[];
+  /** the workspace's change log: when each decision was made (the vertical lines on a monitor's chart) */
+  workspaceChanges?: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[];
+  /** saves the monitor of a truth after the truth itself is saved (a new truth only has an id then) */
+  onSaveMonitor?: (objectId: string, draft: MonitorDraft, current?: Metric) => Promise<void>;
+  onStopMonitor?: (metricId: string) => Promise<void>;
+  onRecordNumber?: (metricId: string, value: number) => Promise<void>;
+  onConfirmNumber?: (measurementId: string) => Promise<void>;
+  onRemoveNumber?: (measurementId: string) => Promise<void>;
+
   allObjects?: ContextObject[];
   relationships?: ContextRelationship[];
   onSetDependencies?: (objectId: string, dependsOn: string[]) => Promise<void> | void;
@@ -124,6 +136,13 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   defaultNodeId: defaultNodeIdProp = '',
   allObjects = [],
   metrics = [],
+  measurements = [],
+  workspaceChanges = [],
+  onSaveMonitor,
+  onStopMonitor,
+  onRecordNumber,
+  onConfirmNumber,
+  onRemoveNumber,
   relationships = [],
   onSetDependencies,
   onOpenBatch,
@@ -154,7 +173,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   useEffect(() => () => clearPendingAddText(), []);
   const [contentError, setContentError] = useState('');
   const [applyNow, setApplyNow] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [linkMetricId] = useState(() => (object && object.id !== '' ? '' : takePendingMonitorLink()));
+  useEffect(() => () => clearPendingMonitorLink(), []);
+  const [moreOpen, setMoreOpen] = useState(!!linkMetricId);
   // the kind and the title are guessed from the text until the user picks / writes her own (src/core/knowledgeGuess.ts)
   const keepsOwn = !!object; // editing, or a prefilled draft that already has them
   const [typeTouched, setTypeTouched] = useState(keepsOwn);
@@ -186,6 +207,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [expTarget, setExpTarget] = useState(me0?.targetValue !== undefined ? String(me0.targetValue) : '');
   const [expBy, setExpBy] = useState(me0?.by ?? '');
   const expTargetNum = expTarget.trim() ? parseNumber(expTarget) : null;
+  // «پایش»: one monitor per truth; a number made earlier can be brought onto a NEW or an unmonitored truth with its history
+  const currentMonitor = isEditing && object ? monitorOf(object.id, metrics) : undefined;
+  const linkable = unlinkedMetrics(metrics);
+  const [monitor, setMonitor] = useState<MonitorDraft>(() => monitorDraftOf(currentMonitor ?? linkable.find((m) => m.id === linkMetricId), currentMonitor ? '' : linkable.some((m) => m.id === linkMetricId) ? linkMetricId! : ''));
+  const canMonitor = type === 'Fact' && !assumption && !!onSaveMonitor;
   const expectationOk = !expMetric || (!!expBy && (!expTarget.trim() || expTargetNum !== null));
   const [promote, setPromote] = useState<null | { to: string; reason: string }>(null);
   const [isSupersedingMode, setIsSupersedingMode] = useState(false);
@@ -245,6 +271,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     const finalTitle = title.trim() || guessTitle(content);
     if (!content.trim()) { setContentError('آنچه درست است را بنویس تا ثبت شود.'); document.getElementById('context-content')?.focus(); return; }
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
+    if (canMonitor && !monitorDraftOk(monitor)) { setMoreOpen(true); return; }
 
     if (isSupersedingMode && object) {
       onSupersede(object.id, {
@@ -292,6 +319,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       const saved = await onSave(updated, reason || asDraft ? { ...(reason ? { reason } : {}), ...(asDraft ? { asDraft: true } : {}) } : undefined);
       const id = isEditing ? object!.id : saved?.id;
       if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
+      if (id && canMonitor && (monitor.on || currentMonitor)) await onSaveMonitor!(id, monitor, currentMonitor);
       // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
       if (id && onSetDependencies) for (const step of affectPlan(id, effects, relationships)) await onSetDependencies(step.objectId, step.dependsOn);
     })();
@@ -333,6 +361,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 trigger={<Button type="button" variant="ghost" iconStart="Ellipsis">بیشتر</Button>}
                 items={[
                   { label: 'جایگزین کردن', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
+                  ...(currentMonitor && onStopMonitor ? [{ label: MX.stop, icon: 'TrendingUp' as const, onSelect: () => { void onStopMonitor(currentMonitor.id); onClose(); } }] : []),
                   { label: 'بایگانی', icon: 'Archive', onSelect: () => { onArchive(object.id); onClose(); } },
                 ]}
               />
@@ -375,6 +404,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>
           </div>
+        )}
+        {currentMonitor && onRecordNumber && (
+          <MonitorPanel metric={{ ...currentMonitor, name: metricLabel(currentMonitor, allObjects) }} measurements={measurements} objects={allObjects} changes={workspaceChanges} onRecord={onRecordNumber} onConfirm={onConfirmNumber ?? (async () => {})} onRemove={onRemoveNumber ?? (async () => {})} />
         )}
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea
@@ -505,6 +537,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           {facets.length > 0 && <div className="flex flex-wrap gap-inline-xs">{facets.map((f) => <Button key={f} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`حذف بُعد ${f}`} onClick={() => setFacets((l) => l.filter((x) => x !== f))}>{f}</Button>)}</div>}
           {knownFacets.filter((f) => !facets.includes(f)).length > 0 && <div className="flex flex-wrap items-center gap-inline-xs"><span className="caption text-text-subtle">پیشنهاد از بُعدهای موجود:</span>{knownFacets.filter((f) => !facets.includes(f)).slice(0, 8).map((f) => <Button key={f} type="button" size="sm" variant="ghost" onClick={() => addFacet(f)}>{f}</Button>)}</div>}
         </div>
+        {canMonitor && <MonitorFields value={monitor} onChange={setMonitor} existing={!!currentMonitor} unlinked={currentMonitor ? [] : linkable} />}
         {type === 'Fact' && assumption && <DateField label="بازبینی این فرض تا (اختیاری)" value={reviewBy} onValueChange={(v) => setReviewBy(v)} hint="در «این هفته» و «خانه» که رسید دوباره می‌پرسیم." />}
         {type === 'Decision' && (
           <div className="flex flex-col gap-stack-sm">
@@ -525,10 +558,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 </div>
                 <TextField label="چه انتظاری داریم؟" value={expectation} onChange={(e) => setExpectation(e.target.value)} />
                 <DateField label="تاریخ بازبینی" value={reviewOn} onValueChange={(v) => setReviewOn(v)} hint="در بازبینی هفتگی می‌پرسیم «نتیجه چه شد؟»" />
+                {metrics.length === 0 && <p className="body-sm text-text-subtle">{MX.expectationEmpty}</p>}
                 {metrics.length > 0 && (
                   <div className="flex flex-col gap-stack-sm" role="group" aria-label={MX.expectationField}>
                     <span className="label-md text-text-default">{MX.expectationField}</span>
-                    <Select label={MX.expectationMetric} value={expMetric} onChange={(e) => { setExpMetric(e.target.value); const m = metrics.find((x) => x.id === e.target.value); if (m) { setExpDir(m.direction); if (!expTarget && m.target !== undefined) setExpTarget(String(m.target)); } }} options={[{ value: '', label: MX.expectationNone }, ...metrics.filter((m) => !m.archived || m.id === expMetric).map((m) => ({ value: m.id, label: m.name }))]} />
+                    <Select label={MX.expectationMetric} value={expMetric} onChange={(e) => { setExpMetric(e.target.value); const m = metrics.find((x) => x.id === e.target.value); if (m) { setExpDir(m.direction); if (!expTarget && m.target !== undefined) setExpTarget(String(m.target)); } }} options={[{ value: '', label: MX.expectationNone }, ...metrics.filter((m) => !m.archived || m.id === expMetric).map((m) => ({ value: m.id, label: metricLabel(m, allObjects) }))]} />
                     {expMetric && (
                       <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-3">
                         <Select label="جهت" value={expDir} onChange={(e) => setExpDir(e.target.value as MetricDirection)} options={[{ value: 'up', label: 'بالا برود' }, { value: 'down', label: 'پایین بیاید' }]} />

@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { STARTERS } from '../../core/starters';
 import { Alert, Button, Dialog, formatNumber } from '../../ui';
+import { MyTemplates } from './MyTemplates';
 
 interface Props {
   open: boolean;
@@ -13,10 +14,12 @@ interface Props {
   onClose: () => void;
   onApply: (starterId: string) => Promise<void>;
   onRemoveAll: () => Promise<void>;
+  /** «قالب‌های من» (sections saved as templates) */
+  templates?: { workspaceId: string; nodes: Array<{ id: string; label: string }>; onApply: (templateId: string, parentId?: string) => Promise<void> };
 }
 
 /** «اسکلت شروع»: grey examples for one kind of business. They show the SHAPE of a good answer; no AI or engine ever sees them, and writing your own over one replaces it. */
-export const StarterDialog: React.FC<Props> = ({ open, samplesCount, onClose, onApply, onRemoveAll }) => {
+export const StarterDialog: React.FC<Props> = ({ open, samplesCount, onClose, onApply, onRemoveAll, templates }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
   return (
@@ -31,6 +34,7 @@ export const StarterDialog: React.FC<Props> = ({ open, samplesCount, onClose, on
           </div>
         ))}
         {samplesCount > 0 && <div><Button variant="ghost" iconStart="Trash2" loading={busy === 'rm'} onClick={() => run('rm', onRemoveAll)}>حذف همهٔ نمونه‌ها ({formatNumber(samplesCount)})</Button></div>}
+        {templates && <MyTemplates open={open} workspaceId={templates.workspaceId} nodes={templates.nodes} onApplyTemplate={templates.onApply} />}
       </div>
     </Dialog>
   );

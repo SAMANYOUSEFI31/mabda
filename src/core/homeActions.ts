@@ -11,8 +11,8 @@
 import type { ContextObject, GapItem } from '../types';
 import { formatNumber } from '../ui/format';
 
-export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking';
-export type HomeTarget = { type: 'asset' | 'object'; id: string } | { type: 'contradictions' | 'proposals' | 'weekly' | 'due' | 'thinking' };
+export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking' | 'monitor' | 'unlinked';
+export type HomeTarget = { type: 'asset' | 'object' | 'link-metric'; id: string } | { type: 'contradictions' | 'proposals' | 'weekly' | 'due' | 'thinking' };
 export interface HomeAction { id: string; kind: HomeActionKind; text: string; button: string; target: HomeTarget; score: number }
 
 export interface HomeInput {
@@ -29,6 +29,10 @@ export interface HomeInput {
   dueCount: number;
   /** open questions and open decisions written in notes (a line that ends with «؟» counts) that have not become knowledge */
   openThinking?: number;
+  /** «پایش»: monitored truths whose cadence has passed since the last number (the calm upkeep, like expiry and assumptions) */
+  monitors?: Array<{ objectId: string; title: string; cadence: 'week' | 'month'; never: boolean }>;
+  /** numbers made before monitoring moved onto truths and not linked to one yet: the person links each one herself */
+  unlinked?: Array<{ id: string; name: string }>;
 }
 
 export const HOME_TOP = 3;
@@ -53,6 +57,9 @@ function allActions(input: HomeInput): HomeAction[] {
   if (input.weekly.due) all.push({ id: 'weekly', kind: 'weekly', text: `بازبینی هفتگی: ${fa(input.weekly.changes)} تغییر در این هفته بوده.`, button: 'شروع (۵ دقیقه)', target: { type: 'weekly' }, score: 55 });
   if (input.dueCount > 0) all.push({ id: 'due', kind: 'due', text: `${fa(input.dueCount)} مورد موعد بازبینی دارد.`, button: 'باز کردن', target: { type: 'due' }, score: 50 });
 
+  // a number is part of keeping a truth current: quiet, below the decisions that wait for her, one sentence and one button
+  for (const m of input.monitors ?? []) all.push({ id: `monitor:${m.objectId}`, kind: 'monitor', text: m.never ? `برای ${q(m.title)} هنوز عددی ثبت نشده.` : `عدد ${q(m.title)} ${m.cadence === 'week' ? 'این هفته' : 'این ماه'} هنوز ثبت نشده.`, button: 'ثبت عدد', target: { type: 'object', id: m.objectId }, score: 48 });
+  for (const m of input.unlinked ?? []) all.push({ id: `unlinked:${m.id}`, kind: 'unlinked', text: `عددهای ${q(m.name)} هنوز به حقیقتی وصل نیستند.`, button: 'وصل کردن', target: { type: 'link-metric', id: m.id }, score: 40 });
   if ((input.openThinking ?? 0) > 0) all.push({ id: 'thinking', kind: 'thinking', text: `${fa(input.openThinking!)} سؤال یا تصمیم باز در یادداشت‌هایت مانده است.`, button: 'باز کردن', target: { type: 'thinking' }, score: 45 });
 
   all.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));

@@ -7,12 +7,12 @@ import { tehranDay } from '../../../src/core/tehranDate.ts';
 import type { Repo } from './index.ts';
 import { ChangeMeta, RepoError, Scope, newId, now } from './shared.ts';
 import { isIsoDate, parseMeasurementCsv } from '../../../src/core/metrics.ts';
-import type { Measurement, MeasurementSource, Metric, MetricDirection } from '../../../src/types/index.ts';
+import type { Measurement, MeasurementSource, Metric, MetricCadence, MetricDirection } from '../../../src/types/index.ts';
 
 export const metricsMethods = {
   //    a legacy externally-suggested number is `Proposed` and invisible to charts, counts and packs until the user confirms it ──
   rowToMetric(this: Repo, r: Record<string, unknown>): Metric {
-    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, unit: (r.unit as string) ?? '', direction: r.direction as MetricDirection, ...(r.target !== null && r.target !== undefined ? { target: r.target as number } : {}), ...(r.archived ? { archived: true } : {}), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
+    return { id: r.id as string, workspaceId: r.workspace_id as string, name: r.name as string, unit: (r.unit as string) ?? '', direction: r.direction as MetricDirection, ...(r.target !== null && r.target !== undefined ? { target: r.target as number } : {}), ...(r.archived ? { archived: true } : {}), ...(r.object_id ? { objectId: r.object_id as string } : {}), ...(r.cadence === 'week' || r.cadence === 'month' ? { cadence: r.cadence as MetricCadence } : {}), createdAt: r.created_at as string, updatedAt: r.updated_at as string };
   },
 
   rowToMeasurement(this: Repo, r: Record<string, unknown>): Measurement {
@@ -28,38 +28,47 @@ export const metricsMethods = {
     return r ? this.rowToMetric(r) : undefined;
   },
 
-  cleanMetricFields(this: Repo, i: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown }, cur?: Metric) {
-    const name = i.name === undefined ? cur?.name : typeof i.name === 'string' ? i.name.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
-    if (!name) throw new RepoError('invalid', 'نام شاخص لازم است.');
+  cleanMetricFields(this: Repo, s: Scope, i: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown; objectId?: unknown; cadence?: unknown }, cur?: Metric) {
+    // «پایش» lives on a truth: the object must be this workspace's own, and one truth carries at most one live monitor
+    const objectId = i.objectId === undefined ? cur?.objectId : i.objectId === null || i.objectId === '' ? undefined : typeof i.objectId === 'string' ? i.objectId : (() => { throw new RepoError('invalid', 'حقیقت معتبر نیست.'); })();
+    const object = objectId ? this.getObject(s, objectId) : undefined;
+    if (objectId && !object) throw new RepoError('not_found', 'حقیقتی که پایش روی آن است پیدا نشد.');
+    if (objectId && objectId !== cur?.objectId && this.listMetrics(s).some((m) => !m.archived && m.id !== cur?.id && m.objectId === objectId)) throw new RepoError('invalid', 'این حقیقت همین حالا پایش دارد.');
+    const rawName = i.name === undefined ? cur?.name ?? object?.title : i.name;
+    const name = typeof rawName === 'string' ? rawName.replace(/\s+/g, ' ').trim().slice(0, 60) : '';
+    if (!name) throw new RepoError('invalid', 'نام عدد لازم است.');
     const direction = i.direction === undefined ? cur?.direction : i.direction;
     if (direction !== 'up' && direction !== 'down') throw new RepoError('invalid', 'مشخص کن بالاتر بهتر است یا پایین‌تر.');
     const unit = i.unit === undefined ? cur?.unit ?? '' : typeof i.unit === 'string' ? i.unit.trim().slice(0, 20) : '';
     const target = i.target === undefined ? cur?.target : i.target === null || i.target === '' ? undefined : typeof i.target === 'number' && Number.isFinite(i.target) ? i.target : (() => { throw new RepoError('invalid', 'هدف باید عدد باشد.'); })();
-    return { name, unit, direction: direction as MetricDirection, target };
+    const cadence = i.cadence === undefined ? cur?.cadence : i.cadence === null || i.cadence === '' ? undefined : i.cadence === 'week' || i.cadence === 'month' ? i.cadence as MetricCadence : (() => { throw new RepoError('invalid', 'آهنگ تازه شدن هفتگی یا ماهانه است.'); })();
+    return { name, unit, direction: direction as MetricDirection, target, objectId, cadence };
   },
 
-  createMetric(this: Repo, s: Scope, i: { id?: string; name?: unknown; unit?: unknown; direction?: unknown; target?: unknown; at?: string }, meta?: ChangeMeta): Metric {
+  createMetric(this: Repo, s: Scope, i: { id?: string; name?: unknown; unit?: unknown; direction?: unknown; target?: unknown; objectId?: unknown; cadence?: unknown; at?: string }, meta?: ChangeMeta): Metric {
     this.assertWorkspace(s);
-    const f = this.cleanMetricFields(i);
-    if (this.listMetrics(s).some((m) => !m.archived && m.name.toLowerCase() === f.name.toLowerCase())) throw new RepoError('invalid', 'شاخصی با این نام هست.');
+    const f = this.cleanMetricFields(s, i);
+    // a monitor is known by its truth; only a number on its own (made before monitoring moved onto truths) is known by its name
+    if (!f.objectId && this.listMetrics(s).some((m) => !m.archived && !m.objectId && m.name.toLowerCase() === f.name.toLowerCase())) throw new RepoError('invalid', 'عددی با این نام هست.');
     const id = i.id ?? newId('met'); const t = i.at ?? now();
     this.db.transaction(() => {
-      this.db.prepare('INSERT INTO metrics (id, user_id, workspace_id, name, unit, direction, target, archived, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, f.name, f.unit, f.direction, f.target ?? null, null, t, t);
-      this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 0, toVersion: 1, kind: 'metric_created', meta: { actor: 'user', ...meta }, after: { name: f.name, unit: f.unit, direction: f.direction, ...(f.target !== undefined ? { target: f.target } : {}) }, at: t });
+      this.db.prepare('INSERT INTO metrics (id, user_id, workspace_id, name, unit, direction, target, archived, object_id, cadence, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(id, s.userId, s.workspaceId, f.name, f.unit, f.direction, f.target ?? null, null, f.objectId ?? null, f.cadence ?? null, t, t);
+      this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 0, toVersion: 1, kind: 'metric_created', meta: { actor: 'user', ...meta }, after: { name: f.name, unit: f.unit, direction: f.direction, ...(f.target !== undefined ? { target: f.target } : {}), ...(f.objectId ? { monitors: f.objectId } : {}), ...(f.cadence ? { cadence: f.cadence } : {}) }, at: t });
     })();
     return this.getMetric(s, id)!;
   },
 
-  updateMetric(this: Repo, s: Scope, id: string, patch: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown }, meta?: ChangeMeta): Metric {
+  updateMetric(this: Repo, s: Scope, id: string, patch: { name?: unknown; unit?: unknown; direction?: unknown; target?: unknown; objectId?: unknown; cadence?: unknown }, meta?: ChangeMeta): Metric {
     const cur = this.getMetric(s, id);
-    if (!cur) throw new RepoError('not_found', 'شاخص پیدا نشد.');
-    const f = this.cleanMetricFields(patch, cur);
+    if (!cur) throw new RepoError('not_found', 'عدد پیدا نشد.');
+    if (cur.archived) throw new RepoError('invalid', 'این پایش بایگانی شده است.');
+    const f = this.cleanMetricFields(s, patch, cur);
     const before: Record<string, unknown> = {}; const after: Record<string, unknown> = {};
-    for (const k of ['name', 'unit', 'direction', 'target'] as const) if ((cur[k] ?? null) !== (f[k] ?? null)) { before[k] = cur[k] ?? null; after[k] = f[k] ?? null; }
+    for (const k of ['name', 'unit', 'direction', 'target', 'objectId', 'cadence'] as const) if ((cur[k] ?? null) !== (f[k] ?? null)) { before[k] = cur[k] ?? null; after[k] = f[k] ?? null; }
     if (!Object.keys(after).length) return cur;
     const diff = { before, after };
     this.db.transaction(() => {
-      this.db.prepare('UPDATE metrics SET name=?, unit=?, direction=?, target=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?').run(f.name, f.unit, f.direction, f.target ?? null, now(), id, s.workspaceId, s.userId);
+      this.db.prepare('UPDATE metrics SET name=?, unit=?, direction=?, target=?, object_id=?, cadence=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?').run(f.name, f.unit, f.direction, f.target ?? null, f.objectId ?? null, f.cadence ?? null, now(), id, s.workspaceId, s.userId);
       this.recordChange(s, { objectId: `metric:${id}`, fromVersion: 1, toVersion: 1, kind: 'metric_edited', meta: { actor: 'user', ...meta }, before: diff.before, after: diff.after });
     })();
     return this.getMetric(s, id)!;
@@ -68,7 +77,7 @@ export const metricsMethods = {
   /** archived, never deleted: its numbers and the decisions that pointed at it stay readable */
   archiveMetric(this: Repo, s: Scope, id: string, meta?: ChangeMeta): Metric {
     const cur = this.getMetric(s, id);
-    if (!cur) throw new RepoError('not_found', 'شاخص پیدا نشد.');
+    if (!cur) throw new RepoError('not_found', 'عدد پیدا نشد.');
     if (cur.archived) return cur;
     this.db.transaction(() => {
       this.db.prepare('UPDATE metrics SET archived = 1, updated_at = ? WHERE id = ? AND workspace_id = ? AND user_id = ?').run(now(), id, s.workspaceId, s.userId);
@@ -92,8 +101,8 @@ export const metricsMethods = {
   /** One number; historical MCP measurements are read-only and can only enter through legacy data import. */
   addMeasurement(this: Repo, s: Scope, i: { id?: string; metricId: string; value: unknown; at?: string; note?: unknown; source?: Exclude<MeasurementSource, 'mcp'>; decisionId?: string; createdAt?: string }, meta?: ChangeMeta): Measurement {
     const metric = this.getMetric(s, i.metricId);
-    if (!metric) throw new RepoError('not_found', 'شاخص پیدا نشد.');
-    if (metric.archived) throw new RepoError('invalid', 'این شاخص بایگانی شده است.');
+    if (!metric) throw new RepoError('not_found', 'عدد پیدا نشد.');
+    if (metric.archived) throw new RepoError('invalid', 'این پایش بایگانی شده است.');
     if (typeof i.value !== 'number' || !Number.isFinite(i.value)) throw new RepoError('invalid', 'مقدار باید عدد باشد.');
     const source: MeasurementSource = i.source ?? 'manual';
     if ((source as string) === 'mcp') throw new RepoError('invalid', 'این نوع منشأ فقط برای خواندن داده‌های تاریخی پشتیبانی می‌شود.');

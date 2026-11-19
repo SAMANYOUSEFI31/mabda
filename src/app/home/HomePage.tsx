@@ -26,12 +26,12 @@ import type { ReadyScope } from '../shared';
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const ChangesPanel = lazyNamed(() => import('../../components/knowledge/ChangesPanel'), 'ChangesPanel');
 
-export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' | 'canJudge' | 'changesOpen' | 'contradictions' | 'currentWorkspace' | 'data' | 'deliverables' | 'dueAssumptions' | 'dueDecisions' | 'dueProps' | 'expRows' | 'expectationsDueCount' | 'flips' | 'focusNodeId' | 'goFocus' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleCheckContradictions' | 'handleConvertItem' | 'handleDeriveThought' | 'handleHomeAct' | 'handleKeepContradiction' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSaveContextObject' | 'handleSeparateContradiction' | 'homeAllOpen' | 'homePlan' | 'homeView' | 'openThinkingSpace' | 'inheritNotices' | 'judgedToday' | 'judging' | 'markInheritSeen' | 'nodes' | 'openContext' | 'quietMetrics' | 'reviewNeeds' | 'setActiveTab' | 'setAiRequest' | 'setChangesOpen' | 'setCompare' | 'setContextViewMode' | 'setHomeAllOpen' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsPacksOpen' | 'setMetricsOpen' | 'setPackTarget' | 'setWeeklyOpen' | 'stale' | 'tally' | 'thinking' | 'vf' | 'waiting' | 'waitingOrdered' | 'weekly' | 'weeklyDue' | 'wid' | 'workspaceContexts'>;
+export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' | 'canJudge' | 'changesOpen' | 'contradictions' | 'currentWorkspace' | 'data' | 'deliverables' | 'dueAssumptions' | 'dueDecisions' | 'dueProps' | 'expRows' | 'expectationsDueCount' | 'flips' | 'focusNodeId' | 'goFocus' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleCheckContradictions' | 'handleConvertItem' | 'handleDeriveThought' | 'handleHomeAct' | 'handleKeepContradiction' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSaveContextObject' | 'handleSeparateContradiction' | 'homeAllOpen' | 'homePlan' | 'homeView' | 'openThinkingSpace' | 'inheritNotices' | 'judgedToday' | 'judging' | 'markInheritSeen' | 'nodes' | 'openContext' | 'reviewNeeds' | 'setActiveTab' | 'setAiRequest' | 'setChangesOpen' | 'setCompare' | 'setContextViewMode' | 'setHomeAllOpen' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsPacksOpen' | 'setPackTarget' | 'setWeeklyOpen' | 'stale' | 'tally' | 'thinking' | 'vf' | 'waiting' | 'waitingOrdered' | 'weekly' | 'weeklyDue' | 'wid' | 'workspaceContexts'>;
 
 /** something of hers is already here: knowledge, a thought, a note or a to-do. Only with none of it is Home the empty page (UX-05). */
 export const homeHasStarted = (p: { knowledge: number; actions: number; openThoughts: number; notes: number }): boolean => p.knowledge + p.actions + p.openThoughts + p.notes > 0;
 
-export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, quietMetrics, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setMetricsOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
+export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps, expRows, expectationsDueCount, flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setPackTarget, setWeeklyOpen, stale, tally, thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
   const openThoughts = (data?.thoughts ?? []).filter((t) => t.status === 'open');
   const count = spaceTally(workspaceContexts, openThoughts.length);
   // «در این فضا»: each state once, with the word «منبع حقیقت» and «فکر» use for it, and a way to where those things are
@@ -66,7 +66,6 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
                   { divider: true },
                   { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
                   { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                  { label: 'شاخص‌ها و اعداد', icon: 'TrendingUp', onSelect: () => setMetricsOpen(true) },
                 ]}
               />}
             </div>
@@ -118,23 +117,19 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             onAcceptReview={handleAcceptReview}
             proposedCount={workspaceContexts.filter((o) => o.status === 'Proposed').length}
             onAnswerGap={(gap, answer) => { void handleSaveContextObject(gapAnswer({ ...gap, nodeId: resolveNodeId(nodes, gap.nodeId) }, answer, wid)); }}
-            onOpenStudio={() => setActiveTab('workstreams')}
             onOpenAssets={() => setActiveTab('assets')}
             onOpenChanges={() => { setChangesOpen(true); setTimeout(() => document.getElementById('changes')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }}
           />
 
           {vf.metrics && (
             <Card padding="xl" id="expectations" className="flex flex-col gap-stack-md" aria-label={MX.homeTitle}>
-              <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-                <h2 className="heading-sm text-text-default">{MX.homeTitle}</h2>
-                <Button size="sm" variant="secondary" iconStart="TrendingUp" onClick={() => setMetricsOpen(true)}>{MX.navTitle}</Button>
-              </div>
+              {/* the count only: each number lives on its truth (docs/product-scope.md), so there is no separate place to go to */}
+              <h2 className="heading-sm text-text-default">{MX.homeTitle}</h2>
               {expRows.length > 0 ? (
                 <p className="body-md text-text-default" data-testid="expectation-tally">
                   {formatNumber(tally.met)} به انتظار رسید · {formatNumber(tally.partial)} نیمه · {formatNumber(tally.missed)} نرسید · {formatNumber(tally.open)} باز{expectationsDueCount > 0 ? ` (${formatNumber(expectationsDueCount)} موعدش رسیده)` : ''}
                 </p>
               ) : <p className="body-sm text-text-subtle">{MX.expectationsBody}</p>}
-              {quietMetrics.length > 0 && <p className="body-sm text-text-subtle">{MX.quiet}: {quietMetrics.map((m) => m.name).join('، ')}.</p>}
             </Card>
           )}
 

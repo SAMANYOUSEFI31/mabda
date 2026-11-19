@@ -3,48 +3,49 @@
  * the vocabulary is «پس از» (a position on the time line) and «انتظار در برابر نتیجه» (what we expected, what the number is).
  */
 
-import type { ExpectationVerdict, MetricDirection } from '../types';
+import type { ExpectationVerdict, MetricCadence, MetricDirection } from '../types';
 
 export const MX = {
-  navTitle: 'شاخص‌ها',
-  pageTitle: 'شاخص‌ها و اعداد واقعی',
-  pageIntro: 'عددهایی که خودت دنبال می‌کنی. مبدأ فقط کنار هم می‌گذارد: چه زمانی تصمیمی ثبت شد و عدد بعد از آن چه بود.',
-  emptyTitle: 'هنوز شاخصی نداری',
-  emptyBody: 'یک شاخص بساز، مثلاً «فروش هفتگی». ثبت عدد هیچ‌وقت اجباری نیست.',
-  newMetric: 'شاخص تازه',
-  name: 'نام شاخص',
+  // «پایش»: an option on a truth (docs/product-scope.md). Words fit «وزن», «پس‌انداز» and «پیشرفت پایان‌نامه» as well as «فروش ماهانه»
+  monitorToggle: 'پایش این عدد (اختیاری)',
+  monitorTitle: 'پایش',
+  monitorHint: 'عدد را اینجا ثبت کن، نه در متن حقیقت؛ نمودار، تاریخچهٔ همین عدد است.',
+  linkFrom: 'از عددهایی که قبلاً ثبت کرده‌ای',
+  linkNone: 'عدد تازه',
   unit: 'واحد',
+  unitHint: 'مثلاً کیلو، میلیون تومان، صفحه، درصد',
+  cadence: 'هر چند وقت تازه می‌شود؟',
+  cadenceNone: 'یادآوری نکن',
   directionLabel: 'کدام سمت بهتر است؟',
   target: 'هدف (اختیاری)',
-  save: 'ذخیره',
-  archive: 'بایگانی شاخص',
-  thisWeek: 'عدد این هفته',
+  firstValue: 'عدد امروز (اختیاری)',
+  newValue: 'عدد امروز',
+  record: 'ثبت',
+  stop: 'قطع پایش',
+  stopHint: 'عددهای ثبت‌شده و انتظار تصمیم‌ها می‌مانند.',
+  last: 'آخرین عدد',
+  thisWeek: 'عددهای این هفته',
   thisWeekHint: 'هر کدام را که داری بنویس؛ خالی بماند مشکلی نیست.',
-  record: 'ثبت اعداد',
+  recordAll: 'ثبت عددها',
   pasteCsv: 'چسباندن CSV',
-  csvHint: 'هر خط: نام شاخص، عدد، تاریخ (اختیاری)، یادداشت (اختیاری)',
+  csvHint: 'هر خط: نام، عدد، تاریخ (اختیاری)، یادداشت (اختیاری)',
   csvApply: 'ثبت خطوط درست',
-  chartTitle: 'نمودار و تصمیم‌ها',
   chartNote: 'خط عمودی یعنی روز ثبت یک تصمیم. این نمودار فقط ترتیب زمانی را نشان می‌دهد.',
   targetLine: 'هدف',
   noNumbers: 'هنوز عددی ثبت نشده.',
-  quiet: 'مدتی است عددی ثبت نشده.',
   expectationsTitle: 'انتظار در برابر نتیجه',
   expectationsBody: 'برای هر تصمیم، آنچه انتظار داشتی کنار عددی که ثبت شده است.',
-  reviewTitle: 'بازبینی تصمیم‌ها',
-  reviewDueHint: 'موعد این انتظارها رسیده است.',
   verdictQuestion: 'نتیجه چه شد؟',
-  proposedTitle: 'اعداد پیشنهادی',
-  proposedHint: 'تا تأیید نکنی در نمودار و بسته نمی‌آیند.',
-  confirm: 'تأیید عدد',
-  reject: 'حذف',
-  expectationField: 'انتظار از یک شاخص (اختیاری)',
-  expectationMetric: 'شاخص',
+  expectationField: 'انتظار از یک عدد پایش‌شده (اختیاری)',
+  expectationMetric: 'کدام عدد؟',
   expectationBy: 'تا تاریخ',
   expectationTarget: 'مقدار هدف (اختیاری)',
   expectationNone: 'بدون انتظار عددی',
+  expectationEmpty: 'هنوز هیچ حقیقتی پایش ندارد؛ روی یک حقیقت، در «جزئیات بیشتر»، «پایش این عدد» را روشن کن.',
   homeTitle: 'انتظار در برابر نتیجه',
 } as const;
+
+export const CADENCE_FA: Record<MetricCadence, string> = { week: 'هفتگی', month: 'ماهانه' };
 
 export const DIRECTION_FA: Record<MetricDirection, string> = { up: 'بالاتر بهتر است', down: 'پایین‌تر بهتر است' };
 export const VERDICT_FA: Record<ExpectationVerdict, string> = { met: 'به انتظار رسید', partial: 'نیمه', missed: 'نرسید' };
@@ -62,6 +63,6 @@ export function expectationSentence(args: { metric: string; direction: MetricDir
 }
 
 /** all fixed texts, for the no-causal-claim test */
-export const allMetricTexts = (): string[] => [...Object.values(MX), ...Object.values(DIRECTION_FA), ...Object.values(VERDICT_FA),
+export const allMetricTexts = (): string[] => [...Object.values(MX), ...Object.values(CADENCE_FA), ...Object.values(DIRECTION_FA), ...Object.values(VERDICT_FA),
   afterSentence({ decision: 'x', before: '1', after: '2', unit: 'u' }), afterSentence({ decision: 'x' }), afterSentence({ decision: 'x', after: '2' }),
   expectationSentence({ metric: 'm', direction: 'up', target: '1', unit: 'u', by: 'd' }), expectationSentence({ metric: 'm', direction: 'down', by: 'd' })];

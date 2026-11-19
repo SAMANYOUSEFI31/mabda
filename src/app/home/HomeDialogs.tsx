@@ -32,7 +32,7 @@ export function HomeDialogs({ attempt, data, deliverables, dueProps, enabledLibr
       onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
       onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
       dueProps={dueProps}
-      metricsEntry={{ metrics, measurements, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
+      metricsEntry={{ metrics, measurements, objects: workspaceContexts, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
       onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
     /></Deferred>
     </>

@@ -144,7 +144,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   if (proposed.length) parts.push(`## پیشنهادی — تأییدنشده (واقعیت نیست)\n${group(proposed)}`);
   if (assumptions.length) parts.push([`## فرض‌های فعال، تأییدنشده (واقعیت نیست)`, ASSUMPTION_RULE, '', group(assumptions)].join('\n'));
   if (rejected.length) parts.push([`## گزینه‌های بررسی‌شده و ردشده`, REJECTED_RULE, '', ...rejected.map((r) => `- «${r.title}» (در تصمیم «${r.objectTitle}»): ${r.reason}`)].join('\n'));
-  const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now) : null;
+  const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now, relevant) : null;
   if (metricsSection) parts.push(metricsSection);
   if (gaps.length) {
     parts.push(['## جاهای خالی (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));

@@ -124,9 +124,16 @@ export interface Metric {
   direction: MetricDirection;
   target?: number;
   archived?: boolean;
+  /** «پایش»: the truth (a Context object) this number belongs to. A metric made before monitoring moved onto truths has none
+   *  until the person links it (docs/product-scope.md) */
+  objectId?: string;
+  /** how often a new number is expected; the calm reminder in «منتظر تو» comes from it. Unset = no reminder */
+  cadence?: MetricCadence;
   createdAt: string;
   updatedAt: string;
 }
+/** weekly or monthly only: a daily number is a habit tracker's rhythm, not the calm upkeep of a truth (product-scope test 2) */
+export type MetricCadence = 'week' | 'month';
 export type MeasurementSource = 'manual' | 'csv' | 'mcp' | 'demo';
 /** one recorded value. Legacy external suggestions remain Proposed until the user confirms them. */
 export interface Measurement {

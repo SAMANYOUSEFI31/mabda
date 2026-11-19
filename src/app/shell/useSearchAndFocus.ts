@@ -110,6 +110,5 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const weeklyDue = reviewDue(data?.weeklyReviewAt, weekly);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [compare, setCompare] = useState<{ mode: CompareMode; scopeNodeId?: string } | null>(null);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  return { contradictions, paletteOpen, setPaletteOpen, usageOpen, setUsageOpen, homeAllOpen, setHomeAllOpen, canvasReveal, setCanvasReveal, savedPackCount, setSavedPackCount, focusNotes, setFocusNotes, focusAsset, setFocusAsset, searchIdx, focusNodeId, goFocus, focusSection, focusScope, revealWhenThere, deliverables, ledgerEntries, stale, reviewNeeds, reviewIdSet, staleIdSet, waitingOrdered, waiting, markInheritSeen, inheritNotices, flips, weekly, weeklyDue, weeklyOpen, setWeeklyOpen, compare, setCompare, metricsOpen, setMetricsOpen };
+  return { contradictions, paletteOpen, setPaletteOpen, usageOpen, setUsageOpen, homeAllOpen, setHomeAllOpen, canvasReveal, setCanvasReveal, savedPackCount, setSavedPackCount, focusNotes, setFocusNotes, focusAsset, setFocusAsset, searchIdx, focusNodeId, goFocus, focusSection, focusScope, revealWhenThere, deliverables, ledgerEntries, stale, reviewNeeds, reviewIdSet, staleIdSet, waitingOrdered, waiting, markInheritSeen, inheritNotices, flips, weekly, weeklyDue, weeklyOpen, setWeeklyOpen, compare, setCompare };
 }

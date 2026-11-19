@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { MyTemplates } from '../structure/MyTemplates';
 import type { Workspace } from '../../types';
 import { LIBRARY, currentSpecIds, specFits } from '../../core/specs';
-import { dataApi } from '../../services/dataApi';
-import { Badge, Button, Dialog, Select, formatNumber, useToast } from '../../ui';
+import { Badge, Button, Dialog, formatNumber } from '../../ui';
 
 interface Props {
   open: boolean;
@@ -22,10 +22,6 @@ interface Props {
 
 /** The library of ready-made workstreams. A workspace shows only the ones it took from here (plus its own). Removing one only hides it: outputs already built stay in «دارایی‌ها». */
 export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, onChange, onApplyTemplate, nodes }) => {
-  const [templates, setTemplates] = useState<Array<{ id: string; kind: 'node' | 'workstream'; name: string }>>([]);
-  const [parent, setParent] = useState('');
-  const toast = useToast();
-  useEffect(() => { if (open) dataApi.listTemplates().then((r) => setTemplates(r.templates)).catch(() => setTemplates([])); }, [open]);
   const [busy, setBusy] = useState<string | null>(null);
   const ids = currentSpecIds(workspace);
   const toggle = async (id: string) => {
@@ -62,23 +58,7 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
             {others.map(row)}
           </section>
         )}
-        <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-label="قالب‌های من">
-          <h3 className="label-md text-text-default">قالب‌های من</h3>
-          {templates.length === 0 ? <p className="body-sm text-text-subtle">هنوز قالبی نساخته‌ای: از منوی هر بخش «ذخیره به‌عنوان قالب» را بزن.</p> : (
-            <>
-              <Select label="بخش‌های قالب زیر کدام بخش بیایند؟" value={parent || (nodes[0]?.id ?? '')} onChange={(e) => setParent(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
-              {templates.map((t) => (
-                <div key={t.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default p-inset-lg">
-                  <span className="label-md text-text-default">{t.name} <Badge intent="neutral" icon={false}>{t.kind === 'node' ? 'بخش' : 'جریان کار'}</Badge></span>
-                  <span className="flex gap-inline-xs">
-                    <Button size="sm" variant="secondary" iconStart="Plus" loading={busy === t.id} onClick={async () => { setBusy(t.id); try { await onApplyTemplate(t.id, parent || undefined); } finally { setBusy(null); } }}>افزودن به این فضا</Button>
-                    <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف قالب ${t.name}`} onClick={async () => { const r = await dataApi.deleteTemplate(t.id); setTemplates((l) => l.filter((x) => x.id !== t.id)); const gone = r.template; toast.show({ intent: 'success', message: `قالب «${t.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'واگرد', onClick: () => { void dataApi.restoreTemplate(workspace.id, gone).then(() => dataApi.listTemplates()).then((x) => setTemplates(x.templates)); } } } : {}) }); }}>حذف</Button>
-                  </span>
-                </div>
-              ))}
-            </>
-          )}
-        </section>
+        <MyTemplates open={open} workspaceId={workspace.id} nodes={nodes} onApplyTemplate={onApplyTemplate} kinds={['node', 'workstream']} />
       </div>
     </Dialog>
   );

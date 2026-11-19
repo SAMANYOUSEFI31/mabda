@@ -113,3 +113,13 @@ test('UX-01: both sides of home answer a gap the same way (before: the list unde
   assert.equal(a.slotKey, 'audience');
   assert.equal(a.content, 'فریلنسرها');
 });
+
+test('«پایش» in «منتظر تو»: a due monitor is one quiet sentence with «ثبت عدد» on its truth; an unlinked number asks to be linked; both below the decisions that wait', () => {
+  const base = { now: new Date('2026-03-10T08:00:00Z'), stale: [], deliverables: [], contradictions: [], reviews: [], ready: [], proposedCount: 2, weekly: { due: false, changes: 0 }, dueCount: 0 };
+  const r = homeSections({ ...base, monitors: [{ objectId: 'w', title: 'وزن من', cadence: 'week', never: false }, { objectId: 'p', title: 'پیشرفت پایان‌نامه', cadence: 'month', never: true }], unlinked: [{ id: 'm1', name: 'پس‌انداز' }] }, []);
+  assert.deepEqual(r.waiting.map((a) => a.kind), ['proposals', 'monitor', 'monitor', 'unlinked']);
+  const w = r.waiting.find((a) => a.id === 'monitor:w')!;
+  assert.deepEqual([w.text, w.button, w.target], ['عدد «وزن من» این هفته هنوز ثبت نشده.', 'ثبت عدد', { type: 'object', id: 'w' }]);
+  assert.equal(r.waiting.find((a) => a.id === 'monitor:p')!.text, 'برای «پیشرفت پایان‌نامه» هنوز عددی ثبت نشده.');
+  assert.deepEqual(r.waiting.at(-1)!.target, { type: 'link-metric', id: 'm1' });
+});

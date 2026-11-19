@@ -50,7 +50,7 @@ export interface DemoData {
   templates: Array<{ id: string; kind: 'node'; name: string; payload: NodeTemplate; at: string }>;
   samples: Array<{ id: string; type: ContextObject['type']; nodeId: string; title: string; content: string; at: string }>;
   /** three metrics with twelve recorded numbers (calendar days), and four decisions that state an expectation of one of them */
-  metrics: Array<{ id: string; name: string; unit: string; direction: 'up' | 'down'; target?: number; at: string }>;
+  metrics: Array<{ id: string; name: string; unit: string; direction: 'up' | 'down'; target?: number; at: string; objectId?: string; cadence?: 'week' | 'month' }>;
   measurements: Array<{ id: string; metricId: string; value: number; day: string; note?: string }>;
 }
 
@@ -148,6 +148,11 @@ export function buildDemo(now: Date): DemoData {
 
   // ── the business ───────────────────────────────────────────────────────────────────────────
   add({ id: 'dm_domain', type: 'Fact', node: 'business', title: 'حوزهٔ کسب‌وکار', first: `ما قهوهٔ تخصصی برشته‌شده را آنلاین می‌فروشیم: اشتراک ماهانه و کارگاه آموزشی برشته‌کاری (برند خیالی «${BRAND}»).`, status: 'Confirmed', provenance: 'Onboarding', slot: 'business_domain', created: [40] });
+  // «پایش» lives on a truth (docs/product-scope.md): three plain facts carry the numbers below; the text says WHAT is counted, the
+  // number itself lives in the monitor (one source for the value)
+  add({ id: 'dm_m_orders', type: 'Fact', node: 'business', title: 'سفارش هفتگی', first: 'تعداد سفارش‌های هر هفته، از اشتراک و خرید تکی با هم.', status: 'Confirmed', provenance: 'User Input', created: [36, 9] });
+  add({ id: 'dm_m_retention', type: 'Fact', node: 'dn_sub', title: 'ماندگاری اشتراک', first: 'درصد مشترک‌هایی که سه ماه بعد هنوز اشتراک دارند.', status: 'Confirmed', provenance: 'User Input', created: [31, 9] });
+  add({ id: 'dm_m_cac', type: 'Fact', node: 'business', title: 'هزینهٔ جذب مشتری', first: 'هزینهٔ تبلیغات هر ماه تقسیم بر مشتری‌های تازهٔ همان ماه.', status: 'Confirmed', provenance: 'User Input', created: [29, 9] });
   add({ id: 'dm_audience', type: 'Decision', node: 'business', title: 'مخاطب اصلی', first: 'علاقه‌مندان قهوه', status: 'Confirmed', provenance: 'User Input', slot: 'target_audience', created: [40, 11],
     edits: [{ d: 3, content: 'علاقه‌مندان قهوهٔ خانگی ۲۵ تا ۴۵ ساله در شهرهای بزرگ که اسپرسوساز یا موکاپات دارند.', reason: 'بعد از نظرسنجی از مشتری‌ها دقیق‌ترش کردم.' }] });
   add({ id: 'dm_problem', type: 'Fact', node: 'business', title: 'معضل اصلی مخاطب', first: 'پیدا کردن قهوهٔ خوب سخت است.', status: 'Confirmed', provenance: 'User Input', slot: 'core_problem', created: [40, 12],
@@ -320,9 +325,9 @@ export function buildDemo(now: Date): DemoData {
   // ── metrics: recorded numbers (never facts) and four decisions that state what they expect of one ──
   const dayOf = (n: number) => tehranDay(now.getTime() - n * DAY);
   const metrics: DemoData['metrics'] = [
-    { id: 'met_demo_orders', name: 'سفارش هفتگی', unit: 'سفارش', direction: 'up', target: 120, at: at(36, 9) },
-    { id: 'met_demo_retention', name: 'ماندگاری اشتراک', unit: 'درصد', direction: 'up', target: 70, at: at(31, 9) },
-    { id: 'met_demo_cac', name: 'هزینهٔ جذب مشتری', unit: 'هزار تومان', direction: 'down', target: 200, at: at(29, 9) },
+    { id: 'met_demo_orders', name: 'سفارش هفتگی', unit: 'سفارش', direction: 'up', target: 120, at: at(36, 9), objectId: 'dm_m_orders', cadence: 'week' },
+    { id: 'met_demo_retention', name: 'ماندگاری اشتراک', unit: 'درصد', direction: 'up', target: 70, at: at(31, 9), objectId: 'dm_m_retention', cadence: 'month' },
+    { id: 'met_demo_cac', name: 'هزینهٔ جذب مشتری', unit: 'هزار تومان', direction: 'down', target: 200, at: at(29, 9), objectId: 'dm_m_cac', cadence: 'month' },
   ];
   const nums: Array<[string, number, number, string?]> = [
     ['met_demo_orders', 35, 88], ['met_demo_orders', 28, 92], ['met_demo_orders', 21, 95], ['met_demo_orders', 14, 104], ['met_demo_orders', 7, 112, 'هفتهٔ پایانی کمپین اینستاگرام'],

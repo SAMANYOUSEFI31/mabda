@@ -27,6 +27,10 @@ interface ContextReplayCardProps {
   /** «بایگانی» (comes back) and «حذف» (an output is throwaway; the page offers «واگرد») */
   onArchive?: (deliverable: GeneratedDeliverable) => void;
   onDelete?: (deliverable: GeneratedDeliverable) => void;
+  /** the outward way back in step (managed AI frozen): a fresh request for another tool from today's truth, to paste its answer back */
+  onRerequest?: (deliverable: GeneratedDeliverable) => void;
+  /** «این خروجی به چه حقیقت‌هایی نیاز دارد و کدام کم است»: the required truths its recipe still lacks (from the gap engine) */
+  missing?: string[];
 }
 
 
@@ -40,6 +44,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   changes,
   onArchive,
   onDelete,
+  onRerequest,
+  missing = [],
 }) => {
   const [showCritique, setShowCritique] = useState(false);
   const [showRawContext, setShowRawContext] = useState(false);
@@ -67,6 +73,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   const failed = (deliverable.checks ?? []).filter((c) => !c.passed).length;
   const passedAll = !!deliverable.checks?.length && failed === 0;
   const traceId = `trace-${deliverable.id}`;
+  const hasChecks = !!deliverable.checks?.length;
 
   return (
     // on the paper, not in a box: a hairline under each one, like the rows of «ساختار»
@@ -95,7 +102,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             items={[
               ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'Eye' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
               ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
-              { label: traceOpen ? 'بستن ردپای دانش' : 'ردپای دانش و معیارها', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
+              ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'PackageOpen' as const, onSelect: () => onRerequest(deliverable) }] : []),
+              { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
               ...(onArchive || onDelete ? [{ divider: true } as const] : []),
               ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
               ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),
@@ -109,7 +117,8 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         <Alert
           intent="warning"
           title="این خروجی به‌روز نیست"
-          action={canRebuild ? <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>{rebuildLabel}</Button> : undefined}
+          action={canRebuild ? <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>{rebuildLabel}</Button>
+            : onRerequest ? <Button variant="secondary" size="sm" iconStart="PackageOpen" onClick={() => onRerequest(deliverable)}>درخواست دوباره</Button> : undefined}
         >
           {stale.reasons[0]?.message}{stale.reasons.length > 1 ? ` (و ${formatNumber(stale.reasons.length - 1)} دلیل دیگر)` : ''}
         </Alert>
@@ -137,10 +146,15 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       <div className="flex flex-col gap-stack-sm">
         <div className="flex flex-wrap items-center gap-inline-sm">
           <Button variant="ghost" size="sm" iconStart={traceOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={traceOpen} aria-controls={traceId} onClick={() => setTraceOpen((v) => !v)}>
-            ردپای دانش و معیارها
+            {hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش'}
           </Button>
           <span className="body-sm text-text-subtle">بر پایهٔ {formatNumber(usedObjects.length)} حقیقت ساخته شد.{deliverable.removedSources ? ` ${formatNumber(deliverable.removedSources)} منبعش حذف‌شده است؛ متن خروجی همان مانده.` : ''}</span>
         </div>
+        {missing.length > 0 && (
+          <p className="body-sm text-text-default" data-testid="output-missing">
+            برای درخواست دوبارهٔ این خروجی، {formatNumber(missing.length)} حقیقت لازم هنوز کم است: {missing.slice(0, 3).map((m) => `«${m}»`).join('، ')}{missing.length > 3 ? ` و ${formatNumber(missing.length - 3)} مورد دیگر` : ''}.
+          </p>
+        )}
         {traceOpen && (
           <div id={traceId} className="flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
             <div className="flex flex-wrap gap-inline-sm">

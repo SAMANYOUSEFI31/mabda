@@ -27,7 +27,7 @@ export function useStarters(p: AppCoreScope) {
   const handleSaveTemplate = async () => {
     if (!templateDraft?.name.trim()) return;
     const r = await attempt(() => dataApi.saveTemplate(wid, { ...templateDraft, name: templateDraft.name.trim() }));
-    if (r) { toast.show({ intent: 'success', message: 'قالب ذخیره شد؛ در «کتابخانهٔ جریان‌ها › قالب‌های من» می‌توانی در هر فضایی بیاوری.' }); setTemplateDraft(null); }
+    if (r) { toast.show({ intent: 'success', message: 'قالب ذخیره شد؛ در «اسکلت شروع › قالب‌های من» می‌توانی در هر فضایی بیاوری.' }); setTemplateDraft(null); }
   };
   const handleApplyTemplate = async (templateId: string, parentId?: string) => {
     const r = await attempt(() => dataApi.applyTemplate(wid, templateId, parentId));

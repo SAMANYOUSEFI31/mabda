@@ -8,7 +8,9 @@ import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { dataApi } from '../../services/dataApi';
-import { expectationRows, expectationsDue, metricsWithoutRecentNumber, verdictTally } from '../../core/metrics';
+import { expectationRows, expectationsDue, metricLabel, monitorsDue, unlinkedMetrics, verdictTally } from '../../core/metrics';
+import { setPendingMonitorLink } from '../../components/metrics/Monitor';
+import { markAddSwitchable } from '../../core/addRequest';
 import { homeActions, homeSections } from '../../core/homeActions';
 import { track } from '../../services/usage';
 import { useEffect, useMemo } from 'react';
@@ -45,8 +47,11 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     weekly: { due: weeklyDue, changes: weekly.digest.total },
     dueCount: dueAssumptions.length + dueDecisions.length,
     openThinking: thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)).length,
+    // «پایش»: the calm upkeep of a monitored truth (its cadence passed), and numbers not on a truth yet (she links them)
+    monitors: monitorsDue(data?.metrics ?? [], data?.measurements ?? [], workspaceContexts, new Date()).map((d) => ({ objectId: d.object.id, title: metricLabel(d.metric, workspaceContexts), cadence: d.metric.cadence!, never: !d.last })),
+    unlinked: unlinkedMetrics(data?.metrics ?? []).map((m) => ({ id: m.id, name: m.name })),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts, thinking]);
+  }), [stale, data?.deliverables, contradictions.length, reviewNeeds, waiting, weeklyDue, dueAssumptions.length, dueDecisions.length, workspaceContexts, thinking, data?.metrics, data?.measurements]);
   const homePlan = useMemo(() => homeActions(homeInput), [homeInput]);
   // patterns.md §۸: «منتظر تو» › «چه چیزی کم است» › «قدیمی‌شده‌ها»
   const homeView = useMemo(() => homeSections(homeInput, attentionGaps), [homeInput, attentionGaps]);
@@ -56,6 +61,15 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     const t = a.target;
     if (t.type === 'asset') { setActiveTab('assets'); setFocusAsset({ id: t.id, n: Date.now() }); }
     else if (t.type === 'object') { const o = workspaceContexts.find((x) => x.id === t.id); if (o) openContext(o); }
+    else if (t.type === 'link-metric') {
+      // a NEW truth named after the number, carrying its history; she writes what is true and saves (Mabda never writes it for her)
+      const m = (data?.metrics ?? []).find((x) => x.id === t.id);
+      if (!m) return;
+      const at = new Date().toISOString();
+      markAddSwitchable(false);
+      setPendingMonitorLink(m.id);
+      openContext({ id: '', workspaceId: wid, type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: m.name, content: '', nodeId: '', version: 1, createdAt: at, updatedAt: at });
+    }
     else if (t.type === 'weekly') setWeeklyOpen(true);
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
@@ -67,7 +81,6 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const measurements = data?.measurements ?? [];
   const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);
   const tally = useMemo(() => verdictTally(expRows), [expRows]);
-  const quietMetrics = useMemo(() => metricsWithoutRecentNumber(metrics, measurements, new Date()), [data?.metrics, data?.measurements]);
   const expectationsDueCount = useMemo(() => expectationsDue(expRows, new Date()).length, [expRows]);
   const dueProps = {
     assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
@@ -80,5 +93,5 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     },
     expectations: expRows,
   };
-  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, tally, quietMetrics, expectationsDueCount, dueProps };
+  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, tally, expectationsDueCount, dueProps };
 }

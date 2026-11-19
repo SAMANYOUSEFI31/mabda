@@ -16,9 +16,9 @@ const NodeDialogs = lazyNamed(() => import('../../components/structure/NodeDialo
 const QuickStartDialog = lazyNamed(() => import('../../components/structure/QuickStartDialog'), 'QuickStartDialog');
 const StarterDialog = lazyNamed(() => import('../../components/structure/StarterDialog'), 'StarterDialog');
 
-export type StructureDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'ensureLibrarySpec' | 'handleApplyStarter' | 'handleCreateObjects' | 'handleDeleteSamples' | 'handleSaveProposals' | 'handleSaveTemplate' | 'handleThoughtSectioned' | 'isOnboardingOpen' | 'isStarterOpen' | 'nodeDialog' | 'nodeOp' | 'nodes' | 'openThinkingSpace' | 'patch' | 'persistDeliverable' | 'persistLedger' | 'reload' | 'revealWhenThere' | 'setActiveTab' | 'setContextViewMode' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsStarterOpen' | 'setLedger' | 'setNodeDialog' | 'setStatus' | 'setTemplateDraft' | 'stale' | 'templateDraft' | 'toast' | 'wid' | 'workspaceContexts'>;
+export type StructureDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'ensureLibrarySpec' | 'handleApplyStarter' | 'handleApplyTemplate' | 'handleCreateObjects' | 'handleDeleteSamples' | 'handleSaveProposals' | 'handleSaveTemplate' | 'handleThoughtSectioned' | 'isOnboardingOpen' | 'isStarterOpen' | 'nodeDialog' | 'nodeOp' | 'nodes' | 'openThinkingSpace' | 'patch' | 'persistDeliverable' | 'persistLedger' | 'reload' | 'revealWhenThere' | 'setActiveTab' | 'setContextViewMode' | 'setIsMemoryOpen' | 'setIsOnboardingOpen' | 'setIsStarterOpen' | 'setLedger' | 'setNodeDialog' | 'setStatus' | 'setTemplateDraft' | 'stale' | 'templateDraft' | 'toast' | 'wid' | 'workspaceContexts'>;
 
-export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApplyStarter, handleCreateObjects, handleDeleteSamples, handleSaveProposals, handleSaveTemplate, handleThoughtSectioned, isOnboardingOpen, isStarterOpen, nodeDialog, nodeOp, nodes, openThinkingSpace, patch, persistDeliverable, persistLedger, reload, revealWhenThere, setActiveTab, setContextViewMode, setIsMemoryOpen, setIsOnboardingOpen, setIsStarterOpen, setLedger, setNodeDialog, setStatus, setTemplateDraft, stale, templateDraft, toast, wid, workspaceContexts }: StructureDialogsProps) {
+export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApplyStarter, handleApplyTemplate, handleCreateObjects, handleDeleteSamples, handleSaveProposals, handleSaveTemplate, handleThoughtSectioned, isOnboardingOpen, isStarterOpen, nodeDialog, nodeOp, nodes, openThinkingSpace, patch, persistDeliverable, persistLedger, reload, revealWhenThere, setActiveTab, setContextViewMode, setIsMemoryOpen, setIsOnboardingOpen, setIsStarterOpen, setLedger, setNodeDialog, setStatus, setTemplateDraft, stale, templateDraft, toast, wid, workspaceContexts }: StructureDialogsProps) {
   return (
     <>
     <Deferred when={!!nodeDialog}><NodeDialogs
@@ -73,7 +73,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
         })();
       }}
     /></Deferred>
-    <Deferred when={isStarterOpen}><StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} /></Deferred>
+    <Deferred when={isStarterOpen}><StarterDialog open={isStarterOpen} samplesCount={data?.samples?.length ?? 0} onClose={() => setIsStarterOpen(false)} onApply={handleApplyStarter} onRemoveAll={() => handleDeleteSamples()} templates={{ workspaceId: wid, nodes, onApply: handleApplyTemplate }} /></Deferred>
     <Dialog
       open={!!templateDraft}
       onClose={() => setTemplateDraft(null)}

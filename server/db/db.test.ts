@@ -60,7 +60,7 @@ test('Thought backfill preserves notes, stable legacy identity, classification a
   insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
     source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
 
-  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const thoughts = repo.listThoughts(s, { includeResolved: true });
@@ -84,7 +84,7 @@ test('MCP token shutdown revokes active tokens once and preserves historical tok
     .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
   db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
     .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
-  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
   const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
   assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
     ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
@@ -607,6 +607,34 @@ test('a metric and its numbers: every write leaves a Change; metric changes stay
   assert.deepEqual(kinds, ['metric_created', 'measurement_added', 'metric_edited', 'measurement_removed', 'metric_archived']);
   assert.deepEqual(repo.listChanges(s), [], 'the Context change list (digest, weekly review) does not see metric changes');
   assert.equal(repo.listMetrics(s).length, 1, 'archived, not deleted');
+});
+
+test('«پایش» on a truth: a metric points at its object, one live monitor per truth; a number made earlier is linked with its history; migration 32 adds two empty columns and moves nothing', () => {
+  const { repo, s } = fresh();
+  const fact = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن من', content: 'وزن صبح، ناشتا.', nodeId: repo.listNodes(s)[0].id });
+  const m = repo.createMetric(s, { objectId: fact.id, unit: 'کیلو', direction: 'down', target: 70, cadence: 'week' });
+  assert.deepEqual([m.name, m.objectId, m.cadence], ['وزن من', fact.id, 'week'], 'the name comes from the truth');
+  assert.throws(() => repo.createMetric(s, { objectId: fact.id, direction: 'up' }), RepoError, 'one live monitor per truth');
+  assert.throws(() => repo.createMetric(s, { objectId: 'nope', direction: 'up' }), RepoError, 'an object of this workspace');
+  assert.throws(() => repo.createMetric(s, { objectId: fact.id, direction: 'up', cadence: 'day' }), RepoError, 'weekly or monthly only');
+  // two truths with the same title in two places can both be monitored (a monitor is known by its truth, not its name)
+  const twin = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن من', content: 'وزن عصر.', nodeId: repo.listNodes(s)[0].id });
+  assert.equal(repo.createMetric(s, { objectId: twin.id, direction: 'down' }).objectId, twin.id);
+  // a number made before monitoring moved onto truths keeps every value when she links it
+  const old = repo.createMetric(s, { name: 'پس‌انداز', unit: 'میلیون', direction: 'up' });
+  repo.addMeasurement(s, { metricId: old.id, value: 10, at: '2026-03-01' });
+  repo.addMeasurement(s, { metricId: old.id, value: 12, at: '2026-04-01' });
+  const saving = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'پس‌انداز ماهانه', content: 'آنچه آخر هر ماه کنار می‌گذارم.', nodeId: repo.listNodes(s)[0].id });
+  const linked = repo.updateMetric(s, old.id, { objectId: saving.id, cadence: 'month' });
+  assert.deepEqual([linked.objectId, linked.cadence, linked.name], [saving.id, 'month', 'پس‌انداز']);
+  assert.equal(repo.listMeasurements(s, { metricId: old.id }).length, 2, 'its history came with it');
+  const edit = repo.listChanges(s, { objectId: `metric:${old.id}`, includeNodes: true }).at(-1)!;
+  assert.deepEqual([edit.kind, edit.after?.objectId, edit.after?.cadence], ['metric_edited', saving.id, 'month']);
+  repo.archiveMetric(s, m.id);
+  assert.throws(() => repo.updateMetric(s, m.id, { cadence: 'month' }), RepoError, 'a stopped monitor is not edited');
+  assert.equal(repo.createMetric(s, { objectId: fact.id, direction: 'down' }).objectId, fact.id, 'after «قطع پایش» the truth can be monitored again');
+  const cols = repo.db.columns('metrics').map((c) => c.name);
+  assert.ok(cols.includes('object_id') && cols.includes('cadence'));
 });
 
 test('a stored legacy MCP measurement remains Proposed until the user confirms it; new writes reject the retired source', () => {

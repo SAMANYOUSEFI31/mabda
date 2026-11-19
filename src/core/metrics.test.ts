@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { decisionMoments, expectationRows, expectationsDue, isIsoDate, latestOf, metricsPackSection, metricsWithoutRecentNumber, parseMeasurementCsv, parseNumber, proposedMeasurements, readExpectation, seriesOf, suggestVerdict, verdictOf, verdictTally } from './metrics.ts';
+import { CADENCE_DAYS, metricLabel, monitorOf, monitorsDue, unlinkedMetrics, decisionMoments, expectationRows, expectationsDue, isIsoDate, latestOf, metricsPackSection, metricsWithoutRecentNumber, parseMeasurementCsv, parseNumber, proposedMeasurements, readExpectation, seriesOf, suggestVerdict, verdictOf, verdictTally } from './metrics.ts';
 import { allMetricTexts, afterSentence, expectationSentence, MX } from './metricsText.ts';
 import { buildContextPack } from './contextPack.ts';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricExpectation } from '../types/index.ts';
@@ -149,16 +149,39 @@ test('no UI sentence claims a cause: the words «اثر», «علت», «تأث�
 });
 
 test('the metric components and the screen text in App/DueItems are free of causal wording too', () => {
-  const files = [...readdirSync('src/components/metrics').filter((f) => /^Metric.*\.tsx$/.test(f)).map((f) => `src/components/metrics/${f}`), 'src/components/home/DueItems.tsx'];
-  assert.ok(files.length >= 4, 'chart, dialog, quick entry, due items');
+  const files = [...readdirSync('src/components/metrics').filter((f) => /^(Metric|Monitor).*\.tsx$/.test(f)).map((f) => `src/components/metrics/${f}`), 'src/components/home/DueItems.tsx'];
+  assert.ok(files.length >= 4, 'chart, monitor, quick entry, due items');
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
     const literals = [...src.matchAll(/(['"`])((?:(?!\1)[^\\\n]|\\.)*[؀-ۿ](?:(?!\1)[^\\\n]|\\.)*)\1/g)].map((m) => m[2]);
     const jsxText = [...src.matchAll(/>([^<>{}\n]*[؀-ۿ][^<>{}\n]*)</g)].map((m) => m[1]);
     for (const s of [...literals, ...jsxText]) assert.doesNotMatch(s, CAUSAL, `${f}: «${s}»`);
   }
-  // the one place the chart words appear in App: the Home card
-  const app = readFileSync('src/App.tsx', 'utf8');
+  // the one place the chart words appear on a page: the Home card (it was looked for in App.tsx, where it no longer is)
+  const app = readFileSync('src/app/home/HomePage.tsx', 'utf8');
+  assert.ok(app.includes('id="expectations"'), 'the Home card is found');
   const card = app.slice(app.indexOf('id="expectations"'), app.indexOf('id="expectations"') + 1500);
   assert.doesNotMatch(card, CAUSAL);
+});
+
+test('«پایش»: a monitor belongs to one truth; its cadence passing (or no number yet) is the calm reminder; numbers not on a truth are listed for her to link', () => {
+  const fact = (id: string, over: Partial<ContextObject> = {}): ContextObject => ({ ...decision(id), type: 'Fact', title: `حقیقت ${id}`, ...over });
+  const objects = [fact('w'), fact('s'), fact('gone', { status: 'Archived' }), fact('n')];
+  const ms = [
+    metric({ id: 'weight', objectId: 'w', cadence: 'week' }), metric({ id: 'save', objectId: 's', cadence: 'month' }),
+    metric({ id: 'arch', objectId: 'gone', cadence: 'week' }), metric({ id: 'none', objectId: 'n' }), metric({ id: 'old', name: 'قدیمی' }),
+    metric({ id: 'fresh', objectId: 'n', cadence: 'week', archived: true }),
+  ];
+  const all = [msr('1', 'weight', 80, '2026-03-02'), msr('2', 'save', 5, '2026-02-20'), msr('3', 'weight', 79, '2026-03-09', 'Proposed')];
+  // weight: last confirmed 2026-03-02, 8 days before NOW (a week passed; the proposed 03-09 does not count). save: 18 days, under a month
+  assert.deepEqual(monitorsDue(ms, all, objects, NOW).map((d) => d.metric.id), ['weight']);
+  assert.deepEqual(monitorsDue([metric({ id: 'x', objectId: 's', cadence: 'month' })], [], objects, NOW).map((d) => [d.metric.id, d.last]), [['x', undefined]], 'no number yet is due');
+  assert.equal(CADENCE_DAYS.month, 30);
+  assert.deepEqual(unlinkedMetrics(ms).map((m) => m.id), ['old']);
+  assert.equal(monitorOf('n', ms)?.id, 'none', 'the live one, not the archived one');
+  assert.equal(metricLabel(ms[0], objects), 'حقیقت w', 'a monitor is called by its truth');
+  assert.equal(metricLabel(ms[4], objects), 'قدیمی');
+  // the pack names a monitor by its truth's title too
+  const sec = metricsPackSection([ms[0]], all, [], [], NOW, objects)!;
+  assert.match(sec, /حقیقت w/);
 });

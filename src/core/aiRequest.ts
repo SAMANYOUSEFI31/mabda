@@ -297,7 +297,7 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const take = (o: ContextObject, reason: IncludeReason) => { included.push({ o, reason }); takenIds.add(o.id); used += itemTokens(o); };
 
   const metricsSection = input.metrics
-    ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, candidates.filter((o) => o.type === 'Decision'), input.metrics.changes, now)
+    ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, candidates.filter((o) => o.type === 'Decision'), input.metrics.changes, now, candidates)
     : null;
   const gaps = kind === 'audit' ? (input.gaps ?? []).slice(0, GAP_LIMIT) : [];
   const gapsText = gaps.length ? gapsSection(gaps) : '';

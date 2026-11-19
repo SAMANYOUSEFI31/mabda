@@ -218,9 +218,11 @@ export const dataApi = {
   resolveThought: (id: string, thoughtId: string, resolution: { objectId?: string; nodeId?: string }) => call<{ thought: import('../types').Thought }>('POST', `${ws(id)}/thoughts/${thoughtId}/resolve`, resolution),
   splitNote: (id: string, noteId: string) => call<{ nodes: TreeNode[]; created: TreeNode[]; notes: Note[]; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/notes/${noteId}/split`, {}),
   noteOutcome: (id: string, objectId: string, text: string, verdict?: import('../types').ExpectationVerdict) => call<{ change: import('../types').ContextChange; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/outcome`, { text, ...(verdict ? { verdict } : {}) }),
-  createMetric: (id: string, m: { name: string; unit: string; direction: import('../types').MetricDirection; target?: number }) => call<MetricsBundle>('POST', `${ws(id)}/metrics`, m),
+  createMetric: (id: string, m: { name?: string; unit: string; direction: import('../types').MetricDirection; target?: number; objectId?: string; cadence?: import('../types').MetricCadence }) => call<MetricsBundle & { metric: import('../types').Metric }>('POST', `${ws(id)}/metrics`, m),
+  /** «پایش»: change a monitor (unit, cadence, target …) or link a number made earlier to a truth (`objectId`) */
+  updateMetric: (id: string, metricId: string, m: { unit?: string; direction?: import('../types').MetricDirection; target?: number | null; objectId?: string; cadence?: import('../types').MetricCadence | null }) => call<MetricsBundle & { metric: import('../types').Metric }>('PUT', `${ws(id)}/metrics/${metricId}`, m),
   archiveMetric: (id: string, metricId: string) => call<MetricsBundle>('POST', `${ws(id)}/metrics/${metricId}/archive`, {}),
-  addMeasurements: (id: string, entries: Array<{ metricId: string; value: number }>) => call<MetricsBundle>('POST', `${ws(id)}/measurements/batch`, { entries }),
+  addMeasurements: (id: string, entries: Array<{ metricId: string; value: number }>, at?: string) => call<MetricsBundle>('POST', `${ws(id)}/measurements/batch`, { entries, ...(at ? { at } : {}) }),
   addMeasurementsCsv: (id: string, text: string) => call<MetricsBundle & { added: number; errors: Array<{ line: number; text: string; reason: string }> }>('POST', `${ws(id)}/measurements/csv`, { text }),
   confirmMeasurement: (id: string, measurementId: string) => call<MetricsBundle>('POST', `${ws(id)}/measurements/${measurementId}/confirm`, {}),
   removeMeasurement: (id: string, measurementId: string) => call<MetricsBundle>('DELETE', `${ws(id)}/measurements/${measurementId}`),

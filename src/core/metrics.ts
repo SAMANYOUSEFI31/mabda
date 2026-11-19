@@ -10,7 +10,7 @@
  */
 
 import { tehranDay } from './tehranDate';
-import type { ContextChange, ContextObject, Measurement, Metric, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
+import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
 
 // a day stays a day; a moment becomes its Tehran day (tehranDate.ts), never the UTC one
 const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : tehranDay(iso));
@@ -45,6 +45,35 @@ export function seriesOf(metricId: string, measurements: Measurement[]): Measure
 }
 export const latestOf = (metricId: string, measurements: Measurement[]): Measurement | undefined => seriesOf(metricId, measurements).at(-1);
 export const proposedMeasurements = (measurements: Measurement[]): Measurement[] => measurements.filter((m) => m.status === 'Proposed');
+
+// ── «پایش»: a number is an option on a truth (docs/product-scope.md) ─────────
+
+/** the live monitor of one truth (a truth carries at most one) */
+export const monitorOf = (objectId: string, metrics: Metric[]): Metric | undefined => metrics.find((m) => !m.archived && m.objectId === objectId);
+/** live numbers made before monitoring moved onto truths, not linked to one yet: the person links them («وصل کردن»), Mabda never does */
+export const unlinkedMetrics = (metrics: Metric[]): Metric[] => metrics.filter((m) => !m.archived && !m.objectId);
+/** what the person calls the number: the truth's title when it is on one, else its own name */
+export const metricLabel = (m: Metric, objects: Pick<ContextObject, 'id' | 'title'>[]): string => (m.objectId ? objects.find((o) => o.id === m.objectId)?.title : undefined) ?? m.name;
+export const CADENCE_DAYS: Record<MetricCadence, number> = { week: 7, month: 30 };
+
+export interface MonitorDue { metric: Metric; object: ContextObject; last?: Measurement }
+/**
+ * The calm upkeep of a monitored truth: its cadence has passed since the last confirmed number (or there is none yet).
+ * Only live truths (not archived, not replaced); a monitor without a cadence never reminds. Oldest first.
+ */
+export function monitorsDue(metrics: Metric[], measurements: Measurement[], objects: ContextObject[], now: Date | string | number): MonitorDue[] {
+  const t = new Date(now).getTime();
+  const out: MonitorDue[] = [];
+  for (const m of metrics) {
+    if (m.archived || !m.objectId || !m.cadence) continue;
+    const object = objects.find((o) => o.id === m.objectId);
+    if (!object || object.status === 'Archived' || object.status === 'Superseded') continue;
+    const last = latestOf(m.id, measurements);
+    const cutoff = day(new Date(t - CADENCE_DAYS[m.cadence] * 86_400_000).toISOString());
+    if (!last || last.at <= cutoff) out.push({ metric: m, object, ...(last ? { last } : {}) });
+  }
+  return out.sort((a, b) => (a.last?.at ?? '').localeCompare(b.last?.at ?? '') || a.metric.id.localeCompare(b.metric.id));
+}
 
 /** active metrics that have no confirmed number in the last `days` days — a quiet marker, never a reminder */
 export function metricsWithoutRecentNumber(metrics: Metric[], measurements: Measurement[], now: Date | string | number, days = 7): Metric[] {
@@ -197,8 +226,10 @@ const unitOf = (m: Metric) => (m.unit ? ` ${m.unit}` : '');
  * «اندازه‌گیری‌ها» for the pack: a separate section, only confirmed numbers, with the rule that these are recorded
  * numbers — not knowledge, and not a reason to infer cause from a decision sitting next to a number.
  */
-export function metricsPackSection(metrics: Metric[], measurements: Measurement[], decisions: ContextObject[] = [], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] = [], now: Date = new Date()): string | null {
-  const live = metrics.filter((m) => !m.archived);
+export function metricsPackSection(metrics: Metric[], measurements: Measurement[], decisions: ContextObject[] = [], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] = [], now: Date = new Date(), objects: Pick<ContextObject, 'id' | 'title'>[] = decisions): string | null {
+  // a monitor is called by its truth's title (the truth may have been renamed since the number was made)
+  const named = (m: Metric): Metric => ({ ...m, name: metricLabel(m, objects) });
+  const live = metrics.filter((m) => !m.archived).map(named);
   if (live.length === 0) return null;
   const lines = live.map((m) => {
     const last = seriesOf(m.id, measurements).slice(-4);
@@ -206,7 +237,7 @@ export function metricsPackSection(metrics: Metric[], measurements: Measurement[
     const head = `- **${m.name}**${m.unit ? ` (${m.unit})` : ''} — ${dir}${m.target !== undefined ? `؛ هدف: ${trim(m.target)}${unitOf(m)}` : ''}`;
     return last.length ? `${head}\n  آخرین اعداد: ${last.map((x) => `${x.at}: ${trim(x.value)}`).join('، ')}` : `${head}\n  هنوز عددی ثبت نشده.`;
   });
-  const exps = expectationRows(decisions, metrics, measurements, changes, now).filter((r) => r.metric && !r.metric.archived);
+  const exps = expectationRows(decisions, metrics.map(named), measurements, changes, now).filter((r) => r.metric && !r.metric.archived);
   const expLines = exps.map((r) => {
     const m = r.metric!;
     const goal = `${m.direction === 'up' ? 'بالا برود' : 'پایین بیاید'}${r.expectation.targetValue !== undefined ? ` تا ${trim(r.expectation.targetValue)}${unitOf(m)}` : ''} تا ${r.expectation.by}`;

@@ -58,7 +58,8 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
     const r = await api.post<AnyJson>(`${b}/thoughts/${t.id}/promote`, { type });
     O[key] = r.object.id;
   };
-  const metric = async (key: string, name: string, unit: string, direction: 'up' | 'down', target: number) => { M[key] = (await api.post<AnyJson>(`${b}/metrics`, { name, unit, direction, target })).metric.id; };
+  // «پایش» is an option on a truth (docs/product-scope.md): every number here lives on one of her facts
+  const metric = async (key: string, on: string, unit: string, direction: 'up' | 'down', target: number, cadence: 'week' | 'month') => { M[key] = (await api.post<AnyJson>(`${b}/metrics`, { objectId: O[on], unit, direction, target, cadence })).metric.id; };
   const measure = (key: string, ago: number, value: number, text?: string) => api.post(`${b}/measurements`, { metricId: M[key], value, at: day(-ago), note: text });
   /** an output that came back from another tool: the pack goes out (recorded), the pasted answer comes in with the pack's own sources */
   const output = async (o: { ago: number; node?: string; specId?: string; deliverableId?: string; title: string; markdown: string; request?: string }) => {
@@ -180,9 +181,11 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   await dependsOn('emergRule', 'fixedCost');
   await dependsOn('emergNow', 'emergRule');
 
-  await metric('sleep', 'ساعت خواب شبانه', 'ساعت', 'up', 7.5);
-  await metric('fund', 'موجودی صندوق اضطراری', 'میلیون تومان', 'up', 192);
-  await metric('run', 'دویدن در هفته', 'کیلومتر', 'up', 15);
+  await know('sleepAvg', 'fit', 'Fact', 'ساعت خواب شبانه', 'میانگین ساعت‌هایی که هر شب واقعاً می‌خوابم، هفته به هفته.', { facets: ['سلامت'] });
+  await know('runWeek', 'run', 'Fact', 'دویدن در هفته', 'کیلومترهایی که هر هفته می‌دوم، از همهٔ صبح‌ها با هم.', { facets: ['سلامت'] });
+  await metric('sleep', 'sleepAvg', 'ساعت', 'up', 7.5, 'week');
+  await metric('fund', 'emergNow', 'میلیون تومان', 'up', 192, 'month');
+  await metric('run', 'runWeek', 'کیلومتر', 'up', 15, 'week');
 
   at(50, 21, 0);
   await know('mom1', 'mom', 'Fact', 'قرص‌های مادر', 'مادر هر صبح یک قرص فشار می‌خورد؛ دکترش دکتر رحیمی است و نوبتش هر سه ماه.', { facets: ['خانواده', 'سلامت'] });
