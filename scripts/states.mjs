@@ -80,7 +80,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   // partial: the same space with one truth
   await page.keyboard.press('Control+KeyK'); await page.getByRole('combobox').fill('افزودن حقیقت'); await page.waitForTimeout(250);
   await page.getByRole('option').first().click(); await page.waitForTimeout(600);
-  await page.getByRole('dialog').getByLabel('چه چیزی درست است؟').fill('جلسهٔ هفتگی تیم دوشنبه‌ها ساعت ده است.');
+  await page.getByRole('dialog').getByLabel(/^(چه چیزی درست است؟|متن|متن پیش‌نویس)$/).fill('جلسهٔ هفتگی تیم دوشنبه‌ها ساعت ده است.');
   await page.getByRole('dialog').getByRole('button', { name: 'افزودن', exact: true }).evaluate((b) => b.click());
   await page.waitForTimeout(800);
   await views('partial');

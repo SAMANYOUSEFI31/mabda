@@ -192,7 +192,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [validUntil, setValidUntil] = useState(object?.validUntil ?? '');
   const [facets, setFacets] = useState<string[]>(object?.facets ?? []);
   const [examples, setExamples] = useState<RedlineExample[]>(object?.examples ?? []); // the draft's examples come with «ادامهٔ ویرایش پیش‌نویس»
-  const continueDraft = () => { if (!object?.draft) return; setContent(object.draft.content); setTitle(object.draft.title ?? object.title); if (object.draft.examples) setExamples(object.draft.examples); setOnDraft(true); };
+  const continueDraft = () => {
+    if (!object?.draft) return;
+    setContent(object.draft.content); setTitle(object.draft.title ?? object.title); if (object.draft.examples) setExamples(object.draft.examples); setOnDraft(true);
+    setTimeout(() => { const el = document.getElementById('context-content') as HTMLTextAreaElement | null; el?.focus({ preventScroll: true }); el?.scrollIntoView({ block: 'nearest' }); }, 30);
+  };
   const [facetDraft, setFacetDraft] = useState('');
   const [assumption, setAssumption] = useState(object?.assumption === true);
   const [reviewBy, setReviewBy] = useState(object?.reviewBy ?? '');
@@ -408,10 +412,28 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         {currentMonitor && onRecordNumber && (
           <MonitorPanel metric={{ ...currentMonitor, name: metricLabel(currentMonitor, allObjects) }} measurements={measurements} objects={allObjects} changes={workspaceChanges} onRecord={onRecordNumber} onConfirm={onConfirmNumber ?? (async () => {})} onRemove={onRemoveNumber ?? (async () => {})} content={content} onUseText={(t) => setContent(t)} />
         )}
+        {/* the waiting draft is said BEFORE the editor it is about: «ادامهٔ ویرایش پیش‌نویس» puts the draft right under this notice
+            and focuses it, so nothing changes out of sight (it sat under the editor, and the text changed above the fold; §۴۸) */}
+        {object?.draft && (
+          <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
+            <div className="flex flex-col gap-stack-sm">
+              <p className="body-sm text-text-default">{onDraft ? 'بالا پیش‌نویس را ویرایش می‌کنی. تا تأیید نشود، خروجی‌ها و بسته‌ها متنِ تأییدشده را می‌بینند.' : 'بالا متن تأییدشده است، همان که خروجی‌ها و بسته‌ها می‌بینند. پیش‌نویس در برابرش:'}</p>
+              {/* once she edits the draft the editor IS the draft: the before/after would show a text she is already changing */}
+              {!onDraft && <BeforeAfter before={object.content} after={object.draft.content} />}
+              <div className="flex flex-wrap gap-inline-sm">
+                {onApproveDraft && !approveMode && !onDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>جایگزینی</Button>}
+                {!onDraft && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={continueDraft}>ادامهٔ ویرایش پیش‌نویس</Button>}
+                {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد</Button>}
+              </div>
+            </div>
+          </Alert>
+        )}
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea
           id="context-content"
-          label={type === 'Fact' && assumption ? 'چه چیزی را فرض می‌کنی؟' : 'چه چیزی درست است؟'}
+          // the question opens a blank page; on an item that exists the field holds a text, so it is named like its neighbour
+          // «عنوان»: «متن», or «متن پیش‌نویس» while the draft is in the editor (decisions.md §۴۸)
+          label={isEditing ? (onDraft ? 'متن پیش‌نویس' : 'متن') : type === 'Fact' && assumption ? 'چه چیزی را فرض می‌کنی؟' : 'چه چیزی درست است؟'}
           required
           error={contentError || undefined}
           rows={isEditing ? 5 : 6}
@@ -479,19 +501,6 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               hint="مورد قبلی پاک نمی‌شود؛ با رابطهٔ «جایگزین کرد» در تاریخچه می‌ماند."
             />
           </Card>
-        )}
-        {object?.draft && (
-          <Alert intent="info" title="یک تغییر در انتظار تأیید داری">
-            <div className="flex flex-col gap-stack-sm">
-              <p className="body-sm text-text-default">{onDraft ? 'بالا پیش‌نویس را ویرایش می‌کنی. تا تأیید نشود، خروجی‌ها و بسته‌ها متنِ تأییدشده را می‌بینند.' : 'بالا متن تأییدشده است، همان که خروجی‌ها و بسته‌ها می‌بینند. پیش‌نویس در برابرش:'}</p>
-              <BeforeAfter before={object.content} after={object.draft.content} />
-              <div className="flex flex-wrap gap-inline-sm">
-                {onApproveDraft && !approveMode && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>جایگزینی</Button>}
-                {!onDraft && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={continueDraft}>ادامهٔ ویرایش پیش‌نویس</Button>}
-                {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد</Button>}
-              </div>
-            </div>
-          </Alert>
         )}
         {confirmedEdit && textChanged && (
           <div className="flex flex-col gap-stack-xs" data-testid="draft-choice">

@@ -148,6 +148,14 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <h2 className="heading-sm text-text-default">منتظر تو ({formatNumber(view.waiting.length)})</h2>
             {previewItems.length > 0 && <Menu label="اگر همه را تأیید کنم" align="end" trigger={<Button size="sm" variant="ghost" iconStart="Eye">اگر همه را تأیید کنم</Button>} items={previewItems} />}
           </div>
+          {/* three kinds of decision wait here, each under its own sub-heading in the same style («پیشنهادها» had one, the
+              rewrites and the reviews did not; decisions.md §۴۸). The name «منتظر تو» stays: it holds more than proposals */}
+          {drafts.length > 0 && (
+            <div className="flex flex-col gap-stack-xs">
+              <h3 className="headline text-text-default">تغییرها ({formatNumber(drafts.length)})</h3>
+              <p className="body-sm text-text-subtle">متن تازه برای حقیقتی که هست. تا تأیید نشود، خروجی‌ها و بسته‌ها همان متن تأییدشده را می‌بینند.</p>
+            </div>
+          )}
           {drafts.map((o) => (
             <Card key={o.id} padding="md" knowledge="proposed" className="flex flex-col gap-stack-sm" aria-label={`تغییر در انتظار تأیید: ${o.title}`}>
               <div className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -156,7 +164,6 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
               {reasonOf(o.id) && <p className="body-sm text-text-subtle">{reasonOf(o.id)}</p>}
               <BeforeAfter before={o.content} after={o.draft!.content} />
               {o.draft!.reason && <p className="body-sm text-text-default"><span className="label-sm text-text-subtle">دلیل: </span>{o.draft!.reason}</p>}
-              <p className="body-sm text-text-subtle">تا تأیید نشود، خروجی‌ها و بسته‌ها همان متن تأییدشده را می‌بینند.</p>
               <div className="flex flex-wrap gap-inline-sm">
                 <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void p.onApproveDraft(o.id)}>جایگزینی</Button>
                 {/* the same three, in the same order, as every waiting proposal: decide, change, refuse (§۳۸) */}
@@ -166,6 +173,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             </Card>
           ))}
           {proposalsHere.length > 0 && <ProposalInbox {...p.proposals} objects={proposalsHere} nodes={p.nodes} keepOrder nested hints={proposalHints} />}
+          {reviews.length > 0 && <h3 className="headline text-text-default">نیاز به بازبینی ({formatNumber(reviews.length)})</h3>}
           {reviews.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="نیاز به بازبینی">
               {reviews.map((o) => (
