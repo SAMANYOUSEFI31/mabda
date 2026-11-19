@@ -38,7 +38,12 @@ export function aboutOf(text: string, objects: Pick<ContextObject, 'id' | 'title
 }
 
 /** the same line without its trailing `@«…»` tokens (for showing the sentence and the targets apart) */
-export const stripAbout = (text: string): string => text.replace(TOKEN, '').replace(/\s{2,}/g, ' ').trim();
+export const stripAbout = (text: string): string => {
+  // only the trailing run is the «دربارهٔ» list; a name inside the sentence is part of it and stays, as «name»
+  let t = text.trimEnd();
+  for (let m = /\s*@«[^»\n]+»[\s،,]*$/.exec(t); m; m = /\s*@«[^»\n]+»[\s،,]*$/.exec(t)) t = t.slice(0, m.index);
+  return t.replace(TOKEN, '«$1»').replace(/\s{2,}/g, ' ').trim();
+};
 
 /** does a thought belong in the view of this section? its home, a section it names, or the section of a piece of knowledge it names */
 export function thoughtInScope(item: { nodeId: string; text: string; aboutNodeIds?: string[]; aboutObjectIds?: string[] }, scope: Set<string>, objects: ContextObject[], nodes: TreeNode[]): boolean {
