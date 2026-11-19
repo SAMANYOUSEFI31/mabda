@@ -92,3 +92,12 @@ test('versionTexts: a creation record without text — the first version\'s text
   ]);
   assert.deepEqual(v.map((x) => [x.version, x.title, x.content]), [[1, 'عنوان', 'یک'], [2, 'عنوان', 'دو']]);
 });
+
+test('versionTexts: an edit that does not carry the text (only the type) keeps the first version\'s text — learnt from a later edit', () => {
+  const v = versionTexts([
+    ch('c1', { kind: 'created', fromVersion: 0, toVersion: 1, at: '2026-01-01T00:00:00Z', after: { type: 'Fact', title: 'عنوان', status: 'Confirmed' } }),
+    ch('c2', { fromVersion: 1, toVersion: 2, at: '2026-01-02T00:00:00Z', before: { type: 'Fact' }, after: { type: 'Decision' } }),
+    ch('c3', { fromVersion: 2, toVersion: 3, at: '2026-01-03T00:00:00Z', before: { content: 'یک' }, after: { content: 'دو' } }),
+  ]);
+  assert.deepEqual(v.map((x) => [x.version, x.content]), [[1, 'یک'], [2, 'یک'], [3, 'دو']]);
+});
