@@ -57,7 +57,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
           <p className="text-body-sm text-pretty text-text-subtle">هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.</p>
         </div>
         {/* the page's one outward step (the same quiet secondary as on Home); the rest are occasional and stay in «بیشتر» */}
-        <div className="flex flex-wrap items-center gap-inline-sm">
+        <div className="flex shrink-0 items-center gap-inline-sm">
           {live.length > 0 && requestButton}
           <Menu
             label="بیشتر"

@@ -39,7 +39,7 @@ export interface MonitorDraft {
 
 export const monitorDraftOf = (m: Metric | undefined, linkId = ''): MonitorDraft => ({
   on: !!m || !!linkId, linkId, unit: m?.unit ?? '', cadence: m ? m.cadence ?? '' : 'week', direction: m?.direction ?? 'up',
-  target: m?.target !== undefined ? String(m.target) : '', first: '',
+  target: m?.target !== undefined ? formatNumber(m.target, 2) : '', first: '',
 });
 
 /** the draft is valid when it is off, or its numbers parse */
@@ -113,8 +113,8 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
       <div className="flex flex-col gap-stack-xs">
         <h3 className="title text-text-default">{MX.monitorTitle}{metric.cadence ? ` · ${CADENCE_FA[metric.cadence]}` : ''}</h3>
         <p className="body-md text-text-default" data-testid="monitor-last">
-          {last ? `${MX.last}: ${formatNumber(last.value)}${unit} · ${formatJalaliDate(last.at)}` : MX.noNumbers}
-          {metric.target !== undefined ? ` · ${MX.targetLine}: ${formatNumber(metric.target)}${unit}` : ''}
+          {last ? `${MX.last}: ${formatNumber(last.value, 2)}${unit} · ${formatJalaliDate(last.at)}` : MX.noNumbers}
+          {metric.target !== undefined ? ` · ${MX.targetLine}: ${formatNumber(metric.target, 2)}${unit}` : ''}
         </p>
       </div>
       {series.length > 0 && <MetricChart metric={metric} series={series} decisions={moments} focusIds={rows.map((r) => r.decision.id)} today={tehranDay()} />}
@@ -122,8 +122,8 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
         <ul className="flex flex-col gap-stack-xs" aria-label={MX.expectationsTitle}>
           {rows.map((r) => (
             <li key={r.decision.id} className="body-sm text-text-default">
-              {expectationSentence({ metric: metric.name, direction: r.expectation.direction, ...(r.expectation.targetValue !== undefined ? { target: formatNumber(r.expectation.targetValue) } : {}), unit: metric.unit, by: formatJalaliDate(r.expectation.by) })}{' '}
-              {afterSentence({ decision: r.decision.title, ...(r.reading.before ? { before: formatNumber(r.reading.before.value) } : {}), ...(r.reading.after ? { after: formatNumber(r.reading.after.value) } : {}), unit: metric.unit })}
+              {expectationSentence({ metric: metric.name, direction: r.expectation.direction, ...(r.expectation.targetValue !== undefined ? { target: formatNumber(r.expectation.targetValue, 2) } : {}), unit: metric.unit, by: formatJalaliDate(r.expectation.by) })}{' '}
+              {afterSentence({ decision: r.decision.title, ...(r.reading.before ? { before: formatNumber(r.reading.before.value, 2) } : {}), ...(r.reading.after ? { after: formatNumber(r.reading.after.value, 2) } : {}), unit: metric.unit })}
             </li>
           ))}
         </ul>
@@ -132,7 +132,7 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
         <ul className="flex flex-col gap-stack-xs" aria-label="عددهای پیشنهادی">
           {proposed.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
-              <span className="body-sm text-text-default">پیشنهاد: {formatNumber(p.value)}{unit} · {formatJalaliDate(p.at)} (تا تأیید نکنی در نمودار و بسته نمی‌آید)</span>
+              <span className="body-sm text-text-default">پیشنهاد: {formatNumber(p.value, 2)}{unit} · {formatJalaliDate(p.at)} (تا تأیید نکنی در نمودار و بسته نمی‌آید)</span>
               <span className="flex gap-inline-xs">
                 <Button type="button" size="sm" variant="secondary" loading={busy === `c${p.id}`} onClick={() => void run(`c${p.id}`, () => onConfirm(p.id))}>تأیید عدد</Button>
                 <Button type="button" size="sm" variant="ghost" loading={busy === `r${p.id}`} onClick={() => void run(`r${p.id}`, () => onRemove(p.id))}>حذف</Button>

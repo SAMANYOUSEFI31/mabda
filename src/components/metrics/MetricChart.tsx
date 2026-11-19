@@ -49,7 +49,7 @@ export const MetricChart: React.FC<Props> = ({ metric, series, decisions, focusI
   return (
     <figure className="flex flex-col gap-stack-xs">
       <div className="relative">
-        <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`${metric.name}: ${formatNumber(series.length)} عدد؛ آخرین ${formatNumber(last.value)}${unit} در ${formatJalaliDate(last.at)}`}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={`${metric.name}: ${formatNumber(series.length)} عدد؛ آخرین ${formatNumber(last.value, 2)}${unit} در ${formatJalaliDate(last.at)}`}>
           {metric.target !== undefined && <line x1={PAD} x2={W - PAD} y1={y(metric.target)} y2={y(metric.target)} className="stroke-border-success" strokeWidth={1.5} strokeDasharray="6 4" vectorEffect="non-scaling-stroke" />}
           {others.map((d) => <line key={d.id} x1={x(t(d.at))} x2={x(t(d.at))} y1={PAD} y2={H - PAD} className="stroke-border-default" strokeWidth={1} strokeDasharray="2 4" vectorEffect="non-scaling-stroke" />)}
           {focus.map((d) => <line key={d.id} x1={x(t(d.at))} x2={x(t(d.at))} y1={PAD} y2={H - PAD} className="stroke-border-info" strokeWidth={2} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />)}
@@ -59,7 +59,7 @@ export const MetricChart: React.FC<Props> = ({ metric, series, decisions, focusI
       </div>
       <figcaption className="body-sm text-text-subtle">
         {MX.chartNote}
-        {metric.target !== undefined && <> · {MX.targetLine}: {formatNumber(metric.target)}{unit}</>}
+        {metric.target !== undefined && <> · {MX.targetLine}: {formatNumber(metric.target, 2)}{unit}</>}
         {inRange.length > 0 && <> · {formatNumber(inRange.length)} تصمیم روی خط زمان</>}
       </figcaption>
       {focus.length > 0 && (

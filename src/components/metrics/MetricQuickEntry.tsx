@@ -57,7 +57,7 @@ export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objec
               inputMode="decimal"
               value={vals[m.id] ?? ''}
               onChange={(e) => setVals((v) => ({ ...v, [m.id]: e.target.value }))}
-              hint={last ? `آخرین: ${formatNumber(last.value)} · ${formatJalaliDate(last.at)}` : undefined}
+              hint={last ? `آخرین: ${formatNumber(last.value, 2)} · ${formatJalaliDate(last.at)}` : undefined}
               error={bad.some((b) => b.m.id === m.id) ? 'عدد معتبر بنویس.' : undefined}
             />
           );

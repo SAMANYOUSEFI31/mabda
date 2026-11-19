@@ -71,8 +71,8 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                 {o.record?.expectation && <p className="body-sm text-text-subtle">انتظار ما: {o.record.expectation}</p>}
                 {ex && m && (
                   <>
-                    <p className="body-sm text-text-default">{expectationSentence({ metric: m.name, direction: ex.expectation.direction, target: ex.expectation.targetValue !== undefined ? formatNumber(ex.expectation.targetValue) : undefined, unit: m.unit, by: formatJalaliDate(ex.expectation.by) })}</p>
-                    <p className="body-sm text-text-subtle">{afterSentence({ decision: o.title, before: ex.reading.before ? formatNumber(ex.reading.before.value) : undefined, after: ex.reading.after ? formatNumber(ex.reading.after.value) : undefined, unit: m.unit })}</p>
+                    <p className="body-sm text-text-default">{expectationSentence({ metric: m.name, direction: ex.expectation.direction, target: ex.expectation.targetValue !== undefined ? formatNumber(ex.expectation.targetValue, 2) : undefined, unit: m.unit, by: formatJalaliDate(ex.expectation.by) })}</p>
+                    <p className="body-sm text-text-subtle">{afterSentence({ decision: o.title, before: ex.reading.before ? formatNumber(ex.reading.before.value, 2) : undefined, after: ex.reading.after ? formatNumber(ex.reading.after.value, 2) : undefined, unit: m.unit })}</p>
                   </>
                 )}
                 <Textarea label={ex ? `${MX.verdictQuestion} (یادداشت اختیاری)` : MX.verdictQuestion} rows={2} value={note} onChange={(e) => setText((tt) => ({ ...tt, [o.id]: e.target.value }))} />
