@@ -325,3 +325,22 @@ test('showcase thinking: one confirmed knowledge has an unapproved rewrite — i
   assert.ok(r.markdown.includes(o.content) || !r.included.some((i) => i.id === o.id), 'the approved text is what a request carries');
   assert.ok(!r.markdown.includes(o.draft!.content), 'the draft text is nowhere in a request');
 });
+
+test('a replacement in the sample follows the product supersede path: version = replaced + 1, «created» names what it replaces, no dependency left on the replaced item', () => {
+  const d = buildDemo(new Date('2026-11-19T10:00:00Z'));
+  const byId = new Map(d.objects.map((o) => [o.id, o]));
+  const replaced = d.objects.filter((o) => o.status === 'Superseded' && o.supersededById);
+  assert.ok(replaced.length >= 4);
+  for (const old of replaced) {
+    const next = byId.get(old.supersededById!)!;
+    const born = d.changes.find((c) => c.objectId === next.id && (c.kind === 'created' || c.kind === 'imported'))!;
+    assert.equal(born.toVersion, old.version + 1, `${next.id} starts after ${old.id}`);
+    assert.equal(born.fromVersion, old.version);
+    assert.equal((born.after as { supersedes?: string }).supersedes, old.id);
+    const gone = d.changes.find((c) => c.objectId === old.id && c.kind === 'superseded')!;
+    assert.equal(gone.toVersion, born.toVersion);
+    assert.ok(!d.relationships.some((r) => r.type === 'depends_on' && (r.sourceId === old.id || r.targetId === old.id)), `${old.id} keeps no dependency`);
+  }
+  assert.equal(byId.get('dm_eth_new')!.version, 2);
+  assert.equal(byId.get('dm_day4')!.version, 4);
+});
