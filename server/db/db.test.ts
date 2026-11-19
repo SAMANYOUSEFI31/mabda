@@ -673,9 +673,7 @@ test('«پایش» follows its truth: «جایگزین کن» carries the monito
   assert.equal(repo.getMetric(s, m.id), undefined);
   assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 0);
   assert.equal(repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).length, 0);
-  const tables = (repo.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>).map((t) => t.name);
   for (const t of ['metrics', 'measurements', 'context_changes']) {
-    assert.ok(tables.includes(t));
     const rows = repo.db.prepare(`SELECT * FROM "${t}"`).all();
     assert.ok(!JSON.stringify(rows).includes('صندوق محرمانهٔ تازه'), `${t} keeps no trace of the title`);
   }
