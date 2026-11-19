@@ -155,7 +155,9 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               onOpenThinking={() => openThinkingSpace()}
               recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
               allOpen={homeAllOpen}
-              onToggleAll={() => setHomeAllOpen((v) => !v)}
+              // the details are wide, so they open after the list AND its margin; when the margin runs longer, bring their top into
+              // view so opening never looks like nothing happened (§۴۴). Reduced motion: an instant jump
+              onToggleAll={() => setHomeAllOpen((v) => { if (!v) setTimeout(() => document.getElementById('home-all')?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 60); return !v; })}
               more={homeAll || undefined}
               notice={inheritNotice}
             />

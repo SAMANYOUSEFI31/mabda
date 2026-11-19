@@ -135,14 +135,14 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
               )} />
             </>
           )}
+          {/* the notice and the toggle follow the last item in the reading column, next to the list they belong to, not under the
+              (often taller) margin: at 1440 with a short list the toggle sat ~200px below the last item (§۴۴). What it opens is
+              wide (rows with two buttons), so it takes the page width right after the list and margin */}
+          {notice}
+          <div><Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button></div>
         </div>
       </MarginItem>
     </MarginList>
-    {notice}
-    {/* after the to-do AND its (often taller) margin, so what it opens comes right under it, at the page's full width (§۴۴) */}
-    <div>
-      <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button>
-    </div>
     {more}
     </>
   );
