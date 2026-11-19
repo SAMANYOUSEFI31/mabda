@@ -39,7 +39,6 @@ export function registerPacksRoutes(ctx: RouteContext): void {
     if (!isRequestKind(b.kind)) throw new RepoError('invalid', 'نوع کار نامعتبر است.');
     const request = typeof b.request === 'string' ? b.request.trim() : '';
     const record = b.record === true;
-    if (record && !request) throw new RepoError('invalid', 'درخواست را یک خط بنویس.');
     if (b.thoughtIds !== undefined && (!Array.isArray(b.thoughtIds) || b.thoughtIds.some((id: unknown) => typeof id !== 'string'))) {
       throw new RepoError('invalid', 'فهرست فکرهای انتخاب‌شده معتبر نیست.');
     }
@@ -53,10 +52,20 @@ export function registerPacksRoutes(ctx: RouteContext): void {
       extraIds: Array.isArray(b.extraIds) ? b.extraIds.filter((x): x is string => typeof x === 'string').slice(0, 200) : undefined, packId: wanted,
       thoughtIds,
     }, clock());
-    if (record && !repo.getPack(s, wanted)) repo.savePack(s, { title: `${KIND_LABEL[b.kind]} — ${request.slice(0, 60)}`, refs: r.refs, tokens: r.tokens }, wanted);
+    // the line is optional (decisions.md §۲۴): without it the record is named by where it is about, like a saved pack is
+    const scopeIds = Array.isArray(b.scopeNodeIds) ? b.scopeNodeIds.filter((x): x is string => typeof x === 'string').slice(0, 40) : typeof b.scopeNodeId === 'string' && b.scopeNodeId ? [b.scopeNodeId] : [];
+    const where = scopeIds.length ? scopeIds.map((id) => repo.listNodes(s).find((n) => n.id === id)?.label ?? '').filter(Boolean).join('، ').slice(0, 60) : `کل ${ws.name}`;
+    // what was asked, kept with the record so «درخواست دوباره» opens the same request (kind, line, sections), not an empty one
+    const spec = { kind: b.kind, request, scopeNodeIds: scopeIds, withChildren: typeof b.withChildren === 'boolean' ? b.withChildren : undefined, extraIds: Array.isArray(b.extraIds) ? b.extraIds.filter((x): x is string => typeof x === 'string').slice(0, 200) : [] };
+    if (record && !repo.getPack(s, wanted)) repo.savePack(s, { title: `${KIND_LABEL[b.kind]} — ${(request || where).slice(0, 60)}`, refs: r.refs, tokens: r.tokens, request: spec }, wanted);
     res.json({ ...r, packId: wanted, recorded: record });
   }));
   router.get('/workspaces/:wid/packs', wrap((req, res) => { res.json({ packs: repo.listPacks(scopeOf(req)) }); }));
+  router.get('/workspaces/:wid/packs/:id', wrap((req, res) => {
+    const p = repo.getPack(scopeOf(req), req.params.id);
+    if (!p) throw new RepoError('not_found', 'این بسته پیدا نشد.');
+    res.json({ pack: p });
+  }));
 
   /** pasted answer → blocks: headings first (free, instant), the cheap decision layer only when there are none */
   router.post('/workspaces/:wid/imports/parse', wrap(async (req, res) => {

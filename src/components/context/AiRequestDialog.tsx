@@ -30,6 +30,10 @@ interface Props {
   initialKind?: RequestKind;
   initialRequest?: string;
   initialThoughtIds?: string[];
+  /** «درخواست دوباره»: the sections, the sub-section switch and the hand-added items of the request the output came from */
+  initialScopes?: string[];
+  initialWithChildren?: boolean;
+  initialExtraIds?: string[];
   thoughts?: NoteThinkingItem[];
   onClose: () => void;
   onOpenImport: () => void;
@@ -56,7 +60,7 @@ export const AiRequestDialog: React.FC<Props> = (props) => (props.open ? <Inner 
 
 const MODE_OF: Record<RequestKind, 'discovery' | 'audit' | 'advisor'> = { question: 'discovery', audit: 'audit', draft: 'discovery', decision: 'advisor', change_review: 'audit', free: 'discovery' };
 
-const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, initialRequest, initialThoughtIds, thoughts = [], onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onSaveAsThought, onOpenObject }) => {
+const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, initialRequest, initialThoughtIds, initialScopes, initialWithChildren, initialExtraIds, thoughts = [], onClose, onOpenImport, sessions, onSaveSession, onAnswered, onAddKnowledge, onSaveAsThought, onOpenObject }) => {
   const toast = useToast();
   const ai = useAiStatus();
   const [answer, setAnswer] = useState<{ blocks: ContentBlock[]; text: string; streaming: boolean } | null>(null);
@@ -65,10 +69,10 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
   const [kind, setKind] = useState<RequestKind>(initialKind ?? 'question');
   const [request, setRequest] = useState(initialRequest ?? '');
   /** «درباره کجا؟»: one or more sections (none = the whole space). A saved pack is this same selection with a name (decisions.md §۲۴) */
-  const [scopes, setScopes] = useState<string[]>(() => scopeNodeId ? [scopeNodeId] : []);
+  const [scopes, setScopes] = useState<string[]>(() => initialScopes?.length ? initialScopes.filter((id) => nodes.some((n) => n.id === id)) : scopeNodeId ? [scopeNodeId] : []);
   /** the same switch as a saved pack's: the sub-sections of the section are read too (src/core/packScope.ts) */
-  const [withChildren, setWithChildren] = useState(!initialThoughtIds?.length);
-  const [extraIds, setExtraIds] = useState<string[]>([]);
+  const [withChildren, setWithChildren] = useState(initialWithChildren ?? !initialThoughtIds?.length);
+  const [extraIds, setExtraIds] = useState<string[]>(initialExtraIds ?? []);
   const [thoughtIds] = useState(initialThoughtIds ?? []);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +125,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       const r = await dataApi.aiRequest(workspaceId, { kind, request, ...requestScope, extraIds, thoughtIds, packId, record: true });
       try { await navigator.clipboard.writeText(r.markdown); } catch { const ta = document.createElement('textarea'); ta.value = r.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
       setResult(r); setCopied(true); track('action.ai-copy');
-      toast.show({ intent: 'success', message: 'کپی شد. در هر ابزاری که می‌خواهی بچسبان؛ جوابش را که گرفتی، «وارد کردن پاسخ ابزار دیگر» را بزن.' });
+      toast.show({ intent: 'success', message: 'کپی شد. در هر ابزاری که می‌خواهی بچسبان؛ جوابش را که گرفتی، در «خروجی‌ها» «وارد کردن پاسخ» را بزن.' });
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'کپی نشد؛ دوباره.' }); } finally { setBusy(null); }
   };
   /** «همین‌جا جواب بده» uses Mabda's platform AI route; failures stay explicit and retryable. */

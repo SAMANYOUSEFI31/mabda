@@ -8,17 +8,23 @@ import { RepoError, Scope, cleanFacets, newId, now, claimId } from './shared.ts'
 import { REQUEST_MAX_CHARS, isRequestKind } from '../../../src/core/aiRequest.ts';
 import type { PackSelection, SavedPack } from '../../../src/types/index.ts';
 
+/** what an «درخواست برای ابزار دیگر» asked (kept on its record so «درخواست دوباره» reopens the same request) */
+export interface PackRequest { kind: string; request: string; scopeNodeIds: string[]; withChildren?: boolean; extraIds?: string[] }
+const parseRequest = (raw: string): PackRequest | undefined => {
+  try { const v = JSON.parse(raw) as PackRequest; return v && typeof v === 'object' && isRequestKind(v.kind) ? v : undefined; } catch { return undefined; }
+};
+
 export const packsMethods = {
-  savePack(this: Repo, s: Scope, p: { title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number }, id: string = newId('pack')): { id: string; createdAt: string } {
+  savePack(this: Repo, s: Scope, p: { title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number; request?: PackRequest }, id: string = newId('pack')): { id: string; createdAt: string } {
     const createdAt = now();
-    this.db.prepare('INSERT INTO context_packs (id, user_id, workspace_id, title, spec_id, deliverable_id, refs, tokens, created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-      .run(id, s.userId, s.workspaceId, p.title, p.specId ?? null, p.deliverableId ?? null, JSON.stringify(p.refs), p.tokens, createdAt);
+    this.db.prepare('INSERT INTO context_packs (id, user_id, workspace_id, title, spec_id, deliverable_id, refs, tokens, created_at, request) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run(id, s.userId, s.workspaceId, p.title, p.specId ?? null, p.deliverableId ?? null, JSON.stringify(p.refs), p.tokens, createdAt, p.request ? JSON.stringify(p.request) : null);
     return { id, createdAt };
   },
 
-  getPack(this: Repo, s: Scope, id: string): { id: string; title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number; createdAt: string } | undefined {
+  getPack(this: Repo, s: Scope, id: string): { id: string; title: string; specId?: string; deliverableId?: string; refs: Array<{ id: string; version: number }>; tokens: number; createdAt: string; request?: PackRequest } | undefined {
     const r = this.db.prepare('SELECT * FROM context_packs WHERE id = ? AND workspace_id = ? AND user_id = ?').get(id, s.workspaceId, s.userId) as Record<string, unknown> | undefined;
-    return r ? { id: r.id as string, title: r.title as string, ...(r.spec_id ? { specId: r.spec_id as string } : {}), ...(r.deliverable_id ? { deliverableId: r.deliverable_id as string } : {}), refs: JSON.parse(r.refs as string), tokens: r.tokens as number, createdAt: r.created_at as string } : undefined;
+    return r ? { id: r.id as string, title: r.title as string, ...(r.spec_id ? { specId: r.spec_id as string } : {}), ...(r.deliverable_id ? { deliverableId: r.deliverable_id as string } : {}), refs: JSON.parse(r.refs as string), tokens: r.tokens as number, createdAt: r.created_at as string, ...(r.request ? { request: parseRequest(r.request as string) } : {}) } : undefined;
   },
 
   listPacks(this: Repo, s: Scope, limit = 10) {

@@ -25,7 +25,7 @@ export function ContextDialogs({ ai, aiRequest, attempt, data, handleDraftFromIm
     <>
     <Deferred when={isPacksOpen}><SavedPacksDialog open={isPacksOpen} workspaceId={wid} nodes={nodes} objects={workspaceContexts} onClose={() => setIsPacksOpen(false)} onOpenObject={(o) => openContext(o)} /></Deferred>
     <Deferred when={!!aiRequest}><AiRequestDialog
-      open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} initialThoughtIds={aiRequest?.thoughtIds} thoughts={thinking} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
+      open={!!aiRequest} workspaceId={wid} nodes={nodes} scopeNodeId={aiRequest?.scopeNodeId} initialKind={aiRequest?.kind} initialRequest={aiRequest?.request} initialThoughtIds={aiRequest?.thoughtIds} initialScopes={aiRequest?.scopeNodeIds} initialWithChildren={aiRequest?.withChildren} initialExtraIds={aiRequest?.extraIds} thoughts={thinking} onClose={() => setAiRequest(null)} onOpenImport={() => setIsImportOpen(true)}
       sessions={data?.sessions ?? []}
       onSaveSession={(sess: ChatSession) => { void attempt(() => dataApi.saveSession(wid, sess)).then((r) => { if (r) patch((d) => ({ ...d, sessions: d.sessions.some((x) => x.id === sess.id) ? d.sessions.map((x) => (x.id === sess.id ? sess : x)) : [sess, ...d.sessions] })); }); }}
       onAnswered={(res) => { handleIncrementChatCount(); void handleRecordChatUsage(res, false); }}

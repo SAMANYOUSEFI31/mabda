@@ -103,6 +103,7 @@
  "POST /workspaces/:wid/packs",
  "POST /workspaces/:wid/ai-requests",
  "GET /workspaces/:wid/packs",
+ "GET /workspaces/:wid/packs/:id",
  "POST /workspaces/:wid/imports/parse",
  "GET /workspaces/:wid/usage",
  "POST /usage",

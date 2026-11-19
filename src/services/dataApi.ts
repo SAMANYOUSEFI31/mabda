@@ -253,6 +253,7 @@ export const dataApi = {
     call<{ result: CoachResultInfo; quota: CoachQuota; ledger: LedgerEntry[] }>('POST', `${ws(id)}/coach`, input),
 
   createPack: (id: string, input: { specId?: string; deliverableId?: string; nodeId?: string }) => call<PackInfo>('POST', `${ws(id)}/packs`, input),
+  getPack: (id: string, packId: string) => call<{ pack: { id: string; title: string; request?: { kind: import('../core/aiRequest').RequestKind; request: string; scopeNodeIds: string[]; withChildren?: boolean; extraIds?: string[] } } }>('GET', `${ws(id)}/packs/${encodeURIComponent(packId)}`).then((r) => r.pack),
   listPacks: (id: string) => call<{ packs: Array<{ id: string; title: string; tokens: number; createdAt: string }> }>('GET', `${ws(id)}/packs`).then((r) => r.packs),
   parseImport: (id: string, input: { text: string; packId?: string }) => call<ImportParseResult>('POST', `${ws(id)}/imports/parse`, input),
 
