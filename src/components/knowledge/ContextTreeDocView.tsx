@@ -206,7 +206,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                   <p className="flex items-start gap-inline-sm body-md text-text-subtle"><Nuqta state="gap" className="mt-space-1" /><span>هنوز حقیقتی اینجا نیست{node.description ? `: ${node.description}` : ''}.</span></p>
                 ) : (
                   <>
-                    <MarginList>{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
+                    <MarginList className="mb-margin--inline">{(showAllIn.has(node.id) ? established : established.slice(0, 4)).map(card)}</MarginList>
                     {established.length > 4 && <div><Button size="sm" variant="ghost" iconStart={showAllIn.has(node.id) ? 'ChevronUp' : 'ChevronDown'} aria-expanded={showAllIn.has(node.id)} onClick={() => toggleAll(node.id)}>{showAllIn.has(node.id) ? 'فقط چند مورد' : `همهٔ ${formatNumber(established.length)} مورد`}</Button></div>}
                   </>
                 )}

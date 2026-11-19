@@ -606,9 +606,16 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-margin__icon{flex:none;margin-block-start:var(--space-0\.5);color:var(--icon-subtle)}
 }
 @container mb-margin (min-width: 58.5rem){
-  .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) var(--container-margin);column-gap:var(--space-12)}
+  /* the margin hugs the frame's end edge, so it ends where the page header's actions end (one frame, both edges; §۴۴) */
+  .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) var(--container-margin);column-gap:var(--space-12);justify-content:space-between}
   .mb-margin__note{padding-inline-start:0;padding-block-start:calc(var(--space-3) + var(--space-0\.5))}
+  /* per-item engine notes in «ساختار» stay under their item at every width (§۴۴): a one-line truth leaves the side margin a
+     screen-width away from it, outside the reading path (proximity; the F scan of an RTL page runs down its start edge) */
+  .mb-margin--inline .mb-margin__row{grid-template-columns:minmax(0,var(--container-prose));justify-content:start}
+  .mb-margin--inline .mb-margin__note{padding-inline-start:var(--space-8);padding-block-start:0}
 }
+/* the reading frame of a page whose content is text and its margin (خانه، خروجی‌ها): header, hairlines and margin share its two edges */
+@layer components{ .mb-page-frame{max-inline-size:var(--container-doc)} }
 
 /* exits (motion.md «قاعدهٔ خروج»: one step below the entry; src/ui/presence.ts unmounts on animationend) */
 @layer components{

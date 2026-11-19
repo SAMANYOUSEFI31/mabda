@@ -52,7 +52,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
   };
   const requestButton = <Button variant="secondary" iconStart="PackageOpen" onClick={() => request()}>درخواست برای ابزار دیگر</Button>;
   return (
-    <div className="space-y-stack-lg">
+    <div className="mb-page-frame space-y-stack-lg">
       <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
         <div className="flex min-w-space-0 flex-col gap-stack-xs">
           <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
