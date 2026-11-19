@@ -111,7 +111,7 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
   const moments = useMemo(() => decisionMoments(objects, changes), [objects, changes]);
   const rows = useMemo(() => expectationRows(objects, [metric], measurements, changes, new Date()).filter((r) => r.expectation.metricId === metric.id), [objects, metric, measurements, changes]);
   const unit = metric.unit ? ` ${metric.unit}` : '';
-  const mismatch = content !== undefined ? textNumberMismatch(content, metric, last) : null;
+  const mismatch = content !== undefined ? textNumberMismatch(content, metric, last, series.at(-2)) : null;
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(''); } };
   const record = () => { if (n !== null) void run('rec', async () => { await onRecord(metric.id, n); setRaw(''); }); };
   return (

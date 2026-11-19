@@ -85,6 +85,15 @@ export interface TextMismatch {
   /** the same text with that amount replaced by the last recorded number: offered as a draft, never written by itself */
   replaced: string;
 }
+/** does the amount written at `f` equal `value` (in the monitor's unit, or its class)? */
+const amountAt = (content: string, f: { index: number; length: number }, unit: string, value: number): boolean => {
+  const span = toLatinDigits(content.slice(f.index, f.index + f.length));
+  const m = span.match(/\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?/);
+  if (m && near(Number(m[0].replace(/,/g, '')), value)) return true;
+  const want = quantitySpans(`${value} ${unit}`)[0];
+  const got = quantitySpans(span)[0];
+  return !!want && !!got && got.cls === want.cls && near(got.value, want.value);
+};
 const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
 /**
@@ -92,7 +101,7 @@ const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Mat
  * from the last confirmed number (owner decision, §۴۲): «متن عددی دارد که با آخرین عدد فرق دارد». Deterministic; no amount of
  * that unit in the text, or one that agrees, is not a mismatch.
  */
-export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>, last: Pick<Measurement, 'value'> | undefined): TextMismatch | null {
+export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>, last: Pick<Measurement, 'value'> | undefined, prev?: Pick<Measurement, 'value'>): TextMismatch | null {
   if (!last || !content.trim()) return null;
   const latin = toLatinDigits(content);
   const found: Array<{ index: number; length: number; agrees: boolean }> = [];
@@ -111,7 +120,11 @@ export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>
     }
   }
   if (found.length === 0 || found.some((f) => f.agrees)) return null;
-  const first = found.sort((a, b) => a.index - b.index)[0];
+  // one amount: it is the one. Several («سقف ۵۰ میلیون، موجودی ۱۲ میلیون»): only the one that still says the previous number is
+  // known to be the monitored one; with none, Mabda does not guess which to rewrite (and says nothing rather than something wrong)
+  found.sort((a, b) => a.index - b.index);
+  const first = found.length === 1 ? found[0] : prev ? found.find((f) => amountAt(content, f, unit, prev.value)) : undefined;
+  if (!first) return null;
   const written = content.slice(first.index, first.index + first.length);
   return { written, replaced: `${content.slice(0, first.index)}${formatNumber(last.value, 2)}${unit ? ` ${unit}` : ''}${content.slice(first.index + first.length)}` };
 }

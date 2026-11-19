@@ -199,6 +199,11 @@ test('«متن عددی دارد که با آخرین عدد فرق دارد»: 
   // a duration counts only in its own unit: «هر ۲ روز» is not a claim about hours of sleep
   assert.equal(textNumberMismatch('هر ۲ روز ورزش می‌کنم', { unit: 'ساعت' }, { value: 7.5 }), null);
   assert.equal(textNumberMismatch('حدود ۷ ساعت می‌خوابم', { unit: 'ساعت' }, { value: 7.5 })?.written, '۷ ساعت');
+  // several amounts of the unit (Gemini audit): the one that still says the previous number is replaced, never simply the first
+  const two = 'سقف صندوق ۵۰ میلیون تومان و موجودی فعلی ۱۲ میلیون تومان است.';
+  assert.equal(textNumberMismatch(two, fund, { value: 15 }, { value: 12 })?.replaced, 'سقف صندوق ۵۰ میلیون تومان و موجودی فعلی ۱۵ میلیون تومان است.');
+  assert.equal(textNumberMismatch(two, fund, { value: 15 }), null, 'which one is meant is unknown: no guess');
+  assert.equal(textNumberMismatch(two, fund, { value: 15 }, { value: 30 }), null, 'neither says the previous number: no guess');
 });
 
 test('«وصل کردن»: a truth she already has comes first when its title is like the number\'s name; monitored, assumed or archived ones are not offered', async () => {
