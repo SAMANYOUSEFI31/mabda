@@ -650,7 +650,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
             <div className="flex flex-wrap items-center gap-inline-sm">
               <Badge intent="neutral" icon={false}>نسخهٔ {formatNumber(object.version)}</Badge>
-              <span className="caption text-text-subtle">با هر ویرایش عنوان، متن یا نوع، شمارهٔ نسخه بالا می‌رود و دارایی‌هایی که از نسخهٔ قبلی ساخته شده‌اند «نیاز به بازبینی» می‌شوند.</span>
+              <span className="body-sm text-text-subtle">با هر ویرایش عنوان، متن یا نوع، شمارهٔ نسخه بالا می‌رود و خروجی‌هایی که از نسخهٔ قبلی ساخته شده‌اند «به‌روز نیست» می‌شوند.</span>
             </div>
           </div>
         )}

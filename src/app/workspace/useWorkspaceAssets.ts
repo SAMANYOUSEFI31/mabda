@@ -44,7 +44,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       plan: del.plan,
       id: clientId('led'),
     }));
-    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'دارایی با آخرین نسخهٔ دانش بازسازی شد.' });
+    if (kind === 'rebuild') toast.show({ intent: 'success', message: 'خروجی با آخرین نسخهٔ دانش بازسازی شد.' });
   };
 
   /** A finished chat turn: ledger row with real provider usage. */
@@ -76,7 +76,7 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
       rebuildCount: 0,
       createdAt: now,
     };
-    if (await persistDeliverable(asset)) toast.show({ intent: 'success', message: 'در کتابخانهٔ دارایی‌ها ذخیره شد (Markdown).' });
+    if (await persistDeliverable(asset)) toast.show({ intent: 'success', message: 'در خروجی‌ها ذخیره شد (Markdown).' });
   };
 
   const handleIncrementChatCount = () => {

@@ -13,14 +13,15 @@
 import { useMemo } from 'react';
 import { calculateReadinessAndGaps } from '../../core/contextEngine';
 import type { GeneratedDeliverable } from '../../types';
-import { Button, IconButton, Menu, useToast } from '../../ui';
+import { Button, EmptyState, IconButton, Menu, useToast } from '../../ui';
+import { useAiStatus } from '../../services/aiStatus';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const AssetLibrary = lazyNamed(() => import('../../components/outputs/AssetLibrary'), 'AssetLibrary');
 
-export type AssetsPageProps = Pick<ReadyScope, 'currentWorkspace' | 'data' | 'deliverables' | 'extractingAssetId' | 'focusAsset' | 'handleArchiveDeliverable' | 'handleDeleteDeliverable' | 'handleExtractFromAsset' | 'openContext' | 'setActiveTab' | 'setAiRequest' | 'setArchiveOpen' | 'setIsImportOpen' | 'setIsPacksOpen' | 'setPendingRebuild' | 'setSelectedSpecId' | 'specs' | 'stale' | 'workspaceContexts'>;
+export type AssetsPageProps = Pick<ReadyScope, 'currentWorkspace' | 'data' | 'deliverables' | 'extractingAssetId' | 'focusAsset' | 'handleArchiveDeliverable' | 'handleDeleteDeliverable' | 'handleExtractFromAsset' | 'openContext' | 'openSpecEditor' | 'setActiveTab' | 'setAiRequest' | 'setArchiveOpen' | 'setIsImportOpen' | 'setIsPacksOpen' | 'setIsSpecLibraryOpen' | 'setPendingRebuild' | 'setSelectedSpecId' | 'specs' | 'stale' | 'workspaceContexts'>;
 
 /** the request an output came from, to ask again from today's truth (a pasted answer keeps its request as its source label) */
 const requestOf = (d: GeneratedDeliverable): string => {
@@ -28,8 +29,9 @@ const requestOf = (d: GeneratedDeliverable): string => {
   return label && label !== 'نمونهٔ دستی' ? label : d.title;
 };
 
-export function AssetsPage({ currentWorkspace, data, deliverables, extractingAssetId, focusAsset, handleArchiveDeliverable, handleDeleteDeliverable, handleExtractFromAsset, openContext, setActiveTab, setAiRequest, setArchiveOpen, setIsImportOpen, setIsPacksOpen, setPendingRebuild, setSelectedSpecId, specs, stale, workspaceContexts }: AssetsPageProps) {
+export function AssetsPage({ currentWorkspace, data, deliverables, extractingAssetId, focusAsset, handleArchiveDeliverable, handleDeleteDeliverable, handleExtractFromAsset, openContext, openSpecEditor, setActiveTab, setAiRequest, setArchiveOpen, setIsImportOpen, setIsPacksOpen, setIsSpecLibraryOpen, setPendingRebuild, setSelectedSpecId, specs, stale, workspaceContexts }: AssetsPageProps) {
   const toast = useToast();
+  const { managedEnabled } = useAiStatus();
   const live = deliverables.filter((d) => d.workspaceId === currentWorkspace.id && !d.archivedAt);
   // «این خروجی به چه حقیقت‌هایی نیاز دارد و کدام کم است»: the required gaps of the recipe it was made from (deterministic)
   const missing = useMemo(() => {
@@ -73,6 +75,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
           />
         </div>
       </div>
+      {managedEnabled && <FrozenBuild specs={specs} openSpecEditor={openSpecEditor} setIsSpecLibraryOpen={setIsSpecLibraryOpen} setSelectedSpecId={setSelectedSpecId} setActiveTab={setActiveTab} />}
       <PageSuspense><AssetLibrary
         focus={focusAsset}
         currentWorkspace={currentWorkspace}
@@ -96,5 +99,36 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
         }}
       /></PageSuspense>
     </div>
+  );
+}
+
+/**
+ * Mabda's own generation (managed AI, frozen behind MABDA_MANAGED_AI, off by default): its entry stays exactly as it was so the
+ * frozen path keeps working, and it neither grows nor shows when the flag is off (docs/product-scope.md, docs/later.md).
+ */
+function FrozenBuild({ specs, openSpecEditor, setIsSpecLibraryOpen, setSelectedSpecId, setActiveTab }: Pick<AssetsPageProps, 'specs' | 'openSpecEditor' | 'setIsSpecLibraryOpen' | 'setSelectedSpecId' | 'setActiveTab'>) {
+  return (
+    <section className="flex flex-col gap-stack-md" aria-label="بساز" data-testid="outputs-build">
+      <h2 className="heading-sm text-text-default">بساز</h2>
+      {specs.length === 0 ? (
+        <EmptyState title="هنوز چیزی برای ساختن انتخاب نکرده‌ای" description="از کتابخانه یکی را بردار یا خودت یکی بنویس." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
+      ) : (
+        <ul className="flex flex-col" aria-label="جریان‌های کار">
+          {specs.map((sp) => (
+            <li key={sp.id} className="flex flex-col gap-stack-sm border-b border-border-subtle py-inset-md sm:flex-row sm:items-center sm:justify-between sm:gap-inline-lg">
+              <div className="flex min-w-space-0 flex-col gap-stack-xs">
+                <span className="headline text-text-default">{sp.title}</span>
+                <p className="body-sm text-pretty text-text-subtle">{sp.description}</p>
+              </div>
+              <div className="shrink-0"><Button size="sm" variant="secondary" iconStart="Package" data-testid={`build-${sp.id}`} aria-label={`بساز: ${sp.title}`} onClick={() => { setSelectedSpecId(sp.id); setActiveTab('workstreams'); }}>بساز</Button></div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-inline-sm">
+        <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button>
+        {specs.length > 0 && <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>}
+      </div>
+    </section>
   );
 }

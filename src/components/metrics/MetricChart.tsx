@@ -69,7 +69,7 @@ export const MetricChart: React.FC<Props> = ({ metric, series, decisions, focusI
       )}
       {others.length > 0 && (
         <details>
-          <summary className="body-sm cursor-pointer text-text-subtle">{formatNumber(others.length)} تصمیم دیگر هم در این بازه ثبت شده</summary>
+          <summary className="body-sm flex min-h-touch cursor-pointer items-center text-text-subtle">{formatNumber(others.length)} تصمیم دیگر هم در این بازه ثبت شده</summary>
           <ol className="mt-stack-xs flex flex-col gap-stack-xs">
             {others.map((d) => <li key={d.id} className="body-sm text-text-subtle">{formatJalaliDate(d.at)} · «{d.title}»</li>)}
           </ol>

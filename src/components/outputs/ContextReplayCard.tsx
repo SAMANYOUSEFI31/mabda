@@ -81,7 +81,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       {/* the same anatomy as a canvas card: title · a row of badges · a short line · one action (+ «⋯») */}
       <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
         <div className="flex min-w-space-0 flex-col gap-stack-xs">
-          <h3 className="title text-text-default">{deliverable.title}</h3>
+          <h2 className="title text-text-default">{deliverable.title}</h2>
           <div className="flex flex-wrap items-center gap-inline-xs">
             {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
             {stale && <Caution>به‌روز نیست</Caution>}

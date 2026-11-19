@@ -105,7 +105,7 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
           {shapes.assets.map((d: GeneratedDeliverable) => (
             <li key={d.id} className="flex items-center justify-between gap-inline-sm">
               <span className="body-md text-text-default">{d.title}</span>
-              {onOpenAssets && <button type="button" className="caption inline-flex min-h-touch-comfortable items-center text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>دارایی‌ها</button>}
+              {onOpenAssets && <button type="button" className="caption inline-flex min-h-touch-comfortable items-center text-text-subtle underline-offset-2 hover:underline" onClick={onOpenAssets}>خروجی‌ها</button>}
             </li>
           ))}
         </Group>

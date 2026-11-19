@@ -10,6 +10,7 @@ import { DueItems } from './DueItems';
 import React, { useMemo, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, Measurement, Metric } from '../../types';
 import { MetricQuickEntry } from '../metrics/MetricQuickEntry';
+import { MX } from '../../core/metricsText';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../../core/weeklyReview';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../../core/changeLog';
 import { Badge, Button, Dialog, formatJalaliDate, formatNumber } from '../../ui';
@@ -42,7 +43,7 @@ export const WeeklyReviewDialog: React.FC<Props> = (props) => (props.open ? <Rev
 
 const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInherit, onOpenSection, readiness, objects, deliverables, onAcceptReview, onConfirm, onOpenObject, onDone, dueProps, metricsEntry }) => {
   const hasMetrics = !!metricsEntry && metricsEntry.metrics.some((m) => !m.archived);
-  const STEPS = hasMetrics ? [...BASE_STEPS, 'اعداد این هفته'] : [...BASE_STEPS];
+  const STEPS = hasMetrics ? [...BASE_STEPS, MX.thisWeek] : [...BASE_STEPS];
   const LAST = STEPS.length; // the summary
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);

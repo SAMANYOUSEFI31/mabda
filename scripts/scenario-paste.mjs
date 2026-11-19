@@ -14,7 +14,8 @@ import assert from 'node:assert/strict';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-paste-'));
-const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: '3105', MABDA_DB_PATH: join(dir, 'm.sqlite') }, stdio: 'ignore', detached: true });
+// the pack from an output's own page lives in the workshop, which is frozen with the managed AI: it is reached only with the flag on
+const child = spawn('npx', ['tsx', 'server.ts'], { env: { ...process.env, PORT: '3105', MABDA_DB_PATH: join(dir, 'm.sqlite'), MABDA_MANAGED_AI: '1' }, stdio: 'ignore', detached: true });
 const BASE = 'http://127.0.0.1:3105';
 async function up() { for (let i = 0; i < 80; i++) { try { if ((await fetch(`${BASE}/api/health`)).ok) return; } catch { /* retry */ } await wait(250); } throw new Error('server not reachable'); }
 
@@ -82,8 +83,8 @@ try {
   const blockCard = (t) => page.locator('div.rounded-control-sm', { has: page.getByText(t, { exact: true }) }).last();
   await blockCard('تمرکز بر طراحان فریلنسر').getByRole('button', { name: 'به دانش (پیشنهادی)' }).click();
   await blockCard('بودجهٔ ماهانه').getByRole('button', { name: 'به دانش (پیشنهادی)' }).click();
-  await blockCard('جملهٔ موقعیت‌یابی').getByRole('button', { name: 'ذخیره به‌عنوان دارایی' }).click();
-  await page.getByText('در کتابخانهٔ دارایی‌ها ذخیره شد').waitFor();
+  await blockCard('جملهٔ موقعیت‌یابی').getByRole('button', { name: 'ذخیره به‌عنوان خروجی' }).click();
+  await page.getByText('در خروجی‌ها ذخیره شد').waitFor();
   assert.equal(await page.getByText('به صندوق پیشنهادها رفت').count(), 2);
   await shot('3-imported');
   await page.keyboard.press('Escape');

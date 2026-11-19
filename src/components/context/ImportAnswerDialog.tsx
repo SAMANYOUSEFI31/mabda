@@ -16,7 +16,7 @@ import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
 import { clientId } from '../../core/ids';
 
-const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'دارایی', question: 'سؤال', paragraph: 'متن' };
+const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'خروجی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
 const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'نشانهٔ صریح', similar: 'شباهت', none: 'بدون سرنخ' };
 
@@ -104,7 +104,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
       source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() }, ...(res?.packId ? { sourcePackId: res.packId } : {}),
     };
     setSavingAsset(b.id);
-    try { if (await onSaveAsset(asset)) mark(b.id, 'در کتابخانهٔ دارایی‌ها ذخیره شد'); } finally { setSavingAsset(null); }
+    try { if (await onSaveAsset(asset)) mark(b.id, 'در خروجی‌ها ذخیره شد'); } finally { setSavingAsset(null); }
   };
 
   const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
@@ -159,7 +159,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                     {b.done ? <Badge icon="Check">{b.done}</Badge> : (
                       <div className="flex flex-wrap items-center gap-inline-xs">
                         {ctx && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
-                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset} onClick={() => toAsset(b)}>ذخیره به‌عنوان دارایی</Button>}
+                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset} onClick={() => toAsset(b)}>ذخیره به‌عنوان خروجی</Button>}
                         <Button size="sm" variant="ghost" iconStart="X" onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
                       </div>
                     )}
