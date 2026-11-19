@@ -185,3 +185,20 @@ test('«پایش»: a monitor belongs to one truth; its cadence passing (or no n
   const sec = metricsPackSection([ms[0]], all, [], [], NOW, objects)!;
   assert.match(sec, /حقیقت w/);
 });
+
+test('«متن عددی دارد که با آخرین عدد فرق دارد»: the same unit or class, deterministic, and the replacement is only offered', async () => {
+  const { textNumberMismatch } = await import('./metrics');
+  const fund = { unit: 'میلیون تومان' };
+  assert.deepEqual(textNumberMismatch('الان ۴۵ میلیون تومان در حساب جدا دارم.', fund, { value: 71 }), { written: '۴۵ میلیون تومان', replaced: 'الان ۷۱ میلیون تومان در حساب جدا دارم.' });
+  // agrees (also written in another form of the same class), or no amount of that unit: nothing
+  assert.equal(textNumberMismatch('الان ۷۱ میلیون تومان دارم.', fund, { value: 71 }), null);
+  assert.equal(textNumberMismatch('الان ۷۱,۰۰۰,۰۰۰ تومان دارم.', fund, { value: 71 }), null);
+  assert.equal(textNumberMismatch('حسابی جدا برای پیشامدها.', fund, { value: 71 }), null);
+  assert.equal(textNumberMismatch('الان ۴۵ میلیون تومان دارم.', fund, undefined), null, 'no number yet: nothing to compare');
+  // a unit the quantity engine does not know: as she wrote it on the monitor
+  assert.equal(textNumberMismatch('هر هفته ۱۲۰ سفارش داریم', { unit: 'سفارش' }, { value: 112 })?.replaced, 'هر هفته ۱۱۲ سفارش داریم');
+  assert.equal(textNumberMismatch('۸ کیلومتر در هفته', { unit: 'کیلومتر' }, { value: 8 }), null);
+  // a duration counts only in its own unit: «هر ۲ روز» is not a claim about hours of sleep
+  assert.equal(textNumberMismatch('هر ۲ روز ورزش می‌کنم', { unit: 'ساعت' }, { value: 7.5 }), null);
+  assert.equal(textNumberMismatch('حدود ۷ ساعت می‌خوابم', { unit: 'ساعت' }, { value: 7.5 })?.written, '۷ ساعت');
+});

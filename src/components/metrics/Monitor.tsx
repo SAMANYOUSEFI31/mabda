@@ -13,7 +13,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection } from '../../types';
-import { decisionMoments, expectationRows, parseNumber, proposedMeasurements, seriesOf } from '../../core/metrics';
+import { decisionMoments, expectationRows, parseNumber, proposedMeasurements, seriesOf, textNumberMismatch } from '../../core/metrics';
 import { CADENCE_FA, DIRECTION_FA, MX, afterSentence, expectationSentence } from '../../core/metricsText';
 import { tehranDay } from '../../core/tehranDate';
 import { Button, Select, SegmentedControl, TextField, formatJalaliDate, formatNumber } from '../../ui';
@@ -94,10 +94,15 @@ interface PanelProps {
   onRecord: (metricId: string, value: number) => Promise<void>;
   onConfirm: (measurementId: string) => Promise<void>;
   onRemove: (measurementId: string) => Promise<void>;
+  /** the truth's text as it stands in the editor: when it writes an amount that differs from the last number, a calm line says so */
+  content?: string;
+  /** «به‌روز کردن متن»: put the replaced text in the editor; saving it is still hers (a draft or «جایگزین کن»), never automatic */
+  onUseText?: (text: string) => void;
 }
 
-export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objects, changes, onRecord, onConfirm, onRemove }) => {
+export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objects, changes, onRecord, onConfirm, onRemove, content, onUseText }) => {
   const [raw, setRaw] = useState('');
+  const [textSet, setTextSet] = useState(false);
   const [busy, setBusy] = useState('');
   const n = raw.trim() ? parseNumber(raw) : null;
   const series = useMemo(() => seriesOf(metric.id, measurements), [metric.id, measurements]);
@@ -106,6 +111,7 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
   const moments = useMemo(() => decisionMoments(objects, changes), [objects, changes]);
   const rows = useMemo(() => expectationRows(objects, [metric], measurements, changes, new Date()).filter((r) => r.expectation.metricId === metric.id), [objects, metric, measurements, changes]);
   const unit = metric.unit ? ` ${metric.unit}` : '';
+  const mismatch = content !== undefined ? textNumberMismatch(content, metric, last) : null;
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(''); } };
   const record = () => { if (n !== null) void run('rec', async () => { await onRecord(metric.id, n); setRaw(''); }); };
   return (
@@ -117,6 +123,14 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
           {metric.target !== undefined ? ` · ${MX.targetLine}: ${formatNumber(metric.target, 2)}${unit}` : ''}
         </p>
       </div>
+      {/* the text and the number say two things: one calm line, no warning colour, nothing on Home (owner decision, §۴۲) */}
+      {mismatch && (
+        <div className="flex flex-wrap items-center gap-inline-sm" data-testid="monitor-text-mismatch">
+          <p className="body-sm text-text-subtle">{MX.textDiffers} («{mismatch.written}»، {MX.last}: {formatNumber(last!.value, 2)}{unit})</p>
+          {onUseText && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={() => { onUseText(mismatch.replaced); setTextSet(true); }}>{MX.updateText}</Button>}
+        </div>
+      )}
+      {!mismatch && textSet && <p className="body-sm text-text-subtle" role="status">{MX.textUpdated}</p>}
       {series.length > 0 && <MetricChart metric={metric} series={series} decisions={moments} focusIds={rows.map((r) => r.decision.id)} today={tehranDay()} />}
       {rows.length > 0 && (
         <ul className="flex flex-col gap-stack-xs" aria-label={MX.expectationsTitle}>

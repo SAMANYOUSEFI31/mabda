@@ -222,6 +222,23 @@ const UNIT_CLASS: Record<string, { cls: string; scale: number }> = {
 const sameQuantity = (x: Quantity, y: Quantity): boolean =>
   x.value === y.value || (x.cls === 'duration' && x.unit !== y.unit && Math.abs(x.value - y.value) <= 0.1 * Math.max(x.value, y.value));
 
+/** the same quantities as `extractQuantities`, with where each one is written in the text (digits mapped one to one, so the
+ *  positions are the original's): «پایش» offers to replace the one that differs from the last recorded number */
+export interface QuantitySpan { cls: string; value: number; index: number; length: number }
+export function quantitySpans(text: string): QuantitySpan[] {
+  const t = toLatin(text);
+  const re = /(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(میلیارد|میلیون|هزار)?\s*(تومان|ریال|دلار|درصد|%|٪|روز|هفته|ماه|نفر|ساعت|جلسه)?/g;
+  const out: QuantitySpan[] = [];
+  for (const m of t.matchAll(re)) {
+    const mult = m[2];
+    const unit = m[3];
+    if (!mult && !unit) continue;
+    const u = unit ? UNIT_CLASS[unit] : { cls: 'money', scale: 1 };
+    out.push({ cls: u.cls, value: Number(m[1].replace(/,/g, '')) * (mult ? MULT[mult] : 1) * u.scale, index: m.index!, length: m[0].trimEnd().length });
+  }
+  return out;
+}
+
 /** Numbers that carry a unit (or a million/thousand multiplier = money): «۴ میلیون تومان», «۱۰٪», «۳۰ روز». */
 export function extractQuantities(text: string): Quantity[] {
   const t = toLatin(normalizeFa(text)).replace(/(\d),(?=\d{3}\b)/g, '$1');

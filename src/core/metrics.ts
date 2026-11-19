@@ -10,6 +10,8 @@
  */
 
 import { tehranDay } from './tehranDate';
+import { quantitySpans } from './contextEngine';
+import { formatNumber, toLatinDigits } from '../ui/format';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict, UsedContextRef } from '../types';
 
 // a day stays a day; a moment becomes its Tehran day (tehranDate.ts), never the UTC one
@@ -76,6 +78,42 @@ export function withNumberRefs(refs: UsedContextRef[], metrics: Metric[], measur
     else { const o = objects.find((x) => x.id === m.objectId); if (o) out.push({ id: o.id, version: o.version, number }); }
   }
   return out;
+}
+export interface TextMismatch {
+  /** the amount as written in the truth's text */
+  written: string;
+  /** the same text with that amount replaced by the last recorded number: offered as a draft, never written by itself */
+  replaced: string;
+}
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+/**
+ * The text of a monitored truth writes an amount in the monitor's unit (or the same class: money, percent, duration…) that differs
+ * from the last confirmed number (owner decision, §۴۲): «متن عددی دارد که با آخرین عدد فرق دارد». Deterministic; no amount of
+ * that unit in the text, or one that agrees, is not a mismatch.
+ */
+export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>, last: Pick<Measurement, 'value'> | undefined): TextMismatch | null {
+  if (!last || !content.trim()) return null;
+  const latin = toLatinDigits(content);
+  const found: Array<{ index: number; length: number; agrees: boolean }> = [];
+  const unit = metric.unit.trim();
+  if (unit) {
+    // the unit as she wrote it on the monitor («سفارش», «کیلومتر», «میلیون تومان»), after a number
+    const re = new RegExp(`(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)[\\s\u200c]*${unit.split(/\s+/).map(esc).join('[\\s\u200c]*')}`, 'g');
+    for (const m of latin.matchAll(re)) found.push({ index: m.index!, length: m[0].length, agrees: near(Number(m[1].replace(/,/g, '')), last.value) });
+  }
+  // the same class (money, percent…) counts too; a duration only in its own unit: «هر ۲ روز» is not a claim about «ساعت خواب»
+  const want = quantitySpans(`${last.value} ${unit}`)[0];
+  if (want && want.cls !== 'duration') {
+    for (const q of quantitySpans(content)) {
+      if (q.cls !== want.cls || found.some((f) => f.index === q.index)) continue;
+      found.push({ index: q.index, length: q.length, agrees: near(q.value, want.value) });
+    }
+  }
+  if (found.length === 0 || found.some((f) => f.agrees)) return null;
+  const first = found.sort((a, b) => a.index - b.index)[0];
+  const written = content.slice(first.index, first.index + first.length);
+  return { written, replaced: `${content.slice(0, first.index)}${formatNumber(last.value, 2)}${unit ? ` ${unit}` : ''}${content.slice(first.index + first.length)}` };
 }
 export const CADENCE_DAYS: Record<MetricCadence, number> = { week: 7, month: 30 };
 

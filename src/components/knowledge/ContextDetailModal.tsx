@@ -406,7 +406,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           </div>
         )}
         {currentMonitor && onRecordNumber && (
-          <MonitorPanel metric={{ ...currentMonitor, name: metricLabel(currentMonitor, allObjects) }} measurements={measurements} objects={allObjects} changes={workspaceChanges} onRecord={onRecordNumber} onConfirm={onConfirmNumber ?? (async () => {})} onRemove={onRemoveNumber ?? (async () => {})} />
+          <MonitorPanel metric={{ ...currentMonitor, name: metricLabel(currentMonitor, allObjects) }} measurements={measurements} objects={allObjects} changes={workspaceChanges} onRecord={onRecordNumber} onConfirm={onConfirmNumber ?? (async () => {})} onRemove={onRemoveNumber ?? (async () => {})} content={content} onUseText={(t) => setContent(t)} />
         )}
         {/* سطح ۱: یک جعبهٔ متن، یک عنوان خودکار، سه چیپ نوع و یک چیپ بخش */}
         <MentionTextarea

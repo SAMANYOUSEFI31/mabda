@@ -176,7 +176,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   await know('leaseEnd', 'lease', 'Fact', 'پایان قرارداد اجاره', 'قرارداد اجاره پایان اسفند تمام می‌شود؛ ودیعه ۴۰۰ میلیون تومان است.', { validUntil: day(122), facets: ['مالی'] });
   await know('fixedCost', 'fixed', 'Fact', 'هزینهٔ ثابت ماهانه', 'هزینهٔ ثابت ماهانه حدود ۳۲ میلیون تومان است: اجاره، قبض‌ها، اینترنت، بیمه و خرید خانه.', { facets: ['مالی'] });
   await know('emergRule', 'emerg', 'Decision', 'اندازهٔ صندوق اضطراری', 'معادل شش ماه هزینهٔ ثابت را پول نقد نگه می‌دارم؛ تا آن‌جا هیچ سرمایه‌گذاری دیگری نمی‌کنم.', { facets: ['مالی'] });
-  await know('emergNow', 'emerg', 'Fact', 'موجودی صندوق اضطراری', 'الان ۴۵ میلیون تومان در حساب جدا دارم.', { facets: ['مالی'] });
+  await know('emergNow', 'emerg', 'Fact', 'موجودی صندوق اضطراری', 'حسابی جدا که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.', { facets: ['مالی'] });
   await know('noLoan', 'money', 'Constraint', 'بدون وام مصرفی', 'برای خرج روزمره یا سفر وام نمی‌گیرم و قسط خرید ماهانه نمی‌خرم.', { reach: 'global', facets: ['مالی'] });
   await dependsOn('emergRule', 'fixedCost');
   await dependsOn('emergNow', 'emergRule');
@@ -277,7 +277,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   at(34, 9, 10);
   await measure('sleep', 34, 6.8);
   await measure('fund', 34, 58);
-  await edit('emergNow', { content: 'الان ۵۸ میلیون تومان در حساب جدا دارم.' }, 'حقوق مهر پس‌انداز شد');
+  await edit('emergNow', { content: 'حسابی جدا در بانک دیگری، که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.' }, 'حساب را به بانک دیگری بردم تا دم دست نباشد');
 
   at(33, 21, 20);
   await note('money', 'save', [
@@ -438,7 +438,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   await know('arianException', 'arian', 'Fact', 'تحویل نهایی در یک شنبه', 'تحویل نهایی پروژهٔ آرین فقط یک بار در یک شنبهٔ اسفند است؛ شنبه همراه خانواده را به شنبهٔ بعد منتقل می‌کنم.', { facets: ['کار'] });
   await api.post(`${b}/objects/${O.arianException}/overrides`, { targetId: O.saturday, reason: 'یک استثنای تک‌باره برای تحویل پروژه' });
   await measure('fund', 8, 71);
-  await edit('emergNow', { content: 'الان ۷۱ میلیون تومان در حساب جدا دارم.' }, 'حقوق آبان پس‌انداز شد');
+  await edit('emergNow', { content: 'حسابی جدا در بانک دیگری، بدون کارت، که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.' }, 'کارت حساب را باطل کردم');
   await measure('sleep', 8, 6.8);
   await measure('run', 8, 14);
 
