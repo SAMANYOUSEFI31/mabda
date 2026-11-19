@@ -619,7 +619,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
    column first). Below that, one column. The section's text and header keep the page width */
 .mb-items-host{container:mb-items / inline-size}
 .mb-items-host > .mb-margin--inline{max-inline-size:none}
-@container mb-items (min-width: 70rem){
+@container mb-items (min-width: 56rem){
   .mb-items-host > .mb-margin--inline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--space-12);row-gap:var(--space-5)}
   .mb-items-host > .mb-margin--inline .mb-margin__row{grid-template-columns:minmax(0,1fr)}
 }
