@@ -68,6 +68,10 @@ export function actionProps(body: unknown): Props | undefined {
   const chars = ['title', 'content', 'text'].reduce((n, f) => n + (typeof b[f] === 'string' ? (b[f] as string).length : 0), 0);
   if (chars) raw.chars = chars;
   if (Array.isArray(b.items)) raw.items = b.items.length;
+  // «پایش»: a number batch says how many numbers (never which), and a monitor request whether it puts a number on a truth (a
+  // new monitor, or linking a number made earlier) — the measures below tell whether monitoring was really needed (§۴۲)
+  if (Array.isArray(b.entries)) raw.items = b.entries.length;
+  if (typeof b.objectId === 'string' && b.objectId) raw.onTruth = true;
   return cleanProps(raw);
 }
 
@@ -106,6 +110,7 @@ const isAction = (e: ActivityEvent) => e.kind === 'action' && ok(e);
  * suggestion is not activation. Every «own» measure below counts only these.
  */
 export const isOwnAction = (e: ActivityEvent) => isAction(e) && e.props?.sample !== true && e.props?.sampleItem !== true;
+const isNumber = (e: ActivityEvent) => /^POST \/workspaces\/:wid\/measurements(\/batch|\/csv)?$/.test(e.name);
 const isCapture = (e: ActivityEvent) => isOwnAction(e) && (categoryOf(e.name) === 'capture' || categoryOf(e.name) === 'knowledge');
 const isKnowledge = (e: ActivityEvent) => isOwnAction(e) && categoryOf(e.name) === 'knowledge';
 
@@ -123,6 +128,11 @@ export interface PersonKpis {
   firstAt?: string; lastAt?: string;
   activeDays: number; sessions: number; activeMinutes: number;
   actions: number; captures: number; knowledge: number; confirms: number; edits: number; removes: number; outputs: number;
+  /** «پایش» (owner decision §۴۲, to decide after the test whether it stays or goes to «later»): monitors made on a truth, numbers
+   *  made earlier linked to a truth, and numbers recorded (a batch counts each number) */
+  monitors: number; monitorLinks: number; numbers: number;
+  /** recorded a number on a later day than the first monitor: monitoring was used, not only tried */
+  monitorKept: boolean;
   /** minutes from the first event to the first capture / first confirmed truth (undefined = never) */
   minutesToFirstCapture?: number; minutesToFirstConfirm?: number;
   activated: boolean; coreLoop: boolean; returnedD1: boolean; returnedD3plus: boolean;
@@ -142,6 +152,8 @@ export interface Kpis {
     people: number; activated: number; coreLoop: number; returnedD1: number; returnedD3plus: number;
     medianMinutesToFirstConfirm?: number; medianActiveMinutes?: number; medianActiveDays?: number;
     actions: number; refusedPer100: number; brokePer100: number; clientErrors: number;
+    /** «پایش»: people who made or linked a monitor, and people who recorded a number on a later day than the monitor was made */
+    monitoring: number; monitoringKept: number;
   };
   funnel: FunnelStep[];
   dialogs: DialogStat[];
@@ -211,6 +223,14 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
       captures: evs.filter(isCapture).length, knowledge: evs.filter(isKnowledge).length, confirms: evs.filter(isConfirm).length,
       edits: own.filter((e) => categoryOf(e.name) === 'edit').length, removes: own.filter((e) => categoryOf(e.name) === 'remove').length,
       outputs: own.filter((e) => categoryOf(e.name) === 'output').length,
+      ...(() => {
+        const isMonitor = (e: ActivityEvent) => (e.name === 'POST /workspaces/:wid/metrics' || e.name === 'PUT /workspaces/:wid/metrics/:id') && e.props?.onTruth === true;
+        const firstMonitor = own.find(isMonitor)?.at;
+        return { monitorKept: !!firstMonitor && own.some((e) => isNumber(e) && tehranDay(e.at) > tehranDay(firstMonitor)) };
+      })(),
+      monitors: own.filter((e) => e.name === 'POST /workspaces/:wid/metrics' && e.props?.onTruth === true).length,
+      monitorLinks: own.filter((e) => e.name === 'PUT /workspaces/:wid/metrics/:id' && e.props?.onTruth === true).length,
+      numbers: own.filter(isNumber).reduce((n, e) => n + (typeof e.props?.items === 'number' ? e.props.items : 1), 0),
       ...(first && firstCapture ? { minutesToFirstCapture: minutes(first, firstCapture) } : {}),
       ...(ttfc !== undefined ? { minutesToFirstConfirm: ttfc } : {}),
       activated: ttfc !== undefined && ttfc <= ACTIVATION_MIN,
@@ -283,6 +303,7 @@ export function computeKpis(events: ActivityEvent[], persons: PersonInput[], opt
       actions: allActions,
       refusedPer100: per100(testers.reduce((n, p) => n + p.refused, 0)), brokePer100: per100(testers.reduce((n, p) => n + p.broke, 0)),
       clientErrors: testers.reduce((n, p) => n + p.clientErrors, 0),
+      monitoring: count((p) => p.monitors + p.monitorLinks > 0), monitoringKept: count((p) => p.monitorKept),
     },
     funnel,
     dialogs: [...dialogs.entries()].map(([title, d]) => ({ title, opens: d.opens, completed: d.completed, ...(d.secs.length ? { medianSeconds: median(d.secs) } : {}) })).sort((a, b) => b.opens - a.opens),
