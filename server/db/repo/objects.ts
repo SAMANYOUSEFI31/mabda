@@ -264,6 +264,7 @@ export const objectsMethods = {
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)')
         .run(newId('rel'), s.userId, s.workspaceId, created.id, oldId, 'supersedes', t);
       this.carryDependencies(s, oldId, created.id);
+      this.carryMonitor(s, oldId, created.id);
       this.recordChange(s, { objectId: oldId, fromVersion: old.version, toVersion: created.version, kind: 'superseded', meta, before: { status: old.status }, after: { status: 'Superseded', supersededById: created.id }, source: created.source });
       this.recordChange(s, { objectId: created.id, fromVersion: old.version, toVersion: created.version, kind: 'created', meta: { ...meta, reason: undefined }, after: { type: created.type, title: created.title, nodeId: created.nodeId, status: created.status, supersedes: oldId }, source: created.source });
       return created;
@@ -315,6 +316,7 @@ export const objectsMethods = {
       this.db.prepare("UPDATE context_objects SET status='Superseded', superseded_by_id=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(winnerId, t, loserId, s.workspaceId, s.userId);
       this.db.prepare('INSERT INTO context_relationships (id, user_id, workspace_id, source_id, target_id, type, created_at) VALUES (?,?,?,?,?,?,?)').run(newId('rel'), s.userId, s.workspaceId, winnerId, loserId, 'supersedes', t);
       this.carryDependencies(s, loserId, winnerId);
+      this.carryMonitor(s, loserId, winnerId);
       this.recordChange(s, { objectId: loserId, fromVersion: loser.version, toVersion: loser.version, kind: meta?.kind ?? 'contradiction_resolved', meta, before: { status: loser.status }, after: { status: 'Superseded', supersededById: winnerId } });
       if (winner.status !== 'Confirmed') {
         this.db.prepare("UPDATE context_objects SET status='Confirmed', updated_at=? WHERE id=? AND workspace_id=? AND user_id=?").run(t, winnerId, s.workspaceId, s.userId);

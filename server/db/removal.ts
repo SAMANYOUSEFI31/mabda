@@ -27,6 +27,8 @@ export interface PurgeImpact {
   versions: number;
   changes: number;
   relationships: number;
+  /** «پایش»: the number is part of the truth (§۴۲), so its monitor (its name was the truth's title) and every number go with it */
+  monitor: { numbers: number } | null;
   /** outputs built from it: they keep their own text; its name will show as «حذف‌شده» */
   usedIn: Array<{ id: string; title: string }>;
   /** pointers to this knowledge that become «منبع حذف‌شده» (they are never erased: the thoughts were only ABOUT it or became it) */
@@ -64,6 +66,10 @@ export function purgeImpact(repo: Repo, s: Scope, id: string): PurgeImpact {
     versions: count('SELECT COUNT(*) AS n FROM context_object_versions WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId),
     changes: count('SELECT COUNT(*) AS n FROM context_changes WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId),
     relationships: count('SELECT COUNT(*) AS n FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND (source_id = ? OR target_id = ?)', s.workspaceId, s.userId, id, id),
+    monitor: (() => {
+      const ms = rows<{ id: string }>(repo, 'SELECT id FROM metrics WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId);
+      return ms.length ? { numbers: ms.reduce((n, m) => n + count('SELECT COUNT(*) AS n FROM measurements WHERE metric_id = ? AND workspace_id = ? AND user_id = ?', m.id, s.workspaceId, s.userId), 0) } : null;
+    })(),
     usedIn: deliverables.filter((d) => (d.usedContext ?? []).some((u) => u.id === id)).map((d) => ({ id: d.id, title: d.title })),
     copies: {
       notes: noteCopies,
@@ -91,6 +97,20 @@ export function purgeObject(repo: Repo, s: Scope, id: string, copies: { notes?: 
     const w = s.workspaceId, u = s.userId;
     repo.db.prepare('DELETE FROM context_object_versions WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
     repo.db.prepare('DELETE FROM context_changes WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);
+    // a monitor that moved on (its truth was replaced) or was left unlinked still says this truth's title and id in its own history
+    const scrubValue = (v: unknown): unknown => (v === o.title ? 'حذف‌شده' : v === id ? null : Array.isArray(v) ? v.map(scrubValue) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrubValue(x)])) : v);
+    for (const c of rows<{ id: string; before: string | null; after: string | null; reason: string | null }>(repo, "SELECT id, before, after, reason FROM context_changes WHERE workspace_id = ? AND user_id = ? AND object_id LIKE 'metric:%'", w, u)) {
+      const fix = (v: string | null) => (v === null ? v : JSON.stringify(scrubValue(JSON.parse(v))));
+      const b = fix(c.before), a = fix(c.after);
+      if (b !== c.before || a !== c.after) repo.db.prepare('UPDATE context_changes SET before = ?, after = ? WHERE id = ? AND user_id = ?').run(b, a, c.id, u);
+    }
+    repo.db.prepare("UPDATE metrics SET name = 'عدد بی‌نام' WHERE workspace_id = ? AND user_id = ? AND name = ? AND (object_id IS NULL OR object_id <> ?)").run(w, u, o.title, id);
+    // its monitor (live or stopped): the monitor's name was this truth's title and its Change rows carry it; the numbers belong to it
+    for (const m of rows<{ id: string }>(repo, 'SELECT id FROM metrics WHERE object_id = ? AND workspace_id = ? AND user_id = ?', id, s.workspaceId, s.userId)) {
+      repo.db.prepare('DELETE FROM measurements WHERE metric_id = ? AND workspace_id = ? AND user_id = ?').run(m.id, w, u);
+      repo.db.prepare('DELETE FROM context_changes WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(`metric:${m.id}`, w, u);
+      repo.db.prepare('DELETE FROM metrics WHERE id = ? AND workspace_id = ? AND user_id = ?').run(m.id, w, u);
+    }
     repo.db.prepare('DELETE FROM context_relationships WHERE workspace_id = ? AND user_id = ? AND (source_id = ? OR target_id = ?)').run(w, u, id, id);
     repo.db.prepare('DELETE FROM canvas_view_items WHERE workspace_id = ? AND user_id = ? AND item_ref = ?').run(w, u, `obj:${id}`);
     repo.db.prepare('DELETE FROM context_judgments WHERE object_id = ? AND workspace_id = ? AND user_id = ?').run(id, w, u);

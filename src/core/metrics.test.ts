@@ -200,3 +200,13 @@ test('«متن عددی دارد که با آخرین عدد فرق دارد»: 
   assert.equal(textNumberMismatch('هر ۲ روز ورزش می‌کنم', { unit: 'ساعت' }, { value: 7.5 }), null);
   assert.equal(textNumberMismatch('حدود ۷ ساعت می‌خوابم', { unit: 'ساعت' }, { value: 7.5 })?.written, '۷ ساعت');
 });
+
+test('«وصل کردن»: a truth she already has comes first when its title is like the number\'s name; monitored, assumed or archived ones are not offered', async () => {
+  const { linkCandidates } = await import('./metrics');
+  const f = (id: string, title: string, over: Partial<ContextObject> = {}): ContextObject => ({ ...decision(id), type: 'Fact', title, ...over });
+  const objects = [f('a', 'شهر محل زندگی'), f('b', 'موجودی صندوق اضطراری'), f('c', 'صندوق اضطراری قدیمی', { status: 'Archived' }), f('d', 'وزن', { assumption: true }), f('e', 'ساعت خواب')];
+  const ms = [metric({ id: 'sleep', objectId: 'e' })];
+  const c = linkCandidates({ name: 'صندوق اضطراری' }, ms, objects);
+  assert.deepEqual(c.map((x) => x.object.id), ['b', 'a']);
+  assert.deepEqual(c.map((x) => x.like), [true, false]);
+});

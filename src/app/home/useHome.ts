@@ -13,7 +13,7 @@ import { setPendingMonitorLink } from '../../components/metrics/Monitor';
 import { markAddSwitchable } from '../../core/addRequest';
 import { homeActions, homeSections } from '../../core/homeActions';
 import { track } from '../../services/usage';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { visibleFeatures } from '../../core/visibleFeatures';
 import type { AppCoreScope } from '../shell/useAppCore';
 import type { UsageCountersScope } from '../shell/useUsageCounters';
@@ -55,21 +55,35 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const homePlan = useMemo(() => homeActions(homeInput), [homeInput]);
   // patterns.md §۸: «منتظر تو» › «چه چیزی کم است» › «قدیمی‌شده‌ها»
   const homeView = useMemo(() => homeSections(homeInput, attentionGaps), [homeInput, attentionGaps]);
+  const [linkingMetricId, setLinkingMetricId] = useState('');
+  /** a NEW truth named after the number, carrying its history; she writes what is true and saves (Mabda never writes it for her) */
+  const newLinkedTruth = (metricId: string) => {
+    const m = (data?.metrics ?? []).find((x) => x.id === metricId);
+    setLinkingMetricId('');
+    if (!m) return;
+    const at = new Date().toISOString();
+    markAddSwitchable(false);
+    setPendingMonitorLink(m.id);
+    openContext({ id: '', workspaceId: wid, type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: m.name, content: '', nodeId: '', version: 1, createdAt: at, updatedAt: at });
+  };
+  /** onto a truth she already has: the number and its history move there, and the truth opens with its monitor */
+  const linkToTruth = async (metricId: string, objectId: string) => {
+    const r = await attempt(() => dataApi.updateMetric(wid, metricId, { objectId }));
+    if (!r) return;
+    patch((d) => ({ ...d, metrics: r.metrics, measurements: r.measurements, ...(r.stale ? { stale: r.stale } : {}) }));
+    setLinkingMetricId('');
+    toast.show({ intent: 'success', message: 'عددها روی این حقیقت آمدند.' });
+    const o = workspaceContexts.find((x) => x.id === objectId);
+    if (o) openContext(o);
+  };
   const handleHomeAct = (a: HomeAction) => {
     track('action.home-todo');
     const reveal = (id: string) => { setHomeAllOpen(true); revealWhenThere(id); };
     const t = a.target;
     if (t.type === 'asset') { setActiveTab('assets'); setFocusAsset({ id: t.id, n: Date.now() }); }
     else if (t.type === 'object') { const o = workspaceContexts.find((x) => x.id === t.id); if (o) openContext(o); }
-    else if (t.type === 'link-metric') {
-      // a NEW truth named after the number, carrying its history; she writes what is true and saves (Mabda never writes it for her)
-      const m = (data?.metrics ?? []).find((x) => x.id === t.id);
-      if (!m) return;
-      const at = new Date().toISOString();
-      markAddSwitchable(false);
-      setPendingMonitorLink(m.id);
-      openContext({ id: '', workspaceId: wid, type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: m.name, content: '', nodeId: '', version: 1, createdAt: at, updatedAt: at });
-    }
+    // «وصل کردن»: a truth she already has first, or a new one with the number's name (LinkMetricDialog)
+    else if (t.type === 'link-metric') setLinkingMetricId(t.id);
     else if (t.type === 'weekly') setWeeklyOpen(true);
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
@@ -91,5 +105,5 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     },
     expectations: expRows,
   };
-  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, dueProps };
+  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, dueProps, linkingMetricId, setLinkingMetricId, newLinkedTruth, linkToTruth };
 }

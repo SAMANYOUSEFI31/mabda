@@ -10,7 +10,7 @@
  */
 
 import { tehranDay } from './tehranDate';
-import { quantitySpans } from './contextEngine';
+import { jaccard, quantitySpans, titleTokens } from './contextEngine';
 import { formatNumber, toLatinDigits } from '../ui/format';
 import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict, UsedContextRef } from '../types';
 
@@ -115,6 +115,16 @@ export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>
   const written = content.slice(first.index, first.index + first.length);
   return { written, replaced: `${content.slice(0, first.index)}${formatNumber(last.value, 2)}${unit ? ` ${unit}` : ''}${content.slice(first.index + first.length)}` };
 }
+/** «وصل کردن»: the truths a number can go on (live Facts, not assumptions, without a monitor), the ones whose title is like the
+ *  number's name first and marked `like` (audit, PR #91: a new truth only would duplicate one she already has) */
+export const linkCandidates = (metric: Pick<Metric, 'name'>, metrics: Metric[], objects: ContextObject[]): Array<{ object: ContextObject; like: boolean }> => {
+  const name = titleTokens(metric.name);
+  return objects
+    .filter((o) => o.type === 'Fact' && !o.assumption && (o.status === 'Confirmed' || o.status === 'Proposed') && !monitorOf(o.id, metrics))
+    .map((o) => ({ object: o, score: jaccard(name, titleTokens(o.title)) }))
+    .sort((a, b) => b.score - a.score || a.object.title.localeCompare(b.object.title))
+    .map(({ object, score }) => ({ object, like: score >= 0.34 }));
+};
 export const CADENCE_DAYS: Record<MetricCadence, number> = { week: 7, month: 30 };
 
 export interface MonitorDue { metric: Metric; object: ContextObject; last?: Measurement }

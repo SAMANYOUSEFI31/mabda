@@ -12,6 +12,8 @@ import type { StaleAsset } from '../core/impactEngine';
 /** what an erase for good would touch (server/db/removal.ts → purgeImpact) */
 export interface PurgeImpactInfo {
   title: string; status: string; versions: number; changes: number; relationships: number;
+  /** its monitor and every number go with it */
+  monitor: { numbers: number } | null;
   usedIn: Array<{ id: string; title: string }>;
   /** thoughts that were only ABOUT it or became it: they stay and say «منبع حذف‌شده» */
   pointers: { thoughtsAbout: number; thoughtsConverted: number };

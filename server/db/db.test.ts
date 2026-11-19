@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
-import { planNodeRemoval, removeNode, undoRemoval } from './removal.ts';
+import { planNodeRemoval, purgeImpact, purgeObject, removeNode, undoRemoval } from './removal.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import { applyDemo } from './demo.ts';
 import { treeOrder } from '../../src/core/nodeTree.ts';
@@ -635,6 +635,50 @@ test('«پایش» on a truth: a metric points at its object, one live monitor p
   assert.equal(repo.createMetric(s, { objectId: fact.id, direction: 'down' }).objectId, fact.id, 'after «قطع پایش» the truth can be monitored again');
   const cols = repo.db.columns('metrics').map((c) => c.name);
   assert.ok(cols.includes('object_id') && cols.includes('cadence'));
+});
+
+test('«پایش» follows its truth: «جایگزین کن» carries the monitor with every number; a new number makes only the output that carried it stale; erasing the truth for good erases the monitor, its numbers and every trace of its name', () => {
+  const { repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  const fact = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'صندوق محرمانه', content: 'حساب جدا.', nodeId: node });
+  const m = repo.createMetric(s, { objectId: fact.id, unit: 'میلیون تومان', direction: 'up', cadence: 'month' });
+  const first = repo.addMeasurement(s, { metricId: m.id, value: 45, at: '2026-09-01' });
+  // replaced: the monitor, its numbers and its cadence go to the new truth (no reminder is lost, nothing waits in «وصل کردن»)
+  const { object: next } = repo.supersedeObject(s, fact.id, { type: 'Fact', provenance: 'User Input', title: 'صندوق محرمانهٔ تازه', content: 'حساب جدا در بانک دیگر.', nodeId: node });
+  const moved = repo.getMetric(s, m.id)!;
+  assert.deepEqual([moved.objectId, moved.cadence, moved.name], [next.id, 'month', 'صندوق محرمانهٔ تازه']);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 1);
+  // replaced by a truth that cannot carry a monitor (a decision): left unlinked, for «وصل کردن», never lost
+  const other = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن', content: 'صبح.', nodeId: node });
+  const w = repo.createMetric(s, { objectId: other.id, unit: 'کیلو', direction: 'down' });
+  repo.supersedeObject(s, other.id, { type: 'Decision', provenance: 'User Input', title: 'وزن را کم می‌کنم', content: 'تا بهار.', nodeId: node });
+  assert.equal(repo.getMetric(s, w.id)!.objectId, undefined);
+  // two outputs: one carried the number (on its truth's lineage), one did not
+  const base = { workspaceId: s.workspaceId, workstreamId: 'x', deliverableId: 'd', content: 'm', executionMode: 'auto', rebuildCount: 0, createdAt: new Date().toISOString() };
+  repo.saveDeliverable(s, { ...base, id: 'carried', title: 'گزارش', usedContext: [{ id: next.id, version: next.version, number: { metricId: m.id, measurementId: first.id, value: 45, at: first.at } }] } as unknown as GeneratedDeliverable);
+  repo.saveDeliverable(s, { ...base, id: 'plain', title: 'نامه', usedContext: [{ id: next.id, version: next.version }] } as unknown as GeneratedDeliverable);
+  assert.deepEqual(repo.computeStale(s), []);
+  repo.addMeasurement(s, { metricId: m.id, value: 58, at: '2026-10-01' });
+  const stale = repo.computeStale(s);
+  assert.deepEqual(stale.map((x) => x.deliverableId), ['carried']);
+  assert.equal(stale[0].reasons[0].message, 'عدد «صندوق محرمانهٔ تازه» از ۴۵ میلیون تومان به ۵۸ میلیون تومان رسید.');
+  // the REPLACED truth erased for good: the monitor that moved on keeps its numbers, but no longer says the old title anywhere
+  purgeObject(repo, s, fact.id);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 2);
+  assert.ok(!JSON.stringify(repo.db.prepare('SELECT * FROM context_changes').all()).includes('"صندوق محرمانه"'));
+  // erased for good (from the archive): the monitor, its numbers and its Change rows go; no table keeps the title
+  repo.updateObject(s, next.id, { status: 'Archived' });
+  assert.deepEqual(purgeImpact(repo, s, next.id).monitor, { numbers: 2 });
+  purgeObject(repo, s, next.id);
+  assert.equal(repo.getMetric(s, m.id), undefined);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 0);
+  assert.equal(repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).length, 0);
+  const tables = (repo.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>).map((t) => t.name);
+  for (const t of ['metrics', 'measurements', 'context_changes']) {
+    assert.ok(tables.includes(t));
+    const rows = repo.db.prepare(`SELECT * FROM "${t}"`).all();
+    assert.ok(!JSON.stringify(rows).includes('صندوق محرمانهٔ تازه'), `${t} keeps no trace of the title`);
+  }
 });
 
 test('a stored legacy MCP measurement remains Proposed until the user confirms it; new writes reject the retired source', () => {

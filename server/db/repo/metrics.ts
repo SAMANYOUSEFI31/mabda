@@ -74,6 +74,22 @@ export const metricsMethods = {
     return this.getMetric(s, id)!;
   },
 
+  /**
+   * «جایگزین کن» (or «این را نگه دار» in a contradiction): the number is part of the truth, so its live monitor moves to the truth
+   * that replaces it, with every number and its cadence (audit, PR #91). Runs inside the caller's transaction. When the new truth
+   * cannot carry a monitor (not a Fact, an assumption, or it has its own already), the monitor is left unlinked: it shows up in
+   * «منتظر تو» as «وصل کردن», never lost and never moved onto the wrong truth.
+   */
+  carryMonitor(this: Repo, s: Scope, fromId: string, toId: string): void {
+    const m = this.listMetrics(s).find((x) => !x.archived && x.objectId === fromId);
+    if (!m) return;
+    const to = this.getObject(s, toId);
+    const fits = !!to && to.type === 'Fact' && !to.assumption && !this.listMetrics(s).some((x) => !x.archived && x.objectId === toId);
+    const next = fits ? toId : null;
+    this.db.prepare('UPDATE metrics SET object_id=?, name=?, updated_at=? WHERE id=? AND workspace_id=? AND user_id=?').run(next, fits ? to!.title : m.name, now(), m.id, s.workspaceId, s.userId);
+    this.recordChange(s, { objectId: `metric:${m.id}`, fromVersion: 1, toVersion: 1, kind: 'metric_edited', meta: { actor: 'system', reason: fits ? 'حقیقتش جایگزین شد؛ پایش همراهش آمد' : 'حقیقتش جایگزین شد؛ تا وصل کنی بی‌حقیقت می‌ماند' }, before: { objectId: fromId }, after: { objectId: next } });
+  },
+
   /** archived, never deleted: its numbers and the decisions that pointed at it stay readable */
   archiveMetric(this: Repo, s: Scope, id: string, meta?: ChangeMeta): Metric {
     const cur = this.getMetric(s, id);

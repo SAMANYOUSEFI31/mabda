@@ -1,6 +1,6 @@
 # تصویرهای صفحه (اسکرین‌شات‌ها)
 
-تصویرهای این پوشه (حدود ۹۸ مگابایت، ۱۱۹۱ فایل) در مخزن جدا و خصوصی [**`SAMANYOUSEFI31/mabda-assets`**](https://github.com/SAMANYOUSEFI31/mabda-assets/tree/main/docs/screens) نگه داشته می‌شوند، با همان ساختار پوشه‌ها (`docs/screens/<موضوع>/…`). علت: حجم مخزن اصلی برای ابزارهایی مثل Gemini زیاد شده بود.
+تصویرهای این پوشه (حدود ۹۸ مگابایت، ۱۱۹۱ فایل) در مخزن جدای [**`SAMANYOUSEFI31/mabda-assets`**](https://github.com/SAMANYOUSEFI31/mabda-assets/tree/main/docs/screens) نگه داشته می‌شوند، با همان ساختار پوشه‌ها (`docs/screens/<موضوع>/…`). علت: حجم مخزن اصلی برای ابزارهایی مثل Gemini زیاد شده بود.
 
 - اسکریپت‌ها (`bun run screens` و `scripts/scenario-*.mjs`) مثل قبل در `docs/screens/` می‌نویسند؛ این مسیر برای `.png/.jpg` در `.gitignore` است، پس تصویرها در کامیت‌های mabda نمی‌آیند.
 - برای دیدن تصویرِ ارجاع‌شده در سندها (مثل `docs/ux/decisions.md`)، همان مسیر را در `mabda-assets` باز کن.

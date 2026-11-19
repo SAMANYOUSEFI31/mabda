@@ -97,6 +97,7 @@ export const PurgeDialog: React.FC<{ workspaceId: string; object: ContextObject 
           <>
             <ul className="body-md flex list-disc flex-col gap-stack-xs ps-inset-lg text-text-default" data-testid="purge-effects">
               <li>{formatNumber(impact.versions)} نسخه و {formatNumber(impact.changes)} ردّ تغییر (قبل و بعد) پاک می‌شود.</li>
+              {impact.monitor && <li>پایش آن و {formatNumber(impact.monitor.numbers)} عدد ثبت‌شده‌اش هم پاک می‌شود.</li>}
               {impact.relationships > 0 && <li>{formatNumber(impact.relationships)} رابطه با دانش‌های دیگر برداشته می‌شود.</li>}
               <li>اگر پیش‌نویسی دارد، همراهش می‌رود.</li>
               {impact.pointers.thoughtsAbout + impact.pointers.thoughtsConverted > 0 && <li>{formatNumber(impact.pointers.thoughtsAbout + impact.pointers.thoughtsConverted)} فکر دربارهٔ آن بوده یا به آن تبدیل شده؛ می‌مانند ولی منبعشان «حذف‌شده» نشان داده می‌شود.</li>}
