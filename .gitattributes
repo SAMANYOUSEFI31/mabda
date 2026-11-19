@@ -1,0 +1,6 @@
+# One line-ending policy for every checkout (Windows, macOS, Linux, Docker): LF in the working tree.
+# The generated token files are compared byte-for-byte with the generator output (scripts/tokens/build.mjs --check),
+# so CRLF from core.autocrlf=true would make all four "differ" even though the content is identical.
+* text=auto eol=lf
+src/ui/tokens/generated/* text eol=lf
+src/ui/tokens/*.json text eol=lf

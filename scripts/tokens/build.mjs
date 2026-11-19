@@ -270,6 +270,17 @@ export function buildAll(src = loadSources()) {
   };
 }
 
+/** First place where two texts differ, in words: used by --check so a mismatch explains itself (CRLF, BOM, or a real content change). */
+function describeDiff(disk, want) {
+  if (disk.startsWith('\uFEFF')) return 'file starts with a BOM';
+  if (disk.includes('\r\n') && disk.replace(/\r\n/g, '\n') === want) return 'CRLF line endings, content identical; fix the checkout (see .gitattributes, `git add --renormalize .`), do not hand-edit';
+  const a = disk.split('\n'), b = want.split('\n');
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const show = (l) => JSON.stringify((l ?? '<end of file>').slice(0, 80));
+  return `first difference at line ${i + 1}: on disk ${show(a[i])}, expected ${show(b[i])}`;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const files = buildAll();
   if (process.argv.includes('--check')) {
@@ -277,7 +288,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     for (const [f, text] of Object.entries(files)) {
       let disk;
       try { disk = readFileSync(join(OUT_DIR, f), 'utf8'); } catch { problems.push(`${f} (missing)`); continue; }
-      if (disk !== text) problems.push(`${f} (differs)`);
+      if (disk !== text) problems.push(`${f} (differs: ${describeDiff(disk, text)})`);
     }
     if (problems.length) { console.error(`tokens: out of date in ${OUT_DIR}: ${problems.join(', ')} — run \`bun run tokens\``); process.exit(1); }
     console.log('tokens: build files match the source');
