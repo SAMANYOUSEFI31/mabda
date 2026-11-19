@@ -5,7 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextObject, ContextRelationship, TreeNode } from '../../types';
-import { contextDoc, docTabs, pendingInTab, tabOfAnchor, withWholeTab } from '../../core/contextMarkdown';
+import { contextDoc, docTabs, nodeAnchor, pendingInTab, tabOfAnchor, withWholeTab } from '../../core/contextMarkdown';
 import { Button, Tabs, formatNumber } from '../../ui';
 import { DocReader } from './DocReader';
 
@@ -22,6 +22,8 @@ interface Props {
   empty?: React.ReactNode;
   /** suggestions wait in the thinking space: the reader says how many and opens them there */
   onOpenSuggestions?: () => void;
+  /** the section she was in («رفتن به بخش» in «ساختار»): the document opens on its tab, at its heading — a view changes how, not where */
+  focusNodeId?: string | null;
 }
 
 /**
@@ -29,10 +31,19 @@ interface Props {
  * headings that shows where you are (scroll-spy) and links every section by a stable address (#o-<object id>). The Markdown
  * stays linear — «با ارجاع‌ها» only adds flat «وابسته به» / «برگرفته از» lines.
  */
-export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, approvals, fileName, empty, onOpenSuggestions }) => {
+export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, approvals, fileName, empty, onOpenSuggestions, focusNodeId }) => {
   const tabs = useMemo(() => withWholeTab(docTabs(nodes, objects)), [nodes, objects]);
   const fromHash = () => { const h = typeof window !== 'undefined' ? window.location.hash.slice(1) : ''; return h ? tabOfAnchor(h, tabs, nodes, objects)?.id : undefined; };
-  const [tabId, setTabId] = useState<string | undefined>(() => fromHash() ?? tabs[0]?.id);
+  const fromFocus = () => (focusNodeId ? tabOfAnchor(nodeAnchor(focusNodeId), tabs, nodes, objects)?.id : undefined);
+  const [tabId, setTabId] = useState<string | undefined>(() => fromHash() ?? fromFocus() ?? tabs[0]?.id);
+  // …and at the section's own heading when it is not the tab itself (the doc renders after this; try a few frames)
+  useEffect(() => {
+    if (!focusNodeId || fromHash()) return;
+    let tries = 0;
+    const t = setInterval(() => { const el = document.getElementById(nodeAnchor(focusNodeId)); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); } }, 60);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [refs, setRefs] = useState(readRefs);
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
 

@@ -19,6 +19,8 @@ interface ContextTableViewProps {
   onSelectObject: (obj: ContextObject) => void;
   /** grey examples (starter / template): shown with «نمونه», never part of any engine */
   samples?: ContextObject[];
+  /** the section she was in («رفتن به بخش»): the table opens filtered to it — a view changes how, not where */
+  focusNodeId?: string | null;
 }
 
 export const ContextTableView: React.FC<ContextTableViewProps> = ({
@@ -27,20 +29,27 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   onSelectObject,
   samples = [],
   conflicts,
+  focusNodeId,
 }) => {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedNode, setSelectedNode] = useState<string>('all');
+  const [selectedNode, setSelectedNode] = useState<string>(() => (focusNodeId && nodes.some((n) => n.id === focusNodeId) ? focusNodeId : 'all'));
   const [selectedFacet, setSelectedFacet] = useState<string>('all');
   const partners = useMemo(() => conflictPartners(objects, conflicts), [objects, conflicts]);
   const facetNames = [...new Set([...objects, ...samples].flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b));
 
+  const inSelected = useMemo(() => {
+    const out = new Set<string>(selectedNode === 'all' ? [] : [selectedNode]);
+    for (let grew = true; grew;) { grew = false; for (const n of nodes) if (n.parentId && out.has(n.parentId) && !out.has(n.id)) { out.add(n.id); grew = true; } }
+    return out;
+  }, [selectedNode, nodes]);
   const filteredObjects = [...objects, ...samples].filter((o) => {
     if (selectedFacet !== 'all' && !(o.facets ?? []).includes(selectedFacet)) return false;
     if (selectedType !== 'all' && o.type !== selectedType) return false;
     if (selectedStatus !== 'all' && o.status !== selectedStatus) return false;
-    if (selectedNode !== 'all' && o.nodeId !== selectedNode) return false;
+    // a section holds its sub-sections (as a folder holds its folders)
+    if (selectedNode !== 'all' && !inSelected.has(o.nodeId)) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
       const matchTitle = o.title.toLowerCase().includes(q);

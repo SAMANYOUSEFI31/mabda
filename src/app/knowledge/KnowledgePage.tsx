@@ -73,6 +73,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               fileName={currentWorkspace.name}
               empty={<EmptyState title="هنوز دانشی ثبت نشده است" />}
               onOpenSuggestions={() => openThinkingSpace()}
+              focusNodeId={focusNodeId}
             /></PageSuspense>
           ) : contextViewMode === 'doc' ? (
             <ContextTreeDocView
@@ -121,6 +122,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               nodes={nodes}
               onSelectObject={(obj) => openContext(obj)}
               samples={data.samples ?? []}
+              focusNodeId={focusNodeId}
             /></PageSuspense>
           )}
 
