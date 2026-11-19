@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Metrics on a REAL server + temp SQLite (showcase workspace): in the weekly review the user records a number in a few clicks,
- * the chart shows the decisions as vertical lines on the metric, a due decision is judged «به انتظار رسید / نیمه / نرسید»,
+ * Monitored numbers on a REAL server + temp SQLite (showcase workspace): in the weekly review the user records a number in a few clicks,
+ * the monitored truth shows its number's history with the decisions as vertical lines, a due decision is judged «به انتظار رسید / نیمه / نرسید»,
  * the plain count on Home follows — and no sentence on the way claims a cause.
  * Screenshots → docs/screens/metrics-*.png (1280) and metrics-m-*.png (390).
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-metrics.mjs
@@ -48,11 +48,10 @@ try {
     if (had) await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
 
-    step(`[${width}] home: the plain count of expectation versus result`);
+    step(`[${width}] home: no count of expectation versus result (owner decision §۴۲); a verdict that is due waits in «منتظر تو»`);
     await page.locator('button[aria-controls="home-all"]').click(); // the full list is under «همه»
-    const tally = page.getByTestId('expectation-tally');
-    await tally.waitFor();
-    assert.match(await tally.innerText(), /۱ به انتظار رسید · ۰ نیمه · ۱ نرسید · ۲ باز \(۱ موعدش رسیده\)/);
+    await page.getByText(/موعد بازبینی/).first().waitFor();
+    assert.equal(await page.getByTestId('expectation-tally').count(), 0);
     await shot('1-home');
 
     step(`[${width}] weekly review: a number in a few clicks (field → record)`);
@@ -60,23 +59,24 @@ try {
     const dlg = page.getByRole('dialog');
     await dlg.getByText(/بخش ۱ از ۴/).waitFor();
     for (let i = 0; i < 3; i++) await dlg.getByRole('button', { name: 'دیدم؛ بعدی' }).click();
-    await dlg.getByText(/بخش ۴ از ۴: اعداد این هفته/).waitFor();
+    await dlg.getByText(/بخش ۴ از ۴: عددهای این هفته/).waitFor();
     await dlg.getByLabel(/سفارش هفتگی/).fill('۱۱۸');
     await shot('2-weekly-numbers');
-    await dlg.getByRole('button', { name: /ثبت اعداد/ }).click();
+    await dlg.getByRole('button', { name: /ثبت عددها/ }).click();
     await page.waitForTimeout(500);
     let st = await api('/workspaces/ws_demo/state');
     const added = st.measurements.find((m) => m.value === 118);
     assert.ok(added && added.status === 'Confirmed' && added.source === 'manual' && added.metricId === 'met_demo_orders');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] the chart: the metric as a line, decisions as vertical lines, «پس از» sentences`);
-    await page.getByRole('button', { name: 'شاخص‌ها' }).first().click();
-    const md = page.getByRole('dialog');
-    await md.getByText('انتظار در برابر نتیجه').first().waitFor();
-    assert.ok((await md.locator('svg[role=img]').count()) >= 3, 'one chart per metric');
-    assert.ok((await md.locator('svg[role=img] line[stroke-dasharray="3 3"]').count()) >= 4, 'the decisions that state an expectation are strong vertical lines on their charts');
-    await md.getByText(/^پس از «کانال اصلی تبلیغ»: از ۹۵ سفارش به ۱۱۲ سفارش/).waitFor();
+    step(`[${width}] the chart on the monitored truth: its number as a line, decisions as vertical lines, «پس از» sentences`);
+    // monitoring is an option on a truth (no metrics section): open «سفارش هفتگی» from the palette
+    await page.keyboard.press('Control+k'); await page.keyboard.type('سفارش هفتگی'); await page.waitForTimeout(600); await page.keyboard.press('Enter');
+    const md = page.getByTestId('monitor-panel');
+    await md.waitFor();
+    assert.equal(await md.locator('svg[role=img]').count(), 1, 'one chart: the history of this truth\'s number');
+    assert.ok((await md.locator('svg[role=img] line[stroke-dasharray="3 3"]').count()) >= 1, 'the decision that expects something of this number is a strong vertical line');
+    await md.getByText(/پس از «کانال اصلی تبلیغ»: از ۹۵ سفارش به ۱۱۲ سفارش/).waitFor();
     const text = await md.innerText();
     assert.doesNotMatch(text, CAUSAL, 'no sentence claims a cause');
     await shot('3-chart');
@@ -96,8 +96,6 @@ try {
     assert.equal(j.after.verdict, 'partial');
     assert.equal(j.after.metricId, 'met_demo_retention');
     await page.keyboard.press('Escape');
-    await page.getByTestId('expectation-tally').waitFor();
-    assert.match(await page.getByTestId('expectation-tally').innerText(), /۱ به انتظار رسید · ۱ نیمه · ۱ نرسید · ۱ باز/);
     await shot('5-home-after');
     assert.deepEqual(errors, [], `page errors: ${errors.join(' | ')}`);
   }

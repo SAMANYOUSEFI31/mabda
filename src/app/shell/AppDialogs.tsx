@@ -6,7 +6,6 @@
 import { ContextDialogs } from '../context/ContextDialogs';
 import { HomeDialogs } from '../home/HomeDialogs';
 import { KnowledgeDialogs } from '../knowledge/KnowledgeDialogs';
-import { MetricsDialogs } from '../metrics/MetricsDialogs';
 import { OutputsDialogs } from '../outputs/OutputsDialogs';
 import { StructureDialogs } from '../structure/StructureDialogs';
 import { ThinkingDialogs } from '../thinking/ThinkingDialogs';
@@ -28,7 +27,6 @@ export function AppDialogs(p: ReadyScope) {
       <ContextDialogs {...p} />
       <StructureDialogs {...p} />
       <OutputsDialogs {...p} />
-      <MetricsDialogs {...p} />
       <HomeDialogs {...p} />
       <ShellDialogs {...p} />
       <QuickCapture {...p} />

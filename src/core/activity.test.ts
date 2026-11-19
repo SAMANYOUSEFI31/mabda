@@ -86,3 +86,24 @@ test('an action on one of Mabda\'s examples is recorded but is not the person\'s
   assert.equal(a.confirms, 0); assert.equal(a.captures, 0); assert.equal(a.activated, false);
   assert.equal(a.sampleShare, 1);
 });
+
+test('«پایش» in the test record: monitors made or linked on a truth, numbers recorded, and who still recorded on a later day (§۴۲)', () => {
+  // the request body says only whether a number is put on a truth and how many numbers came in, never which
+  assert.deepEqual(actionProps({ objectId: 'obj_1', unit: 'کیلو', cadence: 'week' }), { onTruth: true });
+  assert.deepEqual(actionProps({ entries: [{ metricId: 'm', value: 1 }, { metricId: 'n', value: 2 }] }), { items: 2 });
+  const evs = [
+    ev('a', '2026-11-20T06:00:00Z', 'POST /workspaces/:wid/metrics', { props: { onTruth: true } }),
+    ev('a', '2026-11-20T06:01:00Z', 'POST /workspaces/:wid/measurements/batch', { props: { items: 1 } }),
+    ev('a', '2026-11-24T06:00:00Z', 'POST /workspaces/:wid/measurements/batch', { props: { items: 2 } }),
+    ev('b', '2026-11-20T06:00:00Z', 'PUT /workspaces/:wid/metrics/:id', { props: { onTruth: true } }),
+    ev('b', '2026-11-20T06:02:00Z', 'PUT /workspaces/:wid/metrics/:id', {}), // editing a monitor is not linking
+    ev('c', '2026-11-20T06:00:00Z', 'POST /workspaces/:wid/metrics', { props: { onTruth: true, sample: true } }), // in a sample: not her own
+  ];
+  const k = computeKpis(evs, persons, { now: new Date('2026-11-25T00:00:00Z') });
+  const p = (id: string) => k.people.find((x) => x.id === id)!;
+  assert.deepEqual([p('a').monitors, p('a').monitorLinks, p('a').numbers, p('a').monitorKept], [1, 0, 3, true]);
+  assert.deepEqual([p('b').monitors, p('b').monitorLinks, p('b').numbers, p('b').monitorKept], [0, 1, 0, false]);
+  assert.equal(p('c').monitors, 0);
+  assert.equal(k.summary.monitoring, 2);
+  assert.equal(k.summary.monitoringKept, 1);
+});

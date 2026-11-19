@@ -30,7 +30,7 @@ export const LAYOUT_ABOUT: Record<CanvasLayout, { question: string; what: string
 };
 export const EDGE_ABOUT: Record<MapEdgeKind, string> = {
   dependency: 'تصمیمی که پیکان به آن می‌رسد روی تصمیم مبدأ سوار است؛ اگر مبدأ عوض شود مقصد نیاز به بازبینی پیدا می‌کند.',
-  lineage: 'خروجی (دارایی) از Context مبدأ ساخته شده؛ با تغییر مبدأ، خروجی «قدیمی» می‌شود.',
+  lineage: 'خروجی از Context مبدأ ساخته شده؛ با تغییر مبدأ، خروجی «قدیمی» می‌شود.',
   supersedes: 'مبدأ جای مقصد را گرفته؛ مقصد حذف نمی‌شود و در تاریخچه می‌ماند.',
 };
 

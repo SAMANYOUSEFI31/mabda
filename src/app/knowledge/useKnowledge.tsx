@@ -15,7 +15,7 @@ import type { UsageCountersScope } from '../shell/useUsageCounters';
 export type KnowledgeScope = ReturnType<typeof useKnowledge>;
 
 export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCountersScope) {
-  const { activeTab, attempt, contextViewMode, data, focusNodeId, goFocus, openContext, openThinkingSpace, patch, revealWhenThere, setActiveTab, setAiRequest, setArchiveOpen, setCanvasReveal, setCompare, setContextViewMode, setFocusAsset, setFocusNotes, setIsBatchOpen, setIsImportOpen, setIsPacksOpen, setMetricsOpen, setThinkingView, setThoughtDialog, showImpact, toast, wid, workspaceContexts } = p;
+  const { activeTab, attempt, contextViewMode, data, focusNodeId, goFocus, openContext, openThinkingSpace, patch, revealWhenThere, setActiveTab, setAiRequest, setArchiveOpen, setCanvasReveal, setCompare, setContextViewMode, setFocusAsset, setFocusNotes, setIsBatchOpen, setIsImportOpen, setIsPacksOpen, setThinkingView, setThoughtDialog, showImpact, toast, wid, workspaceContexts } = p;
   // ── Context objects ────────────────────────────────────────────────────────────────────────────
   /** create (no id / unknown id) or edit in place (known id: title/content/type edits bump the version) */
   /** what Enter does on a palette row */
@@ -49,8 +49,6 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
       case 'go-doc': setActiveTab('context'); setContextViewMode('read'); break;
       case 'go-canvas': setActiveTab('context'); setContextViewMode('canvas'); break;
       case 'go-assets': setActiveTab('assets'); break;
-      case 'go-workstreams': setActiveTab('workstreams'); break;
-      case 'metrics': setMetricsOpen(true); break;
       case 'packs': setIsPacksOpen(true); break;
       case 'import': setIsImportOpen(true); break;
       default: break;

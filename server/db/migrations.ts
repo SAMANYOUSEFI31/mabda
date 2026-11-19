@@ -828,6 +828,18 @@ export const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 32,
+    name: 'monitoring is an option on a truth: a metric may point at the object it monitors (object_id) and say how often it is refreshed (cadence: week | month)',
+    up(db) {
+      // docs/product-scope.md («پایش، ویژگیِ حقیقت است»): two nullable columns, nothing moved. A metric made before this has no
+      // object and no cadence; it stays whole (its numbers, the decisions that expect something of it, its Change rows) until the
+      // person links it to a truth herself — Mabda never writes a truth for her (docs/ux/decisions.md §۴۲).
+      db.exec('ALTER TABLE metrics ADD COLUMN object_id TEXT');
+      db.exec('ALTER TABLE metrics ADD COLUMN cadence TEXT');
+      db.exec('CREATE INDEX idx_metrics_object ON metrics(workspace_id, object_id)');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

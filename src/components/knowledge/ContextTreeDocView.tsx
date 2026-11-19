@@ -252,7 +252,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 switch already holds both (patterns.md §۳ «one way for one thing»); the same two links in every section were noise */}
             {/* از کجا آمده: the files of this node and where the proposals came from */}
             {(nodeFiles.length > 0 || sources.length > 0) && (
-              <section className="flex flex-col gap-stack-xs" aria-label="از کجا آمده">
+              <section className="flex flex-col gap-stack-xs" aria-label={`از کجا آمده: ${node.label}`}>
                 <h4 className="label-md text-text-default">از کجا آمده</h4>
                 {nodeFiles.length > 0 && <p className="caption text-text-subtle">فایل‌های این بخش: {nodeFiles.map((f) => f.name).join('، ')}</p>}
                 {sources.length > 0 && <p className="body-sm text-text-subtle">ورودی‌ها: {sources.map(([label, n]) => `${label} (${formatNumber(n)})`).join('، ')}</p>}

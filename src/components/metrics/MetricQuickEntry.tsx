@@ -4,22 +4,24 @@
  */
 
 import React, { useState } from 'react';
-import type { Measurement, Metric } from '../../types';
-import { latestOf, parseNumber } from '../../core/metrics';
+import type { ContextObject, Measurement, Metric } from '../../types';
+import { latestOf, metricLabel, parseNumber } from '../../core/metrics';
 import { MX } from '../../core/metricsText';
 import { Alert, Button, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface Props {
   metrics: Metric[];
   measurements: Measurement[];
+  /** a monitor is called by its truth's title */
+  objects?: Pick<ContextObject, 'id' | 'title'>[];
   onSubmit: (entries: Array<{ metricId: string; value: number }>) => Promise<void>;
   onCsv: (text: string) => Promise<{ added: number; errors: Array<{ line: number; text: string }> } | undefined>;
 }
 
-const REASON_FA: Record<string, string> = { unknown_metric: 'شاخصی با این نام نیست', bad_value: 'عدد خوانده نشد', bad_date: 'تاریخ خوانده نشد', too_few: 'دست‌کم نام و عدد لازم است' };
+const REASON_FA: Record<string, string> = { unknown_metric: 'عددی با این نام پایش نمی‌شود', bad_value: 'عدد خوانده نشد', bad_date: 'تاریخ خوانده نشد', too_few: 'دست‌کم نام و عدد لازم است' };
 
-/** One number field per active metric (empty = nothing to say this week) and an optional CSV paste. Recording is never required. */
-export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, onSubmit, onCsv }) => {
+/** One number field per monitored truth (and per number not linked to one yet) (empty = nothing to say this week) and an optional CSV paste. Recording is never required. */
+export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objects = [], onSubmit, onCsv }) => {
   const active = metrics.filter((m) => !m.archived);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [csvOpen, setCsvOpen] = useState(false);
@@ -51,18 +53,18 @@ export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, onSub
           return (
             <TextField
               key={m.id}
-              label={`${m.name}${m.unit ? ` (${m.unit})` : ''}`}
+              label={`${metricLabel(m, objects)}${m.unit ? ` (${m.unit})` : ''}`}
               inputMode="decimal"
               value={vals[m.id] ?? ''}
               onChange={(e) => setVals((v) => ({ ...v, [m.id]: e.target.value }))}
-              hint={last ? `آخرین: ${formatNumber(last.value)} · ${formatJalaliDate(last.at)}` : undefined}
+              hint={last ? `آخرین: ${formatNumber(last.value, 2)} · ${formatJalaliDate(last.at)}` : undefined}
               error={bad.some((b) => b.m.id === m.id) ? 'عدد معتبر بنویس.' : undefined}
             />
           );
         })}
       </div>
       <div className="flex flex-wrap items-center gap-inline-sm">
-        <Button size="sm" variant="secondary" loading={busy} disabled={ready.length === 0 || bad.length > 0} onClick={submit}>{MX.record}{ready.length ? ` (${formatNumber(ready.length)})` : ''}</Button>
+        <Button size="sm" variant="secondary" loading={busy} disabled={ready.length === 0 || bad.length > 0} onClick={submit}>{MX.recordAll}{ready.length ? ` (${formatNumber(ready.length)})` : ''}</Button>
         <Button size="sm" variant="ghost" iconStart={csvOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={csvOpen} onClick={() => setCsvOpen((v) => !v)}>{MX.pasteCsv}</Button>
       </div>
       {csvOpen && (

@@ -136,7 +136,7 @@
 4. **Truth و Proposed جدول یا نوع ندارند:** وضعیت‌اند.
 5. **«ارتقا» یک سازوکار است نه موجودیت:** `createObject` + `resolveThought`.
 6. **«پنج خانوادهٔ product-inspiration» در آن سند نیست:** آن‌جا پنج محصول‌اند (بالا).
-7. **شاخص‌ها و KPI** (جدول‌های `metrics`، `measurements`) خارج از این نقشه‌اند؛ دانش نیستند و حقیقت نمی‌شوند (`docs/later.md`).
+7. **پایش** (جدول‌های `metrics`، `measurements`) سازوکاری روی حقیقت است، نه مفهوم جدا: یک شاخص می‌تواند به «واقعیتی» که پایش می‌کند اشاره کند (`metrics.object_id`، مهاجرت ۳۲) و آهنگ تازه شدن داشته باشد (`cadence`). عدد نسخهٔ حقیقت نیست و خروجی را قدیمی نمی‌کند؛ عدد پیشنهادی تا تأیید واقعیت نیست (`docs/product-scope.md`، `docs/ux/decisions.md` §۴۲).
 8. **نمودارِ «لایه‌ها و ستون‌ها» (بوم)** نمایش است، نه جنس: `swimlane.ts`، `lineage.ts` فقط صحنه می‌سازند.
 
 ## ۱۰. آزمون جنس (برای ایدهٔ تازه)
@@ -180,7 +180,7 @@
 | `judgments.ts` | قضاوت لایهٔ تصمیم و تناقض معنایی |
 | `packs.ts` | بستهٔ Context ثبت‌شده و بستهٔ ذخیره‌شده |
 | `templates.ts` | قالب‌های خود کاربر |
-| `metrics.ts` | شاخص و اندازه‌گیری (خارج دامنهٔ Context) |
+| `metrics.ts` | پایش: شاخص (با `object_id`، `cadence`) و عددها |
 | `usage.ts` / `state.ts` | شمارنده‌ها؛ وضعیت کل فضا، نشان بازبینی هفتگی و واردسازی قدیمی |
 
 **تراکنش‌های چنددامنه‌ای** (هنوز یک تراکنش؛ ببین هر کدام به چه چیزی دست می‌زند):
@@ -196,7 +196,7 @@
 | `updateObject`، `supersedeObject`، `supersedeBy` (objects) | دانش + رابطه‌های منتقل‌شده + Change |
 | `setDependencies`، `setOverride`، `removeOverride` (relations) | رابطه + Change |
 | `setRank` (canvas) | بوم + Change |
-| `createMetric` … `removeMeasurement` (metrics) | شاخص + Change |
+| `createMetric` … `removeMeasurement` (metrics) | پایش + Change (یک پایش زنده برای هر حقیقت) |
 | `saveWorkspace`، `resetWorkspaceData` (workspaces) | Workspace + بخش‌های شروع |
 
 ### `server/db/routes/` (قبلاً یک فایل ۸۹۰ خطی)
@@ -232,7 +232,7 @@
 | `thinking/` | `useNotes`، `useThinkingItems` · `ThinkingPage` · `ThinkingDialogs` |
 | `structure/` | `useNodeActions`، `useStarters` · `StructureDialogs` |
 | `canvas/` | `useBoards` |
-| `files/`، `metrics/` | `useFiles` · `useMetrics`، `MetricsDialogs` |
+| `files/`، `metrics/` | `useFiles` · `useMetrics` (ذخیره، قطع و ثبت عدد پایش) |
 | `workspace/` | `useWorkspaceAssets` · `LedgerPage` · `WorkspaceDialogs` |
 | `outputs/` | `WorkstreamsPage`، `AssetsPage` · `OutputsDialogs` |
 | `context/` | `ContextDialogs` (بسته، درخواست برای AI، وارد کردن پاسخ، گفتگوی بخش) |
@@ -251,7 +251,7 @@
 | `context/` | `ContextPackDialog`، `AiRequestDialog`، `ImportAnswerDialog`، `SavedPacksDialog`، `ScopeExplain`، `NodeThreadPanel`، `SmartChat` |
 | `outputs/` | `AssetLibrary`، `WorkstreamStudio`، `SpecEditorModal`، `SpecLibraryDialog`، `ContextReplayCard` |
 | `canvas/` | `ContextCanvas` و اجزایش (لبه، بازرس، کارت، نقشهٔ کوچک، لایهٔ نمای کلی، اتصال)، `usePanZoom` |
-| `metrics/`، `files/`، `workspace/` | شاخص‌ها؛ `FilesPanel`؛ حساب، مصرف و دفتر |
+| `metrics/`، `files/`، `workspace/` | `Monitor` (فیلدها و پنل پایش)، `MetricChart`، `MetricQuickEntry`؛ `FilesPanel`؛ حساب، مصرف و دفتر |
 
 هشدار «import دوگانه»ی `AccountModal` (هم lazy هم static) با جدا کردن ثابت `WIPE_WORDS` در `workspace/wipeWords.ts` رفع شد.
 
@@ -269,7 +269,7 @@
 | ساخت Context و ورودی | `contextPack`، `packScope`، `scopeExplain`، `proposalContext`، `retrieval`، `aiRequest`، `answerParser`، `answerMapping`، `knowledgeBatch`، `blocks`، `contextMarkdown`، `tokens` | بسته و درخواست برای AI، نگاشت پاسخ بیرونی |
 | ساختار و کاربرد | `nodeTree`، `specs`، `specLibrary`، `starters`، `startTemplate`، `templates`، `quickStartSummary`، `seedData`، `demoData`، `removal`، `globalSearch` | درخت، شروع‌های آماده، حذف و برگرداندن |
 | تاریخچه و بازبینی | `changeLog`، `changeDigest`، `weeklyReview`، `inheritNotice` | Change log، بازبینی هفتگی |
-| شاخص (خارج دامنه) | `metrics`، `metricsText` | اندازه‌گیری، نه دانش |
+| پایش (معنا روی حقیقت) | `metrics`، `metricsText` | عدد یک واقعیت، با تاریخچه و یادآوری آرام |
 | سقف منصفانه، سهمیه، هزینه | `limits`، `usage`، `ledger`، `costReport`، `judgePolicy`، `visibleFeatures` | سقف‌ها برای همه یکسان؛ فقط `limits.ts` عددها را دارد؛ پلن و اعتبار نیست |
 
 ## بدهی آگاهانه

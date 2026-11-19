@@ -12,10 +12,11 @@ import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const WeeklyReviewDialog = lazyNamed(() => import('../../components/home/WeeklyReviewDialog'), 'WeeklyReviewDialog');
+const LinkMetricDialog = lazyNamed(() => import('../../components/metrics/LinkMetricDialog'), 'LinkMetricDialog');
 
-export type HomeDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'deliverables' | 'dueProps' | 'enabledLibrary' | 'goFocus' | 'handleAcceptReview' | 'inheritNotices' | 'markInheritSeen' | 'measurements' | 'metricHandlers' | 'metrics' | 'openContext' | 'patch' | 'setActiveTab' | 'setContextViewMode' | 'setStatus' | 'setWeeklyOpen' | 'weekly' | 'weeklyOpen' | 'wid' | 'workspaceContexts'>;
+export type HomeDialogsProps = Pick<ReadyScope, 'attempt' | 'data' | 'deliverables' | 'dueProps' | 'enabledLibrary' | 'goFocus' | 'handleAcceptReview' | 'inheritNotices' | 'linkToTruth' | 'linkingMetricId' | 'markInheritSeen' | 'newLinkedTruth' | 'measurements' | 'metricHandlers' | 'metrics' | 'openContext' | 'patch' | 'setActiveTab' | 'setContextViewMode' | 'setLinkingMetricId' | 'setStatus' | 'setWeeklyOpen' | 'weekly' | 'weeklyOpen' | 'wid' | 'workspaceContexts'>;
 
-export function HomeDialogs({ attempt, data, deliverables, dueProps, enabledLibrary, goFocus, handleAcceptReview, inheritNotices, markInheritSeen, measurements, metricHandlers, metrics, openContext, patch, setActiveTab, setContextViewMode, setStatus, setWeeklyOpen, weekly, weeklyOpen, wid, workspaceContexts }: HomeDialogsProps) {
+export function HomeDialogs({ attempt, data, deliverables, dueProps, enabledLibrary, goFocus, handleAcceptReview, inheritNotices, linkToTruth, linkingMetricId, markInheritSeen, newLinkedTruth, measurements, metricHandlers, metrics, openContext, patch, setActiveTab, setContextViewMode, setLinkingMetricId, setStatus, setWeeklyOpen, weekly, weeklyOpen, wid, workspaceContexts }: HomeDialogsProps) {
   return (
     <>
     <Deferred when={weeklyOpen}><WeeklyReviewDialog
@@ -32,8 +33,16 @@ export function HomeDialogs({ attempt, data, deliverables, dueProps, enabledLibr
       onConfirm={async (id) => { await setStatus(id, 'Confirmed'); }}
       onOpenObject={(o) => { setWeeklyOpen(false); openContext(o); }}
       dueProps={dueProps}
-      metricsEntry={{ metrics, measurements, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
+      metricsEntry={{ metrics, measurements, objects: workspaceContexts, onSubmit: metricHandlers.onRecord, onCsv: metricHandlers.onCsv }}
       onDone={async () => { const r = await attempt(() => dataApi.weeklyReviewDone(wid)); if (r) patch((d) => ({ ...d, weeklyReviewAt: r.weeklyReviewAt })); }}
+    /></Deferred>
+    <Deferred when={!!linkingMetricId}><LinkMetricDialog
+      metric={metrics.find((m) => m.id === linkingMetricId) ?? null}
+      metrics={metrics}
+      objects={workspaceContexts}
+      onClose={() => setLinkingMetricId('')}
+      onLink={linkToTruth}
+      onNew={newLinkedTruth}
     /></Deferred>
     </>
   );

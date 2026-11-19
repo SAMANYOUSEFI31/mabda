@@ -180,7 +180,7 @@ export function buildMapModel(rawInput: MapInput, rawOpts: MapOptions = {}): Map
         rep[id] = id;
       }
     } else if (input.deliverables.length) {
-      add({ id: 'assets', kind: 'assets', label: 'دارایی‌ها', count: input.deliverables.length }, null);
+      add({ id: 'assets', kind: 'assets', label: 'خروجی‌ها', count: input.deliverables.length }, null);
       for (const d of input.deliverables) rep[`a:${d.id}`] = 'assets';
     }
   }

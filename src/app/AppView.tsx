@@ -15,6 +15,7 @@ import { ThinkingPage } from './thinking/ThinkingPage';
 import { WorkstreamsPage } from './outputs/WorkstreamsPage';
 import { useEffect } from 'react';
 import { ErrorState } from '../ui';
+import { useAiStatus } from '../services/aiStatus';
 import { flashScrollbar } from '../ui/scrollbars';
 import { logUi, setActivitySpace } from '../services/activity';
 import type { AppScope, ReadyScope } from './shared';
@@ -25,6 +26,9 @@ import type { AppScope, ReadyScope } from './shared';
  * and asks for exactly the props it uses; every piece of state and every handler comes from the hooks.
  */
 export function AppView(p: AppScope) {
+  // the production workshop (workstreams, specs, generation) is not a place any more (docs/product-scope.md): only Mabda's own
+  // rebuild, frozen behind MABDA_MANAGED_AI, still opens it; any other way there (an old link, a stored tab) lands on «خروجی‌ها»
+  const { managedEnabled } = useAiStatus();
   // a page opened: its bar shows for a moment, so a long page says so (layout.md «اسکرول و نوار اسکرول», goal 2)
   const shown = p.data ? `${p.activeTab}:${p.currentWorkspace?.id}` : '';
   useEffect(() => { if (shown) flashScrollbar(); }, [shown]);
@@ -45,8 +49,8 @@ export function AppView(p: AppScope) {
       {ready.activeTab === 'home' && <HomePage {...ready} />}
       {ready.activeTab === 'context' && <KnowledgePage {...ready} />}
       {ready.activeTab === 'thinking' && <ThinkingPage {...ready} />}
-      {ready.activeTab === 'workstreams' && <WorkstreamsPage {...ready} />}
-      {ready.activeTab === 'assets' && <AssetsPage {...ready} />}
+      {ready.activeTab === 'workstreams' && managedEnabled && <WorkstreamsPage {...ready} />}
+      {(ready.activeTab === 'assets' || (ready.activeTab === 'workstreams' && !managedEnabled)) && <AssetsPage {...ready} />}
       {ready.activeTab === 'ledger' && <LedgerPage {...ready} />}
     </>
   );

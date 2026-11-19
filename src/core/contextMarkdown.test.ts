@@ -69,7 +69,7 @@ test('the linear Markdown has no references unless asked; «با ارجاع‌ه
   const withRefs = contextToMarkdown({ nodes: DEFAULT_TREE_NODES, objects: objs, nodeId: 'brand', relationships, refs: true });
   assert.match(withRefs, /\nوابسته به: «قیمت»\n/);
   assert.ok(!withRefs.includes('«قدیمی»'), 'an archived object is not referenced');
-  assert.match(withRefs, /\nبرگرفته از: «دارایی متن تبلیغ»\n/, 'an object that came from an asset says so');
+  assert.match(withRefs, /\nبرگرفته از: «خروجی متن تبلیغ»\n/, 'an object that came from an asset says so');
   assert.match(withRefs, /\nبرگرفته از: «لحن»\n/, 'a derived_from edge shows on the derived object (its source side) only');
   assert.equal((withRefs.match(/برگرفته از/g) ?? []).length, 2);
   // nothing nested: no list markers, no tables, no extra heading levels were added

@@ -20,7 +20,6 @@ const SIZES = process.env.ALL_WIDTHS
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'حقیقت', desktopLabel: 'حقیقت' },
-  { id: 'workstreams', label: 'خروجی‌ها', then: 'build' },
   { id: 'assets', label: 'خروجی‌ها' },
   { id: 'thinking', label: 'فکر' },
 ];
@@ -42,8 +41,9 @@ const audit = () => {
     const wide = [...document.querySelectorAll('body *')].filter((e) => (e.getBoundingClientRect().right > de.clientWidth + 1 || e.getBoundingClientRect().left < -1) && e.getBoundingClientRect().width > 0 && !e.closest('[data-testid=canvas-stage]')).slice(0, 3).map((e) => `${e.tagName.toLowerCase()}${e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : ''}[${(e.getAttribute('data-testid') || e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}]`);
     out.overflow = `${de.scrollWidth} > ${de.clientWidth} ← ${wide.join(' | ')}`;
   }
+  // the body of a closed <details> is not drawn (Chrome keeps its boxes under content-visibility), so it is not measured either
   // above the page's top edge (a skip link parked out of sight until it has focus) can never be seen by scrolling, so it is not measured
-  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && (cs.position === 'fixed' ? r.bottom > 0 : r.bottom + scrollY > 0) && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && (cs.position === 'fixed' ? r.bottom > 0 : r.bottom + scrollY > 0) && cs.visibility !== 'hidden' && cs.display !== 'none' && !el.closest('details:not([open]) > :not(summary)'); };
   // sideways scroll inside the page: any box that can scroll (or clips) and is wider inside than outside, except the few places made to
   // scroll sideways on purpose (a wide table, the canvas, code). A tab bar never scrolls up and down.
   out.scrollX = [];
@@ -238,7 +238,6 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     // by accessible name: at 768 the sidebar is the rail, whose buttons show only an icon
     const nav = page.getByRole('navigation', { name: mobile ? 'منوی پایینی موبایل' : 'بخش‌های اصلی نرم‌افزار' });
     await nav.getByRole('button', { name: mobile ? t.label : t.desktopLabel || t.label, exact: true }).first().click();
-    if (t.then === 'build') await page.getByTestId('outputs-build').getByRole('button', { name: /^(بساز|آماده‌سازی)/ }).first().click();
   };
   const closeDialog = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(350); };
 
@@ -256,11 +255,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // add context dialog
   await page.getByRole('button', { name: /^افزودن حقیقت به / }).first().click(); await shoot('dialog-context'); await closeDialog();
 
-  await goTab(TABS[2]); await shoot('workstreams-create');
-  await page.getByRole("tab", { name: /چه چیزی کم است/ }).click(); await shoot('workstreams-gap');
-  await page.getByRole("tab", { name: /^خروجی‌ها/ }).click(); await shoot('workstreams-history');
-
-  await goTab(TABS[3]); await shoot('assets');
+  await goTab(TABS[2]); await shoot('assets');
 
   // everything that is not daily work lives in the account menu (desktop) / account drawer (mobile)
   const mobile = size.width < 768;
@@ -279,7 +274,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   const spaceItem = async (name) => { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await page.getByRole('menuitem', { name }).first().click(); await page.waitForTimeout(250); };
   await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.waitForTimeout(150); await shoot('menu-space'); await page.keyboard.press('Escape'); await page.waitForTimeout(150);
   // the personal sample («زندگی من», docs/ux/audience.md): its truth and its thoughts
-  await spaceItem(/زندگی من/); await goTab(TABS[1]); await page.waitForTimeout(300); await shoot('life-truth'); await goTab(TABS[4]); await page.waitForTimeout(300); await shoot('life-thinking'); await goTab(TABS[0]);
+  await spaceItem(/زندگی من/); await goTab(TABS[1]); await page.waitForTimeout(300); await shoot('life-truth'); await goTab(TABS[3]); await page.waitForTimeout(300); await shoot('life-thinking'); await goTab(TABS[0]);
   if (size.width >= 1024) {
     // the narrow rail (icons only): its account menu must sit fully inside the window; then open the bar again
     await page.getByRole('button', { name: 'باریک کردن نوار کناری' }).click(); await page.waitForTimeout(200); await shoot('sidebar-narrow');
@@ -319,16 +314,19 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(900); await shoot('canvas-lineage');
   await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
   // the thinking canvas: one free canvas (with the tray and section frames)
-  await goTab(TABS[4]); await shoot('thinking-list');
+  await goTab(TABS[3]); await shoot('thinking-list');
   await page.getByRole('radiogroup', { name: 'نمای فکر' }).getByRole('radio', { name: 'بوم' }).click();
   await page.getByTestId('canvas-stage').waitFor();
   await shoot('canvas-free');
   await goTab(TABS[1]);
   await page.getByTestId('canvas-stage').focus(); await page.keyboard.press('KeyF'); await page.waitForTimeout(400); await shoot('canvas-fullscreen');
   await page.keyboard.press('Escape'); await page.waitForTimeout(200);
-  // the showcase's outputs (two are «به‌روز نیست») and the workflow page with its questions
-  await goTab(TABS[3]); await shoot('assets-demo');
-  await goTab(TABS[2]); await shoot('workstreams-demo');
+  // the showcase's outputs (two are «به‌روز نیست») and a monitored truth (its number, chart and the field for the next one)
+  await goTab(TABS[2]); await shoot('assets-demo');
+  await page.keyboard.press('Control+k'); await page.keyboard.type('سفارش هفتگی'); await page.waitForTimeout(600); await page.keyboard.press('Enter');
+  await page.getByTestId('monitor-panel').waitFor(); await shoot('truth-monitor');
+  await page.locator('button[aria-controls=context-more]').click(); await page.getByTestId('monitor-fields').scrollIntoViewIfNeeded(); await shoot('truth-monitor-fields');
+  await closeDialog();
   // the removal model: the node delete dialog (plan, tree after, what stops reaching whom) and the archive
   await goTab(TABS[1]);
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();

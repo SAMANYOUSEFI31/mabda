@@ -17,7 +17,7 @@ import type { SearchAndFocusScope } from './useSearchAndFocus';
 export type UsageCountersScope = ReturnType<typeof useUsageCounters>;
 
 export function useUsageCounters(p: AppCoreScope & SearchAndFocusScope) {
-  const { activeTab, aiRequest, contextViewMode, data, isContextModalOpen, isImportOpen, isMemoryOpen, isOnboardingOpen, isPacksOpen, metricsOpen, paletteOpen, patch, selectedSpecId, setSelectedSpecId, toast, weeklyOpen, workspaceContexts } = p;
+  const { activeTab, aiRequest, contextViewMode, data, isContextModalOpen, isImportOpen, isMemoryOpen, isOnboardingOpen, isPacksOpen, paletteOpen, patch, selectedSpecId, setSelectedSpecId, toast, weeklyOpen, workspaceContexts } = p;
   // ── local usage counters (a feature KEY only, never data; src/core/usage.ts) ──
   useEffect(() => { track(`view.${activeTab}`); }, [activeTab]);
   useEffect(() => { if (activeTab === 'context') track(`context.${contextViewMode}`); }, [activeTab, contextViewMode]);
@@ -25,7 +25,6 @@ export function useUsageCounters(p: AppCoreScope & SearchAndFocusScope) {
   useEffect(() => { if (aiRequest) track('dialog.ai-request'); }, [aiRequest]);
   useEffect(() => { if (isPacksOpen) track('dialog.packs'); }, [isPacksOpen]);
   useEffect(() => { if (isImportOpen) track('dialog.import'); }, [isImportOpen]);
-  useEffect(() => { if (metricsOpen) track('dialog.metrics'); }, [metricsOpen]);
   useEffect(() => { if (weeklyOpen) track('dialog.weekly'); }, [weeklyOpen]);
   useEffect(() => { if (isOnboardingOpen) track('dialog.quickstart'); }, [isOnboardingOpen]);
   useEffect(() => { if (isMemoryOpen) track('dialog.memory'); }, [isMemoryOpen]);

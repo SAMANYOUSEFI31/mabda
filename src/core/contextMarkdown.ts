@@ -50,7 +50,7 @@ function refLines(o: ContextObject, ctx: Ctx): string[] {
   const deps = [...new Set(rels.filter((r) => r.type === 'depends_on' && r.sourceId === o.id).map((r) => live(r.targetId)).filter((t): t is string => !!t))];
   const from = [
     ...rels.filter((r) => r.type === 'derived_from' && r.sourceId === o.id).map((r) => live(r.targetId)).filter((t): t is string => !!t),
-    ...(o.source?.kind === 'asset' && o.source.label ? [`دارایی ${o.source.label}`] : []),
+    ...(o.source?.kind === 'asset' && o.source.label ? [`خروجی ${o.source.label}`] : []),
   ];
   const out: string[] = [];
   if (deps.length) out.push(`وابسته به: ${quoted(deps)}`, '');

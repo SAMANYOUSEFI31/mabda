@@ -71,7 +71,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
             {pack.counts.guardrails > 0 && <Badge intent="neutral" icon={false}>{formatNumber(pack.counts.guardrails)} خط قرمز</Badge>}
           </div>
           <Textarea label="پیش‌نمایش بسته (فقط‌خواندنی)" rows={12} readOnly value={pack.markdown} className="code" />
-          <p className="caption text-text-subtle">وقتی جواب را از ابزار برگرداندی و وارد کردی، بخش‌های جواب به بلوک تبدیل می‌شوند و اصالت دارایی به همین بسته وصل می‌ماند.</p>
+          <p className="caption text-text-subtle">وقتی جواب را از ابزار برگرداندی و وارد کردی، بخش‌های جواب به بلوک تبدیل می‌شوند و ردپای خروجی به همین بسته وصل می‌ماند.</p>
         </div>
       )}
     </Dialog>

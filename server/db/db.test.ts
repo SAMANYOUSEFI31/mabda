@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import { migrate, currentVersion, LATEST_VERSION, MIGRATIONS } from './migrations.ts';
 import { Repo, RepoError } from './repo.ts';
-import { planNodeRemoval, removeNode, undoRemoval } from './removal.ts';
+import { planNodeRemoval, purgeImpact, purgeObject, removeNode, undoRemoval } from './removal.ts';
 import { importLegacy, seedPayload } from './legacy.ts';
 import { applyDemo } from './demo.ts';
 import { treeOrder } from '../../src/core/nodeTree.ts';
@@ -60,7 +60,7 @@ test('Thought backfill preserves notes, stable legacy identity, classification a
   insertObject.run('converted-normalized', U, 'w1', 'Fact', 'Proposed', 'User Input', 'بسته', 'بسته‌ی ویژه', 'business', 't', 't',
     source('normalized', 'legacy-key', 'بسته‌ی ویژه'));
 
-  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+  assert.deepEqual(migrate(db), [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
   const repo = new Repo(db);
   const s = { userId: U, workspaceId: 'w1' };
   const thoughts = repo.listThoughts(s, { includeResolved: true });
@@ -84,7 +84,7 @@ test('MCP token shutdown revokes active tokens once and preserves historical tok
     .run('legacy-active', U, 'w1', 'old client', 'hash-active', '1234', 'created', null);
   db.prepare('INSERT INTO mcp_tokens (id,user_id,workspace_id,label,token_hash,last4,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?)')
     .run('legacy-revoked', U, 'w1', 'revoked client', 'hash-revoked', '5678', 'created', 'already-revoked');
-  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+  assert.deepEqual(migrate(db), [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
   const rows = db.prepare('SELECT id,label,token_hash,last4,created_at,revoked_at FROM mcp_tokens ORDER BY id').all();
   assert.deepEqual(rows.map((r: any) => [r.id, r.label, r.token_hash, r.last4, r.created_at]), [
     ['legacy-active', 'old client', 'hash-active', '1234', 'created'],
@@ -607,6 +607,105 @@ test('a metric and its numbers: every write leaves a Change; metric changes stay
   assert.deepEqual(kinds, ['metric_created', 'measurement_added', 'metric_edited', 'measurement_removed', 'metric_archived']);
   assert.deepEqual(repo.listChanges(s), [], 'the Context change list (digest, weekly review) does not see metric changes');
   assert.equal(repo.listMetrics(s).length, 1, 'archived, not deleted');
+});
+
+test('«پایش» on a truth: a metric points at its object, one live monitor per truth; a number made earlier is linked with its history; migration 32 adds two empty columns and moves nothing', () => {
+  const { repo, s } = fresh();
+  const fact = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن من', content: 'وزن صبح، ناشتا.', nodeId: repo.listNodes(s)[0].id });
+  const m = repo.createMetric(s, { objectId: fact.id, unit: 'کیلو', direction: 'down', target: 70, cadence: 'week' });
+  assert.deepEqual([m.name, m.objectId, m.cadence], ['وزن من', fact.id, 'week'], 'the name comes from the truth');
+  assert.throws(() => repo.createMetric(s, { objectId: fact.id, direction: 'up' }), RepoError, 'one live monitor per truth');
+  assert.throws(() => repo.createMetric(s, { objectId: 'nope', direction: 'up' }), RepoError, 'an object of this workspace');
+  assert.throws(() => repo.createMetric(s, { objectId: fact.id, direction: 'up', cadence: 'day' }), RepoError, 'weekly or monthly only');
+  // two truths with the same title in two places can both be monitored (a monitor is known by its truth, not its name)
+  const twin = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن من', content: 'وزن عصر.', nodeId: repo.listNodes(s)[0].id });
+  assert.equal(repo.createMetric(s, { objectId: twin.id, direction: 'down' }).objectId, twin.id);
+  // a number made before monitoring moved onto truths keeps every value when she links it
+  const old = repo.createMetric(s, { name: 'پس‌انداز', unit: 'میلیون', direction: 'up' });
+  repo.addMeasurement(s, { metricId: old.id, value: 10, at: '2026-03-01' });
+  repo.addMeasurement(s, { metricId: old.id, value: 12, at: '2026-04-01' });
+  const saving = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'پس‌انداز ماهانه', content: 'آنچه آخر هر ماه کنار می‌گذارم.', nodeId: repo.listNodes(s)[0].id });
+  const linked = repo.updateMetric(s, old.id, { objectId: saving.id, cadence: 'month' });
+  assert.deepEqual([linked.objectId, linked.cadence, linked.name], [saving.id, 'month', 'پس‌انداز']);
+  assert.equal(repo.listMeasurements(s, { metricId: old.id }).length, 2, 'its history came with it');
+  const edit = repo.listChanges(s, { objectId: `metric:${old.id}`, includeNodes: true }).at(-1)!;
+  assert.deepEqual([edit.kind, edit.after?.objectId, edit.after?.cadence], ['metric_edited', saving.id, 'month']);
+  repo.archiveMetric(s, m.id);
+  assert.throws(() => repo.updateMetric(s, m.id, { cadence: 'month' }), RepoError, 'a stopped monitor is not edited');
+  assert.equal(repo.createMetric(s, { objectId: fact.id, direction: 'down' }).objectId, fact.id, 'after «قطع پایش» the truth can be monitored again');
+  const cols = repo.db.columns('metrics').map((c) => c.name);
+  assert.ok(cols.includes('object_id') && cols.includes('cadence'));
+});
+
+test('«پایش» follows its truth: «جایگزین کن» carries the monitor with every number; a new number makes only the output that carried it stale; erasing the truth for good erases the monitor, its numbers and every trace of its name', () => {
+  const { repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  const fact = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'صندوق محرمانه', content: 'حساب جدا.', nodeId: node });
+  const m = repo.createMetric(s, { objectId: fact.id, unit: 'میلیون تومان', direction: 'up', cadence: 'month' });
+  const first = repo.addMeasurement(s, { metricId: m.id, value: 45, at: '2026-09-01' });
+  // replaced: the monitor, its numbers and its cadence go to the new truth (no reminder is lost, nothing waits in «وصل کردن»)
+  const { object: next } = repo.supersedeObject(s, fact.id, { type: 'Fact', provenance: 'User Input', title: 'صندوق محرمانهٔ تازه', content: 'حساب جدا در بانک دیگر.', nodeId: node });
+  const moved = repo.getMetric(s, m.id)!;
+  assert.deepEqual([moved.objectId, moved.cadence, moved.name], [next.id, 'month', 'صندوق محرمانهٔ تازه']);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 1);
+  // replaced by a truth that cannot carry a monitor (a decision): left unlinked, for «وصل کردن», never lost
+  const other = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'وزن', content: 'صبح.', nodeId: node });
+  const w = repo.createMetric(s, { objectId: other.id, unit: 'کیلو', direction: 'down' });
+  repo.supersedeObject(s, other.id, { type: 'Decision', provenance: 'User Input', title: 'وزن را کم می‌کنم', content: 'تا بهار.', nodeId: node });
+  assert.equal(repo.getMetric(s, w.id)!.objectId, undefined);
+  // two outputs: one carried the number (on its truth's lineage), one did not
+  const base = { workspaceId: s.workspaceId, workstreamId: 'x', deliverableId: 'd', content: 'm', executionMode: 'auto', rebuildCount: 0, createdAt: new Date().toISOString() };
+  repo.saveDeliverable(s, { ...base, id: 'carried', title: 'گزارش', usedContext: [{ id: next.id, version: next.version, number: { metricId: m.id, measurementId: first.id, value: 45, at: first.at } }] } as unknown as GeneratedDeliverable);
+  repo.saveDeliverable(s, { ...base, id: 'plain', title: 'نامه', usedContext: [{ id: next.id, version: next.version }] } as unknown as GeneratedDeliverable);
+  assert.deepEqual(repo.computeStale(s), []);
+  repo.addMeasurement(s, { metricId: m.id, value: 58, at: '2026-10-01' });
+  const stale = repo.computeStale(s);
+  assert.deepEqual(stale.map((x) => x.deliverableId), ['carried']);
+  assert.equal(stale[0].reasons[0].message, 'عدد «صندوق محرمانهٔ تازه» از ۴۵ میلیون تومان به ۵۸ میلیون تومان رسید.');
+  // the REPLACED truth erased for good: the monitor that moved on keeps its numbers, but no longer says the old title anywhere
+  purgeObject(repo, s, fact.id);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 2);
+  assert.ok(!JSON.stringify(repo.db.prepare('SELECT * FROM context_changes').all()).includes('"صندوق محرمانه"'));
+  // erased for good (from the archive): the monitor, its numbers and its Change rows go; no table keeps the title
+  repo.updateObject(s, next.id, { status: 'Archived' });
+  assert.deepEqual(purgeImpact(repo, s, next.id).monitor, { numbers: 2 });
+  purgeObject(repo, s, next.id);
+  assert.equal(repo.getMetric(s, m.id), undefined);
+  assert.equal(repo.listMeasurements(s, { metricId: m.id }).length, 0);
+  assert.equal(repo.listChanges(s, { objectId: `metric:${m.id}`, includeNodes: true }).length, 0);
+  for (const t of ['metrics', 'measurements', 'context_changes']) {
+    const rows = repo.db.prepare(`SELECT * FROM "${t}"`).all();
+    assert.ok(!JSON.stringify(rows).includes('صندوق محرمانهٔ تازه'), `${t} keeps no trace of the title`);
+  }
+});
+
+test('erasing a truth for good touches only what is linked to it by id: a free number with the same name and a same-named truth\'s monitor stay whole', () => {
+  const { repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  // a free number named «وزن» and an unrelated truth named «وزن»
+  const free = repo.createMetric(s, { name: 'وزن', unit: 'کیلو', direction: 'down' });
+  repo.addMeasurement(s, { metricId: free.id, value: 80, at: '2026-09-01' });
+  const weight = repo.createObject(s, { type: 'Fact', status: 'Archived', provenance: 'User Input', title: 'وزن', content: 'صبح.', nodeId: node });
+  // two truths named «خواب», both monitored
+  const a = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'خواب', content: 'شب.', nodeId: node });
+  const b = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'خواب', content: 'ظهر.', nodeId: node });
+  const ma = repo.createMetric(s, { objectId: a.id, unit: 'ساعت', direction: 'up' });
+  const mb = repo.createMetric(s, { objectId: b.id, unit: 'ساعت', direction: 'up' });
+  repo.addMeasurement(s, { metricId: ma.id, value: 6, at: '2026-09-01' });
+  repo.addMeasurement(s, { metricId: mb.id, value: 1, at: '2026-09-01' });
+  const historyOf = (id: string) => JSON.stringify(repo.listChanges(s, { objectId: `metric:${id}`, includeNodes: true }).map((c) => [c.kind, c.before, c.after]));
+  const freeBefore = historyOf(free.id), bBefore = historyOf(mb.id);
+  purgeObject(repo, s, weight.id);
+  assert.equal(repo.getMetric(s, free.id)!.name, 'وزن', 'a free number that only shares the name keeps it');
+  assert.equal(historyOf(free.id), freeBefore);
+  assert.equal(repo.listMeasurements(s, { metricId: free.id }).length, 1);
+  repo.updateObject(s, a.id, { status: 'Archived' });
+  purgeObject(repo, s, a.id);
+  assert.equal(repo.getMetric(s, ma.id), undefined);
+  const kept = repo.getMetric(s, mb.id)!;
+  assert.deepEqual([kept.name, kept.objectId], ['خواب', b.id], 'the other «خواب» keeps its monitor');
+  assert.equal(historyOf(mb.id), bBefore, 'and its history is not marked erased');
+  assert.equal(repo.listMeasurements(s, { metricId: mb.id }).length, 1);
 });
 
 test('a stored legacy MCP measurement remains Proposed until the user confirms it; new writes reject the retired source', () => {

@@ -58,7 +58,8 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
     const r = await api.post<AnyJson>(`${b}/thoughts/${t.id}/promote`, { type });
     O[key] = r.object.id;
   };
-  const metric = async (key: string, name: string, unit: string, direction: 'up' | 'down', target: number) => { M[key] = (await api.post<AnyJson>(`${b}/metrics`, { name, unit, direction, target })).metric.id; };
+  // «پایش» is an option on a truth (docs/product-scope.md): every number here lives on one of her facts
+  const metric = async (key: string, on: string, unit: string, direction: 'up' | 'down', target: number, cadence: 'week' | 'month') => { M[key] = (await api.post<AnyJson>(`${b}/metrics`, { objectId: O[on], unit, direction, target, cadence })).metric.id; };
   const measure = (key: string, ago: number, value: number, text?: string) => api.post(`${b}/measurements`, { metricId: M[key], value, at: day(-ago), note: text });
   /** an output that came back from another tool: the pack goes out (recorded), the pasted answer comes in with the pack's own sources */
   const output = async (o: { ago: number; node?: string; specId?: string; deliverableId?: string; title: string; markdown: string; request?: string }) => {
@@ -175,14 +176,16 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   await know('leaseEnd', 'lease', 'Fact', 'پایان قرارداد اجاره', 'قرارداد اجاره پایان اسفند تمام می‌شود؛ ودیعه ۴۰۰ میلیون تومان است.', { validUntil: day(122), facets: ['مالی'] });
   await know('fixedCost', 'fixed', 'Fact', 'هزینهٔ ثابت ماهانه', 'هزینهٔ ثابت ماهانه حدود ۳۲ میلیون تومان است: اجاره، قبض‌ها، اینترنت، بیمه و خرید خانه.', { facets: ['مالی'] });
   await know('emergRule', 'emerg', 'Decision', 'اندازهٔ صندوق اضطراری', 'معادل شش ماه هزینهٔ ثابت را پول نقد نگه می‌دارم؛ تا آن‌جا هیچ سرمایه‌گذاری دیگری نمی‌کنم.', { facets: ['مالی'] });
-  await know('emergNow', 'emerg', 'Fact', 'موجودی صندوق اضطراری', 'الان ۴۵ میلیون تومان در حساب جدا دارم.', { facets: ['مالی'] });
+  await know('emergNow', 'emerg', 'Fact', 'موجودی صندوق اضطراری', 'حسابی جدا که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.', { facets: ['مالی'] });
   await know('noLoan', 'money', 'Constraint', 'بدون وام مصرفی', 'برای خرج روزمره یا سفر وام نمی‌گیرم و قسط خرید ماهانه نمی‌خرم.', { reach: 'global', facets: ['مالی'] });
   await dependsOn('emergRule', 'fixedCost');
   await dependsOn('emergNow', 'emergRule');
 
-  await metric('sleep', 'ساعت خواب شبانه', 'ساعت', 'up', 7.5);
-  await metric('fund', 'موجودی صندوق اضطراری', 'میلیون تومان', 'up', 192);
-  await metric('run', 'دویدن در هفته', 'کیلومتر', 'up', 15);
+  await know('sleepAvg', 'fit', 'Fact', 'ساعت خواب شبانه', 'میانگین ساعت‌هایی که هر شب واقعاً می‌خوابم، هفته به هفته.', { facets: ['سلامت'] });
+  await know('runWeek', 'run', 'Fact', 'دویدن در هفته', 'کیلومترهایی که هر هفته می‌دوم، از همهٔ صبح‌ها با هم.', { facets: ['سلامت'] });
+  await metric('sleep', 'sleepAvg', 'ساعت', 'up', 7.5, 'week');
+  await metric('fund', 'emergNow', 'میلیون تومان', 'up', 192, 'month');
+  await metric('run', 'runWeek', 'کیلومتر', 'up', 15, 'week');
 
   at(50, 21, 0);
   await know('mom1', 'mom', 'Fact', 'قرص‌های مادر', 'مادر هر صبح یک قرص فشار می‌خورد؛ دکترش دکتر رحیمی است و نوبتش هر سه ماه.', { facets: ['خانواده', 'سلامت'] });
@@ -274,7 +277,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   at(34, 9, 10);
   await measure('sleep', 34, 6.8);
   await measure('fund', 34, 58);
-  await edit('emergNow', { content: 'الان ۵۸ میلیون تومان در حساب جدا دارم.' }, 'حقوق مهر پس‌انداز شد');
+  await edit('emergNow', { content: 'حسابی جدا در بانک دیگری، که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.' }, 'حساب را به بانک دیگری بردم تا دم دست نباشد');
 
   at(33, 21, 20);
   await note('money', 'save', [
@@ -435,7 +438,7 @@ export async function tellLife(api: Driver, now: Date, wid: string): Promise<voi
   await know('arianException', 'arian', 'Fact', 'تحویل نهایی در یک شنبه', 'تحویل نهایی پروژهٔ آرین فقط یک بار در یک شنبهٔ اسفند است؛ شنبه همراه خانواده را به شنبهٔ بعد منتقل می‌کنم.', { facets: ['کار'] });
   await api.post(`${b}/objects/${O.arianException}/overrides`, { targetId: O.saturday, reason: 'یک استثنای تک‌باره برای تحویل پروژه' });
   await measure('fund', 8, 71);
-  await edit('emergNow', { content: 'الان ۷۱ میلیون تومان در حساب جدا دارم.' }, 'حقوق آبان پس‌انداز شد');
+  await edit('emergNow', { content: 'حسابی جدا در بانک دیگری، بدون کارت، که فقط برای پیشامدهای پیش‌بینی‌نشده است؛ موجودی‌اش هر ماه در پایش همین حقیقت ثبت می‌شود، نه در این متن.' }, 'کارت حساب را باطل کردم');
   await measure('sleep', 8, 6.8);
   await measure('run', 8, 14);
 

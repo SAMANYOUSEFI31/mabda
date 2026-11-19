@@ -36,6 +36,7 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
               <ListItem title="برگشت فردا" description="روز بعد از اولین روز دوباره آمدند" trailing={of(s.returnedD1, s.people)} />
               <ListItem title="برگشت از روز سوم" description="روز سوم یا بعدتر هنوز می‌آمدند" trailing={of(s.returnedD3plus, s.people)} />
               <ListItem title="زمان استفاده" description="میانهٔ دقیقه‌های فعال هر نفر (بی‌کاری بیش از ۵ دقیقه حساب نمی‌شود)" trailing={mins(s.medianActiveMinutes)} />
+              <ListItem title="پایش" description="روی یک حقیقت پایش ساختند یا عددی قدیمی را وصل کردند؛ و چند نفر روز دیگری هم عدد ثبت کردند (برای تصمیم ماندن یا «بعداً»)" trailing={`${of(s.monitoring, s.people)} · ${of(s.monitoringKept, s.people)}`} />
               <ListItem title="خطا" description={`در هر ۱۰۰ کار: ${formatNumber(s.brokePer100, 1)} خرابی سرور، ${formatNumber(s.refusedPer100, 1)} درخواست ردشده · ${formatNumber(s.clientErrors)} خطای دستگاه`} />
             </List>
 
@@ -53,6 +54,7 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
                   { key: 'activeMinutes', label: 'دقیقه', numeric: true, render: (p) => formatNumber(p.activeMinutes, 1) },
                   { key: 'captures', label: 'افزوده', numeric: true, render: (p) => formatNumber(p.captures) },
                   { key: 'confirms', label: 'تأییدشده', numeric: true, render: (p) => formatNumber(p.confirms) },
+                  { key: 'numbers', label: 'عدد پایش', numeric: true, render: (p) => formatNumber(p.numbers) },
                   { key: 'broke', label: 'خطا', numeric: true, render: (p) => formatNumber(p.broke + p.clientErrors) },
                 ]}
               />

@@ -12,7 +12,7 @@ import { IN_FORCE } from './effectiveContext';
 import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
 import type { Explain, ExplainItem, ExplainSkipped } from './scopeExplain';
 import { guardrailText } from './redlineExamples';
-import { metricsPackSection } from './metrics';
+import { metricsPackSection, packedMetrics, withNumberRefs } from './metrics';
 import { ASSUMPTION_RULE, REJECTED_RULE, isAssumption, rejectedOptions } from './assumptions';
 
 export interface PackInput {
@@ -144,7 +144,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   if (proposed.length) parts.push(`## پیشنهادی — تأییدنشده (واقعیت نیست)\n${group(proposed)}`);
   if (assumptions.length) parts.push([`## فرض‌های فعال، تأییدنشده (واقعیت نیست)`, ASSUMPTION_RULE, '', group(assumptions)].join('\n'));
   if (rejected.length) parts.push([`## گزینه‌های بررسی‌شده و ردشده`, REJECTED_RULE, '', ...rejected.map((r) => `- «${r.title}» (در تصمیم «${r.objectTitle}»): ${r.reason}`)].join('\n'));
-  const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now) : null;
+  const metricsSection = input.metrics ? metricsPackSection(input.metrics.metrics, input.metrics.measurements, relevant.filter((o) => o.status === 'Confirmed'), input.metrics.changes, now, relevant) : null;
   if (metricsSection) parts.push(metricsSection);
   if (gaps.length) {
     parts.push(['## جاهای خالی (Gap)', 'پیش از ساخت خروجی، این‌ها را از کاربر بپرس یا در خروجی صریح بگو که فرض‌اند:', ...gaps.map((g) => `- ${g.status === 'missing' ? 'ثبت‌نشده' : 'مبهم'}: **${g.label}** — ${g.question}`)].join('\n'));
@@ -182,7 +182,11 @@ export function buildContextPack(input: PackInput): ContextPack {
     markdown, tokens: estimateTokens(markdown), chars: markdown.length,
     // the trace (lineage) holds every red line the text carries too, also one a facet filter left out of «relevant» (CORE-08):
     // when a red line changes, an output built from this pack is marked stale
-    refs: [...relevant, ...guardObjects.filter((o) => !relevant.some((r) => r.id === o.id))].map((o) => ({ id: o.id, version: o.version })),
-    counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? input.metrics!.metrics.filter((m) => !m.archived).length : 0 },
+    refs: (() => {
+      const base = [...relevant, ...guardObjects.filter((o) => !relevant.some((r) => r.id === o.id))].map((o) => ({ id: o.id, version: o.version }));
+      // a monitored truth whose number is in the text carries that number, so a newer number makes this output stale (§۴۲)
+      return metricsSection && input.metrics ? withNumberRefs(base, input.metrics.metrics, input.metrics.measurements, relevant) : base;
+    })(),
+    counts: { confirmed: confirmed.length, proposed: proposed.length, assumptions: assumptions.length, rejected: rejected.length, gaps: gaps.length, guardrails: guardrails.length, metrics: metricsSection ? packedMetrics(input.metrics!.metrics, relevant).length : 0 },
   };
 }

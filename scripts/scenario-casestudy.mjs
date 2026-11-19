@@ -109,10 +109,9 @@ try {
     await shot('5-history');
     await page.keyboard.press('Escape');
 
-    step(`[${width}] workstreams: ready / missing / ambiguous`);
-    await nav('خروجی‌ها', 'خروجی‌ها'); await page.getByTestId('outputs-build').getByRole('button', { name: /^بساز/ }).first().click();
-    await page.waitForTimeout(500); await shot('7-workstreams');
-    if (!mobile) await page.locator('text=معرفی برند >> visible=true').first().waitFor();
+    step(`[${width}] outputs: what was made, its trail and whether it is still up to date (the workshop is frozen with the managed AI)`);
+    await nav('خروجی‌ها', 'خروجی‌ها');
+    await page.waitForTimeout(500); await shot('7-outputs');
     const specs = (await api('/workspaces/ws_demo/state')).specs;
     assert.equal(specs.length, 3);
 

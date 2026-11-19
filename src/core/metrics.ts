@@ -10,7 +10,9 @@
  */
 
 import { tehranDay } from './tehranDate';
-import type { ContextChange, ContextObject, Measurement, Metric, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
+import { jaccard, quantitySpans, titleTokens } from './contextEngine';
+import { formatNumber, toLatinDigits } from '../ui/format';
+import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict, UsedContextRef } from '../types';
 
 // a day stays a day; a moment becomes its Tehran day (tehranDate.ts), never the UTC one
 const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : tehranDay(iso));
@@ -45,6 +47,104 @@ export function seriesOf(metricId: string, measurements: Measurement[]): Measure
 }
 export const latestOf = (metricId: string, measurements: Measurement[]): Measurement | undefined => seriesOf(metricId, measurements).at(-1);
 export const proposedMeasurements = (measurements: Measurement[]): Measurement[] => measurements.filter((m) => m.status === 'Proposed');
+
+// ── «پایش»: a number is an option on a truth (docs/product-scope.md) ─────────
+
+/** the live monitor of one truth (a truth carries at most one) */
+export const monitorOf = (objectId: string, metrics: Metric[]): Metric | undefined => metrics.find((m) => !m.archived && m.objectId === objectId);
+/** live numbers made before monitoring moved onto truths, not linked to one yet: the person links them («وصل کردن»), Mabda never does */
+export const unlinkedMetrics = (metrics: Metric[]): Metric[] => metrics.filter((m) => !m.archived && !m.objectId);
+/** what the person calls the number: the truth's title when it is on one, else its own name */
+export const metricLabel = (m: Metric, objects: Pick<ContextObject, 'id' | 'title'>[]): string => (m.objectId ? objects.find((o) => o.id === m.objectId)?.title : undefined) ?? m.name;
+/** the numbers a pack or request carries: numbers not linked to a truth yet, and a monitor only with its truth (the number is part of
+ *  the truth: a request about health does not carry the sales number) */
+export const packedMetrics = (metrics: Metric[], objects: Pick<ContextObject, 'id'>[]): Metric[] => {
+  const ids = new Set(objects.map((o) => o.id));
+  return metrics.filter((m) => !m.archived && (!m.objectId || ids.has(m.objectId)));
+};
+/**
+ * The lineage of the numbers in a pack: each monitor carried in its text puts its last confirmed number on its truth's ref
+ * (added when the truth itself was not among the refs). Later, only a newer number with another value makes the output stale.
+ */
+export function withNumberRefs(refs: UsedContextRef[], metrics: Metric[], measurements: Measurement[], objects: Pick<ContextObject, 'id' | 'version'>[]): UsedContextRef[] {
+  const out = refs.map((r) => ({ ...r }));
+  for (const m of packedMetrics(metrics, objects)) {
+    if (!m.objectId) continue;
+    const last = latestOf(m.id, measurements);
+    if (!last) continue;
+    const number = { metricId: m.id, measurementId: last.id, value: last.value, at: last.at };
+    const ref = out.find((r) => r.id === m.objectId);
+    if (ref) ref.number = number;
+    else { const o = objects.find((x) => x.id === m.objectId); if (o) out.push({ id: o.id, version: o.version, number }); }
+  }
+  return out;
+}
+export interface TextMismatch {
+  /** the amount as written in the truth's text */
+  written: string;
+  /** the same text with that amount replaced by the last recorded number: offered as a draft, never written by itself */
+  replaced: string;
+}
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+/**
+ * The text of a monitored truth writes an amount in the monitor's unit (or the same class: money, percent, duration…) that differs
+ * from the last confirmed number (owner decision, §۴۲): «متن عددی دارد که با آخرین عدد فرق دارد». Deterministic; no amount of
+ * that unit in the text, or one that agrees, is not a mismatch.
+ */
+export function textNumberMismatch(content: string, metric: Pick<Metric, 'unit'>, last: Pick<Measurement, 'value'> | undefined): TextMismatch | null {
+  if (!last || !content.trim()) return null;
+  const latin = toLatinDigits(content);
+  const found: Array<{ index: number; length: number; agrees: boolean }> = [];
+  const unit = metric.unit.trim();
+  if (unit) {
+    // the unit as she wrote it on the monitor («سفارش», «کیلومتر», «میلیون تومان»), after a number
+    const re = new RegExp(`(\\d{1,3}(?:,\\d{3})+|\\d+(?:\\.\\d+)?)[\\s\u200c]*${unit.split(/\s+/).map(esc).join('[\\s\u200c]*')}`, 'g');
+    for (const m of latin.matchAll(re)) found.push({ index: m.index!, length: m[0].length, agrees: near(Number(m[1].replace(/,/g, '')), last.value) });
+  }
+  // the same class (money, percent…) counts too; a duration only in its own unit: «هر ۲ روز» is not a claim about «ساعت خواب»
+  const want = quantitySpans(`${last.value} ${unit}`)[0];
+  if (want && want.cls !== 'duration') {
+    for (const q of quantitySpans(content)) {
+      if (q.cls !== want.cls || found.some((f) => f.index === q.index)) continue;
+      found.push({ index: q.index, length: q.length, agrees: near(q.value, want.value) });
+    }
+  }
+  if (found.length === 0 || found.some((f) => f.agrees)) return null;
+  const first = found.sort((a, b) => a.index - b.index)[0];
+  const written = content.slice(first.index, first.index + first.length);
+  return { written, replaced: `${content.slice(0, first.index)}${formatNumber(last.value, 2)}${unit ? ` ${unit}` : ''}${content.slice(first.index + first.length)}` };
+}
+/** «وصل کردن»: the truths a number can go on (live Facts, not assumptions, without a monitor), the ones whose title is like the
+ *  number's name first and marked `like` (audit, PR #91: a new truth only would duplicate one she already has) */
+export const linkCandidates = (metric: Pick<Metric, 'name'>, metrics: Metric[], objects: ContextObject[]): Array<{ object: ContextObject; like: boolean }> => {
+  const name = titleTokens(metric.name);
+  return objects
+    .filter((o) => o.type === 'Fact' && !o.assumption && (o.status === 'Confirmed' || o.status === 'Proposed') && !monitorOf(o.id, metrics))
+    .map((o) => ({ object: o, score: jaccard(name, titleTokens(o.title)) }))
+    .sort((a, b) => b.score - a.score || a.object.title.localeCompare(b.object.title))
+    .map(({ object, score }) => ({ object, like: score >= 0.34 }));
+};
+export const CADENCE_DAYS: Record<MetricCadence, number> = { week: 7, month: 30 };
+
+export interface MonitorDue { metric: Metric; object: ContextObject; last?: Measurement }
+/**
+ * The calm upkeep of a monitored truth: its cadence has passed since the last confirmed number (or there is none yet).
+ * Only live truths (not archived, not replaced); a monitor without a cadence never reminds. Oldest first.
+ */
+export function monitorsDue(metrics: Metric[], measurements: Measurement[], objects: ContextObject[], now: Date | string | number): MonitorDue[] {
+  const t = new Date(now).getTime();
+  const out: MonitorDue[] = [];
+  for (const m of metrics) {
+    if (m.archived || !m.objectId || !m.cadence) continue;
+    const object = objects.find((o) => o.id === m.objectId);
+    if (!object || object.status === 'Archived' || object.status === 'Superseded') continue;
+    const last = latestOf(m.id, measurements);
+    const cutoff = day(new Date(t - CADENCE_DAYS[m.cadence] * 86_400_000).toISOString());
+    if (!last || last.at <= cutoff) out.push({ metric: m, object, ...(last ? { last } : {}) });
+  }
+  return out.sort((a, b) => (a.last?.at ?? '').localeCompare(b.last?.at ?? '') || a.metric.id.localeCompare(b.metric.id));
+}
 
 /** active metrics that have no confirmed number in the last `days` days — a quiet marker, never a reminder */
 export function metricsWithoutRecentNumber(metrics: Metric[], measurements: Measurement[], now: Date | string | number, days = 7): Metric[] {
@@ -197,8 +297,10 @@ const unitOf = (m: Metric) => (m.unit ? ` ${m.unit}` : '');
  * «اندازه‌گیری‌ها» for the pack: a separate section, only confirmed numbers, with the rule that these are recorded
  * numbers — not knowledge, and not a reason to infer cause from a decision sitting next to a number.
  */
-export function metricsPackSection(metrics: Metric[], measurements: Measurement[], decisions: ContextObject[] = [], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] = [], now: Date = new Date()): string | null {
-  const live = metrics.filter((m) => !m.archived);
+export function metricsPackSection(metrics: Metric[], measurements: Measurement[], decisions: ContextObject[] = [], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] = [], now: Date = new Date(), objects: Pick<ContextObject, 'id' | 'title'>[] = decisions): string | null {
+  // a monitor is called by its truth's title (the truth may have been renamed since the number was made)
+  const named = (m: Metric): Metric => ({ ...m, name: metricLabel(m, objects) });
+  const live = packedMetrics(metrics, objects).map(named);
   if (live.length === 0) return null;
   const lines = live.map((m) => {
     const last = seriesOf(m.id, measurements).slice(-4);
@@ -206,7 +308,7 @@ export function metricsPackSection(metrics: Metric[], measurements: Measurement[
     const head = `- **${m.name}**${m.unit ? ` (${m.unit})` : ''} — ${dir}${m.target !== undefined ? `؛ هدف: ${trim(m.target)}${unitOf(m)}` : ''}`;
     return last.length ? `${head}\n  آخرین اعداد: ${last.map((x) => `${x.at}: ${trim(x.value)}`).join('، ')}` : `${head}\n  هنوز عددی ثبت نشده.`;
   });
-  const exps = expectationRows(decisions, metrics, measurements, changes, now).filter((r) => r.metric && !r.metric.archived);
+  const exps = expectationRows(decisions, metrics.map(named), measurements, changes, now).filter((r) => r.metric && !r.metric.archived);
   const expLines = exps.map((r) => {
     const m = r.metric!;
     const goal = `${m.direction === 'up' ? 'بالا برود' : 'پایین بیاید'}${r.expectation.targetValue !== undefined ? ` تا ${trim(r.expectation.targetValue)}${unitOf(m)}` : ''} تا ${r.expectation.by}`;

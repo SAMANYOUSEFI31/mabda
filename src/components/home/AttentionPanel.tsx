@@ -32,7 +32,6 @@ interface Props {
   onAnswerGap: (gap: GapItem, answer: string) => void;
   /** the tree, so an answer's section is shown and can be changed (NEW-01) */
   nodes?: TreeNode[];
-  onOpenStudio: () => void;
   onOpenAssets: () => void;
   /** «چه چیزی عوض شد»: opens the 7-day change feed */
   onOpenChanges: () => void;
@@ -47,7 +46,7 @@ interface Props {
 const MAX_QUESTIONS = 3;
 
 /** The home of the Context: not a tree, but "what needs you" — open questions first (answer in one line), then conflicts, stale outputs, AI suggestions. */
-export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, nodes = [], onOpenStudio, onOpenAssets, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
+export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradictionCount, staleCount, reviews, waiting, structure = {}, flips, titleOf, onOpenObject, onAcceptReview, proposedCount, onAnswerGap, nodes = [], onOpenAssets, onOpenChanges, weeklyDue, onOpenWeekly, showWeekly = true, showWaiting = true }) => {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const questions = gaps.slice(0, MAX_QUESTIONS);
   const total = gaps.length + contradictionCount + staleCount + proposedCount + reviews.length + waiting.ready.length + waiting.concurrent.length;
@@ -70,7 +69,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
           <h2 className="heading-sm text-text-default">همهٔ کارها</h2>
         </div>
         <p className="body-sm text-text-subtle">
-          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم حقیقت می‌شود. سؤال‌ها براساس جریان «${specTitle}» هستند.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}
+          {total ? `هر پاسخ کوتاه همین‌جا ثبت می‌شود و مستقیم حقیقت می‌شود. سؤال‌ها از حقیقت‌هایی است که «${specTitle}» لازم دارد.` : 'سؤال بازی، تناقضی یا خروجی نیازمند بازبینی وجود ندارد.'}
         </p>
       </div>
 
@@ -173,7 +172,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
               </li>
             ))}
           </ul>
-          {gaps.length > MAX_QUESTIONS && <p className="caption text-text-subtle">{formatNumber(gaps.length - MAX_QUESTIONS)} سؤال دیگر در استودیوی جریان‌های کار هست.</p>}
+          {gaps.length > MAX_QUESTIONS && <p className="caption text-text-subtle">{formatNumber(gaps.length - MAX_QUESTIONS)} سؤال دیگر هم هست؛ با جواب دادن به این‌ها، بعدی‌ها می‌آیند.</p>}
         </div>
       )}
     </Card>

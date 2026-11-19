@@ -45,7 +45,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       title="بازنشانی فضای نمونه؟"
       footer={<><Button variant="ghost" onClick={() => setDemoConfirm(false)}>انصراف</Button><Button variant="primary" loading={demoBusy} onClick={handleResetDemo}>بازنشانی</Button></>}
     >
-      <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، دارایی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
+      <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، خروجی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
     </Dialog>
     {/* New workspace dialog */}
     <Dialog

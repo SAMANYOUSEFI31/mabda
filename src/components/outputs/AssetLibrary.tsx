@@ -8,7 +8,7 @@ import { ContextChange, ContextObject, GeneratedDeliverable, Workspace } from '.
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../../core/impactEngine';
 import { useAiStatus } from '../../services/aiStatus';
-import { Button, EmptyState, IconButton, Menu, Tabs, formatNumber, useToast } from '../../ui';
+import { Button, EmptyState, Tabs, formatNumber } from '../../ui';
 
 interface AssetLibraryProps {
   currentWorkspace: Workspace;
@@ -18,21 +18,28 @@ interface AssetLibraryProps {
   /** proposes knowledge (Proposed + quote) from the output's text; the output itself never becomes Context */
   onExtractKnowledge: (del: GeneratedDeliverable) => void;
   extractingId?: string | null;
+  /** Mabda's own rebuild (managed AI, frozen): only offered when that is on */
   onRebuild: (del: GeneratedDeliverable) => void;
+  /** the outward way to bring an output back in step: a fresh request for another tool from today's truth */
+  onRerequest?: (del: GeneratedDeliverable) => void;
+  /** per output: the required truths its recipe still lacks («چه کم است») */
+  missingOf?: (del: GeneratedDeliverable) => string[];
   stale: StaleAsset[];
   changes?: ContextChange[];
-  onGoToWorkstreams: () => void;
   /** «بایگانی» and «حذف» of one output (the page offers «واگرد») */
   onArchive?: (d: GeneratedDeliverable) => void;
   onDelete?: (d: GeneratedDeliverable) => void;
-  /** opens the archive on its outputs */
-  onOpenArchive?: () => void;
-  /** this workspace's own workstreams (the filter tabs); only those that already have an output are listed */
-  workstreams: Array<{ id: string; title: string }>;
+  /** the empty page's one action (the page header carries it once there is something) */
+  emptyAction?: React.ReactNode;
   /** the global search points at one asset: show it among all and scroll to it */
   focus?: { id: string; n: number } | null;
 }
 
+/**
+ * «خروجی‌ها» at its core (docs/product-scope.md): what she made from her truths or sent to another tool, the text that came back,
+ * which truths it rests on (the trail) and whether it is still up to date (Context Replay). One filter only: «به‌روز نیست».
+ * The production workshop (workstreams, specs, acceptance criteria, the library) is not on this page any more; its data stays.
+ */
 export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   currentWorkspace,
   deliverables,
@@ -41,18 +48,17 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   onExtractKnowledge,
   extractingId,
   onRebuild,
-  workstreams,
+  onRerequest,
+  missingOf,
   stale,
   changes,
-  onGoToWorkstreams,
   focus,
   onArchive,
   onDelete,
-  onOpenArchive,
+  emptyAction,
 }) => {
   const { managedEnabled } = useAiStatus();
   const [filter, setFilter] = useState<string>('all');
-  const toast = useToast();
   useEffect(() => {
     if (!focus) return undefined;
     setFilter('all');
@@ -60,55 +66,29 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
     return () => clearTimeout(t);
   }, [focus]);
 
-  const filtered = deliverables.filter((d) => {
-    if (d.workspaceId !== currentWorkspace.id || d.archivedAt) return false;
-    if (filter === 'all') return true;
-    if (filter === 'stale') return stale.some((x) => x.deliverableId === d.id);
-    return d.workstreamId === filter;
-  });
-
-  const handleExportJson = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filtered, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute('href', dataStr);
-    dlAnchor.setAttribute('download', `mabda_assets_${currentWorkspace.slug}.json`);
-    dlAnchor.click();
-    toast.show({ intent: 'success', message: 'فایل JSON همهٔ ساخته‌ها دانلود شد.' });
-  };
+  const live = deliverables.filter((d) => d.workspaceId === currentWorkspace.id && !d.archivedAt);
+  const staleIds = new Set(stale.map((x) => x.deliverableId));
+  const staleLive = live.filter((d) => staleIds.has(d.id));
+  const filtered = filter === 'stale' ? staleLive : live;
 
   return (
     <div className="flex flex-col gap-stack-lg">
-      <div className="flex flex-col gap-stack-xs">
-        <div className="flex items-center gap-inline-xs">
-          <h2 className="heading-sm text-text-default">خروجی‌های تو</h2>
-          {/* the «⋯» sits with the heading it belongs to, quiet, never floating at the far edge */}
-          <Menu
-          label="بیشتر دربارهٔ ساخته‌ها"
-          align="start"
-          trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ ساخته‌ها" size="sm" />}
-          items={[{ label: 'خروجی گرفتن JSON', icon: 'Download', onSelect: handleExportJson }, ...(onOpenArchive ? [{ label: 'خروجی‌های بایگانی‌شده', icon: 'Archive' as const, onSelect: onOpenArchive }] : [])]}
-          />
-        </div>
-        <p className="body-sm text-text-subtle">از متن هر کدام می‌توانی دانش پیشنهادی بگیری؛ خودشان هرگز دانش نیستند.</p>
-      </div>
-
-      {deliverables.length > 0 && (stale.length > 0 || workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).length > 1) && <Tabs
-        label="فیلتر ساخته‌ها"
+      {staleLive.length > 0 && <Tabs
+        label="فیلتر خروجی‌ها"
         value={filter}
         onChange={setFilter}
         items={[
-          { id: 'all', label: `همه (${formatNumber(deliverables.length)})` },
-          ...(stale.length > 0 ? [{ id: 'stale', label: `به‌روز نیست (${formatNumber(stale.length)})` }] : []),
-          ...workstreams.filter((w) => deliverables.some((d) => d.workstreamId === w.id)).map((w) => ({ id: w.id, label: w.title })),
+          { id: 'all', label: `همه (${formatNumber(live.length)})` },
+          { id: 'stale', label: `به‌روز نیست (${formatNumber(staleLive.length)})` },
         ]}
       />}
 
       {filtered.length === 0 ? (
-        deliverables.length === 0 ? (
-          // the way to build is right above (one action per view): here only what this place is for
+        live.length === 0 ? (
           <EmptyState
-            title="هنوز چیزی نساخته‌ای"
-            description={workstreams.length === 0 ? 'هر چه بسازی اینجا می‌ماند و اگر دانسته‌ات عوض شود، می‌گوید.' : managedEnabled ? 'از یکی از موارد بالا، اولین را از حقیقت‌هایت بساز.' : 'از یکی از موارد بالا، حقیقت‌هایت را برای هر ابزاری آماده کن.'}
+            title="هنوز خروجی‌ای نداری"
+            description="درخواستی برای ابزار دیگر آماده کن و پاسخش را برگردان؛ اینجا با ردپایش می‌ماند و اگر حقیقتی که در آن بود عوض شود، می‌گوید."
+            action={emptyAction}
           />
         ) : (
           <EmptyState kind="filtered" title="با این فیلتر چیزی نیست" action={<Button variant="secondary" onClick={() => setFilter('all')}>پاک‌کردن فیلترها</Button>} />
@@ -124,6 +104,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
                 changes={changes}
                 onOpenContextObject={onOpenContextModal}
                 onRebuild={onRebuild}
+                onRerequest={onRerequest}
+                missing={missingOf?.(del)}
                 onArchive={onArchive}
                 onDelete={onDelete}
               />
