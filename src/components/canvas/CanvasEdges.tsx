@@ -64,7 +64,7 @@ export const CanvasEdges = React.memo(function CanvasEdges({ width, height, rout
         return (
           <>
             <g data-layer="halo">
-              {ordered.map(({ edge, route }) => { const i = info(edge); return <path key={edge.id} d={route.d} fill="none" className={`stroke-mabda-edge-halo ${i.dim ? 'opacity-35' : ''}`} strokeWidth={i.w + 4} strokeLinecap="round" strokeLinejoin="round" />; })}
+              {ordered.map(({ edge, route }) => { const i = info(edge); return <path key={edge.id} d={route.d} fill="none" className={`stroke-mabda-edge-halo ${i.dim ? 'opacity-35' : ''}`} strokeWidth={i.w + 4} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />; })}
             </g>
             <g data-layer="line">
               {ordered.map(({ edge, route }) => {
@@ -72,14 +72,14 @@ export const CanvasEdges = React.memo(function CanvasEdges({ width, height, rout
                 const i = info(edge);
                 return (
                   <g key={edge.id} data-edge={edge.id} data-kind={edge.kind} className={i.dim ? 'opacity-35' : ''}>
-                    <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={i.w} strokeDasharray={edge.pending ? '2 6' : st.dash} data-pending={edge.pending || undefined} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
+                    <path d={route.d} fill="none" className={st.stroke} data-line="" strokeWidth={i.w} vectorEffect="non-scaling-stroke" strokeDasharray={edge.pending ? '2 6' : st.dash} data-pending={edge.pending || undefined} strokeLinecap="round" strokeLinejoin="round" markerEnd={`url(#canvas-arrow-${edge.kind})`} />
                   </g>
                 );
               })}
             </g>
             <g data-layer="hit">
               {ordered.map(({ edge, route }) => (
-                <path key={edge.id} d={route.d} fill="none" stroke="transparent" strokeWidth={16} className="cursor-pointer" style={{ pointerEvents: 'stroke' }} onPointerEnter={() => onHover(edge.id)} onPointerLeave={() => onHover(null)} onClick={(e) => { e.stopPropagation(); onSelect(edge.id); }} />
+                <path key={edge.id} d={route.d} fill="none" stroke="transparent" strokeWidth={16} vectorEffect="non-scaling-stroke" className="cursor-pointer" style={{ pointerEvents: 'stroke' }} onPointerEnter={() => onHover(edge.id)} onPointerLeave={() => onHover(null)} onClick={(e) => { e.stopPropagation(); onSelect(edge.id); }} />
               ))}
             </g>
           </>
