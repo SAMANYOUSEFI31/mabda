@@ -8,7 +8,7 @@ import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
 import { dataApi } from '../../services/dataApi';
-import { expectationRows, expectationsDue, metricLabel, monitorsDue, unlinkedMetrics, verdictTally } from '../../core/metrics';
+import { expectationRows, metricLabel, monitorsDue, unlinkedMetrics } from '../../core/metrics';
 import { setPendingMonitorLink } from '../../components/metrics/Monitor';
 import { markAddSwitchable } from '../../core/addRequest';
 import { homeActions, homeSections } from '../../core/homeActions';
@@ -80,8 +80,6 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const metrics = data?.metrics ?? [];
   const measurements = data?.measurements ?? [];
   const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);
-  const tally = useMemo(() => verdictTally(expRows), [expRows]);
-  const expectationsDueCount = useMemo(() => expectationsDue(expRows, new Date()).length, [expRows]);
   const dueProps = {
     assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
     onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
@@ -93,5 +91,5 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     },
     expectations: expRows,
   };
-  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, tally, expectationsDueCount, dueProps };
+  return { vf, homePlan, homeView, handleHomeAct, metrics, measurements, expRows, dueProps };
 }

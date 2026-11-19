@@ -157,11 +157,9 @@ test('the metric components and the screen text in App/DueItems are free of caus
     const jsxText = [...src.matchAll(/>([^<>{}\n]*[؀-ۿ][^<>{}\n]*)</g)].map((m) => m[1]);
     for (const s of [...literals, ...jsxText]) assert.doesNotMatch(s, CAUSAL, `${f}: «${s}»`);
   }
-  // the one place the chart words appear on a page: the Home card (it was looked for in App.tsx, where it no longer is)
-  const app = readFileSync('src/app/home/HomePage.tsx', 'utf8');
-  assert.ok(app.includes('id="expectations"'), 'the Home card is found');
-  const card = app.slice(app.indexOf('id="expectations"'), app.indexOf('id="expectations"') + 1500);
-  assert.doesNotMatch(card, CAUSAL);
+  // the count «انتظار در برابر نتیجه» left Home (owner decision, §۴۲): the verdict's due date waits in «منتظر تو», the rest is on the truth
+  const home = readFileSync('src/app/home/HomePage.tsx', 'utf8');
+  assert.ok(!home.includes('id="expectations"') && !home.includes('expectation-tally'), 'no expectation count on Home');
 });
 
 test('«پایش»: a monitor belongs to one truth; its cadence passing (or no number yet) is the calm reminder; numbers not on a truth are listed for her to link', () => {

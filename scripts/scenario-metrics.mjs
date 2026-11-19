@@ -48,11 +48,10 @@ try {
     if (had) await page.getByRole('dialog').getByRole('button', { name: 'بازنشانی' }).click();
     await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
 
-    step(`[${width}] home: the plain count of expectation versus result`);
+    step(`[${width}] home: no count of expectation versus result (owner decision §۴۲); a verdict that is due waits in «منتظر تو»`);
     await page.locator('button[aria-controls="home-all"]').click(); // the full list is under «همه»
-    const tally = page.getByTestId('expectation-tally');
-    await tally.waitFor();
-    assert.match(await tally.innerText(), /۱ به انتظار رسید · ۰ نیمه · ۱ نرسید · ۲ باز \(۱ موعدش رسیده\)/);
+    await page.getByText(/مورد موعد بازبینی دارد/).first().waitFor();
+    assert.equal(await page.getByTestId('expectation-tally').count(), 0);
     await shot('1-home');
 
     step(`[${width}] weekly review: a number in a few clicks (field → record)`);
@@ -97,8 +96,6 @@ try {
     assert.equal(j.after.verdict, 'partial');
     assert.equal(j.after.metricId, 'met_demo_retention');
     await page.keyboard.press('Escape');
-    await page.getByTestId('expectation-tally').waitFor();
-    assert.match(await page.getByTestId('expectation-tally').innerText(), /۱ به انتظار رسید · ۱ نیمه · ۱ نرسید · ۱ باز/);
     await shot('5-home-after');
     assert.deepEqual(errors, [], `page errors: ${errors.join(' | ')}`);
   }
