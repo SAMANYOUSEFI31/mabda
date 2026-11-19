@@ -116,14 +116,20 @@ export function buildDemo(now: Date): DemoData {
   const chg = (c: Omit<ContextChange, 'id' | 'workspaceId'>) => changes.push({ id: `chg_demo_${String(++seq).padStart(3, '0')}`, workspaceId: W, ...c });
   const rel = (type: ContextRelationship['type'], sourceId: string, targetId: string, at0: string) => relationships.push({ id: `rel_demo_${relationships.length + 1}`, sourceId, targetId, type, createdAt: at0 });
 
+  // a replacement follows the product's own path (server/db/repo/objects.ts supersedeObject): it starts at the replaced item's
+  // version + 1, its «created» record names what it replaces, and the replaced item's dependencies move to it
+  const replaces = new Map<string, string>(); // successor id → replaced id
+  const finalVersion = new Map<string, number>();
   const add = (s: Spec) => {
     const created = at(s.created[0], s.created[1] ?? 10);
     const by = s.by ?? (s.source ? sourceActor(s.source.kind, s.source.label) : USER);
-    let version = 1;
+    const prevId = replaces.get(s.id);
+    const base = prevId ? finalVersion.get(prevId)! : 0;
+    let version = base + 1;
     let content = s.first;
     let updated = created;
     versions.push({ objectId: s.id, version, type: s.type, title: s.title, content, at: created });
-    chg({ objectId: s.id, fromVersion: 0, toVersion: 1, kind: s.provenance === 'Imported' ? 'imported' : 'created', actor: by.actor, ...(by.label ? { actorLabel: by.label } : {}), after: { type: s.type, title: s.title, nodeId: s.node, status: s.status === 'Archived' || s.status === 'Superseded' || s.status === 'Needs Review' || (s.status === 'Confirmed' && s.log) ? 'Proposed' : s.status }, at: created, ...(s.source?.reason ? { reason: s.source.reason } : {}) });
+    chg({ objectId: s.id, fromVersion: base, toVersion: version, kind: s.provenance === 'Imported' ? 'imported' : 'created', actor: by.actor, ...(by.label ? { actorLabel: by.label } : {}), after: { type: s.type, title: s.title, nodeId: s.node, status: s.status === 'Archived' || s.status === 'Superseded' || s.status === 'Needs Review' || (s.status === 'Confirmed' && s.log) ? 'Proposed' : s.status, ...(prevId ? { supersedes: prevId } : {}) }, at: created, ...(s.source?.reason && !prevId ? { reason: s.source.reason } : {}) });
     for (const e of s.edits ?? []) {
       const when = at(e.d, e.h ?? 11);
       chg({ objectId: s.id, fromVersion: version, toVersion: version + 1, kind: 'edited', actor: (e.by ?? USER).actor, ...(e.by?.label ? { actorLabel: e.by.label } : {}), ...(e.reason ? { reason: e.reason } : {}), before: { content }, after: { content: e.content }, at: when });
@@ -140,8 +146,10 @@ export function buildDemo(now: Date): DemoData {
       const when = at(s.supersededBy.d, s.supersededBy.h ?? 13);
       chg({ objectId: s.id, fromVersion: version, toVersion: version + 1, kind: 'superseded', actor: (s.supersededBy.by ?? USER).actor, ...(s.supersededBy.reason ? { reason: s.supersededBy.reason } : {}), before: { status }, after: { status: 'Superseded', supersededById: s.supersededBy.id }, at: when });
       rel('supersedes', s.supersededBy.id, s.id, when);
+      replaces.set(s.supersededBy.id, s.id);
       status = 'Superseded'; updated = when;
     }
+    finalVersion.set(s.id, version);
     objects.push({
       id: s.id, workspaceId: W, type: s.type, status, provenance: s.provenance, title: s.title, content, nodeId: s.node, version,
       ...(s.supersededBy ? { supersededById: s.supersededBy.id } : {}), ...(s.slot ? { slotKey: s.slot } : {}), ...(s.reach ? { reach: s.reach } : {}), ...(s.examples ? { examples: s.examples } : {}), ...(s.draft ? { draft: { title: s.title, content: s.draft.content, at: at(s.draft.daysAgo, 17), ...(s.draft.reason ? { reason: s.draft.reason } : {}) } } : {}), ...(s.assumption ? { assumption: true, ...(s.reviewByDaysAgo !== undefined ? { reviewBy: at(s.reviewByDaysAgo, 12).slice(0, 10) } : {}) } : {}),
