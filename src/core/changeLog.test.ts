@@ -37,3 +37,9 @@ test('splitSupersedeReason removes the glued reason (multi-line, brackets inside
   assert.deepEqual(splitSupersedeReason('متن بدون دلیل'), { content: 'متن بدون دلیل' });
   assert.deepEqual(splitSupersedeReason('در وسط [دلیل جایگزینی: x] و ادامه'), { content: 'در وسط [دلیل جایگزینی: x] و ادامه' }, 'only the tail form is removed');
 });
+
+test('moving only the review date («هنوز زود است») is not a content change; changing what the record says is', () => {
+  const rec = (o: Record<string, unknown>) => o;
+  assert.equal(isContentChange({ kind: 'edited', before: { record: rec({ value: 5, reviewOn: '2026-01-01' }) }, after: { record: rec({ value: 5, reviewOn: '2026-02-01' }) } } as never), false);
+  assert.equal(isContentChange({ kind: 'edited', before: { record: rec({ value: 5 }) }, after: { record: rec({ value: 6 }) } } as never), true);
+});

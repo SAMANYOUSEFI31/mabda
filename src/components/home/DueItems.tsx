@@ -22,12 +22,14 @@ interface Props {
   onDropped: (id: string) => Promise<void>;
   /** «نتیجه چه شد؟» → a Change (`outcome_noted`) */
   onOutcome: (id: string, text: string, verdict?: ExpectationVerdict) => Promise<void>;
+  /** «هنوز زود است»: not judged yet; the decision is looked at again later (its review date moves). Not a verdict */
+  onTooEarly?: (id: string) => Promise<void>;
   /** expectation of a metric, read against the numbers (decisions that carry one get the three-button verdict) */
   expectations?: ExpectationRow[];
 }
 
 /** What has come due: assumptions to look at again, and decisions that ask «نتیجه چه شد؟». Derived from dates — nothing notifies anyone. */
-export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode, onStillAssumed, onConfirmed, onDropped, onOutcome, expectations = [] }) => {
+export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode, onStillAssumed, onConfirmed, onDropped, onOutcome, onTooEarly, expectations = [] }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
@@ -81,10 +83,16 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
                     {(['met', 'partial', 'missed'] as const).map((v) => (
                       <Button key={v} size="sm" variant="secondary" aria-pressed={suggested === v} loading={busy === `o${o.id}${v}`} onClick={() => run(`o${o.id}${v}`, async () => { await onOutcome(o.id, note.trim(), v); setText((tt) => ({ ...tt, [o.id]: '' })); })}>{VERDICT_FA[v]}{suggested === v ? ' ✓' : ''}</Button>
                     ))}
+                    {/* three verdicts cover what can be concluded; what could not be concluded YET is not a fourth verdict but a later
+                        look, like «هنوز فرض است» (decisions.md §۴۸) */}
+                    {onTooEarly && <Button size="sm" variant="ghost" loading={busy === `t${o.id}`} onClick={() => run(`t${o.id}`, () => onTooEarly(o.id))}>هنوز زود است</Button>}
                     {suggested && <p className="body-sm w-full text-text-subtle">علامت ✓ فقط خوانش حسابی اعداد است؛ داوری با توست.</p>}
                   </div>
                 ) : (
-                  <div><Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>افزودن نتیجه</Button></div>
+                  <div className="flex flex-wrap gap-inline-xs">
+                    <Button size="sm" variant="secondary" loading={busy === `o${o.id}`} disabled={!note.trim()} onClick={() => run(`o${o.id}`, async () => { await onOutcome(o.id, note.trim()); setText((tt) => ({ ...tt, [o.id]: '' })); })}>افزودن نتیجه</Button>
+                    {onTooEarly && <Button size="sm" variant="ghost" loading={busy === `t${o.id}`} onClick={() => run(`t${o.id}`, () => onTooEarly(o.id))}>هنوز زود است</Button>}
+                  </div>
                 )}
               </div>
             );

@@ -11,7 +11,7 @@
 import type { ContextObject, GapItem } from '../types';
 import { formatNumber } from '../ui/format';
 
-export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking' | 'monitor' | 'unlinked';
+export type HomeActionKind = 'stale' | 'contradiction' | 'review' | 'ready' | 'proposals' | 'weekly' | 'due' | 'thinking' | 'monitor' | 'unlinked' | 'drafts';
 export type HomeTarget = { type: 'asset' | 'object' | 'link-metric'; id: string } | { type: 'contradictions' | 'proposals' | 'weekly' | 'due' | 'thinking' };
 export interface HomeAction { id: string; kind: HomeActionKind; text: string; button: string; target: HomeTarget; score: number }
 
@@ -25,6 +25,8 @@ export interface HomeInput {
   /** decisions that can be decided now (everything they rest on is confirmed) */
   ready: Array<{ id: string; title: string }>;
   proposedCount: number;
+  /** rewrites of confirmed truths that wait for approval (a draft on the truth): decided in «فکر», named here (decisions.md §۴۸) */
+  draftCount?: number;
   weekly: { due: boolean; changes: number };
   dueCount: number;
   /** open questions and open decisions written in notes (a line that ends with «؟» counts) that have not become knowledge */
@@ -54,6 +56,8 @@ function allActions(input: HomeInput): HomeAction[] {
   for (const r of input.reviews) all.push({ id: `review:${r.id}`, kind: 'review', text: `${q(r.title)} به‌خاطر تغییر ${r.because.map(q).join('، ')} نیاز به نگاه دارد.`, button: 'باز کردن', target: { type: 'object', id: r.id }, score: 80 });
   for (const d of input.ready) all.push({ id: `ready:${d.id}`, kind: 'ready', text: `تصمیم ${q(d.title)} آماده است؛ هرچه به آن تکیه دارد تأیید شده.`, button: 'تصمیم بگیر', target: { type: 'object', id: d.id }, score: 70 });
   if (input.proposedCount > 0) all.push({ id: 'proposals', kind: 'proposals', text: `${fa(input.proposedCount)} پیشنهاد منتظر تأیید توست.`, button: 'مرور کن', target: { type: 'proposals' }, score: 60 });
+  // a waiting rewrite of a truth is a decision like a proposal; its only place to decide is «فکر» (that is where the before and after are)
+  if ((input.draftCount ?? 0) > 0) all.push({ id: 'drafts', kind: 'drafts', text: `${fa(input.draftCount!)} تغییر روی حقیقت‌هایت منتظر تأیید توست.`, button: 'مرور کن', target: { type: 'thinking' }, score: 61 });
   if (input.weekly.due) all.push({ id: 'weekly', kind: 'weekly', text: `بازبینی هفتگی: ${fa(input.weekly.changes)} تغییر در این هفته بوده.`, button: 'شروع (۵ دقیقه)', target: { type: 'weekly' }, score: 55 });
   if (input.dueCount > 0) all.push({ id: 'due', kind: 'due', text: `${fa(input.dueCount)} مورد موعد بازبینی دارد.`, button: 'باز کردن', target: { type: 'due' }, score: 50 });
 

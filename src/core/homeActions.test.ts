@@ -123,3 +123,11 @@ test('«پایش» in «منتظر تو»: a due monitor is one quiet sentence w
   assert.equal(r.waiting.find((a) => a.id === 'monitor:p')!.text, 'برای «پیشرفت پایان‌نامه» هنوز عددی ثبت نشده.');
   assert.deepEqual(r.waiting.at(-1)!.target, { type: 'link-metric', id: 'm1' });
 });
+
+test('a draft waiting on a truth reaches Home too (one line, one button, to Think)', () => {
+  const r = homeActions(base({ draftCount: 2 }));
+  const a = [...r.top, ...r.rest].find((x) => x.kind === 'drafts');
+  assert.ok(a, 'drafts appear');
+  assert.match(a!.text, /۲ تغییر/);
+  assert.equal(homeActions(base({ draftCount: 0 })).total, 0, 'no drafts, no line');
+});

@@ -42,7 +42,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
     { icon: 'Package' as const, count: deliverables.length, label: 'خروجی', onSelect: () => setActiveTab('assets') },
   ];
   const started = homeHasStarted({ knowledge: workspaceContexts.length, actions: homePlan.total, openThoughts: openThoughts.length, notes: data?.notes?.length ?? 0 });
-  const inheritNotice = inheritNotices.length > 0 ? <InheritNoticeList notices={inheritNotices} max={1} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} /> : null;
+  const inheritNotice = inheritNotices.length > 0 ? <InheritNoticeList notices={inheritNotices} max={3} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} /> : null;
   // «جزئیات بیشتر» opens right under itself, at the page's width (proximity, decisions.md §۴۴); before the first step there is no to-do
   const homeAll = homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
             <div id="home-all" className="flex flex-col gap-stack-lg">
@@ -153,7 +153,9 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               thoughts={openThoughts.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3).map((t) => ({ id: t.id, text: t.text, at: t.createdAt }))}
               openThoughtCount={openThoughts.length}
               onOpenThinking={() => openThinkingSpace()}
-              recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c) => workspaceContexts.some((o) => o.id === c.objectId)).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
+              // the latest three CHANGED ITEMS, newest first, whenever they were (not «today»: a day away must not empty it; the date says
+              // how old each is), one line per item, so three edits of one truth do not fill all three lines (decisions.md §۴۸)
+              recent={(data?.changes ?? []).slice().sort((a, b) => b.at.localeCompare(a.at)).filter((c, i, all) => workspaceContexts.some((o) => o.id === c.objectId) && all.findIndex((x) => x.objectId === c.objectId) === i).slice(0, 3).map((c) => ({ id: c.id, text: `«${workspaceContexts.find((o) => o.id === c.objectId)!.title}» ${CHANGE_KIND_FA[c.kind]}`, at: c.at }))}
               allOpen={homeAllOpen}
               // the details are wide, so they open after the list AND its margin; when the margin runs longer, bring their top into
               // view so opening never looks like nothing happened (§۴۴). Reduced motion: an instant jump
@@ -162,7 +164,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               notice={inheritNotice}
             />
           )}
-          {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; one at a time, the rest wait in the weekly review */}
+          {/* calm news, below the to-do and OUTSIDE it: it is not a task, so it is not counted in «همه (N)»; three at a time, the rest open in place */}
           {!started && inheritNotice}
           {!started && homeAll}
         </div>
