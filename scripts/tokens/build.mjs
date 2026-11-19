@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Mabda token build: one source of truth (W3C Design Tokens / DTCG JSON in src/ui/tokens/) ->
- *   src/ui/tokens/build/tokens.css    CSS custom properties (light on :root, dark on :root.dark) + type-style classes
- *   src/ui/tokens/build/theme.css     the Tailwind v4 theme (semantic utilities only; every default scale removed)
- *   src/ui/tokens/build/resolved.json every token, fully resolved for both modes (for docs and a visual specimen)
+ *   src/ui/tokens/generated/tokens.css    CSS custom properties (light on :root, dark on :root.dark) + type-style classes
+ *   src/ui/tokens/generated/theme.css     the Tailwind v4 theme (semantic utilities only; every default scale removed)
+ *   src/ui/tokens/generated/resolved.json every token, fully resolved for both modes (for docs and a visual specimen)
  *
  * Levels: primitive.json (raw OKLCH palette, never used by app code) -> semantic.json + semantic.{light,dark}.json
  * (roles) -> component.json (per component). An alias to a primitive is resolved per mode; an alias to a semantic or
@@ -20,7 +20,7 @@ import { oklchToSrgb, toHex } from './color.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const TOKEN_DIR = join(ROOT, 'src/ui/tokens');
-export const OUT_DIR = join(TOKEN_DIR, 'build');
+export const OUT_DIR = join(TOKEN_DIR, 'generated');
 const read = (f) => JSON.parse(readFileSync(join(TOKEN_DIR, f), 'utf8'));
 
 export function loadSources() {
@@ -273,12 +273,17 @@ export function buildAll(src = loadSources()) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const files = buildAll();
   if (process.argv.includes('--check')) {
-    const stale = Object.entries(files).filter(([f, text]) => { try { return readFileSync(join(OUT_DIR, f), 'utf8') !== text; } catch { return true; } });
-    if (stale.length) { console.error(`tokens: out of date: ${stale.map(([f]) => f).join(', ')} — run \`bun run tokens\``); process.exit(1); }
+    const problems = [];
+    for (const [f, text] of Object.entries(files)) {
+      let disk;
+      try { disk = readFileSync(join(OUT_DIR, f), 'utf8'); } catch { problems.push(`${f} (missing)`); continue; }
+      if (disk !== text) problems.push(`${f} (differs)`);
+    }
+    if (problems.length) { console.error(`tokens: out of date in ${OUT_DIR}: ${problems.join(', ')} — run \`bun run tokens\``); process.exit(1); }
     console.log('tokens: build files match the source');
   } else {
     mkdirSync(OUT_DIR, { recursive: true });
     for (const [f, text] of Object.entries(files)) writeFileSync(join(OUT_DIR, f), text);
-    console.log(`tokens: wrote ${Object.keys(files).join(', ')} to src/ui/tokens/build/`);
+    console.log(`tokens: wrote ${Object.keys(files).join(', ')} to src/ui/tokens/generated/`);
   }
 }

@@ -1,13 +1,13 @@
 /*
- * Mabda styles: generated tokens (src/ui/tokens/build) -> Tailwind theme -> Mabda components (src/ui/components.css).
+ * Mabda styles: generated tokens (src/ui/tokens/generated) -> Tailwind theme -> Mabda components (src/ui/components.css).
  * Layer order: Tailwind preflight (base) < components < utilities, so a utility can always adjust a component's layout.
  * No raw values here: every colour, size and duration is a token (bun run check:design).
  */
 @layer theme, base, components, utilities;
 @import "tailwindcss";
 @import "./ui/fonts.css";
-@import "./ui/tokens/build/tokens.css";
-@import "./ui/tokens/build/theme.css";
+@import "./ui/tokens/generated/tokens.css";
+@import "./ui/tokens/generated/theme.css";
 @import "./ui/components.css";
 
 @custom-variant dark (&:where(.dark, .dark *));

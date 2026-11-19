@@ -18,7 +18,7 @@
 
 ## قوانین ثابت
 1. UI فارسی و RTL.
-2. فقط توکن‌های معنایی سیستم طراحی Mabda (`src/ui/tokens`)؛ هیچ hex. فایل‌های `src/ui/tokens/build/` ساختهٔ اسکریپت‌اند و دستی ویرایش نمی‌شوند (`bun run tokens`).
+2. فقط توکن‌های معنایی سیستم طراحی Mabda (`src/ui/tokens`)؛ هیچ hex. فایل‌های `src/ui/tokens/generated/` ساختهٔ اسکریپت‌اند و دستی ویرایش نمی‌شوند (`bun run tokens`).
 3. هیچ پاسخ ساختگی/از پیش‌نوشتهٔ AI نمایش داده نشود؛ در خطا پیام روشن + تلاش دوباره.
 4. شناسهٔ مدل فقط در `server/ai/config/models.json`؛ هرگز در بقیهٔ کد (تست `cost.test.ts` این را اجبار می‌کند).
 5. هیچ پلن، قیمت، اعتبار یا «ارتقا» در کد و رابط نیست (`limits.test.ts` اجبار می‌کند). هر عدد سقف منصفانه (فضا، قلم دانش، متن هر نفر در همهٔ فضاها، سهمیهٔ فایل، سقف روزانهٔ قضاوت/Coach/گفتگو) فقط در `src/core/limits.ts`؛ برای همه یکسان است و پیام سقف راهی از خودِ کاربر (بایگانی، فردا، ماه بعد) می‌دهد، نه خرید.
@@ -35,7 +35,7 @@
 
 ## سیستم طراحی (Mabda، `docs/design-system/`)
 - UI فقط از `src/ui` ساخته می‌شود (Button، Card، Dialog، Table، …)؛ کامپوننت جدید لازم شد، از توکن‌های معنایی همان‌جا بساز.
-- رنگ، فاصله، شعاع، سایه و تایپ فقط utilityهای معنایی ساخته‌شده از توکن‌ها (`src/ui/tokens/build/theme.css`) (مثل `bg-surface-raised`، `text-text-subtle`، `p-inset-lg`، `gap-stack-md`، `text-body-md`). پالت خام، hex، مقدار دلخواه Tailwind و `left/right` ممنوع است؛ از `ms/me/ps/pe/start/end` استفاده کن.
+- رنگ، فاصله، شعاع، سایه و تایپ فقط utilityهای معنایی ساخته‌شده از توکن‌ها (`src/ui/tokens/generated/theme.css`) (مثل `bg-surface-raised`، `text-text-subtle`، `p-inset-lg`، `gap-stack-md`، `text-body-md`). پالت خام، hex، مقدار دلخواه Tailwind و `left/right` ممنوع است؛ از `ms/me/ps/pe/start/end` استفاده کن.
 - منبع توکن‌ها DTCG در سه سطح است: `primitive.json` (پالت OKLCH)، `semantic.json` + `semantic.light.json` / `semantic.dark.json` (نقش‌ها)، `component.json`. جزءها و نقش‌های مشترک هرگز مستقیم به پالت ارجاع نمی‌دهند؛ `tokens.test.ts` drift و کف کنتراست WCAG/APCA را در هر دو حالت اجبار می‌کند.
 - رنگ‌های دامنه (نوع Object، وضعیت، یال‌ها، …) فقط aliasهای `mabda.*` در `semantic.json`؛ نشان‌دهنده‌های دامنه در `src/ui/mabda.tsx`. حالت دانش (فکر/پیشنهاد/حقیقت/قدیمی/گذشته) با `Card knowledge=…` و `knowledgeState()`.
 - روشن و تیره هر دو پشتیبانی می‌شوند (`useTheme` در `src/ui/theme.ts`)؛ هر تغییر رابط باید در هر دو حالت دیده شود.

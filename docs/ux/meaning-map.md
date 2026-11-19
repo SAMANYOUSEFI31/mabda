@@ -1,6 +1,6 @@
 # نقشهٔ معنا
 
-هر ویژگی بصری در Mabda یک معنا دارد و همان معنا همه‌جا یکی است. اگر چیزی معنا ندارد، تزئینی است و باید برود. این سند فقط «کدام نشانه چه می‌گوید» را نگه می‌دارد. مقدار هر توکن در [`reference.md`](../../src/ui/tokens/build/reference.md) است و شکل‌ها و قاعده‌های کامل در [`iconography.md`](../design-system/iconography.md) و [`color.md`](../design-system/color.md).
+هر ویژگی بصری در Mabda یک معنا دارد و همان معنا همه‌جا یکی است. اگر چیزی معنا ندارد، تزئینی است و باید برود. این سند فقط «کدام نشانه چه می‌گوید» را نگه می‌دارد. مقدار هر توکن در [`reference.md`](../../src/ui/tokens/generated/reference.md) است و شکل‌ها و قاعده‌های کامل در [`iconography.md`](../design-system/iconography.md) و [`color.md`](../design-system/color.md).
 
 ## حالت دانش: نقطه (مهم‌ترین محور)
 
