@@ -679,6 +679,35 @@ test('«پایش» follows its truth: «جایگزین کن» carries the monito
   }
 });
 
+test('erasing a truth for good touches only what is linked to it by id: a free number with the same name and a same-named truth\'s monitor stay whole', () => {
+  const { repo, s } = fresh();
+  const node = repo.listNodes(s)[0].id;
+  // a free number named «وزن» and an unrelated truth named «وزن»
+  const free = repo.createMetric(s, { name: 'وزن', unit: 'کیلو', direction: 'down' });
+  repo.addMeasurement(s, { metricId: free.id, value: 80, at: '2026-09-01' });
+  const weight = repo.createObject(s, { type: 'Fact', status: 'Archived', provenance: 'User Input', title: 'وزن', content: 'صبح.', nodeId: node });
+  // two truths named «خواب», both monitored
+  const a = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'خواب', content: 'شب.', nodeId: node });
+  const b = repo.createObject(s, { type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: 'خواب', content: 'ظهر.', nodeId: node });
+  const ma = repo.createMetric(s, { objectId: a.id, unit: 'ساعت', direction: 'up' });
+  const mb = repo.createMetric(s, { objectId: b.id, unit: 'ساعت', direction: 'up' });
+  repo.addMeasurement(s, { metricId: ma.id, value: 6, at: '2026-09-01' });
+  repo.addMeasurement(s, { metricId: mb.id, value: 1, at: '2026-09-01' });
+  const historyOf = (id: string) => JSON.stringify(repo.listChanges(s, { objectId: `metric:${id}`, includeNodes: true }).map((c) => [c.kind, c.before, c.after]));
+  const freeBefore = historyOf(free.id), bBefore = historyOf(mb.id);
+  purgeObject(repo, s, weight.id);
+  assert.equal(repo.getMetric(s, free.id)!.name, 'وزن', 'a free number that only shares the name keeps it');
+  assert.equal(historyOf(free.id), freeBefore);
+  assert.equal(repo.listMeasurements(s, { metricId: free.id }).length, 1);
+  repo.updateObject(s, a.id, { status: 'Archived' });
+  purgeObject(repo, s, a.id);
+  assert.equal(repo.getMetric(s, ma.id), undefined);
+  const kept = repo.getMetric(s, mb.id)!;
+  assert.deepEqual([kept.name, kept.objectId], ['خواب', b.id], 'the other «خواب» keeps its monitor');
+  assert.equal(historyOf(mb.id), bBefore, 'and its history is not marked erased');
+  assert.equal(repo.listMeasurements(s, { metricId: mb.id }).length, 1);
+});
+
 test('a stored legacy MCP measurement remains Proposed until the user confirms it; new writes reject the retired source', () => {
   const { repo, s } = fresh();
   const m = repo.createMetric(s, { name: 'ماندگاری', unit: '٪', direction: 'up' });
