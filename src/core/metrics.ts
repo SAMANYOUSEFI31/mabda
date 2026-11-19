@@ -10,7 +10,7 @@
  */
 
 import { tehranDay } from './tehranDate';
-import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict } from '../types';
+import type { ContextChange, ContextObject, Measurement, Metric, MetricCadence, MetricDirection, MetricExpectation, ExpectationVerdict, UsedContextRef } from '../types';
 
 // a day stays a day; a moment becomes its Tehran day (tehranDate.ts), never the UTC one
 const day = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : tehranDay(iso));
@@ -54,6 +54,29 @@ export const monitorOf = (objectId: string, metrics: Metric[]): Metric | undefin
 export const unlinkedMetrics = (metrics: Metric[]): Metric[] => metrics.filter((m) => !m.archived && !m.objectId);
 /** what the person calls the number: the truth's title when it is on one, else its own name */
 export const metricLabel = (m: Metric, objects: Pick<ContextObject, 'id' | 'title'>[]): string => (m.objectId ? objects.find((o) => o.id === m.objectId)?.title : undefined) ?? m.name;
+/** the numbers a pack or request carries: numbers not linked to a truth yet, and a monitor only with its truth (the number is part of
+ *  the truth: a request about health does not carry the sales number) */
+export const packedMetrics = (metrics: Metric[], objects: Pick<ContextObject, 'id'>[]): Metric[] => {
+  const ids = new Set(objects.map((o) => o.id));
+  return metrics.filter((m) => !m.archived && (!m.objectId || ids.has(m.objectId)));
+};
+/**
+ * The lineage of the numbers in a pack: each monitor carried in its text puts its last confirmed number on its truth's ref
+ * (added when the truth itself was not among the refs). Later, only a newer number with another value makes the output stale.
+ */
+export function withNumberRefs(refs: UsedContextRef[], metrics: Metric[], measurements: Measurement[], objects: Pick<ContextObject, 'id' | 'version'>[]): UsedContextRef[] {
+  const out = refs.map((r) => ({ ...r }));
+  for (const m of packedMetrics(metrics, objects)) {
+    if (!m.objectId) continue;
+    const last = latestOf(m.id, measurements);
+    if (!last) continue;
+    const number = { metricId: m.id, measurementId: last.id, value: last.value, at: last.at };
+    const ref = out.find((r) => r.id === m.objectId);
+    if (ref) ref.number = number;
+    else { const o = objects.find((x) => x.id === m.objectId); if (o) out.push({ id: o.id, version: o.version, number }); }
+  }
+  return out;
+}
 export const CADENCE_DAYS: Record<MetricCadence, number> = { week: 7, month: 30 };
 
 export interface MonitorDue { metric: Metric; object: ContextObject; last?: Measurement }
@@ -229,7 +252,7 @@ const unitOf = (m: Metric) => (m.unit ? ` ${m.unit}` : '');
 export function metricsPackSection(metrics: Metric[], measurements: Measurement[], decisions: ContextObject[] = [], changes: Pick<ContextChange, 'objectId' | 'kind' | 'at' | 'after'>[] = [], now: Date = new Date(), objects: Pick<ContextObject, 'id' | 'title'>[] = decisions): string | null {
   // a monitor is called by its truth's title (the truth may have been renamed since the number was made)
   const named = (m: Metric): Metric => ({ ...m, name: metricLabel(m, objects) });
-  const live = metrics.filter((m) => !m.archived).map(named);
+  const live = packedMetrics(metrics, objects).map(named);
   if (live.length === 0) return null;
   const lines = live.map((m) => {
     const last = seriesOf(m.id, measurements).slice(-4);

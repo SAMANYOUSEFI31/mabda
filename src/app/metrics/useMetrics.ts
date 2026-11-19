@@ -16,7 +16,7 @@ export type MetricsScope = ReturnType<typeof useMetrics>;
 export function useMetrics(p: AppCoreScope) {
   const { attempt, patch, toast, wid } = p;
   // ── metrics («شاخص‌ها»): recorded results next to decisions; never a claim about cause ──
-  const applyMetrics = (r: MetricsBundle) => patch((d) => ({ ...d, metrics: r.metrics, measurements: r.measurements }));
+  const applyMetrics = (r: MetricsBundle) => patch((d) => ({ ...d, metrics: r.metrics, measurements: r.measurements, ...(r.stale ? { stale: r.stale } : {}) }));
   const metricHandlers = {
     onCreate: async (m: { name: string; unit: string; direction: MetricDirection; target?: number }) => { const r = await attempt(() => dataApi.createMetric(wid, m)); if (r) applyMetrics(r); },
     onArchive: async (id: string) => { const r = await attempt(() => dataApi.archiveMetric(wid, id)); if (r) applyMetrics(r); },

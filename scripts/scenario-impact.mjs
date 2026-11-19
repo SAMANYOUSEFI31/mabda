@@ -125,13 +125,13 @@ async function scenario(width, tag) {
   await shot('4-asset-fresh');
   assert.equal(await page.getByText('به‌روز نیست', { exact: true }).count(), 0, 'nothing is stale yet');
 
-  step('change the audience → toast «این تغییر روی N دارایی اثر دارد»');
+  step('change the audience → toast «این تغییر روی N خروجی اثر دارد»');
   await goTab('حقیقت', 'حقیقت');
   await page.getByRole('heading', { name: 'مخاطب اصلی' }).first().click();
   await page.getByRole('dialog').getByLabel('چه چیزی درست است؟').fill('مدیران محصول استارتاپ‌های ایرانی که به منبع حقیقت واحد نیاز دارند.');
   await page.getByRole('dialog').getByRole('radio', { name: 'همین حالا جایگزین شود' }).click(); // approved knowledge: an edit is a DRAFT unless she replaces it now
   await page.getByRole('button', { name: 'ذخیرهٔ تغییرات' }).click();
-  const toastEl = page.getByText(/این تغییر روی .* دارایی اثر دارد/);
+  const toastEl = page.getByText(/این تغییر روی .* خروجی اثر دارد/);
   await toastEl.waitFor();
   const impactText = await toastEl.first().innerText();
   console.log(`[${tag}]   toast:`, impactText);

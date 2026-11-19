@@ -3,11 +3,13 @@
  * Pure: input = assets (with usedContext = exact id+version injected) + current objects.
  */
 
-import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, UsedContextRef } from '../types';
+import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, Measurement, Metric, UsedContextRef } from '../types';
+import { latestOf } from './metrics';
+import { formatNumber } from '../ui/format';
 import { needsReview } from './decisionGraph';
 import type { ReviewNeed } from './decisionGraph';
 
-export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed' | 'dependency_changed';
+export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed' | 'dependency_changed' | 'number_changed';
 
 export interface StaleReason {
   kind: StaleReasonKind;
@@ -20,6 +22,8 @@ export interface StaleReason {
   /** dependency_changed: the object it rests on that changed (and when) */
   dependencyId?: string;
   changedAt?: string;
+  /** number_changed: the newer recorded number that differs from the one the output carried */
+  measurementId?: string;
   /** Persian, ready for the UI */
   message: string;
 }
@@ -81,7 +85,7 @@ export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>
 }
 
 export const staleSignature = (reasons: StaleReason[]): string =>
-  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}${r.dependencyId ? `~${r.dependencyId}@${r.changedAt ?? ''}` : ''}`).sort().join('|');
+  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}${r.dependencyId ? `~${r.dependencyId}@${r.changedAt ?? ''}` : ''}${r.measurementId ? `#${r.measurementId}` : ''}`).sort().join('|');
 
 /** an object the asset used rests on another object that changed since — and nobody has reviewed it (derived, see decisionGraph.needsReview) */
 function dependencyReason(used: UsedContextRef, byId: Map<string, ContextObject>, review: Map<string, ReviewNeed>, builtAt?: string): StaleReason | null {
@@ -100,12 +104,37 @@ function dependencyReason(used: UsedContextRef, byId: Map<string, ContextObject>
   };
 }
 
-export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'> & { createdAt?: string }, objects: ContextObject[], review?: Map<string, ReviewNeed>): StaleReason[] {
+export interface NumbersNow { metrics: Metric[]; measurements: Measurement[] }
+
+/**
+ * A monitored number the output carried, and a newer confirmed number with another value since (owner decision, §۴۲): only the
+ * outputs whose text carried this number go stale, never the others. A stopped monitor, the same value again or no newer number:
+ * nothing. The number the output carried being removed counts too, when what is recorded now differs.
+ */
+export function numberReason(used: UsedContextRef, byId: Map<string, ContextObject>, numbers: NumbersNow): StaleReason | null {
+  const n = used.number;
+  if (!n) return null;
+  const metric = numbers.metrics.find((m) => m.id === n.metricId);
+  if (!metric || metric.archived) return null;
+  const last = latestOf(metric.id, numbers.measurements);
+  if (!last || last.id === n.measurementId || last.value === n.value) return null;
+  const carriedStill = numbers.measurements.some((x) => x.id === n.measurementId && x.status === 'Confirmed');
+  if (carriedStill && last.at < n.at) return null;
+  const obj = byId.get(used.id);
+  const title = obj?.title ?? metric.name;
+  const unit = metric.unit ? ` ${metric.unit}` : '';
+  return {
+    kind: 'number_changed', objectId: used.id, title, usedVersion: used.version, currentVersion: obj?.version, measurementId: last.id, changedAt: last.at,
+    message: `عدد «${title}» از ${formatNumber(n.value, 2)}${unit} به ${formatNumber(last.value, 2)}${unit} رسید.`,
+  };
+}
+
+export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'> & { createdAt?: string }, objects: ContextObject[], review?: Map<string, ReviewNeed>, numbers?: NumbersNow): StaleReason[] {
   const byId = new Map(objects.map((o) => [o.id, o]));
   const out: StaleReason[] = [];
   const seen = new Set<string>();
   for (const used of d.usedContext ?? []) {
-    const r = reasonFor(used, byId) ?? (review ? dependencyReason(used, byId, review, d.createdAt) : null);
+    const r = reasonFor(used, byId) ?? (review ? dependencyReason(used, byId, review, d.createdAt) : null) ?? (numbers ? numberReason(used, byId, numbers) : null);
     if (!r) continue;
     const key = `${r.objectId}:${r.kind}`;
     if (seen.has(key)) continue;
@@ -120,18 +149,18 @@ export function computeStaleAssets(
   deliverables: Array<Pick<GeneratedDeliverable, 'id' | 'usedContext'> & { createdAt?: string }>,
   objects: ContextObject[],
   /** with the `depends_on` relations and the change log, an asset also goes stale when a decision it rests on changed (`dependency_changed`) */
-  graph?: { relationships: ContextRelationship[]; changes: ContextChange[] },
+  graph?: { relationships: ContextRelationship[]; changes: ContextChange[]; numbers?: NumbersNow },
 ): StaleAsset[] {
   const review = graph ? needsReview(objects, graph.relationships, graph.changes) : undefined;
   const out: StaleAsset[] = [];
   for (const d of deliverables) {
-    const reasons = staleReasonsOf(d, objects, review);
+    const reasons = staleReasonsOf(d, objects, review, graph?.numbers);
     if (reasons.length) out.push({ deliverableId: d.id, reasons, signature: staleSignature(reasons) });
   }
   return out;
 }
 
-/** assets that are stale after a change but were not before — the «این تغییر روی N دارایی اثر دارد» number */
+/** assets that are stale after a change but were not before — the «این تغییر روی N خروجی اثر دارد» number */
 export function newlyStale(before: StaleAsset[], after: StaleAsset[]): StaleAsset[] {
   const was = new Map(before.map((s) => [s.deliverableId, s.signature]));
   return after.filter((s) => was.get(s.deliverableId) !== s.signature);
@@ -139,5 +168,5 @@ export function newlyStale(before: StaleAsset[], after: StaleAsset[]): StaleAsse
 
 /** Sentence for the toast after a change. Empty when nothing is affected. */
 export function impactMessage(count: number): string {
-  return count > 0 ? `این تغییر روی ${fa(count)} دارایی اثر دارد.` : '';
+  return count > 0 ? `این تغییر روی ${fa(count)} خروجی اثر دارد.` : '';
 }

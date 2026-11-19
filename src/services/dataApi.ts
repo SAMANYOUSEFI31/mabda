@@ -108,7 +108,7 @@ export function clearLegacyData(workspaceIds: string[]) {
   for (const id of workspaceIds) localStorage.removeItem(`mabda_chat_sessions_${id}`);
 }
 
-export type MetricsBundle = { metrics: import('../types').Metric[]; measurements: import('../types').Measurement[] };
+export type MetricsBundle = { metrics: import('../types').Metric[]; measurements: import('../types').Measurement[]; stale?: import('../core/impactEngine').StaleAsset[] };
 export interface PersonInfo { id: string; name: string; role: 'tester'; createdAt: string; disabledAt?: string; lastSeenAt?: string; consentedAt?: string; consentVersion?: number; hasLink: boolean }
 export interface ErrorReportInfo { id: string; userId: string; source: 'client' | 'server'; name: string; message: string; stack?: string; path?: string; createdAt: string }
 /** the owner's tools (server/auth/owner.ts): people and their links, error reports */

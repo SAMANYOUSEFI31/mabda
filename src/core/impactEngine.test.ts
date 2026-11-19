@@ -46,7 +46,7 @@ test('newlyStale counts only assets that became stale because of this change', (
   const before = computeStaleAssets(dels, [obj({ id: 'c1' }), obj({ id: 'c2', version: 2 })]); // a2, a3 already stale
   const after = computeStaleAssets(dels, [obj({ id: 'c1', version: 2 }), obj({ id: 'c2', version: 2 })]);
   assert.deepEqual(newlyStale(before, after).map((s) => s.deliverableId).sort(), ['a1', 'a3']);
-  assert.equal(impactMessage(2), 'این تغییر روی ۲ دارایی اثر دارد.');
+  assert.equal(impactMessage(2), 'این تغییر روی ۲ خروجی اثر دارد.');
   assert.equal(impactMessage(0), '');
 });
 
@@ -100,4 +100,49 @@ test('a draft edit reaches only what consumed that version: an asset built from 
   assert.deepEqual(after.map((s) => s.deliverableId), ['a_uses_c1']);
   // an asset built from c1@v3 stays fresh when only c3's drafts move on
   assert.deepEqual(computeStaleAssets([asset('a_v3', [['c1', 3]])], objs.map((o) => (o.id === 'c1' ? { ...o, version: 3 } : o.id === 'c3' ? { ...o, version: 9 } : o))), []);
+});
+
+// ── a monitored number (owner decision §۴۲): only outputs that carried the number go stale ──
+import { buildContextPack } from './contextPack';
+import { DEFAULT_TREE_NODES } from './specs';
+import type { Measurement, Metric } from '../types';
+
+const fact = obj({ id: 'f_fund', type: 'Fact', title: 'صندوق اضطراری', nodeId: 'business' });
+const other = obj({ id: 'f_other', type: 'Fact', title: 'شهر محل زندگی', nodeId: 'business' });
+const metric: Metric = { id: 'm1', workspaceId: 'w', name: 'صندوق اضطراری', unit: 'میلیون', direction: 'up', objectId: 'f_fund', cadence: 'month', createdAt: '', updatedAt: '' };
+const mz = (id: string, value: number, at: string, status: Measurement['status'] = 'Confirmed'): Measurement => ({ id, workspaceId: 'w', metricId: 'm1', value, at, source: 'manual', status, createdAt: `${at}T00:00:00Z` });
+
+test('a pack that carries a monitored number records which number on its truth\'s ref; a pack without the truth does not carry it', () => {
+  const ms = [mz('x1', 12, '2026-10-01'), mz('x2', 14, '2026-11-01')];
+  const withFund = buildContextPack({ packId: 'p1', workspaceName: 'w', nodes: DEFAULT_TREE_NODES, objects: [fact, other], metrics: { metrics: [metric], measurements: ms, changes: [] } });
+  assert.match(withFund.markdown, /صندوق اضطراری/);
+  assert.deepEqual(withFund.refs.find((r) => r.id === 'f_fund')?.number, { metricId: 'm1', measurementId: 'x2', value: 14, at: '2026-11-01' });
+  // a monitor goes into the text only with its truth: a pack without «صندوق اضطراری» carries neither the number nor a number ref
+  const without = buildContextPack({ packId: 'p2', workspaceName: 'w', nodes: DEFAULT_TREE_NODES, objects: [other], metrics: { metrics: [metric], measurements: ms, changes: [] } });
+  assert.doesNotMatch(without.markdown, /اندازه‌گیری‌ها/);
+  assert.ok(without.refs.every((r) => !r.number));
+});
+
+test('a newer number with another value makes only the outputs that carried the number stale, with «از Y به Z»', () => {
+  const carried = { id: 'carried', usedContext: [{ id: 'f_fund', version: 1, number: { metricId: 'm1', measurementId: 'x2', value: 14, at: '2026-11-01' } }] };
+  const plain = { id: 'plain', usedContext: [{ id: 'f_fund', version: 1 }, { id: 'f_other', version: 1 }] };
+  const numbers = (ms: Measurement[], m: Metric = metric) => ({ relationships: [], changes: [], numbers: { metrics: [m], measurements: ms } });
+  const base = [mz('x1', 12, '2026-10-01'), mz('x2', 14, '2026-11-01')];
+  // nothing new: neither is stale
+  assert.deepEqual(computeStaleAssets([carried, plain], [fact, other], numbers(base)), []);
+  // a newer number with another value: only the output that carried it, with a plain reason
+  const after = computeStaleAssets([carried, plain], [fact, other], numbers([...base, mz('x3', 16.5, '2026-11-15')]));
+  assert.deepEqual(after.map((s) => s.deliverableId), ['carried']);
+  assert.equal(after[0].reasons[0].kind, 'number_changed');
+  assert.equal(after[0].reasons[0].message, 'عدد «صندوق اضطراری» از ۱۴ میلیون به ۱۶٫۵ میلیون رسید.');
+  // the same value again, a proposed number, or a stopped monitor: not stale
+  assert.deepEqual(computeStaleAssets([carried], [fact], numbers([...base, mz('x3', 14, '2026-11-15')])), []);
+  assert.deepEqual(computeStaleAssets([carried], [fact], numbers([...base, mz('x3', 20, '2026-11-15', 'Proposed')])), []);
+  assert.deepEqual(computeStaleAssets([carried], [fact], numbers([...base, mz('x3', 20, '2026-11-15')], { ...metric, archived: true })), []);
+  // a still newer number changes the signature (so «newlyStale» says so again)
+  const s1 = computeStaleAssets([carried], [fact], numbers([...base, mz('x3', 16, '2026-11-15')]));
+  const s2 = computeStaleAssets([carried], [fact], numbers([...base, mz('x3', 16, '2026-11-15'), mz('x4', 18, '2026-11-22')]));
+  assert.equal(newlyStale(s1, s2).length, 1);
+  // without the numbers (old callers) nothing changes
+  assert.deepEqual(computeStaleAssets([carried], [fact], { relationships: [], changes: [] }), []);
 });

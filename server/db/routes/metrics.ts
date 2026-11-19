@@ -11,7 +11,8 @@ import { userOf as aiUserOf } from '../../ai/routes.ts';
 
 export function registerMetricsRoutes(ctx: RouteContext): void {
   const { repo, ai, router, scopeOf, body, metaOf, wrap } = ctx;
-  const metricsState = (s: Scope) => ({ metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s) });
+  // a new number can make the outputs that carried the previous one «به‌روز نیست» (§۴۲): the stale list travels with the numbers
+  const metricsState = (s: Scope) => ({ metrics: repo.listMetrics(s), measurements: repo.listMeasurements(s), stale: repo.computeStale(s) });
   router.get('/workspaces/:wid/metrics', wrap((req, res) => { res.json(metricsState(scopeOf(req))); }));
   router.post('/workspaces/:wid/metrics', wrap((req, res) => { const s = scopeOf(req); const b = body(req); const metric = repo.createMetric(s, b, metaOf(b)); res.json({ metric, ...metricsState(s) }); }));
   router.put('/workspaces/:wid/metrics/:id', wrap((req, res) => { const s = scopeOf(req); const b = body(req); const metric = repo.updateMetric(s, req.params.id, b, metaOf(b)); res.json({ metric, ...metricsState(s) }); }));

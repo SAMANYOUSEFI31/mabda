@@ -257,6 +257,16 @@ export interface Note {
 export interface UsedContextRef {
   id: string;
   version: number;
+  /** a monitored truth whose number went into the text (the pack's «اندازه‌گیری‌ها»): which monitor and which recorded number it
+   *  carried. A newer confirmed number with another value makes only these outputs «به‌روز نیست» (docs/ux/decisions.md §۴۲) */
+  number?: NumberRef;
+}
+
+export interface NumberRef {
+  metricId: string;
+  measurementId: string;
+  value: number;
+  at: string;
 }
 
 export interface UsedFileChunk {
