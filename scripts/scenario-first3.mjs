@@ -101,7 +101,7 @@ try {
     await page.getByRole('button', { name: 'افزودن' }).first().click();
     // «خانه» opens «فکر» (patterns.md §۳: the default follows the page); one tap on «حقیقت», the text kept
     await page.getByRole('dialog').getByRole('radio', { name: 'حقیقت' }).click();
-    const box = page.getByRole('dialog').getByLabel('چه چیزی درست است؟');
+    const box = page.getByRole('dialog').getByLabel(/^(چه چیزی درست است؟|متن|متن پیش‌نویس)$/);
     await box.fill('تخفیف نداریم.');
     assert.equal(await page.getByRole('dialog').getByRole('radio', { name: 'خط قرمز' }).getAttribute('aria-checked'), 'true', 'a red line was guessed');
     assert.equal(await page.getByRole('dialog').getByLabel('عنوان').inputValue(), 'تخفیف نداریم');

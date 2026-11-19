@@ -59,7 +59,8 @@ export function KnowledgeDialogs({ archiveOpen, attempt, compare, contradictions
       relationships={data?.relationships ?? []}
       onSetDependencies={handleSetDependencies}
       reviewNeed={selectedContextObject ? reviewNeeds.get(selectedContextObject.id) : undefined}
-      titleOf={(id) => workspaceContexts.find((o) => o.id === id)?.title ?? id}
+      // an archived or replaced item still has its title (the history names it); an id is never shown (§۴۹)
+      titleOf={(id) => (workspaceContexts.find((o) => o.id === id) ?? data?.objects?.find((o) => o.id === id))?.title ?? 'موردی که دیگر نیست'}
       onAcceptReview={handleAcceptReview}
       deliverables={deliverables}
       notes={data?.notes ?? []}

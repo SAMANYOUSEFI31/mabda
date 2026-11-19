@@ -97,6 +97,8 @@ export const CanvasInspector: React.FC<Props> = (p) => {
           <h3 className="heading-xs text-text-default">{about.question}</h3>
           <p className="body-sm text-text-subtle">{about.what}</p>
         </div>
+        {/* choosing several cards was only in the «؟» shortcuts (decisions.md §۴۹): said once here, where the result appears */}
+        {scene.layout === 'free' && <p className="body-sm text-text-subtle" data-testid="inspector-multi-hint">چند کارت را با هم انتخاب کن (Shift + کلیک؛ در لمس: نگه دار، «به انتخاب اضافه کن») تا از آن‌ها یک بخش بسازی.</p>}
         <p className="body-sm text-text-default">{formatNumber(scene.summary.objects)} مورد{scene.summary.assets ? ` · ${formatNumber(scene.summary.assets)} خروجی` : ''}{scene.summary.notes ? ` · ${formatNumber(scene.summary.notes)} یادداشت` : ''} · سطح جزئیات: {LOD_FA[p.lod]}</p>
         {scene.edges.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="راهنمای خط‌ها">

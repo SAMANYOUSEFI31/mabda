@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import type { HomeAction, HomeSections as Sections } from '../../core/homeActions';
 import { Button, Icon, InfoTip, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliDate, formatNumber } from '../../ui';
 import type { IconName, NuqtaState, TallyRow } from '../../ui';
 
-const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp', monitor: 'TrendingUp', unlinked: 'Link2' };
+const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp', monitor: 'TrendingUp', unlinked: 'Link2', drafts: 'Pencil' };
 /** each section opens with a few, so the first thing she reads is short; the rest are one tap away, in place */
 const FIRST = 3;
 
@@ -67,17 +67,37 @@ function Section<T>({ id, title, items, render, info }: { id: string; title: str
   );
 }
 
+/** the margin sits beside the text from this width of host (the same 54rem as `.mb-margin__row` in components.css) */
+const BESIDE_REM = 54;
+/** whether the host is wide enough for the margin beside the text; it decides the ORDER of the page, which CSS cannot move */
+function useBeside(ref: React.RefObject<HTMLDivElement | null>): boolean {
+  const [beside, setBeside] = useState(true);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return undefined;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const check = () => setBeside(el.getBoundingClientRect().width >= BESIDE_REM * rem - 0.5);
+    check();
+    const ro = new ResizeObserver(check); ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return beside;
+}
+
 const dot = (state: NuqtaState) => <Nuqta state={state} size="sm" label={false} />;
 
 /** «خانه» (patterns.md §۸): what waits for her, what is missing, what is out of date; in the margin, the latest thoughts and one number. */
 export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, truthCount, tally, thoughts, openThoughtCount = thoughts.length, onOpenThinking, recent, allOpen, onToggleAll, more, notice }) => {
   // the margin (identity.md «متن و حاشیه»): what the space holds, in the words of its states, and what moved last. Beside the
   // to-do on a wide page, under it on a narrow one; the page is complete without it
+  const host = useRef<HTMLDivElement>(null);
+  const beside = useBeside(host);
+  // each block of the margin under a hairline rule (a sidebar's rule in print): the eye finds where one ends and the next begins
+  // without a heading louder than the text it sits beside; the rows inside keep no lines of their own (decisions.md §۴۹)
   const margin = (
-    <div className="flex flex-col gap-stack-lg">
-      <StateTally rows={tally} />
+    <div className="mb-home-margin__blocks">
+      <div className="mb-home-margin__block"><StateTally rows={tally} /></div>
       {thoughts.length > 0 && (
-        <div className="flex flex-col gap-stack-xs">
+        <div className="mb-home-margin__block flex flex-col gap-stack-xs">
           <p className="caption text-text-subtle">آخرین فکرها</p>
           {thoughts.map((t) => <MarginNote key={t.id} lead={dot('thought')}><span className="line-clamp-2">{t.text}</span></MarginNote>)}
           {/* a text button in the flow lines its words up with the text above it, not with its own padding (§۴۰) */}
@@ -85,17 +105,20 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
         </div>
       )}
       {!sections.empty && recent.length > 0 && (
-        <div className="flex flex-col gap-stack-xs">
+        <div className="mb-home-margin__block flex flex-col gap-stack-xs">
           <p className="caption text-text-subtle">آخرین تغییرها</p>
           {recent.map((c) => <MarginNote key={c.id} icon="History"><span className="flex flex-col"><span className="line-clamp-2">{c.text}</span><span className="caption text-text-subtle">{formatJalaliDate(c.at)}</span></span></MarginNote>)}
         </div>
       )}
     </div>
   );
+  // wide: the margin beside the list, and what «جزئیات بیشتر» opens after both, at the page's width. Narrow: the margin cannot be
+  // beside, so it goes AFTER what the toggle opens; before, the details opened under the whole margin, a screen below the
+  // toggle on a tablet (proximity; decisions.md §۴۴، §۴۹)
   return (
-    <>
+    <div ref={host} className="flex flex-col gap-stack-lg">
     <MarginList label="آنچه الان به تو نیاز دارد">
-      <MarginItem margin={margin}>
+      <MarginItem margin={beside ? margin : undefined}>
         <div className="flex flex-col gap-stack-lg">
           {sections.empty && truthCount === 0 ? (
             // UX-05: she has written thoughts or notes but nothing is truth yet. «همه‌چیز به‌روز است» would be false comfort;
@@ -144,6 +167,7 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
       </MarginItem>
     </MarginList>
     {more}
-    </>
+    {!beside && <div className="mb-home-margin" aria-label="در این فضا">{margin}</div>}
+    </div>
   );
 };

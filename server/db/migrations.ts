@@ -840,6 +840,14 @@ export const MIGRATIONS: Migration[] = [
       db.exec('CREATE INDEX idx_metrics_object ON metrics(workspace_id, object_id)');
     },
   },
+  {
+    version: 33,
+    name: 'a recorded request keeps what was asked (kind, line, sections) so «درخواست دوباره» reopens it (context_packs.request)',
+    up(db) {
+      // one nullable JSON column; older records have none and «درخواست دوباره» falls back to the request line in their title
+      db.exec('ALTER TABLE context_packs ADD COLUMN request TEXT');
+    },
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

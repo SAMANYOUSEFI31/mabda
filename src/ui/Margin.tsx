@@ -4,7 +4,7 @@ import { Icon, type IconName } from './Icon.tsx';
 
 /**
  * «متن و حاشیه» (patterns.md §۲, layout.md «ستون حاشیه»). The margin is switched on by the width of the content container,
- * not of the screen: from 936px of host (600 text + 48 gap + 288 margin; the page padding brings it to the spec's 1000) it sits
+ * not of the screen: from 864px of host (600 text + 40 gap + a margin of 224 to 288; decisions.md §۴۹) it sits
  * beside each item, level with it; narrower, it comes under the item, indented like the text. The page is complete without it.
  */
 export function MarginList({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {

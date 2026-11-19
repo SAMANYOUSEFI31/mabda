@@ -39,8 +39,17 @@ export function actorOfSource(source?: ObjectSource): { actor: ContextChangeActo
   return { actor: ACTOR_OF_SOURCE[source.kind] ?? 'system', ...(source.label ? { label: source.label } : {}) };
 }
 
+/**
+ * What a decision record SAYS, without its review date: the date is a reminder for her (like an assumption's `reviewBy`), no output
+ * or request reads it, so moving it («هنوز زود است») is not a new version and stales nothing (decisions.md §۴۹)
+ */
+export const recordSays = (r: unknown): string => { if (!r || typeof r !== 'object') return 'null'; const { reviewOn: _r, ...rest } = r as Record<string, unknown>; return JSON.stringify(Object.keys(rest).length ? rest : null); };
+const onlyReviewDate = (c: { before?: Record<string, unknown>; after?: Record<string, unknown> }): boolean =>
+  !!c.after && Object.keys(c.after).every((f) => f === 'record' || !CONTENT_FIELDS.includes(f as TrackedField)) && 'record' in c.after && recordSays(c.before?.record) === recordSays(c.after.record);
+
 /** a change that altered what the object SAYS (not just where it lives or its status) */
-export function isContentChange(c: Pick<ContextChange, 'kind' | 'after'>): boolean {
+export function isContentChange(c: Pick<ContextChange, 'kind' | 'after'> & { before?: ContextChange['before'] }): boolean {
+  if (c.kind === 'edited' && onlyReviewDate(c as { before?: Record<string, unknown>; after?: Record<string, unknown> })) return false;
   if (c.kind === 'superseded' || c.kind === 'archived') return true;
   if (c.kind === 'contradiction_resolved') return (c.after as { status?: string } | undefined)?.status === 'Superseded' || !!c.after && CONTENT_FIELDS.some((f) => f in c.after!);
   if (c.kind === 'edited') return !!c.after && CONTENT_FIELDS.some((f) => f in c.after!);

@@ -347,7 +347,11 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   const decisions = inc.filter((o) => o.type === 'Decision');
   const rejected = rejectedOptions(inc);
   const order = (list: ContextObject[]) => [...list].sort((a, b) => path(a.nodeId).localeCompare(path(b.nodeId)) || a.id.localeCompare(b.id));
-  const docs = (list: ContextObject[]) => order(list).map((o) => renderDoc(o, path(o.nodeId))).join('\n');
+  // what each document rests on, but only among the documents that are here: the reader (the other tool, and she in the preview)
+  // sees why two items belong together; nothing outside the pack is named, so no unrelated text comes in (decisions.md §۴۹)
+  const here = new Map(inc.map((o) => [o.id, o]));
+  const restsOn = (o: ContextObject) => rels.filter((r) => r.type === 'depends_on' && r.sourceId === o.id && here.has(r.targetId)).map((r) => refOf(here.get(r.targetId)!));
+  const docs = (list: ContextObject[]) => order(list).map((o) => renderDoc(o, path(o.nodeId), restsOn(o))).join('\n');
 
   const data: string[] = [];
   data.push(`<documents workspace="${safe(input.workspaceName)}" scope="${safe(scopeName)}">`);
@@ -398,12 +402,12 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
   };
 }
 
-function renderDoc(o: ContextObject, nodePath: string): string {
+function renderDoc(o: ContextObject, nodePath: string, dependsOn: string[] = []): string {
   const extra: string[] = [];
   if (o.type === 'Decision' && o.record?.question) extra.push(`سؤال تصمیم: ${o.record.question}`);
   if (o.type === 'Decision' && o.record?.expectation) extra.push(`انتظار: ${o.record.expectation}`);
   const body = [o.title, o.content.replace(/\n{2,}/g, '\n').trim(), ...extra, ...exampleLines(o)].filter(Boolean).join('\n');
-  const attrs = `id="${refOf(o)}" type="${o.type}" node="${safe(nodePath)}" source="${SOURCE_FA[o.provenance]}"${o.reviewBy ? ` review_by="${o.reviewBy}"` : ''}`;
+  const attrs = `id="${refOf(o)}" type="${o.type}" node="${safe(nodePath)}" source="${SOURCE_FA[o.provenance]}"${o.reviewBy ? ` review_by="${o.reviewBy}"` : ''}${dependsOn.length ? ` depends_on="${[...new Set(dependsOn)].sort().join(' ')}"` : ''}`;
   return `<document ${attrs}>\n${safe(body)}\n</document>`;
 }
 

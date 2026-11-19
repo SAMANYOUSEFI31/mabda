@@ -44,6 +44,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     reviews: [...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, because: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) })),
     ready: waiting.ready.map((u) => ({ id: u.ids[0], title: workspaceContexts.find((o) => o.id === u.ids[0])?.title ?? u.ids[0] })),
     proposedCount: workspaceContexts.filter((o) => o.status === 'Proposed').length,
+    draftCount: workspaceContexts.filter((o) => o.status === 'Confirmed' && !!o.draft).length,
     weekly: { due: weeklyDue, changes: weekly.digest.total },
     dueCount: dueAssumptions.length + dueDecisions.length,
     openThinking: thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)).length,
@@ -99,6 +100,13 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
     onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
     onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
+    // «هنوز زود است»: the next look comes after two more numbers of a weekly metric, a month otherwise
+    onTooEarly: async (id: string) => {
+      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
+      const m = metrics.find((x) => x.id === o.record?.metricExpectation?.metricId);
+      const days = m?.cadence === 'week' ? 14 : 30;
+      await handlePatchObject(id, { record: { ...(o.record ?? {}), reviewOn: plusDays(days) }, reason: 'نگاه به عقب: هنوز زود است' });
+    },
     onOutcome: async (id: string, text: string, verdict?: ExpectationVerdict) => {
       const r = await attempt(() => dataApi.noteOutcome(wid, id, text, verdict));
       if (r) { patch((d) => ({ ...d, changes: r.changes })); toast.show({ intent: 'success', message: 'نتیجه ثبت شد.' }); }

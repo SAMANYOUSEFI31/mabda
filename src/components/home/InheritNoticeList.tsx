@@ -25,12 +25,14 @@ interface Props {
  */
 export const InheritNoticeList: React.FC<Props> = ({ notices, onSeen, onOpenSection, onOpenObject, max = 3 }) => {
   const [open, setOpen] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
   if (!notices.length) return null;
+  const shown = all ? notices : notices.slice(0, max);
   return (
     <section className="flex flex-col gap-stack-sm" aria-label="اثر تغییرها در زیربخش‌ها" data-testid="inherit-notices">
       <h3 className="label-md text-text-subtle">اثر در زیربخش‌ها</h3>
       <ul className="flex flex-col gap-stack-sm">
-        {notices.slice(0, max).map((n) => (
+        {shown.map((n) => (
           <li key={n.key} className="flex flex-col gap-stack-xs rounded-control-sm bg-surface-sunken p-inset-md">
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <span className="body-sm flex w-full items-center gap-inline-xs text-text-default sm:w-auto sm:min-w-space-0 sm:flex-1">
@@ -67,7 +69,11 @@ export const InheritNoticeList: React.FC<Props> = ({ notices, onSeen, onOpenSect
           </li>
         ))}
       </ul>
-      {notices.length > max && <p className="body-sm text-text-subtle">{formatNumber(notices.length - max)} خبر دیگر هم هست؛ در بازبینی هفتگی می‌آید.</p>}
+      {/* the rest open here, in place (the same as every list on Home); sending her to the weekly review for news she can already
+          see was a detour (decisions.md §۴۹) */}
+      {notices.length > max && (
+        <div><Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>{all ? 'کمتر' : `${formatNumber(notices.length - max)} خبر دیگر`}</Button></div>
+      )}
     </section>
   );
 };

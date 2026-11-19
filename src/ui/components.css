@@ -605,9 +605,11 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-margin__line{display:flex;align-items:flex-start;gap:var(--inline-sm);margin:0}
 .mb-margin__icon{flex:none;margin-block-start:var(--space-0\.5);color:var(--icon-subtle)}
 }
-@container mb-margin (min-width: 58.5rem){
+/* beside the text from 54rem of host (600 text + 40 gap + a margin of at least 14rem): at 58.5rem a 1024 tablet with the rail
+   (886px of frame) put the margin under a 680px column and left a fifth of the page empty beside the header (decisions.md §۴۹) */
+@container mb-margin (min-width: 54rem){
   /* the margin hugs the frame's end edge, so it ends where the page header's actions end (one frame, both edges; §۴۴) */
-  .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) var(--container-margin);column-gap:var(--space-12);justify-content:space-between}
+  .mb-margin__row{grid-template-columns:minmax(var(--container-measure-min),var(--container-prose)) minmax(14rem,var(--container-margin));column-gap:var(--space-10);justify-content:space-between}
   .mb-margin__note{padding-inline-start:0;padding-block-start:calc(var(--space-3) + var(--space-0\.5))}
   /* per-item engine notes in «ساختار» stay under their item at every width (§۴۴): a one-line truth leaves the side margin a
      screen-width away from it, outside the reading path (proximity; the F scan of an RTL page runs down its start edge) */
@@ -631,7 +633,19 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-margin--inline .mb-margin__row--target:has(.mb-margin__note):hover .mb-knowledge.mb-card--interactive{background-image:none}
 }
 /* the reading frame of a page whose content is text and its margin (خانه، خروجی‌ها): header, hairlines and margin share its two edges */
-@layer components{ .mb-page-frame{max-inline-size:var(--container-doc)} }
+@layer components{ .mb-page-frame{max-inline-size:var(--container-doc);container:mb-frame / inline-size} }
+/* one column (no margin beside it): the header, the list and what opens under it share the reading column's two edges, so the
+   row buttons end where the header's actions end. Before, the header ran to the frame's edge and the column stopped at 680px
+   (206px apart at 1024 with the rail; decisions.md §۴۹) */
+@container mb-frame (max-width: 53.98rem){ .mb-page-frame > *{max-inline-size:var(--container-prose)} }
+/* Home's margin when it is not beside the text: after the list and what «جزئیات بیشتر» opens, its blocks side by side where two
+   fit (they never expand in place, so the columns never jump), each under a hairline rule like a sidebar in print */
+@layer components{
+.mb-home-margin{container:mb-home-margin / inline-size}
+.mb-home-margin__blocks{display:flex;flex-direction:column;gap:var(--stack-lg)}
+.mb-home-margin__block{border-block-start:var(--border-width-thin) solid var(--border-subtle);padding-block-start:var(--stack-sm);break-inside:avoid}
+}
+@container mb-home-margin (min-width: 34rem){ .mb-home-margin__blocks{display:block;columns:2;column-gap:var(--space-10)} .mb-home-margin__blocks > .mb-home-margin__block + .mb-home-margin__block{margin-block-start:var(--stack-lg)} }
 
 /* exits (motion.md «قاعدهٔ خروج»: one step below the entry; src/ui/presence.ts unmounts on animationend) */
 @layer components{

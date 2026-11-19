@@ -126,7 +126,7 @@ export function useAppCore() {
   const [isPacksOpen, setIsPacksOpen] = useState(false);
   const approvals = useMemo(() => approvalsOf(data?.changes ?? []), [data?.changes]);
   /** «درخواست برای AI»: open + the node it is about ('' = the whole tree) */
-  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string; kind?: import('../../core/aiRequest').RequestKind; request?: string; thoughtIds?: string[] } | null>(null);
+  const [aiRequest, setAiRequest] = useState<{ scopeNodeId: string; kind?: import('../../core/aiRequest').RequestKind; request?: string; thoughtIds?: string[]; scopeNodeIds?: string[]; withChildren?: boolean; extraIds?: string[] } | null>(null);
   const [isStarterOpen, setIsStarterOpen] = useState(false);
   const [templateDraft, setTemplateDraft] = useState<{ kind: 'node' | 'workstream'; sourceId: string; name: string } | null>(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);

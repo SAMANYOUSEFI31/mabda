@@ -5,7 +5,7 @@
  */
 import type { Repo } from './index.ts';
 import { CONTEXT_TYPES, ChangeMeta, ImpactResult, ObjectInput, RepoError, Scope, cleanFacets, newId, now, rowToObject, scopeFields, thinkingFields } from './shared.ts';
-import { diffFields, statusChangeKind } from '../../../src/core/changeLog.ts';
+import { diffFields, recordSays, statusChangeKind } from '../../../src/core/changeLog.ts';
 import { objectLimitMessage } from '../../../src/core/limits.ts';
 import { computeStaleAssets, newlyStale } from '../../../src/core/impactEngine.ts';
 import type { StaleAsset } from '../../../src/core/impactEngine.ts';
@@ -232,7 +232,7 @@ export const objectsMethods = {
       next.provenance = patch.provenance === 'Sample' || cur.provenance === 'Sample' ? cur.provenance : next.provenance;
       if (cur.provenance === 'Sample' && (next.title !== cur.title || next.content !== cur.content)) next.provenance = 'User Input';
       else if (cur.sample && this.objectSlots(s) <= 0) throw new RepoError('forbidden', objectLimitMessage());
-      const contentChanged = (!!next.assumption !== !!cur.assumption) || JSON.stringify(next.record ?? null) !== JSON.stringify(cur.record ?? null) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || JSON.stringify(next.examples ?? null) !== JSON.stringify(cur.examples ?? null) || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
+      const contentChanged = (!!next.assumption !== !!cur.assumption) || recordSays(next.record) !== recordSays(cur.record) || next.title !== cur.title || next.content !== cur.content || next.type !== cur.type || JSON.stringify(next.examples ?? null) !== JSON.stringify(cur.examples ?? null) || next.reach !== cur.reach || next.validUntil !== cur.validUntil;
       if (contentChanged) next.version = cur.version + 1;
       this.db.prepare('UPDATE context_objects SET type=?, status=?, provenance=?, title=?, content=?, node_id=?, version=?, updated_at=?, slot_key=?, reach=?, valid_until=?, assumption=?, review_by=?, decision_record=?, facets=?, sample=?, examples=? WHERE id=? AND workspace_id=? AND user_id=?')
         .run(next.type, next.status, next.provenance, next.title, next.content, next.nodeId, next.version, next.updatedAt, next.slotKey ?? null, next.reach ?? null, next.validUntil ?? null, next.assumption ? 1 : null, next.reviewBy ?? null, next.record ? JSON.stringify(next.record) : null, next.facets ? JSON.stringify(next.facets) : null, next.sample ? 1 : null, next.examples ? JSON.stringify(next.examples) : null, id, s.workspaceId, s.userId);

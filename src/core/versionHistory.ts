@@ -140,7 +140,12 @@ export function versionTexts(changes: Ch[]): VersionText[] {
     const known = out.get(c.fromVersion);
     if (!known || (!known.content && typeof b?.content === 'string')) {
       if (typeof b?.title === 'string') title = b.title;
-      if (typeof b?.content === 'string') content = b.content;
+      if (typeof b?.content === 'string') {
+        content = b.content;
+        // an edit that does not carry the text did not change it: every earlier version whose text is still unknown had this
+        // same text (a first edit of only the type or the reach left version 1 empty in «مقایسهٔ دو نسخه», decisions.md §۴۹)
+        for (const [v, t] of out) if (v < c.fromVersion && !t.content) out.set(v, { ...t, content: b.content });
+      }
       put(c.fromVersion, known?.at ?? c.at);
     }
     if (typeof a?.title === 'string') title = a.title;

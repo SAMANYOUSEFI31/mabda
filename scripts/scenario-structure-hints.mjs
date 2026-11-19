@@ -132,7 +132,7 @@ try {
     await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: /^(افزودن|ثبت دانش|افزودن دانش|ثبت اولین دانش)$/ }).first().click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('چه چیزی درست است؟').fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');
+    await dlg.getByLabel(/^(چه چیزی درست است؟|متن|متن پیش‌نویس)$/).fill('قیمت بستهٔ هدیه ۱۵۰ هزار تومان است.');
     await dlg.getByLabel('عنوان').fill('قیمت بستهٔ هدیه نهایی');
     await dlg.getByRole('button', { name: /^در:/ }).click();
     await page.getByRole('menuitem', { name: /بستهٔ هدیه/ }).first().click();

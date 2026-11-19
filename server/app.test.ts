@@ -331,6 +331,22 @@ test('Context pack: built on the server, size reported, lineage stored; Starter 
   } finally { t.close(); }
 });
 
+test('AI request copied with no line: recorded (no 400), named by where it is about, and the request is kept for «درخواست دوباره»', async () => {
+  const t = await boot(() => decide);
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const r = await t.call('POST', '/workspaces/ws_studio/ai-requests', { kind: 'draft', request: '', record: true, withChildren: true });
+    assert.equal(r.status, 200);
+    const got = await t.call('GET', `/workspaces/ws_studio/packs/${r.json.packId}`);
+    assert.equal(got.status, 200);
+    assert.match(got.json.pack.title, /کل /);
+    assert.equal(got.json.pack.request.kind, 'draft');
+    assert.equal(got.json.pack.request.request, '');
+    assert.equal(got.json.pack.request.withChildren, true);
+    assert.equal((await t.call('GET', '/workspaces/ws_studio/packs/nope_missing')).status, 404);
+  } finally { t.close(); }
+});
+
 test('paste import: headings are parsed for free (no model call); the pack marker gives the lineage; no headings → decision layer; no AI → one honest raw block', async () => {
   const t = await boot((c) => (JSON.stringify(c.schema ?? '').includes('"items"') ? { items: [{ kind: 'fact', title: 'بودجه', markdown: 'بودجه پنجاه میلیون است.' }, { kind: 'asset', title: 'متن', markdown: 'متن کامل خروجی' }, { kind: 'nope', title: 'x', markdown: 'y' }] } : decide));
   try {
