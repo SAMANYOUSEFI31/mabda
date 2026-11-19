@@ -50,7 +50,7 @@ try {
 
     step(`[${width}] home: no count of expectation versus result (owner decision §۴۲); a verdict that is due waits in «منتظر تو»`);
     await page.locator('button[aria-controls="home-all"]').click(); // the full list is under «همه»
-    await page.getByText(/مورد موعد بازبینی دارد/).first().waitFor();
+    await page.getByText(/موعد بازبینی/).first().waitFor();
     assert.equal(await page.getByTestId('expectation-tally').count(), 0);
     await shot('1-home');
 
