@@ -46,6 +46,9 @@ interface AppNavigationProps {
   addAction?: { label: string; onClick: () => void };
 }
 
+
+/** the shortcut as each platform writes it: «⌘K» on Apple (HIG), «Ctrl+K» elsewhere (Microsoft Style Guide: keys joined by +) */
+const SEARCH_KEYS = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl+K';
 /**
  * Shell navigation: four destinations (خانه، فکر، حقیقت، خروجی‌ها; decisions.md §۲۷). «خروجی‌ها» = what you build with (جریان‌های کار) + what you built (دارایی‌ها). The sidebar lists PLACES, never views or actions:
  * only «منبع» has places inside it (its top-level sections), shown while it is active; views switch on the page itself. Everything that is not daily work lives in the one «حساب کاربری» menu,
@@ -214,7 +217,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         <button type="button" onClick={p.onOpenSearch} aria-keyshortcuts="Control+K Meta+K" className="label-md flex min-h-touch w-full items-center gap-inline-md rounded-control border border-border-default bg-surface-raised px-inset-md text-start text-text-subtle transition-colors hover:bg-interaction-hover hover:text-text-default active:bg-interaction-pressed">
           <Icon name="Search" size="lg" className="text-icon-subtle" />
           <span className="flex-1">جستجو</span>
-          <span className="caption text-text-subtlest" dir="ltr">Ctrl K</span>
+          <span className="caption text-text-subtlest" dir="ltr">{SEARCH_KEYS}</span>
         </button>
       </div>
 

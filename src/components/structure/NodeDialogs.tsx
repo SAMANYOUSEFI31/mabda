@@ -33,7 +33,8 @@ interface Props {
   onClose: () => void;
   workspaceId: string;
   /** returns the id of the created node (the Coach opens for it right after) */
-  onCreate: (parentId: string, label: string, description: string) => Promise<string>;
+  /** `quiet`: the caller confirms it in its own words (a section made from a thought) */
+  onCreate: (parentId: string, label: string, description: string, quiet?: boolean) => Promise<string>;
   onOpenCoach: (nodeId: string) => void;
   onSaveProposals: (proposals: Array<{ type: 'Fact' | 'Decision' | 'Constraint'; title: string; content: string; nodeId: string }>) => Promise<void>;
   onLedger: (ledger: LedgerEntry[]) => void;
@@ -109,7 +110,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
               setBusy(true);
               if (state.thought) {
                 const th = state.thought;
-                onCreate(createParent, label.trim(), description.trim()).then((nodeId) => onThoughtSectioned?.(th, label.trim(), nodeId)).then(onClose).catch(() => undefined).finally(() => setBusy(false));
+                onCreate(createParent, label.trim(), description.trim(), true).then((nodeId) => onThoughtSectioned?.(th, label.trim(), nodeId)).then(onClose).catch(() => undefined).finally(() => setBusy(false));
               } else onCreate(createParent, label.trim(), description.trim()).then((id) => { if (managedEnabled) onOpenCoach(id); else onClose(); }).catch(() => undefined).finally(() => setBusy(false));
             } else void run(() => onRename(state.nodeId, label.trim(), description.trim()));
           }}

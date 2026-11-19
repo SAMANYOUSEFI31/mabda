@@ -30,10 +30,13 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
       files={data.files}
       onClose={() => setNodeDialog(null)}
       workspaceId={wid}
-      onCreate={async (parentId, label, description) => {
+      onCreate={async (parentId, label, description, quiet) => {
         const r = await attempt(() => dataApi.createNode(wid, { parentId, label, description }));
         if (!r) throw new Error('create failed');
         patch((d) => ({ ...d, nodes: r.nodes }));
+        // feedback where the new section lands (Nielsen 1): it is often below the fold, so say so and bring it into view
+        if (!quiet) toast.show({ intent: 'success', message: `بخش «${label}» ساخته شد.` });
+        revealWhenThere(`node-${r.node.id}`);
         return r.node.id;
       }}
       onOpenCoach={(nodeId) => setNodeDialog({ kind: 'coach', nodeId })}
