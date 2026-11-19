@@ -95,6 +95,17 @@ export function buildDemo(now: Date): DemoData {
     { id: 'dn_ws', label: 'کارگاه برشته‌کاری', parentId: 'offer', description: 'کارگاه حضوری و آموزش خانگی', order: 13 },
     { id: 'dn_ws_prog', label: 'برنامهٔ جلسه‌ها', parentId: 'dn_ws', description: 'سرفصل و زمان‌بندی جلسه‌های کارگاه', order: 14 },
     { id: 'dn_social', label: 'محتوا و شبکه‌های اجتماعی', parentId: 'content', description: 'کانال‌ها، لحن و تقویم', order: 15 },
+    // a bigger, deeper tree (owner, 2026-11-19): supply down to one farm, plans inside the subscription, one channel inside social
+    { id: 'dn_supply', label: 'تأمین و برشته‌کاری', parentId: 'product', description: 'از کجا دانه می‌خریم و چطور برشته می‌کنیم', order: 16 },
+    { id: 'dn_beans', label: 'تأمین دانه', parentId: 'dn_supply', description: 'تأمین‌کننده‌ها، کیفیت و موجودی', order: 17 },
+    { id: 'dn_origins', label: 'خاستگاه‌ها', parentId: 'dn_beans', description: 'کشورها و مزرعه‌هایی که از آن‌ها می‌خریم', order: 18 },
+    { id: 'dn_eth', label: 'اتیوپی', parentId: 'dn_origins', description: 'دانه‌های فرآوری شسته و طبیعی', order: 19 },
+    { id: 'dn_roast', label: 'برشته‌کاری', parentId: 'dn_supply', description: 'دستگاه، پروفایل‌ها و کنترل کیفیت', order: 20 },
+    { id: 'dn_profiles', label: 'پروفایل‌های برشت', parentId: 'dn_roast', description: 'روشن، متوسط و تیره، و برای چه دمی', order: 21 },
+    { id: 'dn_plans', label: 'پلن‌های اشتراک', parentId: 'dn_sub', description: 'اندازه‌های بسته برای یک نفر تا یک خانواده', order: 22 },
+    { id: 'dn_family', label: 'بستهٔ خانواده', parentId: 'dn_plans', description: 'بستهٔ بزرگ‌تر با ارسال دوهفته‌ای', order: 23 },
+    { id: 'dn_insta', label: 'اینستاگرام', parentId: 'dn_social', description: 'پست، ریلز و استوری', order: 24 },
+    { id: 'dn_reels', label: 'ریلز', parentId: 'dn_insta', description: 'ویدیوهای کوتاه آموزشی', order: 25 },
   ];
 
   const objects: ContextObject[] = [];
@@ -235,6 +246,32 @@ export function buildDemo(now: Date): DemoData {
   add({ id: 'dm_p_coach', type: 'Fact', node: 'dn_support', title: 'پرسش رایج دربارهٔ آسیاب', first: 'مشتری‌ها اغلب می‌پرسند دانه را آسیاب‌شده بفرستیم یا کامل.', status: 'Proposed', provenance: 'AI Suggested', created: [4, 16],
     source: { kind: 'paste', label: 'پاسخ بیرونی', reason: 'از متنی که دربارهٔ پشتیبانی چسباندی.', quote: 'مشتری‌ها اغلب دربارهٔ آسیاب می‌پرسند.' } });
 
+  // ── the deeper branches: plain truth with its own history (versions, one replaced), nothing proposed, so every engine count above stays ──
+  add({ id: 'dm_sup_main', type: 'Fact', node: 'dn_beans', title: 'تأمین‌کنندهٔ اصلی', first: 'دانهٔ سبز را از یک واردکنندهٔ تهرانی می‌خریم.', status: 'Confirmed', provenance: 'User Input', created: [44],
+    edits: [{ d: 21, content: 'دانهٔ سبز را از دو واردکنندهٔ تهرانی می‌خریم تا اگر یکی موجودی نداشت، کار نخوابد.', reason: 'یک ماه موجودی اتیوپی تمام شد و دو هفته عقب افتادیم.' }] });
+  add({ id: 'dm_sup_stock', type: 'Decision', node: 'dn_beans', title: 'موجودی اطمینان', first: 'همیشه دست‌کم موجودی سه هفته دانهٔ سبز در انبار باشد.', status: 'Confirmed', provenance: 'User Input', created: [20] });
+  add({ id: 'dm_sup_grade', type: 'Constraint', node: 'dn_beans', title: 'حداقل امتیاز کیفیت', first: 'دانه‌ای با امتیاز کاپینگ کمتر از ۸۴ نمی‌خریم.', status: 'Confirmed', provenance: 'User Input', reach: 'position', created: [43] });
+  add({ id: 'dm_origin_mix', type: 'Fact', node: 'dn_origins', title: 'سهم خاستگاه‌ها', first: 'حدود نیمی از فروش از اتیوپی است، بقیه کلمبیا و برزیل.', status: 'Confirmed', provenance: 'User Input', created: [30],
+    edits: [{ d: 9, content: 'حدود ۶۰ درصد فروش از اتیوپی است، بقیه کلمبیا و برزیل.', reason: 'شمارش سه ماه آخر سفارش‌ها.' }] });
+  add({ id: 'dm_eth_old', type: 'Decision', node: 'dn_eth', title: 'دانهٔ اتیوپی این فصل', first: 'یرگاچفهٔ شسته، از تعاونی کوچو.', status: 'Confirmed', provenance: 'User Input', created: [40],
+    supersededBy: { id: 'dm_eth_new', d: 12, reason: 'محصول کوچو تمام شد؛ گوجی طبیعی از همان واردکننده رسید.' } });
+  add({ id: 'dm_eth_new', type: 'Decision', node: 'dn_eth', title: 'دانهٔ اتیوپی این فصل', first: 'گوجی فرآوری طبیعی، از تعاونی شاکیسو.', status: 'Confirmed', provenance: 'User Input', created: [12, 14] });
+  add({ id: 'dm_eth_note', type: 'Fact', node: 'dn_eth', title: 'طعم دانهٔ اتیوپی', first: 'نُت توت‌فرنگی و گل؛ برای دم‌آوری دستی بهتر از اسپرسو است.', status: 'Confirmed', provenance: 'User Input', created: [11] });
+  add({ id: 'dm_roaster', type: 'Fact', node: 'dn_roast', title: 'دستگاه برشته‌کاری', first: 'یک دستگاه ۵ کیلویی؛ هر روز کاری حداکثر ۴۰ کیلو.', status: 'Confirmed', provenance: 'User Input', created: [45] });
+  add({ id: 'dm_roast_qc', type: 'Decision', node: 'dn_roast', title: 'کنترل کیفیت هر بچ', first: 'از هر بچ یک نمونه کاپینگ می‌شود و نتیجه در دفتر ثبت می‌شود.', status: 'Confirmed', provenance: 'User Input', created: [36],
+    edits: [{ d: 14, content: 'از هر بچ یک نمونه، ۲۴ ساعت بعد از برشت، کاپینگ می‌شود و نتیجه در دفتر ثبت می‌شود.', reason: 'کاپینگ همان روز طعم واقعی را نشان نمی‌داد.' }] });
+  add({ id: 'dm_rest', type: 'Constraint', node: 'dn_roast', title: 'استراحت پیش از ارسال', first: 'هیچ قهوه‌ای کمتر از ۴۸ ساعت بعد از برشت ارسال نمی‌شود.', status: 'Confirmed', provenance: 'User Input', reach: 'position', created: [34] });
+  add({ id: 'dm_prof_light', type: 'Decision', node: 'dn_profiles', title: 'برشت روشن', first: 'برای دم‌آوری دستی؛ فقط دانه‌های اتیوپی و کنیا.', status: 'Confirmed', provenance: 'User Input', created: [25] });
+  add({ id: 'dm_prof_dark', type: 'Decision', node: 'dn_profiles', title: 'برشت تیره', first: 'برای موکاپات و اسپرسوی خانگی؛ ترکیب برزیل و کلمبیا.', status: 'Confirmed', provenance: 'User Input', created: [25, 12],
+    edits: [{ d: 6, content: 'برشت متوسط-تیره برای موکاپات و اسپرسوی خانگی؛ ترکیب برزیل و کلمبیا.', reason: 'تیرهٔ کامل تلخ بود؛ سه مشتری گفتند.' }] });
+  add({ id: 'dm_plan_solo', type: 'Decision', node: 'dn_plans', title: 'بستهٔ یک‌نفره', first: 'دو بستهٔ ۲۵۰ گرمی در ماه.', status: 'Confirmed', provenance: 'User Input', created: [22] });
+  add({ id: 'dm_family_size', type: 'Decision', node: 'dn_family', title: 'اندازهٔ بستهٔ خانواده', first: 'هر دو هفته دو بستهٔ ۵۰۰ گرمی.', status: 'Confirmed', provenance: 'User Input', created: [16],
+    edits: [{ d: 4, content: 'هر دو هفته یک بستهٔ یک‌کیلویی و یک بستهٔ ۲۵۰ گرمی برای امتحان دانهٔ تازه.', reason: 'خانواده‌ها خواستند دانهٔ تازه را هم امتحان کنند.' }] });
+  add({ id: 'dm_family_fit', type: 'Fact', node: 'dn_family', title: 'چه کسانی بستهٔ خانواده می‌گیرند', first: 'بیشتر خانواده‌های سه‌نفره به بالا که روزی دو بار قهوه دم می‌کنند.', status: 'Confirmed', provenance: 'User Input', created: [8] });
+  add({ id: 'dm_insta_freq', type: 'Decision', node: 'dn_insta', title: 'آهنگ انتشار اینستاگرام', first: 'هفته‌ای سه پست؛ استوری هر روز کاری.', status: 'Confirmed', provenance: 'User Input', created: [28] });
+  add({ id: 'dm_reels_topic', type: 'Decision', node: 'dn_reels', title: 'موضوع ریلزها', first: 'هر ریلز یک نکتهٔ دم‌آوری در کمتر از ۳۰ ثانیه.', status: 'Confirmed', provenance: 'User Input', created: [18] });
+  add({ id: 'dm_reels_rule', type: 'Constraint', node: 'dn_reels', title: 'بدون موسیقی دارای حق نشر', first: 'در ریلزها فقط موسیقی بدون حق نشر یا صدای خودمان.', status: 'Confirmed', provenance: 'User Input', reach: 'position', created: [18, 12] });
+
   // ── relations (all `depends_on` are read by decisionGraph / impactEngine) ────────────────────
   const dep = (a: string, b: string, d: number) => rel('depends_on', a, b, at(d));
   dep('dm_price', 'dm_pack', 33); dep('dm_pack', 'dm_ship_policy', 2); dep('dm_ship_policy', 'dm_price', 2); // the three-way loop
@@ -243,6 +280,7 @@ export function buildDemo(now: Date): DemoData {
   dep('dm_valueprop', 'dm_problem', 38);
   dep('dm_ws_plan', 'dm_ws_cap', 5); // ready: what it rests on is confirmed
   dep('dm_discount', 'dm_price', 2);
+  dep('dm_sup_stock', 'dm_roaster', 19); dep('dm_prof_light', 'dm_eth_note', 10); dep('dm_reels_topic', 'dm_insta_freq', 17); dep('dm_family_size', 'dm_family_fit', 3);
   // exception (overrides): the group workshop sets «no discount» aside for the workshop branch only — with a reason, in the Change log
   rel('overrides', 'dm_ws_group', 'dm_nodiscount', at(9, 15));
   chg({ objectId: 'dm_ws_group', fromVersion: 1, toVersion: 1, kind: 'edited', actor: 'user', reason: 'قیمت کارگاه گروهی جدا از اشتراک تعیین می‌شود؛ خط قرمز «تخفیف نداریم» برای اشتراک می‌ماند.', before: { overrides: [] }, after: { overrides: ['dm_nodiscount'] }, at: at(9, 15, 5) });
