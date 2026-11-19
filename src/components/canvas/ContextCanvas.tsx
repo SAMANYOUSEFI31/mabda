@@ -138,7 +138,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   // «docked» takes its own column; «floating» hovers over the canvas so the canvas does not resize; «closed» hides it
-  const [inspectorMode, setInspectorMode] = useState<'docked' | 'floating' | 'closed'>(() => (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches ? 'closed' : 'docked'));
+  // below 1280 a docked column leaves the stage ~1.5 columns wide (docs/ux/decisions.md §۴۵د): start closed there; selecting still
+  // lights up what is connected, and «جزئیات» (or I) docks the column. A floating panel was tried: it covered the selected card
+  const [inspectorMode, setInspectorMode] = useState<'docked' | 'floating' | 'closed'>(() => (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 1279px)').matches ? 'closed' : 'docked'));
   const inspectorOpen = inspectorMode !== 'closed';
   const setInspectorOpen = (v: boolean | ((cur: boolean) => boolean)) => setInspectorMode((cur) => {
     const open = typeof v === 'function' ? v(cur !== 'closed') : v;
