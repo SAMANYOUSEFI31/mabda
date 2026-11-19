@@ -13,7 +13,7 @@ import { buildScene, HEAD, LAYOUT_ABOUT, LAYOUT_FA, neighbourInDirection, NOTE_H
 import type { CanvasLayout, Scene, SceneItem } from '../../core/canvasScene';
 import { canRedo, canUndo, createHistory, record, redo, undo } from '../../core/canvasHistory';
 import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
-import { clusterItems, edgeBudget, lodOf } from '../../core/canvasLod';
+import { clusterItems, edgeBudget, FIRST_VIEW_K, lodOf, readablePx } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
 import { flatten, treeIndent } from '../../core/nodeTree';
@@ -29,6 +29,7 @@ import type { ConnectOption } from '../../core/connectRules';
 import { lineageText } from '../../core/lineage';
 import { beside, frameAt, freeFrames, shiftFrame } from '../../core/canvasFrames';
 import { usePanZoom } from './usePanZoom';
+import { GUTTER, PAD } from '../../core/swimlane';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 
 export interface MovePayload { objectId: string; lane: Lane; nodeId?: string; beforeId?: string; afterId?: string; reason?: string; confirmBackward?: boolean }
@@ -172,8 +173,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const facetNames = useMemo(() => [...new Set(p.objects.flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b)), [p.objects]);
   const placedIds = useMemo(() => new Set(p.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).map((i) => i.itemRef.slice(4))), [p.canvas.free]);
 
+  // the row labels pinned at the stage's end edge: the board's own end margin (the gutter beyond the base column) covers part of their room
+  const overviewInset = useCallback((w: number, k: number) => (layoutEff === 'overview' ? Math.max(0, railInset(w) - (GUTTER + PAD) * k) : 0), [layoutEff]);
   const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, fit, zoomAt, reveal, toStage, panned, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, isMobile ? (layoutEff === 'lineage' ? 0.55 : layoutEff === 'overview' ? 0.5 : 0.68) : layoutEff === 'lineage' ? 0.5 : layoutEff === 'overview' ? 0.8 : 0.85, fullscreen, (w) => (layoutEff === 'overview' ? railInset(w) : 0));
+  const { box, view, setView, size, range, fit, zoomAt, reveal, toStage, panned, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, layoutEff === 'free' ? (isMobile ? 0.68 : 0.85) : FIRST_VIEW_K, fullscreen, overviewInset, layoutEff === 'free');
   const sceneRef = useRef(scene); sceneRef.current = scene;
   const viewRef = useRef(view); viewRef.current = view;
   useLayoutEffect(() => {
@@ -193,6 +196,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     });
   }, [scene, setView, size.h]);
   const lod = lodOf(view.k);
+  /** names drawn inside the stage (frame and group heads, line chips) keep a readable size on screen at every zoom (§۵۰) */
+  const headPx = readablePx(view.k);
+  const headScale = headPx / 14;
   const overviewFar = layoutEff === 'overview' && lod === 'far';
 
   // ── what is drawn: the viewport (snapped, so panning does not re-render the cards) ──
@@ -655,9 +661,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <IconButton icon="Redo2" label="از نو (Ctrl+Shift+Z)" disabled={!canRedo(hist) || busy} onClick={() => void doRedo()} />
       </span>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
-        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" onClick={() => zoomAt(1 / 1.25)} />}
+        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" disabled={view.k <= range.min + 0.005} onClick={() => zoomAt(1 / 1.25)} />}
         <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fit} />
-        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" onClick={() => zoomAt(1.25)} />}
+        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" disabled={view.k >= range.max - 0.005} onClick={() => zoomAt(1.25)} />}
         {/* how near the camera is, beside the zoom it reports (it used to float over the board's corner and cover the first column's name) */}
         {!isMobile && <span className="caption whitespace-nowrap px-inset-xs tabular-nums text-text-subtle" data-testid="canvas-zoom-label">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span>}
       </span>
@@ -672,7 +678,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
           // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
           ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
-          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, onSelect: () => zoomAt(1 / 1.25) }] : []),
+          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: view.k >= range.max - 0.005, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: view.k <= range.min + 0.005, onSelect: () => zoomAt(1 / 1.25) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -763,10 +769,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             data-lod={lod}
           >
             <div className="absolute top-space-0 start-space-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: '0 0', willChange: 'transform', inlineSize: scene.width, blockSize: scene.height }}>
-              {shownBoxes.map((b) => (
+              {/* far, the overview is one summary per row: the column heads belong to the cards, which are not drawn */}
+              {shownBoxes.filter((b) => !(overviewFar && b.kind === 'column')).map((b) => (
                 <div key={b.id} title={b.hint} className={`absolute top-space-0 start-space-0 rounded-control-sm border ${b.kind === 'group' ? `${b.depth === 0 ? 'border-border-bold' : 'border-border-default'}` : b.kind === 'column' ? 'border-border-default bg-surface-raised' : 'border-border-subtle bg-surface-raised/40'} ${selection.length && b.kind === 'group' ? 'opacity-70' : ''}`} style={{ transform: `translate(${b.x}px, ${b.y}px)`, inlineSize: b.w, blockSize: b.h, pointerEvents: b.kind === 'group' ? 'none' : undefined }}>
-                  <div dir="rtl" className={`flex items-center justify-between gap-inline-sm px-inset-sm ${b.kind === 'column' ? 'h-full justify-center' : ''}`} style={b.kind === 'group' ? { blockSize: 56, pointerEvents: 'auto' } : undefined}>
-                    <span className="flex min-w-space-0 items-center gap-inline-xs"><span className={`${b.kind === 'column' ? 'label-md text-text-default' : 'label-md truncate text-text-subtle'}`} style={b.kind === 'row' ? { paddingInlineEnd: b.depth * 12 } : undefined}>{layoutEff === 'overview' && b.kind === 'row' ? '' : b.label}</span>{b.kind === 'group' && (b.count ?? 0) > 0 && <Badge intent="neutral" icon={false}>{formatNumber(b.count!)} مورد</Badge>}</span>
+                  <div dir="rtl" className={`flex items-center justify-between gap-inline-sm px-inset-sm ${b.kind === 'column' ? 'h-full justify-center' : ''}`} style={b.kind === 'group' ? { blockSize: Math.max(56, 40 * headScale), pointerEvents: 'auto', fontSize: headPx } : undefined}>
+                    <span className="flex min-w-space-0 items-center gap-inline-xs"><span className={`${b.kind === 'column' ? 'label-md text-text-default' : 'label-md truncate text-text-subtle'}`} style={b.kind === 'row' ? { paddingInlineEnd: b.depth * 12 } : b.kind === 'column' ? { fontSize: Math.min(headPx, b.h * 0.6) } : b.kind === 'group' || b.kind === 'zone' ? { fontSize: headPx } : undefined}>{layoutEff === 'overview' && b.kind === 'row' ? '' : b.label}</span>{b.kind === 'group' && (b.count ?? 0) > 0 && <Badge intent="neutral" icon={false}>{formatNumber(b.count!)} مورد</Badge>}</span>
                   </div>
                 </div>
               ))}
@@ -774,8 +781,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 const live = groupDrag?.nodeId === f.nodeId ? { dx: groupDrag.dx, dy: groupDrag.dy } : { dx: 0, dy: 0 };
                 return (
                   <div key={`frame-${f.nodeId}`} data-testid="section-frame" data-frame={f.nodeId} className="pointer-events-none absolute top-space-0 start-space-0 rounded-container border border-border-bold" style={{ transform: `translate(${f.x + live.dx}px, ${f.y + live.dy}px)`, inlineSize: f.w, blockSize: f.h }}>
-                    <div dir="rtl" data-no-pan="" className="pointer-events-auto flex cursor-grab items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: 44 }} onPointerDown={(e) => startFrameDrag(e, f)}>
-                      <span className="label-md truncate text-text-subtle">{f.label} · {formatNumber(f.ids.length)}</span>
+                    <div dir="rtl" data-no-pan="" className="pointer-events-auto flex cursor-grab items-center justify-between gap-inline-sm px-inset-sm" style={{ blockSize: Math.max(44, 32 * headScale) }} onPointerDown={(e) => startFrameDrag(e, f)}>
+                      {/* far and mid: the frame's name is what is read (the cards are shapes), so it keeps a readable size on screen */}
+                      <span className="label-md truncate text-text-subtle" style={{ fontSize: headPx }}>{f.label} · {formatNumber(f.ids.length)}</span>
                       <IconButton icon="Ellipsis" label={`جابه‌جا کن: ${f.label}`} aria-haspopup="menu" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setFrameMenuAt({ nodeId: f.nodeId, x: r.left, y: r.bottom }); }} />
                     </div>
                   </div>
@@ -784,7 +792,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               {overviewFar && <OverviewFar scene={scene} k={view.k} onZoomRow={zoomRow} onZoomRows={zoomRows} />}
               <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={focusSet.size > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
               {chipEdges.map(({ edge: e, route }) => (
-                <span key={`chip-${e.id}`} data-edge-chip={e.id} className="body-sm pointer-events-none absolute top-space-0 start-space-0 whitespace-nowrap rounded-pill border border-border-bold bg-mabda-edge-chip-bg px-inset-sm text-text-default" style={{ transform: `translate(${route.mid.x}px, ${route.mid.y}px) translate(-50%, -50%)` }}>{e.label}{e.count > 1 ? ` (${formatNumber(e.count)})` : ''}</span>
+                <span key={`chip-${e.id}`} data-edge-chip={e.id} className="body-sm pointer-events-none absolute top-space-0 start-space-0 whitespace-nowrap rounded-pill border border-border-bold bg-mabda-edge-chip-bg px-inset-sm text-text-default" style={{ transform: `translate(${route.mid.x}px, ${route.mid.y}px) translate(-50%, -50%)`, fontSize: headPx }}>{e.label}{e.count > 1 ? ` (${formatNumber(e.count)})` : ''}</span>
               ))}
               {linkDrag && (() => { const f = byId.get(linkDrag.fromId); return f ? <svg className="pointer-events-none absolute top-space-0 start-space-0 overflow-visible" width={scene.width} height={scene.height} aria-hidden="true"><line x1={f.x + f.w / 2} y1={f.y + f.h / 2} x2={linkDrag.x} y2={linkDrag.y} className="stroke-border-selected" strokeWidth={2} strokeDasharray="6 4" /></svg> : null; })()}
               {clusters
@@ -793,7 +801,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                   const inGroup = !!groupDrag && !!frames.find((f) => f.nodeId === groupDrag.nodeId)?.ids.includes(i.id);
                   const at0 = i.kind === 'note' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : layout === 'free' && noteDrag?.id === i.id ? { ...i, x: noteDrag.x, y: noteDrag.y } : i;
                   const at = inGroup ? { ...at0, x: at0.x + groupDrag!.dx, y: at0.y + groupDrag!.dy } : at0;
-                  const common = { lod, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => { if (document.activeElement?.matches(':focus-visible')) reveal(it.x, it.y, it.w, it.h); }, /* keyboard focus only: a tap that pans the card away mid-press would land its click on the empty stage (§۴۸) */ onKey: onCardKey };
+                  const common = { lod, k: view.k, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => { if (document.activeElement?.matches(':focus-visible')) reveal(it.x, it.y, it.w, it.h); }, /* keyboard focus only: a tap that pans the card away mid-press would land its click on the empty stage (§۴۸) */ onKey: onCardKey };
                   if (i.kind === 'note') {
                     return <CanvasNoteCard key={i.id} item={at} {...common} editing={editing?.id === i.id ? { text: editing.text } : undefined} onPointerDown={startDrag}
                       onEdit={(it) => setEditing({ id: it.id, text: it.summary ?? '' })} onEditText={(text) => setEditing((cur) => (cur ? { ...cur, text } : cur))}

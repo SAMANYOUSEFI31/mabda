@@ -6,6 +6,7 @@
 import React from 'react';
 import type { SceneItem } from '../../core/canvasScene';
 import type { Lod } from '../../core/canvasLod';
+import { midLayout, MID_MARKS_FROM } from '../../core/canvasLod';
 import { Badge, Icon, IconButton, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 
 export const FACET_TINT = ['border-border-info-subtle bg-bg-info-subtle', 'border-border-success-subtle bg-bg-success-subtle', 'border-border-warning-subtle bg-bg-warning-subtle', 'border-border-default bg-bg-neutral-subtle'];
@@ -34,6 +35,8 @@ const aria = (item: SceneItem) => {
 interface CardProps {
   item: SceneItem;
   lod: Lod;
+  /** the zoom: in «mid» the title is drawn large enough to read on screen (§۵۰) */
+  k?: number;
   selected: boolean;
   /** next to the selection (a neighbour through a line) */
   neighbour: boolean;
@@ -58,8 +61,13 @@ interface CardProps {
  * ONE card anatomy for every layout: type icon · status chip · small marks on the first row, the title (two lines) under it,
  * and — close up — a short summary. Far away it is only a shape (no text), so thousands stay readable and cheap.
  */
+const clampLines = (lines: number): React.CSSProperties => ({ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: lines, overflow: 'hidden' });
+
 export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
   const { item, lod } = p;
+  const mid = lod === 'mid';
+  const marks = !mid || (p.k ?? 1) >= MID_MARKS_FROM;
+  const m = mid ? midLayout(p.k ?? 1, item.h, marks) : null;
   // focus mode: a card that is not part of the selection gets a quieter BACKGROUND and BORDER — its text is never made transparent, so every title stays readable (contrast ≥ 3:1, measured in screens.mjs)
   const tone = p.dimmed ? 'border-border-subtle bg-surface-sunken' : item.pending && !p.selected ? 'border-border-default bg-bg-neutral-subtle' : p.selected ? 'border-border-selected bg-bg-selected' : p.neighbour ? 'border-border-bold bg-surface-raised' : p.tint ? p.tint : item.kind === 'node' ? 'border-border-bold bg-surface-raised' : item.sample ? 'border-border-default bg-bg-neutral-subtle' : 'border-border-default bg-surface-raised';
   const common = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${tone} ${p.dragging ? 'is-lifted' : ''} ${p.draggable ? '' : 'cursor-pointer'}`;
@@ -90,8 +98,8 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
       style={style}
     >
       {item.kind === 'object' && p.onLink && <button type="button" aria-label={`وصل کن: ${item.label}`} title="بکش روی کارت دیگر تا وصل شود" onPointerDown={(e) => p.onLink?.(e, item)} onClick={() => p.onActions?.(item)} className="absolute top-space-0 start-space-0 flex min-h-touch-comfortable min-w-touch-comfortable items-center justify-center rounded-control-sm text-icon-subtle"><Icon name="Link2" size="sm" /></button>}
-      <div dir="rtl" className="flex h-full flex-col justify-start gap-stack-xs">
-        {item.kind === 'object' && (
+      <div dir="rtl" className="flex h-full flex-col justify-start gap-stack-xs" style={m ? { zoom: m.s } : undefined}>
+        {marks && item.kind === 'object' && (
           <span className="flex items-center justify-between gap-inline-xs">
             <span className="flex min-w-space-0 flex-wrap items-center gap-inline-xs" style={{ paddingInlineEnd: 0 }}>
               {item.type && <TypeBadge value={item.type} iconOnly />}
@@ -102,7 +110,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
             {item.sample && <Badge intent="neutral" icon={false}>نمونه</Badge>}
           </span>
         )}
-        {item.kind === 'node' && (
+        {marks && item.kind === 'node' && (
           <span className="flex items-center justify-between gap-inline-xs">
             <span className="flex items-center gap-inline-xs"><Icon name="FolderTree" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{formatNumber(item.count ?? 0)} مورد</Badge></span>
             {(item.count ?? 0) > 0 && item.nodeId && p.onToggleNode && (
@@ -110,18 +118,18 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
             )}
           </span>
         )}
-        {(item.kind === 'asset' || item.kind === 'assets') && (
+        {marks && (item.kind === 'asset' || item.kind === 'assets') && (
           <span className="flex items-center gap-inline-xs"><Icon name="Package" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>{item.kind === 'assets' ? `${formatNumber(item.count ?? 0)} خروجی` : 'خروجی'}</Badge>{item.review && <Caution>قدیمی</Caution>}</span>
         )}
-        {item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
-        <span data-card-title="" className={`body-sm ${lod === 'near' ? 'line-clamp-2' : 'line-clamp-3'} ${p.dimmed ? 'text-text-subtle' : 'text-text-default'} ${item.kind === 'node' ? 'label-md' : ''}`}>{item.label}</span>
+        {marks && item.kind === 'note' && <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><Badge intent="neutral" icon={false}>یادداشت</Badge></span>}
+        <span data-card-title="" className={`body-sm ${mid ? '' : 'line-clamp-2'} ${p.dimmed ? 'text-text-subtle' : 'text-text-default'} ${item.kind === 'node' ? 'label-md' : ''}`} style={m ? clampLines(m.lines) : undefined}>{item.label}</span>
         {lod === 'near' && item.summary && item.kind !== 'node' && <span className="body-sm line-clamp-1 text-text-subtle">{item.summary}</span>}
       </div>
     </div>
   );
 });
 
-interface NoteProps { item: SceneItem; selected: boolean; dimmed: boolean; lod: Lod; editing?: { text: string }; draggable: boolean;
+interface NoteProps { item: SceneItem; selected: boolean; dimmed: boolean; lod: Lod; k?: number; editing?: { text: string }; draggable: boolean;
   onSelect: (id: string, additive: boolean) => void; onPointerDown: (e: React.PointerEvent, item: SceneItem) => void; onFocus: (item: SceneItem) => void; onKey: (e: React.KeyboardEvent, item: SceneItem) => void;
   onEdit: (item: SceneItem) => void; onEditText: (text: string) => void; onSave: () => void; onCancel: () => void; onConvert: (item: SceneItem) => void; onDelete: (item: SceneItem) => void }
 
@@ -130,12 +138,13 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
   const { item } = p;
   const style = { transform: `translate(${item.x}px, ${item.y}px)`, inlineSize: item.w, blockSize: item.h };
   const base = `canvas-card canvas-glide absolute top-space-0 start-space-0 overflow-hidden rounded-control border ${p.dimmed ? 'border-border-subtle bg-surface-sunken' : `${p.selected ? 'border-border-selected' : 'border-border-default'} bg-bg-warning-subtle`}`;
+  const nm = p.lod === 'mid' ? midLayout(p.k ?? 1, item.h, (p.k ?? 1) >= MID_MARKS_FROM || p.selected) : null;
   if (p.lod === 'far') return <div data-item-id={item.id} data-no-pan="" data-lod="far" role="button" tabIndex={0} aria-label={`یادداشت آزاد روی بوم: ${item.label}`} onClick={(e) => p.onSelect(item.id, e.shiftKey)} onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={base} style={style} />;
   return (
     <div data-item-id={item.id} data-dimmed={p.dimmed || undefined} data-no-pan="" data-lod={p.lod} tabIndex={0} role="group" aria-label={`یادداشت آزاد روی بوم: ${item.label}. با کلیدهای جهت‌دار جابه‌جا می‌شود.`}
       onPointerDown={(e) => p.onPointerDown(e, item)} onClick={(e) => { if ((e.target as HTMLElement).closest('button, textarea')) return; p.onSelect(item.id, e.shiftKey); }}
       onFocus={() => p.onFocus(item)} onKeyDown={(e) => p.onKey(e, item)} className={`${base} p-inset-sm`} style={style}>
-      <div dir="rtl" className="flex h-full flex-col gap-stack-xs">
+      <div dir="rtl" className="flex h-full flex-col gap-stack-xs" style={nm && !p.editing ? { zoom: nm.s } : undefined}>
         {p.editing ? (
           <>
             <textarea aria-label="متن یادداشت" value={p.editing.text} onChange={(e) => p.onEditText(e.target.value)} className="body-sm min-h-space-0 flex-1 resize-none rounded-control-sm border border-border-input bg-surface-raised p-inset-xs text-text-default" />
@@ -143,7 +152,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
           </>
         ) : (
           <>
-            <span className="flex items-center justify-between gap-inline-xs">
+            {(p.lod !== 'mid' || (p.k ?? 1) >= MID_MARKS_FROM || p.selected) && <span className="flex items-center justify-between gap-inline-xs">
               <span className="flex items-center gap-inline-xs"><Icon name="StickyNote" size="sm" className="text-icon-subtle" /><span className="label-sm text-text-subtle">یادداشت</span></span>
               {p.selected && (
                 <span className="flex items-center">
@@ -152,8 +161,8 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
                   <IconButton icon="Trash2" label="حذف یادداشت" size="sm" onClick={() => p.onDelete(item)} />
                 </span>
               )}
-            </span>
-            <p data-card-title="" className={`body-sm line-clamp-3 flex-1 whitespace-pre-wrap ${p.dimmed ? 'text-text-subtle' : 'text-text-default'}`}>{p.lod === 'near' ? item.summary : item.label}</p>
+            </span>}
+            <p data-card-title="" className={`body-sm ${p.lod === 'mid' ? '' : 'line-clamp-3'} flex-1 whitespace-pre-wrap ${p.dimmed ? 'text-text-subtle' : 'text-text-default'}`} style={nm ? clampLines(nm.lines) : undefined}>{p.lod === 'near' ? item.summary : item.label}</p>
           </>
         )}
       </div>
