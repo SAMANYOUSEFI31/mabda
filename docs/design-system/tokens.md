@@ -15,9 +15,9 @@ primitive  ──►  semantic (+ یک فایل برای هر تم)  ──►  
 | نقش (semantic) | `semantic.json` (مستقل از تم: فاصله، گوشه، اندازه، حرکت، لایه) + `semantic.light.json` و `semantic.dark.json` (رنگ و سایه) | فقط به پله ارجاع می‌دهد. **همهٔ تم‌ها دقیقاً یک فهرست کلید دارند.** |
 | جزء (component) | `component.json` | فقط به نقش ارجاع می‌دهد، هرگز به پله. فقط وقتی جزئی به تصمیمی نیاز دارد که نقش عمومی ندارد. |
 
-`bun run tokens` از این‌ها `src/ui/tokens/build/` (CSS و تم Tailwind) را می‌سازد. `tokens.test.ts` این‌ها را اجبار می‌کند: هم‌خوانی خروجی با منبع، کامل‌بودن هر تم، نبود ارجاع جزء به پله، و کف‌های کنتراست [color.md](./color.md) در هر تم.
+`bun run tokens` از این‌ها `src/ui/tokens/generated/` (CSS و تم Tailwind) را می‌سازد. `tokens.test.ts` این‌ها را اجبار می‌کند: هم‌خوانی خروجی با منبع، کامل‌بودن هر تم، نبود ارجاع جزء به پله، و کف‌های کنتراست [color.md](./color.md) در هر تم.
 
-> **خروجی build در ریپو است** (`src/ui/tokens/build/`، استثنا در `.gitignore`) تا کلون تازه بی‌سبک بالا نیاید؛ `bun run build` با `--check` کهنه‌بودنش را رد می‌کند ([implementation-plan.md](./implementation-plan.md)، ۰٫۱).
+> **خروجی build در ریپو است** (`src/ui/tokens/generated/`، استثنا در `.gitignore`) تا کلون تازه بی‌سبک بالا نیاید؛ `bun run build` با `--check` کهنه‌بودنش را رد می‌کند ([implementation-plan.md](./implementation-plan.md)، ۰٫۱).
 
 ## نام‌گذاری
 

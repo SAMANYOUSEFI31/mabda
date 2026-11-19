@@ -19,7 +19,7 @@ const src = loadSources();
 test('generated token files match the DTCG source (run `bun run tokens`)', () => {
   const files = buildAll(src) as Record<string, string>;
   for (const [name, text] of Object.entries(files)) {
-    assert.equal(readFileSync(join(OUT_DIR, name), 'utf8'), text, `src/ui/tokens/build/${name} is stale — run \`bun run tokens\``);
+    assert.equal(readFileSync(join(OUT_DIR, name), 'utf8'), text, `src/ui/tokens/generated/${name} is stale — run \`bun run tokens\``);
   }
 });
 

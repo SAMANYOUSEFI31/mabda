@@ -14,7 +14,7 @@
  *   motion     raw ms / ease keywords in transition or animation; duration-150, ease-out
  *   scale      non-token scales                         p-4  gap-2  w-8  text-xs  font-medium  italic  shadow-md
  *
- * Only the generated token files (src/ui/tokens/build/) contain raw values; they are never scanned (src/ui/tokens.test.ts
+ * Only the generated token files (src/ui/tokens/generated/) contain raw values; they are never scanned (src/ui/tokens.test.ts
  * proves they equal the DTCG source). Primitive palette names (ink, lapis, …) exist only in JSON, never as CSS variables.
  * Usage: node scripts/check-design.mjs [--list-rules]
  */
@@ -25,7 +25,7 @@ const ROOT = process.cwd();
 const TARGETS = ['src', 'index.html'];
 const EXT = new Set(['.ts', '.tsx', '.css', '.html']);
 const SKIP_DIR = new Set(['node_modules', 'dist']);
-const SKIP_PATH = /^src\/ui\/tokens\/build\//;
+const SKIP_PATH = /^src\/ui\/tokens\/generated\//;
 
 const PALETTE = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|crimson|vermilion|ink|lapis|verdigris|ochre|brick|petrol)';
 const COLOR_PREFIX = '(?:bg|text|border|border-[xytblrse]|divide|ring|ring-offset|outline|fill|stroke|from|via|to|shadow|decoration|accent|caret|placeholder)';
