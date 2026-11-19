@@ -86,7 +86,7 @@ export const CanvasItemCard = React.memo(function CanvasItemCard(p: CardProps) {
       style={style}
     >
       {item.kind === 'object' && p.onLink && <button type="button" aria-label={`وصل کن: ${item.label}`} title="بکش روی کارت دیگر تا وصل شود" onPointerDown={(e) => p.onLink?.(e, item)} onClick={() => p.onActions?.(item)} className="absolute top-space-0 start-space-0 flex min-h-touch-comfortable min-w-touch-comfortable items-center justify-center rounded-control-sm text-icon-subtle"><Icon name="Link2" size="sm" /></button>}
-      <div dir="rtl" className="flex h-full flex-col justify-between gap-stack-xs">
+      <div dir="rtl" className="flex h-full flex-col justify-start gap-stack-xs">
         {item.kind === 'object' && (
           <span className="flex items-center justify-between gap-inline-xs">
             <span className="flex min-w-space-0 flex-wrap items-center gap-inline-xs" style={{ paddingInlineEnd: 0 }}>
