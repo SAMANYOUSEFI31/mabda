@@ -47,3 +47,22 @@ export function decisionsDue(objects: ContextObject[], changes: Pick<ContextChan
   const dueOn = (o: ContextObject) => o.record?.reviewOn ?? o.record?.metricExpectation?.by;
   return objects.filter((o) => o.type === 'Decision' && o.status === 'Confirmed' && !!dueOn(o) && dueOn(o)! <= t && !noted.has(o.id)).sort((a, b) => dueOn(a)!.localeCompare(dueOn(b)!) || a.id.localeCompare(b.id));
 }
+
+/**
+ * «هنوز زود است» on a decision's look-back: how many days until the next look (decisions.md §۵۱).
+ * Principle: the next look comes when there can be NEW EVIDENCE, not after a fixed number.
+ *  • tied to a metric: two more numbers at its cadence (one number is a point; two give a direction) — 14 days weekly, 60 monthly
+ *  • no metric: the user's own horizon — the same wait they chose when they decided (decided → review date), kept in a
+ *    sane band (a week at least, so it is not asked again tomorrow; a quarter at most, so it is not forgotten)
+ *  • nothing to go on: 30 days
+ */
+export const TOO_EARLY_MIN_DAYS = 7;
+export const TOO_EARLY_MAX_DAYS = 90;
+export const tooEarlyWaitDays = (input: { cadence?: 'week' | 'month'; decidedAt?: string; reviewOn?: string }): number => {
+  if (input.cadence) return input.cadence === 'week' ? 14 : 60;
+  const from = input.decidedAt ? Date.parse(input.decidedAt.slice(0, 10)) : NaN;
+  const to = input.reviewOn ? Date.parse(input.reviewOn.slice(0, 10)) : NaN;
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 30;
+  const horizon = Math.round((to - from) / 86_400_000);
+  return Math.min(TOO_EARLY_MAX_DAYS, Math.max(TOO_EARLY_MIN_DAYS, horizon));
+};

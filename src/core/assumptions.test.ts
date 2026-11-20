@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions } from './assumptions';
+import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions, tooEarlyWaitDays } from './assumptions';
 import { buildPrompt } from '../../server/ai/context';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { ContextObject, WorkstreamSpec } from '../types';
@@ -46,4 +46,14 @@ test('due dates are derived: an assumption is due on and after reviewBy; a decis
   const changes = [{ objectId: 'd3', kind: 'outcome_noted' as const, at: '2026-06-02' }];
   assert.deepEqual(decisionsDue(decs, changes, now).map((x) => x.id), ['d1']);
   assert.deepEqual(decisionsDue(decs, [], now).map((x) => x.id), ['d3', 'd1']);
+});
+
+test('«هنوز زود است» waits for new evidence: two numbers of the metric, else the user\'s own horizon in a sane band', () => {
+  assert.equal(tooEarlyWaitDays({ cadence: 'week' }), 14);
+  assert.equal(tooEarlyWaitDays({ cadence: 'month' }), 60);
+  assert.equal(tooEarlyWaitDays({ decidedAt: '2026-01-01T10:00:00Z', reviewOn: '2026-03-02' }), 60);
+  assert.equal(tooEarlyWaitDays({ decidedAt: '2026-01-01', reviewOn: '2026-01-03' }), 7);
+  assert.equal(tooEarlyWaitDays({ decidedAt: '2026-01-01', reviewOn: '2027-01-01' }), 90);
+  assert.equal(tooEarlyWaitDays({}), 30);
+  assert.equal(tooEarlyWaitDays({ decidedAt: '2026-02-01', reviewOn: '2026-01-01' }), 30);
 });

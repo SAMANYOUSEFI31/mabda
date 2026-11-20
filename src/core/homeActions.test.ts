@@ -131,3 +131,11 @@ test('a draft waiting on a truth reaches Home too (one line, one button, to Thin
   assert.match(a!.text, /۲ تغییر/);
   assert.equal(homeActions(base({ draftCount: 0 })).total, 0, 'no drafts, no line');
 });
+
+test('exactly one waiting draft: Home names it and opens that truth (a list of one is an extra step); several go to Think', () => {
+  const one = [...homeActions(base({ draftCount: 1, draftOne: { id: 'o1', title: 'قیمت' } })).top, ...homeActions(base({ draftCount: 1, draftOne: { id: 'o1', title: 'قیمت' } })).rest].find((x) => x.kind === 'drafts');
+  assert.deepEqual(one?.target, { type: 'object', id: 'o1' });
+  assert.match(one!.text, /«قیمت»/);
+  const many = [...homeActions(base({ draftCount: 3 })).top, ...homeActions(base({ draftCount: 3 })).rest].find((x) => x.kind === 'drafts');
+  assert.deepEqual(many?.target, { type: 'thinking' });
+});

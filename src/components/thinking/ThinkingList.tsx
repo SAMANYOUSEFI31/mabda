@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ThoughtHistoryReport, ThoughtKind, TreeNode } from '../../types';
 import { convertedTo } from '../../core/thinkingMarkers';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
@@ -195,12 +196,9 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                           </span>
                           <span className="caption text-text-subtle">{formatJalaliDate(entry.at)}</span>
                         </span>
+                        {/* the same «قبل / بعد» as a truth's versions: only the words that changed are marked (decisions.md §۵۱) */}
                         {entry.kind === 'revision' && entry.details.beforeText && (
-                          <div className="body-sm text-text-subtle">
-                            <span className="caption text-text-subtle">متن قبلی: </span>
-                            <span className="line-through">{entry.details.beforeText}</span>
-                            {entry.details.afterText && <><br /><span className="caption text-text-subtle">متن تازه: </span><span>{entry.details.afterText}</span></>}
-                          </div>
+                          <BeforeAfter before={entry.details.beforeText} after={entry.details.afterText ?? ''} />
                         )}
                         {entry.kind === 'moved' && entry.details.beforeNodeId && entry.details.afterNodeId && (
                           <p className="body-sm text-text-subtle">از «{label(entry.details.beforeNodeId)}» به «{label(entry.details.afterNodeId)}»</p>
