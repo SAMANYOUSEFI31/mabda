@@ -146,7 +146,7 @@ export const SectionScrubber: React.FC<{
             style={{ flexGrow: 1, flexBasis: 0 }}
             className={`relative min-w-space-0 overflow-hidden rounded-control-sm ${dense && k > 0 ? 'border-s border-surface-page' : ''} ${k < shown ? 'bg-icon-subtle' : 'bg-border-default'}`}
           >
-            {k === shown && <span className="absolute inset-y-0 start-0 bg-bg-neutral-bold" style={{ inlineSize: preview !== null ? '100%' : `${Math.max(8, Math.round(fill * 100))}%` }} />}
+            {k === shown && <span className="absolute inset-y-space-0 start-space-0 bg-bg-neutral-bold" style={{ inlineSize: preview !== null ? '100%' : `${Math.max(8, Math.round(fill * 100))}%` }} />}
           </span>
         ))}
       </div>

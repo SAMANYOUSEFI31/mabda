@@ -81,6 +81,13 @@ test('the test record: actions and screens are logged without text, only after c
     // a tester has no owner tools
     assert.equal((await a.call('GET', '/owner/activity/kpis')).status, 404);
     assert.equal((await a.call('GET', '/owner/activity/export?format=csv')).status, 404);
+    assert.equal((await a.call('GET', '/owner/activity/recent')).status, 404);
+    // the live feed: newest first, filtered by kind, and only what is newer than `after`
+    const rec = (await owner.call('GET', '/owner/activity/recent?limit=5')).json;
+    assert.ok(rec.events.length <= 5 && rec.total >= rec.events.length);
+    for (let i = 1; i < rec.events.length; i++) assert.ok(rec.events[i - 1].at >= rec.events[i].at);
+    assert.ok((await owner.call('GET', '/owner/activity/recent?kind=ui')).json.events.every((e: any) => e.kind === 'ui'));
+    assert.equal((await owner.call('GET', `/owner/activity/recent?after=${encodeURIComponent(rec.events[0].at)}`)).json.events.filter((e: any) => e.at <= rec.events[0].at).length, 0);
 
     const k = (await owner.call('GET', '/owner/activity/kpis')).json;
     assert.equal(k.summary.people, 1);

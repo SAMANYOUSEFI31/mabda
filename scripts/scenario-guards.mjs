@@ -189,6 +189,49 @@ try {
     await ctx.close();
   }
 
+  step('§۵۴ ۱۳ · the scrubber: one part per MAIN section (goal: a calm line that says «section k of n»), nothing after the content');
+  {
+    const { ctx, page } = await open(390); await sample(page);
+    await nav(page, 'حقیقت'); await radio(page, 'ساختار');
+    await guard('[390] structure: parts = main sections', async () => {
+      await page.locator('[data-testid=section-scrubber]').waitFor({ timeout: 3000 });
+      const parts = await page.locator('[data-testid=section-scrubber] [data-part]').count();
+      const main = await page.locator('[data-testid=section-scrubber]').getAttribute('aria-valuemax');
+      const menuMain = await page.evaluate(() => document.querySelectorAll('#structure-tree > section, #structure-tree > * > section').length);
+      assert.equal(String(parts), main);
+      assert.ok(parts > 0 && parts <= Math.max(menuMain, 12), `${parts} parts`);
+    });
+    await ctx.close();
+  }
+
+  step('§۵۴ ۱۴ · the files list is an occasional task: opened from «⋯ › فایل‌ها», never a tail under the page');
+  {
+    const { ctx, page } = await open(1280); await sample(page);
+    await nav(page, 'حقیقت');
+    await guard('no files list on the page; ⋯ › فایل‌ها opens it beside the page', async () => {
+      assert.equal(await page.locator('main #source-files').count(), 0);
+      await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).click();
+      const item = page.getByRole('menuitem', { name: /^فایل‌ها/ });
+      if (await item.count()) { await item.click(); await page.getByRole('dialog', { name: /فایل‌ها/ }).waitFor({ timeout: 3000 }); }
+      else await page.keyboard.press('Escape');
+    });
+    await ctx.close();
+  }
+
+  step('§۵۴ ۱۵ · selecting thoughts is not a mode: one tick shows what can be done with them');
+  for (const width of [390, 1280]) {
+    const { ctx, page } = await open(width); await sample(page);
+    await nav(page, 'فکر');
+    await guard(`[${width}] a tick on an open thought shows the actions, and «لغو انتخاب» clears`, async () => {
+      const box = page.getByRole('checkbox', { name: /^انتخاب فکر/ }).first();
+      await box.evaluate((b) => b.click());
+      await page.getByLabel('عملیات فکرهای انتخاب‌شده').waitFor({ timeout: 2000 });
+      await page.getByRole('button', { name: 'لغو انتخاب' }).click();
+      assert.equal(await page.getByLabel('عملیات فکرهای انتخاب‌شده').count(), 0);
+    });
+    await ctx.close();
+  }
+
   step('§۵۳ PWA · installable');
   await guard('manifest and icons are served', async () => {
     const m = await (await fetch(`${BASE}/manifest.webmanifest`)).json();

@@ -53,6 +53,13 @@ export function createOwnerRouter(deps: { db: SqlLike; mode: AuthMode; accounts:
     ? accounts.list().map((a) => ({ id: a.id, name: a.role === 'owner' ? 'صاحب' : a.name, role: a.role }))
     : [{ id: LOCAL_USER, name: 'این دستگاه', role: 'local' }];
   r.get('/activity/kpis', (_req, res) => { res.json(computeKpis(deps.activity.list(), persons(), { clientErrors: deps.activity.clientErrorsByUser() })); });
+  // the live feed (§۵۴ ۱۶): newest first, filtered, and only what is newer than `after` when the page polls
+  r.get('/activity/recent', (req, res) => {
+    const q = req.query as Record<string, string | undefined>;
+    const after = q.after && !Number.isNaN(Date.parse(q.after)) ? new Date(q.after).toISOString() : undefined;
+    const kind = q.kind === 'action' || q.kind === 'ui' ? q.kind : undefined;
+    res.json({ ...deps.activity.recent({ limit: Number(q.limit) || 100, userId: q.person || undefined, kind, after }), people: persons() });
+  });
   // the end of a round: the record is removed for good (the page asks first and offers the download); before = ISO date, or all
   r.post('/activity/purge', (req, res) => {
     const before = typeof req.body?.before === 'string' && !Number.isNaN(Date.parse(req.body.before)) ? new Date(req.body.before).toISOString() : undefined;

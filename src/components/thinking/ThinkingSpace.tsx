@@ -206,11 +206,13 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
           <h2 className="heading-sm text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h2>
           {selectMode && selectedThoughts.length > 0 && (
-            <Card padding="md" className="think-bar flex flex-wrap items-center gap-inline-sm shadow-overlay" aria-label="عملیات فکرهای انتخاب‌شده">
-              <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
+            <Card padding="none" className="think-bar flex items-center gap-inline-sm p-inset-sm shadow-overlay" aria-label="عملیات فکرهای انتخاب‌شده">
+              {/* one row at every width (a phone too): the count, the main thing to do, the rest under ⋯, and a way out */}
+              <span className="body-sm min-w-space-0 flex-1 text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
-              {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="PackageOpen" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>درخواست برای ابزار دیگر</Button>}
-              <Button size="sm" variant="ghost" iconStart="X" onClick={() => setSelectedIds([])}>لغو انتخاب</Button>
+              {p.onThinkWithAi && <Menu label="کارهای دیگر با فکرهای انتخاب‌شده" align="end" trigger={<IconButton icon="Ellipsis" label="کارهای دیگر با فکرهای انتخاب‌شده" size="sm" />}
+                items={[{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', disabled: selectedThoughts.length > 12, onSelect: () => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); } }]} />}
+              <IconButton icon="X" label="لغو انتخاب" size="sm" onClick={() => setSelectedIds([])} />
             </Card>
           )}
           <ThinkingList

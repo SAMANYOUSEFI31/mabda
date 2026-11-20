@@ -9,6 +9,7 @@ import { Button, Dialog, ErrorState, List, ListItem, PageSkeleton, Table, format
 import { ownerApi } from '../../services/dataApi';
 import type { Kpis, PersonKpis } from '../../core/activity';
 import { ACTIVATION_MIN } from '../../core/activity';
+import { TestLivePanel } from './TestLivePanel';
 
 const of = (n: number, total: number) => `${formatNumber(n)} از ${formatNumber(total)}`;
 const mins = (v?: number) => (v === undefined ? '—' : `${formatNumber(v, 1)} دقیقه`);
@@ -17,6 +18,7 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
   const [k, setK] = useState<Kpis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [purging, setPurging] = useState<'ask' | 'busy' | null>(null);
+  const [liveOpen, setLiveOpen] = useState(false);
   const toast = useToast();
   // the end of a round (§۵۳ ۱۲): ask once, say what goes and what stays, offer the download in the same place
   const purge = async () => {
@@ -77,10 +79,13 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
             )}
 
             <div className="flex flex-wrap gap-inline-sm">
-              <Button variant="secondary" iconStart="Download" onClick={() => { window.location.href = ownerApi.activityExportUrl('csv'); }}>رویدادهای خام (CSV)</Button>
+              {/* §۵۴ ۱۶: the live panel (what is happening now, each measure's calculation, the raw record filtered) */}
+              <Button variant="secondary" iconStart="ChartColumn" onClick={() => setLiveOpen(true)}>پنل زنده و محاسبه‌ها</Button>
+              <Button variant="ghost" iconStart="Download" onClick={() => { window.location.href = ownerApi.activityExportUrl('csv'); }}>رویدادهای خام (CSV)</Button>
               <Button variant="ghost" iconStart="Download" onClick={() => { window.location.href = ownerApi.activityExportUrl('json'); }}>همه با شاخص‌ها (JSON)</Button>
               <Button variant="ghost" iconStart="Trash2" onClick={() => setPurging('ask')}>پاک کردن دادهٔ آزمون…</Button>
             </div>
+            {liveOpen && <TestLivePanel open onClose={() => { setLiveOpen(false); void load(); }} />}
             <Dialog open={purging !== null} onClose={() => { if (purging !== 'busy') setPurging(null); }} size="sm" title="پاک کردن دادهٔ آزمون"
               description="همهٔ رویدادها و گزارش‌های خطای دستگاه برای همیشه پاک می‌شوند. فضاها و دانش افراد دست نمی‌خورند."
               footer={<>
