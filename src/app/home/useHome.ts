@@ -4,7 +4,7 @@
  */
 
 import { tehranDayPlus } from '../../core/tehranDate';
-import { tooEarlyWaitDays } from '../../core/assumptions';
+import { nextLookDays, tooEarlyWaitDays } from '../../core/assumptions';
 import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
@@ -98,7 +98,13 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);
   const dueProps = {
     assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
-    onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
+    // «هنوز فرض است»: the same rule as «هنوز زود است» — the next look when there can be new evidence: two numbers of the truth's own
+    // monitor, else the horizon the user gave it (written → review date), 7–90 days (core/assumptions.ts nextLookDays; decisions.md §۵۱)
+    onStillAssumed: async (id: string) => {
+      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
+      const m = metrics.find((x) => x.objectId === id && !x.archived);
+      await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: o.createdAt, reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' });
+    },
     onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
     onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
     // «هنوز زود است»: the next look comes when there can be new evidence (core/assumptions.ts tooEarlyWaitDays)

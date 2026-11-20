@@ -191,6 +191,9 @@ try {
     assert.match(sentences, /«تخفیف دانشجویی» روی «قیمت اشتراک» اثر دارد/);
     assert.equal((await state()).relationships.length, relsBefore, 'nothing is built before the button');
     await shot('6-connect');
+    // the phone sheet slides in: `force` skips Playwright's wait for a still element, so a click before the slide ends lands on
+    // the next sentence (measured: aimed at «اثر دارد», hit «جایگزین»). Wait for the dialog's own animations to finish first
+    await dlg.evaluate((el) => Promise.all((el.closest('[role=dialog]') ?? el).getAnimations({ subtree: true }).map((a) => a.finished)));
     await dlg.getByRole('radio', { name: /روی «قیمت اشتراک» اثر دارد/ }).check({ force: true });
     await page.getByRole('dialog').getByRole('button', { name: 'وصل کن' }).click();
     assert.ok(await until(async () => (await state()).relationships.some((r) => r.type === 'depends_on' && r.sourceId === price.id && r.targetId === student.id)), 'affects = the price depends on the discount');

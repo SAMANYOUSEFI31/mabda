@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions, tooEarlyWaitDays } from './assumptions';
+import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions, nextLookDays, tooEarlyWaitDays } from './assumptions';
 import { buildPrompt } from '../../server/ai/context';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { ContextObject, WorkstreamSpec } from '../types';
@@ -56,4 +56,10 @@ test('«هنوز زود است» waits for new evidence: two numbers of the metr
   assert.equal(tooEarlyWaitDays({ decidedAt: '2026-01-01', reviewOn: '2027-01-01' }), 90);
   assert.equal(tooEarlyWaitDays({}), 30);
   assert.equal(tooEarlyWaitDays({ decidedAt: '2026-02-01', reviewOn: '2026-01-01' }), 30);
+});
+
+test('«هنوز فرض است» uses the same evidence rule: an assumption with a monthly monitor waits two months, one without waits its own horizon', () => {
+  assert.equal(nextLookDays({ cadence: 'month', decidedAt: '2026-01-01', reviewOn: '2026-01-15' }), 60);
+  assert.equal(nextLookDays({ decidedAt: '2026-01-01', reviewOn: '2026-01-15' }), 14);
+  assert.equal(tooEarlyWaitDays, nextLookDays, 'one rule for both');
 });

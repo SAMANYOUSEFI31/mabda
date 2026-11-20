@@ -49,7 +49,8 @@ export function decisionsDue(objects: ContextObject[], changes: Pick<ContextChan
 }
 
 /**
- * «هنوز زود است» on a decision's look-back: how many days until the next look (decisions.md §۵۱).
+ * The next look at something the user could not judge yet — «هنوز زود است» on a decision's look-back, «هنوز فرض است» on an
+ * assumption's review: how many days until the next look (decisions.md §۵۱).
  * Principle: the next look comes when there can be NEW EVIDENCE, not after a fixed number.
  *  • tied to a metric: two more numbers at its cadence (one number is a point; two give a direction) — 14 days weekly, 60 monthly
  *  • no metric: the user's own horizon — the same wait they chose when they decided (decided → review date), kept in a
@@ -58,7 +59,7 @@ export function decisionsDue(objects: ContextObject[], changes: Pick<ContextChan
  */
 export const TOO_EARLY_MIN_DAYS = 7;
 export const TOO_EARLY_MAX_DAYS = 90;
-export const tooEarlyWaitDays = (input: { cadence?: 'week' | 'month'; decidedAt?: string; reviewOn?: string }): number => {
+export const nextLookDays = (input: { cadence?: 'week' | 'month'; decidedAt?: string; reviewOn?: string }): number => {
   if (input.cadence) return input.cadence === 'week' ? 14 : 60;
   const from = input.decidedAt ? Date.parse(input.decidedAt.slice(0, 10)) : NaN;
   const to = input.reviewOn ? Date.parse(input.reviewOn.slice(0, 10)) : NaN;
@@ -66,3 +67,5 @@ export const tooEarlyWaitDays = (input: { cadence?: 'week' | 'month'; decidedAt?
   const horizon = Math.round((to - from) / 86_400_000);
   return Math.min(TOO_EARLY_MAX_DAYS, Math.max(TOO_EARLY_MIN_DAYS, horizon));
 };
+/** «هنوز زود است» (a decision's look-back) */
+export const tooEarlyWaitDays = nextLookDays;
