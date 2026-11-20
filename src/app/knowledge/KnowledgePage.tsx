@@ -45,6 +45,8 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 items={[
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => document.getElementById('source-files')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }] : []),
+                  // the start skeletons and her own saved templates (§۵۳ ۱۱): «ذخیره به‌عنوان قالب» in each section's ⋯ had no way back
+                  { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
                   { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
                 ]}
@@ -104,7 +106,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               samples={data.samples ?? []}
               onDeleteSamples={handleDeleteSamples}
               onSaveAsTemplate={(nodeId) => setTemplateDraft({ kind: 'node', sourceId: nodeId, name: nodes.find((n) => n.id === nodeId)?.label ?? '' })}
-              onOpenStarters={() => setIsStarterOpen(true)}
               onOpenThread={setThreadNodeId}
               onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
               openNotesFor={focusNotes}

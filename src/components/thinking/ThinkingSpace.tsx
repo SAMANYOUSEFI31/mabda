@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { AboutTarget } from '../../core/thoughtAbout';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, ThoughtKind, TreeNode } from '../../types';
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
@@ -41,7 +42,7 @@ interface Props {
   /** a thought becomes a SECTION of the tree */
   onToSection?: (item: NoteThinkingItem) => void;
   onToKnowledge: (item: NoteThinkingItem, type: ContextObject['type']) => Promise<void>;
-  onReviseThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
+  onReviseThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind, about?: AboutTarget[]) => Promise<boolean>;
   onDeriveThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
   onSynthesizeThought?: (parentIds: string[], nodeId: string, kind: ThoughtKind, text: string) => Promise<boolean>;
   onThinkWithAi?: (thoughtIds: string[]) => void;

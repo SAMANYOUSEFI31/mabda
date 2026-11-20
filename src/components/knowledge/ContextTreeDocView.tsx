@@ -51,7 +51,6 @@ interface ContextTreeDocViewProps {
   samples: ContextObject[];
   onDeleteSamples: (nodeIds?: string[]) => Promise<void>;
   onSaveAsTemplate: (nodeId: string) => void;
-  onOpenStarters: () => void;
   onOpenThread: (nodeId: string) => void;
   onOpenAiRequest: (nodeId: string) => void;
   /** the global search asks to show a node's notes (`n` makes a repeated request count) */
