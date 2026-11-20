@@ -867,7 +867,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             onClick={(e) => { if (panned()) return; /* moving around to see the links keeps what is selected */ if (!(e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) { clearSelection(); setCtx(null); } }}
             onDoubleClick={onStageDouble}
             className="relative min-w-space-0 flex-1 touch-none select-none overflow-hidden rounded-control border border-border-default bg-surface-sunken"
-            style={{ blockSize: fullscreen ? undefined : fitted ? '100%' : '66vh', minBlockSize: 340 }}
+            // in full screen the board takes what is left of the window and never more: a floor here pushed its bottom off a phone on its side (§۵۳ ۸)
+            style={{ blockSize: fullscreen ? undefined : fitted ? '100%' : '66vh', minBlockSize: fullscreen ? 0 : 340 }}
             data-testid="canvas-stage"
             data-lod={lod}
           >
