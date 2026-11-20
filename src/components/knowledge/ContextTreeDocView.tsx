@@ -11,7 +11,7 @@ import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
 import { ORIGIN_FA } from '../../core/effectiveContext';
-import { childrenOf, quickMoves } from '../../core/nodeTree';
+import { childrenOf, flatten, primaryDepth, quickMoves, sectionPath, treeIndent } from '../../core/nodeTree';
 import { spaceTally } from '../../core/spaceTally';
 import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
@@ -310,7 +310,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
       </div>
-      <OutlineBar nodes={nodes} roots={roots} />
+      <OutlineBar nodes={nodes} />
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
@@ -322,14 +322,22 @@ const OUTLINE_FROM = 4;
 const nodeAnchor = (id: string) => `node-${id}`;
 
 /**
- * «فهرست» and the scrubber over the structure (decisions.md §۵۱, §۵۲): the same as «سند» on a phone, pinned under the page bar at
- * every width. Main sections and their first level, in reading order. The section being read also inks its own start rule, the
- * line that already runs down the page beside its items: the page itself says where she is, not only the bar.
+ * «فهرست» and the scrubber over the structure (decisions.md §۵۱, §۵۲, §۵۳ ۶): pinned under the page bar at every width, whenever the
+ * whole tree is on the page (not focused into one section). Three answers to «where am I»:
+ * - «اکنون» names the section being read at ANY depth, as its path from the main sections: «محصول و خدمت › اشتراک ماهانه › ارسال».
+ *   A name alone did not say which branch it belonged to.
+ * - the scrubber line shows the main sections and the level under them, each as long as it is on the page (deeper sections are
+ *   inside their part: parts finer than that are too thin to touch); a drag moves through them, a tap jumps.
+ * - «فهرست» lists every section at every depth, indented, so any of them is one tap away.
+ * Levels count from the main sections (primarySections): a one-root tree's wrapper does not take a level. Before, the bar counted
+ * from the wrapper, so the sample business space had 3 items and the bar did not show at all.
+ * The section being read also inks its own start rule: the page itself says where she is, not only the bar.
  */
-const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes, roots }) => {
-  const items = useMemo(() => roots.flatMap((r) => [{ id: r.id, label: r.label, level: 1 }, ...childrenOf(nodes, r.id).map((c) => ({ id: c.id, label: c.label, level: 2 }))]), [nodes, roots]);
-  const on = items.length >= OUTLINE_FROM;
-  const { active, goTo } = useReadingPosition(items, nodeAnchor, on);
+const OutlineBar: React.FC<{ nodes: TreeNode[] }> = ({ nodes }) => {
+  const all = useMemo(() => { const pd = primaryDepth(nodes); return flatten(nodes).map(({ node, depth }) => ({ id: node.id, label: node.label, level: Math.max(1, depth - pd + 1) })); }, [nodes]);
+  const parts = useMemo(() => all.filter((i) => i.level <= 2), [all]);
+  const on = all.length >= OUTLINE_FROM;
+  const { active, goTo } = useReadingPosition(all, nodeAnchor, on);
   useEffect(() => {
     if (!on || !active) return undefined;
     const sec = document.getElementById(nodeAnchor(active))?.closest('section');
@@ -337,11 +345,16 @@ const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes,
     return () => sec?.removeAttribute('data-reading');
   }, [active, on]);
   if (!on) return null;
+  // the part that holds the section being read: the last part at or before it in reading order
+  const at = Math.max(0, all.findIndex((i) => i.id === active));
+  const part = [...all.slice(0, at + 1)].reverse().find((i) => i.level <= 2)?.id ?? parts[0]?.id;
+  const path = active ? sectionPath(nodes, active) : [];
+  const now = path.length > 2 ? `… › ${path.slice(-2).join(' › ')}` : path.join(' › ');
   return (
     <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
-        items={items.map((i) => ({ label: `${i.level > 1 ? '— ' : ''}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
-      <SectionScrubber items={items} active={active} anchorOf={nodeAnchor} onGo={goTo} label="جای خواندن در بخش‌ها" />
+        items={all.map((i) => ({ label: `${treeIndent(i.level - 1)}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
+      <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} label="جای خواندن در بخش‌ها" />
     </div>
   );
 };

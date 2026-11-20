@@ -5,7 +5,7 @@
  */
 
 import type { ContextObject, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../types';
-import { byOrder, childrenOf, subtreeIds } from './nodeTree';
+import { byOrder, childrenOf, primaryDepth, primarySections, subtreeIds } from './nodeTree';
 import { isActiveContext } from './contextStatus';
 import { isExpired } from './validity';
 
@@ -120,13 +120,12 @@ export function pendingInTab(tab: DocTab, nodes: TreeNode[], objects: ContextObj
  * leading «کلیات» tab only if it has any. With several roots, each root is a tab.
  */
 export function docTabs(nodes: TreeNode[], objects: ContextObject[], now?: Date | string | number): DocTab[] {
-  const roots = childrenOf(nodes, undefined).sort(byOrder);
-  if (roots.length !== 1) return roots.map((r) => ({ id: r.id, nodeId: r.id, label: r.label }));
-  const root = roots[0];
-  const kids = childrenOf(nodes, root.id).sort(byOrder).map((k) => ({ id: k.id, nodeId: k.id, label: k.label }));
-  if (!kids.length) return [{ id: root.id, nodeId: root.id, label: root.label }];
+  // the main sections are the tabs (primarySections: the same rule as the sidebar, the outline and the overview, §۵۳ ۷)
+  const tabs = primarySections(nodes).map((k) => ({ id: k.id, nodeId: k.id, label: k.label }));
+  if (primaryDepth(nodes) === 0) return tabs;
+  const root = childrenOf(nodes, undefined)[0];
   const hasOwn = objects.some((o) => o.nodeId === root.id && inDocument(o, now));
-  return hasOwn ? [{ id: root.id, nodeId: root.id, label: 'کلیات', own: true }, ...kids] : kids;
+  return hasOwn ? [{ id: root.id, nodeId: root.id, label: 'کلیات', own: true }, ...tabs] : tabs;
 }
 
 /** which tab holds an anchor (`n-…` / `o-…`), for permalinks */

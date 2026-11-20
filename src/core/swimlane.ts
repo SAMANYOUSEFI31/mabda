@@ -22,7 +22,7 @@ import { stronglyConnected, layersOf } from './graphAlgo';
 import { isExpired } from './effectiveContext';
 import { EDGE_LABEL } from './mapModel';
 import { badges, extract } from './sceneParts';
-import { childrenOf } from './nodeTree';
+import { childrenOf, primaryDepth } from './nodeTree';
 import { openThoughts } from './thinkingSpace';
 import { formatNumber } from '../ui/format';
 
@@ -41,8 +41,11 @@ export const GUTTER = 190;
 /** a crowded cell wraps into more columns after this many cards, so a row never grows into a tower */
 export const MAX_STACK = 6;
 export const SUBGAP = 24;
-/** rows for the first two levels of the tree; deeper sections stay inside their parent until it is opened */
+/** rows for the first two levels a person thinks in (the main sections and the level under them, counted from primaryDepth: a
+ *  one-root wrapper does not spend a level, §۵۳ ۷); deeper sections stay inside their parent until it is opened */
 export const MAX_ROW_DEPTH = 2;
+/** the depth (from the tree's top) below which sections roll up into their parent's row */
+export const rowDepthOf = (nodes: TreeNode[]): number => MAX_ROW_DEPTH + primaryDepth(nodes);
 export const NO_FACET_ROW = 'بدون بُعد';
 
 export interface OverviewOptions {
@@ -91,7 +94,8 @@ export function rowOfNode(nodes: TreeNode[], nodeId: string, opened: Set<string>
   for (let cur = byId.get(nodeId); cur && !path.includes(cur.id); cur = cur.parentId ? byId.get(cur.parentId) : undefined) path.unshift(cur.id);
   if (!path.length) return nodeId;
   let row = path[0];
-  for (let i = 1; i < path.length; i++) { if (i < MAX_ROW_DEPTH || opened.has(path[i - 1])) row = path[i]; else break; }
+  const depth = rowDepthOf(nodes);
+  for (let i = 1; i < path.length; i++) { if (i < depth || opened.has(path[i - 1])) row = path[i]; else break; }
   return row;
 }
 
@@ -136,8 +140,9 @@ export function buildOverviewScene(input: SceneInput, opts: OverviewOptions = {}
   if (!byFacet) for (const o of input.objects) if (isPendingObject(o) && !o.sample && nodeById.has(o.nodeId) && inScope(o.nodeId) && !shown.has(o.id)) rowThoughts.set(rowKeyOf(o.nodeId), (rowThoughts.get(rowKeyOf(o.nodeId)) ?? 0) + 1);
 
   const order: Array<{ node: TreeNode; depth: number }> = [];
+  const rowDepth = rowDepthOf(input.nodes);
   const walk = (n: TreeNode, depth: number) => {
-    if (depth < MAX_ROW_DEPTH || (n.parentId && opened.has(n.parentId))) order.push({ node: n, depth });
+    if (depth < rowDepth || (n.parentId && opened.has(n.parentId))) order.push({ node: n, depth });
     for (const c of childrenOf(input.nodes, n.id)) walk(c, depth + 1);
   };
   for (const r of input.nodes.filter((n) => !n.parentId || !nodeById.has(n.parentId)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))) walk(r, 0);

@@ -75,7 +75,9 @@ const weightsOf = (items: ReadingItem[], anchorOf: (id: string) => string) => {
 export const SectionScrubber: React.FC<{
   items: ReadingItem[]; active?: string; anchorOf: (id: string) => string;
   onGo: (id: string, opts: { instant?: boolean; focus?: boolean }) => void; label: string;
-}> = ({ items, active, anchorOf, onGo, label }) => {
+  /** what «اکنون» says when it is more than the part's name (the structure: the path of the section being read) */
+  now?: string; nowFull?: string;
+}> = ({ items, active, anchorOf, onGo, label, now, nowFull }) => {
   const [weights, setWeights] = useState<number[]>(() => items.map(() => 1));
   const [preview, setPreview] = useState<number | null>(null);
   const track = useRef<HTMLDivElement>(null);
@@ -111,13 +113,13 @@ export const SectionScrubber: React.FC<{
   return (
     <div
       role="slider" tabIndex={0} aria-label={label} aria-orientation="horizontal"
-      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={cur?.label}
+      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={preview === null && nowFull ? nowFull : cur?.label}
       data-testid="section-scrubber" data-scrubbing={preview !== null || undefined}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key}
       className="flex min-h-touch min-w-space-0 flex-1 cursor-pointer touch-pan-y select-none flex-col justify-center gap-stack-xs rounded-control-sm px-inset-xs outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
     >
       <p className={`body-sm truncate ${preview !== null ? 'text-text-default' : 'text-text-subtle'}`} aria-hidden="true">
-        {preview !== null ? `${formatPos(shown + 1, items.length)} · ` : 'اکنون: '}{cur?.label}
+        {preview !== null ? `${formatPos(shown + 1, items.length)} · ${cur?.label ?? ''}` : `اکنون: ${now || cur?.label || ''}`}
       </p>
       <div ref={track} className="flex h-space-1 items-stretch gap-space-0" aria-hidden="true">
         {items.map((i, k) => (

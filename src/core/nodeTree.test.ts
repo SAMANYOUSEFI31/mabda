@@ -64,3 +64,19 @@ test('reorderSiblings puts the node at the index', () => {
   assert.deepEqual(reorderSiblings(ns, 'p', 'c', 0).map((x) => x.id), ['c', 'a', 'b']);
   assert.deepEqual(reorderSiblings(ns, 'p', 'a', 99).map((x) => x.id), ['b', 'c', 'a']);
 });
+
+import { primaryDepth, primarySections, sectionPath } from './nodeTree';
+
+test('primary sections: one root with children is a wrapper; several roots are the main sections themselves', () => {
+  const work = [{ id: 'b', label: 'کسب‌وکار', description: '' }, { id: 'p', label: 'محصول', description: '', parentId: 'b', order: 1 }, { id: 'm', label: 'برند', description: '', parentId: 'b', order: 0 }, { id: 's', label: 'اشتراک', description: '', parentId: 'p' }];
+  assert.equal(primaryDepth(work), 1);
+  assert.deepEqual(primarySections(work).map((n) => n.id), ['m', 'p']);
+  assert.deepEqual(sectionPath(work, 's'), ['محصول', 'اشتراک']);
+  assert.deepEqual(sectionPath(work, 'b'), ['کسب‌وکار'], 'the wrapper itself still has a name');
+  const life = [{ id: 'h', label: 'سلامت', description: '' }, { id: 'w', label: 'کار', description: '' }, { id: 'x', label: 'ورزش', description: '', parentId: 'h' }];
+  assert.equal(primaryDepth(life), 0);
+  assert.deepEqual(primarySections(life).map((n) => n.id).sort(), ['h', 'w']);
+  assert.deepEqual(sectionPath(life, 'x'), ['سلامت', 'ورزش']);
+  const lone = [{ id: 'only', label: 'تنها', description: '' }];
+  assert.equal(primaryDepth(lone), 0, 'a single root without children is the main section');
+});
