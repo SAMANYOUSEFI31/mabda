@@ -15,6 +15,7 @@ import { canRedo, canUndo, createHistory, record, redo, undo } from '../../core/
 import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
 import { clusterItems, edgeBudget, FIRST_VIEW_K, LOD_FAR_BELOW, lodOf, MIN_SCREEN_TEXT, readablePx } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
+import type { MenuItem } from '../../ui';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
 import { flatten, treeIndent } from '../../core/nodeTree';
 import { requestAdd } from '../../core/addRequest';
@@ -110,6 +111,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const prefs = useMemo(readPrefs, []);
   const isMobile = useMedia('(max-width: 767px)');
   const isDesktop = useMedia('(min-width: 1024px)');
+  // a phone on its side is wide but short: its full screen needs the same one-row bar as an upright phone (§۵۳ ۸)
+  const isShort = useMedia('(max-height: 500px)');
+  const isPortrait = useMedia('(orientation: portrait)');
   const mode = p.mode ?? 'truth';
   const layouts = MODE_LAYOUTS[mode];
   const [layout, setLayoutRaw] = useState<CanvasLayout>(() => { const l = prefs.layouts?.[mode]; return l && layouts.includes(l) ? l : layouts[0]; });
@@ -654,6 +658,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     setFromItems({ label: '', parentId: shared.size === 1 ? [...shared][0] : '' });
   };
   const sheet = isMobile && fullscreen;
+  const compact = fullscreen && (isMobile || isShort);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // never forced (WCAG 1.3.4: no view is locked to one orientation; and iOS cannot lock a web page): a quiet hint, once, when an
+  // upright phone shows a board that is wider than it is tall. Rotating is what canvas apps on phones invite (Miro, Figma)
+  const [rotateSeen, setRotateSeen] = useState(() => { try { return localStorage.getItem('mabda.canvas.rotateHint') === '1'; } catch { return false; } });
+  const rotateHint = compact && isPortrait && !rotateSeen && scene.width > scene.height * 1.2;
+  const dismissRotateHint = () => { setRotateSeen(true); try { localStorage.setItem('mabda.canvas.rotateHint', '1'); } catch { /* the hint simply comes back */ } };
   // desktop, not full screen: the board reaches from where it starts to the bottom of the window, so the page itself never
   // scrolls up and down and a long «جزئیات» scrolls inside its own column (one scroll per region; decisions.md §۴۵)
   const [fitH, setFitH] = useState<number | null>(null);
@@ -697,17 +708,67 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   // the overview always has one more step out (its list of rows), whatever the size of the space: a level is a level, not a fallback
   const zoomOutOff = farList || (layoutEff !== 'overview' && view.k <= range.min + 0.005);
   const zoomInOff = !farList && view.k >= range.max - 0.005;
-  const toolbar = (
-    <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
-      {layouts.length > 1 && <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={layouts.map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />}
+  const search = (
       <span className="relative">
-      <TextField id="canvas-search" size="md" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); } }} className="w-space-40" />
+      <TextField id="canvas-search" size="md" iconStart="Search" aria-label="جستجوی کارت" placeholder="جستجوی کارت" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) { goTo(results[0].id); setQuery(''); setSearchOpen(false); } }} className={compact ? 'w-full' : 'w-space-40'} autoFocus={compact} />
       {results.length > 0 && (
         <ul role="listbox" aria-label="نتیجهٔ جستجو" className="absolute top-full z-dropdown mt-stack-xs flex min-w-overlay-xs flex-col rounded-control border border-border-default bg-surface-overlay p-inset-xs shadow-raised">
-          {results.map((r) => <li key={r.id} role="presentation"><button type="button" role="option" aria-selected="false" className="body-sm w-full rounded-control-sm px-inset-sm py-inset-xs text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { goTo(r.id); setQuery(''); }}>{r.label}</button></li>)}
+          {results.map((r) => <li key={r.id} role="presentation"><button type="button" role="option" aria-selected="false" className="body-sm w-full rounded-control-sm px-inset-sm py-inset-xs text-start text-text-default hover:bg-bg-neutral-subtle" onClick={() => { goTo(r.id); setQuery(''); setSearchOpen(false); }}>{r.label}</button></li>)}
         </ul>
       )}
       </span>
+  );
+  const moreItems: MenuItem[] = [
+          // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
+          // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
+          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
+          ...(isMobile || compact ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: zoomInOff, onSelect: () => (farList ? leaveFar() : zoomAt(1.25)) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: zoomOutOff, onSelect: () => zoomAt(1 / 1.25) }] : []),
+          ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
+          { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
+          { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
+          { divider: true, heading: 'فایل JSON Canvas' },
+          { label: 'خروجی گرفتن', icon: 'Download', onSelect: exportCanvas },
+          { label: 'وارد کردن', icon: 'Upload', onSelect: () => fileInput.current?.click() },
+          { divider: true },
+          { label: 'میان‌برها (؟)', icon: 'Keyboard', onSelect: () => setHelpOpen(true) },
+          ...(fullscreen ? [{ label: 'تمام‌صفحهٔ مرورگر (اختیاری)', icon: 'Maximize' as const, onSelect: browserFullscreen }] : []),
+  ];
+  const addLabel = mode === 'thinking' ? 'افزودن فکر' : 'افزودن حقیقت';
+  const addHere = () => requestAdd({ kind: mode === 'thinking' ? 'thought' : 'truth', scoped: true });
+  // full screen on a phone (upright or on its side): ONE row at the top, the way a full-screen modal is on iOS and Android: a named
+  // way out at the start, the view's name, then the few actions that act on the whole board; everything else under «⋯» (§۵۳ ۸).
+  // Before, the desktop toolbar wrapped into three rows at the BOTTOM (157px of 844) and the way out was one unlabeled icon among nine
+  const compactBar = (
+    <div role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar" data-compact="" className="flex flex-col gap-stack-xs">
+      <div className="flex items-center gap-inline-xs">
+        <Button id="canvas-fs" size="sm" variant="secondary" iconStart="X" aria-label="بستن تمام‌صفحه (ESC)" onClick={() => setFullscreen(false)}>بستن</Button>
+        <p className="label-md min-w-space-0 flex-1 truncate px-inset-xs text-text-default">{mode === 'truth' ? 'نمای کلی' : 'بوم فکر'}</p>
+        <IconButton icon="Search" label="جستجوی کارت" aria-pressed={searchOpen} aria-expanded={searchOpen} onClick={() => setSearchOpen((v) => !v)} />
+        <Popover label="گزینه‌های نما" align="end" trigger={<IconButton icon="Filter" label={`گزینه‌های نما${optionsCount ? ` (${formatNumber(optionsCount)} روشن)` : ''}`} />}>{options}</Popover>
+        <IconButton icon="Plus" label={addLabel} onClick={addHere} />
+        <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
+          { label: 'متناسب‌سازی', icon: 'Fullscreen', onSelect: fitAll },
+          { label: 'واگرد', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
+          { label: 'از نو', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
+          ...(!lineage ? [{ label: connectMode ? 'پایان وصل کردن' : 'وصل کن (دو کارت را پشت‌سرهم بزن)', icon: 'Link2' as const, onSelect: toggleConnect }] : []),
+          ...(layouts.length > 1 ? [{ divider: true, heading: 'چیدمان بوم' } as const, ...layouts.map((k) => ({ label: `${LAYOUT_FA[k]}${k === layout ? ' (همین)' : ''}`, icon: 'Workflow' as const, disabled: k === layout, onSelect: () => { setLayout(k); clearSelection(); } }))] : []),
+          { divider: true },
+          ...moreItems,
+        ]} />
+      </div>
+      {searchOpen && search}
+      {rotateHint && (
+        <div role="note" data-testid="canvas-rotate-hint" className="flex items-center justify-between gap-inline-sm">
+          <p className="body-sm text-text-subtle">این نما پهن است؛ گوشی را افقی کنی، ستون‌های بیشتری جا می‌شود.</p>
+          <IconButton icon="X" label="دیگر نگو" size="sm" onClick={dismissRotateHint} />
+        </div>
+      )}
+    </div>
+  );
+  const toolbar = compact ? compactBar : (
+    <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
+      {layouts.length > 1 && <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={layouts.map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />}
+      {search}
       <Popover label="گزینه‌های نما" align={isMobile ? 'end' : 'start'} trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
       {!lineage && (isMobile
         ? <IconButton icon="Link2" label="وصل کن (دو کارت را پشت‌سرهم بزن)" aria-pressed={connectMode} onClick={toggleConnect} />
@@ -727,24 +788,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {/* the canvas's own add, in its own kind, only in full screen (decisions.md §۱۸, re-decided in §۲۸): there the layer covers the
           sidebar's «افزودن» and the phone bar; in the normal view that one is beside it, and two adds side by side ask «which one?».
           A free note (double-click where it should go, or «⋯») is the canvas's own scratch, so it is not the first thing offered */}
-      {fullscreen && <Button size="sm" variant="secondary" iconStart="Plus" onClick={() => requestAdd({ kind: mode === 'thinking' ? 'thought' : 'truth', scoped: true })}>{mode === 'thinking' ? 'افزودن فکر' : 'افزودن حقیقت'}</Button>}
+      {fullscreen && <Button size="sm" variant="secondary" iconStart="Plus" onClick={addHere}>{addLabel}</Button>}
       <span className="ms-auto flex items-center gap-inline-xs" data-toolbar-overflow="">
         {!sheet && <IconButton icon="PanelLeft" label={inspectorOpen ? 'بستن جزئیات (I)' : 'نمایش جزئیات (I)'} aria-pressed={inspectorOpen} onClick={() => setInspectorOpen((v) => !v)} />}
-        <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
-          // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
-          // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
-          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
-          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: zoomInOff, onSelect: () => (farList ? leaveFar() : zoomAt(1.25)) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: zoomOutOff, onSelect: () => zoomAt(1 / 1.25) }] : []),
-          ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
-          { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
-          { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
-          { divider: true, heading: 'فایل JSON Canvas' },
-          { label: 'خروجی گرفتن', icon: 'Download', onSelect: exportCanvas },
-          { label: 'وارد کردن', icon: 'Upload', onSelect: () => fileInput.current?.click() },
-          { divider: true },
-          { label: 'میان‌برها (؟)', icon: 'Keyboard', onSelect: () => setHelpOpen(true) },
-          ...(fullscreen ? [{ label: 'تمام‌صفحهٔ مرورگر (اختیاری)', icon: 'Maximize' as const, onSelect: browserFullscreen }] : []),
-        ]} />
+        <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={moreItems} />
       </span>
     </div>
   );
@@ -779,7 +826,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const viewLabel = mode === 'truth' ? 'نمای کلی حقیقت' : 'بوم فکر';
   const body = (
     <div ref={root} onKeyDown={onRootKey} className={rootClass} role={fullscreen ? 'dialog' : 'region'} aria-modal={fullscreen || undefined} data-add-host={fullscreen ? '' : undefined} aria-label={viewLabel} data-fullscreen={fullscreen ? 'true' : 'false'} data-testid="canvas-root">
-      {!sheet && toolbar}
+      {(!sheet || compact) && toolbar}
       {lineage && (
         <div className="flex flex-wrap items-center gap-inline-sm rounded-control border border-border-selected bg-bg-selected px-inset-md py-inset-xs" data-testid="lineage-bar" role="status">
           <Button size="sm" variant="secondary" iconStart="ArrowRight" onClick={exitLineage}>برگشت به نمای کلی</Button>
@@ -794,7 +841,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         </div>
       )}
       {aboutOpen && <Alert intent="info" title={`چیدمان «${LAYOUT_FA[layoutEff]}»: ${aboutText.question}`} onClose={() => setAboutOpen(false)}>{aboutText.what}</Alert>}
-      {!aboutOpen && (
+      {!aboutOpen && !compact && (
         <div className="flex flex-wrap items-center justify-between gap-inline-sm">
           <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
           {(only || onlyReview || showPending || rowsBy === 'facet') && !lineage && <span role="status" data-testid="filter-active" className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default">نما فیلتر دارد: {[only === 'constraint' ? 'فقط خط قرمزها' : only === 'pending' ? 'فقط پیشنهادها' : '', onlyReview ? 'فقط نیاز به بازبینی' : '', showPending ? 'با آنچه در راه است' : '', rowsBy === 'facet' ? 'ردیف‌ها: بُعد' : ''].filter(Boolean).join(' · ')}</span>}
@@ -929,7 +976,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {inspectorOpen && !sheet && !floating && inspector}
       </div>
       {sheet && inspectorOpen && inspector}
-      {sheet && toolbar}
+      {sheet && !compact && toolbar}
 
       <input ref={fileInput} type="file" accept=".canvas,application/json" className="sr-only" aria-label="انتخاب فایل بوم" tabIndex={-1} onChange={(e) => void importCanvas(e.target.files?.[0])} />
 
