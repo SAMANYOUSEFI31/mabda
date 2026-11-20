@@ -89,3 +89,29 @@ export const VersionHistoryView: React.FC<{ changes: ContextChange[] } & Lookups
     </div>
   );
 };
+
+/**
+ * What came before a replacement (decisions.md §۵۳ ۱۰). «جایگزین کردن» makes a new item and keeps the old one with its own history;
+ * for her it is one decision that changed. So the history of a replacing item goes on into the item it replaced, and the one
+ * before that: each earlier item is a closed row («پیش از جایگزینی: «…»») that opens to its own versions, loaded when opened.
+ */
+export const EarlierLives: React.FC<{ chain: Array<{ id: string; title: string; replacedAt?: string }>; load: (id: string) => Promise<ContextChange[]> } & Lookups> = ({ chain, load, ...l }) => {
+  if (!chain.length) return null;
+  return (
+    <section className="flex flex-col gap-stack-xs border-t border-border-subtle pt-stack-sm" aria-label="پیش از جایگزینی" data-testid="earlier-lives">
+      {chain.map((c) => (
+        <ClosedSection key={c.id} title={`پیش از جایگزینی: «${c.title}»${c.replacedAt ? ` · تا ${formatJalaliDate(c.replacedAt)}` : ''}`}>
+          <EarlierLife id={c.id} load={load} {...l} />
+        </ClosedSection>
+      ))}
+    </section>
+  );
+};
+const EarlierLife: React.FC<{ id: string; load: (id: string) => Promise<ContextChange[]> } & Lookups> = ({ id, load, ...l }) => {
+  const [changes, setChanges] = useState<ContextChange[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  React.useEffect(() => { let live = true; load(id).then((c) => { if (live) setChanges(c); }).catch(() => { if (live) setFailed(true); }); return () => { live = false; }; }, [id, load]);
+  if (failed) return <p className="body-sm text-text-subtle">تاریخچهٔ این مورد نیامد. یک بار ببند و دوباره باز کن.</p>;
+  if (!changes) return <p className="body-sm text-text-subtle">در حال آوردن…</p>;
+  return <VersionHistoryView changes={changes} {...l} />;
+};

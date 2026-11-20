@@ -4,7 +4,7 @@
  */
 
 import type { Contradiction } from '../../types';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
 import type { ReviewNeed } from '../../core/decisionGraph';
@@ -25,7 +25,7 @@ import { suggestLinks } from '../../core/mentions';
 import { suggestUpstreamLinks } from '../../core/upstreamLinks';
 import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
-import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
+import { ApprovalBadge, EarlierLives, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
@@ -255,6 +255,18 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   }, [content, title, type, nodeId, nodes, object?.id, allObjects, relationships, deps, turnedDown]);
   const turnDown = (targetId: string) => { const next = [...turnedDown, noKey(targetId)].slice(-200); setTurnedDown(next); try { localStorage.setItem('mabda.mentions.no', JSON.stringify(next)); } catch { /* optional */ } };
   const history = useMemo(() => versionHistory(changes), [changes]);
+  // the items this one replaced, newest first (each replaced item points at what replaced it: supersededById)
+  const earlier = useMemo(() => {
+    const out: Array<{ id: string; title: string; replacedAt?: string }> = [];
+    const seen = new Set<string>();
+    for (let cur = object?.id, n = 0; cur && n < 20; n++) {
+      const prev = allObjects.find((o) => o.supersededById === cur && !seen.has(o.id));
+      if (!prev) break;
+      seen.add(prev.id); out.push({ id: prev.id, title: prev.title, replacedAt: prev.updatedAt }); cur = prev.id;
+    }
+    return out;
+  }, [object?.id, allObjects]);
+  const loadEarlier = useCallback((id: string) => dataApi.changeLog(object!.workspaceId, { objectId: id }).then((r) => r.changes), [object]);
   const [tab, setTab] = useState<'edit' | 'history' | 'around'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
@@ -411,7 +423,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
       )}
       {tab === 'history' && isEditing && (
-        <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
+        <div className="flex flex-col gap-stack-md">
+          <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
+          {object && <EarlierLives chain={earlier} load={loadEarlier} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />}
+        </div>
       )}
       <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
         {saveFailed && (
