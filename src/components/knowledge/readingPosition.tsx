@@ -1,9 +1,9 @@
 /**
  * Where she is in a long page, and how to get anywhere in it: one rule for «ساختار» and «سند» (docs/ux/decisions.md §۵۲).
  *
- * - The reading line is just under everything pinned at the top (--pin-top + --pin-sub, the same line the page's scroll-padding
- *   lands a jump on): the section whose heading has passed it is «اکنون». A fraction of the window ignored the pinned bars, which
- *   take a third of a phone by themselves.
+ * - The reading line is a quarter of the way down the READABLE part of the window (under --pin-top + --pin-sub), sliding to the
+ *   bottom on the last screen: src/core/readingLine.ts (§۵۳ ۵). A fraction of the whole window ignored the pinned bars (a third of a
+ *   phone); a line right under them (§۵۲) kept a passed section lit on a tall screen.
  * - A section she chose stays «اکنون» until she scrolls herself: a short last section never reaches the line.
  * - The scrubber: the sections as one line, each part as long as its section is on the page. It shows the shape of the whole and
  *   where she is in it (what a list of names cannot), and a drag along it moves through the page section by section, naming each.
@@ -11,6 +11,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatNumber } from '../../ui/format';
+import { activeIndex, readingLineY } from '../../core/readingLine';
 
 export interface ReadingItem { id: string; label: string; level: number }
 
@@ -19,8 +20,6 @@ const pinned = () => {
   const s = getComputedStyle(document.documentElement);
   return (parseFloat(s.getPropertyValue('--pin-top')) || 0) + (parseFloat(s.getPropertyValue('--pin-sub')) || 0);
 };
-/** the line under the pinned bars where content becomes readable */
-export const readingLine = () => pinned() + 12; // a jump lands its heading at +8 (scroll-padding); 4px for rounding
 
 export const useReadingPosition = (items: ReadingItem[], anchorOf: (id: string) => string, on = true) => {
   const [active, setActive] = useState<string | undefined>(items[0]?.id);
@@ -31,12 +30,10 @@ export const useReadingPosition = (items: ReadingItem[], anchorOf: (id: string) 
     const measure = () => {
       raf = 0;
       if (chosen.current) { setActive(chosen.current); return; }
-      const line = readingLine();
-      let cur = items[0].id;
-      for (const i of items) { const el = document.getElementById(anchorOf(i.id)); if (el && el.getBoundingClientRect().top <= line) cur = i.id; }
       const el = document.scrollingElement ?? document.documentElement;
-      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
-      setActive(cur);
+      const line = readingLineY({ pinned: pinned(), viewport: window.innerHeight, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight });
+      const tops = items.map((i) => document.getElementById(anchorOf(i.id))?.getBoundingClientRect().top ?? NaN);
+      setActive(items[activeIndex(tops, line)].id);
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
     const own = () => { chosen.current = null; };
