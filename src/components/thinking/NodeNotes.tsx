@@ -18,7 +18,8 @@ interface Props {
   objects: ContextObject[];
   extractingId: string | null;
   onAdd: (nodeId: string, content: string) => Promise<unknown>;
-  onUpdate: (noteId: string, content: string) => Promise<void>;
+  /** `false` = it was not saved (a conflict, the network): the edit box stays open with what she typed */
+  onUpdate: (noteId: string, content: string) => Promise<boolean | void>;
   onDelete: (noteId: string) => Promise<void>;
   /** «استخراج»: the note becomes Proposed objects (never facts) */
   onExtract: (noteId: string) => Promise<void>;
@@ -55,12 +56,12 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                   <MentionTextarea label="ویرایش یادداشت" rows={3} value={editing.text} onValueChange={(t) => setEditing({ id: n.id, text: t })} objects={objects} />
                   <div className="flex justify-end gap-inline-xs">
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>انصراف</Button>
-                    <Button size="sm" variant="secondary" disabled={!editing.text.trim()} onClick={async () => { await onUpdate(n.id, editing.text.trim()); setEditing(null); }}>ذخیره</Button>
+                    <Button size="sm" variant="secondary" disabled={!editing.text.trim()} onClick={async () => { if ((await onUpdate(n.id, editing.text.trim())) !== false) setEditing(null); }}>ذخیره</Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <NoteLines content={n.content} onChange={(c) => onUpdate(n.id, c)} />
+                  <NoteLines content={n.content} onChange={async (c) => { await onUpdate(n.id, c); }} />
                   {onSplit && canSplit(n.content) && (
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm">
                       <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به بخش؟ متن اصلی یادداشت می‌ماند.</span>

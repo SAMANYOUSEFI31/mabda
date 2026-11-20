@@ -91,7 +91,7 @@ export function buildSearchIndex(input: {
   objects: ContextObject[];
   deliverables?: Array<{ id: string; title: string; content: string }>;
   notes?: Array<Pick<Note, 'id' | 'nodeId' | 'content'>>;
-  thoughts?: Array<Pick<Thought, 'id' | 'nodeId' | 'text' | 'status'>>;
+  thoughts?: Array<Pick<Thought, 'id' | 'nodeId' | 'text' | 'status' | 'kind'>>;
   files?: Array<Pick<StoredFile, 'id' | 'name' | 'nodeId' | 'summary'>>;
   /** the app's unresolved contradictions (displayState.conflictPartners) */
   conflicts?: Contradiction[];
@@ -111,6 +111,7 @@ export function buildSearchIndex(input: {
     raw.push({ kind: 'object', id: o.id, title: o.title, content: o.content, text: `${o.title} ${o.title} ${o.title} ${o.content} ${(o.facets ?? []).join(' ')} ${path(o.nodeId)}`, subtitle: sub, state });
   }
   for (const t of input.thoughts ?? []) {
+    if (!t.kind) continue; // the thinking space shows only a thought that has a kind (thoughtItem): a hit must lead somewhere
     const title = clip(firstLine(t.text), 90);
     raw.push({ kind: 'thought', id: t.id, title, content: t.text, text: `${title} ${t.text}`, subtitle: [t.status === 'resolved' ? 'حل‌شده' : '', path(t.nodeId)].filter(Boolean).join(' · '), state: t.status === 'resolved' ? 'past' : 'thought' });
   }

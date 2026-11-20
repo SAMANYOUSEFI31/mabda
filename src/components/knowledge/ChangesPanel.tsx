@@ -25,7 +25,7 @@ interface Props {
 
 /** «چه چیزی عوض شد» — the Change log of the last 7 days, grouped by who did it, with the outputs that now need a review. */
 export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects, relationships, deliverables, nodes, onOpenAssets, onCompare }) => {
-  const digest = useMemo(() => (open ? buildChangeDigest({ changes, objects, relationships, deliverables }) : null), [open, changes, objects, relationships, deliverables]);
+  const digest = useMemo(() => (open ? buildChangeDigest({ changes, objects, relationships, deliverables, nodes }) : null), [open, changes, objects, relationships, deliverables, nodes]);
   const titleOf = (id: string) => objects.find((o) => o.id === id)?.title ?? id;
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
 

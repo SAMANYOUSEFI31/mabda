@@ -14,7 +14,7 @@ export function useNodeActions(p: AppCoreScope) {
   const nodeOp = async (fn: () => Promise<{ nodes: WorkspaceState['nodes'] } & Partial<WorkspaceState>>) => {
     const r = await attempt(fn);
     if (!r) throw new Error('node op failed');
-    patch((d) => ({ ...d, nodes: r.nodes, ...(r.objects ? { objects: r.objects } : {}), ...(r.notes ? { notes: r.notes } : {}), ...(r.files ? { files: r.files } : {}) }));
+    patch((d) => ({ ...d, nodes: r.nodes, ...(r.objects ? { objects: r.objects } : {}), ...(r.notes ? { notes: r.notes } : {}), ...(r.files ? { files: r.files } : {}), ...(r.stale ? { stale: r.stale } : {}) }));
   };
   return { nodeOp };
 }

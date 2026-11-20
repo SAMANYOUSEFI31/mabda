@@ -60,7 +60,7 @@ interface ContextTreeDocViewProps {
   /** reorder among siblings: the node goes to this position under the same parent */
   onReorderNode: (nodeId: string, index: number) => Promise<void>;
   onAddNote: (nodeId: string, content: string) => Promise<unknown>;
-  onUpdateNote: (noteId: string, content: string) => Promise<void>;
+  onUpdateNote: (noteId: string, content: string) => Promise<boolean | void>;
   onDeleteNote: (noteId: string) => Promise<void>;
   onExtractNote: (noteId: string) => Promise<void>;
 }

@@ -32,7 +32,7 @@ export type HomePageProps = Pick<ReadyScope, 'attentionGaps' | 'attentionSpec' |
 export const homeHasStarted = (p: { knowledge: number; actions: number; openThoughts: number; notes: number }): boolean => p.knowledge + p.actions + p.openThoughts + p.notes > 0;
 
 export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, contradictions, currentWorkspace, data, deliverables, dueAssumptions, dueDecisions, dueProps,  flips, focusNodeId, goFocus, handleAcceptProposal, handleAcceptReview, handleCheckContradictions, handleConvertItem, handleDeriveThought, handleHomeAct, handleKeepContradiction, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSaveContextObject, handleSeparateContradiction, homeAllOpen, homePlan, homeView, openThinkingSpace, inheritNotices, judgedToday, judging, markInheritSeen, nodes, openContext, reviewNeeds, setActiveTab, setAiRequest, setChangesOpen, setCompare, setContextViewMode, setHomeAllOpen, setIsImportOpen, setIsMemoryOpen, setIsOnboardingOpen, setIsPacksOpen, setPackTarget, setWeeklyOpen, stale,  thinking, vf, waiting, waitingOrdered, weekly, weeklyDue, wid, workspaceContexts }: HomePageProps) {
-  const openThoughts = (data?.thoughts ?? []).filter((t) => t.status === 'open');
+  const openThoughts = (data?.thoughts ?? []).filter((t) => t.status === 'open' && !!t.kind); // the same thoughts the thinking space lists (thoughtItem drops one without a kind), so the counts agree
   const count = spaceTally(workspaceContexts, openThoughts.length);
   // «در این فضا»: each state once, with the word «منبع حقیقت» and «فکر» use for it, and a way to where those things are
   const stateRows = [
@@ -76,7 +76,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
             <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-lg" aria-label="سؤال‌ها و تصمیم‌های باز">
               <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
-              <p className="body-sm text-text-subtle">از خط‌های یادداشت‌هایت که با [سؤال] یا [تصمیم باز] شروع شده‌اند؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز در خروجی‌ها و بسته‌ها نمی‌آیند.</p>
+              <p className="body-sm text-text-subtle">سؤال‌ها و تصمیم‌های بازِ فکرهایت، از خط‌های یادداشت‌ها و از فکرهایی که خودت ثبت کرده‌ای؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز در خروجی‌ها و بسته‌ها نمی‌آیند.</p>
               <ThinkingList
                 items={thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts))}
                 objects={workspaceContexts}

@@ -150,7 +150,7 @@ export const dataApi = {
   createNodeFromItems: (id: string, input: { parentId?: string; label: string; notes: string[]; thoughts: string[]; objects: string[] }) => call<{ node: TreeNode; moved: number; nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; stale: StaleAsset[] }>('POST', `${ws(id)}/nodes/from-items`, input),
   createNode: (id: string, input: { parentId?: string; label: string; description?: string }) => call<{ node: TreeNode; nodes: TreeNode[] }>('POST', `${ws(id)}/nodes`, input),
   renameNode: (id: string, nodeId: string, patch: { label?: string; description?: string }) => call<{ nodes: TreeNode[] }>('PATCH', `${ws(id)}/nodes/${nodeId}`, patch),
-  moveNode: (id: string, nodeId: string, parentId: string, index?: number, reason?: string) => call<{ nodes: TreeNode[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index, ...(reason ? { reason } : {}) }),
+  moveNode: (id: string, nodeId: string, parentId: string, index?: number, reason?: string) => call<{ nodes: TreeNode[]; stale: StaleAsset[] }>('POST', `${ws(id)}/nodes/${nodeId}/move`, { parentId, index, ...(reason ? { reason } : {}) }),
   deleteNode: (id: string, nodeId: string, transferTo?: string, mode: 'move' | 'archive' = 'move') =>
     call<{ nodes: TreeNode[]; objects: ContextObject[]; notes: Note[]; thoughts: import('../types').Thought[]; files: StoredFile[]; removal: { id: string; label: string }; stale: StaleAsset[] }>('DELETE', `${ws(id)}/nodes/${nodeId}?mode=${mode}${transferTo ? `&transferTo=${encodeURIComponent(transferTo)}` : ''}`),
   /** «واگرد»: a node removal is undone on the server (the sections, what moved, what was archived) */
