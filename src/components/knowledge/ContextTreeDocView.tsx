@@ -309,9 +309,59 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
       </div>
+      <OutlineBar nodes={nodes} roots={roots} />
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
+  );
+};
+
+const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+/** a page of this many sections or more is long enough that «where am I, and how do I get to X» needs an answer on screen */
+const OUTLINE_FROM = 4;
+
+/**
+ * «فهرست» and «اکنون: …» over the structure (decisions.md §۵۱; Gemini's Outline Scrubber, decided on principle): the same named outline
+ * and scroll-spy as «سند», pinned under the page bar at every width. Not unlabelled lines that appear on hover: a list of names
+ * is recognised, not recalled, and works the same by touch and keyboard. Main sections and their first level, in reading order.
+ */
+const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes, roots }) => {
+  const items = useMemo(() => roots.flatMap((r) => [{ id: r.id, label: r.label, level: 1 }, ...childrenOf(nodes, r.id).map((c) => ({ id: c.id, label: c.label, level: 2 }))]), [nodes, roots]);
+  const [active, setActive] = useState<string | undefined>(items[0]?.id);
+  useEffect(() => {
+    if (items.length < OUTLINE_FROM) return undefined;
+    let raf = 0;
+    // the same reading line as «سند»: the last heading that has passed a third of the screen; at the very end, the last one
+    const measure = () => {
+      raf = 0;
+      const line = window.innerHeight * 0.33;
+      let cur = items[0].id;
+      for (const i of items) { const el = document.getElementById(`node-${i.id}`); if (el && el.getBoundingClientRect().top <= line) cur = i.id; }
+      const el = document.scrollingElement ?? document.documentElement;
+      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
+      setActive(cur);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', onScroll);
+    measure();
+    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf); };
+  }, [items]);
+  if (items.length < OUTLINE_FROM) return null;
+  const goTo = (id: string) => {
+    const el = document.getElementById(`node-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    el.focus({ preventScroll: true });
+    setActive(id);
+  };
+  const cur = items.find((i) => i.id === active);
+  return (
+    <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
+      <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
+        items={items.map((i) => ({ label: `${i.level > 1 ? '— ' : ''}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
+      {cur && <p className="body-sm min-w-space-0 flex-1 truncate text-text-subtle" aria-live="polite">اکنون: {cur.label}</p>}
+    </div>
   );
 };
 
