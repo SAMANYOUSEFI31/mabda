@@ -37,7 +37,7 @@ export function reviewWindowStart(lastAt: string | null | undefined, now: Date =
 }
 
 export function buildWeeklyReview(input: { objects: ContextObject[]; relationships: ContextRelationship[]; changes: ContextChange[]; deliverables: GeneratedDeliverable[]; now?: Date; nodes?: TreeNode[]; lastReviewAt?: string | null }): WeeklyReviewData {
-  const digest = buildChangeDigest({ changes: input.changes, objects: input.objects, relationships: input.relationships, deliverables: input.deliverables, now: input.now, days: DEFAULT_DAYS, since: reviewWindowStart(input.lastReviewAt, input.now ?? new Date()) });
+  const digest = buildChangeDigest({ changes: input.changes, objects: input.objects, relationships: input.relationships, deliverables: input.deliverables, nodes: input.nodes, now: input.now, days: DEFAULT_DAYS, since: reviewWindowStart(input.lastReviewAt, input.now ?? new Date()) });
   const byId = new Map(input.objects.map((o) => [o.id, o]));
   const reviews = [...needsReview(input.objects, input.relationships, input.changes)]
     .filter(([id]) => byId.has(id))

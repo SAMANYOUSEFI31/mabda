@@ -102,7 +102,11 @@ export function useAppCore() {
     const next = fn(cur);
     setWs(workspacesRef.current.map((w) => (w.id === id ? next : w)));
     patch((d) => (d.workspace.id === id ? { ...d, workspace: next } : d));
-    await attempt(() => dataApi.saveWorkspace(next));
+    const saved = await attempt(() => dataApi.saveWorkspace(next));
+    if (saved !== undefined) return;
+    // not saved: the screen goes back to what the server still holds (only where nothing newer was set meanwhile)
+    setWs(workspacesRef.current.map((w) => (w.id === id && w === next ? cur : w)));
+    patch((d) => (d.workspace.id === id && d.workspace === next ? { ...d, workspace: cur } : d));
   };
 
   // UI state

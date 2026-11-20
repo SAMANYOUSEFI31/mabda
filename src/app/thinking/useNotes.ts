@@ -76,9 +76,10 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes], thoughts: r.thoughts }));
     return !!r;
   };
-  const handleUpdateNote = async (id: string, content: string) => {
+  const handleUpdateNote = async (id: string, content: string): Promise<boolean> => {
     const r = await attempt(() => dataApi.updateNote(wid, id, content, data?.notes.find((n) => n.id === id)?.updatedAt));
     if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
+    return !!r;
   };
   /**
    * A small, throwaway removal: it happens at once and offers «واگرد» (the note comes back with its text, its section and its place).

@@ -15,7 +15,7 @@ export function registerNodesRoutes(ctx: RouteContext): void {
     res.json({ node: r.node, moved: r.moved, nodes: repo.listNodes(s), objects: repo.listObjects(s), notes: repo.listNotes(s), thoughts: repo.listThoughts(s, { includeResolved: true }), stale: stale(s) });
   }));
   router.patch('/workspaces/:wid/nodes/:id', wrap((req, res) => { const s = scopeOf(req); repo.updateNode(s, req.params.id, body(req)); res.json({ nodes: repo.listNodes(s) }); }));
-  router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { res.json({ nodes: repo.moveNode(scopeOf(req), req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined) }); }));
+  router.post('/workspaces/:wid/nodes/:id/move', wrap((req, res) => { const s = scopeOf(req); const nodes = repo.moveNode(s, req.params.id, typeof body(req).parentId === 'string' ? String(body(req).parentId) : '', typeof body(req).index === 'number' ? body(req).index as number : undefined, typeof body(req).reason === 'string' ? String(body(req).reason) : undefined); res.json({ nodes, stale: stale(s) }); }));
   // a node delete is previewed on the client (src/core/removal.ts planRemoval), done here in one transaction and recorded so it can be undone
   const modeOf = (v: unknown): 'move' | 'archive' => (v === 'archive' ? 'archive' : 'move');
   router.delete('/workspaces/:wid/nodes/:id', wrap((req, res) => {

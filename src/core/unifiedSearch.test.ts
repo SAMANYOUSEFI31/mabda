@@ -14,7 +14,7 @@ const nodes: TreeNode[] = [
 const o = (id: string, p: Partial<ContextObject> = {}): ContextObject => ({
   id, workspaceId: 'w', type: 'Fact', status: 'Confirmed', provenance: 'User Input', title: `عنوان ${id}`, content: `متن ${id}`, nodeId: 'business', version: 1, createdAt: '', updatedAt: '', ...p,
 });
-const th = (id: string, text: string, p: Partial<Thought> = {}): Thought => ({ id, workspaceId: 'w', nodeId: 'brand', kind: null, text, status: 'open', createdAt: '', updatedAt: '', ...p });
+const th = (id: string, text: string, p: Partial<Thought> = {}): Thought => ({ id, workspaceId: 'w', nodeId: 'brand', kind: 'idea', text, status: 'open', createdAt: '', updatedAt: '', ...p });
 const fl = (id: string, name: string, p: Partial<StoredFile> = {}): StoredFile => ({ id, workspaceId: 'w', name, mime: 'application/pdf', sizeBytes: 1, status: 'ready', tokens: 1, chunkCount: 1, createdAt: '', ...p });
 
 test('thoughts and files are found too, each in its own group, with the section path', () => {
