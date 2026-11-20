@@ -117,7 +117,9 @@ export function pendingInTab(tab: DocTab, nodes: TreeNode[], objects: ContextObj
 
 /**
  * Tabs = the first-level sections. With one root (the usual tree) they are the root's children; the root's own objects get a
- * leading «کلیات» tab only if it has any. With several roots, each root is a tab.
+ * leading tab, named as the root is named everywhere else (the outline, the overview, the structure heading), only if it has any.
+ * One thing, one name (Nielsen 4, decisions.md §۵۳ پس از ممیزی): an invented «کلیات» here and the user's own label there read as two places.
+ * With several roots, each root is a tab.
  */
 export function docTabs(nodes: TreeNode[], objects: ContextObject[], now?: Date | string | number): DocTab[] {
   // the main sections are the tabs (primarySections: the same rule as the sidebar, the outline and the overview, §۵۳ ۷)
@@ -125,7 +127,7 @@ export function docTabs(nodes: TreeNode[], objects: ContextObject[], now?: Date 
   if (primaryDepth(nodes) === 0) return tabs;
   const root = childrenOf(nodes, undefined)[0];
   const hasOwn = objects.some((o) => o.nodeId === root.id && inDocument(o, now));
-  return hasOwn ? [{ id: root.id, nodeId: root.id, label: 'کلیات', own: true }, ...tabs] : tabs;
+  return hasOwn ? [{ id: root.id, nodeId: root.id, label: root.label, own: true }, ...tabs] : tabs;
 }
 
 /** which tab holds an anchor (`n-…` / `o-…`), for permalinks */
