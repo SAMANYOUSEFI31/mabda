@@ -12,6 +12,7 @@ import {
   findForRequired,
   fillsItem,
   extractQuantities,
+  gapOrder,
 } from './contextEngine';
 import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from './specs';
 import { ContextObject } from '../types';
@@ -189,4 +190,34 @@ test('a sentence that refuses the discount does not «define» one: «حتی ت�
   const rule = obj({ id: 'r', type: 'Constraint', title: 'تخفیف', content: 'تخفیف نداریم.' });
   assert.equal(detectContradictions([rule, obj({ id: 'x', title: 'سیاست قیمت', content: 'حتی تخفیف ۱۰٪ هم نمی‌دهیم.' })]).length, 0);
   assert.equal(detectContradictions([rule, obj({ id: 'y', title: 'جشنواره', content: 'برای عید تخفیف ۲۰٪ داریم. بقیهٔ سال نداریم.' })]).length, 1, 'another sentence defines it');
+});
+
+test('CORE-12: a high score with a Proposed or ambiguous required item never says «all confirmed»', () => {
+  const spec = { id: 's', title: 's', target: '', description: '', suggestedContext: [], optionalContext: [], deliverables: [],
+    requiredContext: ['a', 'b', 'c', 'd', 'e'].map((k) => ({ key: k, label: k, description: k, nodeId: 'n' })) } as never;
+  const all = ['a', 'b', 'c', 'd', 'e'].map((k) => obj({ id: k, title: k, content: k, slotKey: k, status: 'Confirmed' }));
+  const full = calculateReadinessAndGaps(spec, all);
+  assert.equal(full.status, 'ready'); assert.equal(full.fullyConfirmed, true); assert.equal(full.confirmedCount, 5);
+  assert.match(full.summary, /تمام/);
+  // one Proposed: 4.7 / 5 = 94% → still «ready», but not «all confirmed»
+  const one = calculateReadinessAndGaps(spec, all.map((o) => (o.id === 'e' ? { ...o, status: 'Proposed' as const } : o)));
+  assert.equal(one.status, 'ready'); assert.equal(one.fullyConfirmed, false); assert.equal(one.confirmedCount, 4);
+  assert.doesNotMatch(one.summary, /تمام|آمادگی کامل/);
+  // three Proposed: the weighted 4.1 is not «4 confirmed»
+  const three = calculateReadinessAndGaps(spec, all.map((o) => (['c', 'd', 'e'].includes(o.id) ? { ...o, status: 'Proposed' as const } : o)));
+  assert.equal(three.confirmedCount, 2);
+  // a confirmed but ambiguous one (judged) is not settled either
+  const amb = calculateReadinessAndGaps(spec, all, [], { e: { version: all[4].version, ambiguous: true } } as never);
+  assert.equal(amb.fullyConfirmed, false);
+});
+
+test('CORE-13: gaps follow their dependencies through any chain, stably; a cycle never loses an item', () => {
+  const g = (key: string, dependsOn?: string[]) => ({ key, dependsOn });
+  const keys = (l: Array<{ key: string }>) => l.map((x) => x.key).join(',');
+  // C ← B ← A given in the worst order, with an unrelated D between them
+  assert.equal(keys(gapOrder([g('C', ['B']), g('D'), g('B', ['A']), g('A')])), 'D,A,B,C');
+  assert.equal(keys(gapOrder([g('x'), g('y')])), 'x,y', 'no dependencies: input order');
+  const cyc = gapOrder([g('p', ['q']), g('q', ['p']), g('r')]);
+  assert.equal(keys(cyc), 'r,p,q', 'the cycle comes after what can be ordered, in input order');
+  assert.equal(keys(gapOrder([g('s', ['s', 'missing'])])), 's', 'self and unknown dependencies are ignored');
 });

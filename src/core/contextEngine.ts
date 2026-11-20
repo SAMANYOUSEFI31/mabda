@@ -88,6 +88,28 @@ export function objectsToJudge(spec: WorkstreamSpec, objects: ContextObject[]): 
 }
 
 /**
+ * The order gaps are asked in: a gap comes after every gap it depends on, through any chain (Kahn's algorithm). Ties keep the
+ * input order, so the result is the same on every run. Gaps in a dependency cycle (or depending on each other) cannot be ordered
+ * by it: they follow in input order, after everything that could be — none is dropped.
+ */
+export function gapOrder<T extends Pick<GapItem, 'key' | 'dependsOn'>>(gaps: readonly T[]): T[] {
+  const index = new Map(gaps.map((g, i) => [g.key, i]));
+  const waitsOn = gaps.map((g) => new Set((g.dependsOn ?? []).map((k) => index.get(k)).filter((i): i is number => i !== undefined && gaps[i].key !== g.key)));
+  const done = new Set<number>();
+  const out: T[] = [];
+  for (let progressed = true; progressed;) {
+    progressed = false;
+    for (let i = 0; i < gaps.length; i++) {
+      if (done.has(i) || [...waitsOn[i]].some((j) => !done.has(j))) continue;
+      done.add(i); out.push(gaps[i]); progressed = true;
+      break; // restart from the top: the earliest ready gap always goes next (stable)
+    }
+  }
+  for (let i = 0; i < gaps.length; i++) if (!done.has(i)) out.push(gaps[i]);
+  return out;
+}
+
+/**
  * Analyzes gaps and calculates readiness for a specific Workstream spec.
  * «مبهم» is a semantic judgement: it comes from the decision layer (`ambiguity`, per object version) or from the
  * user's own «Needs Review» status — never from how long the text is.
@@ -103,6 +125,9 @@ export function calculateReadinessAndGaps(
 
   const gaps: GapItem[] = [];
   let confirmedRequiredCount = 0;
+  /** required items that are really settled: Confirmed, not an assumption, not ambiguous. The weighted score above counts a
+   *  Proposed (0.7) or ambiguous (0.5) item partly, so a high score alone never says «all confirmed» (no false certainty) */
+  let settledRequired = 0;
 
   // 1. Check Required Contexts
   for (const req of spec.requiredContext) {
@@ -136,6 +161,7 @@ export function calculateReadinessAndGaps(
       }
     } else if (found.status === 'Confirmed' && !found.assumption) {
       confirmedRequiredCount += 1;
+      settledRequired += 1;
     } else {
       // Proposed
       confirmedRequiredCount += 0.7;
@@ -158,18 +184,14 @@ export function calculateReadinessAndGaps(
     }
   }
 
-  // Sort gaps by dependencies (items with dependsOn come after prerequisites)
-  gaps.sort((a, b) => {
-    if (a.importance === 'required' && b.importance !== 'required') return -1;
-    if (a.importance !== 'required' && b.importance === 'required') return 1;
-    if (a.dependsOn?.includes(b.key)) return 1;
-    if (b.dependsOn?.includes(a.key)) return -1;
-    return 0;
-  });
+  // required first; within each group, a gap that depends on another comes after it, through any chain (A ← B ← C), and a
+  // cycle never loses an item (gapOrder: a stable topological order)
+  const ordered = [...gapOrder(gaps.filter((g) => g.importance === 'required')), ...gapOrder(gaps.filter((g) => g.importance !== 'required'))];
 
   const totalRequired = spec.requiredContext.length;
   const score = totalRequired > 0 ? Math.min(100, Math.round((confirmedRequiredCount / totalRequired) * 100)) : 100;
 
+  const fullyConfirmed = totalRequired === settledRequired;
   let status: ReadinessResult['status'] = 'ready';
   if (score < 50) {
     status = 'blocked';
@@ -179,8 +201,10 @@ export function calculateReadinessAndGaps(
 
   const missingReqCount = gaps.filter((g) => g.importance === 'required' && g.status === 'missing').length;
   const summary =
-    status === 'ready'
+    status === 'ready' && fullyConfirmed
       ? `آمادگی کامل: تمام ${totalRequired} مؤلفه اصلی تأیید شده‌اند. خروجی با حداکثر انسجام تولید خواهد شد.`
+      : status === 'ready'
+      ? `آماده (${score}٪): ${settledRequired} از ${totalRequired} مؤلفه اصلی تأیید شده است؛ بقیه هنوز پیشنهاد یا مبهم‌اند و تا تأیید نشوند، خروجی روی آن‌ها تکیهٔ قطعی ندارد.`
       : status === 'needs_work'
       ? `آمادگی متوسط (${score}٪): ${totalRequired - missingReqCount} از ${totalRequired} مؤلفه الزامی آماده است. خروجی قابل تولید است اما با کیفیت کمتر.`
       : `نیاز به اطلاعات پایه: ${missingReqCount} مؤلفه حیاتی هنوز مشخص نشده است. توصیه می‌شود ابتدا به جاهای خالی پاسخ دهید.`;
@@ -188,9 +212,10 @@ export function calculateReadinessAndGaps(
   return {
     score,
     status,
-    confirmedCount: Math.floor(confirmedRequiredCount),
+    fullyConfirmed,
+    confirmedCount: settledRequired,
     totalRequired,
-    gaps,
+    gaps: ordered,
     summary,
   };
 }
