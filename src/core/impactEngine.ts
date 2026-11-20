@@ -9,7 +9,7 @@ import { formatNumber } from '../ui/format';
 import { needsReview } from './decisionGraph';
 import type { ReviewNeed } from './decisionGraph';
 
-export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed' | 'dependency_changed' | 'number_changed';
+export type StaleReasonKind = 'version_changed' | 'superseded' | 'archived' | 'removed' | 'dependency_changed' | 'number_changed' | 'scope_changed';
 
 export interface StaleReason {
   kind: StaleReasonKind;
@@ -24,6 +24,8 @@ export interface StaleReason {
   changedAt?: string;
   /** number_changed: the newer recorded number that differs from the one the output carried */
   measurementId?: string;
+  /** scope_changed: the section the item stands in now */
+  nodeId?: string;
   /** Persian, ready for the UI */
   message: string;
 }
@@ -81,11 +83,16 @@ export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>
       message: `«${obj.title}» از نسخهٔ ${fa(used.version)} به ${fa(obj.version)} تغییر کرد.`,
     };
   }
+  // the text is the same but the item now stands in another section: what it governs changed (a change of «همه‌جا» / reach or of
+  // the date already bumps the version above). Only outputs that recorded the place can tell.
+  if (used.nodeId && obj.nodeId && used.nodeId !== obj.nodeId) {
+    return { kind: 'scope_changed', objectId: obj.id, title: obj.title, usedVersion: used.version, currentVersion: obj.version, nodeId: obj.nodeId, message: `«${obj.title}» به بخش دیگری منتقل شد.` };
+  }
   return null;
 }
 
 export const staleSignature = (reasons: StaleReason[]): string =>
-  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}${r.dependencyId ? `~${r.dependencyId}@${r.changedAt ?? ''}` : ''}${r.measurementId ? `#${r.measurementId}` : ''}`).sort().join('|');
+  reasons.map((r) => `${r.objectId}>${r.currentId ?? r.objectId}@${r.currentVersion ?? 'x'}:${r.kind}${r.nodeId ? `^${r.nodeId}` : ''}${r.dependencyId ? `~${r.dependencyId}@${r.changedAt ?? ''}` : ''}${r.measurementId ? `#${r.measurementId}` : ''}`).sort().join('|');
 
 /** an object the asset used rests on another object that changed since — and nobody has reviewed it (derived, see decisionGraph.needsReview) */
 function dependencyReason(used: UsedContextRef, byId: Map<string, ContextObject>, review: Map<string, ReviewNeed>, builtAt?: string): StaleReason | null {

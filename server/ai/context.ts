@@ -42,8 +42,8 @@ export interface ContextThoughtLite {
 }
 
 /** Exactly the objects a prompt built from `contexts` shows to the model (Superseded/Archived never are). */
-export function injectedRefs(contexts: ContextObjectLite[]): Array<{ id: string; version: number }> {
-  return contexts.filter((c) => !EXCLUDED.has(c.status)).sort(byStableOrder).map((c) => ({ id: c.id, version: c.version ?? 1 }));
+export function injectedRefs(contexts: ContextObjectLite[]): Array<{ id: string; version: number; nodeId?: string }> {
+  return contexts.filter((c) => !EXCLUDED.has(c.status)).sort(byStableOrder).map((c) => ({ id: c.id, version: c.version ?? 1, ...(c.nodeId ? { nodeId: c.nodeId } : {}) }));
 }
 
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AI_RESPONSE_FORMAT, buildAiRequest, COMMON_RULES, gapsInScope, KIND_RULES, LONG_TEXT_TOKENS, QUOTES_RULE, REQUEST_KINDS } from './aiRequest';
+import { AI_RESPONSE_FORMAT, buildAiRequest, COMMON_RULES, gapsInScope, KIND_RULES, LONG_TEXT_TOKENS, OVERRIDES_RULE, QUOTES_RULE, REQUEST_KINDS } from './aiRequest';
 import type { AiRequestInput, RequestKind } from './aiRequest';
 import { parseByHeadings } from './answerParser';
 import { DEFAULT_TREE_NODES, WORKSTREAM_SPECS } from './specs';
@@ -248,4 +248,20 @@ test('metrics come as numbers the user recorded, never as knowledge', () => {
   const md = buildAiRequest(base({ metrics })).markdown;
   assert.match(md, /## اندازه‌گیری‌ها[\s\S]*فروش هفتگی/);
   assert.ok(md.indexOf('## اندازه‌گیری‌ها') < md.indexOf('</documents>'));
+});
+
+test('AI-PROMPT-OVERRIDES: an exception names the rule it sets aside when both are in the pack, with the rule; never otherwise', () => {
+  const objects = [
+    o('c_nodiscount', { type: 'Constraint', title: 'بدون تخفیف', content: 'تخفیف نمی‌دهیم', nodeId: 'business' }),
+    o('d_group', { type: 'Decision', title: 'تخفیف گروهی', content: 'برای خرید گروهی ده درصد تخفیف', nodeId: 'pricing' }),
+  ];
+  const relationships = [{ id: 'r1', type: 'overrides' as const, sourceId: 'd_group', targetId: 'c_nodiscount', createdAt: '' }];
+  // the whole tree: the red line stands in other sections, the exception in «قیمت» — both come
+  const whole = buildAiRequest(base({ objects, relationships }));
+  assert.match(whole.markdown, /<document id="d_group@v2"[^>]* overrides="c_nodiscount@v2">/);
+  assert.ok(whole.markdown.includes(OVERRIDES_RULE));
+  // only the exception's section: the red line is set aside there, so it is not in the pack and nothing names it
+  const inside = buildAiRequest(base({ objects, relationships, scopeNodeId: 'pricing' }));
+  assert.ok(!inside.markdown.includes('overrides="'));
+  assert.ok(!inside.markdown.includes(OVERRIDES_RULE));
 });

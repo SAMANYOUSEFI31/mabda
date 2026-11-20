@@ -146,3 +146,15 @@ test('a newer number with another value makes only the outputs that carried the 
   // without the numbers (old callers) nothing changes
   assert.deepEqual(computeStaleAssets([carried], [fact], { relationships: [], changes: [] }), []);
 });
+
+test('IMPACT-01: a move to another section makes an output that recorded the place stale; moving back, or an old output, does not', () => {
+  const placed = { id: 'a1', usedContext: [{ id: 'c1', version: 2, nodeId: 'business' }] };
+  assert.deepEqual(computeStaleAssets([placed], [obj({ id: 'c1', version: 2 })]), [], 'same place, same version: fresh');
+  const moved = computeStaleAssets([placed], [obj({ id: 'c1', version: 2, nodeId: 'offer' })]);
+  assert.equal(moved[0].reasons[0].kind, 'scope_changed');
+  assert.equal(moved[0].reasons[0].message, '«مخاطب اصلی» به بخش دیگری منتقل شد.');
+  const further = computeStaleAssets([placed], [obj({ id: 'c1', version: 2, nodeId: 'brand' })]);
+  assert.notEqual(further[0].signature, moved[0].signature, 'a second move is a new reason (newlyStale sees it)');
+  assert.equal(computeStaleAssets([placed], [obj({ id: 'c1', version: 3, nodeId: 'offer' })])[0].reasons[0].kind, 'version_changed', 'a text change says the stronger thing');
+  assert.deepEqual(computeStaleAssets([asset('a2', [['c1', 2]])], [obj({ id: 'c1', version: 2, nodeId: 'offer' })]), [], 'an output that never recorded the place is not guessed at');
+});

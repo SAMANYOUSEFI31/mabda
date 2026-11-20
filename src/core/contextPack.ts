@@ -183,7 +183,7 @@ export function buildContextPack(input: PackInput): ContextPack {
     // the trace (lineage) holds every red line the text carries too, also one a facet filter left out of «relevant» (CORE-08):
     // when a red line changes, an output built from this pack is marked stale
     refs: (() => {
-      const base = [...relevant, ...guardObjects.filter((o) => !relevant.some((r) => r.id === o.id))].map((o) => ({ id: o.id, version: o.version }));
+      const base = [...relevant, ...guardObjects.filter((o) => !relevant.some((r) => r.id === o.id))].map((o) => ({ id: o.id, version: o.version, nodeId: o.nodeId }));
       // a monitored truth whose number is in the text carries that number, so a newer number makes this output stale (§۴۲)
       return metricsSection && input.metrics ? withNumberRefs(base, input.metrics.metrics, input.metrics.measurements, relevant) : base;
     })(),

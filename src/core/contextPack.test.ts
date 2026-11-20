@@ -78,7 +78,7 @@ test('context pack: Confirmed as fact, Proposed labelled unconfirmed, Archived/S
   assert.match(md, /## جاهای خالی \(Gap\)/);
   assert.match(md, /## Asset: عنوان خروجی/);
   assert.deepEqual(pack.refs.map((r) => r.id).sort(), ['a', 'k', 'p']);
-  assert.deepEqual(pack.refs.find((r) => r.id === 'a'), { id: 'a', version: 2 });
+  assert.deepEqual(pack.refs.find((r) => r.id === 'a'), { id: 'a', version: 2, nodeId: 'business' });
   assert.ok(md.includes('a@v2'));
   assert.equal(pack.counts.confirmed, 2);
   assert.equal(pack.counts.proposed, 1);
