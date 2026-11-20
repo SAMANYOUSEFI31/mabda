@@ -257,6 +257,9 @@ export interface Note {
 export interface UsedContextRef {
   id: string;
   version: number;
+  /** the section the item stood in when the output was built: the place is part of what the reader saw («node» in the pack).
+   *  A later move to another section makes the output «به‌روز نیست» (scope_changed). Absent on outputs made before it was kept. */
+  nodeId?: string;
   /** a monitored truth whose number went into the text (the pack's «اندازه‌گیری‌ها»): which monitor and which recorded number it
    *  carried. A newer confirmed number with another value makes only these outputs «به‌روز نیست» (docs/ux/decisions.md §۴۲) */
   number?: NumberRef;
@@ -354,6 +357,9 @@ export interface GapItem {
 export interface ReadinessResult {
   score: number; // 0 to 100
   status: 'ready' | 'needs_work' | 'blocked';
+  /** every required item is Confirmed, not an assumption and not ambiguous — only then may the summary say «all confirmed» */
+  fullyConfirmed: boolean;
+  /** required items that are really confirmed (a Proposed or ambiguous one does not count, whatever the weighted score) */
   confirmedCount: number;
   totalRequired: number;
   gaps: GapItem[];

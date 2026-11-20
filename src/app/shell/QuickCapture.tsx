@@ -23,8 +23,10 @@ import { letterKeysOn } from '../../core/shortcuts';
 
 const QuickCaptureDialog = lazyNamed(() => import('../../components/thinking/QuickCaptureDialog'), 'QuickCaptureDialog');
 
-const DRAFT_KEY = 'mabda.quickDraft';
-const readDraft = (): string => { try { return sessionStorage.getItem(DRAFT_KEY) ?? ''; } catch { return ''; } };
+// one unsent draft PER SPACE: a thought begun in one space must never show up (or be saved) in another
+const draftKey = (wid: string) => `mabda.quickDraft.${wid}`;
+const readDraft = (wid: string): string => { try { return sessionStorage.getItem(draftKey(wid)) ?? ''; } catch { return ''; } };
+const writeDraft = (wid: string, text: string) => { try { if (text) sessionStorage.setItem(draftKey(wid), text); else sessionStorage.removeItem(draftKey(wid)); } catch { /* optional */ } };
 
 export type QuickCaptureProps = Pick<ReadyScope, 'activeTab' | 'data' | 'focusNodeId' | 'handleSaveThought' | 'handleSaveThoughts' | 'handleUploadFile' | 'nodes' | 'openContext' | 'setActiveTab' | 'setIsMemoryOpen' | 'workspaceContexts'>;
 
@@ -35,9 +37,18 @@ const readContinuous = () => { try { return localStorage.getItem(PREF) === 'on';
 
 export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, handleSaveThoughts, handleUploadFile, nodes, openContext, setActiveTab, setIsMemoryOpen, workspaceContexts }: QuickCaptureProps) {
   const [open, setOpen] = useState(false);
-  // the unsent text survives a refresh (sessionStorage: it goes with the tab, so it never lingers on a shared device)
-  const [text, setText] = useState(readDraft);
-  useEffect(() => { try { if (text) sessionStorage.setItem(DRAFT_KEY, text); else sessionStorage.removeItem(DRAFT_KEY); } catch { /* optional */ } }, [text]);
+  // the unsent text survives a refresh (sessionStorage: it goes with the tab, so it never lingers on a shared device), and belongs
+  // to the space it was typed in: switching spaces shows that space's own draft (or none)
+  const wid = data.workspace.id;
+  const [draft, setDraft] = useState(() => ({ wid, text: readDraft(wid) }));
+  const text = draft.wid === wid ? draft.text : readDraft(wid);
+  const setText = (next: string | ((t: string) => string)) => setDraft((d) => {
+    const cur = d.wid === wid ? d.text : readDraft(wid);
+    return { wid, text: typeof next === 'function' ? next(cur) : next };
+  });
+  useEffect(() => { writeDraft(draft.wid, draft.text); }, [draft]);
+  // another space: its own draft, and a dialog that was open for the old space closes (its place list belonged there)
+  useEffect(() => { setDraft((d) => (d.wid === wid ? d : { wid, text: readDraft(wid) })); setOpen(false); }, [wid]);
   const [node, setNode] = useState('');
   const [continuous, setContinuous] = useState(readContinuous);
   /** opened from a scoped «+ فکر» (the thinking page): locked to «فکر», no switch */

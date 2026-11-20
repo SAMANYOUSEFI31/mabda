@@ -51,7 +51,8 @@ interface ContextDetailModalProps {
   /** resolves to the saved object, or undefined when the save failed (the caller already showed why) */
   onSave: (saved: ContextDraft, opts?: { reason?: string; asDraft?: boolean }) => Promise<ContextObject | undefined>;
   /** the unapproved rewrite of this confirmed knowledge: approve (it replaces the text) / reject (it is dropped) */
-  onApproveDraft?: (id: string) => Promise<void>;
+  /** true once the server took it; on false (409 from another tab, a dropped line) the dialog stays open */
+  onApproveDraft?: (id: string) => Promise<boolean>;
   onRejectDraft?: (id: string) => Promise<void>;
   /** the reason is stored in the Change log, never in the object's text */
   onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => Promise<ContextObject | undefined>;
@@ -395,7 +396,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             )}
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             {approveMode
-              ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { await onApproveDraft!(object!.id); onClose(); }}>جایگزینی</Button>
+              ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { if (await onApproveDraft!(object!.id)) onClose(); }}>جایگزینی</Button>
               : <Button variant="primary" type="submit" form="context-detail-form" loading={saving}>
                   {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? saveLabel : addLabel}
                 </Button>}
@@ -453,7 +454,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               {/* once she edits the draft the editor IS the draft: the before/after would show a text she is already changing */}
               {!onDraft && <BeforeAfter before={object.content} after={object.draft.content} />}
               <div className="flex flex-wrap gap-inline-sm">
-                {onApproveDraft && !approveMode && !onDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { await onApproveDraft(object.id); onClose(); }}>جایگزینی</Button>}
+                {onApproveDraft && !approveMode && !onDraft && <Button type="button" size="sm" variant="secondary" iconStart="Check" onClick={async () => { if (await onApproveDraft(object.id)) onClose(); }}>جایگزینی</Button>}
                 {!onDraft && <Button type="button" size="sm" variant="ghost" iconStart="Pencil" onClick={continueDraft}>ادامهٔ ویرایش پیش‌نویس</Button>}
                 {onRejectDraft && <Button type="button" size="sm" variant="ghost" iconStart="X" onClick={async () => { await onRejectDraft(object.id); onClose(); }}>رد</Button>}
               </div>

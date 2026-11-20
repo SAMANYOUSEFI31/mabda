@@ -19,6 +19,9 @@ import { join } from 'node:path';
 import assert from 'node:assert/strict';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// no fixed sleeps between steps: each step waits for the state it needs (a selected tab, a scroll that landed, an attribute), so a
+// slow machine is slower, never red. `settled` = two frames, for layout that follows a state change (scroll spies run in a frame).
+const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
 const dir = mkdtempSync(join(tmpdir(), 'mabda-guards-'));
 const PORT = 3121;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -45,8 +48,20 @@ const sample = async (page) => {
   }
   await page.locator('.mb-toast button').first().click({ timeout: 500 }).catch(() => {});
 };
-const nav = (page, name) => page.evaluate((n) => { const bs = [...document.querySelectorAll('nav button')].filter((b) => b.textContent.includes(n)); (bs.find((b) => b.offsetParent) ?? bs[0])?.click(); }, name).then(() => wait(500));
-const radio = (page, name) => page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first().evaluate((n) => n.click()).then(() => wait(600));
+const nav = async (page, name) => {
+  await page.evaluate((n) => { const bs = [...document.querySelectorAll('nav button')].filter((b) => b.textContent.includes(n)); (bs.find((b) => b.offsetParent) ?? bs[0])?.click(); }, name);
+  await page.waitForFunction((n) => [...document.querySelectorAll('nav button[aria-current=page]')].some((b) => b.textContent.includes(n)), name);
+  await page.waitForLoadState('networkidle'); await page.locator('main h1').first().waitFor();
+  await page.waitForFunction(() => !document.querySelector('main')?.innerText.includes('در حال بار شدن')); await settled(page);
+};
+const radio = async (page, name) => {
+  const r = page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first();
+  await r.evaluate((n) => n.click());
+  await page.waitForFunction((el) => el.getAttribute('aria-checked') === 'true', await r.elementHandle());
+  await page.waitForLoadState('networkidle'); await settled(page);
+};
+/** scroll and wait until the page is really there (a pinned header or a lazy section can move it) */
+const scrollTo = async (page, y) => { await page.evaluate((v) => window.scrollTo(0, v), y); await page.waitForFunction((v) => Math.abs(scrollY - Math.min(v, document.scrollingElement.scrollHeight - innerHeight)) < 2, y); await settled(page); };
 const box = (page, sel) => page.locator(sel).first().evaluate((e) => { const r = e.getBoundingClientRect(); return { top: r.top + scrollY, bottom: r.bottom + scrollY, left: r.left, right: r.right }; });
 
 try {
@@ -74,7 +89,7 @@ try {
   }
 
   step('§۵۳ ۹ · one page frame: every page header has the same two edges, centred in the main area');
-  for (const width of [1280, 1920]) {
+  for (const width of [768, 1280, 1920]) {
     const { ctx, page } = await open(width);
     await sample(page);
     const edges = {};
@@ -93,13 +108,13 @@ try {
   }
 
   step('§۵۳ ۶–۷ · Structure, whole tree: the outline bar shows in a one-root space, at every width, and names the path');
-  for (const width of [390, 1280]) {
+  for (const width of [390, 768, 1280]) {
     const { ctx, page } = await open(width);
     await sample(page);
     await nav(page, 'حقیقت'); await radio(page, 'ساختار');
     await guard(`[${width}] «فهرست / اکنون» is pinned over the whole structure`, async () => {
       await page.locator('[data-testid=structure-outline]').waitFor({ timeout: 3000 });
-      await page.evaluate(() => window.scrollTo(0, 2400)); await wait(500);
+      await scrollTo(page, 2400);
       const t = await page.locator('[data-testid=structure-outline]').evaluate((e) => ({ top: e.getBoundingClientRect().top, text: e.textContent }));
       assert.ok(t.top < 140, `pinned near the top (top ${t.top})`);
       assert.match(t.text, /اکنون: .+›/, `«اکنون» names a path: ${t.text}`);
@@ -114,28 +129,36 @@ try {
     await ctx.close();
   }
 
-  step('§۵۳ ۵ · Document outline: «اکنون» is the section a quarter down the readable window, and stays in the outline\'s view');
+  step('§۵۳ ۵ · Document outline: «اکنون» is the section being read (the upper part of the readable window), and stays in the outline\'s view');
   {
+    // the goal, not today's formula: the lit section is one the reader is in — it covers a point in the upper half of the window
+    // under the pinned bars (at the very end of the page, any section whose heading is on screen, so the last one can be reached)
     const { ctx, page } = await open(1280, 900);
     await sample(page);
     await nav(page, 'حقیقت'); await radio(page, 'سند');
-    await page.locator('[role=tablist][aria-label="بخش‌های سند"] [role=tab]', { hasText: 'کل سند' }).click(); await wait(500);
+    const all = page.locator('[role=tablist][aria-label="بخش‌های سند"] [role=tab]', { hasText: 'کل سند' });
+    await all.click(); await page.waitForFunction((el) => el.getAttribute('aria-selected') === 'true', await all.elementHandle()); await settled(page);
     for (const y of [1200, 2600, 4000]) {
-      await page.evaluate((v) => window.scrollTo(0, v), y); await wait(400);
-      await guard(`[1280 @${y}] the lit outline item is the last heading above the reading line`, async () => {
-        const r = await page.evaluate(() => {
+      await scrollTo(page, y);
+      await guard(`[1280 @${y}] the lit outline item is the section being read`, async () => {
+        const read = () => page.evaluate(() => {
           const s = getComputedStyle(document.documentElement);
           const pinned = (parseFloat(s.getPropertyValue('--pin-top')) || 0) + (parseFloat(s.getPropertyValue('--pin-sub')) || 0);
-          const el = document.scrollingElement; const H = innerHeight - pinned; const max = el.scrollHeight - innerHeight;
-          const base = pinned + Math.max(12, H * 0.25); const start = Math.max(0, max - H); const t = max > start ? Math.min(1, Math.max(0, (el.scrollTop - start) / (max - start))) : 0;
-          const line = base + (innerHeight - base) * t;
+          const el = document.scrollingElement; const atEnd = el.scrollTop >= el.scrollHeight - innerHeight - 2;
           const nav = document.querySelector('nav.doc-outline'); const cur = nav.querySelector('[aria-current=location]');
           const ids = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href').slice(1));
-          let want = ids[0]; for (const id of ids) { const h = document.getElementById(id); if (h && h.getBoundingClientRect().top <= line) want = id; }
+          const i = ids.indexOf(cur.getAttribute('href').slice(1));
+          const top = document.getElementById(ids[i])?.getBoundingClientRect().top ?? 0;
+          const next = i + 1 < ids.length ? document.getElementById(ids[i + 1])?.getBoundingClientRect().top ?? Infinity : Infinity;
+          const upper = pinned + (innerHeight - pinned) / 2;
+          const reading = (top <= upper && next > pinned) || (atEnd && top < innerHeight);
           const n = nav.getBoundingClientRect(), c = cur.getBoundingClientRect();
-          return { want, got: cur.getAttribute('href').slice(1), inView: c.top >= n.top - 1 && c.bottom <= n.bottom + 1 };
+          return { reading, at: `${ids[i]} ${Math.round(top)}..${Math.round(next)} (window ${Math.round(pinned)}..${Math.round(upper)})`, inView: c.top >= n.top - 1 && c.bottom <= n.bottom + 1 };
         });
-        assert.equal(r.got, r.want);
+        // the spy may take a frame or two after the scroll: wait for it, but never for a fixed time
+        let r = await read();
+        for (let k = 0; k < 10 && !r.reading; k++) { await settled(page); r = await read(); }
+        assert.ok(r.reading, `the lit section is not the one being read: ${r.at}`);
         assert.ok(r.inView, 'the lit item is visible inside the outline');
       });
     }
@@ -146,16 +169,19 @@ try {
   for (const [w, h] of [[390, 844], [844, 390]]) {
     const { ctx, page } = await open(w, h);
     await sample(page);
-    await nav(page, 'حقیقت'); await radio(page, 'نمای کلی'); await wait(800);
-    await page.locator('#canvas-fs').evaluate((b) => b.click()); await wait(700);
+    await nav(page, 'حقیقت'); await radio(page, 'نمای کلی');
+    const root = page.locator('[data-testid=canvas-root]');
+    await root.waitFor();
+    await page.locator('#canvas-fs').evaluate((b) => b.click());
+    await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'true', await root.elementHandle()); await settled(page);
     await guard(`[${w}×${h}] the bar is one row at the top, the board fits the window, and «بستن» leaves`, async () => {
       const r = await page.locator('[data-testid=canvas-toolbar]').evaluate((e) => { const b = e.getBoundingClientRect(); return { top: b.top, h: b.height }; });
       assert.ok(r.top < 24 && r.h <= 56, `bar at ${r.top}, ${r.h}px tall`);
       assert.equal((await page.locator('#canvas-fs').innerText()).trim(), 'بستن');
       const st = await page.locator('[data-testid=canvas-stage]').evaluate((e) => e.getBoundingClientRect().bottom);
       assert.ok(st <= h + 1, `the board ends at ${Math.round(st)}px, below the ${h}px window: part of it is unreachable`);
-      await page.locator('#canvas-fs').click(); await wait(500);
-      assert.equal(await page.locator('[data-testid=canvas-root]').getAttribute('data-fullscreen'), 'false');
+      await page.locator('#canvas-fs').click();
+      await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'false', await root.elementHandle(), { timeout: 3000 });
     });
     await ctx.close();
   }
@@ -171,10 +197,10 @@ try {
     await a.page.locator('button[form=context-detail-form]').click();
     await a.page.getByRole('dialog').waitFor({ state: 'detached', timeout: 5000 });
     await bp.locator('#context-content').fill('متن تب دوم که نباید گم شود');
-    await bp.locator('button[form=context-detail-form]').click(); await wait(1200);
+    await bp.locator('button[form=context-detail-form]').click();
     await guard('the second tab\'s dialog stays open with its text and says so', async () => {
+      await bp.getByText('ذخیره نشد؛ متن تو همین‌جا مانده است').waitFor({ timeout: 5000 });
       assert.equal(await bp.locator('#context-content').inputValue(), 'متن تب دوم که نباید گم شود');
-      await bp.getByText('ذخیره نشد؛ متن تو همین‌جا مانده است').waitFor({ timeout: 2000 });
     });
     await a.ctx.close();
   }
@@ -232,6 +258,45 @@ try {
       await page.getByLabel('عملیات فکرهای انتخاب‌شده').waitFor({ timeout: 2000 });
       await page.getByRole('button', { name: 'لغو انتخاب' }).click();
       assert.equal(await page.getByLabel('عملیات فکرهای انتخاب‌شده').count(), 0);
+    });
+    await ctx.close();
+  }
+
+  step('Context Replay (the product\'s core loop) · an output whose truth changes says «به‌روز نیست»');
+  {
+    // the goal only: after a truth an output was built from changes, the outputs page counts that output as not up to date. How it
+    // is shown (a tab, a badge) is free; which output and truth are picked comes from the data, not from fixed ids.
+    const { ctx, page } = await open(1280); await sample(page);
+    const staleCount = async () => {
+      await nav(page, 'خروجی‌ها');
+      const t = page.getByRole('tab', { name: /^به‌روز نیست/ });
+      if (!(await t.count())) return 0;
+      return Number((await t.first().innerText()).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/\D/g, ''));
+    };
+    await guard('editing a truth an up-to-date output used makes one more output «به‌روز نیست»', async () => {
+      const before = await staleCount();
+      const edited = await page.evaluate(async () => {
+        const headers = { 'Content-Type': 'application/json', 'x-mabda-user': localStorage.getItem('mabda_user_id') };
+        const get = async (u) => (await fetch(`/api${u}`, { headers })).json();
+        const ws = (await get('/workspaces')).workspaces.find((w) => w.name === 'قهوهٔ تخصصی آنلاین');
+        const st = await get(`/workspaces/${ws.id}/state`);
+        const stale = new Set(st.stale.map((x) => x.deliverableId));
+        for (const d of st.deliverables) {
+          if (d.archivedAt || stale.has(d.id)) continue;
+          const u = (d.usedContext ?? []).find((r) => st.objects.some((o) => o.id === r.id && o.version === r.version && o.status === 'Confirmed'));
+          if (!u) continue;
+          const o = st.objects.find((x) => x.id === u.id);
+          const r = await fetch(`/api/workspaces/${ws.id}/objects/${o.id}`, { method: 'PATCH', headers, body: JSON.stringify({ content: `${o.content}\n(بازبینی نگهبان)` }) });
+          return r.ok ? o.title : `PATCH ${r.status}`;
+        }
+        return 'no up-to-date output with a confirmed truth in the sample';
+      });
+      assert.ok(!/^(PATCH|no )/.test(edited), edited);
+      // a fresh load reads the server again (and may open another space first: go back to the sample without rebuilding it)
+      await page.reload({ waitUntil: 'networkidle' }); await page.getByText(/^خانه: /).waitFor();
+      if (!(await page.getByText('خانه: قهوهٔ تخصصی آنلاین').count())) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: /قهوهٔ تخصصی آنلاین/ }).first().click(); await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor(); }
+      const after = await staleCount();
+      assert.ok(after > before, `«${edited}» changed, but the outputs page still counts ${after} (was ${before})`);
     });
     await ctx.close();
   }

@@ -49,7 +49,7 @@ interface Props {
   onOpenObject: (o: ContextObject) => void;
   /** «هنوز درست است»: a truth that was flagged for review stays as it is, recorded in its history */
   onAcceptReview?: (id: string) => void;
-  onApproveDraft: (id: string) => Promise<void>;
+  onApproveDraft: (id: string) => Promise<unknown>;
   onRejectDraft: (id: string) => Promise<void>;
   proposals: Omit<ProposalProps, 'objects' | 'nodes' | 'keepOrder' | 'hints'>;
 }

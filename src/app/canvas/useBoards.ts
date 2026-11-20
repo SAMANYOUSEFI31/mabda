@@ -64,12 +64,15 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
   };
 
   /** «جایگزینی» / «رد» for the unapproved rewrite of a confirmed knowledge */
-  const handleApproveDraft = async (objectId: string) => {
-    const r = await attempt(() => dataApi.approveDraft(wid, objectId));
-    if (!r) return;
+  /** resolves true once the server took it; a 409 (another tab changed it first) or a dropped line leaves the dialog where it was */
+  const handleApproveDraft = async (objectId: string): Promise<boolean> => {
+    const seen = workspaceContexts.find((o) => o.id === objectId)?.updatedAt;
+    const r = await attempt(() => dataApi.approveDraft(wid, objectId, seen));
+    if (!r) return false;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)), stale: r.stale }));
     showImpact(r.impact);
     void reload(wid);
+    return true;
   };
   const handleRejectDraft = async (objectId: string) => {
     const r = await attempt(() => dataApi.rejectDraft(wid, objectId));
@@ -90,7 +93,8 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
   };
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
-    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}) }));
+    const seen = workspaceContexts.find((o) => o.id === oldId)?.updatedAt;
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
     showImpact(r.impact);

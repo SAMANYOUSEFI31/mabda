@@ -78,7 +78,7 @@ test('generate: previewed plan is honoured (credits shown = credits charged) and
   assert.deepEqual(done.result.plan, preview.plan);
   assert.equal(done.result.usage.stages[0].stage, 'decision');
   // lineage = exactly what was injected: the Confirmed object and the (labelled) Proposed one, with their versions
-  assert.deepEqual(done.result.usedContext, [{ id: 'c1', version: 1 }, { id: 'c2', version: 1 }]);
+  assert.deepEqual(done.result.usedContext, [{ id: 'c1', version: 1, nodeId: 'business' }, { id: 'c2', version: 1, nodeId: 'business' }]);
   assert.ok(ev.some((e) => e.type === 'stage' && e.stage === 'validate'));
 });
 
@@ -155,7 +155,7 @@ test('usedContext records the exact versions that were injected (Superseded/Arch
     contextList: [{ id: 'k', type: 'Constraint', status: 'Confirmed', title: 'بدون تخفیف', content: 'x', nodeId: 'offer', version: 2 }, { id: 'noise', type: 'Fact', status: 'Confirmed', title: 'نامرتبط', content: 'x', nodeId: 'offer', version: 1 }],
   }, emit));
   const done = ev.at(-1) as Extract<AiStreamEvent, { type: 'done' }>;
-  assert.deepEqual(done.result.usedContext, [{ id: 'a', version: 3 }, { id: 'k', version: 2 }]);
+  assert.deepEqual(done.result.usedContext, [{ id: 'a', version: 3, nodeId: 'business' }, { id: 'k', version: 2, nodeId: 'offer' }], 'id, version and the section it stood in (IMPACT-01)');
   const prompt = JSON.stringify(p.calls.filter((c) => c.kind !== 'structured' || !isDecision(c)).map((c) => c.prompt));
   assert.ok(!prompt.includes('نامرتبط'), 'unrelated context is not injected, hence not recorded');
 });
