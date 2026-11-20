@@ -21,10 +21,10 @@ export type ThinkingPageProps = Pick<ReadyScope, 'canJudge' | 'contradictions' |
 export function ThinkingPage({ canJudge, contradictions, handleCheckContradictions, handleKeepContradiction, handleSeparateContradiction, judgedToday, judging, vf, currentWorkspace, data, focusNodeId, handleAcceptProposal, handleAcceptReview, handleApproveDraft, handleConvertItem, handleDeriveThought, handleRejectDraft, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSynthesizeThought, nodes, openContext, previewTruth, renderCanvas, scopeChip, setCompare, setIsImportOpen, setIsMemoryOpen, setOptionsItemKey, setPackTarget, setSpaceNode, setThinkingView, setThoughtDialog, spaceNode, startSectionFromThought, startThoughtAi, thinking, thinkingView, workspaceContexts }: ThinkingPageProps) {
   return (
         <div className="space-y-stack-lg">
-          {/* the reading column (decisions.md §۵۱): the header and the list share the 680px measure of Home and «سند», so a row's
-              buttons sit beside its text instead of a screen away (1,100px at 1920 before). Only the canvas takes the full width; the
-              header keeps one width in both views so «فهرست / بوم» does not move under the pointer */}
-          <div className="flex max-w-reading flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
+          {/* the page frame every page shares (decisions.md §۵۳ ۹): the header spans the frame like Home's; the list keeps the 680px
+              reading column (§۵۱) with the filters in the margin beside it. Only the canvas takes the whole main area; the header stays
+              in the frame in both views so «فهرست / بوم» does not move under the pointer */}
+          <div className="mb-page-frame"><div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</p>
@@ -38,15 +38,17 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
               />
               {/* adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳) */}
             </div>
-          </div>
+          </div></div>
           <div id="thinking-view" />
           {thinkingView === 'canvas' ? renderCanvas('thinking') : (
-            <div className="flex max-w-reading flex-col gap-stack-sm">
+            <div className="mb-page-frame">
+            <PageSuspense><ThinkingSpace
+        lead={<>
             {spaceNode === focusNodeId && scopeChip}
             {/* two truths that do not agree are a decision that waits for her, like a proposal or a draft: «فکر» is where such
                 decisions are made (decisions.md §۴۹الف, §۵۱). Home keeps its line and its «جزئیات بیشتر» mirror, as for proposals */}
             {vf.contradictions && contradictions.length > 0 && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: LIMITS.decisionJudgmentsPerDay } : undefined} />}
-            <PageSuspense><ThinkingSpace
+        </>}
         objects={workspaceContexts}
         notes={data.notes}
         nodes={nodes}

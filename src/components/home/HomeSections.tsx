@@ -112,9 +112,10 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
       )}
     </div>
   );
-  // wide: the margin beside the list, and what «جزئیات بیشتر» opens after both, at the page's width. Narrow: the margin cannot be
-  // beside, so it goes AFTER what the toggle opens; before, the details opened under the whole margin, a screen below the
-  // toggle on a tablet (proximity; decisions.md §۴۴، §۴۹)
+  // one rule at every width (decisions.md §۴۴، §۵۳ ۳): «جزئیات بیشتر» is the last control of the page's own content and what it
+  // opens starts directly under it (proximity). Wide: the margin is beside the list, the toggle closes the reading column and the
+  // details take the page width after both. Narrow: list, margin, toggle, details, in that order
+  const toggle = <div data-testid="home-details-toggle"><Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button></div>;
   return (
     <div ref={host} className="flex flex-col gap-stack-lg">
     <MarginList label="آنچه الان به تو نیاز دارد">
@@ -158,16 +159,19 @@ export const HomeSections: React.FC<Props> = ({ sections, onAct, onAnswerGap, tr
               )} />
             </>
           )}
-          {/* the notice and the toggle follow the last item in the reading column, next to the list they belong to, not under the
-              (often taller) margin: at 1440 with a short list the toggle sat ~200px below the last item (§۴۴). What it opens is
-              wide (rows with two buttons), so it takes the page width right after the list and margin */}
+          {/* wide: the notice and the toggle follow the last item in the reading column, next to the list they belong to, not under
+              the (often taller) margin: at 1440 with a short list the toggle sat ~200px below the last item (§۴۴) */}
           {notice}
-          <div><Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={allOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={allOpen} aria-controls="home-all" onClick={onToggleAll}>جزئیات بیشتر</Button></div>
+          {beside && toggle}
         </div>
       </MarginItem>
     </MarginList>
-    {more}
+    {/* narrow: the margin comes BEFORE the toggle, so «جزئیات بیشتر» is the last thing on the page and what it opens starts right
+        under it and runs to the end. #95 had put the margin after the details: opening them pushed «آخرین فکرها» a screen down,
+        under content she had not asked for (decisions.md §۵۳ ۳; guarded by scripts/scenario-guards.mjs) */}
     {!beside && <div className="mb-home-margin" aria-label="در این فضا">{margin}</div>}
+    {!beside && toggle}
+    {more}
     </div>
   );
 };

@@ -23,7 +23,8 @@ export type KnowledgePageProps = Pick<ReadyScope, 'approvals' | 'askDeleteNote' 
 export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contradictions, currentWorkspace, data, extractingNoteId, focusNodeId, focusNotes, goFocus, handleAddNote, handleDeleteFile, handleDeleteSamples, handleMoveFile, handleExtractNote, handleProcessFile, handleSplitNote, handleUpdateNote, handleUploadFile, nodeOp, nodes, openContext, openCounts, openThinkingSpace, quota, renderCanvas, reviewIdSet, setAiRequest, setArchiveOpen, setContextViewMode, setEffectNodeId, setIsPacksOpen, setIsStarterOpen, setNodeDialog, setReadNodeId, setTemplateDraft, setThoughtDialog, setThreadNodeId, toast, vf, wid, workspaceContexts }: KnowledgePageProps) {
   return (
         <div className="space-y-stack-lg">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
+          {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
+          <div className="mb-page-frame"><div className="flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">
                 حقیقت: {currentWorkspace.name}
@@ -61,9 +62,10 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 ]}
               />
             </div>
-          </div>
+          </div></div>
 
           <div id="context-view" style={{ scrollMarginTop: 80 }} />
+          {contextViewMode === 'canvas' ? renderCanvas('truth') : <div className="mb-page-frame space-y-stack-lg">
           {contextViewMode === 'read' ? (
             <PageSuspense><DocWorkspace
               nodes={nodes}
@@ -113,8 +115,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               onDeleteNote={askDeleteNote}
               onExtractNote={handleExtractNote}
             />
-          ) : contextViewMode === 'canvas' ? (
-            renderCanvas('truth')
           ) : (
             <PageSuspense><ContextTableView
               objects={workspaceContexts}
@@ -137,6 +137,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             onDelete={handleDeleteFile}
             onMove={handleMoveFile}
           /></PageSuspense></div>}
+          </div>}
         </div>
   );
 }

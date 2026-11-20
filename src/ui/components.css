@@ -632,8 +632,28 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-margin--inline .mb-margin__row--target:has(.mb-margin__note):hover{background-image:linear-gradient(var(--interaction-hover),var(--interaction-hover))}
   .mb-margin--inline .mb-margin__row--target:has(.mb-margin__note):hover .mb-knowledge.mb-card--interactive{background-image:none}
 }
-/* the reading frame of a page whose content is text and its margin (خانه، خروجی‌ها): header, hairlines and margin share its two edges */
-@layer components{ .mb-page-frame{max-inline-size:var(--container-doc);container:mb-frame / inline-size} }
+/* THE page frame (decisions.md §۵۳ ۹): every page (خانه، فکر، حقیقت، خروجی‌ها) puts its header and its content in this one frame, centred
+   in the main area, so switching pages never moves the header's edges or the start of the text. Inside it a page is text and its
+   margin (identity.md «متن و حاشیه»): the 680px reading column at the start, the margin in what is left. Only a canvas, which is
+   a surface and not a page of text, takes the whole main area (it bleeds, as a picture does in print). Before, each page chose its
+   own width (680, 1080, 1280) and all of them hugged the right edge of a centred 1280 area */
+@layer components{ .mb-page-frame{max-inline-size:var(--container-doc);inline-size:100%;margin-inline:auto;container:mb-frame / inline-size} }
+/* text and margin inside the frame: one column below the width where both fit (the same 54rem as Home's margin and
+   `.mb-margin__row`), the margin first in the DOM when it holds the filters of the text (reading order = what is seen) */
+@layer components{
+.mb-text-margin{display:flex;flex-direction:column;gap:var(--stack-lg)}
+.mb-text-margin__main{min-inline-size:0}
+.mb-thinking-filters{display:flex;flex-direction:column;gap:var(--stack-sm)}
+}
+@container mb-frame (min-width: 54rem){
+  .mb-text-margin{display:grid;grid-template-columns:minmax(0,var(--container-prose)) minmax(0,1fr);column-gap:var(--space-10);align-items:start}
+  .mb-text-margin__main{grid-column:1;grid-row:1}
+  .mb-text-margin__aside{grid-column:2;grid-row:1;position:sticky;inset-block-start:calc(var(--pin-top,0px) + var(--space-4));padding-block-start:var(--stack-sm);border-block-start:var(--border-width-thin) solid var(--border-subtle)}
+  .mb-thinking-filters{gap:var(--stack-lg)}
+  .mb-thinking-filters__kinds{flex-direction:column;align-items:flex-start;overflow:visible;margin-inline:0;padding-inline:0}
+  .mb-thinking-filters__scope{flex-direction:column;align-items:flex-start}
+  .mb-thinking-filters__scope > .w-overlay-xs{inline-size:100%}
+}
 /* one column (no margin beside it): the header, the list and what opens under it share the reading column's two edges, so the
    row buttons end where the header's actions end. Before, the header ran to the frame's edge and the column stopped at 680px
    (206px apart at 1024 with the rail; decisions.md §۴۹) */

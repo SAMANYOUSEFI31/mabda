@@ -66,7 +66,8 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
           {/* §۳۷: the sample says what it is, once, quietly — a line of text, not a warning box («متن و حاشیه») */}
           {currentWorkspace.isDemo && (
-            <p className="body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" data-testid="sample-note">
+            // in the page frame, like every page's header (§۵۳ ۹): its first word starts where the title under it starts
+            <p className="mb-page-frame body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" data-testid="sample-note">
               <span>این فضای نمونه است و مال یک آدم فرضی است؛ هرچه این‌جا عوض کنی فقط همین‌جا می‌ماند و در فضای خودت نمی‌آید.</span>
               <Button size="sm" variant="ghost" iconStart="RotateCcw" onClick={() => setDemoConfirm(true)}>برگرداندن به حالت اول</Button>
             </p>
