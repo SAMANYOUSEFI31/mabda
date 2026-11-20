@@ -310,7 +310,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
       </div>
       <OutlineBar nodes={nodes} />
-      <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
+      <div id="structure-tree" className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
   );
@@ -325,8 +325,8 @@ const nodeAnchor = (id: string) => `node-${id}`;
  * whole tree is on the page (not focused into one section). Three answers to «where am I»:
  * - «اکنون» names the section being read at ANY depth, as its path from the main sections: «محصول و خدمت › اشتراک ماهانه › ارسال».
  *   A name alone did not say which branch it belonged to.
- * - the scrubber line shows the main sections and the level under them, each as long as it is on the page (deeper sections are
- *   inside their part: parts finer than that are too thin to touch); a drag moves through them, a tap jumps.
+ * - the scrubber line shows the MAIN sections only, as equal parts; the one being read fills as she reads through it (§۵۴ ۱۳: the
+ *   level under them made 20+ uneven slivers on the sample, too thin to touch and noisy); a drag moves through them, a tap jumps.
  * - «فهرست» lists every section at every depth, indented, so any of them is one tap away.
  * Levels count from the main sections (primarySections): a one-root tree's wrapper does not take a level. Before, the bar counted
  * from the wrapper, so the sample business space had 3 items and the bar did not show at all.
@@ -334,7 +334,7 @@ const nodeAnchor = (id: string) => `node-${id}`;
  */
 const OutlineBar: React.FC<{ nodes: TreeNode[] }> = ({ nodes }) => {
   const all = useMemo(() => { const pd = primaryDepth(nodes); return flatten(nodes).map(({ node, depth }) => ({ id: node.id, label: node.label, level: Math.max(1, depth - pd + 1) })); }, [nodes]);
-  const parts = useMemo(() => all.filter((i) => i.level <= 2), [all]);
+  const parts = useMemo(() => all.filter((i) => i.level === 1), [all]);
   const on = all.length >= OUTLINE_FROM;
   const { active, goTo } = useReadingPosition(all, nodeAnchor, on);
   useEffect(() => {
@@ -346,14 +346,14 @@ const OutlineBar: React.FC<{ nodes: TreeNode[] }> = ({ nodes }) => {
   if (!on) return null;
   // the part that holds the section being read: the last part at or before it in reading order
   const at = Math.max(0, all.findIndex((i) => i.id === active));
-  const part = [...all.slice(0, at + 1)].reverse().find((i) => i.level <= 2)?.id ?? parts[0]?.id;
+  const part = [...all.slice(0, at + 1)].reverse().find((i) => i.level === 1)?.id ?? parts[0]?.id;
   const path = active ? sectionPath(nodes, active) : [];
   const now = path.length > 2 ? `… › ${path.slice(-2).join(' › ')}` : path.join(' › ');
   return (
     <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
         items={all.map((i) => ({ label: `${treeIndent(i.level - 1)}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
-      <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} label="جای خواندن در بخش‌ها" />
+      <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} endId="structure-tree" label="جای خواندن در بخش‌ها" />
     </div>
   );
 };

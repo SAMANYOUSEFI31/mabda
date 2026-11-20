@@ -124,6 +124,10 @@ export const ownerApi = {
   backupUrl: '/api/owner/backup',
   /** the user-test record (server/activity.ts): measures computed from the raw events, and the raw events as a download */
   activityKpis: () => call<import('../core/activity').Kpis>('GET', '/owner/activity/kpis'),
+  activityRecent: (q: { person?: string; kind?: 'action' | 'ui'; after?: string; limit?: number } = {}) => {
+    const p = new URLSearchParams(); for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== '') p.set(k, String(v));
+    return call<{ events: import('../core/activity').ActivityEvent[]; total: number; people: import('../core/activity').PersonInput[] }>('GET', `/owner/activity/recent${p.size ? `?${p}` : ''}`);
+  },
   activityPurge: (before?: string) => call<{ events: number; errors: number }>('POST', '/owner/activity/purge', before ? { before } : {}),
   activityExportUrl: (format: 'csv' | 'json') => `/api/owner/activity/export${format === 'csv' ? '?format=csv' : ''}`,
 };

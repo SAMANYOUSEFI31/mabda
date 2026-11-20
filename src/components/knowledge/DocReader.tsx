@@ -37,6 +37,11 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   const items = useMemo(() => outline ?? [], [outline]);
   const reading = useMemo(() => items.map((i) => ({ id: i.id, label: i.text, level: i.level })), [items]);
   const { active, goTo: reach } = useReadingPosition(reading, sameId, view === 'read');
+  // the scrubber's parts are the document's main headings only (§۵۴ ۱۳, the same rule as the structure); «اکنون» still names the
+  // exact heading being read
+  const top = useMemo(() => Math.min(...reading.map((r) => r.level)), [reading]);
+  const parts = useMemo(() => reading.filter((r) => r.level === top), [reading, top]);
+  const partOf = (id?: string) => { const at = Math.max(0, reading.findIndex((r) => r.id === id)); return [...reading.slice(0, at + 1)].reverse().find((r) => r.level === top)?.id ?? parts[0]?.id; };
   // a long outline follows the reading: the «اکنون» line is kept inside the outline's own box (scrolling the outline, never the page)
   const outlineRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -82,7 +87,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   const withOutline = items.length > 0 && view === 'read';
 
   const doc = markdown.trim().length === 0 ? (empty ?? null) : view === 'read' ? (
-    <article className="w-full min-w-space-0 max-w-reading" aria-label="سند">
+    <article id="doc-body" className="w-full min-w-space-0 max-w-reading" aria-label="سند">
       <Markdown variant="document" anchors={items.map(({ id, text }) => ({ id, text }))}>{markdown}</Markdown>
     </article>
   ) : (
@@ -126,7 +131,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
             trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
             items={items.map((i) => ({ label: `${i.level > 1 ? '— '.repeat(i.level - 1) : ''}${i.text}`, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
           />
-          {activeItem && <SectionScrubber items={reading} active={active} anchorOf={sameId} onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(null, '', `#${id}`); }} label="جای خواندن در سند" />}
+          {activeItem && <SectionScrubber items={parts} active={partOf(active)} now={activeItem.text} anchorOf={sameId} endId="doc-body" onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(null, '', `#${id}`); }} label="جای خواندن در سند" />}
         </div>
       )}
       {withOutline && markdown.trim().length > 0 ? (

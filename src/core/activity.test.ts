@@ -107,3 +107,12 @@ test('«پایش» in the test record: monitors made or linked on a truth, numbe
   assert.equal(k.summary.monitoring, 2);
   assert.equal(k.summary.monitoringKept, 1);
 });
+
+test('every summary measure has a definition the owner reads beside it (§۵۴ ۱۶)', async () => {
+  const { computeKpis, KPI_DEFINITIONS } = await import('./activity.ts');
+  const k = computeKpis([], [{ id: 'a', name: 'الف', role: 'tester' }]);
+  for (const key of Object.keys(k.summary)) {
+    const d = KPI_DEFINITIONS[key as keyof typeof KPI_DEFINITIONS];
+    assert.ok(d && d.label && d.formula.length > 20, `no definition for ${key}`);
+  }
+});

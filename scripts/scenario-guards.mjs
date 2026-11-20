@@ -4,6 +4,12 @@
  * change cannot quietly undo it (Home's «جزئیات بیشتر» did, between #92 and #95). REAL server + temp SQLite, the sample space.
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-guards.mjs
  * A guard that fails names the decision it protects.
+ *
+ * What a guard is NOT (user, 2026-11-20; decisions.md «قاعدهٔ این دفتر»): a lock. Each guard checks the GOAL or invariant of a
+ * decision (what comes last, what opens where, that pages share one frame), never incidental pixels or today's implementation; the
+ * numbers below are tolerances of that goal. A red guard means «this decision is being changed»: update its § row in the ledger with
+ * the reason, then update the guard. It never means «revert». Audits judge a decision on principle; that it has a guard is no
+ * argument for keeping it.
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -179,6 +185,51 @@ try {
       await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).click();
       await page.getByRole('menuitem', { name: 'اسکلت شروع و قالب‌ها' }).click();
       await page.getByRole('dialog', { name: 'اسکلت شروع' }).waitFor({ timeout: 3000 });
+    });
+    await ctx.close();
+  }
+
+  step('§۵۴ ۱۳ · the scrubber: one part per MAIN section (goal: a calm line that says «section k of n»), nothing after the content');
+  {
+    const { ctx, page } = await open(390); await sample(page);
+    await nav(page, 'حقیقت'); await radio(page, 'ساختار');
+    await guard('[390] structure: parts = main sections', async () => {
+      await page.locator('[data-testid=section-scrubber]').waitFor({ timeout: 3000 });
+      const parts = await page.locator('[data-testid=section-scrubber] [data-part]').count();
+      const main = await page.locator('[data-testid=section-scrubber]').getAttribute('aria-valuemax');
+      const menuMain = await page.evaluate(() => document.querySelectorAll('#structure-tree > section, #structure-tree > * > section').length);
+      assert.equal(String(parts), main);
+      assert.ok(parts > 0 && parts <= Math.max(menuMain, 12), `${parts} parts`);
+    });
+    await ctx.close();
+  }
+
+  step('§۵۴ ۱۴ · the files list is an occasional task: opened from «⋯ › فایل‌ها», never a tail under the page');
+  {
+    const { ctx, page } = await open(1280); await sample(page);
+    await nav(page, 'حقیقت');
+    await guard('no files list on the page; ⋯ › فایل‌ها opens it beside the page', async () => {
+      assert.equal(await page.locator('main #source-files').count(), 0);
+      await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).click();
+      const item = page.getByRole('menuitem', { name: /^فایل‌ها/ });
+      if (await item.count()) { await item.click(); await page.getByRole('dialog', { name: /فایل‌ها/ }).waitFor({ timeout: 3000 }); }
+      else await page.keyboard.press('Escape');
+    });
+    await ctx.close();
+  }
+
+  step('§۵۴ ۱۵ · selecting thoughts is not a mode: one tick shows what can be done with them');
+  for (const width of [390, 1280]) {
+    const { ctx, page } = await open(width); await sample(page);
+    await nav(page, 'فکر');
+    await guard(`[${width}] a tick on an open thought shows the actions, and «لغو انتخاب» clears`, async () => {
+      const box = page.getByRole('checkbox', { name: /^انتخاب فکر/ }).first();
+      const hit = await box.evaluate((b) => { const r = b.closest('label').getBoundingClientRect(); return Math.min(r.width, r.height); });
+      assert.ok(hit >= 44, `the box's hit area is ${hit}px, under the 44px touch floor`);
+      await box.evaluate((b) => b.click());
+      await page.getByLabel('عملیات فکرهای انتخاب‌شده').waitFor({ timeout: 2000 });
+      await page.getByRole('button', { name: 'لغو انتخاب' }).click();
+      assert.equal(await page.getByLabel('عملیات فکرهای انتخاب‌شده').count(), 0);
     });
     await ctx.close();
   }

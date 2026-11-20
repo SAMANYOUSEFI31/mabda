@@ -161,6 +161,28 @@ export interface Kpis {
   tabs: Array<{ tab: string; people: number; views: number }>;
 }
 
+/**
+ * How each measure is computed, in words the owner reads beside the number (decisions.md §۵۴ ۱۶): a measure she cannot check is a
+ * number she cannot decide by. One entry per summary field; activity.test.ts fails when a measure has no definition.
+ */
+const fa = (n: number) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+export const KPI_DEFINITIONS: Record<keyof Kpis['summary'], { label: string; formula: string }> = {
+  people: { label: 'افراد آزمون', formula: 'همهٔ حساب‌های آزمون‌گر (در حالت محلی: این دستگاه). صاحب شمرده نمی‌شود.' },
+  activated: { label: 'به ارزش رسیدند', formula: `کسانی که اولین حقیقتِ خودشان را تا ${fa(ACTIVATION_MIN)} دقیقه پس از اولین رویدادشان تأیید کردند. تأیید یعنی تأیید پیش‌نویس، «هنوز درست است»، یا ساخت/ویرایش با وضعیت «حقیقت». کار روی نمونه‌ها شمرده نمی‌شود.` },
+  coreLoop: { label: 'چرخهٔ اصلی', formula: 'پیش از اولین تأیید چیزی افزودند (یادداشت، فایل، دانش، عدد…)، تأیید کردند، و در روزی جز روز اول (به وقت تهران) هم رویدادی دارند.' },
+  returnedD1: { label: 'برگشت فردا', formula: 'رویدادی در روز دقیقاً بعد از روز اول (به وقت تهران) دارند.' },
+  returnedD3plus: { label: 'برگشت از روز سوم', formula: 'رویدادی در روز سوم پس از روز اول یا بعدتر دارند.' },
+  medianMinutesToFirstConfirm: { label: 'زمان تا اولین حقیقت', formula: 'میانهٔ دقیقه‌ها از اولین رویداد هر نفر تا اولین تأییدش؛ فقط کسانی که تأییدی دارند.' },
+  medianActiveMinutes: { label: 'زمان استفاده', formula: `میانهٔ دقیقه‌های فعال هر نفر: جمع فاصلهٔ رویدادهای پشت‌سرهم که کمتر از ${fa(IDLE_MS / 60_000)} دقیقه‌اند (ضربان صفحهٔ باز خواندن آرام را پر می‌کند).` },
+  medianActiveDays: { label: 'روزهای فعال', formula: 'میانهٔ تعداد روزهای جدا (به وقت تهران) که هر نفر رویدادی دارد.' },
+  actions: { label: 'کارها', formula: 'همهٔ درخواست‌های تغییر (POST/PUT/PATCH/DELETE) آزمون‌گرها، موفق و ناموفق.' },
+  refusedPer100: { label: 'رد شده در هر ۱۰۰ کار', formula: 'پاسخ‌های ۴xx (مثلاً تداخل ۴۰۹ یا ورودی نادرست) تقسیم بر همهٔ کارها، ضرب در ۱۰۰.' },
+  brokePer100: { label: 'خرابی سرور در هر ۱۰۰ کار', formula: 'پاسخ‌های ۵xx تقسیم بر همهٔ کارها، ضرب در ۱۰۰.' },
+  clientErrors: { label: 'خطای دستگاه', formula: 'گزارش‌های خطایی که مرورگر آزمون‌گرها فرستاد.' },
+  monitoring: { label: 'پایش ساختند', formula: 'روی یک حقیقت پایش ساختند یا عددی قدیمی را به حقیقتی وصل کردند.' },
+  monitoringKept: { label: 'پایش را نگه داشتند', formula: 'در روزی بعد از ساخت اولین پایش، عددی ثبت کردند.' },
+};
+
 export const median = (xs: number[]): number | undefined => {
   if (!xs.length) return undefined;
   const s = [...xs].sort((a, b) => a - b); const m = s.length >> 1;

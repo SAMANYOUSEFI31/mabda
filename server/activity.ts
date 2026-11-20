@@ -21,6 +21,13 @@ const SKIP = /^\/api\/(activity|client-errors|owner|usage|health|join|logout|ses
 
 const newId = () => `act_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
 
+const rowToEvent = (r: Record<string, unknown>): ActivityEvent => ({
+  id: r.id as string, userId: r.user_id as string, ...(r.session_id ? { sessionId: r.session_id as string } : {}), ...(r.space_id ? { spaceId: r.space_id as string } : {}),
+  kind: r.kind as ActivityKind, name: r.name as string,
+  ...(r.status !== null && r.status !== undefined ? { status: Number(r.status) } : {}), ...(r.ms !== null && r.ms !== undefined ? { ms: Number(r.ms) } : {}),
+  ...(r.props ? { props: JSON.parse(r.props as string) as Props } : {}), at: r.created_at as string,
+});
+
 export class ActivityLog {
   constructor(private readonly db: SqlLike, private readonly clock: () => Date = () => new Date(), private readonly classify?: (userId: string, spaceId: string, itemId?: string) => Props) {}
 
@@ -101,12 +108,23 @@ export class ActivityLog {
     const rows = (f.since
       ? this.db.prepare('SELECT * FROM activity_events WHERE created_at >= ? ORDER BY created_at, id').all(f.since)
       : this.db.prepare('SELECT * FROM activity_events ORDER BY created_at, id').all()) as Array<Record<string, unknown>>;
-    return rows.map((r) => ({
-      id: r.id as string, userId: r.user_id as string, ...(r.session_id ? { sessionId: r.session_id as string } : {}), ...(r.space_id ? { spaceId: r.space_id as string } : {}),
-      kind: r.kind as ActivityKind, name: r.name as string,
-      ...(r.status !== null && r.status !== undefined ? { status: Number(r.status) } : {}), ...(r.ms !== null && r.ms !== undefined ? { ms: Number(r.ms) } : {}),
-      ...(r.props ? { props: JSON.parse(r.props as string) as Props } : {}), at: r.created_at as string,
-    }));
+    return rows.map(rowToEvent);
+  }
+
+  /**
+   * the live feed (§۵۴ ۱۶): the newest events first, at most `limit` (≤ 500), optionally one person's or one kind's; `after` (an
+   * ISO time) returns only what is newer, so a polling page asks for what changed, not for everything again. With the total.
+   */
+  recent(f: { limit?: number; userId?: string; kind?: ActivityKind; after?: string } = {}): { events: ActivityEvent[]; total: number } {
+    const where: string[] = []; const args: unknown[] = [];
+    if (f.userId) { where.push('user_id = ?'); args.push(f.userId); }
+    if (f.kind === 'action' || f.kind === 'ui') { where.push('kind = ?'); args.push(f.kind); }
+    if (f.after) { where.push('created_at > ?'); args.push(f.after); }
+    const w = where.length ? ` WHERE ${where.join(' AND ')}` : '';
+    const limit = Math.min(500, Math.max(1, Math.floor(f.limit ?? 100)));
+    const rows = this.db.prepare(`SELECT * FROM activity_events${w} ORDER BY created_at DESC, id DESC LIMIT ${limit}`).all(...args) as Array<Record<string, unknown>>;
+    const total = Number((this.db.prepare('SELECT COUNT(*) AS n FROM activity_events').get() as { n: number | string } | undefined)?.n ?? 0);
+    return { events: rows.map(rowToEvent), total };
   }
 
   /**

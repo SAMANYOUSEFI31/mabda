@@ -8,7 +8,8 @@
 import { ContextTreeDocView } from '../../components/knowledge/ContextTreeDocView';
 import { effectiveObjects } from '../../core/effectiveContext';
 import { dataApi } from '../../services/dataApi';
-import { Button, EmptyState, IconButton, Menu, SegmentedControl, formatNumber } from '../../ui';
+import { useState } from 'react';
+import { Button, Dialog, EmptyState, IconButton, Menu, SegmentedControl, formatNumber } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -21,6 +22,8 @@ const FilesPanel = lazyNamed(() => import('../../components/files/FilesPanel'), 
 export type KnowledgePageProps = Pick<ReadyScope, 'approvals' | 'askDeleteNote' | 'contextViewMode' | 'contradictions' | 'currentWorkspace' | 'data' | 'extractingNoteId' | 'focusNodeId' | 'focusNotes' | 'goFocus' | 'handleAddNote' | 'handleDeleteFile' | 'handleDeleteSamples' | 'handleMoveFile' | 'handleExtractNote' | 'handleProcessFile' | 'handleSplitNote' | 'handleUpdateNote' | 'handleUploadFile' | 'nodeOp' | 'nodes' | 'openContext' | 'openCounts' | 'openThinkingSpace' | 'quota' | 'renderCanvas' | 'reviewIdSet' | 'setAiRequest' | 'setArchiveOpen' | 'setContextViewMode' | 'setEffectNodeId' | 'setIsPacksOpen' | 'setIsStarterOpen' | 'setNodeDialog' | 'setReadNodeId' | 'setTemplateDraft' | 'setThoughtDialog' | 'setThreadNodeId' | 'toast' | 'vf' | 'wid' | 'workspaceContexts'>;
 
 export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contradictions, currentWorkspace, data, extractingNoteId, focusNodeId, focusNotes, goFocus, handleAddNote, handleDeleteFile, handleDeleteSamples, handleMoveFile, handleExtractNote, handleProcessFile, handleSplitNote, handleUpdateNote, handleUploadFile, nodeOp, nodes, openContext, openCounts, openThinkingSpace, quota, renderCanvas, reviewIdSet, setAiRequest, setArchiveOpen, setContextViewMode, setEffectNodeId, setIsPacksOpen, setIsStarterOpen, setNodeDialog, setReadNodeId, setTemplateDraft, setThoughtDialog, setThreadNodeId, toast, vf, wid, workspaceContexts }: KnowledgePageProps) {
+  // the files are an occasional task (§۵۴ ۱۴): a side panel from «⋯ › فایل‌ها», not a tail under every section
+  const [filesOpen, setFilesOpen] = useState(false);
   return (
         <div className="space-y-stack-lg">
           {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
@@ -44,7 +47,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 trigger={<IconButton icon="Ellipsis" label="کارهای دیگر حقیقت" variant="secondary" />}
                 items={[
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
-                  ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => document.getElementById('source-files')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }] : []),
+                  ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => setFilesOpen(true) }] : []),
                   // the start skeletons and her own saved templates (§۵۳ ۱۱): «ذخیره به‌عنوان قالب» in each section's ⋯ had no way back
                   { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
@@ -110,7 +113,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               onOpenAiRequest={(nodeId) => setAiRequest({ scopeNodeId: nodeId })}
               openNotesFor={focusNotes}
               onReorderNode={async (nodeId, index) => { await nodeOp(() => dataApi.moveNode(wid, nodeId, nodes.find((n) => n.id === nodeId)?.parentId ?? '', index)); }}
-              onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در بخش «فایل‌ها» پردازشش کن.' }); }}
+              onUploadFile={async (file, nodeId) => { const r = await handleUploadFile(file, nodeId); if (r) toast.show({ intent: 'success', message: 'فایل اضافه شد؛ برای استخراج دانش، در «⋯ › فایل‌ها» پردازشش کن.', action: { label: 'فایل‌ها', onClick: () => setFilesOpen(true) } }); }}
               onAddNote={handleAddNote}
               onUpdateNote={handleUpdateNote}
               onDeleteNote={askDeleteNote}
@@ -127,9 +130,10 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             /></PageSuspense>
           )}
 
-          {/* the files are reference material, like attachments at the end of a document: shown at the end once there is one;
-              adding one is under «⋯» above and in each section's «⋯» */}
-          {data.files.length > 0 && <div id="source-files" style={{ scrollMarginTop: 80 }}><PageSuspense><FilesPanel
+          {/* the files (§۵۴ ۱۴): each section already shows its own files where they belong; the whole list (process, move, delete)
+              is an occasional task, so it opens beside the page from «⋯ › فایل‌ها» instead of waiting at the end of a long page */}
+          <Dialog open={filesOpen} onClose={() => setFilesOpen(false)} side size="lg" title={`فایل‌ها (${formatNumber(data.files.length)})`} description="فایل‌ها منبع‌اند، نه حقیقت: از هر کدام دانش استخراج کن و پیشنهادها را در «فکر» تأیید کن.">
+            {filesOpen && <div id="source-files"><PageSuspense><FilesPanel
             files={data.files}
             nodes={nodes}
             quota={quota}
@@ -138,6 +142,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             onDelete={handleDeleteFile}
             onMove={handleMoveFile}
           /></PageSuspense></div>}
+          </Dialog>
           </div>}
         </div>
   );
