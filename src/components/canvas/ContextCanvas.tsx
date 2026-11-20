@@ -13,7 +13,7 @@ import { buildScene, HEAD, LAYOUT_ABOUT, LAYOUT_FA, neighbourInDirection, NOTE_H
 import type { CanvasLayout, Scene, SceneItem } from '../../core/canvasScene';
 import { canRedo, canUndo, createHistory, record, redo, undo } from '../../core/canvasHistory';
 import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
-import { clusterItems, edgeBudget, FIRST_VIEW_K, lodOf, readablePx } from '../../core/canvasLod';
+import { clusterItems, edgeBudget, FIRST_VIEW_K, LOD_FAR_BELOW, lodOf, MIN_SCREEN_TEXT, readablePx } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
 import { flatten, treeIndent } from '../../core/nodeTree';
@@ -22,7 +22,8 @@ import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
 import { CanvasItemCard, CanvasNoteCard, FACET_TINT } from './CanvasItemCard';
 import { CanvasMinimap } from './CanvasMinimap';
-import { OverviewFar, RowRail, railInset } from './CanvasOverviewLayer';
+import { OverviewFarList, RowRail, railInset } from './CanvasOverviewLayer';
+import type { ZoomSteps } from './usePanZoom';
 import { ConnectDialog } from './ConnectDialog';
 import { connectOptions, connectionUndo } from '../../core/connectRules';
 import type { ConnectOption } from '../../core/connectRules';
@@ -176,7 +177,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   // the row labels pinned at the stage's end edge: the board's own end margin (the gutter beyond the base column) covers part of their room
   const overviewInset = useCallback((w: number, k: number) => (layoutEff === 'overview' ? Math.max(0, railInset(w) - (GUTTER + PAD) * k) : 0), [layoutEff]);
   const shapeKey = `${layoutEff}|${lineage?.id ?? ''}|${lineage?.depth ?? 0}|${only}|${rowsBy}|${rowOrder.join(',')}|${onlyReview}|${showPending}|${scene.items.length}`;
-  const { box, view, setView, size, range, fit, zoomAt, reveal, toStage, panned, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, layoutEff === 'free' ? (isMobile ? 0.68 : 0.85) : FIRST_VIEW_K, fullscreen, overviewInset, layoutEff === 'free');
+  // the overview's far level is its own representation, a list of rows (§۵۰): the board zooms continuously down to where the far level
+  // begins, and one more step out (or «متناسب‌سازی» when the whole does not fit there) shows the list; a step in on a row opens it
+  const [farList, setFarList] = useState(false);
+  const stepIntent = useRef<ZoomSteps['intent']>(() => false);
+  const steps = useMemo<ZoomSteps | undefined>(() => (layoutEff === 'overview' ? { floor: LOD_FAR_BELOW, intent: (f, x, y, atFloor) => stepIntent.current(f, x, y, atFloor) } : undefined), [layoutEff]);
+  const { box, view, setView, size, range, fit, zoomAt, reveal, toStage, panned, handlers } = usePanZoom({ width: scene.width, height: scene.height }, shapeKey, layoutEff === 'free' ? (isMobile ? 0.68 : 0.85) : FIRST_VIEW_K, fullscreen, overviewInset, layoutEff === 'free', steps);
+  useEffect(() => { setFarList(false); }, [shapeKey]);
   const sceneRef = useRef(scene); sceneRef.current = scene;
   const viewRef = useRef(view); viewRef.current = view;
   useLayoutEffect(() => {
@@ -195,11 +202,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       return { ...v, y: screenY - row.y * v.k };
     });
   }, [scene, setView, size.h]);
-  const lod = lodOf(view.k);
+  const lod = farList && layoutEff === 'overview' ? 'far' : lodOf(view.k);
   /** names drawn inside the stage (frame and group heads, line chips) keep a readable size on screen at every zoom (§۵۰) */
   const headPx = readablePx(view.k);
   const headScale = headPx / 14;
-  const overviewFar = layoutEff === 'overview' && lod === 'far';
+  const overviewFar = layoutEff === 'overview' && farList;
+  const farListEl = useRef<HTMLDivElement>(null);
+  const farAnchor = useRef<string | null>(null);
 
   // ── what is drawn: the viewport (snapped, so panning does not re-render the cards) ──
   const SNAP = 160;
@@ -274,6 +283,50 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   }, [scene.overview]);
   const zoomToRect = useCallback((x: number, y: number, w: number, h: number) => setView(() => { const k = Math.min(1, Math.max(0.5, Math.min(size.w / (w + 80), size.h / (h + 80)))); return { k, x: size.w / 2 - (x + w / 2) * k, y: size.h / 2 - (y + h / 2) * k }; }), [setView, size.w, size.h]);
   const zoomRow = useCallback((nodeId: string) => { const r = scene.overview?.rows.find((x) => x.nodeId === nodeId); if (r) zoomToRect(0, r.y, scene.width, r.h); }, [scene.overview, scene.width, zoomToRect]);
+  /** one step IN from the list (button, ctrl+wheel, pinch): the board at its far floor, the row that was under the pointer (or the first
+   *  row the list shows) at the same height on the stage — the inverse of the step out. A tap on a row opens that row instead */
+  const leaveFar = useCallback((nodeId?: string, atY?: number) => {
+    setFarList(false);
+    const rows = scene.overview?.rows ?? [];
+    let id = nodeId;
+    const list = farListEl.current;
+    if (!id) {
+      const top = list?.scrollTop ?? 0;
+      id = [...(list?.querySelectorAll<HTMLElement>('[data-row]') ?? [])].find((li) => li.offsetTop + li.offsetHeight > top)?.dataset.row ?? rows[0]?.nodeId;
+    }
+    const row = rows.find((r) => r.nodeId === id);
+    const k = range.min;
+    const w = size.w - overviewInset(size.w, k);
+    const cw = scene.width * k;
+    const y = row ? (atY ?? 16) - row.y * k : 16;
+    setView({ k, x: cw <= w - 32 ? (w - cw) / 2 : w - 16 - cw, y });
+  }, [scene.overview, scene.width, range.min, size.w, overviewInset, setView]);
+  stepIntent.current = (f, x, y, atFloor) => {
+    if (farList) {
+      if (f <= 1) return true; // the far list is the last step out
+      const r = box.current?.getBoundingClientRect();
+      const li = r ? (document.elementFromPoint(r.left + x, r.top + y) as HTMLElement | null)?.closest<HTMLElement>('[data-row]') : null;
+      leaveFar(li?.dataset.row, li ? y : undefined);
+      return true;
+    }
+    if (f < 1 && atFloor) {
+      // the row at the middle of the stage stays in sight in the list
+      const rows = scene.overview?.rows ?? [];
+      const cy = (size.h / 2 - view.y) / view.k;
+      farAnchor.current = rows.find((row) => cy >= row.y && cy < row.y + row.h)?.nodeId ?? null;
+      setFarList(true);
+      return true;
+    }
+    return false;
+  };
+  useLayoutEffect(() => {
+    if (!farList || !farAnchor.current) return;
+    const li = farListEl.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(farAnchor.current)}"]`);
+    farAnchor.current = null;
+    if (li && farListEl.current) farListEl.current.scrollTop = Math.max(0, li.offsetTop - (farListEl.current.clientHeight - li.offsetHeight) / 2);
+  }, [farList]);
+  /** «متناسب‌سازی» = the whole: on the overview, when the whole does not fit at the far floor, the whole is the list of rows */
+  const fitAll = useCallback(() => { if (layoutEff === 'overview' && range.fit < range.min - 0.005) setFarList(true); else { setFarList(false); fit(); } }, [layoutEff, range.fit, range.min, fit]);
   const zoomRows = useCallback((a: string, b: string) => {
     const rs = (scene.overview?.rows ?? []).filter((x) => x.nodeId === a || x.nodeId === b);
     if (!rs.length) return;
@@ -641,6 +694,9 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   );
   // the toolbar is grouped, not long (Gestalt): view [layout · search · options] · history [undo / redo] · camera [zoom · fit · full screen] · [new note] · [details panel] · «⋯».
   // Only the rare things (auto layout, JSON Canvas, shortcuts, «this layout?») live under «⋯».
+  // the overview always has one more step out (its list of rows), whatever the size of the space: a level is a level, not a fallback
+  const zoomOutOff = farList || (layoutEff !== 'overview' && view.k <= range.min + 0.005);
+  const zoomInOff = !farList && view.k >= range.max - 0.005;
   const toolbar = (
     <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
       {layouts.length > 1 && <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={layouts.map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />}
@@ -661,11 +717,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         <IconButton icon="Redo2" label="از نو (Ctrl+Shift+Z)" disabled={!canRedo(hist) || busy} onClick={() => void doRedo()} />
       </span>
       <span className="flex items-center gap-inline-xs" role="group" aria-label="بزرگ‌نمایی">
-        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" disabled={view.k <= range.min + 0.005} onClick={() => zoomAt(1 / 1.25)} />}
-        <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fit} />
-        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" disabled={view.k >= range.max - 0.005} onClick={() => zoomAt(1.25)} />}
+        {!isMobile && <IconButton icon="ZoomOut" label="کوچک‌نمایی" disabled={zoomOutOff} onClick={() => zoomAt(1 / 1.25)} />}
+        <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fitAll} />
+        {!isMobile && <IconButton icon="ZoomIn" label="بزرگ‌نمایی" disabled={zoomInOff} onClick={() => (farList ? leaveFar() : zoomAt(1.25))} />}
         {/* how near the camera is, beside the zoom it reports (it used to float over the board's corner and cover the first column's name) */}
-        {!isMobile && <span className="caption whitespace-nowrap px-inset-xs tabular-nums text-text-subtle" data-testid="canvas-zoom-label">{lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · {formatNumber(Math.round(view.k * 100))}٪</span>}
+        {!isMobile && <span className="caption whitespace-nowrap px-inset-xs tabular-nums text-text-subtle" data-testid="canvas-zoom-label">{overviewFar ? 'نمای دور · همهٔ بخش‌ها' : `${lod === 'far' ? 'نمای دور' : lod === 'mid' ? 'نمای متوسط' : 'نمای نزدیک'} · ${formatNumber(Math.round(view.k * 100))}٪`}</span>}
       </span>
       <IconButton id="canvas-fs" icon={fullscreen ? 'Minimize2' : 'Maximize'} label={fullscreen ? 'خروج از تمام‌صفحه (ESC)' : 'تمام‌صفحه (F)'} aria-pressed={fullscreen} onClick={() => setFullscreen((v) => !v)} />
       {/* the canvas's own add, in its own kind, only in full screen (decisions.md §۱۸, re-decided in §۲۸): there the layer covers the
@@ -678,7 +734,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
           // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
           ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
-          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: view.k >= range.max - 0.005, onSelect: () => zoomAt(1.25) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: view.k <= range.min + 0.005, onSelect: () => zoomAt(1 / 1.25) }] : []),
+          ...(isMobile ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: zoomInOff, onSelect: () => (farList ? leaveFar() : zoomAt(1.25)) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: zoomOutOff, onSelect: () => zoomAt(1 / 1.25) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
@@ -769,8 +825,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             data-lod={lod}
           >
             <div className="absolute top-space-0 start-space-0" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: '0 0', willChange: 'transform', inlineSize: scene.width, blockSize: scene.height }}>
-              {/* far, the overview is one summary per row: the column heads belong to the cards, which are not drawn */}
-              {shownBoxes.filter((b) => !(overviewFar && b.kind === 'column')).map((b) => (
+              {/* far, the overview is one summary per row: the column heads belong to the cards, which are not drawn. A column head whose
+                  strip is too short to hold its name at 13px on screen is not drawn rather than shrunk (§۵۰: never below 13); an empty
+                  strip would be noise */}
+              {shownBoxes.filter((b) => !(b.kind === 'column' && (overviewFar || b.h * 0.6 * view.k < MIN_SCREEN_TEXT))).map((b) => (
                 <div key={b.id} title={b.hint} className={`absolute top-space-0 start-space-0 rounded-control-sm border ${b.kind === 'group' ? `${b.depth === 0 ? 'border-border-bold' : 'border-border-default'}` : b.kind === 'column' ? 'border-border-default bg-surface-raised' : 'border-border-subtle bg-surface-raised/40'} ${selection.length && b.kind === 'group' ? 'opacity-70' : ''}`} style={{ transform: `translate(${b.x}px, ${b.y}px)`, inlineSize: b.w, blockSize: b.h, pointerEvents: b.kind === 'group' ? 'none' : undefined }}>
                   <div dir="rtl" className={`flex items-center justify-between gap-inline-sm px-inset-sm ${b.kind === 'column' ? 'h-full justify-center' : ''}`} style={b.kind === 'group' ? { blockSize: Math.max(56, 40 * headScale), pointerEvents: 'auto', fontSize: headPx } : undefined}>
                     <span className="flex min-w-space-0 items-center gap-inline-xs"><span className={`${b.kind === 'column' ? 'label-md text-text-default' : 'label-md truncate text-text-subtle'}`} style={b.kind === 'row' ? { paddingInlineEnd: b.depth * 12 } : b.kind === 'column' ? { fontSize: Math.min(headPx, b.h * 0.6) } : b.kind === 'group' || b.kind === 'zone' ? { fontSize: headPx } : undefined}>{layoutEff === 'overview' && b.kind === 'row' ? '' : b.label}</span>{b.kind === 'group' && (b.count ?? 0) > 0 && <Badge intent="neutral" icon={false}>{formatNumber(b.count!)} مورد</Badge>}</span>
@@ -789,7 +847,6 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                   </div>
                 );
               })}
-              {overviewFar && <OverviewFar scene={scene} k={view.k} onZoomRow={zoomRow} onZoomRows={zoomRows} />}
               <CanvasEdges width={scene.width} height={scene.height} routed={routed} emphasized={emphasized} hasFocus={focusSet.size > 0 || !!selectedEdge} showAll={showAllEdges} hovered={hoverEdge} selectedEdge={selectedEdge} onHover={setHoverEdge} onSelect={(id) => { setSelectedEdge(id); setSelection([]); if (isMobile) setInspectorOpen(true); }} />
               {chipEdges.map(({ edge: e, route }) => (
                 <span key={`chip-${e.id}`} data-edge-chip={e.id} className="body-sm pointer-events-none absolute top-space-0 start-space-0 whitespace-nowrap rounded-pill border border-border-bold bg-mabda-edge-chip-bg px-inset-sm text-text-default" style={{ transform: `translate(${route.mid.x}px, ${route.mid.y}px) translate(-50%, -50%)`, fontSize: headPx }}>{e.label}{e.count > 1 ? ` (${formatNumber(e.count)})` : ''}</span>
@@ -812,6 +869,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                     onContext={(it, x, y) => setCtx({ item: it, x, y })} onPointerDown={onCardDown} onLink={i.kind === 'object' ? startLink : undefined} onActions={(it) => it.objectId && setActions(it.objectId)} />;
                 })}
             </div>
+            {overviewFar && <OverviewFarList scene={scene} listRef={farListEl} topRoom={!inspectorOpen && !sheet} onZoomRow={(id) => { setFarList(false); zoomRow(id); }} onZoomRows={(a, b) => { setFarList(false); zoomRows(a, b); }} />}
             {layoutEff === 'overview' && !overviewFar && <RowRail scene={scene} view={view} size={size} opened={openedRows} onToggleRow={toggleRow} onMoveRow={moveRow} />}
             {stageEmpty && (
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
@@ -823,7 +881,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             )}
             {/* the minimap: whenever the canvas is larger than the window (and the window is wide enough not to hide cards), at the START-bottom corner where nothing else lives */}
             <div className="pointer-events-none absolute bottom-space-2 start-space-2 flex flex-col items-start gap-stack-xs">
-              {!isMobile && size.w >= 640 && scene.items.length > 0 && (fullscreen || scene.width * view.k > size.w * 1.15 || scene.height * view.k > size.h * 1.15) && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
+              {!isMobile && !overviewFar && size.w >= 640 && scene.items.length > 0 && (fullscreen || scene.width * view.k > size.w * 1.15 || scene.height * view.k > size.h * 1.15) && <CanvasMinimap items={scene.items} width={scene.width} height={scene.height} view={view} size={size} selected={selSet} onJump={(x, y) => setView((cur) => ({ ...cur, x: size.w / 2 - x * cur.k, y: size.h / 2 - y * cur.k }))} />}
             </div>
             {!inspectorOpen && !sheet && <div className="absolute start-space-2 top-space-2" data-no-pan=""><Button size="sm" variant="secondary" iconStart="PanelLeft" onClick={() => setInspectorMode('docked')}>جزئیات</Button></div>}
             

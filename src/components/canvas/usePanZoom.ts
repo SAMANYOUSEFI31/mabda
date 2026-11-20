@@ -23,7 +23,10 @@ const pinchCenter = (pts: Map<number, { x: number; y: number }>) => { const [a, 
  *  view, «متناسب‌سازی» and the pan limit never place a card under them (the overview's row labels). It depends on the zoom because
  *  the board's own end margin already covers part of it, more so the nearer the view */
 /** `roam`: the free canvas keeps room around its cards to put new ones (40% of the stage); boards with a fixed layout keep only a small margin */
-export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0, endInset: (w: number, k: number) => number = () => 0, roam = false) {
+/** `steps`: a board whose far level is a separate representation (the overview's list of rows, §۵۰): the continuous zoom stops at
+ *  `floor`, and `intent(factor, x, y, atFloor)` sees every zoom gesture first — returning true takes it (a step to or from that level) */
+export interface ZoomSteps { floor: number; intent: (factor: number, x: number, y: number, atFloor: boolean) => boolean }
+export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0, endInset: (w: number, k: number) => number = () => 0, roam = false, steps?: ZoomSteps) {
   const [view, setRawView] = useState<View>({ x: 0, y: 0, k: 1 });
   const [size, setSize] = useState({ w: 800, h: 520 });
   // every change of the view goes through the clamp, so no gesture, button or jump can leave the board off screen
@@ -49,7 +52,10 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
 
   bounds.current = { size, content, endInset, roam };
   const inset = endInset(size.w, 1);
-  const range = zoomRange({ stageW: size.w - inset, stageH: size.h, contentW: content.width, contentH: content.height, cardW: CARD_W });
+  const range0 = zoomRange({ stageW: size.w - inset, stageH: size.h, contentW: content.width, contentH: content.height, cardW: CARD_W });
+  const range = steps ? { ...range0, min: Math.min(range0.max, Math.max(range0.min, steps.floor)) } : range0;
+  const viewNow = useRef(view); viewNow.current = view;
+  const stepsRef = useRef(steps); stepsRef.current = steps;
   /** «متناسب‌سازی»: everything, or as much as still reads (a tall board: from its start, at the far floor) */
   const fit = useCallback(() => {
     const k = Math.min(1, Math.max(range.min, range.fit));
@@ -68,6 +74,8 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
   }, [shapeKey, measured]);
 
   const zoomAt = useCallback((factor: number, cx = size.w / 2, cy = size.h / 2) => {
+    const st = stepsRef.current;
+    if (st && st.intent(factor, cx, cy, viewNow.current.k <= range.min + 0.005)) return;
     // a view already outside the range (the stage was resized) is never pushed further out, only back toward it
     setView((v) => { const k = Math.min(Math.max(range.max, v.k), Math.max(Math.min(range.min, v.k), v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
   }, [size.w, size.h, range.min, range.max, setView]);
@@ -89,11 +97,14 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
   /** true when the gesture that just ended moved the view (more than a tap's wobble): its click is not a tap */
   const panned = useCallback(() => travel.current > 6, []);
   const onPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button, [data-no-pan]')) return; // cards and controls keep their own gestures
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // cards and controls keep their own gestures (a tap, a drag); a FINGER on one is still counted, so a pinch that starts on a card
+    // zooms like one that starts between cards (most of a dense board is cards). One finger there never pans: that is the card's drag
+    const onControl = !!(e.target as HTMLElement).closest('button, [data-no-pan]');
+    if (onControl && e.pointerType !== 'touch') return;
+    if (!onControl) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const d: NonNullable<typeof drag.current> = drag.current ?? { pts: new Map<number, { x: number; y: number }>() };
     d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    d.last = { x: e.clientX, y: e.clientY };
+    d.last = onControl && d.pts.size === 1 ? undefined : { x: e.clientX, y: e.clientY };
     d.pinch = d.pts.size === 2 ? pinchDistance(d.pts) : undefined;
     if (d.pts.size === 1) travel.current = 0;
     drag.current = d;
