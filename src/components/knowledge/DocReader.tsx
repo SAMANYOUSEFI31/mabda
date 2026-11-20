@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { track } from '../../services/usage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OutlineItem } from '../../core/contextMarkdown';
 import { Button, IconButton, Menu, Markdown, SegmentedControl, Switch, useToast } from '../../ui';
@@ -53,6 +54,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
     const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url; a.download = `${name}.md`; a.click();
+    track('action.doc-download');
     URL.revokeObjectURL(url);
   };
 

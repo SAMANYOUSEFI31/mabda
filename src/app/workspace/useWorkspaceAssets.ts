@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { logUi } from '../../services/activity';
 import React, { useState } from 'react';
 import type { AiPlan, ContentBlock, GenerationResult, UsageSummary, UsedContextRef } from '../../types';
 import { GeneratedDeliverable, LedgerEntry, Workspace } from '../../types';
@@ -123,6 +124,8 @@ export function useWorkspaceAssets(p: AppCoreScope & UsageCountersScope) {
     // what the space is for travels with the form (PurposeField); it picks the starting tree on the server
     const raw = new FormData(e.currentTarget as HTMLFormElement).get('purpose');
     const purpose = raw === 'work' || raw === 'project' || raw === 'empty' ? raw : 'personal';
+    // which purpose people choose is a label from a list, never text she typed (src/core/activity.ts cleanProps)
+    logUi('feature', { key: 'action.space-new', purpose });
     const newWs: Workspace = {
       purpose,
       id: clientId('ws'),

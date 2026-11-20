@@ -124,6 +124,7 @@ export const ownerApi = {
   backupUrl: '/api/owner/backup',
   /** the user-test record (server/activity.ts): measures computed from the raw events, and the raw events as a download */
   activityKpis: () => call<import('../core/activity').Kpis>('GET', '/owner/activity/kpis'),
+  activityPurge: (before?: string) => call<{ events: number; errors: number }>('POST', '/owner/activity/purge', before ? { before } : {}),
   activityExportUrl: (format: 'csv' | 'json') => `/api/owner/activity/export${format === 'csv' ? '?format=csv' : ''}`,
 };
 

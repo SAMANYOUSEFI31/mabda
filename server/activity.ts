@@ -109,6 +109,20 @@ export class ActivityLog {
     }));
   }
 
+  /**
+   * the end of a test round (§۵۳ ۱۲): every recorded event and device error report before `before` (ISO; all of them when absent) is
+   * removed for good. The owner downloads the record first; people's spaces and knowledge are never touched. Returns how many went.
+   */
+  purge(before?: string): { events: number; errors: number } {
+    const cut = before ?? '9999-12-31T23:59:59.999Z';
+    const n = (sql: string) => Number((this.db.prepare(sql).get(cut) as { n: number | string } | undefined)?.n ?? 0);
+    const events = n('SELECT COUNT(*) AS n FROM activity_events WHERE created_at < ?');
+    const errors = n('SELECT COUNT(*) AS n FROM client_errors WHERE created_at < ?');
+    this.db.prepare('DELETE FROM activity_events WHERE created_at < ?').run(cut);
+    this.db.prepare('DELETE FROM client_errors WHERE created_at < ?').run(cut);
+    return { events, errors };
+  }
+
   /** client error reports per person (for the error measure) */
   clientErrorsByUser(): Record<string, number> {
     const out: Record<string, number> = {};

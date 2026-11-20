@@ -150,3 +150,27 @@ test('Mabda\'s examples: stored as «Sample», never counted as the person\'s ow
     assert.notEqual(withId.json.object.id, 'ctx_domain');
   } finally { t.close(); }
 });
+
+test('the end of a round: the owner purges the record (events and device errors); a tester cannot; spaces stay', async () => {
+  const t = await boot();
+  try {
+    const owner = t.browser(); await owner.join(OWNER_CODE);
+    const a = t.browser();
+    await a.join((await owner.call('POST', '/owner/people', { name: 'نفر ب' })).json.link.split('#join=')[1]);
+    await a.call('POST', '/consent', {});
+    await a.call('POST', '/bootstrap', {});
+    await a.call('POST', '/activity', { events: [{ name: 'session_start' }, { name: 'view', props: { tab: 'home' } }] });
+    const count = () => Number((t.db.prepare('SELECT COUNT(*) AS n FROM activity_events').get() as { n: number }).n);
+    const spaces = () => Number((t.db.prepare('SELECT COUNT(*) AS n FROM workspaces').get() as { n: number }).n);
+    assert.ok(count() > 0);
+    const before = spaces();
+    const refused = (await a.call('POST', '/owner/activity/purge', {})).status;
+    assert.ok(refused >= 400 && refused < 500, `only the owner (got ${refused})`);
+    const r = await owner.call('POST', '/owner/activity/purge', {});
+    assert.equal(r.status, 200);
+    assert.ok(r.json.events > 0);
+    // the purge request itself may be logged after the delete (it is the owner's action); nothing from before it is left
+    assert.ok(count() <= 1);
+    assert.equal(spaces(), before, 'people\'s spaces are not touched');
+  } finally { t.close(); }
+});

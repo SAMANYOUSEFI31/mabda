@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { track } from '../../services/usage';
 import React, { useEffect, useState } from 'react';
 import type { PackInfo } from '../../types/state';
 import { dataApi, DataApiError } from '../../services/dataApi';
@@ -40,6 +41,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       const ta = document.createElement('textarea'); ta.value = pack.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
     setCopied(true);
+    track('action.pack-copy');
     toast.show({ intent: 'success', message: 'بستهٔ دانش کپی شد. آن را در هر ابزاری که می‌خواهی بچسبان و بخواه طبق قالب جواب بدهد.' });
   };
 

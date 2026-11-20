@@ -34,6 +34,12 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'action.home-todo', label: 'یکی از کارهای خانه انجام شد', level: 1 },
   { key: 'action.accept-proposal', label: 'پیشنهاد تأیید شد', level: 2 },
   { key: 'action.mention-link', label: 'رابطه از ارجاع @ ساخته شد', level: 3 },
+  // §۵۳ ۱۲: the steps the test could not see before
+  { key: 'action.palette-pick', label: 'نتیجهٔ جستجوی سراسری باز شد', level: 2 },
+  { key: 'action.pack-copy', label: 'بستهٔ دانش کپی شد', level: 2 },
+  { key: 'action.doc-download', label: 'سند دانلود شد', level: 2 },
+  { key: 'action.add-switch', label: 'نوع افزودن عوض شد', level: 3 },
+  { key: 'action.space-new', label: 'فضای تازه ساخته شد', level: 2 },
 ];
 export const FEATURE_KEYS: ReadonlySet<string> = new Set(FEATURES.map((f) => f.key));
 export const isFeatureKey = (k: unknown): k is string => typeof k === 'string' && FEATURE_KEYS.has(k);
