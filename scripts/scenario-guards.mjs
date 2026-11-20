@@ -4,6 +4,12 @@
  * change cannot quietly undo it (Home's «جزئیات بیشتر» did, between #92 and #95). REAL server + temp SQLite, the sample space.
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-guards.mjs
  * A guard that fails names the decision it protects.
+ *
+ * What a guard is NOT (user, 2026-11-20; decisions.md «قاعدهٔ این دفتر»): a lock. Each guard checks the GOAL or invariant of a
+ * decision (what comes last, what opens where, that pages share one frame), never incidental pixels or today's implementation; the
+ * numbers below are tolerances of that goal. A red guard means «this decision is being changed»: update its § row in the ledger with
+ * the reason, then update the guard. It never means «revert». Audits judge a decision on principle; that it has a guard is no
+ * argument for keeping it.
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
