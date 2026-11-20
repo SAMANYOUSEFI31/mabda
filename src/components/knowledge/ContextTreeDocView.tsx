@@ -5,7 +5,8 @@
 
 import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
-import React, { useEffect, useMemo, useState } from 'react';
+import { SectionScrubber, useReadingPosition } from './readingPosition';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
@@ -309,9 +310,39 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
       </div>
+      <OutlineBar nodes={nodes} roots={roots} />
       <div className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
+  );
+};
+
+/** a page of this many sections or more is long enough that «where am I, and how do I get to X» needs an answer on screen */
+const OUTLINE_FROM = 4;
+const nodeAnchor = (id: string) => `node-${id}`;
+
+/**
+ * «فهرست» and the scrubber over the structure (decisions.md §۵۱, §۵۲): the same as «سند» on a phone, pinned under the page bar at
+ * every width. Main sections and their first level, in reading order. The section being read also inks its own start rule, the
+ * line that already runs down the page beside its items: the page itself says where she is, not only the bar.
+ */
+const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes, roots }) => {
+  const items = useMemo(() => roots.flatMap((r) => [{ id: r.id, label: r.label, level: 1 }, ...childrenOf(nodes, r.id).map((c) => ({ id: c.id, label: c.label, level: 2 }))]), [nodes, roots]);
+  const on = items.length >= OUTLINE_FROM;
+  const { active, goTo } = useReadingPosition(items, nodeAnchor, on);
+  useEffect(() => {
+    if (!on || !active) return undefined;
+    const sec = document.getElementById(nodeAnchor(active))?.closest('section');
+    sec?.setAttribute('data-reading', '');
+    return () => sec?.removeAttribute('data-reading');
+  }, [active, on]);
+  if (!on) return null;
+  return (
+    <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
+      <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
+        items={items.map((i) => ({ label: `${i.level > 1 ? '— ' : ''}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
+      <SectionScrubber items={items} active={active} anchorOf={nodeAnchor} onGo={goTo} label="جای خواندن در بخش‌ها" />
+    </div>
   );
 };
 

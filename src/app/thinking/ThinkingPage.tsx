@@ -10,16 +10,21 @@ import { requestAdd } from '../../core/addRequest';
 import { Button, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
+import { ContradictionPanel } from '../../components/knowledge/ContradictionPanel';
+import { LIMITS } from '../../core/limits';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
 const ThinkingSpace = lazyNamed(() => import('../../components/thinking/ThinkingSpace'), 'ThinkingSpace');
 
-export type ThinkingPageProps = Pick<ReadyScope, 'currentWorkspace' | 'data' | 'focusNodeId' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleApproveDraft' | 'handleConvertItem' | 'handleDeriveThought' | 'handleRejectDraft' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSynthesizeThought' | 'nodes' | 'openContext' | 'previewTruth' | 'renderCanvas' | 'scopeChip' | 'setCompare' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setOptionsItemKey' | 'setPackTarget' | 'setSpaceNode' | 'setThinkingView' | 'setThoughtDialog' | 'spaceNode' | 'startSectionFromThought' | 'startThoughtAi' | 'thinking' | 'thinkingView' | 'workspaceContexts'>;
+export type ThinkingPageProps = Pick<ReadyScope, 'canJudge' | 'contradictions' | 'handleCheckContradictions' | 'handleKeepContradiction' | 'handleSeparateContradiction' | 'judgedToday' | 'judging' | 'vf' | 'currentWorkspace' | 'data' | 'focusNodeId' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleApproveDraft' | 'handleConvertItem' | 'handleDeriveThought' | 'handleRejectDraft' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSynthesizeThought' | 'nodes' | 'openContext' | 'previewTruth' | 'renderCanvas' | 'scopeChip' | 'setCompare' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setOptionsItemKey' | 'setPackTarget' | 'setSpaceNode' | 'setThinkingView' | 'setThoughtDialog' | 'spaceNode' | 'startSectionFromThought' | 'startThoughtAi' | 'thinking' | 'thinkingView' | 'workspaceContexts'>;
 
-export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAcceptProposal, handleAcceptReview, handleApproveDraft, handleConvertItem, handleDeriveThought, handleRejectDraft, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSynthesizeThought, nodes, openContext, previewTruth, renderCanvas, scopeChip, setCompare, setIsImportOpen, setIsMemoryOpen, setOptionsItemKey, setPackTarget, setSpaceNode, setThinkingView, setThoughtDialog, spaceNode, startSectionFromThought, startThoughtAi, thinking, thinkingView, workspaceContexts }: ThinkingPageProps) {
+export function ThinkingPage({ canJudge, contradictions, handleCheckContradictions, handleKeepContradiction, handleSeparateContradiction, judgedToday, judging, vf, currentWorkspace, data, focusNodeId, handleAcceptProposal, handleAcceptReview, handleApproveDraft, handleConvertItem, handleDeriveThought, handleRejectDraft, handleRejectProposal, handleReplaceWithProposal, handleReviseThought, handleSynthesizeThought, nodes, openContext, previewTruth, renderCanvas, scopeChip, setCompare, setIsImportOpen, setIsMemoryOpen, setOptionsItemKey, setPackTarget, setSpaceNode, setThinkingView, setThoughtDialog, spaceNode, startSectionFromThought, startThoughtAi, thinking, thinkingView, workspaceContexts }: ThinkingPageProps) {
   return (
         <div className="space-y-stack-lg">
-          <div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
+          {/* the reading column (decisions.md §۵۱): the header and the list share the 680px measure of Home and «سند», so a row's
+              buttons sit beside its text instead of a screen away (1,100px at 1920 before). Only the canvas takes the full width; the
+              header keeps one width in both views so «فهرست / بوم» does not move under the pointer */}
+          <div className="flex max-w-reading flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</p>
@@ -36,8 +41,11 @@ export function ThinkingPage({ currentWorkspace, data, focusNodeId, handleAccept
           </div>
           <div id="thinking-view" />
           {thinkingView === 'canvas' ? renderCanvas('thinking') : (
-            <div className="flex flex-col gap-stack-sm">
+            <div className="flex max-w-reading flex-col gap-stack-sm">
             {spaceNode === focusNodeId && scopeChip}
+            {/* two truths that do not agree are a decision that waits for her, like a proposal or a draft: «فکر» is where such
+                decisions are made (decisions.md §۴۹الف, §۵۱). Home keeps its line and its «جزئیات بیشتر» mirror, as for proposals */}
+            {vf.contradictions && contradictions.length > 0 && <ContradictionPanel contradictions={contradictions} nodes={nodes} onKeep={handleKeepContradiction} onSeparate={handleSeparateContradiction} check={canJudge ? { busy: judging, onCheck: handleCheckContradictions, used: judgedToday, cap: LIMITS.decisionJudgmentsPerDay } : undefined} />}
             <PageSuspense><ThinkingSpace
         objects={workspaceContexts}
         notes={data.notes}

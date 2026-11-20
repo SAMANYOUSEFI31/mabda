@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FIRST_SHOWN, MORE_STEP, allCommands, buildSearchIndex, registerPaletteCommand, searchIndex, shownCount, snippetFor } from './globalSearch';
 import type { ContextObject, StoredFile, Thought, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 // «جست‌وجوی واحد»: every kind, no fixed ceiling, progressive disclosure, Persian folding, a registration point for commands.
 
@@ -79,8 +80,7 @@ test('5000 items: a keystroke answers well inside a frame budget (scripts/bench-
   const big = Array.from({ length: 5000 }, (_, i) => o(`b${i}`, { title: text(i, 3), content: text(i + 1, 40), nodeId: i % 2 ? 'offer' : 'brand' }));
   const ix = buildSearchIndex({ nodes, objects: big });
   searchIndex(ix, 'واژه');
-  const t0 = performance.now();
-  for (let i = 0; i < 10; i++) searchIndex(ix, i % 2 ? 'واژه' : `${words[i * 11]} ${words[i * 5]}`);
-  const per = (performance.now() - t0) / 10;
+  const { ms } = timed(() => { for (let i = 0; i < 10; i++) searchIndex(ix, i % 2 ? 'واژه' : `${words[i * 11]} ${words[i * 5]}`); }, 1000);
+  const per = ms / 10;
   assert.ok(per < 100, `one search took ${per.toFixed(1)} ms`);
 });

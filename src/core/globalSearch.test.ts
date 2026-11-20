@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSearchIndex, expandQuery, flattenGroups, groupOrder, searchIndex, totalHits } from './globalSearch';
 import type { ContextObject, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 const nodes: TreeNode[] = [
   { id: 'business', label: 'کسب‌وکار', description: '', order: 0 },
@@ -90,10 +91,7 @@ test('a big workspace: found with a few letters, fast, limited per group', () =>
   const many: ContextObject[] = [];
   for (let i = 0; i < 3000; i++) many.push(o(`k${i}`, { title: `مورد شمارهٔ ${i} دربارهٔ موضوع ${i % 50}`, content: `توضیح ${'بلند '.repeat(20)}${i}`, nodeId: i % 2 ? 'offer' : 'brand' }));
   many.push(o('needle', { title: 'سوزن یکتا', content: 'پیدا شدنی' }));
-  const t0 = Date.now();
-  const index = buildSearchIndex({ nodes, objects: many });
-  const g = searchIndex(index, 'سوزن');
-  const ms = Date.now() - t0;
+  const { ms, value: [index, g] } = timed(() => { const ix = buildSearchIndex({ nodes, objects: many }); return [ix, searchIndex(ix, 'سوزن')] as const; }, 3000);
   assert.equal(g.object[0].id, 'needle');
   assert.ok(searchIndex(index, 'موضو', { limitPerGroup: 4 }).object.length === 4);
   assert.ok(ms < 3000, `index + search took ${ms}ms`);

@@ -97,14 +97,18 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
   /** true when the gesture that just ended moved the view (more than a tap's wobble): its click is not a tap */
   const panned = useCallback(() => travel.current > 6, []);
   const onPointerDown = (e: React.PointerEvent) => {
-    // cards and controls keep their own gestures (a tap, a drag); a FINGER on one is still counted, so a pinch that starts on a card
-    // zooms like one that starts between cards (most of a dense board is cards). One finger there never pans: that is the card's drag
-    const onControl = !!(e.target as HTMLElement).closest('button, [data-no-pan]');
+    // with a mouse, cards and controls keep their own gestures (a click, a drag on the free canvas). A FINGER is different: cards are
+    // not dragged by touch (a long press opens their menu), so one finger on a card pans the board like one between cards, and a
+    // pinch that starts on a card zooms (most of a dense board is cards). Controls (buttons, the far list, frame heads) keep the
+    // finger: a tap on them must stay a tap, and the far list scrolls itself. A card's own buttons are controls
+    const t = e.target as HTMLElement;
+    const onControl = !!t.closest('button, textarea, input, [data-no-pan]');
+    const onCard = e.pointerType === 'touch' && !t.closest('button, textarea, input') && !!t.closest('[data-item-id]');
     if (onControl && e.pointerType !== 'touch') return;
     if (!onControl) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const d: NonNullable<typeof drag.current> = drag.current ?? { pts: new Map<number, { x: number; y: number }>() };
     d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    d.last = onControl && d.pts.size === 1 ? undefined : { x: e.clientX, y: e.clientY };
+    d.last = onControl && !onCard && d.pts.size === 1 ? undefined : { x: e.clientX, y: e.clientY };
     d.pinch = d.pts.size === 2 ? pinchDistance(d.pts) : undefined;
     if (d.pts.size === 1) travel.current = 0;
     drag.current = d;

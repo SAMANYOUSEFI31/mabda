@@ -4,6 +4,7 @@ import { buildOverviewScene, rowOfNode, rowsDependingOn, QUANTUM } from './swiml
 import { buildScene } from './canvasScene';
 import type { SceneInput } from './canvasScene';
 import type { ContextObject, ContextRelationship, Note, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: '', order, ...(parentId ? { parentId } : {}) });
 // root → ship, sub (→ gift → deep), brand
@@ -131,9 +132,8 @@ test('STABLE: adding one item to a cell with room moves nothing; adding one with
 test('300 cards: built fast and every card has its own place', () => {
   const objs = Array.from({ length: 300 }, (_, i) => obj(`m${i}`, ['ship', 'sub', 'brand', 'gift', 'deep'][i % 5]));
   const rels = objs.slice(5).map((o, i) => dep(o.id, objs[(i * 7) % 250].id)).filter((r) => r.sourceId !== r.targetId);
-  const t0 = Date.now();
-  const s = buildOverviewScene(input(objs, rels));
-  assert.ok(Date.now() - t0 < 1500, `built in ${Date.now() - t0}ms`);
+  const { ms, value: s } = timed(() => buildOverviewScene(input(objs, rels)), 1500);
+  assert.ok(ms < 1500, `built in ${ms}ms`);
   assert.equal(s.items.length, 300);
   const seen = new Set<string>();
   for (const i of s.items) { const k = `${i.x},${i.y}`; assert.ok(!seen.has(k), `overlap at ${k}`); seen.add(k); }

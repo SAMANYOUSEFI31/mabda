@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OutlineItem } from '../../core/contextMarkdown';
 import { Button, IconButton, Menu, Markdown, SegmentedControl, Switch, useToast } from '../../ui';
+import { SectionScrubber, useReadingPosition } from './readingPosition';
 
 interface DocReaderProps {
   markdown: string;
@@ -25,15 +26,16 @@ interface DocReaderProps {
   notice?: React.ReactNode;
 }
 
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const sameId = (id: string) => id;
 const indent = (level: number) => (level <= 1 ? '' : level === 2 ? 'ps-inset-md' : level === 3 ? 'ps-inset-xl' : 'ps-inset-2xl');
 
 /** A Markdown document the way people want to read it: typeset by default, raw source one click away, copy and download. With an outline: where you are, and a stable link to every section. */
 export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty, outline, header, refs, whole, notice }) => {
   const toast = useToast();
   const [view, setView] = useState<'read' | 'source'>('read');
-  const [active, setActive] = useState<string | undefined>(outline?.[0]?.id);
   const items = useMemo(() => outline ?? [], [outline]);
+  const reading = useMemo(() => items.map((i) => ({ id: i.id, label: i.text, level: i.level })), [items]);
+  const { active, goTo: reach } = useReadingPosition(reading, sameId, view === 'read');
 
   const copy = async (text = markdown, what = 'متن Markdown') => {
     try { await navigator.clipboard.writeText(text); toast.show({ intent: 'success', message: `${what} کپی شد.` }); }
@@ -46,15 +48,12 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
     URL.revokeObjectURL(url);
   };
 
+  /** the reading position, plus a permalink in the address (DATA-03) */
   const goTo = useCallback((id: string, setHash = true) => {
-    const el = document.getElementById(id);
-    if (!el) return false;
-    el.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
-    el.focus({ preventScroll: true });
+    if (!reach(id)) return false;
     if (setHash) window.history.replaceState(null, '', `#${id}`);
-    setActive(id);
     return true;
-  }, []);
+  }, [reach]);
   const copyLink = async () => {
     if (!active) return;
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${active}`;
@@ -64,35 +63,10 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
 
   // a new document (another tab): go where the address says, else to the top
   useEffect(() => {
-    setActive(items[0]?.id);
     const want = window.location.hash.slice(1);
     if (want && items.some((i) => i.id === want)) { const t = setTimeout(() => goTo(want, false), 30); return () => clearTimeout(t); }
     return undefined;
   }, [items, goTo]);
-
-  // scroll-spy: «where you are» = the last heading that has passed the reading line (a third of the way down the screen);
-  // at the very end of the page it is the last heading, even if that one never reaches the line
-  useEffect(() => {
-    if (view !== 'read' || items.length === 0) return undefined;
-    let raf = 0;
-    const measure = () => {
-      raf = 0;
-      const line = window.innerHeight * 0.33;
-      let cur = items[0].id;
-      for (const i of items) {
-        const el = document.getElementById(i.id);
-        if (el && el.getBoundingClientRect().top <= line) cur = i.id;
-      }
-      const el = document.scrollingElement ?? document.documentElement;
-      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
-      setActive(cur);
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    window.addEventListener('resize', onScroll);
-    measure();
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf); };
-  }, [items, view, markdown]);
 
   const activeItem = items.find((i) => i.id === active);
   const withOutline = items.length > 0 && view === 'read';
@@ -142,7 +116,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
             trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
             items={items.map((i) => ({ label: `${i.level > 1 ? '— '.repeat(i.level - 1) : ''}${i.text}`, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
           />
-          {activeItem && <p className="body-sm min-w-space-0 flex-1 truncate text-text-subtle" aria-live="polite">اکنون: {activeItem.text}</p>}
+          {activeItem && <SectionScrubber items={reading} active={active} anchorOf={sameId} onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(null, '', `#${id}`); }} label="جای خواندن در سند" />}
         </div>
       )}
       {withOutline && markdown.trim().length > 0 ? (
