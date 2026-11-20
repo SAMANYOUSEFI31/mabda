@@ -47,9 +47,10 @@ export function QuickCapture({ activeTab, data, focusNodeId, handleSaveThought, 
     return { wid, text: typeof next === 'function' ? next(cur) : next };
   });
   useEffect(() => { writeDraft(draft.wid, draft.text); }, [draft]);
-  // another space: its own draft, and a dialog that was open for the old space closes (its place list belonged there)
-  useEffect(() => { setDraft((d) => (d.wid === wid ? d : { wid, text: readDraft(wid) })); setOpen(false); }, [wid]);
   const [node, setNode] = useState('');
+  // another space: its own draft. A dialog opened while the space was still loading stays open (closing what she just opened
+  // would lose her place); it takes the new space's draft and place
+  useEffect(() => { setDraft((d) => (d.wid === wid ? d : { wid, text: readDraft(wid) })); setNode(defaultSectionFor(focusNodeId, nodes)); }, [wid]);
   const [continuous, setContinuous] = useState(readContinuous);
   /** opened from a scoped «+ فکر» (the thinking page): locked to «فکر», no switch */
   const [scoped, setScoped] = useState(false);
