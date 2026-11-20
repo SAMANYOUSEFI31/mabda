@@ -5,7 +5,7 @@
 
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { convertedTo } from '../../core/thinkingMarkers';
-import { dataApi } from '../../services/dataApi';
+import { dataApi, DataApiError } from '../../services/dataApi';
 import { formatNumber } from '../../ui';
 import { recordOfChoice } from '../../core/decisionOptions';
 import { sectionNameFromThought } from '../../core/thoughts';
@@ -16,7 +16,7 @@ import type { ThinkingItemsScope } from './useThinkingItems';
 export type NotesScope = ReturnType<typeof useNotes>;
 
 export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
-  const { attempt, data, patch, setActiveTab, setContextViewMode, setExtractingNoteId, setNodeDialog, setPreviewNonce, thinking, toast, wid, workspaceContexts } = p;
+  const { attempt, data, patch, reload, setActiveTab, setContextViewMode, setExtractingNoteId, setNodeDialog, setPreviewNonce, thinking, toast, wid, workspaceContexts } = p;
   const previewTruth = () => { setPreviewNonce((n) => n + 1); setActiveTab('context'); setContextViewMode('canvas'); };
   /** a thought becomes a SECTION: she names it and picks the parent (or the top level); the thought's line is then done */
   const startSectionFromThought = (t: NoteThinkingItem) => {
@@ -76,10 +76,26 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes], thoughts: r.thoughts }));
     return !!r;
   };
-  const handleUpdateNote = async (id: string, content: string): Promise<boolean> => {
-    const r = await attempt(() => dataApi.updateNote(wid, id, content, data?.notes.find((n) => n.id === id)?.updatedAt));
-    if (r) patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r.note : n)), thoughts: r.thoughts }));
-    return !!r;
+  /**
+   * `base` = the note's `updatedAt` as it was when she began editing (the edit is of THAT text). If the stored note changed since
+   * (another tab, another device: 409) it is never overwritten: the screen takes the stored one and her text stays as a new note
+   * in the same section, the way a confirmed knowledge keeps an edit as a draft (decisions.md §۵۳ ۲, §۵۶ ۷). Nothing is lost, nothing silent.
+   */
+  const handleUpdateNote = async (id: string, content: string, base?: string): Promise<boolean> => {
+    const cur = data?.notes.find((n) => n.id === id);
+    let r: Awaited<ReturnType<typeof dataApi.updateNote>> | undefined;
+    try { r = await dataApi.updateNote(wid, id, content, base ?? cur?.updatedAt); } catch (e) {
+      if (e instanceof DataApiError && e.status === 409 && cur) {
+        const kept = await handleAddNote(cur.nodeId, content);
+        await reload(wid);
+        if (kept) toast.show({ intent: 'warning', message: 'این یادداشت جای دیگری عوض شده بود؛ متن تازه همان‌جا ماند و متن تو به‌صورت یادداشتی تازه کنارش آمد.', duration: 10000 });
+        return kept;
+      }
+      await attempt(() => Promise.reject(e));
+      return false;
+    }
+    patch((d) => ({ ...d, notes: d.notes.map((n) => (n.id === id ? r!.note : n)), thoughts: r!.thoughts }));
+    return true;
   };
   /**
    * A small, throwaway removal: it happens at once and offers «واگرد» (the note comes back with its text, its section and its place).
