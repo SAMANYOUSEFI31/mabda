@@ -801,3 +801,29 @@ test('two devices: an edit made from an older copy is refused with 409 (objects 
     assert.equal((await t.call('PATCH', `/workspaces/ws_studio/notes/${note.id}`, { content: 'ج', expectedUpdatedAt: 'old' })).status, 409);
   } finally { t.close(); }
 });
+
+test('two tabs: approving a draft or replacing from an older copy is refused with 409 too (CONCURRENCY-SUPERSEDE-DRAFT)', async () => {
+  const t = await boot(() => ({}));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const get = async () => (await t.call('GET', '/workspaces/ws_studio/state')).json.objects.find((o: any) => o.id === 'ctx_audience');
+    const confirmed = (await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { status: 'Confirmed' })).json.object;
+    // tab A saves a draft; tab B (still on the copy before it) approves → it would approve a draft it never saw
+    const drafted = (await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'پیش‌نویس تب اول', asDraft: true, expectedUpdatedAt: confirmed.updatedAt })).json.object;
+    assert.ok(drafted.draft);
+    const staleApprove = await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/draft/approve', { expectedUpdatedAt: confirmed.updatedAt });
+    assert.equal(staleApprove.status, 409);
+    assert.ok((await get()).draft, 'the draft is still waiting');
+    assert.equal((await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/draft/approve', { expectedUpdatedAt: drafted.updatedAt })).status, 200);
+    const now = await get();
+    assert.equal(now.content, 'پیش‌نویس تب اول');
+    // replacing from the copy before that approval
+    const input = { type: now.type, provenance: 'User Input', title: now.title, content: 'جایگزین از تب دوم', nodeId: now.nodeId };
+    const staleReplace = await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/supersede', { ...input, expectedUpdatedAt: drafted.updatedAt });
+    assert.equal(staleReplace.status, 409);
+    assert.equal((await get()).status, 'Confirmed', 'nothing was replaced');
+    const ok = await t.call('POST', '/workspaces/ws_studio/objects/ctx_audience/supersede', { ...input, expectedUpdatedAt: now.updatedAt });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.object.expectedUpdatedAt, undefined, 'the check field never lands in the new item');
+  } finally { t.close(); }
+});
