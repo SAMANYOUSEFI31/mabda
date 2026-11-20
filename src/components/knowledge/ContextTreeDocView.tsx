@@ -5,7 +5,7 @@
 
 import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
@@ -328,13 +328,21 @@ const OUTLINE_FROM = 4;
 const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes, roots }) => {
   const items = useMemo(() => roots.flatMap((r) => [{ id: r.id, label: r.label, level: 1 }, ...childrenOf(nodes, r.id).map((c) => ({ id: c.id, label: c.label, level: 2 }))]), [nodes, roots]);
   const [active, setActive] = useState<string | undefined>(items[0]?.id);
+  const bar = useRef<HTMLDivElement>(null);
+  /** a section chosen in «فهرست» stays «اکنون» until she scrolls herself: a short last section never reaches the reading line */
+  const chosen = useRef<string | null>(null);
+  /** the reading line: just under everything pinned at the top (the page bar, this bar), where content becomes visible. A fixed
+   *  fraction of the window (a third, as in «سند») ignored the pinned bars, which take a third of a phone by themselves, so a
+   *  heading scrolled to the top still read as below the line and «اکنون» named the section before it */
+  const readingLine = () => Math.max(0, bar.current?.getBoundingClientRect().bottom ?? 0) + 8;
   useEffect(() => {
     if (items.length < OUTLINE_FROM) return undefined;
     let raf = 0;
     // the same reading line as «سند»: the last heading that has passed a third of the screen; at the very end, the last one
     const measure = () => {
       raf = 0;
-      const line = window.innerHeight * 0.33;
+      if (chosen.current) { setActive(chosen.current); return; }
+      const line = readingLine();
       let cur = items[0].id;
       for (const i of items) { const el = document.getElementById(`node-${i.id}`); if (el && el.getBoundingClientRect().top <= line) cur = i.id; }
       const el = document.scrollingElement ?? document.documentElement;
@@ -342,22 +350,30 @@ const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes,
       setActive(cur);
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
+    const own = () => { chosen.current = null; };
+    const ownKey = (e: KeyboardEvent) => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) own(); };
     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
     window.addEventListener('resize', onScroll);
+    window.addEventListener('wheel', own, { passive: true });
+    window.addEventListener('touchmove', own, { passive: true });
+    window.addEventListener('keydown', ownKey);
     measure();
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); if (raf) cancelAnimationFrame(raf); };
+    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); window.removeEventListener('wheel', own); window.removeEventListener('touchmove', own); window.removeEventListener('keydown', ownKey); if (raf) cancelAnimationFrame(raf); };
   }, [items]);
   if (items.length < OUTLINE_FROM) return null;
   const goTo = (id: string) => {
     const el = document.getElementById(`node-${id}`);
     if (!el) return;
-    el.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    // the heading lands just under the pinned bars, not under them
+    const top = el.getBoundingClientRect().top + window.scrollY - (readingLine() - 8) - 8;
+    chosen.current = id;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
     el.focus({ preventScroll: true });
     setActive(id);
   };
   const cur = items.find((i) => i.id === active);
   return (
-    <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
+    <div ref={bar} data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
         items={items.map((i) => ({ label: `${i.level > 1 ? '— ' : ''}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
       {cur && <p className="body-sm min-w-space-0 flex-1 truncate text-text-subtle" aria-live="polite">اکنون: {cur.label}</p>}

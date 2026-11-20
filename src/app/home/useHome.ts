@@ -4,7 +4,7 @@
  */
 
 import { tehranDayPlus } from '../../core/tehranDate';
-import { nextLookDays, tooEarlyWaitDays } from '../../core/assumptions';
+import { lastLookAt, nextLookDays, tooEarlyWaitDays } from '../../core/assumptions';
 import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
@@ -103,7 +103,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     onStillAssumed: async (id: string) => {
       const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
       const m = metrics.find((x) => x.objectId === id && !x.archived);
-      await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: o.createdAt, reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' });
+      await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' });
     },
     onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
     onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
@@ -111,7 +111,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     onTooEarly: async (id: string) => {
       const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
       const m = metrics.find((x) => x.id === o.record?.metricExpectation?.metricId);
-      const days = tooEarlyWaitDays({ cadence: m?.cadence, decidedAt: o.createdAt, reviewOn: o.record?.reviewOn });
+      const days = tooEarlyWaitDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.record?.reviewOn });
       await handlePatchObject(id, { record: { ...(o.record ?? {}), reviewOn: plusDays(days) }, reason: 'نگاه به عقب: هنوز زود است' });
     },
     onOutcome: async (id: string, text: string, verdict?: ExpectationVerdict) => {

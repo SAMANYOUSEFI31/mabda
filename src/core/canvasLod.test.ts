@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { timed } from './timing.testkit';
 import { clusterItems, edgeBudget, lodOf, LOD_FAR_BELOW, LOD_NEAR_FROM } from './canvasLod.ts';
 
 test('three levels of detail by zoom: far = dot, mid = title, near = title + summary', () => {
@@ -31,9 +32,8 @@ test('far view of a dense area: items in the same screen cell become one counted
 
 test('8000 items cluster fast and every item is in exactly one cluster', () => {
   const items = Array.from({ length: 8000 }, (_, i) => ({ id: `o${i}`, x: (i % 100) * 250, y: Math.floor(i / 100) * 90, w: 220, h: 64 }));
-  const t = Date.now();
-  const cl = clusterItems(items, 0.12);
-  assert.ok(Date.now() - t < 500);
+  const { ms, value: cl } = timed(() => clusterItems(items, 0.12), 500);
+  assert.ok(ms < 500, `clustered in ${ms}ms`);
   assert.equal(cl.reduce((s, c) => s + c.count, 0), 8000);
   assert.ok(cl.length < 8000 / 2, 'clusters really merge');
   assert.equal(new Set(cl.flatMap((c) => c.ids)).size, 8000);

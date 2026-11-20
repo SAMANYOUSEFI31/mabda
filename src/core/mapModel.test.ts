@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMapModel, CARD_W, GAP_X, highlightOf, impactOf, latestChangedObject, visibleVertices } from './mapModel';
 import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
 const obj = (id: string, nodeId: string, o: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title: `مورد ${id}`, content: id, nodeId, version: 1, createdAt: '', updatedAt: '', ...o });
@@ -110,18 +111,15 @@ test('8000 objects: collapsed it is a handful of cards; one expanded node of 200
   const objects = Array.from({ length: 8000 }, (_, i) => obj(`o${i}`, `n${i % 40}`));
   const relationships = objects.filter((_, i) => i >= 40).map((o, i) => rel('depends_on', o.id, `o${i}`)); // long chains
   const deliverables = Array.from({ length: 300 }, (_, i) => asset(`d${i}`, [`o${i * 20}`, `o${i * 20 + 1}`]));
-  let t0 = Date.now();
-  const closed = buildMapModel({ nodes, objects, relationships, deliverables });
-  assert.ok(Date.now() - t0 < 1500, `collapsed layout took ${Date.now() - t0}ms`);
+  const { ms: m1, value: closed } = timed(() => buildMapModel({ nodes, objects, relationships, deliverables }), 1500);
+  assert.ok(m1 < 1500, `collapsed layout took ${m1}ms`);
   assert.ok(closed.vertices.length < 60, `${closed.vertices.length} cards`);
-  t0 = Date.now();
-  const open = buildMapModel({ nodes, objects, relationships, deliverables }, { expanded: new Set(['n0']) });
-  assert.ok(Date.now() - t0 < 2500, `expanded layout took ${Date.now() - t0}ms`);
+  const { ms: m2, value: open } = timed(() => buildMapModel({ nodes, objects, relationships, deliverables }, { expanded: new Set(['n0']) }), 2500);
+  assert.ok(m2 < 2500, `expanded layout took ${m2}ms`);
   assert.ok(open.vertices.filter((x) => x.kind === 'object').length === 200);
   const all = buildMapModel({ nodes, objects: objects.slice(0, 3000), relationships: [], deliverables: [] }, { expanded: new Set(nodes.map((n) => n.id)) });
-  t0 = Date.now();
-  const seen = visibleVertices(all, { x: 0, y: 0, w: 1200, h: 800 });
-  assert.ok(Date.now() - t0 < 100 && seen.length < 200, `${seen.length} visible`);
+  const { ms: m3, value: seen } = timed(() => visibleVertices(all, { x: 0, y: 0, w: 1200, h: 800 }), 100);
+  assert.ok(m3 < 100 && seen.length < 200, `${seen.length} visible in ${m3}ms`);
 });
 
 test('groupBy: dependency = no boxes, columns from depends_on alone; facet = one swimlane per facet (first facet, «بدون بُعد» last); status = one lane per status; domain stays the default', () => {

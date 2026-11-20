@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions, nextLookDays, tooEarlyWaitDays } from './assumptions';
+import { assumptionsDue, decisionsDue, isAssumption, isEstablished, rejectedOptions, lastLookAt, nextLookDays, tooEarlyWaitDays } from './assumptions';
 import { buildPrompt } from '../../server/ai/context';
 import { calculateReadinessAndGaps } from './contextEngine';
 import type { ContextObject, WorkstreamSpec } from '../types';
@@ -62,4 +62,19 @@ test('«هنوز فرض است» uses the same evidence rule: an assumption with
   assert.equal(nextLookDays({ cadence: 'month', decidedAt: '2026-01-01', reviewOn: '2026-01-15' }), 60);
   assert.equal(nextLookDays({ decidedAt: '2026-01-01', reviewOn: '2026-01-15' }), 14);
   assert.equal(tooEarlyWaitDays, nextLookDays, 'one rule for both');
+});
+
+test('the horizon counts from the last look, not from when the item was written', () => {
+  const item = { id: 'a', createdAt: '2025-01-01T08:00:00Z' };
+  assert.equal(lastLookAt(item, []), '2025-01-01T08:00:00Z', 'never looked at: when it was written');
+  const changes = [
+    { objectId: 'a', at: '2026-03-01T08:00:00Z', after: { reviewBy: '2026-03-15' } },
+    { objectId: 'a', at: '2026-04-01T08:00:00Z', after: { content: 'x' } },
+    { objectId: 'b', at: '2026-05-01T08:00:00Z', after: { reviewBy: '2026-06-01' } },
+    { objectId: 'a', at: '2026-02-01T08:00:00Z', after: { record: { reviewOn: '2026-02-20' } } },
+  ];
+  assert.equal(lastLookAt(item, changes), '2026-03-01T08:00:00Z');
+  // a year-old item whose last look set a two-week review waits two weeks, not a quarter
+  assert.equal(nextLookDays({ decidedAt: lastLookAt(item, changes), reviewOn: '2026-03-15' }), 14);
+  assert.equal(nextLookDays({ decidedAt: item.createdAt, reviewOn: '2026-03-15' }), 90, 'from creation it would have been the cap');
 });

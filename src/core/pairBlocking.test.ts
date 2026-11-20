@@ -4,6 +4,7 @@ import { blockedPairs, groupPairs } from './pairBlocking';
 import { detectContradictions, jaccard, titleTokens } from './contextEngine';
 import { candidatePairs, unresolvedContradictions } from './contradictionCandidates';
 import type { ContextObject } from '../types';
+import { timed } from './timing.testkit';
 
 const obj = (i: number, title: string, content: string, o: Partial<ContextObject> = {}): ContextObject => ({
   id: `o${String(i).padStart(5, '0')}`, workspaceId: 'w', type: 'Decision', status: 'Confirmed', provenance: 'User Input', title, content, nodeId: `n${i % 7}`, version: 1, createdAt: '', updatedAt: '', ...o,
@@ -35,12 +36,8 @@ test('blocking loses nothing: every pair above the similarity threshold shares a
 
 test('8000 objects: contradictions and candidate pairs stay fast (they were N²: minutes)', () => {
   const objs = Array.from({ length: 8000 }, (_, i) => obj(i, `مورد ${i} در حوزهٔ ${i % 40}`, `متن مورد ${i}`));
-  let t = Date.now();
-  unresolvedContradictions(objs, []);
-  const a = Date.now() - t;
-  t = Date.now();
-  candidatePairs(objs);
-  const b = Date.now() - t;
+  const a = timed(() => unresolvedContradictions(objs, []), 3000).ms;
+  const b = timed(() => candidatePairs(objs), 3000).ms;
   assert.ok(a < 3000 && b < 3000, `unresolvedContradictions ${a}ms, candidatePairs ${b}ms`);
   // real titles are far more varied than this worst case; a pair of near-identical titles with different numbers is still found
   const real = [...objs.slice(0, 500), obj(9001, 'قیمت پایه ماهانه محصول', '5 میلیون تومان'), obj(9002, 'قیمت پایه ماهانه محصول', '7 میلیون تومان')];

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { timed } from './timing.testkit';
 import { diffWords, isSame, sidesOf, titleSimilarity, tokenize } from './textDiff';
 
 const join = (segs: ReturnType<typeof diffWords>, kind: string) => segs.filter((s) => s.kind === kind).map((s) => s.text);
@@ -45,9 +46,8 @@ test('reassembling either side always gives back the original text (fuzz)', () =
 test('very long texts do not hang (fall back to one replaced block)', () => {
   const a = Array.from({ length: 3000 }, (_, i) => `a${i}`).join(' ');
   const b = Array.from({ length: 3000 }, (_, i) => `b${i}`).join(' ');
-  const t0 = Date.now();
-  const d = diffWords(a, b);
-  assert.ok(Date.now() - t0 < 2000);
+  const { ms, value: d } = timed(() => diffWords(a, b), 2000);
+  assert.ok(ms < 2000, `took ${ms}ms`);
   assert.deepEqual(d.map((s) => s.kind), ['del', 'add']);
 });
 
