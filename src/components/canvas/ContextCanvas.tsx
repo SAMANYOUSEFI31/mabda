@@ -58,7 +58,7 @@ export interface CanvasProps {
   onMoveNoteNode?: (noteId: string, nodeId: string) => Promise<void>;
   onCreateNote: (n: { content: string; x: number; y: number; nodeId?: string }) => Promise<void>;
   onMoveNote: (id: string, x: number, y: number) => void;
-  onUpdateNote: (id: string, content: string) => Promise<boolean | void>;
+  onUpdateNote: (id: string, content: string, base?: string) => Promise<boolean | void>;
   onDeleteNote: (id: string) => Promise<void>;
   onNoteToKnowledge: (id: string, type: 'Fact' | 'Decision' | 'Constraint') => Promise<void>;
   onPlaceObject: (id: string, x: number, y: number) => Promise<void>;
@@ -451,7 +451,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const [anchorId, setAnchorId] = useState('');
   const [newNote, setNewNote] = useState<{ content: string; nodeId: string; x: number; y: number } | null>(null);
   const [toKnowledge, setToKnowledge] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string; base?: string } | null>(null);
   const [noteDrag, setNoteDrag] = useState<{ id: string; x: number; y: number } | null>(null);
 
   // the thinking canvas opens ON the tray («تازه‌ها»): what has no place yet is what she came to deal with
@@ -909,8 +909,8 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                   const common = { lod, k: view.k, selected: selSet.has(i.id), dimmed: false, draggable: dragEnabled, onSelect: select, onFocus: (it: SceneItem) => { if (document.activeElement?.matches(':focus-visible')) reveal(it.x, it.y, it.w, it.h); }, /* keyboard focus only: a tap that pans the card away mid-press would land its click on the empty stage (§۴۸) */ onKey: onCardKey };
                   if (i.kind === 'note') {
                     return <CanvasNoteCard key={i.id} item={at} {...common} editing={editing?.id === i.id ? { text: editing.text } : undefined} onPointerDown={startDrag}
-                      onEdit={(it) => setEditing({ id: it.id, text: it.summary ?? '' })} onEditText={(text) => setEditing((cur) => (cur ? { ...cur, text } : cur))}
-                      onSave={async () => { if (editing && i.noteId) { if ((await p.onUpdateNote(i.noteId, editing.text)) !== false) setEditing(null); } }} onCancel={() => setEditing(null)} onConvert={(it) => setToKnowledge(it.noteId ?? null)} onDelete={(it) => it.noteId && void p.onDeleteNote(it.noteId)} />;
+                      onEdit={(it) => setEditing({ id: it.id, text: it.summary ?? '', base: p.notes.find((n) => n.id === it.noteId)?.updatedAt })} onEditText={(text) => setEditing((cur) => (cur ? { ...cur, text } : cur))}
+                      onSave={async () => { if (editing && i.noteId) { if ((await p.onUpdateNote(i.noteId, editing.text, editing.base)) !== false) setEditing(null); } }} onCancel={() => setEditing(null)} onConvert={(it) => setToKnowledge(it.noteId ?? null)} onDelete={(it) => it.noteId && void p.onDeleteNote(it.noteId)} />;
                   }
                   return <CanvasItemCard key={i.id} item={at} {...common} neighbour={neighbours.has(i.id)} dragging={noteDrag?.id === i.id} tint={colorFacet && i.facet ? FACET_TINT[facetNames.indexOf(i.facet) % FACET_TINT.length] : undefined}
                     dimmed={focusSet.size > 0 && !showAllEdges && !focusSet.has(i.id) && !neighbours.has(i.id)} onPeek={i.kind === 'object' ? onPeek : undefined} onOpen={(it) => { const o = it.objectId ? objectById.get(it.objectId) : undefined; if (o) p.onOpenObject(o); else if (it.kind === 'asset' || it.kind === 'assets') p.onOpenAssets(); }}

@@ -19,7 +19,7 @@ interface Props {
   extractingId: string | null;
   onAdd: (nodeId: string, content: string) => Promise<unknown>;
   /** `false` = it was not saved (a conflict, the network): the edit box stays open with what she typed */
-  onUpdate: (noteId: string, content: string) => Promise<boolean | void>;
+  onUpdate: (noteId: string, content: string, base?: string) => Promise<boolean | void>;
   onDelete: (noteId: string) => Promise<void>;
   /** «استخراج»: the note becomes Proposed objects (never facts) */
   onExtract: (noteId: string) => Promise<void>;
@@ -31,7 +31,7 @@ interface Props {
 export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingId, onAdd, onUpdate, onDelete, onExtract, onSplit }) => {
   const { managedEnabled } = useAiStatus(); // «استخراج» reads a note with the managed AI: with it off it is not offered
   const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string; base: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
@@ -53,10 +53,10 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
             <li key={n.id} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-raised p-inset-md">
               {editing?.id === n.id ? (
                 <>
-                  <MentionTextarea label="ویرایش یادداشت" rows={3} value={editing.text} onValueChange={(t) => setEditing({ id: n.id, text: t })} objects={objects} />
+                  <MentionTextarea label="ویرایش یادداشت" rows={3} value={editing.text} onValueChange={(t) => setEditing({ ...editing, text: t })} objects={objects} />
                   <div className="flex justify-end gap-inline-xs">
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>انصراف</Button>
-                    <Button size="sm" variant="secondary" disabled={!editing.text.trim()} onClick={async () => { if ((await onUpdate(n.id, editing.text.trim())) !== false) setEditing(null); }}>ذخیره</Button>
+                    <Button size="sm" variant="secondary" disabled={!editing.text.trim()} onClick={async () => { if ((await onUpdate(n.id, editing.text.trim(), editing.base)) !== false) setEditing(null); }}>ذخیره</Button>
                   </div>
                 </>
               ) : (
@@ -74,7 +74,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                       {managedEnabled && <Button size="sm" variant="secondary" iconStart="FolderInput" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
                         استخراج
                       </Button>}
-                      <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => setEditing({ id: n.id, text: n.content })} />
+                      <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => setEditing({ id: n.id, text: n.content, base: n.updatedAt })} />
                       <IconButton icon="Trash2" label="حذف یادداشت" size="sm" onClick={() => onDelete(n.id)} />
                     </div>
                   </div>
