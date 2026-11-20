@@ -17,7 +17,7 @@ const countsText = (c: { knowledge: number; redLines: number; stale: number; ope
  * The semantic-zoom parts of the overview (docs/canvas-design.md):
  *  · RowRail     — the label of every visible row, pinned to the START edge of the stage while the row scrolls (sticky), with its
  *                  counters and, for a row that has deeper sections rolled into it, a button to open them;
- *  · OverviewFar — zoomed out, a row is ONE summary (counters) and the lines between rows are ONE line with a count.
+ *  · OverviewFarList — the far level: every row as one line of a list (label, counters, the rows it leans on), in screen space.
  */
 /** the stage width under which a row label is a small tab; and the room the labels take at the END edge (their width + gap),
  *  kept free by the first view and «متناسب‌سازی» so no card starts under a label */
@@ -68,37 +68,45 @@ export const RowRail: React.FC<{ scene: Scene; view: View; size: Size; opened: S
 };
 
 /** drawn INSIDE the transformed stage: text is scaled back so it reads at about 15px whatever the zoom */
-export const OverviewFar: React.FC<{ scene: Scene; k: number; onZoomRows: (from: string, to: string) => void; onZoomRow: (nodeId: string) => void }> = ({ scene, k, onZoomRows, onZoomRow }) => {
+
+/**
+ * The FAR level of the overview (decisions.md §۵۰، بازبینی): every row as one line of a list, in SCREEN space, at a readable size.
+ * Drawn on the board (the earlier OverviewFar) a row kept the height of its cards, about 216px on screen at 25٪ for 9 stacked cards,
+ * so a 216-item space showed 3 of its 23 rows: the far level did not show the whole. What a far view is for is the whole: every
+ * section, how much is in it, what is wrong in it, and which sections lean on which; a row's height carries none of that, so here
+ * it is the height of its two lines of text (the label and its counters, ≥ the 44px touch target), the same for 3 rows or 300.
+ * A list longer than the stage scrolls (a plain wheel or one finger), as a long list does. Zooming IN on a row (ctrl+wheel, pinch,
+ * the button, a tap) opens the board at that row; the levels are discrete steps, like a photo library's years / months / days.
+ */
+export const OverviewFarList: React.FC<{ scene: Scene; onZoomRow: (nodeId: string) => void; onZoomRows: (from: string, to: string) => void; listRef?: React.Ref<HTMLDivElement>; /** a control floats at the stage's top corner (the «جزئیات» button): the list starts below it */ topRoom?: boolean }> = ({ scene, onZoomRow, onZoomRows, listRef, topRoom }) => {
   const ov = scene.overview;
   if (!ov) return null;
-  const rowById = new Map(ov.rows.map((r) => [r.nodeId, r]));
-  const fs = Math.min(90, 15 / Math.max(k, 0.05));
-  const pad = Math.min(36, 10 / Math.max(k, 0.05));
+  const label = new Map(ov.rows.map((r) => [r.nodeId, r.label]));
   return (
-    <>
-      {ov.rows.map((r) => (
-        <button key={r.nodeId} type="button" data-no-pan="" data-testid="row-summary" aria-label={`${r.label}: ${countsText(r.counts)}؛ بزرگ‌نمایی کن`} onClick={() => onZoomRow(r.nodeId)}
-          className="absolute start-space-0 flex flex-col items-end justify-center rounded-control border border-border-bold bg-surface-raised text-start text-text-default" style={{ top: r.y, inlineSize: scene.width, blockSize: r.h - 6, paddingInline: pad, fontSize: fs }}>
-          {/* label over counts, both at the reading start; the lines between rows keep to the other half, so no text sits under a line (§۴۸) */}
-          <span dir="rtl" style={{ fontWeight: 600, maxInlineSize: '50%' }}>{r.label}</span>
-          <span dir="rtl" className="text-text-subtle" style={{ maxInlineSize: '50%' }}>{countsText(r.counts)}</span>
-        </button>
-      ))}
-      {ov.rowEdges.map((e, i) => {
-        const a = rowById.get(e.from), b = rowById.get(e.to);
-        if (!a || !b) return null;
-        const x = scene.width * 0.1 + ((i * 0.09 * scene.width) % (scene.width * 0.3)); // the half away from the labels
-        const y1 = a.y + a.h / 2, y2 = b.y + b.h / 2;
-        return (
-          <React.Fragment key={e.id}>
-            <svg className="pointer-events-none absolute top-space-0 start-space-0 overflow-visible" width={scene.width} height={scene.height} aria-hidden="true"><line x1={x} y1={y1} x2={x} y2={y2} className="stroke-border-selected" strokeWidth={Math.min(8, 2 / Math.max(k, 0.15))} /></svg>
-            <button type="button" dir="rtl" data-no-pan="" data-testid="row-edge" aria-label={`${formatNumber(e.count)} وابستگی به «${a.label}» از «${b.label}»؛ بازشان کن`} onClick={() => onZoomRows(e.from, e.to)}
-              className="absolute rounded-pill border border-border-selected bg-bg-selected text-text-default" style={{ insetInlineStart: x, top: (y1 + y2) / 2, transform: 'translate(-50%, -50%)', fontSize: fs, paddingInline: pad, whiteSpace: 'nowrap' }}>
-              {formatNumber(e.count)} وابستگی
-            </button>
-          </React.Fragment>
-        );
-      })}
-    </>
+    <div ref={listRef} dir="rtl" data-no-pan="" data-testid="overview-far-list" className="absolute top-space-0 bottom-space-0 start-space-0 end-space-0 touch-pan-y overflow-y-auto bg-surface-sunken p-inset-sm">
+      {topRoom && <div className="min-h-touch" aria-hidden="true" />}
+      <ul className="flex flex-col gap-stack-xs" aria-label={`همهٔ بخش‌ها (${formatNumber(ov.rows.length)})`}>
+        {ov.rows.map((r) => {
+          const leansOn = ov.rowEdges.filter((e) => e.to === r.nodeId);
+          return (
+            <li key={r.nodeId} data-row={r.nodeId} className="flex flex-wrap items-center gap-inline-xs rounded-control border border-border-default bg-surface-raised pe-inset-xs" style={{ marginInlineStart: `calc(${r.depth} * var(--space-6))` }}>
+              {/* one line where it fits (name · counters · the rows it leans on), wrapping on a narrow stage; each target ≥ 44px tall,
+                  drawn smaller (a pill inside its hit area) so a long list stays dense */}
+              <button type="button" data-testid="row-summary" aria-label={`${r.label}: ${countsText(r.counts)}؛ بزرگ‌نمایی کن`} onClick={() => onZoomRow(r.nodeId)}
+                className="flex min-h-touch min-w-space-0 basis-full flex-wrap items-baseline sm:flex-1 sm:basis-auto gap-inline-sm rounded-control px-inset-md py-inset-xs text-start hover:bg-interaction-hover">
+                <span className="label-md text-text-default">{r.label}</span>
+                <span className="body-sm text-text-subtle">{countsText(r.counts)}</span>
+              </button>
+              {leansOn.map((e) => (
+                <button key={e.id} type="button" data-testid="row-edge" aria-label={`${formatNumber(e.count)} وابستگی به «${label.get(e.from) ?? ''}» از «${r.label}»؛ بازشان کن`} onClick={() => onZoomRows(e.from, e.to)}
+                  className="group inline-flex min-h-touch items-center">
+                  <span className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default group-hover:bg-interaction-hover">{formatNumber(e.count)} وابستگی به «{label.get(e.from)}»</span>
+                </button>
+              ))}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 };

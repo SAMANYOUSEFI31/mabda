@@ -5,14 +5,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
+import { clampView, zoomRange } from '../../core/canvasLod';
 
 export interface View { x: number; y: number; k: number }
-// zoom range (docs/ux/decisions.md §۴۸): cards are text laid out at 1×, so past ~1.6× a title is ~22px and the view only shows one
-// card cut off; out, past «everything fits» nothing new appears, the board only shrinks into a speck. So: in up to 1.6×, out to
-// a little under the fit-all scale (never under 0.1, and never forced above 0.45 for a small board)
-const MIN_K = 0.1;
-const MAX_K = 1.6;
+// zoom range and what each range shows: src/core/canvasLod.ts (`zoomRange`), docs/ux/decisions.md §۵۰
 const READABLE_K = 0.85;
+const CARD_W = 220;
 
 const pinchDistance = (pts: Map<number, { x: number; y: number }>) => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
 const pinchCenter = (pts: Map<number, { x: number; y: number }>) => { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
@@ -21,11 +19,23 @@ const pinchCenter = (pts: Map<number, { x: number; y: number }>) => { const [a, 
  * Pan / zoom of a stage (shared by the map and the boards): drag or one finger pans, two fingers pinch, ctrl+wheel zooms,
  * arrow keys pan and +/−/0 zoom/fit when the stage itself has focus. Coordinates stay plain numbers; the stage is moved with `transform`.
  */
-/** `endInset(stageWidth)`: room kept free at the stage's END edge (the right, the stage is LTR) for labels pinned there, so the first
- *  view and «متناسب‌سازی» never place a card under them (the overview's row labels) */
-export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0, endInset: (w: number) => number = () => 0) {
-  const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
+/** `endInset(stageWidth, k)`: room kept free at the stage's END edge (the right, the stage is LTR) for labels pinned there, so the first
+ *  view, «متناسب‌سازی» and the pan limit never place a card under them (the overview's row labels). It depends on the zoom because
+ *  the board's own end margin already covers part of it, more so the nearer the view */
+/** `roam`: the free canvas keeps room around its cards to put new ones (40% of the stage); boards with a fixed layout keep only a small margin */
+/** `steps`: a board whose far level is a separate representation (the overview's list of rows, §۵۰): the continuous zoom stops at
+ *  `floor`, and `intent(factor, x, y, atFloor)` sees every zoom gesture first — returning true takes it (a step to or from that level) */
+export interface ZoomSteps { floor: number; intent: (factor: number, x: number, y: number, atFloor: boolean) => boolean }
+export function usePanZoom(content: { width: number; height: number }, shapeKey: string, readableK = READABLE_K, remountKey: unknown = 0, endInset: (w: number, k: number) => number = () => 0, roam = false, steps?: ZoomSteps) {
+  const [view, setRawView] = useState<View>({ x: 0, y: 0, k: 1 });
   const [size, setSize] = useState({ w: 800, h: 520 });
+  // every change of the view goes through the clamp, so no gesture, button or jump can leave the board off screen
+  const bounds = useRef({ size, content, endInset, roam });
+  const setView = useCallback((next: View | ((v: View) => View)) => setRawView((cur) => {
+    const v = typeof next === 'function' ? next(cur) : next;
+    const b = bounds.current;
+    return clampView(v, { stageW: b.size.w, stageH: b.size.h, contentW: b.content.width, contentH: b.content.height, endInset: b.endInset(b.size.w, v.k), marginX: b.roam ? b.size.w * 0.4 : 24, marginY: b.roam ? b.size.h * 0.4 : 24 });
+  }), []);
   const [measured, setMeasured] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pts: Map<number, { x: number; y: number }>; last?: { x: number; y: number }; pinch?: number } | null>(null);
@@ -40,27 +50,35 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     return () => ro.disconnect();
   }, [remountKey]);
 
-  const inset = endInset(size.w);
+  bounds.current = { size, content, endInset, roam };
+  const inset = endInset(size.w, 1);
+  const range0 = zoomRange({ stageW: size.w - inset, stageH: size.h, contentW: content.width, contentH: content.height, cardW: CARD_W });
+  const range = steps ? { ...range0, min: Math.min(range0.max, Math.max(range0.min, steps.floor)) } : range0;
+  const viewNow = useRef(view); viewNow.current = view;
+  const stepsRef = useRef(steps); stepsRef.current = steps;
+  /** «متناسب‌سازی»: everything, or as much as still reads (a tall board: from its start, at the far floor) */
   const fit = useCallback(() => {
-    const w = size.w - inset;
-    const k = Math.min(1, Math.max(MIN_K, Math.min((w - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
-    setView({ k, x: Math.max(16, (w - content.width * k) / 2), y: Math.max(16, (size.h - content.height * k) / 2) });
-  }, [size.w, size.h, content.width, content.height, inset]);
+    const k = Math.min(1, Math.max(range.min, range.fit));
+    const w = size.w - endInset(size.w, k);
+    const cw = content.width * k, ch = content.height * k;
+    setView({ k, x: cw <= w - 32 ? (w - cw) / 2 : w - 16 - cw, y: ch <= size.h - 32 ? (size.h - ch) / 2 : 16 });
+  }, [size.w, size.h, content.width, content.height, endInset, range.min, range.fit, setView]);
   /** first view: readable (cards stay comfortably tappable), anchored at the START of the flow (the right edge in RTL) */
   const overview = useCallback(() => {
-    const room = size.w - inset;
-    const k = Math.min(1, Math.max(readableK, Math.min((room - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
+    const k = Math.min(1, Math.max(readableK, Math.min((size.w - inset - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1))));
+    const room = size.w - endInset(size.w, k);
     const w = content.width * k;
     setView({ k, x: w <= room - 32 ? (room - w) / 2 : room - 16 - w, y: content.height * k <= size.h - 32 ? (size.h - content.height * k) / 2 : 16 });
-  }, [size.w, size.h, content.width, content.height, readableK, inset]);
+  }, [size.w, size.h, content.width, content.height, readableK, inset, endInset, setView]);
   useEffect(() => { if (measured) overview(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shapeKey, measured]);
 
-  const fitK = Math.min((size.w - inset - 32) / Math.max(content.width, 1), (size.h - 32) / Math.max(content.height, 1));
-  const floorK = Math.max(MIN_K, Math.min(0.45, fitK * 0.9));
   const zoomAt = useCallback((factor: number, cx = size.w / 2, cy = size.h / 2) => {
-    setView((v) => { const k = Math.min(MAX_K, Math.max(Math.min(floorK, v.k), v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
-  }, [size.w, size.h, floorK]);
+    const st = stepsRef.current;
+    if (st && st.intent(factor, cx, cy, viewNow.current.k <= range.min + 0.005)) return;
+    // a view already outside the range (the stage was resized) is never pushed further out, only back toward it
+    setView((v) => { const k = Math.min(Math.max(range.max, v.k), Math.max(Math.min(range.min, v.k), v.k * factor)); const r = k / v.k; return { k, x: cx - (cx - v.x) * r, y: cy - (cy - v.y) * r }; });
+  }, [size.w, size.h, range.min, range.max, setView]);
   useEffect(() => { // ctrl/⌘ + wheel zooms (a plain wheel keeps scrolling the page)
     const el = box.current;
     if (!el) return;
@@ -79,11 +97,14 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
   /** true when the gesture that just ended moved the view (more than a tap's wobble): its click is not a tap */
   const panned = useCallback(() => travel.current > 6, []);
   const onPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button, [data-no-pan]')) return; // cards and controls keep their own gestures
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // cards and controls keep their own gestures (a tap, a drag); a FINGER on one is still counted, so a pinch that starts on a card
+    // zooms like one that starts between cards (most of a dense board is cards). One finger there never pans: that is the card's drag
+    const onControl = !!(e.target as HTMLElement).closest('button, [data-no-pan]');
+    if (onControl && e.pointerType !== 'touch') return;
+    if (!onControl) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const d: NonNullable<typeof drag.current> = drag.current ?? { pts: new Map<number, { x: number; y: number }>() };
     d.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    d.last = { x: e.clientX, y: e.clientY };
+    d.last = onControl && d.pts.size === 1 ? undefined : { x: e.clientX, y: e.clientY };
     d.pinch = d.pts.size === 2 ? pinchDistance(d.pts) : undefined;
     if (d.pts.size === 1) travel.current = 0;
     drag.current = d;
@@ -133,12 +154,12 @@ export function usePanZoom(content: { width: number; height: number }, shapeKey:
     const sx = x * cur.k + cur.x, sy = y * cur.k + cur.y;
     const inside = sx >= 0 && sy >= 0 && sx + w * cur.k <= s.w && sy + h * cur.k <= s.h;
     return inside ? cur : { ...cur, x: s.w / 2 - (x + w / 2) * cur.k, y: s.h / 2 - (y + h / 2) * cur.k };
-  }), []);
+  }), [setView]);
   /** stage coordinates of a pointer position */
   const toStage = useCallback((clientX: number, clientY: number) => {
     const r = box.current?.getBoundingClientRect();
     return r ? { x: (clientX - r.left - view.x) / view.k, y: (clientY - r.top - view.y) / view.k } : { x: 0, y: 0 };
   }, [view]);
 
-  return { box, view, setView, size, fit, overview, zoomAt, reveal, toStage, panned, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown } };
+  return { box, view, setView, size, range, fit, overview, zoomAt, reveal, toStage, panned, handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown } };
 }

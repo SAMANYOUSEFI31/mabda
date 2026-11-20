@@ -129,7 +129,10 @@ try {
     await shot('3-near');
     if (mobile) await click(page.getByTestId('row-rail').filter({ hasText: 'اشتراک' }).first()); // a phone shows a small tab first
     const open = page.getByTestId('row-rail').filter({ hasText: 'اشتراک' }).getByRole('button', { name: /زیربخش‌ها/ });
-    if (await open.count()) { await open.first().click(); await toolbar.getByRole('button', { name: 'متناسب‌سازی' }).click(); await zoomTo('mid'); await page.waitForTimeout(300); assert.ok((await page.getByTestId('row-rail').filter({ hasText: 'بستهٔ هدیه' }).count()) > 0, 'a deeper section got its own row'); }
+    if (await open.count()) { await open.first().click(); await toolbar.getByRole('button', { name: 'متناسب‌سازی' }).click(); await page.waitForTimeout(300);
+      // «متناسب‌سازی» shows the whole: the board when it fits at the far floor, else the list of every row (§۵۰)
+      const asRow = (await lod()) === 'far' ? page.getByTestId('row-summary') : page.getByTestId('row-rail');
+      assert.ok((await asRow.filter({ hasText: 'بستهٔ هدیه' }).count()) > 0, 'a deeper section got its own row'); await zoomTo('mid'); }
 
     // ── ب
     step(`[${width}] ب: around «قیمت اشتراک» and back`);
