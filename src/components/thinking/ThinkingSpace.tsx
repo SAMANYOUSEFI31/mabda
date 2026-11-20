@@ -64,9 +64,10 @@ const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
  */
 export const ThinkingSpace: React.FC<Props> = (p) => {
   const [kind, setKind] = useState<SpaceKind | 'all'>('all');
-  const [selectMode, setSelectMode] = useState(false);
   const [anchorsOpen, setAnchorsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // selecting is not a mode (§۵۴ ۱۵): each open thought has its own box, and the actions appear once one is ticked
+  const selectMode = selectedIds.length > 0;
   const [synthesis, setSynthesis] = useState<{ text: string; kind: ThoughtKind; nodeId: string } | null>(null);
   const [synthesisBusy, setSynthesisBusy] = useState(false);
   const view = useMemo(() => thinkingSpace({ objects: p.objects, notes: p.notes, thoughts: p.thoughts, nodes: p.nodes, relationships: p.relationships }, { kind: kind === 'all' ? undefined : kind, nodeId: p.nodeId }), [p.objects, p.notes, p.thoughts, p.nodes, p.relationships, kind, p.nodeId]);
@@ -83,7 +84,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     }
     return [...anchors.values()];
   }, [p.nodeId, p.objects, p.nodes, p.relationships]);
-  useEffect(() => { setSelectMode(false); setSelectedIds([]); setAnchorsOpen(false); }, [kind, p.nodeId]);
+  useEffect(() => { setSelectedIds([]); setAnchorsOpen(false); }, [kind, p.nodeId]);
   const toggleSelection = (id: string, selected: boolean) => setSelectedIds((ids) => selected ? [...new Set([...ids, id])] : ids.filter((x) => x !== id));
   const startSynthesis = () => {
     if (selectedThoughts.length < 2) return;
@@ -96,7 +97,6 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       if (await p.onSynthesizeThought(selectedThoughtIds, synthesis.nodeId, synthesis.kind, synthesis.text.trim())) {
         setSynthesis(null);
         setSelectedIds([]);
-        setSelectMode(false);
       }
     } finally { setSynthesisBusy(false); }
   };
@@ -138,8 +138,6 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           ))}
         </div>
         <div className="mb-thinking-filters__scope flex items-end gap-inline-xs">
-          {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
-          {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
           <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} /></div>
         </div>
       </aside>}
@@ -208,13 +206,13 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <section className="flex flex-col gap-stack-sm" aria-label="فکرهای باز">
           <h2 className="heading-sm text-text-default">فکرهای باز ({formatNumber(view.thoughts.length)})</h2>
           {selectMode && selectedThoughts.length > 0 && (
-            <Card padding="md" className="flex flex-wrap items-center gap-inline-sm" aria-label="عملیات فکرهای انتخاب‌شده">
+            <Card padding="md" className="think-bar flex flex-wrap items-center gap-inline-sm shadow-overlay" aria-label="عملیات فکرهای انتخاب‌شده">
               <span className="body-sm text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده؛ همه تأییدنشده‌اند.</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
               {p.onThinkWithAi && <Button size="sm" variant="secondary" iconStart="PackageOpen" disabled={selectedThoughts.length > 12} onClick={() => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); }}>درخواست برای ابزار دیگر</Button>}
+              <Button size="sm" variant="ghost" iconStart="X" onClick={() => setSelectedIds([])}>لغو انتخاب</Button>
             </Card>
           )}
-          {selectMode && selectedThoughts.length === 0 && <p className="body-sm text-text-subtle">یک یا چند فکر را انتخاب کن تا بتوانی آن‌ها را ترکیب کنی یا برایشان درخواست آماده کنی.</p>}
           <ThinkingList
             items={view.thoughts}
             objects={p.objects}
@@ -228,7 +226,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             optionCount={p.optionCount}
             optionTitles={p.optionTitles}
             selectedIds={selectedIds}
-            onToggleSelection={selectMode ? toggleSelection : undefined}
+            onToggleSelection={selectableCount > 0 ? toggleSelection : undefined}
           />
         </section>
       )}

@@ -87,7 +87,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
 
   if (items.length === 0) return empty ? <p className="body-sm text-text-subtle">{empty}</p> : null;
   return (
-    <ul className="flex flex-col gap-stack-xs" aria-label="مورد فکری">
+    <ul className="flex flex-col gap-stack-xs" aria-label="مورد فکری" data-selecting={selectedIds.length > 0 || undefined}>
       {items.map((it) => {
         const done = !!convertedTo(it, objects);
         return (
@@ -111,7 +111,9 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
               {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
             </span>
             <span className="flex flex-wrap items-center gap-inline-xs">
-              {onToggleSelection && it.id && <Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} />}
+              {/* §۵۴ ۱۵: a box on every open thought, no «انتخاب» mode first. Quiet on a desk until the row is pointed at or focused, or
+                  something is ticked; always visible on touch (nothing is hover-only) */}
+              {onToggleSelection && it.id && !done && <span className="think-pick"><Checkbox label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} /></span>}
               {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به بخش</Button>}
               {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="Layers" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
               {!done && promotionTypesForThought(it.kind).length > 0 && (
