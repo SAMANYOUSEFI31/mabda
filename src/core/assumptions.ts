@@ -47,3 +47,36 @@ export function decisionsDue(objects: ContextObject[], changes: Pick<ContextChan
   const dueOn = (o: ContextObject) => o.record?.reviewOn ?? o.record?.metricExpectation?.by;
   return objects.filter((o) => o.type === 'Decision' && o.status === 'Confirmed' && !!dueOn(o) && dueOn(o)! <= t && !noted.has(o.id)).sort((a, b) => dueOn(a)!.localeCompare(dueOn(b)!) || a.id.localeCompare(b.id));
 }
+
+/**
+ * The next look at something the user could not judge yet — «هنوز زود است» on a decision's look-back, «هنوز فرض است» on an
+ * assumption's review: how many days until the next look (decisions.md §۵۱).
+ * Principle: the next look comes when there can be NEW EVIDENCE, not after a fixed number.
+ *  • tied to a metric: two more numbers at its cadence (one number is a point; two give a direction) — 14 days weekly, 60 monthly
+ *  • no metric: the user's own horizon — the wait they set the LAST time this date was set (that moment → the review date), kept in a
+ *    sane band (a week at least, so it is not asked again tomorrow; a quarter at most, so it is not forgotten). Counted from the
+ *    last look, not from when the item was written: an item written a year ago with a review in a month means «a month»
+ *  • nothing to go on: 30 days
+ * The new date is always counted from today, the look that just happened. For a monitor the date stands for «two numbers have
+ * come»: numbers come at the monitor's cadence (Home asks for each one), so the date is where they are expected; when they have
+ * not come, the look still happens and shows that the evidence is missing, which is itself worth seeing.
+ */
+export const TOO_EARLY_MIN_DAYS = 7;
+export const TOO_EARLY_MAX_DAYS = 90;
+/** when the review date of an item was last set: the latest change that wrote it, else when the item was written */
+const reviewOnOf = (r: unknown) => (typeof r === 'object' && r !== null ? (r as { reviewOn?: unknown }).reviewOn : undefined);
+export const lastLookAt = (o: Pick<ContextObject, 'id' | 'createdAt'>, changes: Array<Pick<ContextChange, 'objectId' | 'at' | 'after'> & { before?: Record<string, unknown> }>): string => {
+  // a change that wrote the date: `reviewBy`, or a record whose `reviewOn` differs from before (editing a decision's options is not a look)
+  const set = changes.filter((c) => c.objectId === o.id && c.after && ('reviewBy' in c.after || ('record' in c.after && reviewOnOf(c.after.record) !== undefined && reviewOnOf(c.after.record) !== reviewOnOf(c.before?.record))));
+  return set.reduce((m, c) => (c.at > m ? c.at : m), '') || o.createdAt;
+};
+export const nextLookDays = (input: { cadence?: 'week' | 'month'; decidedAt?: string; reviewOn?: string }): number => {
+  if (input.cadence) return input.cadence === 'week' ? 14 : 60;
+  const from = input.decidedAt ? Date.parse(input.decidedAt.slice(0, 10)) : NaN;
+  const to = input.reviewOn ? Date.parse(input.reviewOn.slice(0, 10)) : NaN;
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 30;
+  const horizon = Math.round((to - from) / 86_400_000);
+  return Math.min(TOO_EARLY_MAX_DAYS, Math.max(TOO_EARLY_MIN_DAYS, horizon));
+};
+/** «هنوز زود است» (a decision's look-back) */
+export const tooEarlyWaitDays = nextLookDays;

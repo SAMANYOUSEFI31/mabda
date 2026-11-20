@@ -4,6 +4,7 @@
  */
 
 import { tehranDayPlus } from '../../core/tehranDate';
+import { lastLookAt, nextLookDays, tooEarlyWaitDays } from '../../core/assumptions';
 import type { ExpectationVerdict } from '../../types';
 import type { HomeAction } from '../../core/homeActions';
 import { convertedTo } from '../../core/thinkingMarkers';
@@ -44,7 +45,7 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     reviews: [...reviewNeeds.entries()].map(([id, need]) => ({ id, title: workspaceContexts.find((o) => o.id === id)?.title ?? id, because: need.changedDependencies.map((d) => workspaceContexts.find((o) => o.id === d.id)?.title ?? d.id) })),
     ready: waiting.ready.map((u) => ({ id: u.ids[0], title: workspaceContexts.find((o) => o.id === u.ids[0])?.title ?? u.ids[0] })),
     proposedCount: workspaceContexts.filter((o) => o.status === 'Proposed').length,
-    draftCount: workspaceContexts.filter((o) => o.status === 'Confirmed' && !!o.draft).length,
+    ...(() => { const d = workspaceContexts.filter((o) => o.status === 'Confirmed' && !!o.draft); return { draftCount: d.length, draftOne: d.length === 1 ? { id: d[0].id, title: d[0].title } : undefined }; })(),
     weekly: { due: weeklyDue, changes: weekly.digest.total },
     dueCount: dueAssumptions.length + dueDecisions.length,
     openThinking: thinking.filter((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)).length,
@@ -97,14 +98,20 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
   const expRows = useMemo(() => expectationRows(data?.objects ?? [], metrics, measurements, data?.changes ?? [], new Date()), [data?.objects, data?.metrics, data?.measurements, data?.changes]);
   const dueProps = {
     assumptions: dueAssumptions, decisions: dueDecisions, titleOfNode: (id: string) => nodes.find((n) => n.id === id)?.label ?? id,
-    onStillAssumed: async (id: string) => { await handlePatchObject(id, { reviewBy: plusDays(30), reason: 'بازبینی: هنوز فرض است' }); },
+    // «هنوز فرض است»: the same rule as «هنوز زود است» — the next look when there can be new evidence: two numbers of the truth's own
+    // monitor, else the horizon the user gave it (written → review date), 7–90 days (core/assumptions.ts nextLookDays; decisions.md §۵۱)
+    onStillAssumed: async (id: string) => {
+      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
+      const m = metrics.find((x) => x.objectId === id && !x.archived);
+      await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' });
+    },
     onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
     onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
-    // «هنوز زود است»: the next look comes after two more numbers of a weekly metric, a month otherwise
+    // «هنوز زود است»: the next look comes when there can be new evidence (core/assumptions.ts tooEarlyWaitDays)
     onTooEarly: async (id: string) => {
       const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
       const m = metrics.find((x) => x.id === o.record?.metricExpectation?.metricId);
-      const days = m?.cadence === 'week' ? 14 : 30;
+      const days = tooEarlyWaitDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.record?.reviewOn });
       await handlePatchObject(id, { record: { ...(o.record ?? {}), reviewOn: plusDays(days) }, reason: 'نگاه به عقب: هنوز زود است' });
     },
     onOutcome: async (id: string, text: string, verdict?: ExpectationVerdict) => {

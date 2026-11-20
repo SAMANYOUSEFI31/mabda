@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reasonFor, affectedOutputs, approvalMoments, compareTruth, groupBySection, mostImportant, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from './truthCompare.ts';
 import type { ContextChange, ContextObject, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 const nodes = [{ id: 'price', label: 'قیمت' }, { id: 'ship', label: 'ارسال' }, { id: 'sub', label: 'زیرارسال', parentId: 'ship' }] as unknown as TreeNode[];
 const T = (d: string) => `2026-03-${d}T10:00:00.000Z`;
@@ -91,11 +92,9 @@ test('کارایی: ۵۰۰۰ مورد و ۲۰۰۰۰ تغییر زیر یک ثا�
     objects.push(ob(`o${i}`, { content: `v4 ${i}`, version: 4 }));
     for (let v = 1; v <= 4; v++) changes.push(ch(`o${i}`, v === 1 ? 'created' : 'edited', `2026-03-${String(v + 1).padStart(2, '0')}T10:00:00.000Z`, { fromVersion: v - 1, toVersion: v, before: v > 1 ? { content: `v${v - 1} ${i}` } : undefined, after: { content: `v${v} ${i}`, status: 'Confirmed' } }));
   }
-  const t0 = Date.now();
-  const A = truthAt({ objects, changes }, '2026-03-03T12:00:00.000Z'), B = truthAt({ objects, changes }, '2026-03-20T00:00:00.000Z');
-  const c = compareTruth(A, B);
+  const { ms, value: c } = timed(() => compareTruth(truthAt({ objects, changes }, '2026-03-03T12:00:00.000Z'), truthAt({ objects, changes }, '2026-03-20T00:00:00.000Z')), 1000);
   assert.equal(c.counts.changed, 5000);
-  assert.ok(Date.now() - t0 < 1000, `took ${Date.now() - t0}ms`);
+  assert.ok(ms < 1000, `took ${ms}ms`);
 });
 
 test('دلیل تغییر: آخرین دلیل نوشته‌شده داخل بازه، از هر شناسهٔ زنجیره', () => {

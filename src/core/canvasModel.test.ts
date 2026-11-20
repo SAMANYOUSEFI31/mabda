@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCanvasModel, dropTarget, laneOf, moveEffect, neighboursOf, rankBetween, visibleCards, CARD_H } from './canvasModel';
 import type { ContextObject, TreeNode } from '../types';
+import { timed } from './timing.testkit';
 
 const node = (id: string, parentId?: string, order = 0): TreeNode => ({ id, label: `بخش ${id}`, description: '', ...(parentId ? { parentId } : {}), order });
 const obj = (id: string, nodeId: string, status: ContextObject['status'], o: Partial<ContextObject> = {}): ContextObject => ({ id, workspaceId: 'w', type: 'Decision', status, provenance: 'User Input', title: id, content: id, nodeId, version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: '', ...o });
@@ -69,9 +70,8 @@ test('moveEffect: Proposed → confirmed accepts; backward from Confirmed needs 
 test('8000 objects: the board lays out fast and only the viewport is drawn', () => {
   const ns = [node('root'), ...Array.from({ length: 40 }, (_, i) => node(`n${i}`, 'root', i))];
   const objects = Array.from({ length: 8000 }, (_, i) => obj(`o${i}`, `n${i % 40}`, (['Confirmed', 'Proposed', 'Needs Review'] as const)[i % 3]));
-  const t = Date.now();
-  const m = buildCanvasModel({ nodes: ns, objects, reviewIds: none, ranks: new Map() });
-  assert.ok(Date.now() - t < 1500);
+  const { ms, value: m } = timed(() => buildCanvasModel({ nodes: ns, objects, reviewIds: none, ranks: new Map() }), 1500);
+  assert.ok(ms < 1500, `laid out in ${ms}ms`);
   assert.equal(m.cards.length, 8000);
   assert.ok(visibleCards(m, { x: 0, y: 0, w: 1200, h: 800 }).length < 150);
 });
