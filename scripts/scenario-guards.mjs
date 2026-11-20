@@ -224,6 +224,8 @@ try {
     await nav(page, 'فکر');
     await guard(`[${width}] a tick on an open thought shows the actions, and «لغو انتخاب» clears`, async () => {
       const box = page.getByRole('checkbox', { name: /^انتخاب فکر/ }).first();
+      const hit = await box.evaluate((b) => { const r = b.closest('label').getBoundingClientRect(); return Math.min(r.width, r.height); });
+      assert.ok(hit >= 44, `the box's hit area is ${hit}px, under the 44px touch floor`);
       await box.evaluate((b) => b.click());
       await page.getByLabel('عملیات فکرهای انتخاب‌شده').waitFor({ timeout: 2000 });
       await page.getByRole('button', { name: 'لغو انتخاب' }).click();

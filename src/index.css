@@ -144,6 +144,7 @@ html { scroll-padding-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px
 
 /* a thought's selection box (decisions.md §۵۴ ۱۵): quiet on a desk until its row is pointed at or focused, or something is ticked;
    always there on touch and in forced colours. opacity, not display: it keeps its place, so nothing moves when it appears */
+.think-pick .mb-check { min-inline-size: var(--touch-target-min); justify-content: center; gap: 0; } /* the box stays small; its hit area is a full touch target (44 × 44) */
 .think-pick { opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
 li:hover .think-pick, li:focus-within .think-pick, [data-selecting] .think-pick { opacity: 1; }
 @media (hover: none) { .think-pick { opacity: 1; } }
