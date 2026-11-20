@@ -10,6 +10,8 @@ import { convertedTo } from '../../core/thinkingMarkers';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { promotionTypesForThought, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { aboutTargets, stripAbout } from '../../core/thoughtAbout';
+import type { AboutTarget } from '../../core/thoughtAbout';
+import { AboutPicker } from './AboutPicker';
 import { Badge, Button, Checkbox, Dialog, IconButton, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
@@ -24,7 +26,8 @@ interface Props {
   onGoToNode?: (nodeId: string) => void;
   /** «ساخت بخش»: the thought becomes a section of the tree (she picks the name and the parent) */
   onToSection?: (item: NoteThinkingItem) => void;
-  onRevise?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
+  /** `about`: what the thought is about, when she changed it (§۵۳ ۱۱: it was set only when the thought was made) */
+  onRevise?: (item: NoteThinkingItem, text: string, kind: ThoughtKind, about?: AboutTarget[]) => Promise<boolean>;
   onDerive?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
   selectedIds?: string[];
   onToggleSelection?: (id: string, selected: boolean) => void;
@@ -44,18 +47,21 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
   const [manage, setManage] = useState<{ item: NoteThinkingItem; mode: 'revise' | 'derive' } | null>(null);
   const [draftText, setDraftText] = useState('');
   const [draftKind, setDraftKind] = useState<ThoughtKind>('idea');
+  const [draftAbout, setDraftAbout] = useState<AboutTarget[]>([]);
   const [historyItem, setHistoryItem] = useState<NoteThinkingItem | null>(null);
   const [historyReport, setHistoryReport] = useState<ThoughtHistoryReport | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const label = (id: string) => nodes?.find((n) => n.id === id)?.label ?? id;
   const run = async (item: NoteThinkingItem, type: ContextObject['type']) => { setBusy(item.key); try { await onConvert(item, type); } finally { setBusy(null); } };
+  // only a change she made is sent: an untouched picker must not turn the words of the text into stored links
+  const aboutChanged = (it: NoteThinkingItem) => { const was = nodes ? aboutTargets(it.text, objects, nodes, it) : []; const k = (l: AboutTarget[]) => l.map((t) => `${t.kind}:${t.id}`).sort().join('|'); return k(was) !== k(draftAbout); };
   const runManage = async () => {
     if (!manage || !manage.item.id || !draftText.trim()) return;
     setBusy(manage.item.key);
     try {
       const saved = manage.mode === 'revise'
-        ? await onRevise?.(manage.item, draftText, draftKind)
+        ? await onRevise?.(manage.item, draftText, draftKind, aboutChanged(manage.item) ? draftAbout : undefined)
         : await onDerive?.(manage.item, draftText, draftKind);
       if (saved) setManage(null);
     } finally { setBusy(null); }
@@ -130,7 +136,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                     // «ساخت بخش» is used now and then: under «بیشتر», not on every row
                     ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),
                     ...(it.id ? [{ label: 'باز کردن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
-                    ...(!done && onRevise ? [{ label: 'بازنگری متن یا نوع', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setManage({ item: it, mode: 'revise' }); } }] : []),
+                    ...(!done && onRevise ? [{ label: 'بازنگری متن، نوع یا «دربارهٔ»', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setDraftAbout(nodes ? aboutTargets(it.text, objects, nodes, it) : []); setManage({ item: it, mode: 'revise' }); } }] : []),
                     ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'Network' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
                   ]}
                 />
@@ -151,6 +157,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
           <div className="flex flex-col gap-stack-md">
             <Textarea label="متن فکر" rows={4} value={draftText} onChange={(e) => setDraftText(e.target.value)} />
             <SegmentedControl label="نوع فکر" value={draftKind} onChange={(value) => setDraftKind(value as ThoughtKind)} items={THOUGHT_KINDS.map((kind) => ({ id: kind, label: THINKING_FA[kind] }))} />
+            {manage.mode === 'revise' && manage.item.id && nodes && <AboutPicker objects={objects} nodes={nodes} value={draftAbout} onChange={setDraftAbout} />}
           </div>
         </Dialog>
       )}

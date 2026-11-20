@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { AboutTarget } from '../../core/thoughtAbout';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, ThoughtKind, TreeNode } from '../../types';
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
@@ -19,6 +20,8 @@ import { ThinkingList } from './ThinkingList';
 
 type ProposalProps = React.ComponentProps<typeof ProposalInbox>;
 interface Props {
+  /** what heads the reading column (the scope chip, contradictions): beside the filters on a wide page, under them on a narrow one */
+  lead?: React.ReactNode;
   /** «ببین چه عوض می‌شود»: the list of changes if everything waiting is approved (the same engine as the comparison) */
   onCompareIfApproved?: () => void;
   onOptions?: (item: NoteThinkingItem) => void;
@@ -39,7 +42,7 @@ interface Props {
   /** a thought becomes a SECTION of the tree */
   onToSection?: (item: NoteThinkingItem) => void;
   onToKnowledge: (item: NoteThinkingItem, type: ContextObject['type']) => Promise<void>;
-  onReviseThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
+  onReviseThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind, about?: AboutTarget[]) => Promise<boolean>;
   onDeriveThought?: (item: NoteThinkingItem, text: string, kind: ThoughtKind) => Promise<boolean>;
   onSynthesizeThought?: (parentIds: string[], nodeId: string, kind: ThoughtKind, text: string) => Promise<boolean>;
   onThinkWithAi?: (thoughtIds: string[]) => void;
@@ -116,13 +119,16 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   ];
 
   return (
-    <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
+    // the page frame's text and margin (decisions.md §۵۳ ۹): the filters are the margin (what to show), the list is the text. Wide,
+    // the margin stands beside the list like Home's «در این فضا»; narrow, the filters come first, as before. The DOM order is the
+    // same at every width (filters, then list), so the reading order never differs from what is seen (WCAG 1.3.2)
+    <div className="mb-text-margin" data-testid="thinking-space">
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
-      {nothingYet ? null : <div className="flex flex-col gap-stack-sm lg:flex-row lg:items-end">
+      {nothingYet ? null : <aside className="mb-text-margin__aside mb-thinking-filters" aria-label="فیلتر فکرها">
         {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
-            from 768 to 1023 the row has the page to itself (the section picker goes under it), so one row fits; from 1024 they sit
-            beside the picker (decisions.md §۳۶، §۳۹) */}
-        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0 lg:flex-wrap lg:overflow-visible">
+            a narrow frame: the row has the page to itself, the section picker under it (§۳۶، §۳۹); a wide frame: one column in the
+            margin, each kind with its count, like the state tally of Home's margin */}
+        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip mb-thinking-filters__kinds -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0">
           {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
               six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
           {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
@@ -131,13 +137,15 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             </Button>
           ))}
         </div>
-        <div className="flex items-end gap-inline-xs lg:ms-auto">
+        <div className="mb-thinking-filters__scope flex items-end gap-inline-xs">
           {selectMode && <Button size="sm" variant="ghost" iconStart="X" onClick={() => { setSelectMode(false); setSelectedIds([]); }}>پایان انتخاب</Button>}
           {selectableCount > 0 && !selectMode && <Button size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { setSelectMode(true); setSelectedIds([]); }}>انتخاب</Button>}
           <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} /></div>
         </div>
-      </div>}
+      </aside>}
 
+      <div className="mb-text-margin__main flex flex-col gap-stack-lg">
+      {p.lead}
       {empty && (nothingYet || (kind === 'all' && !p.nodeId)
         ? <EmptyState title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={p.onNewThought && <Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>افزودن فکر</Button>} />
         : empty && <EmptyState kind="filtered" title={kind === 'all' ? 'در این بخش فکری نیست' : 'با این فیلتر فکری نیست'} action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
@@ -267,6 +275,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           </div>}
         </section>
       )}
+      </div>
       {synthesis && (
         <Dialog
           open

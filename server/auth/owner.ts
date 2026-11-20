@@ -53,6 +53,11 @@ export function createOwnerRouter(deps: { db: SqlLike; mode: AuthMode; accounts:
     ? accounts.list().map((a) => ({ id: a.id, name: a.role === 'owner' ? 'صاحب' : a.name, role: a.role }))
     : [{ id: LOCAL_USER, name: 'این دستگاه', role: 'local' }];
   r.get('/activity/kpis', (_req, res) => { res.json(computeKpis(deps.activity.list(), persons(), { clientErrors: deps.activity.clientErrorsByUser() })); });
+  // the end of a round: the record is removed for good (the page asks first and offers the download); before = ISO date, or all
+  r.post('/activity/purge', (req, res) => {
+    const before = typeof req.body?.before === 'string' && !Number.isNaN(Date.parse(req.body.before)) ? new Date(req.body.before).toISOString() : undefined;
+    res.json(deps.activity.purge(before));
+  });
   r.get('/activity/export', (req, res) => {
     const events = deps.activity.list();
     const day = tehranDay();

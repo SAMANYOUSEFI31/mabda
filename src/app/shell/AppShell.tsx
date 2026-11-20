@@ -13,15 +13,12 @@ import { Shortcuts } from '../../components/shell/Shortcuts';
 import { WelcomeTour } from '../../components/shell/WelcomeTour';
 import { useState } from 'react';
 import { Button } from '../../ui';
+import { primarySections } from '../../core/nodeTree';
 
 export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
 
-/** the places under «منبع»: the top level; when the tree has one root (as the work tree «کسب‌وکار» does), the level under it */
-const topSections = (nodes: ReadyScope['nodes']) => {
-  const kids = (pid: string | undefined) => nodes.filter((n) => (n.parentId ?? undefined) === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const roots = kids(undefined);
-  return roots.length === 1 && kids(roots[0].id).length ? kids(roots[0].id) : roots;
-};
+/** the places under «حقیقت»: the main sections (src/core/nodeTree.ts primarySections, one rule for every view; §۵۳ ۷) */
+const topSections = (nodes: ReadyScope['nodes']) => primarySections(nodes);
 
 export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
   const [tourAgain, setTourAgain] = useState(0);
@@ -66,7 +63,8 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
           {/* §۳۷: the sample says what it is, once, quietly — a line of text, not a warning box («متن و حاشیه») */}
           {currentWorkspace.isDemo && (
-            <p className="body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" data-testid="sample-note">
+            // in the page frame, like every page's header (§۵۳ ۹): its first word starts where the title under it starts
+            <p className="mb-page-frame body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" data-testid="sample-note">
               <span>این فضای نمونه است و مال یک آدم فرضی است؛ هرچه این‌جا عوض کنی فقط همین‌جا می‌ماند و در فضای خودت نمی‌آید.</span>
               <Button size="sm" variant="ghost" iconStart="RotateCcw" onClick={() => setDemoConfirm(true)}>برگرداندن به حالت اول</Button>
             </p>

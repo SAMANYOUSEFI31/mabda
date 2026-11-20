@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { track } from '../../services/usage';
+import { logUi } from '../../services/activity';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { MORE_STEP, SEARCH_GROUP_LABEL, groupOrder, pushRecent, recentHits, registeredCommand, searchIndex, shownCount, snippetFor } from '../../core/globalSearch';
 import type { SearchHit, SearchIndex, SearchKind } from '../../core/globalSearch';
@@ -67,6 +69,8 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
     if (r.type === 'more') { more(r.kind); return; } // the focus stays on the row; the next hits appear above it
     const own = r.hit.kind === 'command' ? registeredCommand(r.hit.id) : undefined;
     if (own?.run) own.run(); else onPick(r.hit);
+    track('action.palette-pick');
+    logUi('search', { picked: true, kind: r.hit.kind, rank: active });
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(readRecent(), r.hit))); } catch { /* optional */ }
     onClose();
   };

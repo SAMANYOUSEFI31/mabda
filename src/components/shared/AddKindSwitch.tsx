@@ -1,6 +1,7 @@
 /**
  * The control at the top of every «افزودن» dialog (patterns.md §۳): فکر · حقیقت · فایل. Switching carries the text over.
  */
+import { logUi } from '../../services/activity';
 import React from 'react';
 import { SegmentedControl } from '../../ui';
 import { ADD_KINDS, carryAddText, requestAdd } from '../../core/addRequest';
@@ -11,6 +12,7 @@ export const AddKindSwitch: React.FC<{ value: AddKind; text?: string; nodeId?: s
     label="چه چیزی اضافه می‌کنی؟" fullWidth value={value} items={ADD_KINDS}
     onChange={(id) => {
       if (id === value) return;
+      logUi('feature', { key: 'action.add-switch', from: value, to: id });
       // one box, not three: no exit or enter while she switches (components.css «is-steady»)
       const root = document.documentElement;
       // the next box clears this mark when it opens (Overlay.tsx); the timer is only a safety if it never does

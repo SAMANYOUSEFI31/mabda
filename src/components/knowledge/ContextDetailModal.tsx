@@ -4,7 +4,7 @@
  */
 
 import type { Contradiction } from '../../types';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
 import type { ReviewNeed } from '../../core/decisionGraph';
@@ -25,7 +25,7 @@ import { suggestLinks } from '../../core/mentions';
 import { suggestUpstreamLinks } from '../../core/upstreamLinks';
 import { AroundPanel } from './AroundPanel';
 import { aroundOf } from '../../core/around';
-import { ApprovalBadge, VersionHistoryView } from './VersionHistoryView';
+import { ApprovalBadge, EarlierLives, VersionHistoryView } from './VersionHistoryView';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { clearPendingAddText, takePendingAddText } from '../../core/addRequest';
 import { AddKindSwitch } from '../shared/AddKindSwitch';
@@ -38,6 +38,7 @@ import { metricLabel, monitorOf, parseNumber, unlinkedMetrics } from '../../core
 import { MonitorFields, MonitorPanel, clearPendingMonitorLink, monitorDraftOf, monitorDraftOk, takePendingMonitorLink } from '../metrics/Monitor';
 import type { MonitorDraft } from '../metrics/Monitor';
 import { dataApi } from '../../services/dataApi';
+import { saveThenClose } from '../../core/saveFlow';
 import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
 
 interface ContextDetailModalProps {
@@ -47,12 +48,13 @@ interface ContextDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** `reason` only for an edit of confirmed knowledge: it is stored in the Change, never in the text */
-  onSave: (saved: ContextDraft, opts?: { reason?: string; asDraft?: boolean }) => void | Promise<ContextObject | undefined>;
+  /** resolves to the saved object, or undefined when the save failed (the caller already showed why) */
+  onSave: (saved: ContextDraft, opts?: { reason?: string; asDraft?: boolean }) => Promise<ContextObject | undefined>;
   /** the unapproved rewrite of this confirmed knowledge: approve (it replaces the text) / reject (it is dropped) */
   onApproveDraft?: (id: string) => Promise<void>;
   onRejectDraft?: (id: string) => Promise<void>;
   /** the reason is stored in the Change log, never in the object's text */
-  onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => void;
+  onSupersede: (oldId: string, newObj: ContextDraft, reason?: string) => Promise<ContextObject | undefined>;
   onArchive: (id: string) => void;
   nodes: TreeNode[];
   workspaceId: string;
@@ -172,6 +174,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [onDraft, setOnDraft] = useState(false);
   useEffect(() => () => clearPendingAddText(), []);
   const [contentError, setContentError] = useState('');
+  /** a save on its way (the button waits; a second press does nothing) and one that failed (her text stays, with the reason) */
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [applyNow, setApplyNow] = useState(false);
   const [linkMetricId] = useState(() => (object && object.id !== '' ? '' : takePendingMonitorLink()));
   useEffect(() => () => clearPendingMonitorLink(), []);
@@ -250,6 +255,18 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   }, [content, title, type, nodeId, nodes, object?.id, allObjects, relationships, deps, turnedDown]);
   const turnDown = (targetId: string) => { const next = [...turnedDown, noKey(targetId)].slice(-200); setTurnedDown(next); try { localStorage.setItem('mabda.mentions.no', JSON.stringify(next)); } catch { /* optional */ } };
   const history = useMemo(() => versionHistory(changes), [changes]);
+  // the items this one replaced, newest first (each replaced item points at what replaced it: supersededById)
+  const earlier = useMemo(() => {
+    const out: Array<{ id: string; title: string; replacedAt?: string }> = [];
+    const seen = new Set<string>();
+    for (let cur = object?.id, n = 0; cur && n < 20; n++) {
+      const prev = allObjects.find((o) => o.supersededById === cur && !seen.has(o.id));
+      if (!prev) break;
+      seen.add(prev.id); out.push({ id: prev.id, title: prev.title, replacedAt: prev.updatedAt }); cur = prev.id;
+    }
+    return out;
+  }, [object?.id, allObjects]);
+  const loadEarlier = useCallback((id: string) => dataApi.changeLog(object!.workspaceId, { objectId: id }).then((r) => r.changes), [object]);
   const [tab, setTab] = useState<'edit' | 'history' | 'around'>('edit');
   useEffect(() => {
     if (!isEditing || !object) return;
@@ -277,8 +294,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
     if (canMonitor && !monitorDraftOk(monitor)) { setMoreOpen(true); return; }
 
+    if (saving) return;
     if (isSupersedingMode && object) {
-      onSupersede(object.id, {
+      setSaving(true); setSaveFailed(false);
+      void saveThenClose(() => onSupersede(object.id, {
         workspaceId: object.workspaceId,
         type,
         status: 'Confirmed',
@@ -286,8 +305,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         title: finalTitle,
         content: content.trim(),
         nodeId,
-      }, supersedeReason.trim() || 'به‌روزرسانی تصمیم');
-      onClose();
+      }, supersedeReason.trim() || 'به‌روزرسانی تصمیم'), onClose).then((r) => { setSaving(false); if (!r.ok) setSaveFailed(true); });
       return;
     }
 
@@ -317,17 +335,22 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     };
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
-    void (async () => {
-      const asDraft = confirmedEdit && !applyNow && (textChanged || !!object?.draft);
-      const reason = isEditing && reasonAllowed(object!.status) && editReason.trim() ? editReason.trim() : undefined;
-      const saved = await onSave(updated, reason || asDraft ? { ...(reason ? { reason } : {}), ...(asDraft ? { asDraft: true } : {}) } : undefined);
-      const id = isEditing ? object!.id : saved?.id;
-      if (id && onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
-      if (id && canMonitor && (monitor.on || currentMonitor)) await onSaveMonitor!(id, monitor, currentMonitor);
-      // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
-      if (id && onSetDependencies) for (const step of affectPlan(id, effects, relationships)) await onSetDependencies(step.objectId, step.dependsOn);
-    })();
-    onClose();
+    // the dialog closes only when the server said yes (decisions.md §۵۳ ۲): a 409 (the same item changed in another tab) or a
+    // dropped network keeps it open with her text, under the error, ready to save again. Before, it closed first and the text was lost
+    const asDraft = confirmedEdit && !applyNow && (textChanged || !!object?.draft);
+    const reason = isEditing && reasonAllowed(object!.status) && editReason.trim() ? editReason.trim() : undefined;
+    setSaving(true); setSaveFailed(false);
+    void saveThenClose(
+      () => onSave(updated, reason || asDraft ? { ...(reason ? { reason } : {}), ...(asDraft ? { asDraft: true } : {}) } : undefined),
+      onClose,
+      async (saved) => {
+        const id = saved.id;
+        if (onSetDependencies && !sameDeps) await onSetDependencies(id, deps);
+        if (canMonitor && (monitor.on || currentMonitor)) await onSaveMonitor!(id, monitor, currentMonitor);
+        // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
+        if (onSetDependencies) for (const step of affectPlan(id, effects, relationships)) await onSetDependencies(step.objectId, step.dependsOn);
+      },
+    ).then((r) => { setSaving(false); if (!r.ok) setSaveFailed(true); });
   };
 
   // the verb names what is being added: an assumption is not «truth» yet (decisions.md §۱)
@@ -373,7 +396,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             <Button variant="ghost" onClick={onClose}>انصراف</Button>
             {approveMode
               ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { await onApproveDraft!(object!.id); onClose(); }}>جایگزینی</Button>
-              : <Button variant="primary" type="submit" form="context-detail-form">
+              : <Button variant="primary" type="submit" form="context-detail-form" loading={saving}>
                   {isSupersedingMode ? 'ثبت جایگزینی' : isEditing ? saveLabel : addLabel}
                 </Button>}
           </>
@@ -400,9 +423,18 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
       )}
       {tab === 'history' && isEditing && (
-        <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
+        <div className="flex flex-col gap-stack-md">
+          <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
+          {object && <EarlierLives chain={earlier} load={loadEarlier} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />}
+        </div>
       )}
       <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>
+        {saveFailed && (
+          // the reason is in the toast; here, the one thing she needs to know: nothing she wrote is lost (§۵۳ ۲)
+          <Alert intent="danger" title="ذخیره نشد؛ متن تو همین‌جا مانده است">
+            اگر همین مورد جای دیگری هم عوض شده بود، آن تغییر حالا در «نسخه‌ها» هست. اگر متن تو باید بماند، دوباره ذخیره کن.
+          </Alert>
+        )}
         {switchable && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>

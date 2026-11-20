@@ -1,9 +1,9 @@
 /**
  * Where she is in a long page, and how to get anywhere in it: one rule for «ساختار» and «سند» (docs/ux/decisions.md §۵۲).
  *
- * - The reading line is just under everything pinned at the top (--pin-top + --pin-sub, the same line the page's scroll-padding
- *   lands a jump on): the section whose heading has passed it is «اکنون». A fraction of the window ignored the pinned bars, which
- *   take a third of a phone by themselves.
+ * - The reading line is a quarter of the way down the READABLE part of the window (under --pin-top + --pin-sub), sliding to the
+ *   bottom on the last screen: src/core/readingLine.ts (§۵۳ ۵). A fraction of the whole window ignored the pinned bars (a third of a
+ *   phone); a line right under them (§۵۲) kept a passed section lit on a tall screen.
  * - A section she chose stays «اکنون» until she scrolls herself: a short last section never reaches the line.
  * - The scrubber: the sections as one line, each part as long as its section is on the page. It shows the shape of the whole and
  *   where she is in it (what a list of names cannot), and a drag along it moves through the page section by section, naming each.
@@ -11,6 +11,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatNumber } from '../../ui/format';
+import { activeIndex, readingLineY } from '../../core/readingLine';
 
 export interface ReadingItem { id: string; label: string; level: number }
 
@@ -19,8 +20,6 @@ const pinned = () => {
   const s = getComputedStyle(document.documentElement);
   return (parseFloat(s.getPropertyValue('--pin-top')) || 0) + (parseFloat(s.getPropertyValue('--pin-sub')) || 0);
 };
-/** the line under the pinned bars where content becomes readable */
-export const readingLine = () => pinned() + 12; // a jump lands its heading at +8 (scroll-padding); 4px for rounding
 
 export const useReadingPosition = (items: ReadingItem[], anchorOf: (id: string) => string, on = true) => {
   const [active, setActive] = useState<string | undefined>(items[0]?.id);
@@ -31,12 +30,10 @@ export const useReadingPosition = (items: ReadingItem[], anchorOf: (id: string) 
     const measure = () => {
       raf = 0;
       if (chosen.current) { setActive(chosen.current); return; }
-      const line = readingLine();
-      let cur = items[0].id;
-      for (const i of items) { const el = document.getElementById(anchorOf(i.id)); if (el && el.getBoundingClientRect().top <= line) cur = i.id; }
       const el = document.scrollingElement ?? document.documentElement;
-      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
-      setActive(cur);
+      const line = readingLineY({ pinned: pinned(), viewport: window.innerHeight, scrollTop: el.scrollTop, scrollHeight: el.scrollHeight });
+      const tops = items.map((i) => document.getElementById(anchorOf(i.id))?.getBoundingClientRect().top ?? NaN);
+      setActive(items[activeIndex(tops, line)].id);
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
     const own = () => { chosen.current = null; };
@@ -78,7 +75,9 @@ const weightsOf = (items: ReadingItem[], anchorOf: (id: string) => string) => {
 export const SectionScrubber: React.FC<{
   items: ReadingItem[]; active?: string; anchorOf: (id: string) => string;
   onGo: (id: string, opts: { instant?: boolean; focus?: boolean }) => void; label: string;
-}> = ({ items, active, anchorOf, onGo, label }) => {
+  /** what «اکنون» says when it is more than the part's name (the structure: the path of the section being read) */
+  now?: string; nowFull?: string;
+}> = ({ items, active, anchorOf, onGo, label, now, nowFull }) => {
   const [weights, setWeights] = useState<number[]>(() => items.map(() => 1));
   const [preview, setPreview] = useState<number | null>(null);
   const track = useRef<HTMLDivElement>(null);
@@ -114,13 +113,13 @@ export const SectionScrubber: React.FC<{
   return (
     <div
       role="slider" tabIndex={0} aria-label={label} aria-orientation="horizontal"
-      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={cur?.label}
+      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={preview === null && nowFull ? nowFull : cur?.label}
       data-testid="section-scrubber" data-scrubbing={preview !== null || undefined}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key}
       className="flex min-h-touch min-w-space-0 flex-1 cursor-pointer touch-pan-y select-none flex-col justify-center gap-stack-xs rounded-control-sm px-inset-xs outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
     >
       <p className={`body-sm truncate ${preview !== null ? 'text-text-default' : 'text-text-subtle'}`} aria-hidden="true">
-        {preview !== null ? `${formatPos(shown + 1, items.length)} · ` : 'اکنون: '}{cur?.label}
+        {preview !== null ? `${formatPos(shown + 1, items.length)} · ${cur?.label ?? ''}` : `اکنون: ${now || cur?.label || ''}`}
       </p>
       <div ref={track} className="flex h-space-1 items-stretch gap-space-0" aria-hidden="true">
         {items.map((i, k) => (

@@ -188,3 +188,27 @@ export function defaultTransferTarget(nodes: TreeNode[], id: string): string | u
   if (node.parentId && nodes.some((n) => n.id === node.parentId)) return node.parentId;
   return childrenOf(nodes, undefined).find((n) => n.id !== id)?.id;
 }
+
+/**
+ * The level a person thinks in (decisions.md §۵۳ ۷). A tree with ONE root that has children (the work tree «کسب‌وکار») is a wrapper:
+ * its children are the main sections. With several roots (the personal tree) the roots are. One rule for every place that shows
+ * «the main sections»: the sidebar under «حقیقت», the document's tabs, the structure's «فهرست» and scrubber, the overview's rows.
+ * Before, the outline and the overview counted from the wrapper, so in a one-root space the scrubber had 3 parts and did not show
+ * at all, and the overview spent one of its two row levels on the wrapper.
+ */
+export function primaryDepth(nodes: TreeNode[]): 0 | 1 {
+  const roots = childrenOf(nodes, undefined);
+  return roots.length === 1 && childrenOf(nodes, roots[0].id).length > 0 ? 1 : 0;
+}
+export function primarySections(nodes: TreeNode[]): TreeNode[] {
+  const roots = childrenOf(nodes, undefined);
+  return primaryDepth(nodes) === 1 ? childrenOf(nodes, roots[0].id) : roots;
+}
+
+/** the labels from the main level down to a section (the wrapper root is not named): «محصول و خدمت › اشتراک ماهانه» */
+export function sectionPath(nodes: TreeNode[], id: string): string[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const path: TreeNode[] = [];
+  for (let cur = byId.get(id), n = 0; cur && n < 64; cur = cur.parentId ? byId.get(cur.parentId) : undefined, n++) path.unshift(cur);
+  return path.slice(Math.min(primaryDepth(nodes), Math.max(0, path.length - 1))).map((n) => n.label);
+}

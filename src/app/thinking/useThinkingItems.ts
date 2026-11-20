@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { AboutTarget } from '../../core/thoughtAbout';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { ContextObject, ThoughtKind } from '../../types';
 import { assumptionsDue, decisionsDue } from '../../core/assumptions';
@@ -34,8 +35,15 @@ export function useThinkingItems(p: AppCoreScope) {
     patch((d) => ({ ...d, objects: r.objects, thoughts: r.thoughts }));
     toast.show({ intent: 'success', message: 'به‌صورت پیشنهادی ثبت شد؛ در صندوق پیشنهادها منتظر تأیید توست و فکر به‌تنهایی حقیقت نمی‌شود.' });
   };
-  const handleReviseThought = async (item: NoteThinkingItem, text: string, kind: ThoughtKind): Promise<boolean> => {
+  const handleReviseThought = async (item: NoteThinkingItem, text: string, kind: ThoughtKind, about?: AboutTarget[]): Promise<boolean> => {
     if (!item.id) return false;
+    // «دربارهٔ» after the fact (§۵۳ ۱۱): the durable link (thought_about), not the text, so the words she wrote stay hers
+    const had = new Set([...(item.aboutObjectIds ?? []).map((id) => `object:${id}`), ...(item.aboutNodeIds ?? []).map((id) => `node:${id}`)]);
+    if (about && (about.length !== had.size || about.some((t) => !had.has(`${t.kind}:${t.id}`)))) {
+      const r = await attempt(() => dataApi.updateThoughtAbout(wid, item.id!, about.map((t) => ({ kind: t.kind, id: t.id }))));
+      if (!r) return false;
+      patch((d) => ({ ...d, thoughts: d.thoughts.map((t) => t.id === item.id ? r.thought : t) }));
+    }
     if (text !== item.text) {
       const r = await attempt(() => dataApi.reviseThought(wid, item.id!, text));
       if (!r) return false;

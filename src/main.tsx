@@ -29,3 +29,8 @@ createRoot(document.getElementById('root')!).render(
     </ToastProvider>
   </RootBoundary>,
 );
+
+// installable app (PWA, decisions.md §۵۳): production only, so development never serves an old cached build
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* the app works without it */ }); });
+}

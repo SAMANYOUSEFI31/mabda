@@ -27,7 +27,8 @@ export function useStarters(p: AppCoreScope) {
   const handleSaveTemplate = async () => {
     if (!templateDraft?.name.trim()) return;
     const r = await attempt(() => dataApi.saveTemplate(wid, { ...templateDraft, name: templateDraft.name.trim() }));
-    if (r) { toast.show({ intent: 'success', message: 'قالب ذخیره شد؛ در «اسکلت شروع › قالب‌های من» می‌توانی در هر فضایی بیاوری.' }); setTemplateDraft(null); }
+    // the place it is used is named AND one tap away (§۵۳ ۱۱: before, «اسکلت شروع» had no way in, so a saved template was a dead end)
+    if (r) { toast.show({ intent: 'success', message: 'قالب ذخیره شد؛ از «⋯ › اسکلت شروع و قالب‌ها» در «حقیقت» هر فضایی می‌آوری‌اش.', action: { label: 'دیدن', onClick: () => p.setIsStarterOpen(true) } }); setTemplateDraft(null); }
   };
   const handleApplyTemplate = async (templateId: string, parentId?: string) => {
     const r = await attempt(() => dataApi.applyTemplate(wid, templateId, parentId));

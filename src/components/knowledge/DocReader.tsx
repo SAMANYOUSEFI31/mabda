@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { track } from '../../services/usage';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OutlineItem } from '../../core/contextMarkdown';
 import { Button, IconButton, Menu, Markdown, SegmentedControl, Switch, useToast } from '../../ui';
 import { SectionScrubber, useReadingPosition } from './readingPosition';
@@ -36,6 +37,14 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   const items = useMemo(() => outline ?? [], [outline]);
   const reading = useMemo(() => items.map((i) => ({ id: i.id, label: i.text, level: i.level })), [items]);
   const { active, goTo: reach } = useReadingPosition(reading, sameId, view === 'read');
+  // a long outline follows the reading: the «اکنون» line is kept inside the outline's own box (scrolling the outline, never the page)
+  const outlineRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = outlineRef.current; const a = nav?.querySelector<HTMLElement>('[aria-current=location]');
+    if (!nav || !a || nav.scrollHeight <= nav.clientHeight) return;
+    const n = nav.getBoundingClientRect(), r = a.getBoundingClientRect();
+    if (r.top < n.top) nav.scrollTop -= n.top - r.top + 8; else if (r.bottom > n.bottom) nav.scrollTop += r.bottom - n.bottom + 8;
+  }, [active]);
 
   const copy = async (text = markdown, what = 'متن Markdown') => {
     try { await navigator.clipboard.writeText(text); toast.show({ intent: 'success', message: `${what} کپی شد.` }); }
@@ -45,6 +54,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
     const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url; a.download = `${name}.md`; a.click();
+    track('action.doc-download');
     URL.revokeObjectURL(url);
   };
 
@@ -121,7 +131,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
       )}
       {withOutline && markdown.trim().length > 0 ? (
         <div className="flex flex-col gap-stack-md lg:flex-row lg:items-start lg:gap-inline-xl">
-          <nav className="doc-outline hidden shrink-0 lg:block lg:w-overlay-xs" aria-label="فهرست سند">
+          <nav ref={outlineRef} className="doc-outline hidden shrink-0 lg:block lg:w-overlay-xs" aria-label="فهرست سند">
             <ul className="flex flex-col gap-stack-xs">
               {items.map((i) => (
                 <li key={i.id} className={indent(i.level)}>

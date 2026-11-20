@@ -66,19 +66,23 @@ test('a cycle sits in one layer and is marked «با هم تصمیم بگیری�
   assert.equal(t('a').x, t('b').x, 'same layer');
 });
 
-test('deeper sections roll into their parent row until it is opened; opened = its own row', () => {
+test('deeper sections roll into their parent row until it is opened; opened = its own row (counted from the main sections, §۵۳ ۷)', () => {
+  // this tree has one root (a wrapper), so the main sections are ship, sub, brand, empty: rows for them and the level under them
+  // (gift); deep rolls into gift until gift is opened
   const objs = [obj('g', 'gift'), obj('d', 'deep'), obj('s', 'sub')];
-  assert.equal(rowOfNode(nodes, 'deep'), 'sub');
-  assert.equal(rowOfNode(nodes, 'gift'), 'sub');
-  assert.equal(rowOfNode(nodes, 'gift', new Set(['sub'])), 'gift');
-  assert.equal(rowOfNode(nodes, 'deep', new Set(['sub'])), 'gift');
-  assert.equal(rowOfNode(nodes, 'deep', new Set(['sub', 'gift'])), 'deep');
+  assert.equal(rowOfNode(nodes, 'deep'), 'gift');
+  assert.equal(rowOfNode(nodes, 'gift'), 'gift');
+  assert.equal(rowOfNode(nodes, 'deep', new Set(['gift'])), 'deep');
   const closed = buildOverviewScene(input(objs));
-  assert.deepEqual(closed.overview!.rows.map((r) => r.nodeId), ['sub']);
-  assert.equal(closed.overview!.rows[0].rolledUp, 2, 'gift and deep are inside it');
+  assert.deepEqual(closed.overview!.rows.map((r) => r.nodeId), ['sub', 'gift']);
+  assert.equal(closed.overview!.rows[1].rolledUp, 1, 'deep is inside gift');
   assert.equal(closed.items.length, 3, 'their cards are still there');
-  const open = buildOverviewScene(input(objs), { opened: new Set(['sub']) });
-  assert.deepEqual(open.overview!.rows.map((r) => r.nodeId), ['sub', 'gift']);
+  const open = buildOverviewScene(input(objs), { opened: new Set(['gift']) });
+  assert.deepEqual(open.overview!.rows.map((r) => r.nodeId), ['sub', 'gift', 'deep']);
+  // several roots (a personal tree): the roots ARE the main sections, so the same two levels start at the top
+  const many = [node('a'), node('b', undefined, 1), node('a1', 'a'), node('a11', 'a1')];
+  assert.equal(rowOfNode(many, 'a11'), 'a1');
+  assert.equal(rowOfNode(many, 'a1'), 'a1');
 });
 
 test('row counters and the one-counted-line-per-pair-of-rows data that the zoomed-out view draws', () => {
