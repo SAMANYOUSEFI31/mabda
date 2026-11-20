@@ -117,7 +117,7 @@ export const objectsMethods = {
 
   /** stale assets with every reason: changed versions AND decisions they rest on (depends_on) that changed unreviewed */
   computeStale(this: Repo, s: Scope, dels: GeneratedDeliverable[] = this.listDeliverables(s)): StaleAsset[] {
-    return computeStaleAssets(dels.filter((d) => !d.archivedAt), this.listObjects(s), { relationships: this.listRelationships(s), changes: this.listChanges(s), numbers: { metrics: this.listMetrics(s), measurements: this.listMeasurements(s) } });
+    return computeStaleAssets(dels.filter((d) => !d.archivedAt), this.listObjects(s), { relationships: this.listRelationships(s), changes: this.listChanges(s), numbers: { metrics: this.listMetrics(s), measurements: this.listMeasurements(s) }, nodes: this.listNodes(s) });
   },
 
   describeImpact(this: Repo, list: StaleAsset[], dels: GeneratedDeliverable[]): ImpactResult {

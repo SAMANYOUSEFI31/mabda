@@ -3,7 +3,8 @@
  * Pure: input = assets (with usedContext = exact id+version injected) + current objects.
  */
 
-import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, Measurement, Metric, UsedContextRef } from '../types';
+import type { ContextChange, ContextObject, ContextRelationship, GeneratedDeliverable, Measurement, Metric, TreeNode, UsedContextRef } from '../types';
+import { placeOf } from './nodeTree';
 import { latestOf } from './metrics';
 import { formatNumber } from '../ui/format';
 import { needsReview } from './decisionGraph';
@@ -53,7 +54,8 @@ function headOf(start: ContextObject, byId: Map<string, ContextObject>): Context
   return cur;
 }
 
-export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>): StaleReason | null {
+/** `place(nodeId)` is the section's place in the tree now (nodeTree.placeOf); without it only a change of section is seen */
+export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>, place?: (nodeId: string) => string): StaleReason | null {
   const obj = byId.get(used.id);
   if (!obj) {
     return { kind: 'removed', objectId: used.id, title: used.id, usedVersion: used.version, message: 'یکی از دانش‌های استفاده‌شده دیگر وجود ندارد.' };
@@ -87,6 +89,11 @@ export function reasonFor(used: UsedContextRef, byId: Map<string, ContextObject>
   // the date already bumps the version above). Only outputs that recorded the place can tell.
   if (used.nodeId && obj.nodeId && used.nodeId !== obj.nodeId) {
     return { kind: 'scope_changed', objectId: obj.id, title: obj.title, usedVersion: used.version, currentVersion: obj.version, nodeId: obj.nodeId, message: `«${obj.title}» به بخش دیگری منتقل شد.` };
+  }
+  // the same section, but the section itself moved elsewhere in the tree (its parents changed)
+  if (used.place && place && obj.nodeId) {
+    const now = place(obj.nodeId);
+    if (now !== used.place) return { kind: 'scope_changed', objectId: obj.id, title: obj.title, usedVersion: used.version, currentVersion: obj.version, nodeId: now, message: `«${obj.title}» با بخشش به جای دیگری از درخت رفت.` };
   }
   return null;
 }
@@ -136,12 +143,14 @@ export function numberReason(used: UsedContextRef, byId: Map<string, ContextObje
   };
 }
 
-export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'> & { createdAt?: string }, objects: ContextObject[], review?: Map<string, ReviewNeed>, numbers?: NumbersNow): StaleReason[] {
+export function staleReasonsOf(d: Pick<GeneratedDeliverable, 'usedContext'> & { createdAt?: string }, objects: ContextObject[], review?: Map<string, ReviewNeed>, numbers?: NumbersNow, nodes?: TreeNode[]): StaleReason[] {
+  const places = new Map<string, string>();
+  const place = nodes ? (id: string) => places.get(id) ?? places.set(id, placeOf(nodes, id)).get(id)! : undefined;
   const byId = new Map(objects.map((o) => [o.id, o]));
   const out: StaleReason[] = [];
   const seen = new Set<string>();
   for (const used of d.usedContext ?? []) {
-    const r = reasonFor(used, byId) ?? (review ? dependencyReason(used, byId, review, d.createdAt) : null) ?? (numbers ? numberReason(used, byId, numbers) : null);
+    const r = reasonFor(used, byId, place) ?? (review ? dependencyReason(used, byId, review, d.createdAt) : null) ?? (numbers ? numberReason(used, byId, numbers) : null);
     if (!r) continue;
     const key = `${r.objectId}:${r.kind}`;
     if (seen.has(key)) continue;
@@ -156,12 +165,12 @@ export function computeStaleAssets(
   deliverables: Array<Pick<GeneratedDeliverable, 'id' | 'usedContext'> & { createdAt?: string }>,
   objects: ContextObject[],
   /** with the `depends_on` relations and the change log, an asset also goes stale when a decision it rests on changed (`dependency_changed`) */
-  graph?: { relationships: ContextRelationship[]; changes: ContextChange[]; numbers?: NumbersNow },
+  graph?: { relationships: ContextRelationship[]; changes: ContextChange[]; numbers?: NumbersNow; /** the tree now: a moved section counts too */ nodes?: TreeNode[] },
 ): StaleAsset[] {
   const review = graph ? needsReview(objects, graph.relationships, graph.changes) : undefined;
   const out: StaleAsset[] = [];
   for (const d of deliverables) {
-    const reasons = staleReasonsOf(d, objects, review, graph?.numbers);
+    const reasons = staleReasonsOf(d, objects, review, graph?.numbers, graph?.nodes);
     if (reasons.length) out.push({ deliverableId: d.id, reasons, signature: staleSignature(reasons) });
   }
   return out;
