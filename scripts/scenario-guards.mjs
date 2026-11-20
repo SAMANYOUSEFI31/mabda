@@ -148,10 +148,12 @@ try {
     await sample(page);
     await nav(page, 'حقیقت'); await radio(page, 'نمای کلی'); await wait(800);
     await page.locator('#canvas-fs').evaluate((b) => b.click()); await wait(700);
-    await guard(`[${w}×${h}] the bar is one row at the top and «بستن» leaves`, async () => {
+    await guard(`[${w}×${h}] the bar is one row at the top, the board fits the window, and «بستن» leaves`, async () => {
       const r = await page.locator('[data-testid=canvas-toolbar]').evaluate((e) => { const b = e.getBoundingClientRect(); return { top: b.top, h: b.height }; });
       assert.ok(r.top < 24 && r.h <= 56, `bar at ${r.top}, ${r.h}px tall`);
       assert.equal((await page.locator('#canvas-fs').innerText()).trim(), 'بستن');
+      const st = await page.locator('[data-testid=canvas-stage]').evaluate((e) => e.getBoundingClientRect().bottom);
+      assert.ok(st <= h + 1, `the board ends at ${Math.round(st)}px, below the ${h}px window: part of it is unreachable`);
       await page.locator('#canvas-fs').click(); await wait(500);
       assert.equal(await page.locator('[data-testid=canvas-root]').getAttribute('data-fullscreen'), 'false');
     });

@@ -85,12 +85,12 @@ test('«آخرین تأیید» is added to the meta line only when it is not th
   assert.equal((md.match(/آخرین تأیید/g) ?? []).length, 1);
 });
 
-test('tabs: the first-level sections of a one-root tree; a «کلیات» tab only if the root has its own objects', () => {
+test('tabs: the first-level sections of a one-root tree; a tab for the root itself (named as the root is named everywhere) only if it has its own objects', () => {
   const tabs = docTabs(DEFAULT_TREE_NODES, []);
   const root = DEFAULT_TREE_NODES.find((n) => !n.parentId)!;
   assert.deepEqual(tabs.map((t) => t.id), DEFAULT_TREE_NODES.filter((n) => n.parentId === root.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((n) => n.id));
   const withOwn = docTabs(DEFAULT_TREE_NODES, [o({ nodeId: root.id })]);
-  assert.equal(withOwn[0].label, 'کلیات');
+  assert.equal(withOwn[0].label, root.label, 'the root has one name in every view');
   assert.equal(withOwn[0].own, true);
   assert.equal(withOwn.length, tabs.length + 1);
   // the general tab holds only the root's own objects, not the whole tree
