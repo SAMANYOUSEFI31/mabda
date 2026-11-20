@@ -85,12 +85,16 @@
 .bidi-plain textarea { unicode-bidi: plaintext; }
 
 /* The reading document: a heading reached from the outline or a permalink stops below the top edge and shows where it landed. */
-.doc-anchor { scroll-margin-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-4)); }
+/* no margin of its own: html's scroll-padding already stops a jump under the pinned bars. Both together stopped it twice as low
+   (a phone: 266px instead of 129px, under a third of the screen of empty top) — decisions.md §۵۲ */
+.doc-anchor { scroll-margin-block-start: 0; }
 .doc-anchor:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
 /* the outline rail stays in view while the long document scrolls (desktop); on phones it is a menu instead */
 .doc-outline { position: sticky; inset-block-start: calc(var(--pin-top, 0px) + var(--space-4)); max-block-size: calc(100dvh - var(--pin-top, 0px) - var(--space-8)); overflow-y: auto; }
 /* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
 .doc-bar { position: sticky; inset-block-start: var(--pin-top, 0px); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
+/* the section being read inks its own start rule (decisions.md §۵۲): the page says where she is, beside the bar's line */
+section[data-reading] { border-inline-start-color: var(--icon-subtle); }
 .doc-bar .mb-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
 
 /* the command palette: the result list scrolls inside the dialog, the input stays put */

@@ -5,6 +5,7 @@
 
 import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
+import { SectionScrubber, useReadingPosition } from './readingPosition';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
@@ -316,67 +317,31 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   );
 };
 
-const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 /** a page of this many sections or more is long enough that «where am I, and how do I get to X» needs an answer on screen */
 const OUTLINE_FROM = 4;
+const nodeAnchor = (id: string) => `node-${id}`;
 
 /**
- * «فهرست» and «اکنون: …» over the structure (decisions.md §۵۱; Gemini's Outline Scrubber, decided on principle): the same named outline
- * and scroll-spy as «سند», pinned under the page bar at every width. Not unlabelled lines that appear on hover: a list of names
- * is recognised, not recalled, and works the same by touch and keyboard. Main sections and their first level, in reading order.
+ * «فهرست» and the scrubber over the structure (decisions.md §۵۱, §۵۲): the same as «سند» on a phone, pinned under the page bar at
+ * every width. Main sections and their first level, in reading order. The section being read also inks its own start rule, the
+ * line that already runs down the page beside its items: the page itself says where she is, not only the bar.
  */
 const OutlineBar: React.FC<{ nodes: TreeNode[]; roots: TreeNode[] }> = ({ nodes, roots }) => {
   const items = useMemo(() => roots.flatMap((r) => [{ id: r.id, label: r.label, level: 1 }, ...childrenOf(nodes, r.id).map((c) => ({ id: c.id, label: c.label, level: 2 }))]), [nodes, roots]);
-  const [active, setActive] = useState<string | undefined>(items[0]?.id);
-  const bar = useRef<HTMLDivElement>(null);
-  /** a section chosen in «فهرست» stays «اکنون» until she scrolls herself: a short last section never reaches the reading line */
-  const chosen = useRef<string | null>(null);
-  /** the reading line: just under everything pinned at the top (the page bar, this bar), where content becomes visible. A fixed
-   *  fraction of the window (a third, as in «سند») ignored the pinned bars, which take a third of a phone by themselves, so a
-   *  heading scrolled to the top still read as below the line and «اکنون» named the section before it */
-  const readingLine = () => Math.max(0, bar.current?.getBoundingClientRect().bottom ?? 0) + 8;
+  const on = items.length >= OUTLINE_FROM;
+  const { active, goTo } = useReadingPosition(items, nodeAnchor, on);
   useEffect(() => {
-    if (items.length < OUTLINE_FROM) return undefined;
-    let raf = 0;
-    // the same reading line as «سند»: the last heading that has passed a third of the screen; at the very end, the last one
-    const measure = () => {
-      raf = 0;
-      if (chosen.current) { setActive(chosen.current); return; }
-      const line = readingLine();
-      let cur = items[0].id;
-      for (const i of items) { const el = document.getElementById(`node-${i.id}`); if (el && el.getBoundingClientRect().top <= line) cur = i.id; }
-      const el = document.scrollingElement ?? document.documentElement;
-      if (el.scrollTop + window.innerHeight >= el.scrollHeight - 2 && el.scrollTop > 0) cur = items[items.length - 1].id;
-      setActive(cur);
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
-    const own = () => { chosen.current = null; };
-    const ownKey = (e: KeyboardEvent) => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) own(); };
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    window.addEventListener('resize', onScroll);
-    window.addEventListener('wheel', own, { passive: true });
-    window.addEventListener('touchmove', own, { passive: true });
-    window.addEventListener('keydown', ownKey);
-    measure();
-    return () => { window.removeEventListener('scroll', onScroll, true); window.removeEventListener('resize', onScroll); window.removeEventListener('wheel', own); window.removeEventListener('touchmove', own); window.removeEventListener('keydown', ownKey); if (raf) cancelAnimationFrame(raf); };
-  }, [items]);
-  if (items.length < OUTLINE_FROM) return null;
-  const goTo = (id: string) => {
-    const el = document.getElementById(`node-${id}`);
-    if (!el) return;
-    // the heading lands just under the pinned bars, not under them
-    const top = el.getBoundingClientRect().top + window.scrollY - (readingLine() - 8) - 8;
-    chosen.current = id;
-    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
-    el.focus({ preventScroll: true });
-    setActive(id);
-  };
-  const cur = items.find((i) => i.id === active);
+    if (!on || !active) return undefined;
+    const sec = document.getElementById(nodeAnchor(active))?.closest('section');
+    sec?.setAttribute('data-reading', '');
+    return () => sec?.removeAttribute('data-reading');
+  }, [active, on]);
+  if (!on) return null;
   return (
-    <div ref={bar} data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
+    <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
         items={items.map((i) => ({ label: `${i.level > 1 ? '— ' : ''}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
-      {cur && <p className="body-sm min-w-space-0 flex-1 truncate text-text-subtle" aria-live="polite">اکنون: {cur.label}</p>}
+      <SectionScrubber items={items} active={active} anchorOf={nodeAnchor} onGo={goTo} label="جای خواندن در بخش‌ها" />
     </div>
   );
 };

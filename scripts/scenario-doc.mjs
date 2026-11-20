@@ -69,6 +69,17 @@ try {
     if (mobile) {
       await page.getByText(/^اکنون: /).waitFor();
       assert.ok((await page.getByText(/^اکنون: /).innerText()).includes(lastText), 'the phone shows the current section');
+      // the scrubber (decisions.md §۵۲): the line under «اکنون» moves through the page section by section, with keys and a tap
+      const scrub = page.getByTestId('section-scrubber');
+      assert.equal(await scrub.getAttribute('aria-valuenow'), await scrub.getAttribute('aria-valuemax'), 'at the end, the scrubber is on the last section');
+      await scrub.focus(); await page.keyboard.press('Home'); await page.waitForTimeout(300);
+      assert.equal(await scrub.getAttribute('aria-valuenow'), '1', 'Home goes to the first section');
+      const box = await scrub.boundingBox();
+      await page.mouse.click(box.x + 4, box.y + box.height - 6); await page.waitForTimeout(900);
+      assert.equal(await scrub.getAttribute('aria-valuenow'), await scrub.getAttribute('aria-valuemax'), 'a tap at the far end jumps to the last section');
+      const lastTop = await page.evaluate((id) => document.getElementById(id).getBoundingClientRect().top, last);
+      const under = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); return parseFloat(s.getPropertyValue('--pin-top')) + parseFloat(s.getPropertyValue('--pin-sub')); });
+      assert.ok(lastTop >= under - 1, `the heading lands under the pinned bars (${lastTop} vs ${under})`);
     } else {
       const cur = page.locator('nav[aria-label="فهرست سند"] a[aria-current=location]');
       assert.equal((await cur.innerText()).trim(), lastText, 'the outline marks the current section');
