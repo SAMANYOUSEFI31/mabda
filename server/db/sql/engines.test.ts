@@ -168,18 +168,23 @@ test('Postgres: a dropped connection is opened again; one lost inside a transact
 });
 
 test('Postgres: after a timeout, every later statement gets its own answer (never the late answer of the one given up on)', pgOnly, () => {
-  const pg = new PostgresDatabase(PG!, { schema: `e_${crypto.randomBytes(5).toString('hex')}`, timeoutMs: 300 });
+  // the schema is made on a connection with the normal timeout: setting up (dozens of migrations) is not what this test is about,
+  // and a busy machine (CI, a checkpoint) can take longer than the short timeout over it. Only the statements below run timed.
+  const schema = `e_${crypto.randomBytes(5).toString('hex')}`;
+  const setup = new PostgresDatabase(PG!, { schema });
+  try { migrate(setup); } finally { setup.close(); }
+  // the timeout is short, but with room for a slow runner; each slow statement sleeps well past it
+  const pg = new PostgresDatabase(PG!, { schema, timeoutMs: 1500 });
   const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
   try {
-    migrate(pg);
-    assert.throws(() => pg.query('SELECT pg_sleep(0.8), 1 AS x'), /did not answer/);
-    pause(1000); // the late answer (x=1) would be waiting by now
+    assert.throws(() => pg.query('SELECT pg_sleep(3), 1 AS x'), /did not answer/);
+    pause(2500); // the late answer (x=1) would be waiting by now
     assert.deepEqual(pg.query('SELECT 2 AS x'), [{ x: 2 }]);
     assert.deepEqual(pg.query('SELECT 3 AS y'), [{ y: 3 }]);
     // a write that timed out inside a transaction is not committed later by the abandoned connection
     const put = pg.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)');
-    assert.throws(() => pg.transaction(() => { put.run(U, 'slow', '1'); pg.query('SELECT pg_sleep(0.8)'); })(), /did not answer/);
-    pause(1000);
+    assert.throws(() => pg.transaction(() => { put.run(U, 'slow', '1'); pg.query('SELECT pg_sleep(3)'); })(), /did not answer/);
+    pause(2500);
     assert.equal((pg.prepare('SELECT COUNT(*) AS n FROM kv').get() as { n: number }).n, 0);
     put.run(U, 'fine', '1');
     assert.deepEqual(pg.prepare('SELECT key FROM kv').all(), [{ key: 'fine' }]);

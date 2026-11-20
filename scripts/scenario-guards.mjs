@@ -301,6 +301,35 @@ try {
     await ctx.close();
   }
 
+  step('§۵۵ ۶ · an unsent quick-capture draft belongs to its space: it never shows up in another, and waits in its own');
+  {
+    const { ctx, page } = await open(1280); await sample(page);
+    const goTo = async (name) => {
+      await page.getByRole('button', { name: /^فضا: / }).first().click();
+      await page.getByRole('menuitem', { name: new RegExp(name) }).first().click();
+      await page.getByText(`خانه: ${name}`).waitFor(); await page.waitForLoadState('networkidle'); await settled(page);
+    };
+    const capture = async () => { await page.keyboard.press('Control+KeyJ'); const t = page.getByRole('dialog').locator('textarea').first(); await t.waitFor(); return t; };
+    // Ctrl+J again closes it (the draft stays: closing never loses it)
+    const close = async () => { await page.keyboard.press('Control+KeyJ'); await page.getByRole('dialog').waitFor({ state: 'detached' }); };
+    await guard('a draft typed in the sample is not in another space, and is back in the sample', async () => {
+      const other = await page.evaluate(async () => {
+        const headers = { 'x-mabda-user': localStorage.getItem('mabda_user_id') };
+        return (await (await fetch('/api/workspaces', { headers })).json()).workspaces.map((w) => w.name).find((n) => n !== 'قهوهٔ تخصصی آنلاین');
+      });
+      assert.ok(other, 'needs a second space');
+      const draft = 'فکر نیمه‌کارهٔ فضای نمونه';
+      await (await capture()).fill(draft); await close();
+      await goTo(other);
+      assert.equal(await (await capture()).inputValue(), '', `the sample's draft showed up in «${other}»`);
+      await close();
+      await goTo('قهوهٔ تخصصی آنلاین');
+      assert.equal(await (await capture()).inputValue(), draft, 'the draft did not wait in its own space');
+      await close();
+    });
+    await ctx.close();
+  }
+
   step('§۵۳ PWA · installable');
   await guard('manifest and icons are served', async () => {
     const m = await (await fetch(`${BASE}/manifest.webmanifest`)).json();

@@ -23,7 +23,7 @@ import type { AmbiguityMap } from './contextEngine';
 import { IN_FORCE, reachOf } from './effectiveContext';
 import { fromText, leftWhy, scopeSeeds, standingOver } from './packScope';
 import { metricsPackSection, packedMetrics, withNumberRefs } from './metrics';
-import { ancestorIds, subtreeIds } from './nodeTree';
+import { ancestorIds, placeOf, subtreeIds } from './nodeTree';
 import type { Explain, ExplainItem, ExplainSkipped } from './scopeExplain';
 import { bm25Rank } from './retrieval';
 import { estimateTokens } from './tokens';
@@ -404,8 +404,8 @@ export function buildAiRequest(input: AiRequestInput): AiRequestResult {
     included: includedItems, excluded,
     scope: { whole: scope.whole, pickedLabels: scope.picked.map(labelOf), withChildren: scope.withChildren, sections: scope.seeds.length },
     refs: (metricsSection && input.metrics
-      ? withNumberRefs(inc.map((o) => ({ id: o.id, version: o.version, nodeId: o.nodeId })), input.metrics.metrics, input.metrics.measurements, candidates)
-      : inc.map((o) => ({ id: o.id, version: o.version, nodeId: o.nodeId }))).sort((a, b) => a.id.localeCompare(b.id)),
+      ? withNumberRefs(inc.map((o) => ({ id: o.id, version: o.version, nodeId: o.nodeId, place: placeOf(nodes, o.nodeId) })), input.metrics.metrics, input.metrics.measurements, candidates)
+      : inc.map((o) => ({ id: o.id, version: o.version, nodeId: o.nodeId, place: placeOf(nodes, o.nodeId) }))).sort((a, b) => a.id.localeCompare(b.id)),
     counts: { facts: facts.length, assumptions: assumptions.length, constraints: constraints.length, decisions: decisions.length, rejected: rejected.length, changes: changes.length, gaps: gaps.length, metrics: metricsSection ? packedMetrics(input.metrics!.metrics, candidates).length : 0, thoughts: selectedThoughts.length },
   };
 }

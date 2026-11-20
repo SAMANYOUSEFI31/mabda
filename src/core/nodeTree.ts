@@ -29,6 +29,10 @@ export function subtreeIds(nodes: TreeNode[], id: string): string[] {
 }
 
 /** node → root chain, node first. Cycle-safe. */
+/** where a section stands in the tree: its id, then its parents up to the root («pricing<offer<business»). Same id + same parents =
+ *  same place; it is what an output's lineage keeps (UsedContextRef.place) */
+export const placeOf = (nodes: TreeNode[], id: string): string => ancestorIds(nodes, id).join('<') || id;
+
 export function ancestorIds(nodes: TreeNode[], id: string): string[] {
   const out: string[] = [];
   const seen = new Set<string>();

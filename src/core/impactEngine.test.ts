@@ -158,3 +158,20 @@ test('IMPACT-01: a move to another section makes an output that recorded the pla
   assert.equal(computeStaleAssets([placed], [obj({ id: 'c1', version: 3, nodeId: 'offer' })])[0].reasons[0].kind, 'version_changed', 'a text change says the stronger thing');
   assert.deepEqual(computeStaleAssets([asset('a2', [['c1', 2]])], [obj({ id: 'c1', version: 2, nodeId: 'offer' })]), [], 'an output that never recorded the place is not guessed at');
 });
+
+test('IMPACT-01b: moving the whole section elsewhere in the tree makes an output built from its items stale', () => {
+  const tree = (parent: string) => [
+    { id: 'business', label: 'ک', description: '', order: 0 },
+    { id: 'offer', label: 'پ', parentId: 'business', description: '', order: 0 },
+    { id: 'brand', label: 'ب', parentId: 'business', description: '', order: 1 },
+    { id: 'pricing', label: 'ق', parentId: parent, description: '', order: 0 },
+  ];
+  const built = { id: 'a1', usedContext: [{ id: 'c1', version: 1, nodeId: 'pricing', place: 'pricing<offer<business' }] };
+  const objs = [obj({ id: 'c1', version: 1, nodeId: 'pricing', title: 'قیمت پایه' })];
+  const graph = (parent: string) => ({ relationships: [], changes: [], nodes: tree(parent) });
+  assert.deepEqual(computeStaleAssets([built], objs, graph('offer')), [], 'the section did not move');
+  const moved = computeStaleAssets([built], objs, graph('brand'));
+  assert.equal(moved[0].reasons[0].kind, 'scope_changed');
+  assert.equal(moved[0].reasons[0].message, '«قیمت پایه» با بخشش به جای دیگری از درخت رفت.');
+  assert.deepEqual(computeStaleAssets([built], objs), [], 'without the tree only a change of section is seen');
+});

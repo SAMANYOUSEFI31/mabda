@@ -29,6 +29,8 @@ export function buildChangeDigest(input: {
   objects: ContextObject[];
   relationships: ContextRelationship[];
   deliverables: GeneratedDeliverable[];
+  /** the tree now: an output whose item's section moved elsewhere needs a review too (impactEngine) */
+  nodes?: import('../types').TreeNode[];
   now?: Date;
   days?: number;
   /** where the window starts (an ISO moment); wins over `days` */
@@ -36,7 +38,7 @@ export function buildChangeDigest(input: {
 }): Digest {
   const since = input.since ?? new Date((input.now ?? new Date()).getTime() - (input.days ?? DEFAULT_DAYS) * DAY_MS).toISOString();
   const titleOf = new Map(input.objects.map((o) => [o.id, o.title]));
-  const stale = computeStaleAssets(input.deliverables, input.objects, { relationships: input.relationships, changes: input.changes });
+  const stale = computeStaleAssets(input.deliverables, input.objects, { relationships: input.relationships, changes: input.changes, nodes: input.nodes });
   const dTitle = new Map(input.deliverables.map((d) => [d.id, d.title]));
   const assetsFor = (objectId: string): DigestEntry['reviewAssets'] =>
     stale.flatMap((s) => s.reasons.filter((r) => r.objectId === objectId || r.currentId === objectId || r.dependencyId === objectId).map((r) => ({ id: s.deliverableId, title: dTitle.get(s.deliverableId) ?? s.deliverableId, message: r.message })))

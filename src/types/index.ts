@@ -260,6 +260,9 @@ export interface UsedContextRef {
   /** the section the item stood in when the output was built: the place is part of what the reader saw («node» in the pack).
    *  A later move to another section makes the output «به‌روز نیست» (scope_changed). Absent on outputs made before it was kept. */
   nodeId?: string;
+  /** the section's place in the tree at that time (`placeOf`: its id, then its parents up to the root). Moving the whole section
+   *  elsewhere changes it even though `nodeId` stays: the pack's «node» path changed, so the output is stale too */
+  place?: string;
   /** a monitored truth whose number went into the text (the pack's «اندازه‌گیری‌ها»): which monitor and which recorded number it
    *  carried. A newer confirmed number with another value makes only these outputs «به‌روز نیست» (docs/ux/decisions.md §۴۲) */
   number?: NumberRef;

@@ -1,5 +1,6 @@
 # The same three gates CLAUDE.md asks for before every hand-off: typecheck, tests, build (build runs check:design and the token
-# drift check first). Browser scenarios and guards (`bun run test:guards`) stay local: they need Chromium and a running server.
+# drift check first). The tests run twice: on SQLite, then every in-memory test database on a fresh schema of a real Postgres 16
+# (MABDA_TEST_DATABASE_URL, server/db/database.ts), so the production engine and its Postgres-only tests are checked too. Browser scenarios and guards (`bun run test:guards`) stay local: they need Chromium and a running server.
 name: check
 
 on:
@@ -17,7 +18,18 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mabda
+          POSTGRES_PASSWORD: mabda
+          POSTGRES_DB: mabda_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U mabda -d mabda_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,5 +40,10 @@ jobs:
           bun-version: 1.4.4  # the same as the Dockerfile
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
-      - run: bun run test
+      - name: test (SQLite)
+        run: bun run test
+      - name: test (Postgres 16)
+        run: bun run test
+        env:
+          MABDA_TEST_DATABASE_URL: postgres://mabda:mabda@localhost:5432/mabda_test
       - run: bun run build
