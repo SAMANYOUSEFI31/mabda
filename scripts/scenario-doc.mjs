@@ -122,7 +122,8 @@ try {
     assert.ok((await dlg.locator('details li').count()) >= 4, 'the drafts open to their edits');
     // a reason field exists for confirmed knowledge only
     await dlg.getByRole('tab', { name: 'ویرایش' }).click();
-    await dlg.getByRole('button', { name: 'بیشتر', exact: true }).click();
+    // the form's own disclosure is «جزئیات بیشتر»; «بیشتر» is the footer's ⋯ menu of rare actions (decisions.md §۵۳ ۱)
+    await dlg.getByRole('button', { name: 'جزئیات بیشتر', exact: true }).click();
     assert.equal(await dlg.getByLabel('دلیل این ویرایش (اختیاری)').count(), 1);
     await page.keyboard.press('Escape');
     assert.deepEqual(errors, []);
