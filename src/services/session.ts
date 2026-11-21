@@ -7,7 +7,7 @@ import { deadline } from './deadline';
 export type SessionRole = 'owner' | 'tester' | 'local';
 /** `consented`: the person has accepted the owner-access notice (kept on the server, for the person, not the device) */
 export interface SessionUser { id: string; role: SessionRole; name: string; consented: boolean }
-export interface SessionInfo { mode: 'local' | 'invite'; user: SessionUser | null }
+export interface SessionInfo { mode: 'local' | 'invite'; user: SessionUser | null; /** Microsoft Clarity project id, only when the deploy sets one (invite mode) */ clarityId?: string }
 
 /** the event every API call raises when the server says «not signed in» (the sign-in screen listens) */
 export const SIGNED_OUT_EVENT = 'mabda:signed-out';
