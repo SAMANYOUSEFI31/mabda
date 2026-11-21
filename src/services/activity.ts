@@ -8,6 +8,7 @@
  */
 import { cleanProps, isUiEvent } from '../core/activity';
 import type { UiEventName } from '../core/activity';
+import { clarityTag } from './clarity';
 
 const SESSION_KEY = 'mabda_visit';
 /** a visit ends after 30 minutes without anything happening (the common web-analytics definition) */
@@ -44,6 +45,7 @@ export function setActivitySpace(id: string | undefined) { space = id; }
 export function logUi(name: UiEventName, props?: Record<string, unknown>, ms?: number) {
   if (!isUiEvent(name) || typeof window === 'undefined') return;
   const clean = cleanProps(props);
+  if (name === 'view' && clean) { if (typeof clean.tab === 'string') clarityTag('view', clean.tab); clarityTag('space', clean.sample ? 'sample' : 'own'); }
   queue.push({ name, ...(space ? { space } : {}), ...(clean ? { props: clean } : {}), ...(ms !== undefined ? { ms: Math.round(ms) } : {}), t: Date.now() });
   if (queue.length >= 20) flush();
 }

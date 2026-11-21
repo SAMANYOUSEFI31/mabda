@@ -9,6 +9,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Button, EmptyState, ErrorState, PageSkeleton } from '../../ui';
 import { SIGNED_OUT_EVENT, SessionError, forgetInviteCode, inviteCodeInAddress, sessionApi } from '../../services/session';
 import type { SessionInfo } from '../../services/session';
+import { startClarity } from '../../services/clarity';
 
 type GateState = { status: 'checking' } | { status: 'in'; session: SessionInfo } | { status: 'out'; reason?: 'invalid_link' | 'signed_out' } | { status: 'error'; message: string };
 
@@ -62,6 +63,9 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   const user = state.status === 'in' ? state.session.user : null;
+  const clarityId = state.status === 'in' ? state.session.clarityId : undefined;
+  // session analytics: only a tester who has accepted the notice (it names Clarity), never the owner or the local person
+  useEffect(() => { if (clarityId && user?.role === 'tester' && user.consented) startClarity(clarityId); }, [clarityId, user?.role, user?.consented]);
   const accept = async () => {
     setConsenting(true); setConsentError(null);
     try { setState({ status: 'in', session: await sessionApi.consent() }); }

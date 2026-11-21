@@ -113,6 +113,16 @@ const sameSecret = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(
  * Installs sign-in on the app. Routes it owns: POST /api/join (link code → cookie), GET /api/session, POST /api/logout, POST /api/consent.
  * Everything else under /api gets `req.mabdaUser` or a 401.
  */
+/**
+ * Microsoft Clarity (user-test session analytics, docs/test-data.md). The project id is a deploy setting (`CLARITY_PROJECT_ID`);
+ * unset (development, tests, screenshots) the page never loads it. Only a well-formed id is passed on, never raw input.
+ */
+export const clarityProjectId = (): string | undefined => {
+  const v = process.env.CLARITY_PROJECT_ID?.trim();
+  return v && /^[a-z0-9]{6,16}$/i.test(v) ? v : undefined;
+};
+const sessionBody = (user: RequestUser | null) => ({ mode: 'invite' as const, user, ...(clarityProjectId() ? { clarityId: clarityProjectId() } : {}) });
+
 const toUser = (a: Account): RequestUser => ({ id: a.id, role: a.role, name: a.name, consented: a.role === 'owner' || (a.consentVersion ?? 0) >= OWNER_NOTICE_VERSION });
 
 export function installAuth(app: express.Express, db: SqlLike, mode: AuthMode, opts: { clock?: () => Date; publicOrigin?: string } = {}): { accounts: Accounts } {
@@ -140,7 +150,7 @@ export function installAuth(app: express.Express, db: SqlLike, mode: AuthMode, o
     accounts.endSession(old);
     const s = accounts.startSession(account.id);
     res.setHeader('Set-Cookie', cookie(req, s.token, s.maxAgeSeconds));
-    res.json({ mode: 'invite', user: toUser(account) });
+    res.json(sessionBody(toUser(account)));
   });
 
   app.use('/api', (req, _res, next) => {
@@ -148,7 +158,7 @@ export function installAuth(app: express.Express, db: SqlLike, mode: AuthMode, o
     if (a) req.mabdaUser = toUser(a);
     next();
   });
-  app.get('/api/session', (req, res) => { res.json({ mode: 'invite', user: req.mabdaUser ?? null }); });
+  app.get('/api/session', (req, res) => { res.json(sessionBody(req.mabdaUser ?? null)); });
   app.post('/api/logout', (req, res) => {
     accounts.endSession(readCookie(req, SESSION_COOKIE));
     res.setHeader('Set-Cookie', cookie(req, '', 0));
@@ -162,7 +172,7 @@ export function installAuth(app: express.Express, db: SqlLike, mode: AuthMode, o
   // informed consent is stored on the person (not on one device), so the owner can see who has accepted
   app.post('/api/consent', (req, res) => {
     const a = accounts.consent(req.mabdaUser!.id, OWNER_NOTICE_VERSION);
-    res.json({ mode: 'invite', user: a ? toUser(a) : req.mabdaUser });
+    res.json(sessionBody(a ? toUser(a) : req.mabdaUser ?? null));
   });
   return { accounts };
 }

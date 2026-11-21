@@ -167,6 +167,20 @@ test('generative AI is closed in the invite mode (only its status answers); secu
   } finally { t.close(); }
 });
 
+test('the Clarity project id reaches the page only when the deploy sets a well-formed one', async () => {
+  const t = await boot();
+  const was = process.env.CLARITY_PROJECT_ID;
+  try {
+    const owner = t.browser(); await owner.join(OWNER_CODE);
+    delete process.env.CLARITY_PROJECT_ID;
+    assert.equal((await owner.call('GET', '/session')).json.clarityId, undefined);
+    process.env.CLARITY_PROJECT_ID = 'x"><script>';
+    assert.equal((await owner.call('GET', '/session')).json.clarityId, undefined);
+    process.env.CLARITY_PROJECT_ID = 'zgqqncd8nh';
+    assert.equal((await owner.call('GET', '/session')).json.clarityId, 'zgqqncd8nh');
+  } finally { if (was === undefined) delete process.env.CLARITY_PROJECT_ID; else process.env.CLARITY_PROJECT_ID = was; t.close(); }
+});
+
 test('auth mode from the environment: production never starts open', () => {
   assert.ok('fatal' in resolveAuthMode({ NODE_ENV: 'production' }));
   assert.ok('fatal' in resolveAuthMode({ MABDA_OWNER_CODE: 'short' }));
