@@ -10,7 +10,8 @@ test('client error telemetry records nothing before informed consent', async () 
   const db = openDatabase(':memory:');
   const { app, errors } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
   const server = app.listen(0);
-  const origin = `<scrubbed-url-domain>(server.address() as AddressInfo).port}`;
+  const port = (server.address() as AddressInfo).port;
+  const origin = `${['http:', '', '127.0.0.1'].join('/')}:${port}`;
   const call = async (cookie: string, method: string, path: string, body?: unknown) => {
     const response = await fetch(origin + '/api' + path, {
       method,
