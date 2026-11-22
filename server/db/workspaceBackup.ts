@@ -24,7 +24,6 @@ import { pairKey } from '../../src/core/contradictionCandidates.ts';
 
 export const BACKUP_FORMAT = 'mabda.workspace-backup';
 export const BACKUP_VERSION = 1;
-/** how many live workspaces a person may have for a restore to go ahead: the same fair-use limit as making one (a disk guard) */
 export const RESTORE_WORKSPACE_CAP = LIMITS.workspaces;
 const RESTORE_CAP_FA = formatNumber(LIMITS.workspaces);
 const LEFT_OUT = new Set(['workspaces', 'templates', 'mcp_tokens', 'intelligence_embeddings', 'intelligence_suggestions', 'intelligence_reactions']);
@@ -40,7 +39,6 @@ type Col = { name: string; pk: number };
 const columnsOf = (repo: Repo, table: string): Col[] => repo.db.columns(table);
 const q = (name: string) => JSON.stringify(name);
 
-/** the tables that hold one workspace's rows, read from the schema itself */
 export function workspaceTables(repo: Repo): string[] {
   return repo.db.tables()
     .filter((t) => !LEFT_OUT.has(t) && (() => { const c = columnsOf(repo, t).map((x) => x.name); return c.includes('workspace_id') && c.includes('user_id'); })());
@@ -58,7 +56,6 @@ export function exportWorkspace(repo: Repo, s: Scope, now: Date = new Date()): W
   return { format: BACKUP_FORMAT, version: BACKUP_VERSION, schemaVersion: currentVersion(repo.db), exportedAt: now.toISOString(), workspace: ws, weeklyReview: kv?.value ?? null, tables };
 }
 
-/** values that are JSON text are remapped inside; other strings as a whole (an id, or `obj:<id>`) */
 const remapCell = (v: unknown, ids: ReadonlySet<string>, suffix: string, map: Map<string, string>): unknown => {
   if (typeof v !== 'string') return v;
   if (map.has(v)) return map.get(v);
@@ -70,8 +67,6 @@ const remapCell = (v: unknown, ids: ReadonlySet<string>, suffix: string, map: Ma
   return v;
 };
 
-/** a contradiction judgment is keyed by its two ids in order (`pairKey`): with new ids the key is rebuilt and the order (with its
- * versions) fixed, or a resolved contradiction would come back open */
 function pairRow(row: Record<string, unknown>): void {
   if (typeof row.a_id !== 'string' || typeof row.b_id !== 'string') return;
   if (row.a_id > row.b_id) [row.a_id, row.b_id, row.a_version, row.b_version] = [row.b_id, row.a_id, row.b_version, row.a_version];
@@ -85,18 +80,14 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   const live = workspaceTables(repo);
   const unknown = Object.keys(b.tables!).filter((t) => !live.includes(t));
   if (unknown.length) throw new RepoError('invalid', 'بخشی از این پشتیبان برای این نسخهٔ مبدأ ناشناخته است؛ چیزی برگردانده نشد.');
-  // No plan exists (the subscription model was removed), and anything written INSIDE the file is never read as an allowance
-  // (a tampered file must not pass). A fixed, plain safety cap remains so one person cannot fill the shared disk with copies; it counts only their live workspaces.
   const ws0 = b.workspace as Workspace;
   if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `${RESTORE_CAP_FA} فضا داری و این سقف برگرداندن است؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
 
-  // the text it brings counts against this person's shared-disk cap (src/core/limits.ts), like any other write
   const TEXT_COLS: Record<string, string[]> = { context_objects: ['title', 'content'], context_object_versions: ['title', 'content'], notes: ['content'], thoughts: ['text'], file_chunks: ['text'], files: ['raw_text'], deliverables: ['data'] };
   let incoming = 0;
   for (const [t, cols] of Object.entries(TEXT_COLS)) for (const r of b.tables![t] ?? []) for (const c of cols) if (typeof r[c] === 'string') incoming += (r[c] as string).length;
   repo.assertRoom(userId, incoming);
 
-  // a new id for every row that has its own global id (the workspace too); tree nodes are keyed by workspace already
   const suffix = `_r${crypto.randomBytes(4).toString('hex')}`;
   const ids = new Set<string>([ws0.id]);
   for (const [t, rows] of Object.entries(b.tables!)) {
@@ -114,13 +105,13 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
     for (const t of live) {
       const rows = b.tables![t];
       if (!rows?.length) continue;
-      // the columns this backup has and this schema knows (a backup from an older version leaves later columns to their default)
       const cols = columnsOf(repo, t).map((c) => c.name).filter((c) => c !== 'user_id' && c !== 'workspace_id' && c in rows[0]);
       const ins = repo.db.prepare(`INSERT INTO ${q(t)} (${[...cols, 'user_id', 'workspace_id'].map(q).join(', ')}) VALUES (${[...cols, 'u', 'w'].map(() => '?').join(', ')})`);
       for (const r of rows) {
         const row = Object.fromEntries(cols.map((c) => [c, remapCell(r[c], ids, suffix, map)]));
         if (t === 'contradiction_judgments') pairRow(row);
-        ins.run(...cols.map((c) => row[c]), userId, wsId);
+        // JSON permits an optional property to disappear. Database adapters expect SQL NULL, not JavaScript undefined.
+        ins.run(...cols.map((c) => row[c] ?? null), userId, wsId);
       }
     }
     if (typeof b.weeklyReview === 'string') repo.db.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, `weekly_review:${wsId}`, b.weeklyReview);
