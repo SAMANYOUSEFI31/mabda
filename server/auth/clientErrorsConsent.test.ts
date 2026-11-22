@@ -10,6 +10,7 @@ test('client error telemetry records nothing before informed consent', async () 
   const db = openDatabase(':memory:');
   const { app, errors } = createApp(db, { auth: { mode: 'invite', ownerCode: OWNER_CODE } });
   const server = app.listen(0);
+  await new Promise<void>((resolve) => server.once('listening', resolve));
   const port = (server.address() as AddressInfo).port;
   const origin = `${['http:', '', '127.0.0.1'].join('/')}:${port}`;
   const call = async (cookie: string, method: string, path: string, body?: unknown) => {
@@ -39,6 +40,6 @@ test('client error telemetry records nothing before informed consent', async () 
     assert.equal(recorded.json.recorded, true);
     assert.equal(errors.list().length, before + 1);
   } finally {
-    server.close();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
