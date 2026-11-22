@@ -36,18 +36,14 @@ export const proxyHopsFrom = (v: string | undefined): number => { const n = Numb
 export function createApp(db: SqlLike, opts: AppOptions = {}) {
   const app = express();
   const mode: AuthMode = opts.auth ?? { mode: 'local' };
-  // the host's proxy terminates HTTPS: trust exactly the proxies in front (Render: one), so req.ip / req.secure are the visitor's
   app.set('trust proxy', opts.proxyHops ?? 1);
   app.disable('x-powered-by');
   app.use(securityHeaders);
-  // the host's health check: no data, no sign-in
   app.get('/healthz', (_req, res) => { res.type('text/plain').send('ok'); });
-  // 10 MB for every request; a workspace restore brings its own, larger limit (server/db/routes/backup.ts)
   const json = express.json({ limit: '10mb' });
   app.use((req, res, next) => (req.path === '/api/backup/restore' ? next() : json(req, res, next)));
   const repo = new Repo(db);
   const errors = new ErrorLog(db, opts.clock);
-  // the user-test record (server/activity.ts, docs/test-data.md): one row per changing request, written when its answer goes out
   const activity = new ActivityLog(db, opts.clock, (userId, wid, itemId) => {
     const out: Record<string, boolean> = {};
     try {
@@ -55,7 +51,6 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
       if (repo.getWorkspace(userId, wid)?.isDemo || lifeSampleOf(repo, userId)?.id === wid) out.sample = true;
       if (isSeededSpaceId(wid)) out.seededSpace = true;
       if (itemId) {
-        // the same rule the screen shows (server/db/sampleIds.ts): an example written over is hers, in the UI and in the measures
         const obj = repo.getObjectAny(s, itemId);
         const thought = obj ? undefined : repo.getThought(s, itemId);
         const note = obj || thought ? undefined : repo.getNote(s, itemId);
@@ -67,31 +62,26 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
   app.use('/api', activity.middleware());
   const { accounts } = installAuth(app, db, mode, { clock: opts.clock, publicOrigin: opts.publicOrigin });
 
-  // screens, dialogs and visits from the browser (src/services/activity.ts): signed-in only, at most 60 batches a minute per person
   app.post('/api/activity', rateLimit({ windowMs: 60_000, max: 60, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
-    // nothing before the person has accepted the notice that says it is recorded (src/core/ownerNotice.ts)
     if (req.mabdaUser && !req.mabdaUser.consented) return void res.json({ ok: true, recorded: 0 });
     res.json({ ok: true, recorded: activity.recordUi(userIdOf(req), req.get('x-mabda-session') ?? undefined, req.body ?? {}) });
   });
 
-  // error reports from the browser (src/app/shell/errorReport.ts): signed-in only, at most 20 a minute per person
   app.post('/api/client-errors', rateLimit({ windowMs: 60_000, max: 20, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
+    // Error reports are still telemetry. Before the person accepts the notice, acknowledge the request but persist nothing.
+    if (req.mabdaUser && !req.mabdaUser.consented) return void res.json({ ok: true, recorded: false });
     errors.record(userIdOf(req), 'client', req.body ?? {});
-    res.json({ ok: true });
+    res.json({ ok: true, recorded: true });
   });
   app.use('/api/owner', createOwnerRouter({ db, mode, accounts, errors, activity, backupDir: opts.backupDir, publicOrigin: opts.publicOrigin }));
 
   let aiRef: AiService | undefined;
   const files = new FileService(repo, (userId, req) => aiRef!.extract(userId, req), opts.clock);
-  // the AI's context is always read for the person making the request (before: one fixed local person, safe only because AI
-  // runs in the local mode alone; now a wrong person's knowledge cannot reach a prompt even if that ever changes)
   const sourceFor = (userId: string) => createContextSource(repo, files, userId, opts.clock ?? (() => new Date()));
   const ai = createAiRouter({ sourceFor, sessions: opts.sessions, service: opts.service });
   aiRef = ai.service;
 
   if (mode.mode === 'invite') {
-    // Generative AI is frozen and not part of the product; its routes were built for one user. With several people only the
-    // status answer stays (the UI reads it to hide AI); every other AI route is closed.
     app.use('/api/ai', (req, res, next) => {
       if (req.path === '/status') return next();
       res.status(503).json({ error: { kind: 'disabled', message: 'این قابلیت در این نسخه نیست.', retryable: false } });
@@ -104,7 +94,6 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
   };
   app.use('/api', createDataRouter({ repo, ai: ai.service, files, sourceFor, admin: adminEnabled() || opts.admin, clock: opts.clock, onServerError }).router);
 
-  /** Health check (does not call any model). */
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', managedAi: ai.sessions.managedEnabled, timestamp: new Date().toISOString() });
   });
