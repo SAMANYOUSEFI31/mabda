@@ -16,17 +16,27 @@ export type KnowledgeScope = ReturnType<typeof useKnowledge>;
 
 export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCountersScope) {
   const { activeTab, attempt, contextViewMode, data, focusNodeId, goFocus, openContext, openThinkingSpace, patch, revealWhenThere, setActiveTab, setAiRequest, setArchiveOpen, setCanvasReveal, setCompare, setContextViewMode, setFocusAsset, setFocusNotes, setIsBatchOpen, setIsImportOpen, setIsPacksOpen, setThinkingView, setThoughtDialog, showImpact, toast, wid, workspaceContexts } = p;
+  // ── Context objects ────────────────────────────────────────────────────────────────────────────
+  /** create (no id / unknown id) or edit in place (known id: title/content/type edits bump the version) */
+  /** what Enter does on a palette row */
   const handlePick = (hit: SearchHit) => {
     const n = Date.now();
+    // looking at the truth canvas: Ctrl/⌘K to an item SHOWS it there (the inspector has «باز کردن»); anywhere else it opens
     if (hit.kind === 'object' && activeTab === 'context' && contextViewMode === 'canvas') { setCanvasReveal({ id: hit.id, n }); return; }
     if (hit.kind === 'object') { const o = workspaceContexts.find((x) => x.id === hit.id); if (o) openContext(o); return; }
     if (hit.kind === 'node') { setActiveTab('context'); setContextViewMode('doc'); goFocus(hit.id); return; }
-    if (hit.kind === 'note') { const nodeId = (data?.notes ?? []).find((x) => x.id === hit.id)?.nodeId; if (!nodeId) return; setActiveTab('context'); setContextViewMode('doc'); setFocusNotes({ nodeId, n }); revealWhenThere(`node-${nodeId}`); return; }
+    if (hit.kind === 'note') {
+      const nodeId = (data?.notes ?? []).find((x) => x.id === hit.id)?.nodeId;
+      if (!nodeId) return;
+      setActiveTab('context'); setContextViewMode('doc'); setFocusNotes({ nodeId, n }); revealWhenThere(`node-${nodeId}`);
+      return;
+    }
     if (hit.kind === 'asset') { setActiveTab('assets'); setFocusAsset({ id: hit.id, n }); return; }
     if (hit.kind === 'thought') { openThinkingSpace((data?.thoughts ?? []).find((x) => x.id === hit.id)?.nodeId); return; }
     if (hit.kind === 'file') { const nodeId = (data?.files ?? []).find((x) => x.id === hit.id)?.nodeId; setActiveTab('context'); setContextViewMode('doc'); if (nodeId) { goFocus(nodeId); revealWhenThere(`node-${nodeId}`); } return; }
     switch (hit.id) {
       case 'record': openContext(null); break;
+      // the same «افزودن» as the top bar (فکر · حقیقت · فایل), after the palette has closed
       case 'thought': setTimeout(() => requestAdd({ kind: 'thought' }), 120); break;
       case 'compare': setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }); break;
       case 'batch-knowledge': setIsBatchOpen(true); break;
@@ -63,6 +73,7 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
     return r.object;
   };
 
+  /** one targeted edit with an optional reason (a Change): promote, assumption review, … */
   const handlePatchObject = async (id: string, p: Parameters<typeof dataApi.updateObject>[2]) => {
     const seen = workspaceContexts.find((o) => o.id === id)?.updatedAt;
     const r = await attempt(() => dataApi.updateObject(wid, id, { ...p, ...(seen ? { expectedUpdatedAt: seen } : {}) }));
