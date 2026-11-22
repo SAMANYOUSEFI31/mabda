@@ -39,7 +39,6 @@ test('workspace backup: complete by construction (every table of a workspace, fr
   for (const t of must) assert.ok(b.tables[t]?.length, `${t} is in the backup`);
   assert.ok(b.weeklyReview);
   for (const t of Object.keys(b.tables)) assert.ok(workspaceTables(repo).includes(t));
-  // another person's showcase is not in it
   applyDemo(repo, 'person_b_0002', NOW);
   const again = exportWorkspace(repo, s, NOW);
   assert.deepEqual(normalised(again), normalised(b));
@@ -47,9 +46,7 @@ test('workspace backup: complete by construction (every table of a workspace, fr
 
 test('workspace backup → restore → backup: the same rows (ids renamed consistently), next to the original or in another account', () => {
   const { repo, s } = rich();
-  const b = JSON.parse(JSON.stringify(exportWorkspace(repo, s, NOW))) as WorkspaceBackup; // through JSON, like a downloaded file
-
-  // into another person's account
+  const b = JSON.parse(JSON.stringify(exportWorkspace(repo, s, NOW))) as WorkspaceBackup;
   const restored = restoreWorkspace(repo, 'person_c_0003', b, NOW);
   assert.match(restored.name, /برگردانده‌شده/);
   const sfx = restored.id.slice(b.workspace.id.length);
@@ -57,16 +54,12 @@ test('workspace backup → restore → backup: the same rows (ids renamed consis
   const back = exportWorkspace(repo, { userId: 'person_c_0003', workspaceId: restored.id }, NOW);
   assert.deepEqual(normalised(back, sfx), normalised(b));
   assert.equal(back.weeklyReview, b.weeklyReview);
-
-  // what the app reads is whole: references point inside the restored copy
   const rs = { userId: 'person_c_0003', workspaceId: restored.id };
   const objIds = new Set(repo.listObjects(rs).map((o) => o.id));
   assert.equal(objIds.size, repo.listObjects(s).length);
   assert.ok(repo.listDeliverables(rs).every((d) => d.usedContext.every((u) => objIds.has(u.id))));
   assert.ok(repo.listRelationships(rs).every((r) => objIds.has(r.sourceId) || r.sourceId.startsWith('thought')));
   assert.equal(repo.listThoughts(rs, { includeResolved: true }).length, repo.listThoughts(s, { includeResolved: true }).length);
-
-  // next to the original, in the same account: both stay whole, and removing the original leaves the copy
   const twin = restoreWorkspace(repo, s.userId, b, NOW);
   assert.notEqual(twin.id, s.workspaceId);
   const before = repo.listObjects({ userId: s.userId, workspaceId: twin.id }).length;
@@ -81,7 +74,6 @@ test('restore refuses what it cannot bring back whole, and changes nothing', () 
   assert.throws(() => restoreWorkspace(repo, 'person_d_0004', { hello: 1 }, NOW), /پشتیبان/);
   assert.throws(() => restoreWorkspace(repo, 'person_d_0004', { ...b, schemaVersion: 9999 }, NOW), /تازه‌تر/);
   assert.throws(() => restoreWorkspace(repo, 'person_d_0004', { ...b, tables: { ...b.tables, accounts: [{ id: 'x' }] } }, NOW), /ناشناخته/);
-  // a broken row: the transaction leaves nothing behind
   assert.throws(() => restoreWorkspace(repo, 'person_d_0004', { ...b, tables: { ...b.tables, notes: [{ id: 'n1' }] } }, NOW));
   assert.equal(count(), 0);
 });
@@ -89,7 +81,8 @@ test('restore refuses what it cannot bring back whole, and changes nothing', () 
 test('restore tolerates an optional backup cell omitted as undefined by normalising it to SQL null', () => {
   const { repo, s } = rich();
   const b = exportWorkspace(repo, s, NOW);
-  const notes = b.tables.notes.map((row, index) => index === 0 ? { ...row, deleted_at: undefined } : row);
+  const notes = (b.tables.notes ?? []).map((row, index) => index === 0 ? { ...row, deleted_at: undefined } : row);
+  assert.ok(notes.length > 0);
   const restored = restoreWorkspace(repo, 'person_optional_0006', { ...b, tables: { ...b.tables, notes } }, NOW);
   assert.ok(restored.id);
   const restoredNotes = repo.listNotes({ userId: 'person_optional_0006', workspaceId: restored.id });
@@ -100,11 +93,10 @@ test('restore never stops at a plan (plans are frozen): a new person brings back
   const { repo, s } = rich();
   const b = exportWorkspace(repo, s, NOW);
   const small = { ...b, workspace: { ...b.workspace, planId: 'starter' } };
-  // before: the second restore was refused with «سقف فضا این پلن (1 عدد) پر شده است»
   for (let i = 0; i < 3; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
   assert.equal(repo.listWorkspaces('person_e_0005').length, 3);
   for (let i = 3; i < RESTORE_WORKSPACE_CAP; i++) restoreWorkspace(repo, 'person_e_0005', small, NOW);
-  assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا داری/.test(e.message) && !/بیش از/.test(e.message) && !/پلن/.test(e.message)); // at exactly 20, not «more than 20»
+  assert.throws(() => restoreWorkspace(repo, 'person_e_0005', small, NOW), (e: Error) => /۲۰ فضا داری/.test(e.message) && !/بیش از/.test(e.message) && !/پلن/.test(e.message));
 });
 
 test('restore keeps a resolved contradiction resolved: the pair key and its order follow the new ids (LOGIC-05)', () => {
@@ -122,4 +114,15 @@ test('restore keeps a resolved contradiction resolved: the pair key and its orde
   assert.equal(judged[0].resolution, 'kept');
   const lo = ra < rb ? a : b; const hi = lo === a ? b : a;
   assert.deepEqual([judged[0].aVersion, judged[0].bVersion], [lo.version, hi.version]);
+});
+
+test('round trip works with a raw SQLite database adapter too', () => {
+  const db = new Database(':memory:');
+  migrate(db as never);
+  const repo = new Repo(db as never);
+  const ws = applyDemo(repo, 'person_raw_sqlite', NOW);
+  const backup = exportWorkspace(repo, { userId: 'person_raw_sqlite', workspaceId: ws.id }, NOW);
+  const restored = restoreWorkspace(repo, 'person_raw_sqlite_2', backup, NOW);
+  assert.ok(restored.id);
+  db.close();
 });
