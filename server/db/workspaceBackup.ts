@@ -120,7 +120,8 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
       for (const r of rows) {
         const row = Object.fromEntries(cols.map((c) => [c, remapCell(r[c], ids, suffix, map)]));
         if (t === 'contradiction_judgments') pairRow(row);
-        ins.run(...cols.map((c) => row[c]), userId, wsId);
+        // JSON cannot carry `undefined`; treat an omitted optional cell as SQL NULL rather than passing an adapter-invalid value.
+        ins.run(...cols.map((c) => row[c] ?? null), userId, wsId);
       }
     }
     if (typeof b.weeklyReview === 'string') repo.db.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, `weekly_review:${wsId}`, b.weeklyReview);
