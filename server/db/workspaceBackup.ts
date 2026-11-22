@@ -85,18 +85,12 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   const live = workspaceTables(repo);
   const unknown = Object.keys(b.tables!).filter((t) => !live.includes(t));
   if (unknown.length) throw new RepoError('invalid', 'بخشی از این پشتیبان برای این نسخهٔ مبدأ ناشناخته است؛ چیزی برگردانده نشد.');
-  // No plan exists (the subscription model was removed), and anything written INSIDE the file is never read as an allowance
-  // (a tampered file must not pass). A fixed, plain safety cap remains so one person cannot fill the shared disk with copies; it counts only their live workspaces.
   const ws0 = b.workspace as Workspace;
   if (repo.listWorkspaces(userId).filter((w) => !w.isDemo && !w.archivedAt).length >= RESTORE_WORKSPACE_CAP) throw new RepoError('forbidden', `${RESTORE_CAP_FA} فضا داری و این سقف برگرداندن است؛ برای برگرداندن، اول یکی را بایگانی یا حذف کن.`);
-
-  // the text it brings counts against this person's shared-disk cap (src/core/limits.ts), like any other write
   const TEXT_COLS: Record<string, string[]> = { context_objects: ['title', 'content'], context_object_versions: ['title', 'content'], notes: ['content'], thoughts: ['text'], file_chunks: ['text'], files: ['raw_text'], deliverables: ['data'] };
   let incoming = 0;
   for (const [t, cols] of Object.entries(TEXT_COLS)) for (const r of b.tables![t] ?? []) for (const c of cols) if (typeof r[c] === 'string') incoming += (r[c] as string).length;
   repo.assertRoom(userId, incoming);
-
-  // a new id for every row that has its own global id (the workspace too); tree nodes are keyed by workspace already
   const suffix = `_r${crypto.randomBytes(4).toString('hex')}`;
   const ids = new Set<string>([ws0.id]);
   for (const [t, rows] of Object.entries(b.tables!)) {
@@ -108,19 +102,18 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
   const wsId = map.get(ws0.id)!;
   const ws: Workspace = { ...remapIds(ws0, ids, suffix), id: wsId, name: `${ws0.name} (برگردانده‌شده)`.slice(0, 120), createdAt: now.toISOString() };
   delete ws.isDemo; delete ws.archivedAt;
-
   repo.transaction(() => {
     repo.db.prepare('INSERT INTO workspaces (id, user_id, workspace_id, data, created_at) VALUES (?,?,?,?,?)').run(wsId, userId, wsId, JSON.stringify(ws), ws.createdAt);
     for (const t of live) {
       const rows = b.tables![t];
       if (!rows?.length) continue;
-      // the columns this backup has and this schema knows (a backup from an older version leaves later columns to their default)
       const cols = columnsOf(repo, t).map((c) => c.name).filter((c) => c !== 'user_id' && c !== 'workspace_id' && c in rows[0]);
       const ins = repo.db.prepare(`INSERT INTO ${q(t)} (${[...cols, 'user_id', 'workspace_id'].map(q).join(', ')}) VALUES (${[...cols, 'u', 'w'].map(() => '?').join(', ')})`);
       for (const r of rows) {
         const row = Object.fromEntries(cols.map((c) => [c, remapCell(r[c], ids, suffix, map)]));
         if (t === 'contradiction_judgments') pairRow(row);
-        ins.run(...cols.map((c) => row[c]), userId, wsId);
+        // An omitted optional cell becomes SQL NULL; never pass adapter-invalid undefined.
+        ins.run(...cols.map((c) => row[c] ?? null), userId, wsId);
       }
     }
     if (typeof b.weeklyReview === 'string') repo.db.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, `weekly_review:${wsId}`, b.weeklyReview);
