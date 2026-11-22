@@ -76,8 +76,10 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
 
   // error reports from the browser (src/app/shell/errorReport.ts): signed-in only, at most 20 a minute per person
   app.post('/api/client-errors', rateLimit({ windowMs: 60_000, max: 20, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
+    // Error reports are telemetry too: acknowledge pre-consent reports, but persist nothing.
+    if (req.mabdaUser && !req.mabdaUser.consented) return void res.json({ ok: true, recorded: false });
     errors.record(userIdOf(req), 'client', req.body ?? {});
-    res.json({ ok: true });
+    res.json({ ok: true, recorded: true });
   });
   app.use('/api/owner', createOwnerRouter({ db, mode, accounts, errors, activity, backupDir: opts.backupDir, publicOrigin: opts.publicOrigin }));
 

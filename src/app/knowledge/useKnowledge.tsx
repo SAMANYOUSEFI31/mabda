@@ -75,7 +75,8 @@ export function useKnowledge(p: AppCoreScope & SearchAndFocusScope & UsageCounte
 
   /** one targeted edit with an optional reason (a Change): promote, assumption review, … */
   const handlePatchObject = async (id: string, p: Parameters<typeof dataApi.updateObject>[2]) => {
-    const r = await attempt(() => dataApi.updateObject(wid, id, p));
+    const seen = workspaceContexts.find((o) => o.id === id)?.updatedAt;
+    const r = await attempt(() => dataApi.updateObject(wid, id, { ...p, ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
     showImpact(r.impact);

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, ObjectSource, TreeNode } from '../../types';
 import type { ImportParseResult } from '../../types/state';
 import type { ParsedBlock } from '../../core/answerParser';
@@ -19,6 +19,8 @@ import { clientId } from '../../core/ids';
 const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'خروجی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
 const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'نشانهٔ صریح', similar: 'شباهت', none: 'بدون سرنخ' };
+
+type ImportBlock = ParsedBlock & { done?: string };
 
 interface Props {
   open: boolean;
@@ -46,9 +48,11 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   const [packs, setPacks] = useState<Array<{ id: string; title: string }>>([]);
   const [packId, setPackId] = useState('');
   const [busy, setBusy] = useState(false);
+  const applyingRef = useRef(new Set<string>());
+  const [applyingIds, setApplyingIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<ImportParseResult | null>(null);
-  const [blocks, setBlocks] = useState<Array<ParsedBlock & { done?: string }>>([]);
+  const [blocks, setBlocks] = useState<ImportBlock[]>([]);
   const [choice, setChoice] = useState<Record<string, Choice>>({});
 
   useEffect(() => { dataApi.listPacks(workspaceId).then((p) => { setPacks(p); setPackId(p[0]?.id ?? ''); }).catch(() => setPacks([])); }, [workspaceId]);
@@ -58,6 +62,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   useEffect(() => { setChoice(Object.fromEntries([...maps].map(([id, m]) => [id, { action: m.action, nodeId: m.nodeId }]))); }, [maps]);
 
   const parse = async () => {
+    if (busy) return;
     setBusy(true); setError(null);
     try {
       // the marker the pack wrote into the request is the exact pack (it wins over the default of the list)
@@ -72,24 +77,36 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   const titleOf = (id?: string) => objects.find((o) => o.id === id)?.title ?? '';
 
   /** applies ONE item the way the person chose; returns whether anything was saved */
-  const apply = async (b: ParsedBlock): Promise<boolean> => {
+  const apply = async (b: ImportBlock): Promise<boolean> => {
+    if (applyingRef.current.has(b.id) || b.done) return false;
     const m = maps.get(b.id); const c = choice[b.id];
     if (!m || !c || !isContextKind(b.kind)) return false;
-    if (c.action === 'ignore' || c.action === 'duplicate') { mark(b.id, c.action === 'duplicate' ? 'تکراری بود؛ چیزی ثبت نشد' : 'نادیده گرفته شد'); return false; }
-    if (c.action === 'update' && m.targetId && onUpdateDraft) {
-      const target = objects.find((o) => o.id === m.targetId);
-      if (!target || target.status !== 'Confirmed') { setError('دانشی که باید به‌روز شود دیگر تأییدشده نیست؛ «تازه» را انتخاب کن.'); return false; }
-      const ok = await onUpdateDraft(m.targetId, { title: b.title || target.title, content: m.body, reason: `از پاسخ واردشدهٔ ابزار دیگر${res?.packTitle ? ` (بستهٔ «${res.packTitle}»)` : ''}` });
-      if (ok) mark(b.id, `پیش‌نویس روی «${target.title}» ساخته شد؛ در «فکر» تأییدش کن`);
+    applyingRef.current.add(b.id);
+    setApplyingIds(new Set(applyingRef.current));
+    try {
+      if (c.action === 'ignore' || c.action === 'duplicate') { mark(b.id, c.action === 'duplicate' ? 'تکراری بود؛ چیزی ثبت نشد' : 'نادیده گرفته شد'); return false; }
+      if (c.action === 'update' && m.targetId && onUpdateDraft) {
+        const target = objects.find((o) => o.id === m.targetId);
+        if (!target || target.status !== 'Confirmed') { setError('دانشی که باید به‌روز شود دیگر تأییدشده نیست؛ «تازه» را انتخاب کن.'); return false; }
+        const ok = await onUpdateDraft(m.targetId, { title: b.title || target.title, content: m.body, reason: `از پاسخ واردشدهٔ ابزار دیگر${res?.packTitle ? ` (بستهٔ «${res.packTitle}»)` : ''}` });
+        if (ok) mark(b.id, `پیش‌نویس روی «${target.title}» ساخته شد؛ در «فکر» تأییدش کن`);
+        return ok;
+      }
+      const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: m.body, nodeId: c.nodeId, source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
+      if (ok) mark(b.id, 'به صندوق پیشنهادها رفت');
       return ok;
+    } finally {
+      applyingRef.current.delete(b.id);
+      setApplyingIds(new Set(applyingRef.current));
     }
-    const ok = await onProposeContext({ type: contextTypeOf(b.kind), title: b.title, content: m.body, nodeId: c.nodeId, source: { kind: 'paste', label: res?.packTitle ?? undefined, at: at() } });
-    if (ok) mark(b.id, 'به صندوق پیشنهادها رفت');
-    return ok;
   };
 
   const ready = blocks.filter((b) => !b.done && isContextKind(b.kind) && (choice[b.id]?.action === 'new' || (choice[b.id]?.action === 'update' && onUpdateDraft)));
-  const applyAll = async () => { setBusy(true); try { for (const b of ready) await apply(b); } finally { setBusy(false); } };
+  const applyAll = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { for (const b of ready) await apply(b); } finally { setBusy(false); }
+  };
 
   /** the block being saved as an asset: a second click while it saves must not make a second asset */
   const [savingAsset, setSavingAsset] = useState<string | null>(null);
@@ -129,9 +146,9 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
           <div className="sm:flex-1">
             <Select label="از کدام بستهٔ دانش؟ (اصالت)" value={packId} onChange={(e) => setPackId(e.target.value)} options={[{ value: '', label: 'بدون بسته (اصالت ثبت نمی‌شود)' }, ...packs.map((p) => ({ value: p.id, label: p.title }))]} hint="اگر پاسخ نشانهٔ بسته را دارد، همان بسته خودکار انتخاب می‌شود." />
           </div>
-          <Button variant="primary" loading={busy} disabled={!text.trim()} iconStart="FolderInput" onClick={parse}>تبدیل به بلوک</Button>
+          <Button variant="primary" loading={busy} disabled={!text.trim() || busy} iconStart="FolderInput" onClick={parse}>تبدیل به بلوک</Button>
         </div>
-        {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" onClick={parse}>دوباره</Button>}>{error}</Alert>}
+        {error && <Alert intent="danger" action={<Button size="sm" variant="secondary" disabled={busy} onClick={parse}>دوباره</Button>}>{error}</Alert>}
 
         {res && (
           <div className="flex flex-col gap-stack-md">
@@ -143,12 +160,12 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
             {res.warning && <Alert intent="warning">{res.warning}</Alert>}
             {ready.length > 1 && (
               <div className="flex flex-wrap items-center gap-inline-sm" data-testid="apply-all">
-                <Button size="sm" variant="secondary" iconStart="Check" loading={busy} onClick={applyAll}>اعمال {formatNumber(ready.length)} مورد با همین انتخاب‌ها</Button>
+                <Button size="sm" variant="secondary" iconStart="Check" loading={busy} disabled={busy || applyingIds.size > 0} onClick={applyAll}>اعمال {formatNumber(ready.length)} مورد با همین انتخاب‌ها</Button>
                 <span className="body-sm text-text-subtle">مواردی که «تکراری» یا «نادیده» انتخاب شده‌اند ثبت نمی‌شوند.</span>
               </div>
             )}
             {blocks.map((b) => {
-              const m = maps.get(b.id); const c = choice[b.id]; const ctx = isContextKind(b.kind);
+              const m = maps.get(b.id); const c = choice[b.id]; const ctx = isContextKind(b.kind); const applying = applyingIds.has(b.id);
               return (
                 <div key={b.id} className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg" data-testid="answer-block">
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
@@ -158,9 +175,9 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                     </div>
                     {b.done ? <Badge icon="Check">{b.done}</Badge> : (
                       <div className="flex flex-wrap items-center gap-inline-xs">
-                        {ctx && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
-                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset} onClick={() => toAsset(b)}>ذخیره به‌عنوان خروجی</Button>}
-                        <Button size="sm" variant="ghost" iconStart="X" onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
+                        {ctx && <Button size="sm" variant="secondary" iconStart="Check" loading={applying} disabled={applying || busy} onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
+                        {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset || applying || busy} onClick={() => toAsset(b)}>ذخیره به‌عنوان خروجی</Button>}
+                        <Button size="sm" variant="ghost" iconStart="X" disabled={applying || busy} onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
                       </div>
                     )}
                   </div>
