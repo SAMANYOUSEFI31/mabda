@@ -24,6 +24,7 @@ import { pairKey } from '../../src/core/contradictionCandidates.ts';
 
 export const BACKUP_FORMAT = 'mabda.workspace-backup';
 export const BACKUP_VERSION = 1;
+/** how many live workspaces a person may have for a restore to go ahead: the same fair-use limit as making one (a disk guard) */
 export const RESTORE_WORKSPACE_CAP = LIMITS.workspaces;
 const RESTORE_CAP_FA = formatNumber(LIMITS.workspaces);
 const LEFT_OUT = new Set(['workspaces', 'templates', 'mcp_tokens', 'intelligence_embeddings', 'intelligence_suggestions', 'intelligence_reactions']);
@@ -39,6 +40,7 @@ type Col = { name: string; pk: number };
 const columnsOf = (repo: Repo, table: string): Col[] => repo.db.columns(table);
 const q = (name: string) => JSON.stringify(name);
 
+/** the tables that hold one workspace's rows, read from the schema itself */
 export function workspaceTables(repo: Repo): string[] {
   return repo.db.tables()
     .filter((t) => !LEFT_OUT.has(t) && (() => { const c = columnsOf(repo, t).map((x) => x.name); return c.includes('workspace_id') && c.includes('user_id'); })());
@@ -56,6 +58,7 @@ export function exportWorkspace(repo: Repo, s: Scope, now: Date = new Date()): W
   return { format: BACKUP_FORMAT, version: BACKUP_VERSION, schemaVersion: currentVersion(repo.db), exportedAt: now.toISOString(), workspace: ws, weeklyReview: kv?.value ?? null, tables };
 }
 
+/** values that are JSON text are remapped inside; other strings as a whole (an id, or `obj:<id>`) */
 const remapCell = (v: unknown, ids: ReadonlySet<string>, suffix: string, map: Map<string, string>): unknown => {
   if (typeof v !== 'string') return v;
   if (map.has(v)) return map.get(v);
@@ -67,6 +70,8 @@ const remapCell = (v: unknown, ids: ReadonlySet<string>, suffix: string, map: Ma
   return v;
 };
 
+/** a contradiction judgment is keyed by its two ids in order (`pairKey`): with new ids the key is rebuilt and the order (with its
+ * versions) fixed, or a resolved contradiction would come back open */
 function pairRow(row: Record<string, unknown>): void {
   if (typeof row.a_id !== 'string' || typeof row.b_id !== 'string') return;
   if (row.a_id > row.b_id) [row.a_id, row.b_id, row.a_version, row.b_version] = [row.b_id, row.a_id, row.b_version, row.a_version];
@@ -110,8 +115,7 @@ export function restoreWorkspace(repo: Repo, userId: string, raw: unknown, now: 
       for (const r of rows) {
         const row = Object.fromEntries(cols.map((c) => [c, remapCell(r[c], ids, suffix, map)]));
         if (t === 'contradiction_judgments') pairRow(row);
-        // JSON permits an optional property to disappear. Database adapters expect SQL NULL, not JavaScript undefined.
-        ins.run(...cols.map((c) => row[c] ?? null), userId, wsId);
+        ins.run(...cols.map((c) => row[c]), userId, wsId);
       }
     }
     if (typeof b.weeklyReview === 'string') repo.db.prepare('INSERT INTO kv (user_id, key, value) VALUES (?, ?, ?)').run(userId, `weekly_review:${wsId}`, b.weeklyReview);

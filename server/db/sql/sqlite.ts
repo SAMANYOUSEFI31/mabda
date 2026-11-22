@@ -1,6 +1,10 @@
 /** The SQLite adapter: one file on a disk (or `:memory:`), via better-sqlite3. */
 import Database from 'better-sqlite3';
-import type { Column, SqlDatabase, SqlLike, SqlStatement, Transaction } from './types.ts';
+import type { Column, RunResult, SqlDatabase, SqlLike, SqlStatement, Transaction } from './types.ts';
+
+/** SQL has NULL, not JavaScript `undefined`. Keep that normalization at the storage boundary so every caller behaves the same
+ * on SQLite and Postgres (whose adapter already performs this conversion). */
+const sqlParams = (params: unknown[]) => params.map((v) => v === undefined ? null : v);
 
 export class SqliteDatabase implements SqlDatabase {
   readonly dialect = 'sqlite' as const;
@@ -15,7 +19,17 @@ export class SqliteDatabase implements SqlDatabase {
     return new SqliteDatabase(db);
   }
 
-  prepare(sql: string): SqlStatement { return this.raw.prepare(sql) as unknown as SqlStatement; }
+  prepare(sql: string): SqlStatement {
+    const stmt = this.raw.prepare(sql);
+    return {
+      get: (...params) => stmt.get(...sqlParams(params)),
+      all: (...params) => stmt.all(...sqlParams(params)) as unknown[],
+      run: (...params): RunResult => {
+        const r = stmt.run(...sqlParams(params));
+        return { changes: r.changes };
+      },
+    };
+  }
   exec(sql: string) { this.raw.exec(sql); }
   transaction<F extends (...params: any[]) => unknown>(fn: F): Transaction<F> {
     return this.raw.transaction(fn);
