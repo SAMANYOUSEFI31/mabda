@@ -20,6 +20,8 @@ const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', f
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
 const BASIS_FA: Record<BlockMapping['basis'], string> = { explicit: 'نشانهٔ صریح', similar: 'شباهت', none: 'بدون سرنخ' };
 
+type ImportBlock = ParsedBlock & { done?: string };
+
 interface Props {
   open: boolean;
   workspaceId: string;
@@ -50,7 +52,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   const [applyingIds, setApplyingIds] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const [res, setRes] = useState<ImportParseResult | null>(null);
-  const [blocks, setBlocks] = useState<Array<ParsedBlock & { done?: string }>>([]);
+  const [blocks, setBlocks] = useState<ImportBlock[]>([]);
   const [choice, setChoice] = useState<Record<string, Choice>>({});
 
   useEffect(() => { dataApi.listPacks(workspaceId).then((p) => { setPacks(p); setPackId(p[0]?.id ?? ''); }).catch(() => setPacks([])); }, [workspaceId]);
@@ -75,7 +77,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   const titleOf = (id?: string) => objects.find((o) => o.id === id)?.title ?? '';
 
   /** applies ONE item the way the person chose; returns whether anything was saved */
-  const apply = async (b: ParsedBlock): Promise<boolean> => {
+  const apply = async (b: ImportBlock): Promise<boolean> => {
     if (applyingRef.current.has(b.id) || b.done) return false;
     const m = maps.get(b.id); const c = choice[b.id];
     if (!m || !c || !isContextKind(b.kind)) return false;
