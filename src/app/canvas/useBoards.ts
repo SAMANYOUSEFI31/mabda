@@ -94,12 +94,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
     const seen = workspaceContexts.find((o) => o.id === oldId)?.updatedAt;
-    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, {
-      type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId,
-      slotKey: input.slotKey, reach: input.reach, validUntil: input.validUntil, assumption: input.assumption, reviewBy: input.reviewBy,
-      record: input.record, facets: input.facets, examples: input.examples,
-      ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}),
-    }));
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
     showImpact(r.impact);
