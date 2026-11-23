@@ -618,6 +618,11 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const browserFullscreen = () => { try { if (document.fullscreenElement) void document.exitFullscreen(); else void root.current?.requestFullscreen(); } catch { /* optional */ } };
 
   // ── double-click on the empty stage = a new note; long press (touch) = the card menu ──
+  // a note made from the menu or the button lands where she is looking (the middle of the free board in view), not at the board's
+  // corner, off screen and under whatever sits there. Another layout switches to «آزاد» on save, whose view is not this one: the corner
+  const freeNoteSpot = () => (layoutEff === 'free' && size.w > 0 && view.k > 0
+    ? { x: Math.max(0, Math.round((size.w / 2 - view.x) / view.k - NOTE_W / 2)), y: Math.max(0, Math.round((size.h / 2 - view.y) / view.k - NOTE_H / 2)) }
+    : { x: 0, y: 0 });
   const onStageDouble = (e: React.MouseEvent) => {
     if (mode !== 'thinking' || (e.target as HTMLElement).closest('[data-item-id], button, [data-no-pan]')) return;
     const s = toStage(e.clientX, e.clientY);
@@ -748,7 +753,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const moreItems: MenuItem[] = [
           // grouped like a well-made menu (decisions.md §۳۲): an unnamed first group of what is made here, then named groups
           // for arranging and for files, and help last; zoom joins on a phone, where its buttons are not in the bar
-          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
+          ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', ...freeNoteSpot() }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
           ...(isMobile || compact ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: zoomInOff, onSelect: () => (farList ? leaveFar() : zoomAt(1.25)) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: zoomOutOff, onSelect: () => zoomAt(1 / 1.25) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
           { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
@@ -950,7 +955,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
               <div className="pointer-events-none absolute top-space-0 bottom-space-0 start-space-0 end-space-0 flex items-center justify-center p-inset-lg">
                 <div className="pointer-events-auto flex max-w-overlay-xs flex-col items-center gap-stack-sm text-center" data-no-pan="">
                   <p className="body-md text-text-default">{layout === 'free' ? 'بوم فکر خالی است؛ یادداشت‌های آزاد را اینجا بچین و از «فهرست فکرها» برای ایده‌ها و سؤال‌های باز استفاده کن.' : onlyReview ? 'چیزی نیاز به بازبینی ندارد.' : 'هنوز چیزی برای نمایش در این چیدمان نیست.'}</p>
-                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', x: 0, y: 0 }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت آزاد تازه' : onlyReview ? 'نمایش همه' : 'افزودن'}</Button>
+                  <Button size="sm" variant="secondary" iconStart="Plus" onClick={layout === 'free' ? () => setNewNote({ content: '', nodeId: '', ...freeNoteSpot() }) : onlyReview ? () => setOnlyReview(false) : p.onAddKnowledge}>{layout === 'free' ? 'یادداشت آزاد تازه' : onlyReview ? 'نمایش همه' : 'افزودن'}</Button>
                 </div>
               </div>
             )}
