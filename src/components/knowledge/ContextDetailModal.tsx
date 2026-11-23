@@ -103,6 +103,20 @@ interface ContextDetailModalProps {
  * The form state is initialised from `object` every time the modal opens,
  * so the stateful part is a child that mounts fresh on open.
  */
+
+// one unsent NEW truth per space (the same rule as «ثبت سریع», QuickCapture.tsx)
+const truthDraftKey = (wid: string) => `mabda.truthDraft.${wid}`;
+const readTruthDraft = (wid: string): { title: string; content: string } => {
+  try {
+    const raw = sessionStorage.getItem(truthDraftKey(wid));
+    const v = raw ? (JSON.parse(raw) as { title?: unknown; content?: unknown }) : null;
+    return { title: typeof v?.title === 'string' ? v.title : '', content: typeof v?.content === 'string' ? v.content : '' };
+  } catch { return { title: '', content: '' }; }
+};
+const writeTruthDraft = (wid: string, d: { title: string; content: string }) => {
+  try { if (d.title.trim() || d.content.trim()) sessionStorage.setItem(truthDraftKey(wid), JSON.stringify(d)); else sessionStorage.removeItem(truthDraftKey(wid)); } catch { /* optional */ }
+};
+
 export const ContextDetailModal: React.FC<ContextDetailModalProps> = (props) =>
   props.isOpen ? <ContextDetailForm {...props} /> : null;
 
@@ -169,9 +183,19 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
 
   // opening a knowledge that has a waiting draft shows what she clicked: the CONFIRMED text, the same as the card. The draft is shown
   // against it in the notice below, with «ادامهٔ ویرایش پیش‌نویس» to bring it into the editor (docs/ux/decisions.md §۱۲)
-  const [title, setTitle] = useState(object?.title ?? '');
-  // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳)
-  const [content, setContent] = useState(() => object?.content ?? (object ? '' : takePendingAddText()));
+  // a NEW truth keeps its unsent text across a refresh, like «ثبت سریع» (sessionStorage: it goes with the tab; one per space). It is
+  // dropped once saved, discarded («دور بریز») or carried to the other side of «افزودن»
+  const keepsUnsent = !object;
+  const [unsent] = useState(() => (keepsUnsent ? readTruthDraft(workspaceId) : { title: '', content: '' }));
+  const [title, setTitle] = useState(object?.title ?? unsent.title);
+  // text carried over from the «فکر» or «فایل» side of «افزودن» (patterns.md §۳); an unsent text of this space comes first
+  const [content, setContent] = useState(() => {
+    if (object) return object.content ?? '';
+    const carried = takePendingAddText();
+    return unsent.content.trim() && carried.trim() ? `${unsent.content}\n${carried}` : unsent.content || carried;
+  });
+  useEffect(() => { if (keepsUnsent) writeTruthDraft(workspaceId, { title, content }); }, [keepsUnsent, workspaceId, title, content]);
+  const dropUnsent = () => { if (keepsUnsent) writeTruthDraft(workspaceId, { title: '', content: '' }); };
   const [onDraft, setOnDraft] = useState(false);
   useEffect(() => () => clearPendingAddText(), []);
   const [contentError, setContentError] = useState('');
@@ -361,7 +385,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         // «روی چه اثر دارد»: the same depends_on, written on the other side (the plan lists only the objects that change)
         if (onSetDependencies) for (const step of affectPlan(id, effects, relationships)) await onSetDependencies(step.objectId, step.dependsOn);
       },
-    ).then((r) => { setSaving(false); if (!r.ok) setSaveFailed(true); });
+    ).then((r) => { setSaving(false); if (r.ok) dropUnsent(); else setSaveFailed(true); });
   };
 
   // the verb names what is being added: an assumption is not «truth» yet (decisions.md §۱)
@@ -381,6 +405,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     <Dialog
       open
       onClose={onClose}
+      onDiscard={dropUnsent}
       size="md"
       steady={switchable}
       dirty={content.trim() !== ((onDraft ? object?.draft?.content : undefined) ?? object?.content ?? '').trim() || title !== ((onDraft ? object?.draft?.title : undefined) ?? object?.title ?? '')}
@@ -446,7 +471,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             اگر همین مورد جای دیگری هم عوض شده بود، آن تغییر حالا در «نسخه‌ها» هست. اگر متن تو باید بماند، دوباره ذخیره کن.
           </Alert>
         )}
-        {switchable && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={onClose} />}
+        {switchable && <AddKindSwitch value="truth" text={content} nodeId={nodePicked ? nodeId : undefined} onLeave={() => { dropUnsent(); onClose(); }} />}
         {object?.status === 'Confirmed' && onThinkAbout && (
           <div>
             <Button type="button" size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => onThinkAbout(object)}>دربارهٔ این فکر کن</Button>

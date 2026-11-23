@@ -110,8 +110,11 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     return r.object;
   };
 
+  // the status changes on the version she saw: confirming a proposal another tab rewrote meanwhile is a 409, never a silent «yes»
+  // to a text she did not read (the same rule as edit / replace / supersede, decisions.md §۵۳ ۲)
   const setStatus = async (id: string, status: ContextObject['status'], reason?: string) => {
-    const r = await attempt(() => dataApi.updateObject(wid, id, { status, ...(reason ? { reason } : {}) }));
+    const seen = workspaceContexts.find((o) => o.id === id)?.updatedAt;
+    const r = await attempt(() => dataApi.updateObject(wid, id, { status, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
     return r.impact;
