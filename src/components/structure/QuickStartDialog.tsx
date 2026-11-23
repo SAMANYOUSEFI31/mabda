@@ -177,7 +177,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
             {QUESTIONS.map((q) => (q.multiline
               ? <Textarea key={q.key} label={q.label} rows={2} value={answers[q.key] ?? ''} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />
               : <TextField key={q.key} label={q.label} value={answers[q.key] ?? ''} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />))}
-            <p className="body-sm text-text-subtle">به دست‌کم دو سؤال جواب بده؛ بقیه را می‌توانی بعداً در «چه چیزی به تو نیاز دارد؟» کامل کنی.</p>
+            <p className="body-sm text-text-subtle">به دست‌کم دو سؤال جواب بده؛ بقیه را هر وقت خواستی در «حقیقت» بنویس.</p>
           </div>
         )}
 

@@ -90,7 +90,8 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     else if (t.type === 'contradictions') reveal('contradictions');
     else if (t.type === 'proposals') reveal('proposal-inbox');
     else if (t.type === 'thinking') openThinkingSpace();
-    else reveal('open-thinking'); // «due»
+    // «N مورد موعد بازبینی دارد» lands on the due items themselves, not on the open questions above them in the same card
+    else reveal('due-items');
   };
   const plusDays = (n: number) => tehranDayPlus(n); // calendar days in Tehran (core/tehranDate.ts)
   const metrics = data?.metrics ?? [];

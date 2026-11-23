@@ -35,7 +35,7 @@ export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode,
   const run = async (key: string, fn: () => Promise<unknown>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
   if (assumptions.length === 0 && decisions.length === 0) return null;
   return (
-    <section className="flex flex-col gap-stack-md" aria-label="سررسیدها">
+    <section id="due-items" tabIndex={-1} className="flex flex-col gap-stack-md" aria-label="سررسیدها">
       {assumptions.length > 0 && (
         <div className="flex flex-col gap-stack-sm">
           <h3 className="label-md text-text-default">فرض‌هایی که وقت بازبینی‌شان رسیده</h3>
