@@ -48,7 +48,3 @@ export function visibleFeatures(s: FeatureState): VisibleFeatures {
     proposals: s.proposed > 0,
   };
 }
-
-/** the views of «منبع حقیقت»: structure, document and canvas always; the table sits under «⋯» */
-export const PRIMARY_CONTEXT_VIEWS = ['doc', 'read', 'canvas'] as const;
-export const MORE_CONTEXT_VIEWS = ['table'] as const;

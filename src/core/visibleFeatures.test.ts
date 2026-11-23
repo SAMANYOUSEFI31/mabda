@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MORE_CONTEXT_VIEWS, PRIMARY_CONTEXT_VIEWS, visibleFeatures } from './visibleFeatures';
+import { visibleFeatures } from './visibleFeatures';
 import type { FeatureState } from './visibleFeatures';
 
 const NOW = new Date('2026-06-10T10:00:00Z');
@@ -31,12 +31,6 @@ test('waiting decisions need a dependency; contradictions, metrics, packs and pr
 test('the features are independent: showing one never shows another', () => {
   const v = visibleFeatures(empty({ metrics: 1 }));
   assert.deepEqual(Object.entries(v).filter(([, on]) => on).map(([k]) => k), ['metrics']);
-});
-
-test('the table view is not a primary view; nothing is removed (it is listed under «⋯»)', () => {
-  assert.deepEqual([...PRIMARY_CONTEXT_VIEWS], ['doc', 'read', 'canvas']);
-  assert.deepEqual([...MORE_CONTEXT_VIEWS], ['table']);
-  assert.equal(new Set([...PRIMARY_CONTEXT_VIEWS, ...MORE_CONTEXT_VIEWS]).size, 4);
 });
 
 test('weekly review: the window is the same seven Tehran calendar days the weekly review reads (CORE-04)', () => {
