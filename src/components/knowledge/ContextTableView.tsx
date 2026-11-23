@@ -4,7 +4,7 @@
  */
 
 import type { Contradiction } from '../../types';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../../types';
 import { conflictPartners, DISPLAY_LABEL, displayState } from '../../core/displayState';
 import {
@@ -36,6 +36,13 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedNode, setSelectedNode] = useState<string>(() => (focusNodeId && nodes.some((n) => n.id === focusNodeId) ? focusNodeId : 'all'));
   const [selectedFacet, setSelectedFacet] = useState<string>('all');
+  // the section she is in can change while the table is open (back / forward, «بیرون بیا»): the section filter follows it
+  const seenFocus = useRef(focusNodeId);
+  useEffect(() => {
+    if (seenFocus.current === focusNodeId) return;
+    seenFocus.current = focusNodeId;
+    setSelectedNode(focusNodeId && nodes.some((n) => n.id === focusNodeId) ? focusNodeId : 'all');
+  }, [focusNodeId, nodes]);
   const partners = useMemo(() => conflictPartners(objects, conflicts), [objects, conflicts]);
   const facetNames = [...new Set([...objects, ...samples].flatMap((o) => o.facets ?? []))].sort((a, b) => a.localeCompare(b));
 

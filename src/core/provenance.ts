@@ -21,7 +21,8 @@ export interface ProvenanceLink {
 }
 export interface Provenance { links: ProvenanceLink[]; /** the pieces, grouped for a sentence like «از فکر X آمد؛ در ۲ خروجی رفت» */ counts: { outputs: number; replaced: number } }
 
-const SOURCE_FA: Record<NonNullable<ContextObject['source']>['kind'], string> = {
+/** where a piece of knowledge came from, in words: the one dictionary (provenance lines, the proposal inbox) */
+export const SOURCE_FA: Record<NonNullable<ContextObject['source']>['kind'], string> = {
   mcp: 'ابزار دیگر', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودت', asset: 'خروجی ساخته‌شده',
 };
 

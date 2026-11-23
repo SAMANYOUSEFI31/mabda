@@ -7,6 +7,7 @@ import { track } from '../../services/usage';
 import React, { useEffect, useState } from 'react';
 import type { PackInfo } from '../../types/state';
 import { dataApi, DataApiError } from '../../services/dataApi';
+import { copyText } from '../../services/clipboard';
 import { Alert, Badge, Button, Dialog, Spinner, Textarea, formatNumber, useToast, Caution } from '../../ui';
 
 export interface PackTarget { specId?: string; deliverableId?: string; title: string }
@@ -37,9 +38,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
 
   const copy = async () => {
     if (!pack) return;
-    try { await navigator.clipboard.writeText(pack.markdown); } catch {
-      const ta = document.createElement('textarea'); ta.value = pack.markdown; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-    }
+    if (!(await copyText(pack.markdown))) { toast.show({ intent: 'danger', message: 'کپی انجام نشد؛ مرورگر اجازه نداد. متن را انتخاب و دستی کپی کن.' }); return; }
     setCopied(true);
     track('action.pack-copy');
     toast.show({ intent: 'success', message: 'بستهٔ دانش کپی شد. آن را در هر ابزاری که می‌خواهی بچسبان و بخواه طبق قالب جواب بدهد.' });

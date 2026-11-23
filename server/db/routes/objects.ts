@@ -36,7 +36,8 @@ export function registerObjectsRoutes(ctx: RouteContext): void {
     const r = repo.approveDraft(s, req.params.id, metaOf(body(req)));
     res.json({ ...r, stale: stale(s) });
   }));
-  router.delete('/workspaces/:wid/objects/:id/draft', wrap((req, res) => { const s = scopeOf(req); res.json({ object: repo.rejectDraft(s, req.params.id) }); }));
+  // rejecting a draft throws it away: only the draft she saw (another tab that saved a newer one since makes this a 409)
+  router.delete('/workspaces/:wid/objects/:id/draft', wrap((req, res) => { const s = scopeOf(req); expectFresh(s, req.params.id, body(req).expectedUpdatedAt); res.json({ object: repo.rejectDraft(s, req.params.id) }); }));
   router.post('/workspaces/:wid/objects/:id/supersede', wrap((req, res) => {
     const s = scopeOf(req);
     const { change: _c, reason: _r, expectedUpdatedAt, ...input } = body(req);

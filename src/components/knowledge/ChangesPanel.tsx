@@ -9,6 +9,7 @@ import { buildChangeDigest, DEFAULT_DAYS } from '../../core/changeDigest';
 import { ACTOR_FA } from '../../core/changeLog';
 import { Badge, Button, Card, formatNumber, Caution } from '../../ui';
 import { ChangeEntry } from './ChangeEntry';
+import { DELETED_SECTION } from '../../core/nodeTree';
 
 interface Props {
   open: boolean;
@@ -27,7 +28,7 @@ interface Props {
 export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects, relationships, deliverables, nodes, onOpenAssets, onCompare }) => {
   const digest = useMemo(() => (open ? buildChangeDigest({ changes, objects, relationships, deliverables, nodes }) : null), [open, changes, objects, relationships, deliverables, nodes]);
   const titleOf = (id: string) => objects.find((o) => o.id === id)?.title ?? id;
-  const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
+  const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION;
 
   return (
     <Card padding="xl" id="changes" className="flex flex-col gap-stack-lg" aria-label="چه چیزی عوض شد">

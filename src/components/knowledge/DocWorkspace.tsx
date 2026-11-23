@@ -10,6 +10,9 @@ import { Button, Tabs, formatNumber } from '../../ui';
 import { DocReader } from './DocReader';
 
 const REFS_KEY = 'mabda.doc.refs';
+/** a tab change drops a document anchor (#o-…) from the address, never the section she is in (#node=…) nor the entry's state:
+ *  the phone's back still climbs one level at a time (useSearchAndFocus) */
+const clearAnchor = () => { try { const keep = /^#node=/.test(window.location.hash) ? window.location.hash : ''; window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search + keep); } catch { /* optional */ } };
 const readRefs = () => { try { return localStorage.getItem(REFS_KEY) === '1'; } catch { return false; } };
 
 interface Props {
@@ -36,14 +39,19 @@ export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, a
   const fromHash = () => { const h = typeof window !== 'undefined' ? window.location.hash.slice(1) : ''; return h ? tabOfAnchor(h, tabs, nodes, objects)?.id : undefined; };
   const fromFocus = () => (focusNodeId ? tabOfAnchor(nodeAnchor(focusNodeId), tabs, nodes, objects)?.id : undefined);
   const [tabId, setTabId] = useState<string | undefined>(() => fromHash() ?? fromFocus() ?? tabs[0]?.id);
-  // …and at the section's own heading when it is not the tab itself (the doc renders after this; try a few frames)
+  // …and at the section's own heading when it is not the tab itself (the doc renders after this; try a few frames). The section
+  // can change while the document is open (back / forward, «بیرون بیا»): the tab follows it then, like the first time
+  const firstFocus = React.useRef(true);
   useEffect(() => {
-    if (!focusNodeId || fromHash()) return;
+    const first = firstFocus.current; firstFocus.current = false;
+    if (first && fromHash()) return;
+    if (!first) setTabId(fromFocus() ?? tabs[0]?.id);
+    if (!focusNodeId) return;
     let tries = 0;
     const t = setInterval(() => { const el = document.getElementById(nodeAnchor(focusNodeId)); if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ block: 'start' }); } }, 60);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [focusNodeId]);
   const [refs, setRefs] = useState(readRefs);
   const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
 
@@ -78,7 +86,7 @@ export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, a
       ) : undefined}
       empty={empty}
       refs={{ checked: refs, onChange: (on) => { setRefs(on); try { localStorage.setItem(REFS_KEY, on ? '1' : '0'); } catch { /* optional */ } } }}
-      header={tabs.length > 1 ? <div className="max-w-full overflow-x-auto"><Tabs label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); window.history.replaceState(null, '', window.location.pathname + window.location.search); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /></div> : undefined}
+      header={tabs.length > 1 ? <div className="max-w-full overflow-x-auto"><Tabs label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); clearAnchor(); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /></div> : undefined}
     />
   );
 };

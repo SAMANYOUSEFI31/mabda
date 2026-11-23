@@ -244,7 +244,8 @@ export function ToastProvider({ children, max = 3 }: { children: ReactNode; max?
   return (
     <ToastCtx.Provider value={{ show, dismiss }}>
       {children}
-      {createPortal(
+      {/* no document on a server render (a test renders cards to text): the stack is only for the browser */}
+      {typeof document !== 'undefined' && createPortal(
       <div className="mb-toast-stack" role="region" aria-label="اعلان‌ها">
         {/* A live region that is born already filled is often not read (VoiceOver, some NVDA builds), so two regions stay
             mounted for the app's whole life and only their text changes; the visible toasts stay silent. */}

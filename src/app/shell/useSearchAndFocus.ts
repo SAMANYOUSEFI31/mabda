@@ -45,7 +45,16 @@ export function useSearchAndFocus(p: AppCoreScope) {
   }, []);
   /** scroll to an element that appears after a tab / view change (it may take a moment to mount) */
   // «واردِ یک بخش شدن»: the focused section lives in history (#node=…), so the browser / phone back button, a direct link and reload all work
-  const nodeFromUrl = () => { try { const m = /#node=([^&]+)/.exec(window.location.hash); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
+  // the address says it (#node=…); a document permalink (#o-… / #n-…) replaces the address but keeps the entry's state, so the
+  // section is read from the state then (reload, back and forward keep the place; history.state survives a reload)
+  const nodeFromUrl = () => {
+    try {
+      const m = /#node=([^&]+)/.exec(window.location.hash);
+      if (m) return decodeURIComponent(m[1]);
+      const st = window.history.state as { node?: unknown } | null;
+      return typeof st?.node === 'string' ? st.node : null;
+    } catch { return null; }
+  };
   const [focusNodeId, setFocusNodeId] = useState<string | null>(nodeFromUrl);
   const urlOf = (id: string | null) => (id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search);
   /** every state remembers where it came FROM, so «برگشت» (the arrow, the phone's back, the browser's back) climbs one level instead of leaving */

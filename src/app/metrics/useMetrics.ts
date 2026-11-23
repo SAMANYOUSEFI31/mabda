@@ -23,6 +23,7 @@ export function useMetrics(p: AppCoreScope) {
     onRecord: async (entries: Array<{ metricId: string; value: number }>) => {
       const r = await attempt(() => dataApi.addMeasurements(wid, entries));
       if (r) { applyMetrics(r); toast.show({ intent: 'success', message: `${formatNumber(entries.length)} عدد ثبت شد.` }); }
+      return !!r;
     },
     onCsv: async (text: string) => {
       const r = await attempt(() => dataApi.addMeasurementsCsv(wid, text));

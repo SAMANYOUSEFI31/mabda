@@ -17,6 +17,13 @@ import type { UsageCountersScope } from '../shell/useUsageCounters';
 
 export type BoardsScope = ReturnType<typeof useBoards>;
 
+/** the fields of a replacement beyond its text (reach, dates, dimensions, examples, assumption, record): the new version keeps what the form said */
+const supersedeExtras = (d: ContextDraft) => {
+  const out: Partial<Pick<ContextObject, 'reach' | 'validUntil' | 'facets' | 'examples' | 'assumption' | 'reviewBy' | 'record'>> = {};
+  for (const k of ['reach', 'validUntil', 'facets', 'examples', 'assumption', 'reviewBy', 'record'] as const) if (d[k] !== undefined) (out as Record<string, unknown>)[k] = d[k];
+  return out;
+};
+
 export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersScope) {
   const { ai, attempt, data, deliverables, patch, reload, showImpact, toast, wid, workspaceContexts } = p;
   // ── boards: every action returns the pieces of state it touched ──
@@ -75,7 +82,9 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
     return true;
   };
   const handleRejectDraft = async (objectId: string) => {
-    const r = await attempt(() => dataApi.rejectDraft(wid, objectId));
+    // the draft she saw: one saved since in another tab is not thrown away in silence (409)
+    const seen = workspaceContexts.find((o) => o.id === objectId)?.updatedAt;
+    const r = await attempt(() => dataApi.rejectDraft(wid, objectId, seen));
     if (!r) return;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === r.object.id ? r.object : o)) }));
     toast.show({ intent: 'info', message: 'پیش‌نویس رد شد؛ متن تأییدشده همان بود.' });
@@ -94,7 +103,7 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
 
   const handleSupersedeContext = async (oldId: string, input: ContextDraft, reason?: string) => {
     const seen = workspaceContexts.find((o) => o.id === oldId)?.updatedAt;
-    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
+    const r = await attempt(() => dataApi.supersedeObject(wid, oldId, { type: input.type, status: input.status, provenance: input.provenance, title: input.title, content: input.content, nodeId: input.nodeId, ...supersedeExtras(input), ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return undefined;
     patch((d) => ({ ...d, objects: [r.object, ...d.objects.map((o) => (o.id === oldId ? r.previous : o))], relationships: r.relationships, stale: r.stale }));
     showImpact(r.impact);

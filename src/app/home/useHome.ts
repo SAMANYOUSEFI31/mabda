@@ -101,22 +101,23 @@ export function useHome(p: AppCoreScope & UsageCountersScope & ThinkingItemsScop
     // «هنوز فرض است»: the same rule as «هنوز زود است» — the next look when there can be new evidence: two numbers of the truth's own
     // monitor, else the horizon the user gave it (written → review date), 7–90 days (core/assumptions.ts nextLookDays; decisions.md §۵۱)
     onStillAssumed: async (id: string) => {
-      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
+      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return false;
       const m = metrics.find((x) => x.objectId === id && !x.archived);
-      await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' });
+      return !!(await handlePatchObject(id, { reviewBy: plusDays(nextLookDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.reviewBy })), reason: 'بازبینی: هنوز فرض است' }));
     },
-    onConfirmed: async (id: string) => { await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' }); },
-    onDropped: async (id: string) => { await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' }); },
+    onConfirmed: async (id: string) => !!(await handlePatchObject(id, { assumption: false, status: 'Confirmed', reason: 'بازبینی: فرض به واقعیت تبدیل شد' })),
+    onDropped: async (id: string) => !!(await handlePatchObject(id, { status: 'Archived', reason: 'بازبینی: فرض رد شد' })),
     // «هنوز زود است»: the next look comes when there can be new evidence (core/assumptions.ts tooEarlyWaitDays)
     onTooEarly: async (id: string) => {
-      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return;
+      const o = (data?.objects ?? []).find((x) => x.id === id); if (!o) return false;
       const m = metrics.find((x) => x.id === o.record?.metricExpectation?.metricId);
       const days = tooEarlyWaitDays({ cadence: m?.cadence, decidedAt: lastLookAt(o, data?.changes ?? []), reviewOn: o.record?.reviewOn });
-      await handlePatchObject(id, { record: { ...(o.record ?? {}), reviewOn: plusDays(days) }, reason: 'نگاه به عقب: هنوز زود است' });
+      return !!(await handlePatchObject(id, { record: { ...(o.record ?? {}), reviewOn: plusDays(days) }, reason: 'نگاه به عقب: هنوز زود است' }));
     },
     onOutcome: async (id: string, text: string, verdict?: ExpectationVerdict) => {
       const r = await attempt(() => dataApi.noteOutcome(wid, id, text, verdict));
       if (r) { patch((d) => ({ ...d, changes: r.changes })); toast.show({ intent: 'success', message: 'نتیجه ثبت شد.' }); }
+      return !!r;
     },
     expectations: expRows,
   };

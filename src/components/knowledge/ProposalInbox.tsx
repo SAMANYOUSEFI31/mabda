@@ -5,13 +5,14 @@
 
 import React, { useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
+import { useAiStatus } from '../../services/aiStatus';
+import { importLabel } from '../../core/importLabel';
+import { SOURCE_FA } from '../../core/provenance';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
 import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
 
-const KIND_FA: Record<ObjectSource['kind'], string> = {
-  mcp: 'ابزار بیرونی', chat: 'گفتگو', coach: 'مربی دانش', file: 'فایل', note: 'یادداشت', paste: 'پاسخ چسبانده‌شده', user: 'خودم', asset: 'خروجی ساخته‌شده',
-};
+const KIND_FA = SOURCE_FA; // one dictionary with the provenance lines (core/provenance.ts)
 
 interface Props {
   objects: ContextObject[];
@@ -38,6 +39,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
+  const { managedEnabled } = useAiStatus();
   // tools used now and then sit under one quiet trigger; the inbox itself is the content (thinking page stays calm)
   const actions = (
     <Menu
@@ -48,7 +50,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
       items={[
         { label: 'کپی کل دانش برای استفاده در هر ابزار', icon: 'Copy', onSelect: onOpenPack },
         { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: onOpenImport },
-        { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: onOpenMemory },
+        { label: importLabel(managedEnabled), icon: 'FolderInput', onSelect: onOpenMemory },
       ]}
     />
   );

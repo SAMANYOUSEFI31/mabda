@@ -155,6 +155,9 @@ export function movedNodeTree(nodes: TreeNode[], id: string, parentId: string, i
  * the indent before a section's name in a native picker (<select> cannot pad its options): two em-spaces per level and one dash,
  * so each level steps in by the same, clearly visible amount; a dash per level («— — ») read as one flat column (decisions.md §۳۵)
  */
+/** what a history line says for a section that no longer exists (never its raw id) */
+export const DELETED_SECTION = 'بخش حذف‌شده';
+
 export const treeIndent = (depth: number): string => (depth > 0 ? `${'\u2003'.repeat(2 * depth - 1)}– ` : '');
 
 /** flattened for pickers: depth-first with depth */

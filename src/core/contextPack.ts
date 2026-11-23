@@ -117,7 +117,7 @@ export function buildContextPack(input: PackInput): ContextPack {
   };
 
   const guardrails = [...(spec?.guardrails ?? []), ...input.objects.filter((o) => guardIds.has(o.id)).map(guardrailText)].filter(Boolean);
-  const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, [], input.judgments, now).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
+  const gaps = spec ? calculateReadinessAndGaps(spec, input.objects, rels, input.judgments, now).gaps.filter((g) => g.importance === 'required' || g.status !== 'confirmed') : [];
   const depTitles = (deliverable?.dependsOn ?? []).map((id) => spec?.deliverables.find((d) => d.id === id)?.title).filter(Boolean);
 
   const parts: string[] = [

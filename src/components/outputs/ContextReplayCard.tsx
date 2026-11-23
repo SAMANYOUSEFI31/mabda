@@ -7,12 +7,13 @@ import React, { useState } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable } from '../../types';
 import { versionTexts } from '../../core/versionHistory';
 import { BeforeAfter } from '../shared/BeforeAfter';
-import { Alert, Badge, Button, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution } from '../../ui';
+import { Alert, Badge, Button, IconButton, Markdown, Menu, ModeBadge, TYPE_META, formatJalaliDate, formatNumber, Caution, useToast } from '../../ui';
 import { PlanLine } from '../shared/AiNotices';
 import { useAiStatus } from '../../services/aiStatus';
 import type { StaleAsset } from '../../core/impactEngine';
 import { BlockView } from '../shared/BlockView';
 import { contextDraftFromBlock } from '../../core/blocks';
+import { copyText } from '../../services/clipboard';
 
 interface ContextReplayCardProps {
   deliverable: GeneratedDeliverable;
@@ -63,8 +64,10 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   /** a hand-written example in the showcase workspace: clearly NOT an AI output; with the flag on «ساخت از این دانش» replaces it with a real platform-generated one */
   const sample = deliverable.source?.label === 'نمونهٔ دستی';
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(deliverable.content);
+  const toast = useToast();
+  const handleCopy = async () => {
+    // «کپی شد» only when it really copied (a refused clipboard said it anyway)
+    if (!(await copyText(deliverable.content))) { toast.show({ intent: 'danger', message: 'کپی انجام نشد؛ مرورگر اجازه نداد. متن را انتخاب و دستی کپی کن.' }); return; }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -94,7 +97,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
         </div>
         <div className="flex shrink-0 items-center gap-inline-xs">
           {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت از این دانش</Button>}
-          <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={handleCopy}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
+          <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={() => void handleCopy()}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
           <Menu
             label="بیشتر دربارهٔ این خروجی"
             align="end"

@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { OutlineItem } from '../../core/contextMarkdown';
 import { Button, IconButton, Menu, Markdown, SegmentedControl, Switch, useToast } from '../../ui';
 import { SectionScrubber, useReadingPosition } from './readingPosition';
+import { treeIndent } from '../../core/nodeTree';
 
 interface DocReaderProps {
   markdown: string;
@@ -66,7 +67,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   /** the reading position, plus a permalink in the address (DATA-03) */
   const goTo = useCallback((id: string, setHash = true) => {
     if (!reach(id)) return false;
-    if (setHash) window.history.replaceState(null, '', `#${id}`);
+    if (setHash) window.history.replaceState(window.history.state, '', `#${id}`);
     return true;
   }, [reach]);
   const copyLink = async () => {
@@ -129,9 +130,9 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
             label="فهرست سند"
             align="start"
             trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
-            items={items.map((i) => ({ label: `${i.level > 1 ? '— '.repeat(i.level - 1) : ''}${i.text}`, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
+            items={items.map((i) => ({ label: `${treeIndent(i.level - 1)}${i.text}`, text: i.text, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
           />
-          {activeItem && <SectionScrubber items={parts} active={partOf(active)} now={activeItem.text} anchorOf={sameId} endId="doc-body" onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(null, '', `#${id}`); }} label="جای خواندن در سند" />}
+          {activeItem && <SectionScrubber items={parts} active={partOf(active)} now={activeItem.text} anchorOf={sameId} endId="doc-body" onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(window.history.state, '', `#${id}`); }} label="جای خواندن در سند" />}
         </div>
       )}
       {withOutline && markdown.trim().length > 0 ? (

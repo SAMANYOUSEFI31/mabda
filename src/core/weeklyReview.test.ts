@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue } from './weeklyReview';
+import { acceptanceSentence, buildWeeklyReview, outputsUsing, readinessPerWorkstream, reviewDue, weeklySummaryText } from './weeklyReview';
 import { WORKSTREAM_SPECS } from './specs';
 import type { ContextChange, ContextObject, GeneratedDeliverable } from '../types';
 
@@ -44,4 +44,16 @@ test('readiness per workstream is the deterministic engine result; outputsUsing 
   assert.equal(outputsUsing('Z', dels), 0);
   assert.equal(acceptanceSentence('قیمت', 2, (n) => `«${n}»`), 'چون «قیمت» را تأیید کردی، «2» خروجی تو از آن استفاده می‌کنند.');
   assert.equal(acceptanceSentence('قیمت', 0, String), '');
+});
+
+test('1B-3.1: the summary counts every kind of work in the review: due items answered and numbers recorded too', () => {
+  assert.equal(weeklySummaryText({ accepted: 0, due: 0, numbers: 0, outputs: 0 }), 'این هفته چیزی را تغییر ندادی؛ هرچه دیدی همان‌طور که بود ماند.');
+  const due = weeklySummaryText({ accepted: 0, due: 2, numbers: 0, outputs: 0 });
+  assert.ok(!due.includes('تغییر ندادی'), 'before: answering due items alone said «nothing changed»');
+  assert.match(due, /۲ سررسید/);
+  assert.match(weeklySummaryText({ accepted: 0, due: 0, numbers: 3, outputs: 0 }), /۳ عدد ثبت کردی/);
+  const all = weeklySummaryText({ accepted: 1, due: 1, numbers: 1, outputs: 2 });
+  assert.match(all, /پذیرفتی یا تأیید کردی، .* و ۱ عدد ثبت کردی\./);
+  assert.match(all, /۲ خروجی/);
+  assert.ok(!weeklySummaryText({ accepted: 0, due: 1, numbers: 0, outputs: 2 }).includes('خروجی'), 'the outputs line belongs to what she confirmed');
 });

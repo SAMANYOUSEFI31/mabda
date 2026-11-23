@@ -15,6 +15,7 @@ import { AboutPicker } from './AboutPicker';
 import { Badge, Button, Checkbox, Dialog, IconButton, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
+import { DELETED_SECTION } from '../../core/nodeTree';
 
 interface Props {
   items: NoteThinkingItem[];
@@ -52,7 +53,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
   const [historyReport, setHistoryReport] = useState<ThoughtHistoryReport | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const label = (id: string) => nodes?.find((n) => n.id === id)?.label ?? id;
+  const label = (id: string) => nodes?.find((n) => n.id === id)?.label ?? DELETED_SECTION;
   const run = async (item: NoteThinkingItem, type: ContextObject['type']) => { setBusy(item.key); try { await onConvert(item, type); } finally { setBusy(null); } };
   // only a change she made is sent: an untouched picker must not turn the words of the text into stored links
   const aboutChanged = (it: NoteThinkingItem) => { const was = nodes ? aboutTargets(it.text, objects, nodes, it) : []; const k = (l: AboutTarget[]) => l.map((t) => `${t.kind}:${t.id}`).sort().join('|'); return k(was) !== k(draftAbout); };

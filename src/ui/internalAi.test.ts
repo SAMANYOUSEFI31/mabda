@@ -15,6 +15,7 @@ import { uiTexts } from './language.test';
 import { buildDemo } from '../core/demoData';
 import { ContextReplayCard } from '../components/outputs/ContextReplayCard';
 import { AiStatusProvider } from '../services/aiStatus';
+import { ToastProvider } from './Overlay';
 import { AiStatusBanner } from '../components/shared/AiNotices';
 
 /** labels that mean «Mabda's own AI makes this» */
@@ -51,8 +52,8 @@ test('flag off: an asset card (including a hand-made sample) offers no «ساخ�
   const stale = { deliverableId: d.deliverables[0].id, reasons: [{ kind: 'version_changed', message: 'نسخهٔ یک دانش عوض شده است.' }] } as never;
   for (const [deliverable, st] of [[d.deliverables[0], undefined], [d.deliverables[0], stale]] as const) {
     const html = renderToStaticMarkup(
-      React.createElement(AiStatusProvider, null,
-        React.createElement(ContextReplayCard, { deliverable, allContextObjects: d.objects, onOpenContextObject: () => undefined, onRebuild: () => undefined, stale: st })),
+      React.createElement(ToastProvider, null, React.createElement(AiStatusProvider, null,
+        React.createElement(ContextReplayCard, { deliverable, allContextObjects: d.objects, onOpenContextObject: () => undefined, onRebuild: () => undefined, stale: st }))),
     );
     assert.ok(html.length > 200, 'the card rendered');
     for (const l of ['ساخت با AI', 'ساخت با هوش مصنوعی', 'بازسازی', 'اعتبار', 'در دسترس نیست']) assert.ok(!html.includes(l), `«${l}» must not appear with the flag off`);

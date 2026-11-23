@@ -176,8 +176,8 @@ export const dataApi = {
   updateObject: (id: string, objectId: string, patch: Partial<Pick<ContextObject, 'type' | 'title' | 'content' | 'nodeId' | 'status' | 'provenance' | 'slotKey'>> & { reach?: ContextObject['reach'] | null; validUntil?: string | null; assumption?: boolean; reviewBy?: string | null; record?: import('../types').DecisionRecord | null; facets?: string[] | null; examples?: import('../types').RedlineExample[] | null; reason?: string; asDraft?: boolean; expectedUpdatedAt?: string }) =>
     call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('PATCH', `${ws(id)}/objects/${objectId}`, patch),
   approveDraft: (id: string, objectId: string, expectedUpdatedAt?: string) => call<{ object: ContextObject; impact: ImpactInfo; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/draft/approve`, expectedUpdatedAt ? { expectedUpdatedAt } : {}),
-  rejectDraft: (id: string, objectId: string) => call<{ object: ContextObject }>('DELETE', `${ws(id)}/objects/${objectId}/draft`),
-  supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; reason?: string; expectedUpdatedAt?: string }) =>
+  rejectDraft: (id: string, objectId: string, expectedUpdatedAt?: string) => call<{ object: ContextObject }>('DELETE', `${ws(id)}/objects/${objectId}/draft`, expectedUpdatedAt ? { expectedUpdatedAt } : undefined),
+  supersedeObject: (id: string, objectId: string, input: { type: ContextType; status?: ContextStatus; provenance: ContextProvenance; title: string; content: string; nodeId: string; reason?: string; expectedUpdatedAt?: string } & Partial<Pick<ContextObject, 'reach' | 'validUntil' | 'facets' | 'examples' | 'assumption' | 'reviewBy' | 'record'>>) =>
     call<{ object: ContextObject; previous: ContextObject; impact: ImpactInfo; relationships: ContextRelationship[]; stale: StaleAsset[] }>('POST', `${ws(id)}/objects/${objectId}/supersede`, input),
 
   objectVersions: (id: string, objectId: string) => call<{ versions: Array<{ version: number; type: string; title: string; content: string; createdAt: string }> }>('GET', `${ws(id)}/objects/${objectId}/versions`).then((r) => r.versions),
@@ -199,7 +199,7 @@ export const dataApi = {
   resolveContradiction: (id: string, input: { aId: string; bId: string; action: 'keep'; keepId: string } | { aId: string; bId: string; action: 'separate'; moveId: string; nodeId: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; pairJudgments: WorkspaceState['pairJudgments']; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/contradictions/resolve`, input),
   changeLog: (id: string, f: { objectId?: string } = {}) => call<{ changes: import('../types').ContextChange[] }>('GET', `${ws(id)}/changes/log${f.objectId ? `?objectId=${encodeURIComponent(f.objectId)}` : ''}`),
-  replaceWith: (id: string, proposalId: string, input: { replacesId: string; reason?: string }) =>
+  replaceWith: (id: string, proposalId: string, input: { replacesId: string; reason?: string; expectedUpdatedAt?: string }) =>
     call<{ objects: ContextObject[]; relationships: ContextRelationship[]; changes: import('../types').ContextChange[]; stale: StaleAsset[]; impact: ImpactInfo }>('POST', `${ws(id)}/objects/${proposalId}/replace`, input),
   resetDemo: () => call<{ workspaces: Workspace[]; workspaceId: string }>('POST', '/demo/reset', {}),
   weeklyReviewDone: (id: string) => call<{ weeklyReviewAt: string }>('POST', `${ws(id)}/weekly-review/done`, {}),
@@ -216,7 +216,7 @@ export const dataApi = {
   setOverride: (id: string, objectId: string, targetId: string, reason: string) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/overrides`, { targetId, reason }),
   removeOverride: (id: string, objectId: string, targetId: string, reason?: string) => call<{ relationships: ContextRelationship[]; changes: import('../types').ContextChange[] }>('POST', `${ws(id)}/objects/${objectId}/overrides/remove`, { targetId, reason }),
   convertThinkingItem: (id: string, thoughtId: string, type: ContextObject['type']) => call<{ object: ContextObject; objects: ContextObject[]; thoughts: import('../types').Thought[] }>('POST', `${ws(id)}/thoughts/${thoughtId}/promote`, { type }),
-  reviseThought: (id: string, thoughtId: string, text: string) => call<{ thought: import('../types').Thought; revisions: import('../types').ThoughtRevision[] }>('POST', `${ws(id)}/thoughts/${thoughtId}/revise`, { text }),
+  reviseThought: (id: string, thoughtId: string, text: string, expectedUpdatedAt?: string) => call<{ thought: import('../types').Thought; revisions: import('../types').ThoughtRevision[] }>('POST', `${ws(id)}/thoughts/${thoughtId}/revise`, { text, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }),
   reclassifyThought: (id: string, thoughtId: string, kind: import('../types').ThoughtKind) => call<{ thought: import('../types').Thought }>('POST', `${ws(id)}/thoughts/${thoughtId}/reclassify`, { kind }),
   deriveThought: (id: string, input: { parentIds: string[]; nodeId: string; kind: import('../types').ThoughtKind; text: string }) => call<{ thought: import('../types').Thought; derivedFrom: string[] }>('POST', `${ws(id)}/thoughts/derive`, input),
   thoughtHistory: (id: string, thoughtId: string) => call<import('../types').ThoughtHistoryReport>('GET', `${ws(id)}/thoughts/${thoughtId}/history`),

@@ -14,6 +14,7 @@ import { parseByHeadings } from '../../../src/core/answerParser.ts';
 import { renderAiRequest } from '../aiRequests.ts';
 import { toAiError } from '../../ai/errors.ts';
 import { userOf as aiUserOf } from '../../ai/routes.ts';
+import { LIMITS, importTextLimitMessage } from '../../../src/core/limits.ts';
 
 export function registerPacksRoutes(ctx: RouteContext): void {
   const { repo, ai, clock, router, scopeOf, body, wrap, userOf } = ctx;
@@ -72,7 +73,7 @@ export function registerPacksRoutes(ctx: RouteContext): void {
     const s = scopeOf(req);
     const text = String(body(req).text ?? '').trim();
     if (!text) throw new RepoError('invalid', 'متنی برای وارد کردن چسبانده نشده است.');
-    if (text.length > 200_000) throw new RepoError('invalid', 'متن بیش از حد بلند است.');
+    if (text.length > LIMITS.importTextChars) throw new RepoError('invalid', importTextLimitMessage());
     const packId = typeof body(req).packId === 'string' && body(req).packId ? String(body(req).packId) : text.match(PACK_MARKER_RE)?.[1];
     const pack = packId ? repo.getPack(s, packId) : undefined;
     let blocks: ParsedBlock[] | null = parseByHeadings(text);
