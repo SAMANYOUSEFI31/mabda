@@ -22,7 +22,7 @@ export const DEFAULT_START: StartTemplate = {
         { key: 'content', label: 'محتوا و بازاریابی', description: 'ستون‌های محتوایی، کانال‌های توزیع و تقویم ایده‌ها' },
       ] },
       { key: 'product', label: 'محصول و خدمت', description: 'ویژگی‌ها، کارکردها و ارزش پیشنهادی کلیدی', children: [
-        { key: 'offer', label: 'آفر و قیمت‌گذاری', description: 'بسته‌های قیمتی، شرایط تحویل و محدودیت‌های فروش' },
+        { key: 'offer', label: 'آفر و قیمت‌گذاری', description: 'بسته‌های قیمتی، شرایط تحویل و خط قرمزهای فروش' },
       ] },
     ],
   }],
@@ -124,7 +124,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
       },
       {
         key: 'pricing_boundary',
-        label: 'مرزها و محدودیت‌های قیمت‌گذاری',
+        label: 'خط قرمزهای قیمت‌گذاری',
         description: 'خط قرمزها (مانند عدم تخفیف، عدم ارائه خدمات رایگان)',
         nodeId: 'offer',
       },
@@ -249,7 +249,7 @@ export const WORKSTREAM_SPECS: WorkstreamSpec[] = [
         type: 'Deliverable',
         description: 'سناریوهای ریلز ۳۰ ثانیه‌ای با ساختار: هوک، چالش، راه‌حل اختصاصی.',
         order: 2,
-        acceptanceCriteria: ['هوک ۳ ثانیه اول', 'انطباق با محدودیت‌ها و تعاریف ثبت‌شده'],
+        acceptanceCriteria: ['هوک ۳ ثانیه اول', 'انطباق با خط قرمزها و تعریف‌های ثبت‌شده'],
       },
     ],
   },

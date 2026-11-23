@@ -145,7 +145,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
       onClose={onClose}
       size="lg"
       title={initial ? 'ویرایش جریان کار' : 'جریان کار سفارشی'}
-      description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. محدودیت‌های تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
+      description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. خط قرمزهای تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>انصراف</Button>
@@ -223,7 +223,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
 
         <Card padding="lg" className="flex flex-col gap-stack-md">
           <div><h4 className="title text-text-default">خط قرمزها</h4><p className="caption text-text-subtle">قوانینی که هیچ خروجی نباید نقض کند. نقض هر کدام، خروجی را «تأییدنشده» می‌کند.</p></div>
-          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن خط قرمز" add={() => ({ uid: uid(), text: '' })} empty="خط قرمزی تعریف نشده؛ فقط محدودیت‌های تأییدشدهٔ فضای کار اعمال می‌شوند."
+          <Rows<Line> items={draft.guardrails} onChange={(next) => set({ guardrails: next })} addLabel="افزودن خط قرمز" add={() => ({ uid: uid(), text: '' })} empty="خط قرمزی تعریف نشده؛ فقط خط قرمزهای تأییدشدهٔ فضای کار اعمال می‌شوند."
             render={(g, p) => <TextField label="خط قرمز" value={g.text} onChange={(e) => p({ text: e.target.value })} />} />
         </Card>
 
