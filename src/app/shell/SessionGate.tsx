@@ -80,7 +80,11 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
           <p className="body-md">{OWNER_ACCESS_NOTICE}</p>
           <p className="body-sm text-text-subtle">دادهٔ تو از دید افراد آزمون دیگر جداست؛ فقط صاحب مبدأ آن را می‌بیند.</p>
           {consentError && <p role="alert" className="body-sm text-text-danger">{consentError}</p>}
-          <div><Button variant="primary" loading={consenting} onClick={() => void accept()}>{consentError ? 'دوباره' : 'فهمیدم، ادامه بده'}</Button></div>
+          {/* consent can be declined: a wrong link or a shared device must not leave her with only «ادامه بده» */}
+          <div className="flex flex-wrap items-center gap-inline-sm">
+            <Button variant="primary" loading={consenting} onClick={() => void accept()}>{consentError ? 'دوباره' : 'فهمیدم، ادامه بده'}</Button>
+            <Button variant="ghost" iconStart="LogOut" onClick={() => void signOut()}>خروج از این دستگاه</Button>
+          </div>
         </main>
       </div>
     );

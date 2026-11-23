@@ -11,6 +11,7 @@ import { NAME_EXAMPLE, PurposeField } from '../../components/workspace/PurposeFi
 import type { WorkspacePurpose } from '../../core/specs';
 import { BrandMark, Button, EmptyState, TextField } from '../../ui';
 import type { AppScope } from '../shared';
+import { useSession } from './SessionGate';
 
 export type FirstRunScreenProps = Pick<AppScope, 'attempt' | 'data' | 'handleCreateWorkspace' | 'newWsName' | 'setCurrentWorkspaceId' | 'setNewWsName' | 'setWs' | 'workspaces'>;
 
@@ -18,6 +19,8 @@ export function FirstRunScreen({ attempt, data, handleCreateWorkspace, newWsName
   const archived = workspaces.filter((w) => w.archivedAt);
   const [nameError, setNameError] = useState('');
   const [purpose, setPurpose] = useState<WorkspacePurpose>('personal');
+  // an invited person who has no space yet has no account menu: the way out is here (a wrong link, a shared device)
+  const { session, signOut } = useSession();
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-page p-inset-lg" data-testid="first-run">
       <div className="flex w-full max-w-overlay-xs flex-col gap-stack-lg text-center">
@@ -43,6 +46,7 @@ export function FirstRunScreen({ attempt, data, handleCreateWorkspace, newWsName
             {archived.map((w) => <div key={w.id} className="flex items-center justify-between gap-inline-sm"><span className="body-md">{w.name}</span><Button size="sm" variant="secondary" iconStart="Undo2" onClick={() => { void attempt(() => dataApi.archiveWorkspace(w.id, false)).then((r) => { if (r) { setWs(r.workspaces); setCurrentWorkspaceId(w.id); } }); }}>برگردان</Button></div>)}
           </div>
         )}
+        {session?.mode === 'invite' && <div><Button size="sm" variant="ghost" iconStart="LogOut" onClick={() => void signOut()}>خروج از این دستگاه</Button></div>}
       </div>
     </div>
   );
