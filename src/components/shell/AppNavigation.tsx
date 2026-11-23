@@ -58,7 +58,8 @@ const SEARCH_KEYS = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(
  * which is also the only place the plan is shown.
  */
 /** each space says what kind it is in the picker (navigation.md «انتخابگر فضا») */
-const PURPOSE_FA = { personal: 'شخصی', work: 'کاری', project: 'پروژه', empty: 'خالی' } as const;
+// what a space is for; «خالی» named only how it started, and read «… · خالی» beside a space full of truths: no word for it
+const PURPOSE_FA = { personal: 'شخصی', work: 'کاری', project: 'پروژه', empty: '' } as const;
 
 /** a media query as state (navigation.md breakpoints) */
 function useMedia(q: string): boolean {
@@ -173,7 +174,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   // navigation.md: the space picker sits at the head of the bar; the account menu is at most 7 rows and has no spaces in it
   const workspaceItems: MenuItem[] = [
     // one's own spaces first, the sample last (§۳۷: «جای من» before «مثال»)
-    ...[...allWorkspaces].sort((a, b) => Number(!!a.isDemo) - Number(!!b.isDemo)).map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
+    ...[...allWorkspaces].sort((a, b) => Number(!!a.isDemo) - Number(!!b.isDemo)).map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''}${PURPOSE_FA[w.purpose ?? 'work'] && ` · ${PURPOSE_FA[w.purpose ?? 'work']}`}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace, keep: true },
     { divider: true, keep: true },
     // «یا حافظه» only while another tool's memory can really be read (the managed AI); otherwise the same dialog is the document alone
