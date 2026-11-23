@@ -23,19 +23,22 @@ export function FirstRunScreen({ attempt, data, handleCreateWorkspace, newWsName
   const { session, signOut } = useSession();
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-page p-inset-lg" data-testid="first-run">
-      <div className="flex w-full max-w-overlay-xs flex-col gap-stack-lg text-center">
-        <BrandMark size="lg" word className="self-center" />
+      {/* the same form as «فضای تازه…», at the same width (its dialog is `sm`): `overlay-xs` (240px) is a tooltip's width and left the
+          form narrower than a phone. One column, one edge: the mark, the text and the form all start at the start, as the empty
+          state and every form do (identity: the mark heads the page like a letterhead) */}
+      <div className="flex w-full max-w-overlay-sm flex-col gap-stack-lg">
+        <BrandMark size="lg" word className="self-start" />
         {/* a first visit and a space emptied later read differently: only the second has an archive to point at (§۴۸) */}
         {archived.length > 0
           ? <EmptyState title="هنوز فضایی نداری" description="یک فضا بساز تا آنچه درباره‌اش می‌دانی جایی بنشیند. هرچه کنار گذاشته بودی هم در بایگانی مانده است." />
           : <EmptyState title="فضای خودت را بساز" description="هرچه این‌جا بنویسی فقط مال خودت است. بخش‌های اصلی آماده و خالی می‌آیند تا خودت پرشان کنی." />}
-        <form noValidate onSubmit={(e) => { if (!newWsName.trim()) { e.preventDefault(); setNameError('نام فضا را بنویس تا ساخته شود.'); document.getElementById('first-workspace-name')?.focus(); return; } void handleCreateWorkspace(e); }} className="flex flex-col gap-stack-sm text-start">
+        <form noValidate onSubmit={(e) => { if (!newWsName.trim()) { e.preventDefault(); setNameError('نام فضا را بنویس تا ساخته شود.'); document.getElementById('first-workspace-name')?.focus(); return; } void handleCreateWorkspace(e); }} className="flex flex-col gap-stack-sm">
           <PurposeField onChange={setPurpose} entry />
           <TextField id="first-workspace-name" label="نام فضا" required placeholder={NAME_EXAMPLE[purpose]} value={newWsName} error={nameError || undefined} onChange={(e) => { setNewWsName(e.target.value); if (nameError && e.target.value.trim()) setNameError(''); }} />
           <Button variant="primary" type="submit">افزودن فضا</Button>
         </form>
         {onOpenSample && (
-          <div className="flex flex-col items-center gap-stack-xs">
+          <div className="flex flex-col items-start gap-stack-xs">
             <p className="body-sm text-text-subtle">می‌خواهی اول ببینی یک فضای پر چه شکلی است؟</p>
             <Button size="sm" variant="ghost" onClick={onOpenSample}>دیدن فضای نمونه</Button>
           </div>
