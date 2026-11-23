@@ -114,6 +114,11 @@ export function gapOrder<T extends Pick<GapItem, 'key' | 'dependsOn'>>(gaps: rea
  * «مبهم» is a semantic judgement: it comes from the decision layer (`ambiguity`, per object version) or from the
  * user's own «Needs Review» status — never from how long the text is.
  */
+/** how much one required item fills readiness. Monotonic by how settled it is: confirmed > confirmed but ambiguous > not confirmed
+ *  (Proposed or an assumption) > «Needs Review» (0). A Proposed item used to weigh 0.7, more than a confirmed-but-ambiguous one (0.5):
+ *  the ladder inverted, and confirming an item could lower the score. */
+export const READINESS_WEIGHT = { settled: 1, ambiguous: 0.5, unconfirmed: 0.3 } as const;
+
 export function calculateReadinessAndGaps(
   spec: WorkstreamSpec,
   objects: ContextObject[],
@@ -126,7 +131,7 @@ export function calculateReadinessAndGaps(
   const gaps: GapItem[] = [];
   let confirmedRequiredCount = 0;
   /** required items that are really settled: Confirmed, not an assumption, not ambiguous. The weighted score above counts a
-   *  Proposed (0.7) or ambiguous (0.5) item partly, so a high score alone never says «all confirmed» (no false certainty) */
+   *  Proposed or assumption (0.3) or confirmed-but-ambiguous (0.5) item partly, so a high score alone never says «all confirmed» (no false certainty) */
   let settledRequired = 0;
 
   // 1. Check Required Contexts
@@ -156,15 +161,16 @@ export function calculateReadinessAndGaps(
         suggestedAnswers: [],
         dependsOn: req.dependsOn,
       });
-      if (found.status === 'Confirmed' && !found.assumption) {
-        confirmedRequiredCount += 0.5;
+      // a ladder that never inverts: what she confirmed (even if unclear) weighs more than what nobody confirmed yet
+      if (found.status === 'Confirmed') {
+        confirmedRequiredCount += found.assumption ? READINESS_WEIGHT.unconfirmed : READINESS_WEIGHT.ambiguous;
       }
     } else if (found.status === 'Confirmed' && !found.assumption) {
-      confirmedRequiredCount += 1;
+      confirmedRequiredCount += READINESS_WEIGHT.settled;
       settledRequired += 1;
     } else {
-      // Proposed
-      confirmedRequiredCount += 0.7;
+      // Proposed, or an assumption she wrote down but did not establish (it counts like a suggestion)
+      confirmedRequiredCount += READINESS_WEIGHT.unconfirmed;
     }
   }
 

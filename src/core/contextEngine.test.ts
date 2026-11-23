@@ -199,16 +199,29 @@ test('CORE-12: a high score with a Proposed or ambiguous required item never say
   const full = calculateReadinessAndGaps(spec, all);
   assert.equal(full.status, 'ready'); assert.equal(full.fullyConfirmed, true); assert.equal(full.confirmedCount, 5);
   assert.match(full.summary, /تمام/);
-  // one Proposed: 4.7 / 5 = 94% → still «ready», but not «all confirmed»
+  // one Proposed: 4.3 / 5 = 86% → still «ready», but not «all confirmed»
   const one = calculateReadinessAndGaps(spec, all.map((o) => (o.id === 'e' ? { ...o, status: 'Proposed' as const } : o)));
   assert.equal(one.status, 'ready'); assert.equal(one.fullyConfirmed, false); assert.equal(one.confirmedCount, 4);
   assert.doesNotMatch(one.summary, /تمام|آمادگی کامل/);
-  // three Proposed: the weighted 4.1 is not «4 confirmed»
+  // three Proposed: the weighted 2.9 is not «3 confirmed»
   const three = calculateReadinessAndGaps(spec, all.map((o) => (['c', 'd', 'e'].includes(o.id) ? { ...o, status: 'Proposed' as const } : o)));
   assert.equal(three.confirmedCount, 2);
   // a confirmed but ambiguous one (judged) is not settled either
   const amb = calculateReadinessAndGaps(spec, all, [], { e: { version: all[4].version, ambiguous: true } } as never);
   assert.equal(amb.fullyConfirmed, false);
+});
+
+test('readiness weights never invert: confirmed > confirmed but ambiguous > Proposed or assumption > Needs Review', () => {
+  const spec = { id: 's', title: 's', target: '', description: '', suggestedContext: [], optionalContext: [], deliverables: [],
+    requiredContext: [{ key: 'k', label: 'k', description: 'k', nodeId: 'n' }] } as never;
+  const at = (o: Partial<ContextObject>, judged?: unknown) => calculateReadinessAndGaps(spec, [obj({ id: 'k', title: 'k', content: 'k', slotKey: 'k', status: 'Confirmed', ...o })], [], judged as never).score;
+  const settled = at({});
+  const ambiguous = at({}, { k: { version: 1, ambiguous: true } });
+  const proposed = at({ status: 'Proposed' });
+  const assumed = at({ assumption: true });
+  const review = at({ status: 'Needs Review' });
+  assert.ok(settled > ambiguous && ambiguous > proposed && proposed > review, `${settled} > ${ambiguous} > ${proposed} > ${review}`);
+  assert.equal(assumed, proposed, 'an assumption counts like a suggestion');
 });
 
 test('CORE-13: gaps follow their dependencies through any chain, stably; a cycle never loses an item', () => {
