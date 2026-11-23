@@ -46,3 +46,18 @@ test('CORE-10: an archived or already replaced item cannot be replaced (before: 
   assert.throws(() => repo.supersedeBy(s, b.id, c.id), /جایگزین/, 'a second replacement would rewrite who replaced it');
   assert.equal(repo.getObject(s, b.id)!.supersededById, c.id);
 });
+
+test('1B-4.2: a replacement keeps what the form said beyond the text (examples, reach, dimensions) and can remove them', () => {
+  const { repo, s, top } = fresh();
+  const red = repo.createObject(s, { type: 'Constraint', provenance: 'User Input', title: 'بدون تخفیف', content: 'تخفیف نداریم', nodeId: top.id, reach: 'global', facets: ['قیمت'], examples: [{ kind: 'good', text: 'هدیه' }] } as never);
+  const { object: red2 } = repo.supersedeObject(s, red.id, { type: 'Constraint', provenance: 'User Input', title: 'بدون تخفیف', content: 'هیچ تخفیفی نداریم', nodeId: top.id, reach: 'position', facets: ['قیمت', 'فروش'], examples: [{ kind: 'bad', text: 'کد تخفیف' }] } as never);
+  assert.equal(red2.reach, 'position');
+  assert.deepEqual(red2.facets, ['قیمت', 'فروش'], 'before: the dimensions were dropped on every replacement');
+  assert.deepEqual(red2.examples?.map((e) => e.text), ['کد تخفیف'], 'before: the old examples came back');
+  // not sent: the old ones stay (the server never invents an empty version); sent empty: removed
+  const { object: red3 } = repo.supersedeObject(s, red2.id, { type: 'Constraint', provenance: 'User Input', title: 'بدون تخفیف', content: 'باز هم', nodeId: top.id });
+  assert.deepEqual(red3.facets, ['قیمت', 'فروش']);
+  const { object: red4 } = repo.supersedeObject(s, red3.id, { type: 'Constraint', provenance: 'User Input', title: 'بدون تخفیف', content: 'آخر', nodeId: top.id, facets: [], examples: [] } as never);
+  assert.equal(red4.facets, undefined);
+  assert.equal(red4.examples, undefined);
+});

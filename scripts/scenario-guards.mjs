@@ -186,6 +186,54 @@ try {
     await ctx.close();
   }
 
+  step('1B-2.3 · the phone\'s back leaves the canvas full screen first, not the page');
+  {
+    const { ctx, page } = await open(390, 844);
+    await sample(page);
+    await nav(page, 'حقیقت'); await radio(page, 'نمای کلی');
+    const root = page.locator('[data-testid=canvas-root]');
+    await root.waitFor();
+    await guard('[390] back closes the full screen and stays on the canvas; «بستن» leaves no extra step', async () => {
+      const before = await page.evaluate(() => history.length);
+      await page.locator('#canvas-fs').evaluate((b) => b.click());
+      await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'true', await root.elementHandle());
+      await page.goBack();
+      await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'false', await root.elementHandle(), { timeout: 3000 });
+      assert.ok(await root.isVisible(), 'back left the canvas view');
+      await page.locator('#canvas-fs').evaluate((b) => b.click());
+      await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'true', await root.elementHandle());
+      await page.locator('#canvas-fs').click();
+      await page.waitForFunction((el) => el.getAttribute('data-fullscreen') === 'false', await root.elementHandle(), { timeout: 3000 });
+      await page.waitForFunction(() => !history.state?.canvasFs, null, { timeout: 3000 });
+      assert.ok((await page.evaluate(() => history.length)) <= before + 1, 'each visit to the full screen must not pile up a step');
+    });
+    await ctx.close();
+  }
+
+  step('1B-1.1 · inside a section, a tab of «سند» keeps the section in the address and the history');
+  {
+    const { ctx, page } = await open(1280);
+    await sample(page);
+    await nav(page, 'حقیقت'); await radio(page, 'ساختار');
+    const id = await page.locator('h3[id^=node-]').first().evaluate((h) => h.id.slice('node-'.length));
+    await page.getByRole('button', { name: /^رفتن به بخش / }).first().click();
+    await page.locator('[data-testid=focused-section]').waitFor();
+    await radio(page, 'سند');
+    await guard('[1280] changing the document tab keeps #node= and the entry\'s state', async () => {
+      const tabs = page.locator('[role=tab]');
+      await tabs.first().waitFor(); // the document view loads on first use
+      const n = await tabs.count();
+      assert.ok(n > 1, 'the document has tabs');
+      assert.equal(await page.evaluate(() => location.hash), `#node=${encodeURIComponent(id)}`, 'setup: in the section before the tab change');
+      const other = (await tabs.nth(0).getAttribute('aria-selected')) === 'true' ? tabs.nth(1) : tabs.nth(0);
+      await other.click(); await settled(page);
+      const at = await page.evaluate(() => ({ hash: location.hash, node: history.state?.node }));
+      assert.equal(at.hash, `#node=${encodeURIComponent(id)}`, `the address lost the section: ${at.hash}`);
+      assert.equal(at.node, id, 'the history entry lost the section (back would not climb)');
+    });
+    await ctx.close();
+  }
+
   step('§۵۳ ۲ · an edit that loses to another tab keeps her text (409)');
   {
     const a = await open(1280); await sample(a.page);

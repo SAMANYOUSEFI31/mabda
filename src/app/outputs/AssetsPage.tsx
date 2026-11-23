@@ -59,10 +59,12 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
     else { const r = requestOf(d); setAiRequest({ scopeNodeId: '', ...(r.kind ? { kind: r.kind } : {}), request: r.request }); }
   };
   const exportJson = () => {
+    // a Blob, not a data: address: a space with many long outputs is past what an address can carry (like «دانلود» of the document)
+    const url = URL.createObjectURL(new Blob([JSON.stringify(live, null, 2)], { type: 'application/json;charset=utf-8' }));
     const a = document.createElement('a');
-    a.setAttribute('href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(live, null, 2))}`);
-    a.setAttribute('download', `mabda_outputs_${currentWorkspace.slug}.json`);
+    a.href = url; a.download = `mabda_outputs_${currentWorkspace.slug}.json`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     toast.show({ intent: 'success', message: 'فایل JSON همهٔ خروجی‌ها دانلود شد.' });
   };
   const requestButton = <Button variant="secondary" iconStart="PackageOpen" onClick={() => void request()}>درخواست برای ابزار دیگر</Button>;

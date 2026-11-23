@@ -15,15 +15,15 @@ interface Props {
   decisions: ContextObject[];
   titleOfNode: (nodeId: string) => string;
   /** «هنوز فرض است»: look again later (the review date moves) */
-  onStillAssumed: (id: string) => Promise<void>;
+  onStillAssumed: (id: string) => Promise<void | boolean>;
   /** «واقعیت شد»: no longer an assumption; it becomes knowledge */
-  onConfirmed: (id: string) => Promise<void>;
+  onConfirmed: (id: string) => Promise<void | boolean>;
   /** «رد شد»: archived, history stays */
-  onDropped: (id: string) => Promise<void>;
+  onDropped: (id: string) => Promise<void | boolean>;
   /** «نتیجه چه شد؟» → a Change (`outcome_noted`) */
-  onOutcome: (id: string, text: string, verdict?: ExpectationVerdict) => Promise<void>;
+  onOutcome: (id: string, text: string, verdict?: ExpectationVerdict) => Promise<void | boolean>;
   /** «هنوز زود است»: not judged yet; the decision is looked at again later (its review date moves). Not a verdict */
-  onTooEarly?: (id: string) => Promise<void>;
+  onTooEarly?: (id: string) => Promise<void | boolean>;
   /** expectation of a metric, read against the numbers (decisions that carry one get the three-button verdict) */
   expectations?: ExpectationRow[];
 }
@@ -32,7 +32,7 @@ interface Props {
 export const DueItems: React.FC<Props> = ({ assumptions, decisions, titleOfNode, onStillAssumed, onConfirmed, onDropped, onOutcome, onTooEarly, expectations = [] }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const [text, setText] = useState<Record<string, string>>({});
-  const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
+  const run = async (key: string, fn: () => Promise<unknown>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
   if (assumptions.length === 0 && decisions.length === 0) return null;
   return (
     <section className="flex flex-col gap-stack-md" aria-label="سررسیدها">

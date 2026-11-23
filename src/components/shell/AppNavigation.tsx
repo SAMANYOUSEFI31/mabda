@@ -8,6 +8,7 @@ import { Workspace, WorkstreamSpec } from '../../types';
 import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, useHints, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
+import { importLabel } from '../../core/importLabel';
 import { useSession } from '../../app/shell/SessionGate';
 import { PeopleDialog } from '../workspace/PeopleDialog';
 import { defaultAddKind, requestAdd } from '../../core/addRequest';
@@ -175,7 +176,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     ...[...allWorkspaces].sort((a, b) => Number(!!a.isDemo) - Number(!!b.isDemo)).map((w): MenuItem => ({ label: `${w.name}${w.isDemo ? ' (نمونه)' : ''} · ${PURPOSE_FA[w.purpose ?? 'work']}`, icon: w.id === currentWorkspace.id ? 'Check' : undefined, onSelect: () => p.onSelectWorkspace(w) })),
     { label: 'فضای تازه…', icon: 'Plus', onSelect: p.onOpenNewWorkspace, keep: true },
     { divider: true, keep: true },
-    { label: 'وارد کردن سند یا حافظه', icon: 'FolderInput', onSelect: p.onOpenMemory, keep: true },
+    // «یا حافظه» only while another tool's memory can really be read (the managed AI); otherwise the same dialog is the document alone
+    { label: importLabel(ai.managedEnabled), icon: 'FolderInput', onSelect: p.onOpenMemory, keep: true },
     { label: 'بازسازی فضای نمونه', icon: 'RotateCcw', onSelect: p.onResetDemo, keep: true },
     ...(p.onDeleteDemo ? [{ label: 'حذف فضای نمونه', icon: 'Trash2' as const, onSelect: p.onDeleteDemo, keep: true }] : []),
   ];

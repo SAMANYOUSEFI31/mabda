@@ -8,7 +8,7 @@ import type { ContextObject, GeneratedDeliverable, TreeNode, Workspace } from '.
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Select, Spinner, StatusBadge, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { DangerDialog, PurgeDialog } from '../shared/Removal';
-import { flatten, treeIndent } from '../../core/nodeTree';
+import { DELETED_SECTION, flatten, treeIndent } from '../../core/nodeTree';
 
 type Section = 'knowledge' | 'removals' | 'outputs' | 'workspaces';
 interface Props {
@@ -44,7 +44,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const load = useCallback(async () => { try { setData(await dataApi.archive(workspaceId)); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); } }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
-  const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? 'بخش حذف‌شده';
+  const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION;
   const run = async (key: string, fn: () => Promise<unknown>, done: string) => {
     setBusy(key);
     try { await fn(); toast.show({ intent: 'success', message: done }); await load(); onChanged(); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'انجام نشد؛ دوباره تلاش کن.' }); } finally { setBusy(null); }

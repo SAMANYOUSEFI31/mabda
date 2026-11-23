@@ -14,7 +14,7 @@ interface Props {
   measurements: Measurement[];
   /** a monitor is called by its truth's title */
   objects?: Pick<ContextObject, 'id' | 'title'>[];
-  onSubmit: (entries: Array<{ metricId: string; value: number }>) => Promise<void>;
+  onSubmit: (entries: Array<{ metricId: string; value: number }>) => Promise<void | boolean>;
   onCsv: (text: string) => Promise<{ added: number; errors: Array<{ line: number; text: string }> } | undefined>;
 }
 

@@ -38,14 +38,16 @@ export function useThinkingItems(p: AppCoreScope) {
   const handleReviseThought = async (item: NoteThinkingItem, text: string, kind: ThoughtKind, about?: AboutTarget[]): Promise<boolean> => {
     if (!item.id) return false;
     // «دربارهٔ» after the fact (§۵۳ ۱۱): the durable link (thought_about), not the text, so the words she wrote stay hers
+    let seen = (data?.thoughts ?? []).find((t) => t.id === item.id)?.updatedAt; // the thought as she saw it (409 if another tab changed it)
     const had = new Set([...(item.aboutObjectIds ?? []).map((id) => `object:${id}`), ...(item.aboutNodeIds ?? []).map((id) => `node:${id}`)]);
     if (about && (about.length !== had.size || about.some((t) => !had.has(`${t.kind}:${t.id}`)))) {
       const r = await attempt(() => dataApi.updateThoughtAbout(wid, item.id!, about.map((t) => ({ kind: t.kind, id: t.id }))));
       if (!r) return false;
+      seen = r.thought.updatedAt;
       patch((d) => ({ ...d, thoughts: d.thoughts.map((t) => t.id === item.id ? r.thought : t) }));
     }
     if (text !== item.text) {
-      const r = await attempt(() => dataApi.reviseThought(wid, item.id!, text));
+      const r = await attempt(() => dataApi.reviseThought(wid, item.id!, text, seen));
       if (!r) return false;
       patch((d) => ({ ...d, thoughts: d.thoughts.map((t) => t.id === item.id ? r.thought : t) }));
     }

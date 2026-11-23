@@ -6,8 +6,9 @@
 import React from 'react';
 import type { ContextChange } from '../../types';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../../core/changeLog';
-import { Nuqta, STATUS_META, TYPE_META, formatJalaliDate, formatNumber } from '../../ui';
+import { Nuqta, PROVENANCE_LABEL, STATUS_META, TYPE_META, formatJalaliDate, formatNumber } from '../../ui';
 import { VERDICT_FA } from '../../core/metricsText';
+import { DELETED_SECTION } from '../../core/nodeTree';
 import type { NuqtaState } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
@@ -18,7 +19,6 @@ const FIELD_FA: Record<string, string> = {
   supersededById: 'جایگزین', supersedes: 'جایگزین‌کنندهٔ', overrides: 'در بخش خودش کنار می‌گذارد', reach: 'کجا اعمال شود', validUntil: 'اعتبار تا',
   assumption: 'فرض', reviewBy: 'بازبینی فرض در', record: 'روند تصمیم', facets: 'بُعدها', examples: 'مثال‌ها', verdict: 'داوری',
 };
-const PROVENANCE_FA: Record<string, string> = { 'User Input': 'نوشتهٔ خودت', Sample: 'نمونهٔ مبدأ' };
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const TEXT_FIELDS = new Set(['title', 'content']);
 
@@ -29,7 +29,7 @@ function shown(field: string, v: unknown, l: Lookups): string {
   if (v === null || v === undefined || v === '') return 'خالی';
   if (field === 'type') return TYPE_META[v as keyof typeof TYPE_META]?.label ?? String(v);
   if (field === 'status') return STATUS_META[v as keyof typeof STATUS_META]?.label ?? String(v);
-  if (field === 'nodeId') return l.nodeLabel?.(String(v)) ?? String(v);
+  if (field === 'nodeId') return l.nodeLabel?.(String(v)) ?? DELETED_SECTION; // a deleted section is named so, never by its id
   const title = (id: string) => `«${l.titleOf?.(id) ?? 'موردی که دیگر نیست'}»`;
   if (field === 'dependsOn' || field === 'overrides') return ids(v).length ? ids(v).map(title).join('، ') : 'هیچ‌چیز';
   if (field === 'supersededById' || field === 'supersedes') return title(String(v));
@@ -39,7 +39,7 @@ function shown(field: string, v: unknown, l: Lookups): string {
   if (field === 'verdict') return VERDICT_FA[v as keyof typeof VERDICT_FA] ?? 'ثبت شد';
   if (field === 'facets') return ids(v).length ? ids(v).join('، ') : 'هیچ';
   if (field === 'examples') return Array.isArray(v) ? (v.length ? `${formatNumber(v.length)} مثال` : 'هیچ') : 'عوض شد';
-  if (field === 'provenance') return PROVENANCE_FA[String(v)] ?? 'منبع دیگر';
+  if (field === 'provenance') return PROVENANCE_LABEL[v as keyof typeof PROVENANCE_LABEL] ?? 'منبع دیگر'; // the one dictionary (ui/mabda.tsx)
   // a structured or unknown value (a decision record, a slot key) is not shown raw: only that it changed
   if (typeof v === 'object' || field === 'record' || field === 'slotKey' || !(field in FIELD_FA)) return 'عوض شد';
   return String(v);

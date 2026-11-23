@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
 import type { ReviewNeed } from '../../core/decisionGraph';
-import { defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
+import { DELETED_SECTION, defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
 import { scopeEffect } from '../../core/scopeMove';
 import { indirectReach, redundantLinks } from '../../core/dependencyReduction';
 import { thoughtsAbout, stripAbout } from '../../core/thoughtAbout';
@@ -295,6 +295,18 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
     if (type === 'Decision' && !expectationOk) { setRecordOpen(true); return; }
     if (canMonitor && !monitorDraftOk(monitor)) { setMoreOpen(true); return; }
 
+    // everything the form says beyond the text (reach, dates, dimensions, examples, assumption, the decision's record): an edit and a
+    // replacement carry the same fields, so what she changed while replacing is in the new version too (before, only the text was)
+    const extras: Partial<ContextDraft> = {
+      ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
+      ...(validUntil ? { validUntil } : {}),
+      ...(facetsFinal().length ? { facets: facetsFinal() } : {}),
+      ...(canHaveExamples({ type, reach: type === 'Constraint' ? reach : object?.reach }) && cleanExamples(examples) ? { examples: cleanExamples(examples) } : {}),
+      ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
+      ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn || (expMetric && expBy))
+        ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}), ...(expMetric && expBy ? { metricExpectation: { metricId: expMetric, direction: expDir, ...(expTargetNum !== null ? { targetValue: expTargetNum } : {}), by: expBy } } : {}) } }
+        : {}),
+    };
     if (saving) return;
     if (isSupersedingMode && object) {
       setSaving(true); setSaveFailed(false);
@@ -306,6 +318,11 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         title: finalTitle,
         content: content.trim(),
         nodeId,
+        ...extras,
+        // a replacement states the whole new version: a dimension or example she removed is removed (the server otherwise keeps the old one)
+        facets: extras.facets ?? [],
+        ...(canHaveExamples({ type, reach: extras.reach }) ? { examples: extras.examples ?? [] } : {}),
+        ...(type === 'Fact' ? { assumption: !!extras.assumption } : {}),
       }, supersedeReason.trim() || 'به‌روزرسانی تصمیم'), onClose).then((r) => { setSaving(false); if (!r.ok) setSaveFailed(true); });
       return;
     }
@@ -325,14 +342,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       supersededById: object?.supersededById,
       source: object?.source,
       slotKey: object?.slotKey,
-      ...(type === 'Constraint' ? { reach } : object?.reach ? { reach: object.reach } : {}),
-      ...(validUntil ? { validUntil } : {}),
-      ...(facetsFinal().length ? { facets: facetsFinal() } : {}),
-      ...(canHaveExamples({ type, reach: type === 'Constraint' ? reach : object?.reach }) && cleanExamples(examples) ? { examples: cleanExamples(examples) } : {}),
-      ...(type === 'Fact' && assumption ? { assumption: true, ...(reviewBy ? { reviewBy } : {}) } : {}),
-      ...(type === 'Decision' && (question.trim() || options.some((o) => o.title.trim()) || expectation.trim() || reviewOn || (expMetric && expBy))
-        ? { record: { ...(question.trim() ? { question: question.trim() } : {}), ...(options.some((o) => o.title.trim()) ? { options: options.filter((o) => o.title.trim()).map((o) => ({ title: o.title.trim(), ...(o.rejectedReason.trim() ? { rejectedReason: o.rejectedReason.trim() } : {}) })) } : {}), ...(expectation.trim() ? { expectation: expectation.trim() } : {}), ...(reviewOn ? { reviewOn } : {}), ...(expMetric && expBy ? { metricExpectation: { metricId: expMetric, direction: expDir, ...(expTargetNum !== null ? { targetValue: expTargetNum } : {}), by: expBy } } : {}) } }
-        : {}),
+      ...extras,
     };
 
     // the dependency set is saved after the object itself (a new object only has an id once it exists)
@@ -425,8 +435,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       )}
       {tab === 'history' && isEditing && (
         <div className="flex flex-col gap-stack-md">
-          <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />
-          {object && <EarlierLives chain={earlier} load={loadEarlier} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? id} />}
+          <VersionHistoryView changes={changes} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION} />
+          {object && <EarlierLives chain={earlier} load={loadEarlier} titleOf={titleOf} nodeLabel={(id) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION} />}
         </div>
       )}
       <form id="context-detail-form" noValidate onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} className={`${(tab === 'history' || tab === 'around') && isEditing ? 'hidden' : 'flex'} flex-col gap-stack-md`}>

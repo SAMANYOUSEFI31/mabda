@@ -112,7 +112,8 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   };
   /** accept a proposal that takes the place of an existing object (that one becomes Superseded, never deleted) */
   const handleReplaceWithProposal = async (o: ContextObject, replacesId: string, reason?: string) => {
-    const r = await attempt(() => dataApi.replaceWith(wid, o.id, { replacesId, ...(reason ? { reason } : {}) }));
+    const seen = workspaceContexts.find((x) => x.id === replacesId)?.updatedAt; // the text it replaces is the one she saw (409 if not)
+    const r = await attempt(() => dataApi.replaceWith(wid, o.id, { replacesId, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return;
     patch((d) => ({ ...d, objects: r.objects, relationships: r.relationships, changes: r.changes, stale: r.stale }));
     showImpact(r.impact);
@@ -134,7 +135,9 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   };
   /** an AI answer that UPDATES existing knowledge: a draft on it (asDraft) — the text she approved stays until she approves this */
   const handleDraftFromImport = async (objectId: string, p: { title: string; content: string; reason: string }) => {
-    const r = await attempt(() => dataApi.updateObject(wid, objectId, { title: p.title, content: p.content, reason: p.reason, asDraft: true }));
+    // the knowledge she mapped the answer onto, as she saw it: changed in another tab since → 409, no draft over it in silence
+    const seen = workspaceContexts.find((o) => o.id === objectId)?.updatedAt;
+    const r = await attempt(() => dataApi.updateObject(wid, objectId, { title: p.title, content: p.content, reason: p.reason, asDraft: true, ...(seen ? { expectedUpdatedAt: seen } : {}) }));
     if (!r) return false;
     patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === objectId ? r.object : o)), stale: r.stale }));
     return true;

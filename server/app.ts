@@ -76,6 +76,8 @@ export function createApp(db: SqlLike, opts: AppOptions = {}) {
 
   // error reports from the browser (src/app/shell/errorReport.ts): signed-in only, at most 20 a minute per person
   app.post('/api/client-errors', rateLimit({ windowMs: 60_000, max: 20, key: (req) => req.mabdaUser?.id ?? req.ip ?? '' }), (req, res) => {
+    // like the activity record: nothing is kept before the person has accepted the notice (src/core/ownerNotice.ts)
+    if (req.mabdaUser && !req.mabdaUser.consented) return void res.json({ ok: true, recorded: false });
     errors.record(userIdOf(req), 'client', req.body ?? {});
     res.json({ ok: true });
   });

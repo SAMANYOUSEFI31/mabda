@@ -22,8 +22,10 @@ export function registerNotesThoughtsRoutes(ctx: RouteContext): void {
     res.json({ note, thoughts: repo.listThoughts(s, { includeResolved: true }) });
   }));
   router.post('/workspaces/:wid/thoughts/:id/revise', wrap((req, res) => {
-    const b = body(req);
-    const r = repo.reviseThought(scopeOf(req), req.params.id, String(b.text ?? ''));
+    const b = body(req); const s = scopeOf(req);
+    // the text she rewrote must be the one she saw: a thought changed in another tab since → 409, never overwritten in silence
+    if (typeof b.expectedUpdatedAt === 'string') { const cur = repo.getThought(s, req.params.id); if (cur && cur.updatedAt !== b.expectedUpdatedAt) throw new RepoError('conflict', CHANGED_ELSEWHERE); }
+    const r = repo.reviseThought(s, req.params.id, String(b.text ?? ''));
     res.json(r);
   }));
   router.post('/workspaces/:wid/thoughts/:id/reclassify', wrap((req, res) => {

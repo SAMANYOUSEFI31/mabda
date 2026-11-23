@@ -15,6 +15,7 @@ import { flatten, treeIndent } from '../../core/nodeTree';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
 import { clientId } from '../../core/ids';
+import { LIMITS, importTextLimitMessage } from '../../core/limits';
 
 const KIND_FA: Record<ParsedBlock['kind'], string> = { decision: 'تصمیم', fact: 'واقعیت', constraint: 'خط قرمز', asset: 'خروجی', question: 'سؤال', paragraph: 'متن' };
 const METHOD_FA = { headings: 'بر اساس سرتیترها', ai: 'تقسیم با لایهٔ تصمیم', raw: 'متن خام' } as const;
@@ -58,6 +59,8 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
   useEffect(() => { setChoice(Object.fromEntries([...maps].map(([id, m]) => [id, { action: m.action, nodeId: m.nodeId }]))); }, [maps]);
 
   const parse = async () => {
+    // too long for one answer: said here, before a request that the server would refuse with the same sentence
+    if (text.trim().length > LIMITS.importTextChars) { setError(importTextLimitMessage()); return; }
     setBusy(true); setError(null);
     try {
       // the marker the pack wrote into the request is the exact pack (it wins over the default of the list)
@@ -88,8 +91,16 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     return ok;
   };
 
+  /** the block being applied: a second click while it saves must not make a second suggestion or draft */
+  const [applying, setApplying] = useState<string | null>(null);
+  const applyOne = async (b: ParsedBlock) => {
+    if (applying || busy) return;
+    setApplying(b.id);
+    try { await apply(b); } finally { setApplying(null); }
+  };
+
   const ready = blocks.filter((b) => !b.done && isContextKind(b.kind) && (choice[b.id]?.action === 'new' || (choice[b.id]?.action === 'update' && onUpdateDraft)));
-  const applyAll = async () => { setBusy(true); try { for (const b of ready) await apply(b); } finally { setBusy(false); } };
+  const applyAll = async () => { if (busy || applying) return; setBusy(true); try { for (const b of ready) await apply(b); } finally { setBusy(false); } };
 
   /** the block being saved as an asset: a second click while it saves must not make a second asset */
   const [savingAsset, setSavingAsset] = useState<string | null>(null);
@@ -158,7 +169,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                     </div>
                     {b.done ? <Badge icon="Check">{b.done}</Badge> : (
                       <div className="flex flex-wrap items-center gap-inline-xs">
-                        {ctx && <Button size="sm" variant="secondary" iconStart="Check" onClick={() => void apply(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
+                        {ctx && <Button size="sm" variant="secondary" iconStart="Check" loading={applying === b.id} disabled={busy || (!!applying && applying !== b.id)} onClick={() => void applyOne(b)}>{c?.action === 'update' ? 'ساخت پیش‌نویس' : c?.action === 'new' ? 'پیشنهاد بده' : 'تأیید انتخاب'}</Button>}
                         {b.kind !== 'question' && <Button size="sm" variant="ghost" iconStart="Package" loading={savingAsset === b.id} disabled={!!savingAsset} onClick={() => toAsset(b)}>ذخیره به‌عنوان خروجی</Button>}
                         <Button size="sm" variant="ghost" iconStart="X" onClick={() => setBlocks((bs) => bs.filter((x) => x.id !== b.id))}>حذف</Button>
                       </div>

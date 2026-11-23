@@ -6,7 +6,7 @@ import type { Lane } from '../../../src/core/canvasModel.ts';
 import type { RouteContext } from './context.ts';
 import { nowIso } from '../clock.ts';
 import type { Scope } from '../repo.ts';
-import { RepoError } from '../repo.ts';
+import { CHANGED_ELSEWHERE, RepoError } from '../repo.ts';
 import { buildCanvasModel, moveEffect, rankBetween } from '../../../src/core/canvasModel.ts';
 import { needsReview } from '../../../src/core/decisionGraph.ts';
 
@@ -115,6 +115,9 @@ export function registerCanvasRoutes(ctx: RouteContext): void {
     if (!winner) throw new RepoError('not_found', 'Context پیدا نشد.');
     if (winner.status !== 'Proposed') throw new RepoError('invalid', 'فقط یک پیشنهاد می‌تواند جای مورد دیگر بنشیند.');
     const loserId = String(body(req).replacesId ?? '');
+    // the approved text it replaces must be the one she saw: changed in another tab since → 409, nothing replaced
+    const seen = body(req).expectedUpdatedAt;
+    if (typeof seen === 'string') { const cur = repo.getObjectAny(s, loserId); if (cur && cur.updatedAt !== seen) throw new RepoError('conflict', CHANGED_ELSEWHERE); }
     const r = repo.supersedeBy(s, loserId, winner.id, metaOf(body(req), { kind: 'superseded' }));
     res.json({ objects: repo.listObjects(s), relationships: repo.listRelationships(s), changes: repo.listChanges(s), stale: stale(s), impact: r.impact });
   }));

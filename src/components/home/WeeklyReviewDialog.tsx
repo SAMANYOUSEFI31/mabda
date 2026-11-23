@@ -10,6 +10,7 @@ import { DueItems } from './DueItems';
 import React, { useMemo, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, Measurement, Metric } from '../../types';
 import { MetricQuickEntry } from '../metrics/MetricQuickEntry';
+import { weeklySummaryText } from '../../core/weeklyReview';
 import { MX } from '../../core/metricsText';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../../core/weeklyReview';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../../core/changeLog';
@@ -48,6 +49,12 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [handled, setHandled] = useState<string[]>([]); // objects the user accepted / confirmed during this review
+  // the due items she answered and the numbers she recorded in this review: changes too, so the summary counts them
+  const [dueDone, setDueDone] = useState(0);
+  const [numbers, setNumbers] = useState(0);
+  /** a handler that says `false` when it did not happen (an error already shown) is not counted */
+  const counting = <A extends unknown[]>(fn: ((...a: A) => Promise<unknown>) | undefined, add: (r: unknown, ...a: A) => void) => fn && (async (...a: A) => { const r = await fn(...a); if (r !== false) add(r, ...a); return r as never; });
+  const due = { ...dueProps, onStillAssumed: counting(dueProps.onStillAssumed, () => setDueDone((n) => n + 1))!, onConfirmed: counting(dueProps.onConfirmed, () => setDueDone((n) => n + 1))!, onDropped: counting(dueProps.onDropped, () => setDueDone((n) => n + 1))!, onOutcome: counting(dueProps.onOutcome, () => setDueDone((n) => n + 1))!, onTooEarly: counting(dueProps.onTooEarly, () => setDueDone((n) => n + 1)) };
   const title = (id: string) => objects.find((o) => o.id === id)?.title ?? id;
   const open = (id: string) => { const o = objects.find((x) => x.id === id); if (o) onOpenObject(o); };
 
@@ -126,7 +133,7 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
       {step === 2 && (
         data.waiting.ready.length + data.waiting.blocked.length + data.waiting.concurrent.length === 0 && dueProps.assumptions.length + dueProps.decisions.length === 0 ? <p className="body-md text-text-subtle">تصمیم منتظری نیست.</p> : (
           <div className="flex flex-col gap-stack-lg">
-            <DueItems {...dueProps} />
+            <DueItems {...due} />
             {data.waiting.ready.length > 0 && (
               <section className="flex flex-col gap-stack-xs" aria-label="آمادهٔ تصمیم">
                 <h3 className="title text-text-default">آمادهٔ تصمیم</h3>
@@ -170,13 +177,13 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
       )}
 
       {hasMetrics && step === 3 && metricsEntry && (
-        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} objects={metricsEntry.objects} onSubmit={metricsEntry.onSubmit} onCsv={metricsEntry.onCsv} />
+        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} objects={metricsEntry.objects} onSubmit={counting(metricsEntry.onSubmit, (_r, entries) => setNumbers((n) => n + entries.length))!} onCsv={counting(metricsEntry.onCsv, (r) => setNumbers((n) => n + ((r as { added?: number } | undefined)?.added ?? 0)))!} />
       )}
 
       {step === LAST && (
         <div className="flex flex-col gap-stack-lg">
           <p className="body-md text-text-default">
-            {handled.length ? `در این بازبینی ${formatNumber(handled.length)} مورد را پذیرفتی یا تأیید کردی.${outputs ? ` چون این موارد را تأیید کردی، ${formatNumber(outputs)} خروجی تو از آن‌ها استفاده می‌کنند.` : ''}` : 'این هفته چیزی را تغییر ندادی؛ هرچه دیدی همان‌طور که بود ماند.'}
+            {weeklySummaryText({ accepted: handled.length, due: dueDone, numbers, outputs })}
           </p>
           {/* «این خروجی به چه حقیقت‌هایی نیاز دارد و کدام کم است» — the one part of the output workshop that helps the loop (product-scope.md) */}
           <section aria-label="آنچه خروجی‌هایت لازم دارند" className="flex flex-col gap-stack-sm">

@@ -9,7 +9,7 @@
  */
 import { formatNumber } from '../ui/format';
 
-export interface Limits { workspaces: number; maxObjects: number; storedTextPerPerson: number; fileTokensPerMonth: number; decisionJudgmentsPerDay: number; coachPerDay: number; chatPerDay: number }
+export interface Limits { workspaces: number; maxObjects: number; storedTextPerPerson: number; fileTokensPerMonth: number; decisionJudgmentsPerDay: number; coachPerDay: number; chatPerDay: number; importTextChars: number }
 
 /** (a plain object so a test can lower one number and see every reader follow it) */
 export const LIMITS: Limits = {
@@ -28,6 +28,8 @@ export const LIMITS: Limits = {
   coachPerDay: 40,
   /** focused-chat turns per day before chat quietly moves to the lightest model (never blocked) */
   chatPerDay: 140,
+  /** characters of one pasted answer from another tool («وارد کردن پاسخ ابزار دیگر»): one request, not a running total */
+  importTextChars: 200_000,
 };
 
 export interface Meter {
@@ -66,6 +68,8 @@ export const workspaceLimitMessage = () => `${formatNumber(LIMITS.workspaces)} �
 export const storageLimitMessage = () => `متن‌هایی که در همهٔ فضاهایت نگه داشته‌ای به سقف ${formatNumber(LIMITS.storedTextPerPerson)} نویسه رسیده است؛ برای جای تازه، فایل، یادداشت یا فضایی را که لازم نداری حذف کن.`;
 /** would adding `added` characters to what this person keeps (`stored`) pass the cap? Removing text is always allowed. */
 export const storageAllows = (stored: number, added: number): boolean => added <= 0 || stored + added <= LIMITS.storedTextPerPerson;
+/** checked in the dialog before sending and again on the server: the same sentence, with a way out (paste it in parts) */
+export const importTextLimitMessage = () => `این متن از ${formatNumber(LIMITS.importTextChars)} نویسه بلندتر است؛ آن را در چند بخش جدا بچسبان و هر بار یکی را وارد کن.`;
 export const objectLimitMessage = () => `این فضا ${formatNumber(LIMITS.maxObjects)} دانش فعال دارد و این سقف است؛ موارد قدیمی را بایگانی کن.`;
 
 /** Today's chat count: a count recorded on another day is yesterday's, i.e. zero. `today` = YYYY-MM-DD (Tehran). */

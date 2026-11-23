@@ -802,6 +802,32 @@ test('two devices: an edit made from an older copy is refused with 409 (objects 
   } finally { t.close(); }
 });
 
+test('two tabs: rejecting a draft, replacing with a proposal and rewriting a thought from an older copy are refused with 409 (1B-4.6)', async () => {
+  const t = await boot(() => ({}));
+  try {
+    await t.call('POST', '/bootstrap', {});
+    const get = async (id: string) => (await t.call('GET', '/workspaces/ws_studio/state')).json.objects.find((o: any) => o.id === id);
+    const confirmed = (await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { status: 'Confirmed' })).json.object;
+    const drafted = (await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'پیش‌نویس تب اول', asDraft: true })).json.object;
+    // tab B saw the item before the draft: its «رد» would throw away a draft it never saw
+    assert.equal((await t.call('DELETE', '/workspaces/ws_studio/objects/ctx_audience/draft', { expectedUpdatedAt: confirmed.updatedAt })).status, 409);
+    assert.ok((await get('ctx_audience')).draft, 'the draft is still waiting');
+    assert.equal((await t.call('DELETE', '/workspaces/ws_studio/objects/ctx_audience/draft', { expectedUpdatedAt: drafted.updatedAt })).status, 200);
+    // replacing approved text with a proposal, from a copy older than an edit made since
+    const seen = (await get('ctx_audience')).updatedAt;
+    await t.call('PATCH', '/workspaces/ws_studio/objects/ctx_audience', { content: 'ویرایش تب اول' });
+    const proposal = (await t.call('POST', '/workspaces/ws_studio/objects', { type: 'Decision', status: 'Proposed', provenance: 'User Input', title: 'مخاطب تازه', content: 'مخاطب تازه', nodeId: 'business' })).json.object;
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/objects/${proposal.id}/replace`, { replacesId: 'ctx_audience', expectedUpdatedAt: seen })).status, 409);
+    assert.equal((await get('ctx_audience')).status, 'Confirmed', 'nothing was replaced');
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/objects/${proposal.id}/replace`, { replacesId: 'ctx_audience', expectedUpdatedAt: (await get('ctx_audience')).updatedAt })).status, 200);
+    // a thought rewritten in tab A, then in tab B from the copy before
+    const thought = (await t.call('POST', '/workspaces/ws_studio/notes', { nodeId: 'brand', content: '[ایده] رنگ تازه' })).json.thoughts[0];
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/revise`, { text: 'رنگ تازهٔ تب اول', expectedUpdatedAt: thought.updatedAt })).status, 200);
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/revise`, { text: 'رنگ تازهٔ تب دوم', expectedUpdatedAt: thought.updatedAt })).status, 409);
+    assert.equal((await t.call('POST', `/workspaces/ws_studio/thoughts/${thought.id}/revise`, { text: 'بدون بررسی' })).status, 200, 'without the field nothing changes');
+  } finally { t.close(); }
+});
+
 test('two tabs: approving a draft or replacing from an older copy is refused with 409 too (CONCURRENCY-SUPERSEDE-DRAFT)', async () => {
   const t = await boot(() => ({}));
   try {

@@ -605,6 +605,16 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     box.current?.focus({ preventScroll: true });
     return () => { document.documentElement.style.overflow = prev; document.getElementById('canvas-fs')?.focus({ preventScroll: true }); };
   }, [fullscreen, box]);
+  // the phone's back (and the browser's) leaves the full screen first, like any full-screen layer on Android and iOS: entering adds
+  // one step to the history (same address, the entry's own state kept); leaving by «بستن» / ESC / F takes that step back
+  useEffect(() => {
+    if (!fullscreen) return;
+    const ours = () => !!(window.history.state as { canvasFs?: boolean } | null)?.canvasFs;
+    try { if (!ours()) window.history.pushState({ ...(window.history.state ?? {}), canvasFs: true }, '', window.location.href); } catch { /* optional */ }
+    const onPop = () => setFullscreen(false);
+    window.addEventListener('popstate', onPop);
+    return () => { window.removeEventListener('popstate', onPop); try { if (ours()) window.history.back(); } catch { /* optional */ } };
+  }, [fullscreen]);
   const browserFullscreen = () => { try { if (document.fullscreenElement) void document.exitFullscreen(); else void root.current?.requestFullscreen(); } catch { /* optional */ } };
 
   // ── double-click on the empty stage = a new note; long press (touch) = the card menu ──
@@ -614,11 +624,28 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     setNewNote({ content: '', nodeId: '', x: Math.max(0, Math.round(s.x)), y: Math.max(0, Math.round(s.y)) });
   };
   const press = useRef<number | undefined>(undefined);
+  // the fingers on the screen now: a second one makes the gesture a pinch, and a pinch never opens a card's menu (even when both
+  // fingers start on a card and stay still for a moment)
+  const touches = useRef(new Set<number>());
   const onCardDown = (e: React.PointerEvent, item: SceneItem) => {
-    if (e.pointerType === 'touch') { const { clientX, clientY } = e; window.clearTimeout(press.current); press.current = window.setTimeout(() => setCtx({ item, x: clientX, y: clientY }), 520); return; }
+    if (e.pointerType === 'touch') {
+      window.clearTimeout(press.current);
+      if (touches.current.size > 1) return;
+      const { clientX, clientY } = e; press.current = window.setTimeout(() => setCtx({ item, x: clientX, y: clientY }), 520); return;
+    }
     startDrag(e, item);
   };
-  useEffect(() => { const clear = () => window.clearTimeout(press.current); window.addEventListener('pointerup', clear); window.addEventListener('pointermove', clear, { passive: true }); return () => { window.removeEventListener('pointerup', clear); window.removeEventListener('pointermove', clear); }; }, []);
+  useEffect(() => {
+    const clear = () => window.clearTimeout(press.current);
+    // capture: counted before any card's own handler runs
+    const down = (e: PointerEvent) => { if (e.pointerType !== 'touch') return; touches.current.add(e.pointerId); if (touches.current.size > 1) clear(); };
+    const up = (e: PointerEvent) => { touches.current.delete(e.pointerId); clear(); };
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    window.addEventListener('pointermove', clear, { passive: true });
+    return () => { window.removeEventListener('pointerdown', down, true); window.removeEventListener('pointerup', up, true); window.removeEventListener('pointercancel', up, true); window.removeEventListener('pointermove', clear); };
+  }, []);
 
 
   const exportCanvas = () => {

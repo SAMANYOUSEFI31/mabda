@@ -13,6 +13,7 @@ import { needsReview, planDecisions, waitingDecisions } from './decisionGraph';
 import type { ReviewNeed, WaitingDecisions } from './decisionGraph';
 import { assumptionsDue, decisionsDue } from './assumptions';
 import { addDays, daysBetween, tehranDay, tehranDayStart } from './tehranDate';
+import { formatNumber } from '../ui/format';
 
 
 export interface WeeklyReviewData {
@@ -80,4 +81,19 @@ export function outputsUsing(objectId: string, deliverables: Array<Pick<Generate
 /** the sentence that closes an acceptance; empty when no output uses the object */
 export function acceptanceSentence(title: string, uses: number, fa: (n: number) => string): string {
   return uses > 0 ? `چون «${title}» را تأیید کردی، ${fa(uses)} خروجی تو از آن استفاده می‌کنند.` : '';
+}
+
+/**
+ * The summary line of «این هفته»: everything she did in it counts, not only accepting and confirming (a due item she answered and a
+ * number she recorded are changes too; before, a review of only those said «چیزی را تغییر ندادی»).
+ */
+export function weeklySummaryText(done: { accepted: number; due: number; numbers: number; outputs: number }): string {
+  const parts = [
+    done.accepted ? `${formatNumber(done.accepted)} مورد را پذیرفتی یا تأیید کردی` : '',
+    done.due ? `به ${formatNumber(done.due)} سررسید جواب دادی` : '',
+    done.numbers ? `${formatNumber(done.numbers)} عدد ثبت کردی` : '',
+  ].filter(Boolean);
+  if (!parts.length) return 'این هفته چیزی را تغییر ندادی؛ هرچه دیدی همان‌طور که بود ماند.';
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join('، ')} و ${parts[parts.length - 1]}` : parts[0];
+  return `در این بازبینی ${list}.${done.accepted && done.outputs ? ` چون این موارد را تأیید کردی، ${formatNumber(done.outputs)} خروجی تو از آن‌ها استفاده می‌کنند.` : ''}`;
 }

@@ -240,6 +240,24 @@ test('informed consent is kept on the server for the person: a second device doe
   } finally { t.close(); }
 });
 
+test('a browser error report is not kept before the person has accepted the notice (like the activity record)', async () => {
+  const t = await boot();
+  try {
+    const owner = t.browser();
+    await owner.join(OWNER_CODE);
+    const code = (await owner.call('POST', '/owner/people', { name: 'B' })).json.link.split('#join=')[1];
+    const phone = t.browser();
+    await phone.join(code);
+    const count = async () => (await owner.call('GET', '/owner/errors')).json.errors.length;
+    const before = await count();
+    assert.equal((await phone.call('POST', '/client-errors', { message: 'خطای پیش از رضایت' })).json.recorded, false);
+    assert.equal(await count(), before, 'before: kept although the notice was not accepted yet');
+    await phone.call('POST', '/consent', {});
+    assert.equal((await phone.call('POST', '/client-errors', { message: 'خطای پس از رضایت' })).status, 200);
+    assert.equal(await count(), before + 1);
+  } finally { t.close(); }
+});
+
 test('the AI context is read for the person asking, never for one fixed person (focused thread on a section)', async () => {
   const seen: string[][] = [];
   const fake = { threadTurn: async (_u: string, r: { contextList: Array<{ title: string }> }) => {

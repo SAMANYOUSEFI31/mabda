@@ -116,6 +116,10 @@ export const nodesMethods = {
         this.db.prepare('UPDATE context_objects SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         this.db.prepare('UPDATE notes SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         this.db.prepare('UPDATE thoughts SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
+        // a section change is part of each thought's history (the same «moved» event as moving its note, repo/notes.ts)
+        const ev = this.db.prepare('INSERT INTO thought_events (id,thought_id,user_id,workspace_id,event_kind,before_value,after_value,actor,at) VALUES (?,?,?,?,?,?,?,?,?)');
+        const at = now();
+        for (const t of thoughts.filter((x) => x.nodeId === id)) ev.run(newId('th_ev'), t.id, s.userId, s.workspaceId, 'moved', id, transferTo, 'user', at);
         this.db.prepare('UPDATE files SET node_id = ? WHERE workspace_id = ? AND user_id = ? AND node_id = ?').run(transferTo, s.workspaceId, s.userId, id);
         const kids = nodes.filter((n) => n.parentId === id);
         const base = nextOrder(nodes, transferTo);

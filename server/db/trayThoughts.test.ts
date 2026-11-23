@@ -117,3 +117,16 @@ test('a short line edited in place stays the same thought when the note keeps it
   repo.updateNote(s, note.id, '[ایده] کارگاه حضوری در اصفهان\n[سؤال] مشتری کیست؟');
   assert.equal(repo.listThoughts(s, { includeResolved: true }).length, 3);
 });
+
+test('1B-4.7: deleting a section and moving its thoughts records the move in each thought\'s history (like moving its note)', () => {
+  const { repo, s } = fresh();
+  const from = repo.createNode(s, { label: 'مبدأ موقت' });
+  const to = repo.createNode(s, { label: 'مقصد' });
+  repo.createNote(s, from.id, '[ایده] فکری که جابه‌جا می‌شود');
+  const t = repo.listThoughts(s, { includeResolved: true }).find((x) => x.nodeId === from.id)!;
+  assert.ok(t, 'the note made a thought in the section');
+  repo.deleteNode(s, from.id, to.id);
+  const moved = repo.getThoughtHistory(s, t.id)!.entries.filter((e) => e.kind === 'moved');
+  assert.equal(moved.length, 1, 'before: the section changed with no trace in the thought\'s history');
+  assert.deepEqual(moved[0].details, { beforeNodeId: from.id, afterNodeId: to.id });
+});
