@@ -6,6 +6,7 @@ import { Icon, STATUS_ICON } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { Button, IconButton } from './Button.tsx';
 import { formatPercentValue } from './format.ts';
+import { UiText } from './privacy.tsx';
 
 export type Intent = 'neutral' | 'brand' | 'info' | 'success' | 'warning' | 'danger';
 export type StatusIntent = 'info' | 'success' | 'warning' | 'danger';
@@ -161,12 +162,12 @@ export function Stat({ label, value, delta, trend, className }: StatProps) {
 
 /** patterns.md §5: start-aligned where the content would be; the «جای خالی» dot (28), a title that says what lives here, a sentence or two, one action. No picture.
  *  kind: 'none' (nothing yet: the main action) · 'filtered' (nothing with this filter: clear the filters) · 'done' (all done: no action, no celebration). */
-export interface EmptyStateProps { kind?: 'none' | 'filtered' | 'done'; title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }
-export function EmptyState({ kind = 'none', title, description, action, className }: EmptyStateProps) {
+export interface EmptyStateProps { kind?: 'none' | 'filtered' | 'done'; title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string; /** the title can be a person's words (privacy.tsx) */ personal?: boolean }
+export function EmptyState({ kind = 'none', title, description, action, className, personal = false }: EmptyStateProps) {
   return (
     <div className={cx('mb-empty', className)} data-empty={kind}>
       <Nuqta state={kind === 'done' ? 'truth' : 'gap'} size="xl" label={false} className="mb-empty__dot" />
-      <p className="mb-empty__title title-3">{title}</p>
+      <p className="mb-empty__title title-3"><UiText personal={personal}>{title}</UiText></p>
       {description && <p className="mb-empty__desc body-md">{description}</p>}
       {action && kind !== 'done' && <div className="mb-empty__action">{action}</div>}
     </div>
@@ -175,13 +176,13 @@ export function EmptyState({ kind = 'none', title, description, action, classNam
 
 /** patterns.md §5 «خطا»: in the place the content was coming, never the whole screen. What happened, what is safe, what to do;
  *  the technical text only under «جزئیات», copyable. Never a bare «خطایی رخ داد», never her fault. */
-export interface ErrorStateProps { title: ReactNode; description?: ReactNode; onRetry?: () => void; retrying?: boolean; details?: string; className?: string }
-export function ErrorState({ title, description, onRetry, retrying, details, className }: ErrorStateProps) {
+export interface ErrorStateProps { title: ReactNode; description?: ReactNode; onRetry?: () => void; retrying?: boolean; details?: string; className?: string; /** the title can be a person's words (privacy.tsx) */ personal?: boolean }
+export function ErrorState({ title, description, onRetry, retrying, details, className, personal = false }: ErrorStateProps) {
   const [copied, setCopied] = useState(false);
   return (
     <div role="alert" className={cx('mb-empty mb-error', className)}>
       <Icon name="OctagonAlert" size="xl" className="mb-error__icon" />
-      <p className="mb-empty__title title-3">{title}</p>
+      <p className="mb-empty__title title-3"><UiText personal={personal}>{title}</UiText></p>
       {description && <p className="mb-empty__desc body-md">{description}</p>}
       {onRetry && <div className="mb-empty__action"><Button variant="secondary" iconStart="RotateCcw" onClick={onRetry} disabled={retrying}>{retrying ? 'در حال تلاش…' : 'تلاش دوباره'}</Button></div>}
       {details && (

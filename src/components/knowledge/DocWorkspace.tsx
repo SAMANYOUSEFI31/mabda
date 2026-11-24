@@ -86,7 +86,7 @@ export const DocWorkspace: React.FC<Props> = ({ nodes, objects, relationships, a
       ) : undefined}
       empty={empty}
       refs={{ checked: refs, onChange: (on) => { setRefs(on); try { localStorage.setItem(REFS_KEY, on ? '1' : '0'); } catch { /* optional */ } } }}
-      header={tabs.length > 1 ? <div className="max-w-full overflow-x-auto"><Tabs label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); clearAnchor(); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /></div> : undefined}
+      header={tabs.length > 1 ? <div className="max-w-full overflow-x-auto"><Tabs personal label="بخش‌های سند" value={tab.id} onChange={(id) => { setTabId(id); clearAnchor(); }} items={tabs.map((t) => ({ id: t.id, label: t.label }))} /></div> : undefined}
     />
   );
 };

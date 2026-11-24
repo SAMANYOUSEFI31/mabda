@@ -402,6 +402,87 @@ try {
     await ctx.close();
   }
 
+  step('Session replay privacy (docs/test-data.md §Clarity) · with the replay mask on, nothing a person wrote is readable');
+  {
+    // The rule Clarity applies (clarity-js 0.8, layout/dom.ts + core/scrub.ts), emulated over the real screens of the sample:
+    // a text node is sent as it is only under the nearest `data-clarity-unmask` (a nearer `data-clarity-mask` wins); an
+    // attribute is sent as it is unless it is dropped (title, alt, aria-label, …) or scrubbed (data-*, value, placeholder,
+    // href, src under a mask); inputs are never sent. «A person's words» = every Persian string the API sent this page.
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'fa-IR' });
+    await ctx.addInitScript(() => {
+      const mask = () => document.documentElement?.setAttribute('data-clarity-mask', 'True');
+      if (document.documentElement) mask(); else new MutationObserver((_, o) => { if (document.documentElement) { mask(); o.disconnect(); } }).observe(document, { childList: true });
+      const seen = new Set();
+      window.__personWords = seen;
+      const walk = (v) => { if (typeof v === 'string') { const t = v.trim(); if (t.length >= 4 && /[؀-ۿ]/.test(t)) seen.add(t); } else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
+      const f = window.fetch.bind(window);
+      window.fetch = async (...a) => { const r = await f(...a); try { if (String(a[0]).includes('/api/') && (r.headers.get('content-type') ?? '').includes('json')) r.clone().json().then(walk, () => {}); } catch { /* not json */ } return r; };
+    });
+    const page = await ctx.newPage();
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.getByText(/^خانه: /).waitFor();
+    await sample(page);
+    const audit = () => page.evaluate(() => {
+      const DROPPED = new Set(['title', 'alt', 'onload', 'onfocus', 'onerror', 'aria-label', 'integrity', 'crossorigin']);
+      const SCRUBBED_UNDER_MASK = /^(data-.*|value|placeholder|href|src|srcset|class|style)$/;
+      const open = (el) => { for (let n = el; n; n = n.parentElement) { if (n.hasAttribute('data-clarity-mask')) return false; if (n.hasAttribute('data-clarity-unmask')) return true; } return false; };
+      const sent = [];
+      const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let t = tw.nextNode(); t; t = tw.nextNode()) {
+        const p = t.parentElement;
+        if (!p || p.closest('input,textarea,select,script,style') || !t.data.trim()) continue;
+        if (open(p)) sent.push(t.data.replace(/\s+/g, ' ').trim());
+      }
+      for (const el of document.body.querySelectorAll('*')) {
+        const un = open(el);
+        for (const a of el.attributes) {
+          if (DROPPED.has(a.name) || (!un && SCRUBBED_UNDER_MASK.test(a.name)) || a.name.startsWith('data-clarity')) continue;
+          if (/[؀-ۿ]/.test(a.value)) sent.push(`${a.name}=${a.value}`);
+        }
+      }
+      const words = [...window.__personWords];
+      const leaks = [];
+      // a whole-word match: «یادداشت» (a label the server sends) inside the app's «یادداشت‌ها» is not a leak
+      const letter = /[\p{L}\p{N}\u200c]/u;
+      const within = (s, w) => { for (let i = s.indexOf(w); i >= 0; i = s.indexOf(w, i + 1)) if (!letter.test(s[i - 1] ?? ' ') && !letter.test(s[i + w.length] ?? ' ')) return true; return false; };
+      for (const s of sent) for (const w of words) if (within(s, w) || (s.length >= 12 && within(w, s))) leaks.push(`«${w.slice(0, 40)}» in «${s.slice(0, 60)}»`);
+      return { leaks: [...new Set(leaks)], readable: sent.length, words: words.length };
+    });
+    const check = async (where) => {
+      await settled(page);
+      const r = await audit();
+      assert.ok(r.words > 20, `${where}: the sample's words were not seen (${r.words})`);
+      assert.deepEqual(r.leaks, [], `${where}: a person's words would be readable in a replay: ${r.leaks.slice(0, 6).join(' | ')}`);
+      return r;
+    };
+    await guard('[1280] Home, Thinking, Truth (document, structure, canvas), Outputs: only the app\'s words are readable', async () => {
+      let readable = 0;
+      for (const tab of ['خانه', 'فکر', 'حقیقت', 'خروجی‌ها']) {
+        await nav(page, tab);
+        readable += (await check(tab)).readable;
+        if (tab === 'حقیقت') for (const view of ['سند', 'ساختار', 'بوم']) { if (await page.locator('[role=radio]').filter({ hasText: new RegExp(`^${view}$`) }).count()) { await radio(page, view); await check(`${tab} › ${view}`); } }
+      }
+      // the point of it: the app's own words ARE readable (buttons, navigation, titles)
+      assert.ok(readable > 40, `too little is readable (${readable}): the app's own words should be`);
+    });
+    await guard('[1280] the add dialog, the space menu and the account menu: only the app\'s words', async () => {
+      await nav(page, 'حقیقت');
+      await page.getByRole('button', { name: 'افزودن' }).first().click();
+      await page.getByRole('dialog').first().waitFor();
+      await check('add dialog');
+      await page.keyboard.press('Escape'); await settled(page);
+      await page.getByRole('button', { name: /^فضا: / }).first().click();
+      await page.getByRole('menu').first().waitFor();
+      await check('space menu');
+      await page.keyboard.press('Escape'); await settled(page);
+      await page.getByRole('button', { name: /^حساب کاربری/ }).first().click();
+      await page.getByRole('menu').first().waitFor();
+      await check('account menu');
+      await page.keyboard.press('Escape');
+    });
+    await ctx.close();
+  }
+
   step('§۵۳ PWA · installable');
   await guard('manifest and icons are served', async () => {
     const m = await (await fetch(`${BASE}/manifest.webmanifest`)).json();

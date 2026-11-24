@@ -34,7 +34,7 @@ export const RelationPicker: React.FC<Props> = ({ label, hint, options, selected
       <p className="body-sm text-text-subtle">{hint}</p>
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-inline-xs">
-          {selected.map((id) => <Button key={id} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`برداشتن ${titleOf(id)}`} onClick={() => onChange(selected.filter((x) => x !== id))}>{titleOf(id)}</Button>)}
+          {selected.map((id) => <Button personal key={id} type="button" size="sm" variant="secondary" iconEnd="X" aria-label={`برداشتن ${titleOf(id)}`} onClick={() => onChange(selected.filter((x) => x !== id))}>{titleOf(id)}</Button>)}
         </div>
       )}
       <TextField label="جستجوی دانش" iconStart="Search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="چند حرف از عنوان…" />

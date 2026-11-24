@@ -4,6 +4,7 @@ import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { formatNumber } from './format.ts';
+import { UI_WORDS, UiText } from './privacy.tsx';
 
 const isRtl = (el: HTMLElement | null) => (el ? getComputedStyle(el).direction : document.documentElement.dir) === 'rtl';
 
@@ -12,9 +13,11 @@ export interface TabItem { id: string; label: ReactNode; disabled?: boolean }
 export interface TabsProps {
   items: TabItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
   label?: string; fullWidth?: boolean; renderPanel?: (id: string) => ReactNode; className?: string;
+  /** the tab labels can be a person's words (their sections): they stay masked in a session replay (privacy.tsx) */
+  personal?: boolean;
 }
 
-export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌ها', fullWidth = false, className, renderPanel }: TabsProps) {
+export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌ها', fullWidth = false, className, renderPanel, personal = false }: TabsProps) {
   const [inner, setInner] = useState(defaultValue || items[0]?.id);
   const current = value !== undefined ? value : inner;
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -45,7 +48,7 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
             aria-selected={current === it.id} aria-controls={renderPanel ? `${uid}-p-${it.id}` : undefined}
             tabIndex={current === it.id ? 0 : -1} disabled={it.disabled} className="mb-tab label-md"
             onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)} title={typeof it.label === 'string' ? it.label : undefined}
-          ><span className="mb-tab__label">{it.label}</span></button>
+          ><span className="mb-tab__label"><UiText personal={personal}>{it.label}</UiText></span></button>
         ))}
       </div>
       {renderPanel && (
@@ -62,9 +65,11 @@ export interface SegmentItem { id: string; label: ReactNode; icon?: IconName; di
 export interface SegmentedControlProps {
   items: SegmentItem[]; value?: string; defaultValue?: string; onChange?: (id: string) => void;
   label: string; fullWidth?: boolean | 'phone'; className?: string;
+  /** the choices can be a person's words: they stay masked in a session replay (privacy.tsx) */
+  personal?: boolean;
 }
 
-export function SegmentedControl({ items, value, defaultValue, onChange, label, fullWidth = false, className }: SegmentedControlProps) {
+export function SegmentedControl({ items, value, defaultValue, onChange, label, fullWidth = false, className, personal = false }: SegmentedControlProps) {
   const [inner, setInner] = useState(defaultValue !== undefined ? defaultValue : items[0]?.id);
   const current = value !== undefined ? value : inner;
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -94,7 +99,7 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
           onClick={() => pick(it.id)} onKeyDown={(e) => onKey(e, i)}
         >
           {it.icon && <Icon name={it.icon} size="sm" />}
-          <span className="mb-tab__label">{it.label}</span>
+          <span className="mb-tab__label"><UiText personal={personal}>{it.label}</UiText></span>
         </button>
       ))}
     </div>
@@ -198,8 +203,8 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
           </span>
           {/* the drawn label may carry a break point at a ZWNJ, which a screen reader would read as a gap: it hears the plain word */}
           {typeof it.label === 'string' && !it.action && it.label.includes('\u200c')
-            ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true">{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
-            : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}>{it.label}</span>}
+            ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true" {...UI_WORDS}>{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
+            : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}><UiText>{it.label}</UiText></span>}
         </button>
       ))}
     </nav>
@@ -221,12 +226,14 @@ export interface NavItemProps {
   /** icon-only (the collapsed sidebar): the label stays as aria-label and tooltip */
   compact?: boolean;
   className?: string;
+  /** the label can be a person's words (a section's name): it stays masked in a session replay (privacy.tsx) */
+  personal?: boolean;
 }
 
 /** a narrow label (the phone bar at 200% text) may break where Persian joins a suffix with a ZWNJ («خروجی‌|ها»), never inside a letter run */
 const softBreaks = (t: string): ReactNode => (t.includes('\u200c') ? t.split('\u200c').flatMap((part, i) => (i ? [<Fragment key={i}>{'\u200c'}<wbr /></Fragment>, part] : [part])) : t);
 
-export function NavItem({ label, icon, trailing, selected, expanded, nested = false, compact = false, onClick, className }: NavItemProps) {
+export function NavItem({ label, icon, trailing, selected, expanded, nested = false, compact = false, onClick, className, personal = false }: NavItemProps) {
   return (
     <button
       type="button"
@@ -247,7 +254,7 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
       {icon && <Icon name={icon} size="lg" className={selected ? 'text-icon-default' : 'text-icon-subtle'} strokeWidth={selected ? 2.25 : 1.75} />}
       {compact ? (trailing != null && <span aria-hidden="true" className="absolute end-space-2 top-space-2 rounded-pill bg-bg-neutral-bold" style={{ inlineSize: 8, blockSize: 8 }} />) : (<>
         {/* the 600 copy reserves its width so the label never jumps when selected (navigation.md) */}
-        <span className="mb-navlabel min-w-space-0 flex-1 break-words" data-label={typeof label === 'string' ? label : undefined}>{label}</span>
+        <span className="mb-navlabel min-w-space-0 flex-1 break-words" data-label={typeof label === 'string' ? label : undefined}><UiText personal={personal}>{label}</UiText></span>
         {trailing != null && <span className="caption shrink-0 tabular-nums text-text-subtle">{trailing}</span>}
       </>)}
     </button>

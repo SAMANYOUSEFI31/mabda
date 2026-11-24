@@ -157,7 +157,7 @@ export const MonitorPanel: React.FC<PanelProps> = ({ metric, measurements, objec
       )}
       <div className="flex flex-wrap items-end gap-inline-sm">
         <div className="min-w-space-0 flex-1">
-          <TextField
+          <TextField personal
             label={`${MX.newValue}${metric.unit ? ` (${metric.unit})` : ''}`}
             inputMode="decimal"
             value={raw}

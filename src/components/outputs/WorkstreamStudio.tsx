@@ -383,7 +383,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 {todo.map((g) => (
                   <div key={g.key} className="flex flex-col gap-stack-xs sm:flex-row sm:items-end">
                     <div className="flex-1">
-                      <TextField label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
+                      <TextField personal label={g.question} value={answers[g.key] ?? ''} onChange={(e) => setAnswers((m) => ({ ...m, [g.key]: e.target.value }))} />
                     </div>
                     <PlacePicker nodes={nodes} label="در بخش" value={gapPlace(g)} onChange={(v) => setGapPlaces((m) => ({ ...m, [g.key]: v }))} />
                     <Button size="sm" variant="secondary" disabled={!(answers[g.key] ?? '').trim()} onClick={() => answerGap(g)}>افزودن</Button>

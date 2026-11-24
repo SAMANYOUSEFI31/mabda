@@ -40,7 +40,7 @@ export const AboutPicker: React.FC<Props> = ({ objects, nodes, value, onChange }
       <span className="label-md text-text-default">دربارهٔ چه چیز دیگری هم هست؟ (اختیاری){value.length ? ` (${formatNumber(value.length)})` : ''}</span>
       {value.length > 0 && (
         <div className="flex flex-wrap gap-inline-xs">
-          {value.map((t) => <Button key={`${t.kind}:${t.id}`} type="button" size="sm" variant="secondary" iconStart={t.kind === 'node' ? 'FolderTree' : 'FileText'} iconEnd="X" aria-label={`برداشتن ${t.label}`} onClick={() => onChange(value.filter((x) => !(x.kind === t.kind && x.id === t.id)))}>{t.label}</Button>)}
+          {value.map((t) => <Button personal key={`${t.kind}:${t.id}`} type="button" size="sm" variant="secondary" iconStart={t.kind === 'node' ? 'FolderTree' : 'FileText'} iconEnd="X" aria-label={`برداشتن ${t.label}`} onClick={() => onChange(value.filter((x) => !(x.kind === t.kind && x.id === t.id)))}>{t.label}</Button>)}
         </div>
       )}
       <TextField label="بخش یا دانش" iconStart="Search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="چند حرف از نام…" disabled={value.length >= MAX} hint={value.length >= MAX ? 'بیشتر از ۸ مورد لازم نیست.' : 'فکر در فیلتر هرکدام از این‌ها هم دیده می‌شود.'} />

@@ -51,7 +51,7 @@ export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objec
         {active.map((m) => {
           const last = latestOf(m.id, measurements);
           return (
-            <TextField
+            <TextField personal
               key={m.id}
               label={`${metricLabel(m, objects)}${m.unit ? ` (${m.unit})` : ''}`}
               inputMode="decimal"

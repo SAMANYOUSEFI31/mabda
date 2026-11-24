@@ -11,6 +11,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { formatNumber } from '../../ui/format';
+import { replayOn } from '../../ui/privacy';
 import { activeIndex, readingLineY } from '../../core/readingLine';
 
 export interface ReadingItem { id: string; label: string; level: number }
@@ -130,7 +131,7 @@ export const SectionScrubber: React.FC<{
   return (
     <div
       role="slider" tabIndex={0} aria-label={label} aria-orientation="horizontal"
-      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={preview === null && nowFull ? nowFull : cur?.label}
+      aria-valuemin={1} aria-valuemax={items.length} aria-valuenow={shown + 1} aria-valuetext={replayOn() ? formatPos(shown + 1, items.length) : preview === null && nowFull ? nowFull : cur?.label}
       data-testid="section-scrubber" data-scrubbing={preview !== null || undefined}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key}
       className="flex min-h-touch min-w-space-0 flex-1 cursor-pointer touch-pan-y select-none flex-col justify-center gap-stack-xs rounded-control-sm px-inset-xs outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
