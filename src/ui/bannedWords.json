@@ -126,6 +126,12 @@
   "say": "خط قرمز"
  },
  {
+  "pattern": "(?<![؀-ۿ‌])محدودیت",
+  "flags": "",
+  "word": "محدودیت",
+  "say": "خط قرمز"
+ },
+ {
   "pattern": "\bConstraints?\b",
   "flags": "",
   "word": "Constraint",

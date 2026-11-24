@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { WORKSTREAM_SPECS, currentSpecIds, enabledBuiltInSpecs, starterSpecIds } from './specs';
 
 test('workstream library: absent enabledSpecIds = every built-in (old workspaces unchanged); a list picks; an empty list shows none', () => {
@@ -63,4 +64,17 @@ test('a personal or project space that never chose falls back only to workstream
     assert.ok(specs.every((s) => s.purposes?.includes(purpose)), `${purpose}: ${specs.map((s) => s.id).join(',')}`);
   }
   assert.deepEqual(enabledBuiltInSpecs({ purpose: 'empty' }), []);
+});
+
+test('the start trees are the first words a new space shows: none of the banned words (a Constraint is only «خط قرمز»)', () => {
+  // language.test.ts reads the screens (.tsx); the start trees are text in src/core, shown as section names and their hints
+  const BANNED = (JSON.parse(readFileSync('src/ui/bannedWords.json', 'utf8')) as Array<{ pattern: string; flags: string; word: string; say: string }>).map((w) => ({ re: new RegExp(w.pattern, w.flags), word: w.word, say: w.say }));
+  const texts = (['personal', 'work', 'project', 'empty'] as const).flatMap((p) => {
+    const walk = (nodes: Array<{ label: string; description?: string; children?: unknown[] }>): string[] =>
+      nodes.flatMap((n) => [n.label, n.description ?? '', ...walk((n.children ?? []) as typeof nodes)]);
+    return walk(startTemplateFor(p).nodes);
+  });
+  assert.ok(texts.length > 10);
+  const bad = texts.flatMap((t) => BANNED.filter((b) => b.re.test(t)).map((b) => `«${t}»: «${b.word}» → ${b.say}`));
+  assert.deepEqual(bad, []);
 });

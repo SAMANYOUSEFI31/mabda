@@ -27,8 +27,8 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
   return (
         <div className="space-y-stack-lg">
           {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
-          <div className="mb-page-frame"><div className="flex flex-col md:flex-row md:items-center justify-between gap-inline-lg">
-            <div>
+          <div className="mb-page-frame"><div className="mb-page-head">
+            <div className="mb-page-head__title">
               <h1 className="text-heading-md font-bold text-text-default">
                 حقیقت: {currentWorkspace.name}
               </h1>
@@ -38,8 +38,22 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             </div>
 
             {/* patterns.md «نماها و «…»»: the four views are one choice, all visible. The page's occasional tasks (a file, the files, the
-                archive) sit at the TOP under «⋯», so they never wait behind every section (docs/ux/decisions.md §۳) */}
-            <div className="flex flex-wrap items-center gap-inline-sm max-md:w-full">
+                archive) sit at the TOP under «⋯», so they never wait behind every section (docs/ux/decisions.md §۳). One header grammar
+                with Home and «خروجی‌ها»: the view choice, then the page's tools, «⋯» always last at the end edge; one row beside the title
+                where both fit, else under it (`.mb-page-head`). It wrapped into two rows at every desktop width and pushed the title 4px down */}
+            <div className="mb-page-head__actions">
+              <SegmentedControl
+                label="نمای حقیقت"
+                fullWidth="phone"
+                value={contextViewMode}
+                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas')}
+                items={[
+                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                  { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
+                  { id: 'read', label: 'سند', icon: 'BookOpen' },
+                  { id: 'table', label: 'جدول', icon: 'Table2' },
+                ]}
+              />
               {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
               <Menu
                 label="کارهای دیگر حقیقت"
@@ -52,18 +66,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                   { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
                   { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
-                ]}
-              />
-              <SegmentedControl
-                label="نمای حقیقت"
-                fullWidth="phone"
-                value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas')}
-                items={[
-                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                  { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
-                  { id: 'read', label: 'سند', icon: 'BookOpen' },
-                  { id: 'table', label: 'جدول', icon: 'Table2' },
                 ]}
               />
             </div>

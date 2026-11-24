@@ -654,6 +654,18 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-thinking-filters__scope{flex-direction:column;align-items:flex-start}
   .mb-thinking-filters__scope > .w-overlay-xs{inline-size:100%}
 }
+/* a page's header: the title, then its actions (a view choice, the page's tools, «⋯» last at the end edge). Beside the title only
+   where the frame holds both on one line (the same 54rem as the text and its margin); under it otherwise, never split over two rows
+   with the title pulled to their middle */
+@layer components{
+.mb-page-head{display:flex;flex-direction:column;gap:var(--stack-sm)}
+.mb-page-head__title{min-inline-size:0}
+.mb-page-head__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--inline-sm);inline-size:100%}
+}
+@container mb-frame (min-width: 54rem){
+  .mb-page-head{flex-direction:row;align-items:flex-start;justify-content:space-between;gap:var(--inline-md)}
+  .mb-page-head__actions{flex-wrap:nowrap;flex-shrink:0;inline-size:auto}
+}
 /* one column (no margin beside it): the header, the list and what opens under it share the reading column's two edges, so the
    row buttons end where the header's actions end. Before, the header ran to the frame's edge and the column stopped at 680px
    (206px apart at 1024 with the rail; decisions.md §۴۹) */
