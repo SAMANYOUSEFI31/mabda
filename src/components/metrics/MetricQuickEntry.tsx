@@ -16,14 +16,19 @@ interface Props {
   objects?: Pick<ContextObject, 'id' | 'title'>[];
   onSubmit: (entries: Array<{ metricId: string; value: number }>) => Promise<void | boolean>;
   onCsv: (text: string) => Promise<{ added: number; errors: Array<{ line: number; text: string }> } | undefined>;
+  /** the typed numbers, when a parent must keep them (a step-by-step dialog that unmounts this section between steps) */
+  values?: Record<string, string>;
+  onValuesChange?: (v: Record<string, string>) => void;
 }
 
 const REASON_FA: Record<string, string> = { unknown_metric: 'عددی با این نام پایش نمی‌شود', bad_value: 'عدد خوانده نشد', bad_date: 'تاریخ خوانده نشد', too_few: 'دست‌کم نام و عدد لازم است' };
 
 /** One number field per monitored truth (and per number not linked to one yet) (empty = nothing to say this week) and an optional CSV paste. Recording is never required. */
-export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objects = [], onSubmit, onCsv }) => {
+export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objects = [], onSubmit, onCsv, values, onValuesChange }) => {
   const active = metrics.filter((m) => !m.archived);
-  const [vals, setVals] = useState<Record<string, string>>({});
+  const [own, setOwn] = useState<Record<string, string>>({});
+  const vals = values ?? own;
+  const setVals = (f: (v: Record<string, string>) => Record<string, string>) => { const next = f(vals); if (onValuesChange) onValuesChange(next); else setOwn(next); };
   const [csvOpen, setCsvOpen] = useState(false);
   const [csv, setCsv] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,7 +39,7 @@ export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objec
   if (active.length === 0) return null;
   const submit = async () => {
     setBusy(true);
-    try { await onSubmit(ready.map((x) => ({ metricId: x.m.id, value: x.n! }))); setVals({}); } finally { setBusy(false); }
+    try { await onSubmit(ready.map((x) => ({ metricId: x.m.id, value: x.n! }))); setVals(() => ({})); } finally { setBusy(false); }
   };
   const applyCsv = async () => {
     setBusy(true);

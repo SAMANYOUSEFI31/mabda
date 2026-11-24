@@ -9,7 +9,9 @@ import { computeStaleAssets } from './impactEngine';
 import { buildWeeklyReview } from './weeklyReview';
 import { buildChangeDigest } from './changeDigest';
 import { buildMapModel } from './mapModel';
-import { buildCanvasModel } from './canvasModel';
+import { buildCanvasModel, CARD_H, CARD_W } from './canvasModel';
+import { NOTE_H, NOTE_W } from './canvasScene';
+import { freeFrames } from './canvasFrames';
 import { DEFAULT_TREE_NODES } from './specs';
 import { assumptionsDue, decisionsDue, isEstablished, rejectedOptions } from './assumptions';
 import { canSplit, convertedTo, thinkingOf } from './thinkingMarkers';
@@ -121,6 +123,22 @@ test('notes, file, boards: free notes with coordinates, a ready text file with a
   assert.equal(d.canvas.free.filter((i) => i.itemRef.startsWith('obj:')).length, 3, 'three real cards sit in the free space beside the notes');
   assert.ok(d.canvas.decisions.every((i) => byId.has(i.itemRef.slice(4)) && i.rank !== undefined));
   assert.ok(d.file.summary.length > 20 && d.file.chunks.length >= 1 && d.nodes.some((n) => n.id === d.file.nodeId));
+});
+
+test('the free canvas of the showcase: every section frame stands apart (none overlaps another, none starts off the board)', () => {
+  const placed = d.canvas.free.map((i) => {
+    const note = d.notes.find((n) => `note:${n.id}` === i.itemRef);
+    const obj = d.objects.find((o) => `obj:${o.id}` === i.itemRef);
+    return { id: i.itemRef, x: i.x!, y: i.y!, w: note ? NOTE_W : CARD_W, h: note ? NOTE_H : CARD_H, nodeId: (note ?? obj)!.nodeId };
+  });
+  const frames = freeFrames(placed, NODES);
+  assert.ok(frames.length >= 5);
+  for (const f of frames) assert.ok(f.x >= 0 && f.y >= 0, `${f.label} starts on the board`);
+  for (const a of frames) for (const b of frames) {
+    if (a.nodeId >= b.nodeId) continue;
+    const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+    assert.ok(apart, `«${a.label}» and «${b.label}» overlap`);
+  }
 });
 
 test('the map and the board lay the showcase out without surprises', () => {

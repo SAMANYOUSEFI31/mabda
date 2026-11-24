@@ -150,7 +150,7 @@ try {
     const text = (await page.getByTestId('lineage-text').innerText()).replace(/\s+/g, ' ');
     console.log('   lineage:', text.slice(0, 200));
     assert.match(text, /بر این‌ها تکیه دارد/); assert.match(text, /هزینهٔ ارسال/); assert.match(text, /زمان ارسال/);
-    assert.match(text, /روی این‌ها اثر دارد.*قیمت بستهٔ هدیه/);
+    assert.match(text, /این‌ها بر آن تکیه دارند.*قیمت بستهٔ هدیه/);
     assert.ok(!/لحن برند/.test(text), 'unrelated cards are not in it');
     await shot('4-lineage');
     await page.getByTestId('lineage-bar').getByRole('radio', { name: '۱ قدم' }).click({ force: true });

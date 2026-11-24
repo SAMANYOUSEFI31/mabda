@@ -102,7 +102,10 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
       <Markdown variant="document" anchors={items.map(({ id, text }) => ({ id, text }))}>{markdown}</Markdown>
     </article>
   ) : (
-    <pre dir="ltr" className="code overflow-auto whitespace-pre-wrap rounded-control border border-border-default bg-surface-sunken p-inset-lg text-start">{markdown}</pre>
+    // the source of a Persian document: every line takes its own direction (plaintext bidi), so «#» and «>» stay at the start of a
+    // Persian line and its full stop at its end; and the text face, not a monospace one — no monospace face has Persian letters,
+    // and the fallback drew them apart. Copy and download still give the exact source.
+    <pre dir="auto" style={{ unicodeBidi: 'plaintext' }} className="body-md overflow-auto whitespace-pre-wrap rounded-control border border-border-default bg-surface-sunken p-inset-lg text-start">{markdown}</pre>
   );
 
   return (

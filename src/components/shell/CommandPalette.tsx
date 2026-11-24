@@ -31,6 +31,10 @@ interface Props {
  * row (also reachable by keyboard) reveals more — there is no fixed ceiling. A command registered from outside runs its own action.
  * Notes are found here for DISPLAY only; nothing in this palette sends text to an AI.
  */
+/** a long section path keeps its END — the section the hit is in, which is what tells two hits apart — and drops the middle:
+ *  «کسب‌وکار ‹ محصول و خدمت ‹ اشتراک ماهانه» → «… ‹ محصول و خدمت ‹ اشتراک ماهانه» (the same rule as the «اکنون» line of the outline); the full path stays in the tooltip */
+const shortPath = (subtitle: string) => subtitle.split(' · ').map((part) => { const p = part.split(' ‹ '); return p.length > 2 ? `… ‹ ${p.slice(-2).join(' ‹ ')}` : part; }).join(' · ');
+
 export const CommandPalette: React.FC<Props> = (props) => (props.open ? <Palette {...props} /> : null);
 
 const RECENT_KEY = 'mabda.recent';
@@ -97,7 +101,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
         <span className="flex min-w-space-0 flex-1 flex-col">
           <span className="body-md text-text-default">{h.title}</span>
           {snippet && <span className="body-sm text-text-subtle">{snippet}</span>}
-          {h.subtitle && <span className="body-sm truncate text-text-subtle">{h.subtitle}</span>}
+          {h.subtitle && <span className="body-sm truncate text-text-subtle" title={h.subtitle}>{shortPath(h.subtitle)}</span>}
         </span>
       </div>
     );

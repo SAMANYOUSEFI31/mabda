@@ -361,10 +361,14 @@ export function buildDemo(now: Date): DemoData {
       ...rank(['dm_ship_policy', 'dm_discount', 'dm_ship_cost'], 'thinking'),
     ],
     free: [
-      { itemRef: 'note:dnote_1', x: 0, y: 0 }, { itemRef: 'note:dnote_2', x: 260, y: 20 }, { itemRef: 'note:dnote_3', x: 520, y: 0 },
-      { itemRef: 'note:dnote_4', x: 40, y: 150 }, { itemRef: 'note:dnote_5', x: 300, y: 170 },
-      // cards (real objects) placed beside the notes: where they are drawn is all that is stored
-      { itemRef: 'obj:dm_audience', x: 40, y: 340 }, { itemRef: 'obj:dm_price2', x: 330, y: 340 }, { itemRef: 'obj:dm_channel', x: 620, y: 340 },
+      // each section's notes and cards sit together, so the section frames drawn around them (canvasFrames.ts) never overlap:
+      // three columns 330 apart (a 232-wide card + 2 × 28 frame padding + 42 between frames), two rows
+      // row 1: کسب‌وکار (a note above its card) · اشتراک ماهانه (the same) · برند و پیام (one card)
+      { itemRef: 'note:dnote_1', x: 28, y: 44 }, { itemRef: 'obj:dm_audience', x: 28, y: 188 },
+      { itemRef: 'note:dnote_2', x: 358, y: 44 }, { itemRef: 'obj:dm_price2', x: 358, y: 188 },
+      { itemRef: 'obj:dm_channel', x: 688, y: 44 },
+      // row 2: کارگاه · شبکه‌های اجتماعی · پشتیبانی (one note each)
+      { itemRef: 'note:dnote_3', x: 28, y: 420 }, { itemRef: 'note:dnote_4', x: 358, y: 420 }, { itemRef: 'note:dnote_5', x: 688, y: 420 },
     ],
   };
 
