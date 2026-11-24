@@ -12,11 +12,12 @@ const BASE = process.argv[2] || 'http://localhost:3100';
 const OUT = process.env.SCREENS_OUT || 'docs/screens';
 mkdirSync(OUT, { recursive: true });
 
+// a phone is a phone: touch and no hover (a 390 shot taken with a mouse showed hover, keyboard hints and focus rings no phone shows)
 const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
   // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
   // plus 768 (day and night, for the gallery) and 1440 (light only): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
-  : [{ name: '390', width: 390, height: 844 }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667 }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
+  : [{ name: '390', width: 390, height: 844, touch: true }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667, touch: true }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'حقیقت', desktopLabel: 'حقیقت' },
@@ -299,7 +300,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor();
   await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
   await page.getByRole('region', { name: 'اعلان‌ها' }).getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
-  await goTab(TABS[1]);
+  await goTab(TABS[1]); await shoot('context-doc-cafe');
   // «واردِ یک بخش شدن»: a section alone, a sub-section deeper, then back out with the on-screen button
   await page.getByRole('button', { name: /^رفتن به بخش/ }).first().click(); await shoot('context-focus');
   await page.getByTestId('sub-section').first().click(); await shoot('context-focus-deep');
@@ -313,6 +314,20 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // «دور یک مورد» and back
   await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(900); await shoot('canvas-lineage');
   await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
+  // the inspector floating over the canvas (desktop; a phone has the bottom sheet)
+  await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+  if (await page.getByRole('button', { name: 'شناور کردن روی بوم' }).count()) {
+    await page.getByRole('button', { name: 'شناور کردن روی بوم' }).first().click(); await page.waitForTimeout(400); await shoot('canvas-inspector-floating');
+    await page.getByRole('button', { name: 'جا دادن کنار بوم' }).first().click({ timeout: 800 }).catch(() => {});
+  }
+  // the three levels of detail (canvasLod.ts): far and near next to the mid level above (desktop: the zoom buttons; a phone pinches)
+  if (!mobile) {
+    for (let i = 0; i < 8; i++) await page.getByRole('button', { name: 'کوچک‌نمایی' }).click({ timeout: 800 }).catch(() => {});
+    await page.waitForTimeout(400); await shoot('canvas-far');
+    for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'بزرگ‌نمایی' }).click({ timeout: 800 }).catch(() => {});
+    await page.waitForTimeout(400); await shoot('canvas-near');
+    await page.getByRole('button', { name: /^متناسب/ }).first().click({ timeout: 800 }).catch(() => {});
+  }
   // the thinking canvas: one free canvas (with the tray and section frames)
   await goTab(TABS[3]); await shoot('thinking-list');
   await page.getByRole('radiogroup', { name: 'نمای فکر' }).getByRole('radio', { name: 'بوم' }).click();
@@ -358,6 +373,24 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByRole('combobox', { name: 'جستجو' }).fill('قیم');
   await page.locator('[role=dialog] [role=option]').first().waitFor();
   await shoot('dialog-search'); await closeDialog();
+  // empty states (G4): a new space with nothing in it yet, every main page and its canvas; the space is deleted afterwards
+  const emptyName = `خالی ${size.name}`;
+  await spaceItem('فضای تازه…');
+  await page.getByRole('radio', { name: 'کسب‌وکار' }).click(); await page.getByLabel('نام فضا', { exact: true }).fill(emptyName);
+  await page.getByRole('button', { name: 'افزودن فضا' }).click();
+  await page.getByText(`خانه: ${emptyName}`).waitFor({ timeout: 8000 });
+  await page.getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
+  await shoot('empty-home');
+  await goTab(TABS[3]); await shoot('empty-thinking');
+  await page.getByRole('radiogroup', { name: 'نمای فکر' }).getByRole('radio', { name: 'بوم' }).click().catch(() => {}); await shoot('empty-thinking-canvas');
+  await goTab(TABS[1]); await shoot('empty-truth');
+  await page.getByRole('radiogroup', { name: 'نمای حقیقت' }).getByRole('radio', { name: 'نمای کلی' }).click().catch(() => {}); await shoot('empty-truth-canvas');
+  await goTab(TABS[2]); await shoot('empty-assets');
+  await page.evaluate(async (name) => {
+    const list = await (await fetch('/api/workspaces')).json();
+    const w = list.workspaces.find((x) => x.name === name);
+    if (w) await fetch(`/api/workspaces/${encodeURIComponent(w.id)}`, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmName: name }) });
+  }, emptyName);
   if (errors.length) { problems++; console.log(`\n[${size.name}] console/page errors:`, [...new Set(errors)].slice(0, 6)); }
   await ctx.close();
 }

@@ -91,7 +91,11 @@ const TIPS = [
   'یک کارت را انتخاب کن تا هرچه روی آن اثر دارد روشن شود. بقیهٔ امکان‌ها زیر «⋯» است.',
 ];
 const TIPS_THINKING = [
-  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون کنار بوم‌اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز «افزودن» را بزن. کارت حقیقت را از «⋯» کنارشان بیاور.',
+  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون «هنوز روی بوم نیامده»اند؛ بکش و هرجا خواستی بگذار. روی فضای خالی دابل‌کلیک کن تا یادداشت آزاد بنویسی؛ برای ایده یا سؤال باز «افزودن» را بزن. کارت حقیقت را از «⋯» کنارشان بیاور.',
+];
+// the same tip for a finger: no double-click (a double tap zooms the page), the note comes from «⋯» like every other add on touch
+const TIPS_THINKING_TOUCH = [
+  'فکرها و پیشنهادهایی که هنوز روی بوم نیامده‌اند در ستون «هنوز روی بوم نیامده»اند؛ بکش و هرجا خواستی بگذار. یادداشت آزاد و کارت حقیقت را از «⋯» بیاور؛ برای ایده یا سؤال باز «افزودن» را بزن.',
 ];
 const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خروج)'], ['C', 'وصل کن (مبدأ، بعد مقصد)'], ['L', 'دور کارت انتخاب‌شده (نمای کلی حقیقت)'], ['I', 'باز و بسته کردن بازرس'], ['؟', 'این راهنما'], ['/  یا  Ctrl+K', 'جستجوی کارت'], ['Ctrl+Z / Ctrl+Shift+Z', 'واگرد / از نو'], ['پیکان‌ها', 'رفتن به کارت کناری (روی یک کارت) یا جابه‌جایی بوم'], ['Enter', 'انتخاب کارت'], ['+  /  −  /  0', 'بزرگ‌نمایی / کوچک‌نمایی / متناسب‌سازی'], ['Shift + کلیک', 'انتخاب چندتایی (در بوم فکر: «ساخت بخش از این موارد»)'], ['دابل‌کلیک روی فضای خالی', 'یادداشت آزاد تازه'], ['کلیک راست یا نگه‌داشتن', 'منوی کارت']];
 
@@ -110,6 +114,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
   const toast = useToast();
   const prefs = useMemo(readPrefs, []);
   const isMobile = useMedia('(max-width: 767px)');
+  const isTouch = useMedia('(pointer: coarse)');
   const isDesktop = useMedia('(min-width: 1024px)');
   // a phone on its side is wide but short: its full screen needs the same one-row bar as an upright phone (§۵۳ ۸)
   const isShort = useMedia('(max-height: 500px)');
@@ -461,6 +466,14 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     const first = scene.items.find((i) => i.unplaced);
     if (first && trayShape.current !== shapeKey && size.w > 0) { trayShape.current = shapeKey; setTimeout(() => reveal(first.x, first.y, first.w, first.h), 0); }
   }, [mode, layout, scene.items, size.w, reveal, shapeKey]);
+  // «دور یک مورد» opens ON the item it is about: when the whole chain is wider than the stage (a phone), the first view anchors at
+  // the start edge and would leave the centre card out of sight
+  const lineageShape = useRef('');
+  useEffect(() => {
+    if (!lineage) { lineageShape.current = ''; return; }
+    const c = scene.items.find((i) => i.objectId === lineage.id);
+    if (c && lineageShape.current !== shapeKey && size.w > 0) { lineageShape.current = shapeKey; setTimeout(() => reveal(c.x, c.y, c.w, c.h), 0); }
+  }, [lineage, scene.items, size.w, reveal, shapeKey]);
   const dragEnabled = layout === 'free';
 
   const request = useCallback(async (payload: MovePayload) => {
@@ -671,7 +684,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
     } catch (e) { toast.show({ intent: 'danger', message: e instanceof Error ? e.message : 'ورود فایل ناموفق بود.' }); }
   };
 
-  const tips = mode === 'thinking' ? TIPS_THINKING : TIPS;
+  const tips = mode === 'thinking' ? (isTouch ? TIPS_THINKING_TOUCH : TIPS_THINKING) : TIPS;
   const tipBase = mode === 'thinking' ? 10 : 0; // thinking tips are remembered on their own
   const tip = tips.findIndex((_, i) => !tipsDone.includes(tipBase + i)) < 0 ? undefined : tips.findIndex((_, i) => !tipsDone.includes(tipBase + i));
   const dismissTip = (i: number) => { const next = [...tipsDone, tipBase + i]; setTipsDone(next); try { localStorage.setItem(TIPS_KEY, JSON.stringify(next)); } catch { /* optional */ } };
@@ -978,7 +991,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
             return (
               <div className="mt-stack-sm grid gap-stack-sm sm:grid-cols-2" data-testid="lineage-text">
                 <section aria-label="بر این‌ها تکیه دارد"><h3 className="label-md text-text-default">بر این‌ها تکیه دارد</h3>{t.rests.length ? <ul className="body-sm list-inside list-disc text-text-default">{t.rests.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="body-sm text-text-subtle">به چیزی تکیه ندارد.</p>}</section>
-                <section aria-label="روی این‌ها اثر دارد"><h3 className="label-md text-text-default">روی این‌ها اثر دارد</h3>{t.affects.length ? <ul className="body-sm list-inside list-disc text-text-default">{t.affects.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="body-sm text-text-subtle">چیزی روی آن سوار نیست.</p>}</section>
+                <section aria-label="این‌ها بر آن تکیه دارند"><h3 className="label-md text-text-default">این‌ها بر آن تکیه دارند</h3>{t.affects.length ? <ul className="body-sm list-inside list-disc text-text-default">{t.affects.map((x) => <li key={x}>{x}</li>)}</ul> : <p className="body-sm text-text-subtle">چیزی بر آن تکیه ندارد.</p>}</section>
                 {t.ifApproved.length > 0 && <section aria-label="اگر تأیید شود" className="sm:col-span-2"><h3 className="label-md text-text-default">اگر این مورد تأیید شود، این‌ها نیاز به بازبینی می‌گیرند</h3><ul className="body-sm list-inside list-disc text-text-default">{t.ifApproved.map((x) => <li key={x}>{x}</li>)}</ul></section>}
               </div>
             );

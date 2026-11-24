@@ -71,7 +71,7 @@ export function lineageOf(input: { centerId: string; objects: ContextObject[]; r
   };
 }
 
-/** the text equivalent for a screen reader and for phones: «بر این‌ها تکیه دارد / روی این‌ها اثر دارد» */
+/** the text equivalent for a screen reader and for phones: «بر این‌ها تکیه دارد / این‌ها بر آن تکیه دارند» (only dependency edges; the inspector's «اثر» counts red lines and outputs too, so this text never borrows that word) */
 export function lineageText(l: Lineage, titleOf: (id: string) => string): { rests: string[]; affects: string[]; ifApproved: string[] } {
   const direct = (levels: string[][]) => (levels[0] ?? []).map(titleOf);
   const later = (levels: string[][]) => levels.slice(1).flat().map((id) => `${titleOf(id)} (غیرمستقیم)`);
@@ -91,7 +91,9 @@ export function buildLineageScene(input: { objects: ContextObject[]; relationshi
     ...l.upstream.map((ids, i) => ({ ids, d: -(i + 1) })), // the start side (right) holds what it rests on
   ];
   const tallest = Math.max(1, ...columns.map((c) => c.ids.length));
-  const height = Math.max(520, PAD * 2 + 64 + tallest * (CARD_H + GAP_Y));
+  // the scene is as big as what it holds (no fixed 960 × 520 floor): with one or two columns a floor left the cards in a corner of
+  // an empty board, and off the stage on a phone, where the first view anchors at the board's start edge
+  const height = PAD * 2 + 64 + tallest * (CARD_H + GAP_Y);
   const items: SceneItem[] = [];
   const boxes: SceneBox[] = [];
   const unapproved = l.ifApproved.length > 0;
@@ -107,11 +109,11 @@ export function buildLineageScene(input: { objects: ContextObject[]; relationshi
       });
       y += CARD_H + GAP_Y;
     }
-    boxes.push({ id: `col:${c.d}`, kind: 'column', label: c.d === 0 ? 'این مورد' : c.d < 0 ? (c.d === -1 ? 'بر این‌ها تکیه دارد' : 'پشت آن‌ها') : (c.d === 1 ? 'روی این‌ها اثر دارد' : 'و بعد از آن‌ها'), depth: 0, x: x - 8, y: 8, w: CARD_W + 16, h: 40, hint: c.d === 0 ? 'موردی که انتخاب کردی.' : c.d < 0 ? 'این مورد روی آن‌ها سوار است؛ اگر آن‌ها عوض شوند این مورد نیاز به بازبینی می‌گیرد.' : 'آن‌ها روی این مورد سوارند؛ اگر این عوض شود آن‌ها نیاز به بازبینی می‌گیرند.' });
+    boxes.push({ id: `col:${c.d}`, kind: 'column', label: c.d === 0 ? 'این مورد' : c.d < 0 ? (c.d === -1 ? 'بر این‌ها تکیه دارد' : 'پشت آن‌ها') : (c.d === 1 ? 'این‌ها بر آن تکیه دارند' : 'و بعد از آن‌ها'), depth: 0, x: x - 8, y: 8, w: CARD_W + 16, h: 40, hint: c.d === 0 ? 'موردی که انتخاب کردی.' : c.d < 0 ? 'این مورد روی آن‌ها سوار است؛ اگر آن‌ها عوض شوند این مورد نیاز به بازبینی می‌گیرد.' : 'آن‌ها روی این مورد سوارند؛ اگر این عوض شود آن‌ها نیاز به بازبینی می‌گیرند.' });
   });
   const edges: SceneEdge[] = l.links.map((k) => ({
     id: `dependency|o:${k.to}|o:${k.from}`, kind: 'dependency', label: EDGE_LABEL.dependency, influencer: `o:${k.from}`, influenced: `o:${k.to}`, count: 1,
     ...(k.redundant ? { redundant: true } : {}), ...((isPending(byId.get(k.from)!) || isPending(byId.get(k.to)!)) ? { pending: true } : {}),
   }));
-  return { layout: 'lineage', items, boxes, edges, width: Math.max(960, PAD * 2 + columns.length * colW - GAP_X), height, summary: { objects: items.length, assets: 0, notes: 0 }, lineage: l };
+  return { layout: 'lineage', items, boxes, edges, width: PAD * 2 + columns.length * colW - GAP_X, height, summary: { objects: items.length, assets: 0, notes: 0 }, lineage: l };
 }

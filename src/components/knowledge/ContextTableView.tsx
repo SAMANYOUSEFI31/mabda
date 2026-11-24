@@ -80,7 +80,9 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
         <p className="body-sm mt-stack-xs text-text-subtle">جستجو کن، بر اساس نوع، وضعیت یا بخش فیلتر کن و ببین هر مورد از کجا آمده.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-inline-md lg:grid-cols-4">
+      {/* one row on a wide screen for however many filters there are (4, or 5 with «بُعد»), and on a narrow one no select left alone
+          on its row: with an odd number of selects the last spans both columns */}
+      <div className={`grid grid-cols-2 gap-inline-md ${facetNames.length > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <TextField
           className="col-span-2 lg:col-span-1"
           label="جستجو"
@@ -102,6 +104,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           options={[{ value: 'all', label: 'تمام وضعیت‌ها' }, ...CONTEXT_STATUS_OPTIONS]}
         />
         <Select
+          className={facetNames.length > 0 ? undefined : 'col-span-2 lg:col-span-1'}
           label="شاخهٔ درخت"
           value={selectedNode}
           onChange={(e) => setSelectedNode(e.target.value)}

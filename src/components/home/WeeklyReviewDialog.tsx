@@ -14,7 +14,7 @@ import { weeklySummaryText } from '../../core/weeklyReview';
 import { MX } from '../../core/metricsText';
 import type { WeeklyReviewData, WorkstreamReadiness } from '../../core/weeklyReview';
 import { ACTOR_FA, CHANGE_KIND_FA } from '../../core/changeLog';
-import { Badge, Button, Dialog, formatJalaliDate, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Dialog, formatJalaliDate, formatNumber } from '../../ui';
 
 interface Props {
   open: boolean;
@@ -52,6 +52,10 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
   // the due items she answered and the numbers she recorded in this review: changes too, so the summary counts them
   const [dueDone, setDueDone] = useState(0);
   const [numbers, setNumbers] = useState(0);
+  // the numbers typed in the last step live here, not in that step: moving between steps keeps them, and closing with some
+  // typed but not recorded asks first (the dialog's «dirty») — they are never dropped without a word
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const unsaved = Object.values(typed).filter((v) => v.trim()).length;
   /** a handler that says `false` when it did not happen (an error already shown) is not counted */
   const counting = <A extends unknown[]>(fn: ((...a: A) => Promise<unknown>) | undefined, add: (r: unknown, ...a: A) => void) => fn && (async (...a: A) => { const r = await fn(...a); if (r !== false) add(r, ...a); return r as never; });
   const due = { ...dueProps, onStillAssumed: counting(dueProps.onStillAssumed, () => setDueDone((n) => n + 1))!, onConfirmed: counting(dueProps.onConfirmed, () => setDueDone((n) => n + 1))!, onDropped: counting(dueProps.onDropped, () => setDueDone((n) => n + 1))!, onOutcome: counting(dueProps.onOutcome, () => setDueDone((n) => n + 1))!, onTooEarly: counting(dueProps.onTooEarly, () => setDueDone((n) => n + 1)) };
@@ -70,6 +74,8 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
     <Dialog
       open
       onClose={onClose}
+      dirty={unsaved > 0}
+      onDiscard={() => setTyped({})}
       size="xl"
       title={step < LAST ? `این هفته — بخش ${formatNumber(step + 1)} از ${formatNumber(LAST)}: ${STEPS[step]}` : 'این هفته — جمع‌بندی'}
       description="پنج دقیقه کافی است: چند بخش پشت‌سرهم و برای هر مورد یک اقدام. هر چیزی که بپذیری یا تأیید کنی در تاریخچهٔ تغییرها ثبت می‌شود."
@@ -177,11 +183,16 @@ const Review: React.FC<Props> = ({ onClose, data, inheritNotices = [], onSeenInh
       )}
 
       {hasMetrics && step === 3 && metricsEntry && (
-        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} objects={metricsEntry.objects} onSubmit={counting(metricsEntry.onSubmit, (_r, entries) => setNumbers((n) => n + entries.length))!} onCsv={counting(metricsEntry.onCsv, (r) => setNumbers((n) => n + ((r as { added?: number } | undefined)?.added ?? 0)))!} />
+        <MetricQuickEntry metrics={metricsEntry.metrics} measurements={metricsEntry.measurements} objects={metricsEntry.objects} onSubmit={counting(metricsEntry.onSubmit, (_r, entries) => setNumbers((n) => n + entries.length))!} onCsv={counting(metricsEntry.onCsv, (r) => setNumbers((n) => n + ((r as { added?: number } | undefined)?.added ?? 0)))!} values={typed} onValuesChange={setTyped} />
       )}
 
       {step === LAST && (
         <div className="flex flex-col gap-stack-lg">
+          {unsaved > 0 && (
+            <Alert intent="warning" title={`${formatNumber(unsaved)} عددی که نوشتی هنوز ثبت نشده`} action={<Button size="sm" variant="secondary" onClick={() => setStep(LAST - 1)}>برگشت به عددها</Button>}>
+              تا «ثبت عددها» را نزنی در تاریخچه نمی‌آیند.
+            </Alert>
+          )}
           <p className="body-md text-text-default">
             {weeklySummaryText({ accepted: handled.length, due: dueDone, numbers, outputs })}
           </p>

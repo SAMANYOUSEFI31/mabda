@@ -199,7 +199,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
     { label: 'راهنما و شروع سریع', icon: 'Compass', onSelect: p.onOpenOnboarding },
     { divider: true },
     { label: 'ظاهر', icon: 'SunMoon', choice: { value: theme, onChoose: (v) => setTheme(v as ThemePref), options: THEME_ORDER.map((t) => ({ value: t, label: THEME_LABEL[t] })) } },
-    { label: 'راهنمای کوچک (ⓘ)', icon: 'Info', choice: { value: hintsOn ? 'on' : 'off', onChoose: (v) => setHints(v === 'on'), options: [{ value: 'on', label: 'روشن' }, { value: 'off', label: 'خاموش' }] } },
+    { label: 'راهنمای کوچک', icon: 'Info', choice: { value: hintsOn ? 'on' : 'off', onChoose: (v) => setHints(v === 'on'), options: [{ value: 'on', label: 'روشن' }, { value: 'off', label: 'خاموش' }] } },
     ...(online ? [{ label: 'خروج از این دستگاه', icon: 'LogOut' as const, onSelect: () => void signOut() }] : []),
   ];
   const workspacePicker = (compact: boolean) => (

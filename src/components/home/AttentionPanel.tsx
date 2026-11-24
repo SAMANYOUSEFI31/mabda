@@ -118,7 +118,11 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
               <span className="label-md text-text-default">بلاک‌شده</span>
               <ul className="flex flex-col gap-stack-xs">
                 {waiting.blocked.map((u) => (
-                  <li key={u.ids[0]} className="body-md text-text-default">{names(u.ids)} منتظر تأیید {names(u.blockedBy)} است.</li>
+                  // what can be done here is on the item it waits for: «باز کردن» opens that one (no dead-end row, patterns.md)
+                  <li key={u.ids[0]} className="flex flex-wrap items-center justify-between gap-inline-sm">
+                    <span className="body-md text-text-default">{names(u.ids)} منتظر تأیید {names(u.blockedBy)} است.</span>
+                    {u.blockedBy[0] && <Button size="sm" variant="ghost" aria-label={`باز کردن ${names([u.blockedBy[0]])}`} onClick={() => onOpenObject(u.blockedBy[0])}>باز کردن</Button>}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -140,9 +144,12 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
           {flips.length > 0 && (
             <ul className="flex flex-col gap-stack-xs" aria-label="تصمیم‌های پرتغییر">
               {flips.map((f) => (
-                <li key={f.id} className="body-md flex items-start gap-inline-xs text-text-default">
-                  <Icon name="TriangleAlert" size="md" className="shrink-0 text-icon-warning" />
-                  <span>«{titleOf(f.id)}» چند بار عوض شده ({formatNumber(f.times)} بار جایگزین شده)؛ شاید اطلاعات کم است.</span>
+                <li key={f.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
+                  <span className="body-md flex items-start gap-inline-xs text-text-default">
+                    <Icon name="TriangleAlert" size="md" className="shrink-0 text-icon-warning" />
+                    <span>«{titleOf(f.id)}» چند بار عوض شده ({formatNumber(f.times)} بار جایگزین شده)؛ شاید اطلاعات کم است.</span>
+                  </span>
+                  <Button size="sm" variant="ghost" aria-label={`باز کردن «${titleOf(f.id)}»`} onClick={() => onOpenObject(f.id)}>باز کردن</Button>
                 </li>
               ))}
             </ul>

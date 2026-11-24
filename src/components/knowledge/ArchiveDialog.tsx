@@ -55,7 +55,8 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
 
   const row = (key: string, main: React.ReactNode, sub: React.ReactNode, actions: React.ReactNode) => (
     <li key={key} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
-      <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs">{main}</span><span className="caption text-text-subtle">{sub}</span></span>
+      {/* the title keeps at least an overlay-xs width: on a phone the buttons go to the next line instead of squeezing it to a word per line */}
+      <span className="flex min-w-overlay-xs flex-1 flex-col gap-stack-xs"><span className="flex flex-wrap items-center gap-inline-xs">{main}</span><span className="caption text-text-subtle">{sub}</span></span>
       <span className="flex flex-wrap items-center gap-inline-xs">{actions}</span>
     </li>
   );
@@ -97,7 +98,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
               {data.deliverables.map((d: GeneratedDeliverable) => row(d.id, <span className="body-md text-text-default">{d.title}</span>, formatJalaliDate(d.archivedAt ?? d.createdAt),
                 <>
                   <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === d.id} onClick={() => run(d.id, () => dataApi.restoreDeliverable(workspaceId, d.id), `«${d.title}» برگشت.`)}>برگردان</Button>
-                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف دائمی «${d.title}»`} onClick={() => setDropOut(d)}>حذف دائمی</Button>
+                  <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف دائمی «${d.title}»`} onClick={() => setDropOut(d)}>حذف دائمی…</Button>
                 </>))}
             </ul>)}
           {section === 'workspaces' && (archivedWs.length === 0

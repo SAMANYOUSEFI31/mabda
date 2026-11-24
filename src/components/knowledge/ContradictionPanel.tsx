@@ -82,7 +82,8 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
       <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md lg:flex-row lg:items-end">
         <span className="label-md text-text-default lg:pb-inset-sm">هر دو درست‌اند؟</span>
         <div className="lg:flex-1">
-          <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: c.itemA.title }, { value: c.itemB.id, label: c.itemB.title }]} />
+          {/* the two claims of a contradiction often share a title («بودجهٔ سفر نوروز» twice): the choice names them as the columns above do */}
+          <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: `مورد اول: ${c.itemA.title}` }, { value: c.itemB.id, label: `مورد دوم: ${c.itemB.title}` }]} />
         </div>
         <div className="lg:flex-1">
           <Select label="به این بخش" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).map(({ node, depth }) => (node.id === moving.nodeId ? { value: node.id, label: `${treeIndent(depth)}${node.label} (همین‌جاست)`, disabled: true } : { value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
