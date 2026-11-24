@@ -46,7 +46,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
   const inheritNotice = inheritNotices.length > 0 ? <InheritNoticeList notices={inheritNotices} max={3} onSeen={markInheritSeen} onOpenSection={(id) => { setActiveTab('context'); setContextViewMode('doc'); goFocus(id); }} onOpenObject={(id) => { const o = workspaceContexts.find((x) => x.id === id); if (o) openContext(o); }} /> : null;
   // «جزئیات بیشتر» opens right under itself, at the page's width (proximity, decisions.md §۴۴); before the first step there is no to-do
   const homeAll = homeAllOpen && (workspaceContexts.length > 0 || homePlan.total > 0) && (
-            <div id="home-all" className="flex flex-col gap-stack-lg">
+            <div id="home-all" className="mb-appear flex flex-col gap-stack-lg">
           <AttentionPanel
             nodes={nodes}
             specTitle={attentionSpec?.title ?? ''}

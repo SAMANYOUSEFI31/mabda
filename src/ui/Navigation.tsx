@@ -1,4 +1,4 @@
-import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
@@ -20,6 +20,9 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const list = useRef<HTMLDivElement>(null);
   const uid = useId();
+  // the chosen tab's mark slides to the new one (motion.md «تب و کنترل تکه‌ای»); the panel itself changes without motion
+  const tabGlide = useNavGlide<HTMLDivElement>(':scope > [aria-selected=true]', ['aria-selected'], 'mb-tab-glide');
+  const listRef = useCallback((n: HTMLDivElement | null) => { list.current = n; tabGlide.ref(n); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: string) => { setInner(id); onChange?.(id); };
   const onKey = (e: React.KeyboardEvent, index: number) => {
     const rtl = isRtl(list.current);
@@ -34,7 +37,8 @@ export function Tabs({ items, value, defaultValue, onChange, label = 'بخش‌�
   };
   return (
     <div className={cx('mb-tabs-wrap', className)}>
-      <div role="tablist" aria-label={label} ref={list} className={cx('mb-tabs', fullWidth && 'mb-tabs--full')}>
+      <div role="tablist" aria-label={label} ref={listRef} className={cx('mb-tabs', 'mb-tab-glided', fullWidth && 'mb-tabs--full')}>
+        {tabGlide.glide}
         {items.map((it, i) => (
           <button
             key={it.id} ref={(n) => { refs.current[it.id] = n; }} role="tab" type="button" id={`${uid}-t-${it.id}`}
@@ -65,6 +69,9 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
   const current = value !== undefined ? value : inner;
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const root = useRef<HTMLDivElement>(null);
+  // the raised key slides from the old choice to the new one (motion.md «تب و کنترل تکه‌ای»: base, ease-standard)
+  const segGlide = useNavGlide<HTMLDivElement>(':scope > [aria-checked=true]', ['aria-checked'], 'mb-tab-glide');
+  const rootRef = useCallback((n: HTMLDivElement | null) => { root.current = n; segGlide.ref(n); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: string) => { setInner(id); onChange?.(id); };
   const onKey = (e: React.KeyboardEvent, index: number) => {
     const rtl = isRtl(root.current);
@@ -78,7 +85,8 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} ref={root} className={cx('mb-tabs', 'mb-seg', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
+    <div role="radiogroup" aria-label={label} ref={rootRef} className={cx('mb-tabs', 'mb-seg', 'mb-tab-glided', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
+      {segGlide.glide}
       {items.map((it, i) => (
         <button
           key={it.id} ref={(n) => { refs.current[it.id] = n; }} type="button" role="radio" aria-checked={current === it.id}
@@ -274,14 +282,17 @@ export function Breadcrumb({ items, label = 'مسیر صفحه', className }: { 
  * Reduced motion: the duration tokens make it a short fade-free jump (components.css). Forced colours: hidden, the item's own
  * Highlight shows.
  */
-export function useNavGlide<T extends HTMLElement>() {
+export function useNavGlide<T extends HTMLElement>(
+  /** which child is chosen: the top places of a nav by default; a tab bar or segmented control passes its own (motion.md «تب و کنترل تکه‌ای») */
+  current = ':scope > [aria-current=page]', attrs: string[] = ['aria-current'], className = 'mb-nav-glide',
+) {
   // callback refs: the sidebar and the rail mount and unmount as the width changes, so the glide is set up per element
   const [nav, ref] = useState<T | null>(null);
   const [g, glideRef] = useState<HTMLSpanElement | null>(null);
   useLayoutEffect(() => {
     if (!nav || !g) return;
     const place = () => {
-      const cur = nav.querySelector<HTMLElement>(':scope > [aria-current=page]');
+      const cur = nav.querySelector<HTMLElement>(current);
       if (!cur) { g.style.opacity = '0'; return; }
       // measured from the boxes (not offsetLeft): a scroll bar on the start or end side would otherwise shift it
       const rtl = getComputedStyle(nav).direction === 'rtl';
@@ -297,8 +308,8 @@ export function useNavGlide<T extends HTMLElement>() {
     // the first place is set still; only a change of place moves
     const raf = requestAnimationFrame(() => { g.dataset.ready = 'true'; });
     const ro = new ResizeObserver(place); ro.observe(nav);
-    const mo = new MutationObserver(place); mo.observe(nav, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-current'] });
+    const mo = new MutationObserver(place); mo.observe(nav, { subtree: true, childList: true, attributes: true, attributeFilter: attrs });
     return () => { cancelAnimationFrame(raf); ro.disconnect(); mo.disconnect(); };
-  }, [nav, g]);
-  return { ref, glide: <span ref={glideRef} aria-hidden="true" className="mb-nav-glide" /> };
+  }, [nav, g]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { ref, glide: <span ref={glideRef} aria-hidden="true" className={className} /> };
 }

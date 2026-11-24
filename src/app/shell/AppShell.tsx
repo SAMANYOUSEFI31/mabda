@@ -13,6 +13,8 @@ import { Shortcuts } from '../../components/shell/Shortcuts';
 import { WelcomeTour } from '../../components/shell/WelcomeTour';
 import { useState } from 'react';
 import { Button } from '../../ui';
+import { cx } from '../../ui/cx';
+import { pageEnterClass } from '../../ui/pageTransition';
 import { primarySections } from '../../core/nodeTree';
 
 export type AppShellProps = Pick<ReadyScope, 'activeTab' | 'focusNodeId' | 'goFocus' | 'nodes' | 'contextViewMode' | 'currentWorkspace' | 'deliverables' | 'handleResetDemo' | 'liveWorkspaces' | 'openSpecEditor' | 'pageAction' | 'selectedSpecId' | 'setActiveTab' | 'setArchiveOpen' | 'setChatScope' | 'setContextViewMode' | 'setCurrentWorkspaceId' | 'setDemoConfirm' | 'setDemoDelete' | 'setIsAccountModalOpen' | 'setIsMemoryOpen' | 'setIsNewWorkspaceModalOpen' | 'setIsOnboardingOpen' | 'setIsSpecLibraryOpen' | 'setPaletteOpen' | 'setSelectedSpecId' | 'setUsageOpen' | 'specs' | 'thinkingBadge' | 'workspaceContexts' | 'workspaces'> & { children: ReactNode } & { dialogs: ReactNode };
@@ -70,7 +72,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
             </p>
           )}
           {/* keyed by the page: a new page fades in place (motion.md «رفتن بین صفحه‌ها») */}
-          <div key={activeTab === 'workstreams' ? 'assets' : activeTab} className="mb-page-enter space-y-stack-lg">{children}</div>
+          <div key={activeTab === 'workstreams' ? 'assets' : activeTab} className={cx(pageEnterClass, 'space-y-stack-lg')}>{children}</div>
         </main>
       </div>
 

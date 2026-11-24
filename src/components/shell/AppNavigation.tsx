@@ -238,7 +238,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
           <NavItem icon="BookOpen" label="حقیقت" selected={activeTab === 'context' && !p.sections.some((n) => n.id === p.focusNodeId)} expanded={activeTab === 'context' && p.sections.length > 0} onClick={() => { go('context'); p.onOpenSection(null); }} />
           {/* the sidebar holds PLACES, never views or actions (navigation.md): only «منبع» has places inside it, its sections */}
           {activeTab === 'context' && p.sections.length > 0 && (
-            <div className="ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های حقیقت">
+            <div className="mb-reveal ms-inline-xl flex flex-col gap-stack-xs border-s border-border-default ps-inset-sm" role="group" aria-label="بخش‌های حقیقت">
               {p.sections.map((n) => <NavItem nested key={n.id} label={n.label} selected={p.focusNodeId === n.id} onClick={() => { setOverlay(false); p.onOpenSection(n.id); }} />)}
             </div>
           )}
