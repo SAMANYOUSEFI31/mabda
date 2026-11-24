@@ -23,7 +23,7 @@ import type { UsageSummary } from '../types/ai';
 import { getUserId } from './apiClient';
 import { SIGNED_OUT_EVENT } from './session';
 import { deadline } from './deadline';
-import { visitHeader } from './activity';
+import { noteAction, visitHeader } from './activity';
 
 /**
  * The only way the UI reads or writes data. The server (SQLite) is the source of truth — there is no localStorage copy
@@ -59,10 +59,12 @@ async function call<T>(method: string, path: string, body?: unknown, extraHeader
   } catch {
     g.done();
     if (opts.signal?.aborted) throw new DataApiError('درخواست لغو شد.', 0, true);
+    noteAction(method, path, 0);
     if (g.timedOut()) throw new DataApiError('پاسخ سرور به‌موقع نرسید. چیزی از دست نرفته است؛ دوباره تلاش کن.', 0, true);
     throw new DataApiError('ارتباط با سرور برقرار نشد. اجرای سرور و اینترنت را بررسی کن و دوباره تلاش کن.', 0, true);
   }
   g.done();
+  noteAction(method, path, res.status, body instanceof FormData ? undefined : body);
   if (!res.ok) {
     let message = `خطای سرور (${res.status}). دوباره تلاش کن.`;
     try {

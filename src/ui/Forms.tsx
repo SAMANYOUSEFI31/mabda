@@ -4,6 +4,7 @@ import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { formatNumber } from './format.ts';
+import { UiText } from './privacy.tsx';
 
 type ForceState = 'hover' | 'active' | 'focus';
 type Size = 'sm' | 'md' | 'lg';
@@ -11,15 +12,15 @@ const SIZE_CLS: Record<Size, string> = { sm: 'mb-field__input--sm', md: '', lg: 
 
 interface FieldShellProps {
   id: string; label?: ReactNode; required?: boolean; hint?: ReactNode; error?: ReactNode;
-  disabled?: boolean; className?: string; children: ReactNode; counter?: ReactNode;
+  disabled?: boolean; className?: string; children: ReactNode; counter?: ReactNode; personal?: boolean;
 }
 
-function FieldShell({ id, label, required, hint, error, disabled, className, children, counter }: FieldShellProps) {
+function FieldShell({ id, label, required, hint, error, disabled, className, children, counter, personal = false }: FieldShellProps) {
   return (
     <div className={cx('mb-field', error && 'is-invalid', disabled && 'is-disabled', className)}>
       {label && (
         <label htmlFor={id} className="mb-field__label label-md">
-          {label}
+          <UiText personal={personal}>{label}</UiText>
           {required && <span className="mb-field__req" aria-hidden="true"> *</span>}
         </label>
       )}
@@ -41,14 +42,16 @@ const describedBy = (id: string, hint: ReactNode, error: ReactNode) => (error ? 
 /* ---------------- TextField ---------------- */
 export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: ReactNode; hint?: ReactNode; error?: ReactNode; size?: Size;
+  /** the label can be a person's words: it stays masked in a session replay (privacy.tsx) */
+  personal?: boolean;
   iconStart?: IconName; iconEnd?: IconName; forceState?: ForceState;
 }
 
-export function TextField({ label, hint, error, required, disabled, id, forceState, className, type = 'text', size = 'md', iconStart, iconEnd, ...rest }: TextFieldProps) {
+export function TextField({ personal, label, hint, error, required, disabled, id, forceState, className, type = 'text', size = 'md', iconStart, iconEnd, ...rest }: TextFieldProps) {
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
+    <FieldShell id={fid} personal={personal} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
       <span className={cx('mb-inputwrap', iconStart && 'has-start', iconEnd && 'has-end')}>
         {iconStart && <Icon name={iconStart} size="md" className="mb-inputwrap__icon is-start" />}
         <input
@@ -64,16 +67,16 @@ export function TextField({ label, hint, error, required, disabled, id, forceSta
 
 /* ---------------- Textarea ---------------- */
 export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'size'> {
-  label: ReactNode; hint?: ReactNode; error?: ReactNode; forceState?: ForceState;
+  label: ReactNode; hint?: ReactNode; error?: ReactNode; forceState?: ForceState; personal?: boolean;
 }
 
-export function Textarea({ label, hint, error, required, disabled, id, rows = 4, maxLength, value, defaultValue, onChange, forceState, className, ...rest }: TextareaProps) {
+export function Textarea({ personal, label, hint, error, required, disabled, id, rows = 4, maxLength, value, defaultValue, onChange, forceState, className, ...rest }: TextareaProps) {
   const auto = useId();
   const fid = id || auto;
   const [len, setLen] = useState(String(value ?? defaultValue ?? '').length);
   const counter = maxLength ? <span className="mb-field__count caption" aria-live="polite">{formatNumber(len)} / {formatNumber(maxLength)}</span> : null;
   return (
-    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
+    <FieldShell id={fid} personal={personal} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className} counter={counter}>
       <textarea
         id={fid} rows={rows} maxLength={maxLength} value={value} defaultValue={defaultValue} disabled={disabled} aria-required={required || undefined}
         data-force={forceState} aria-invalid={error ? true : undefined} aria-describedby={describedBy(fid, hint, error)}
@@ -87,15 +90,15 @@ export function Textarea({ label, hint, error, required, disabled, id, rows = 4,
 /* ---------------- Select ---------------- */
 export interface SelectOption { value: string; label: ReactNode; disabled?: boolean }
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
-  label: ReactNode; size?: Size; options: SelectOption[]; placeholder?: string;
+  label: ReactNode; size?: Size; options: SelectOption[]; placeholder?: string; personal?: boolean;
   hint?: ReactNode; error?: ReactNode; forceState?: ForceState;
 }
 
-export function Select({ label, hint, error, required, disabled, id, options, placeholder, value, defaultValue, onChange, forceState, size = 'md', className, ...rest }: SelectProps) {
+export function Select({ personal, label, hint, error, required, disabled, id, options, placeholder, value, defaultValue, onChange, forceState, size = 'md', className, ...rest }: SelectProps) {
   const auto = useId();
   const fid = id || auto;
   return (
-    <FieldShell id={fid} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
+    <FieldShell id={fid} personal={personal} label={label} aria-required={required || undefined} hint={hint} error={error} disabled={disabled} className={className}>
       <span className="mb-select">
         <select
           id={fid} disabled={disabled} aria-required={required || undefined} value={value}

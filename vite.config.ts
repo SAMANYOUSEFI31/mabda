@@ -3,9 +3,14 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
+// which build a session ran on (a Clarity tag, docs/test-data.md §Clarity): the build's UTC minute, so sessions before and after
+// a change can be told apart and sorted
+const BUILD = `b${new Date().toISOString().slice(2, 16).replace(/[-T:]/g, '')}`;
+
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    define: { 'import.meta.env.VITE_MABDA_BUILD': JSON.stringify(BUILD) },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

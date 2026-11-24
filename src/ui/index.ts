@@ -18,6 +18,7 @@ export type { DialogProps, MenuItem, MenuChoice } from './Overlay.tsx';
 export { Tabs, SegmentedControl, Table, List, ListItem, BottomNav, NavItem, Breadcrumb, useNavGlide } from './Navigation.tsx';
 export type { TabItem, TableColumn } from './Navigation.tsx';
 export * from './format.ts';
+export { UiText, UI_WORDS, PERSON_WORDS, uiParts } from './privacy.tsx';
 export * from './mabda.tsx';
 export { Markdown } from './Markdown.tsx';
 export type { HeadingAnchor } from './Markdown.tsx';

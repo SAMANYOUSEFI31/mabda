@@ -45,7 +45,7 @@ export const DangerDialog: React.FC<{
     >
       <div className="flex flex-col gap-stack-md">
         {children}
-        {typed && <TextField label={typed.label} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" hint={<span>برای تأیید دقیقاً بنویس: <b className="text-text-default">{typed.phrase}</b></span>} />}
+        {typed && <TextField personal label={typed.label} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" hint={<span>برای تأیید دقیقاً بنویس: <b className="text-text-default">{typed.phrase}</b></span>} />}
         {ack && <Checkbox label={ack} checked={ticked} onChange={(e) => setTicked(e.target.checked)} />}
       </div>
     </Dialog>

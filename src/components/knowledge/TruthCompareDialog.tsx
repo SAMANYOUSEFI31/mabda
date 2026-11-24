@@ -124,7 +124,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                 <div className="flex flex-wrap items-center gap-inline-xs">
                   <span className="caption text-text-subtle">زودتر:</span>
                   <Button size="sm" variant="ghost" onClick={() => { setFrom(days.monthStart); setTo(days.today); }}>از اول ماه</Button>
-                  {momentDays.map((m) => <Button key={m} size="sm" variant="ghost" aria-label={`از روز تأیید ${formatJalaliDate(m)} تا امروز`} onClick={() => { setFrom(tehranDay(m)); setTo(days.today); }}>از تأیید {formatJalaliDate(m)}</Button>)}
+                  {momentDays.map((m) => <Button personal key={m} size="sm" variant="ghost" aria-label={`از روز تأیید ${formatJalaliDate(m)} تا امروز`} onClick={() => { setFrom(tehranDay(m)); setTo(days.today); }}>از تأیید {formatJalaliDate(m)}</Button>)}
                 </div>
               </div>
             )}
@@ -160,7 +160,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
                     const limit = shown[g.nodeId] ?? PER_GROUP;
                     return (
                       <section key={g.nodeId} className="flex flex-col gap-stack-sm" aria-label={g.label}>
-                        <Button size="sm" variant="ghost" className="self-start" iconStart={isClosed ? 'ChevronDown' : 'ChevronUp'} aria-expanded={!isClosed} onClick={() => setFold((f) => ({ ...f, [g.nodeId]: isClosed }))}>{g.label} ({formatNumber(g.deltas.length)})</Button>
+                        <Button personal size="sm" variant="ghost" className="self-start" iconStart={isClosed ? 'ChevronDown' : 'ChevronUp'} aria-expanded={!isClosed} onClick={() => setFold((f) => ({ ...f, [g.nodeId]: isClosed }))}>{g.label} ({formatNumber(g.deltas.length)})</Button>
                         {!isClosed && (
                           <>
                             <ul className="flex flex-col gap-stack-sm">

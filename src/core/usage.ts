@@ -40,6 +40,8 @@ export const FEATURES: FeatureInfo[] = [
   { key: 'action.doc-download', label: 'سند دانلود شد', level: 2 },
   { key: 'action.add-switch', label: 'نوع افزودن عوض شد', level: 3 },
   { key: 'action.space-new', label: 'فضای تازه ساخته شد', level: 2 },
+  { key: 'action.hints-off', label: 'راهنمای کوچک خاموش شد', level: 3 },
+  { key: 'action.hints-on', label: 'راهنمای کوچک روشن شد', level: 3 },
 ];
 export const FEATURE_KEYS: ReadonlySet<string> = new Set(FEATURES.map((f) => f.key));
 export const isFeatureKey = (k: unknown): k is string => typeof k === 'string' && FEATURE_KEYS.has(k);

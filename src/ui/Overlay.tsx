@@ -1,5 +1,6 @@
 import { Fragment, cloneElement, createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import { UiText } from './privacy.tsx';
 import { createPortal } from 'react-dom';
 import { usePresence } from './presence.ts';
 import { cx } from './cx.ts';
@@ -13,6 +14,8 @@ export interface DialogProps {
   open: boolean;
   onClose?: () => void;
   title: ReactNode;
+  /** the title can be a person's words beyond a quoted «…» part: it stays masked in a session replay (privacy.tsx) */
+  personal?: boolean;
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
@@ -95,7 +98,7 @@ if (typeof window !== 'undefined') {
   }, true);
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false, onDiscard, steady = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false, onDiscard, steady = false, personal = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
@@ -218,7 +221,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
         <div className={cx('mb-dialog__top', scrolled && 'is-scrolled')} onPointerDown={drag}>
           <span className="mb-dialog__grab" aria-hidden="true" />
           <div className="mb-dialog__head">
-            <h2 id={`${id}-t`} className="heading-md">{title}</h2>
+            <h2 id={`${id}-t`} className="heading-md"><UiText personal={personal}>{title}</UiText></h2>
             {requestClose && <IconButton icon="X" label="بستن" onClick={requestClose} />}
           </div>
           {description && <p id={`${id}-d`} className="mb-dialog__desc body-sm">{description}</p>}

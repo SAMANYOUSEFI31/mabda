@@ -116,3 +116,12 @@ test('every summary measure has a definition the owner reads beside it (§۵۴ �
     assert.ok(d && d.label && d.formula.length > 20, `no definition for ${key}`);
   }
 });
+
+test('routeTemplate: the browser names a request as the server records it, never with an id', async () => {
+  const { routeTemplate, categoryOf } = await import('./activity.ts');
+  assert.equal(routeTemplate('post', '/workspaces/w_8f2k1/objects'), 'POST /workspaces/:wid/objects');
+  assert.equal(routeTemplate('POST', '/workspaces/w_8f2k1/objects/o_19a3c/draft/approve'), 'POST /workspaces/:wid/objects/:id/draft/approve');
+  assert.equal(routeTemplate('DELETE', '/workspaces/abc123/notes/3f9e?x=1'), 'DELETE /workspaces/:wid/notes/:id');
+  assert.equal(categoryOf(routeTemplate('POST', '/workspaces/w1/objects/o2/draft/approve')), 'confirm');
+  assert.equal(categoryOf(routeTemplate('POST', '/workspaces/w1/notes')), 'capture');
+});

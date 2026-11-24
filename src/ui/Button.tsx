@@ -4,6 +4,7 @@ import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { useShownBusy } from './useShownBusy.ts';
+import { UiText } from './privacy.tsx';
 
 type ForceState = 'hover' | 'active' | 'focus';
 
@@ -19,11 +20,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** renders an <a> when set and the button is neither disabled nor loading */
   href?: string;
   forceState?: ForceState;
+  /** the label can be a person's words (an item's name): it stays masked in a session replay (privacy.tsx) */
+  personal?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = 'secondary', size = 'md', loading = false, disabled = false, iconStart, iconEnd, fullWidth = false, glow = false,
-    href, forceState, className, children, type = 'button', ...rest }, ref,
+    href, forceState, personal = false, className, children, type = 'button', ...rest }, ref,
 ) {
   const inert = disabled || loading;
   const spin = useShownBusy(loading);
@@ -42,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       <span className="mb-btn__content">
         {iconStart && <Icon name={iconStart} size="md" />}
-        <span className="mb-btn__label">{children}</span>
+        <span className="mb-btn__label"><UiText personal={personal}>{children}</UiText></span>
         {iconEnd && <Icon name={iconEnd} size="md" className="mb-flip" />}
       </span>
       {spin && (
