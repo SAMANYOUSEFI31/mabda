@@ -314,6 +314,12 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   // «دور یک مورد» and back
   await page.getByTestId('canvas-inspector').getByRole('button', { name: 'دور این مورد' }).click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(900); await shoot('canvas-lineage');
   await page.getByRole('button', { name: 'برگشت به نمای کلی' }).click({ timeout: 1500 }).catch(() => {}); await page.waitForTimeout(300);
+  // the inspector floating over the canvas (desktop; a phone has the bottom sheet)
+  await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
+  if (await page.getByRole('button', { name: 'شناور کردن روی بوم' }).count()) {
+    await page.getByRole('button', { name: 'شناور کردن روی بوم' }).first().click(); await page.waitForTimeout(400); await shoot('canvas-inspector-floating');
+    await page.getByRole('button', { name: 'جا دادن کنار بوم' }).first().click({ timeout: 800 }).catch(() => {});
+  }
   // the three levels of detail (canvasLod.ts): far and near next to the mid level above (desktop: the zoom buttons; a phone pinches)
   if (!mobile) {
     for (let i = 0; i < 8; i++) await page.getByRole('button', { name: 'کوچک‌نمایی' }).click({ timeout: 800 }).catch(() => {});
@@ -321,12 +327,6 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
     for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'بزرگ‌نمایی' }).click({ timeout: 800 }).catch(() => {});
     await page.waitForTimeout(400); await shoot('canvas-near');
     await page.getByRole('button', { name: /^متناسب/ }).first().click({ timeout: 800 }).catch(() => {});
-  }
-  // the inspector floating over the canvas (desktop; a phone has the bottom sheet)
-  await page.locator('[data-item-id^="o:"]').first().focus(); await page.keyboard.press('Enter'); await page.waitForTimeout(300);
-  if (await page.getByRole('button', { name: 'شناور کردن روی بوم' }).count()) {
-    await page.getByRole('button', { name: 'شناور کردن روی بوم' }).first().click(); await page.waitForTimeout(400); await shoot('canvas-inspector-floating');
-    await page.getByRole('button', { name: 'جا دادن کنار بوم' }).first().click({ timeout: 800 }).catch(() => {});
   }
   // the thinking canvas: one free canvas (with the tray and section frames)
   await goTab(TABS[3]); await shoot('thinking-list');
