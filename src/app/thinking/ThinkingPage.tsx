@@ -24,12 +24,12 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
           {/* the page frame every page shares (decisions.md §۵۳ ۹): the header spans the frame like Home's; the list keeps the 680px
               reading column (§۵۱) with the filters in the margin beside it. Only the canvas takes the whole main area; the header stays
               in the frame in both views so «فهرست / بوم» does not move under the pointer */}
-          <div className="mb-page-frame"><div className="flex flex-col gap-inline-md sm:flex-row sm:items-start sm:justify-between">
-            <div>
+          <div className="mb-page-frame"><div className="mb-page-head">
+            <div className="mb-page-head__title">
               <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
               <p className="text-body-sm text-text-subtle mt-stack-xs">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-inline-sm">
+            <div className="mb-page-head__actions">
               <SegmentedControl
                 label="نمای فکر"
                 value={thinkingView}

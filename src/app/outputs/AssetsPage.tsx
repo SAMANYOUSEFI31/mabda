@@ -73,13 +73,13 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
   const importButton = <Button variant="secondary" iconStart="Upload" onClick={() => setIsImportOpen(true)}>وارد کردن پاسخ</Button>;
   return (
     <div className="mb-page-frame space-y-stack-lg">
-      <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
-        <div className="flex min-w-space-0 flex-col gap-stack-xs">
+      <div className="mb-page-head">
+        <div className="mb-page-head__title flex flex-col gap-stack-xs">
           <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
           <p className="text-body-sm text-pretty text-text-subtle">هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.</p>
         </div>
         {/* the page's one outward step (the same quiet secondary as on Home); the rest are occasional and stay in «بیشتر» */}
-        <div className="flex shrink-0 items-center gap-inline-sm">
+        <div className="mb-page-head__actions">
           {live.length > 0 && requestButton}
           {importButton}
           <Menu
