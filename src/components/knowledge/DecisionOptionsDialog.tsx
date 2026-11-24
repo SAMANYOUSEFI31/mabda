@@ -99,7 +99,7 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
               <li key={o.line} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-lg">
                 <p className="title text-text-default">{o.title}</p>
                 {(conflicts[options.findIndex((x) => x.line === o.line)] ?? []).length > 0 && <p className="body-sm text-text-subtle">با «{conflicts[options.findIndex((x) => x.line === o.line)][0].constraint.title}» تناقض دارد.</p>}
-                <Textarea label="چرا کنار رفت؟" rows={2} value={reasons[o.line] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.line]: e.target.value }))} />
+                <Textarea label="چرا کنار رفت؟" required rows={2} value={reasons[o.line] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.line]: e.target.value }))} />
               </li>
             ))}
           </ul>

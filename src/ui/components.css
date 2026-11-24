@@ -262,20 +262,8 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (forced-colors:active){.mb-nav-glide{display:none}}
 /* a page arrives by fading in place (motion.md «رفتن بین صفحه‌ها»): nothing travels, so nothing jumps; fast, opacity only */
 .mb-page-enter{animation:mb-fade var(--duration-fast) var(--ease-enter)}
-/* where the browser can (View Transitions; src/ui/pageTransition.ts), the old page first goes (exit = one step down, 80) and the new one
-   then fades in (fast): «fade through», so two pages' words are never seen on top of each other. Only the page area takes part;
-   the bars stay live (their glide runs as usual). The area's box does not morph or travel between the two. */
-::view-transition-old(root),::view-transition-new(root){animation:none}
-::view-transition-group(mb-page){animation:none}
-::view-transition-old(mb-page){animation:mb-out var(--duration-instant) var(--ease-exit) both}
-::view-transition-new(mb-page){animation:mb-fade var(--duration-fast) var(--ease-enter) var(--duration-instant) both}
-:root[data-page-vt] #main{view-transition-name:mb-page}
-/* the bars that float over the page (phone top bar, tab bar, the rail's name bar) keep their place above it during the fade */
-:root[data-page-vt] header[data-pin=app]{view-transition-name:mb-topbar}
-:root[data-page-vt] .mb-bottomnav.is-fixed{view-transition-name:mb-tabbar}
-:root[data-page-vt] .mb-rail-title{view-transition-name:mb-railtitle}
-::view-transition-group(mb-topbar),::view-transition-group(mb-tabbar),::view-transition-group(mb-railtitle),::view-transition-new(mb-topbar),::view-transition-new(mb-tabbar),::view-transition-new(mb-railtitle){animation:none}
-::view-transition-old(mb-topbar),::view-transition-old(mb-tabbar),::view-transition-old(mb-railtitle){animation:none;opacity:0}
+/* the page being left (src/ui/pageTransition.ts): exit = one step down (80), and it takes no more clicks; the bars stay live */
+.mb-page[data-leaving]{animation:mb-out var(--duration-instant) var(--ease-exit) both;pointer-events:none}
 /* a part that opens in place (motion.md «بازشدن ردیف و بخش»): its height grows from nothing with ease-standard while its content
    fades in 40 later, so what is under it is pushed, not thrown. Only where the browser can grow to «auto» (interpolate-size);
    elsewhere it simply appears, as before. Closing is still immediate. «کاهش حرکت»: no growth, a fade only. */
@@ -700,6 +688,21 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-page-head{display:flex;flex-direction:column;gap:var(--stack-sm)}
 .mb-page-head__title{min-inline-size:0}
 .mb-page-head__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--inline-sm);inline-size:100%}
+}
+/* a section's head in «ساختار» (ContextTreeDocView): the same grammar as the page head, by the section's own width (a nested section
+   is narrower than the frame, and the frame narrower than the window beside the sidebar). Below it: title, then the actions in one
+   row under it. From it: title and actions in one row, the actions never shrinking or splitting. «رفتن به بخش» and «⋯» wrap
+   together, so «⋯» never sits alone on a line (it split in 7–10 of 34 sections at 640, 768 and 1024 with the sidebar open) */
+@layer components{
+.mb-section{container:mb-section / inline-size}
+.mb-section-head{display:flex;flex-direction:column;gap:var(--inline-sm)}
+.mb-section-head__title{min-inline-size:0}
+.mb-section-head__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--inline-xs)}
+.mb-section-head__more{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--inline-xs)}
+}
+@container mb-section (min-width: 34rem){
+  .mb-section-head{flex-direction:row;align-items:center;justify-content:space-between}
+  .mb-section-head__actions{flex-wrap:nowrap;flex-shrink:0}
 }
 @container mb-frame (min-width: 54rem){
   .mb-page-head{flex-direction:row;align-items:flex-start;justify-content:space-between;gap:var(--inline-md)}

@@ -1078,7 +1078,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
       <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «واگرد» برمی‌گردد."
         footer={<><Button variant="ghost" onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
-        {moveTo && <Select label="بخش" value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
+        {moveTo && <Select label="بخش" hint={moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId ? 'این مورد همین حالا در این بخش است؛ بخش دیگری انتخاب کن.' : undefined} value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
       </Dialog>
 
       <Dialog open={!!fromItems} onClose={() => setFromItems(null)} size="sm" title={`ساخت بخش از ${formatNumber(picked.length)} مورد`}

@@ -208,10 +208,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           {selectMode && selectedThoughts.length > 0 && (
             <Card padding="none" className="think-bar flex items-center gap-inline-sm p-inset-sm shadow-overlay" aria-label="عملیات فکرهای انتخاب‌شده">
               {/* one row at every width (a phone too): the count, the main thing to do, the rest under ⋯, and a way out */}
-              <span className="body-sm min-w-space-0 flex-1 text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده</span>
+              <span className="body-sm min-w-space-0 flex-1 text-text-subtle">{formatNumber(selectedThoughts.length)} فکر انتخاب شده{selectedThoughts.length < 2 ? '؛ برای ترکیب، یکی دیگر هم انتخاب کن' : ''}</span>
               <Button size="sm" variant="secondary" iconStart="Layers" disabled={selectedThoughts.length < 2} onClick={startSynthesis}>ساخت فکر ترکیبی</Button>
               {p.onThinkWithAi && <Menu label="کارهای دیگر با فکرهای انتخاب‌شده" align="end" trigger={<IconButton icon="Ellipsis" label="کارهای دیگر با فکرهای انتخاب‌شده" size="sm" />}
-                items={[{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', disabled: selectedThoughts.length > 12, onSelect: () => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); } }]} />}
+                items={[{ label: selectedThoughts.length > 12 ? `درخواست برای ابزار دیگر (تا ${formatNumber(12)} فکر)` : 'درخواست برای ابزار دیگر', text: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', disabled: selectedThoughts.length > 12, onSelect: () => { if (p.onThinkWithAi) p.onThinkWithAi(selectedThoughtIds); } }]} />}
               <IconButton icon="X" label="لغو انتخاب" size="sm" onClick={() => setSelectedIds([])} />
             </Card>
           )}
