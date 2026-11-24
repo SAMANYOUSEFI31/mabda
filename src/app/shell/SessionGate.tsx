@@ -10,6 +10,8 @@ import { Button, EmptyState, ErrorState, PageSkeleton } from '../../ui';
 import { SIGNED_OUT_EVENT, SessionError, forgetInviteCode, inviteCodeInAddress, sessionApi } from '../../services/session';
 import type { SessionInfo } from '../../services/session';
 import { startClarity } from '../../services/clarity';
+import { visitId } from '../../services/activity';
+import { testerCode } from '../../core/testerCode';
 
 type GateState = { status: 'checking' } | { status: 'in'; session: SessionInfo } | { status: 'out'; reason?: 'invalid_link' | 'signed_out' } | { status: 'error'; message: string };
 
@@ -65,7 +67,9 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   const user = state.status === 'in' ? state.session.user : null;
   const clarityId = state.status === 'in' ? state.session.clarityId : undefined;
   // session analytics: only a tester who has accepted the notice (it names Clarity), never the owner or the local person
-  useEffect(() => { if (clarityId && user?.role === 'tester' && user.consented) startClarity(clarityId); }, [clarityId, user?.role, user?.consented]);
+  useEffect(() => {
+    if (clarityId && user?.role === 'tester' && user.consented) startClarity(clarityId, { tester: testerCode(user.id), visit: visitId(), build: import.meta.env.VITE_MABDA_BUILD as string | undefined });
+  }, [clarityId, user?.role, user?.consented, user?.id]);
   const accept = async () => {
     setConsenting(true); setConsentError(null);
     try { setState({ status: 'in', session: await sessionApi.consent() }); }

@@ -20,7 +20,7 @@ export interface ActivityEvent {
 }
 
 /** the names a browser may send (everything else is refused: the browser is not trusted to invent kinds of events) */
-export const UI_EVENTS = ['session_start', 'view', 'dialog_open', 'dialog_close', 'heartbeat', 'hidden', 'visible', 'feature', 'search'] as const;
+export const UI_EVENTS = ['session_start', 'view', 'dialog_open', 'dialog_close', 'heartbeat', 'hidden', 'visible', 'feature', 'search', 'tour'] as const;
 export type UiEventName = typeof UI_EVENTS[number];
 export const isUiEvent = (v: unknown): v is UiEventName => typeof v === 'string' && (UI_EVENTS as readonly string[]).includes(v);
 
@@ -73,6 +73,17 @@ export function actionProps(body: unknown): Props | undefined {
   if (Array.isArray(b.entries)) raw.items = b.entries.length;
   if (typeof b.objectId === 'string' && b.objectId) raw.onTruth = true;
   return cleanProps(raw);
+}
+
+/**
+ * The browser's view of a request as the server names it (server/activity.ts records `req.route.path`): every path segment that
+ * is not a route word (an id) becomes `:id`, and the one after `workspaces` becomes `:wid`. Used to name a request in the session
+ * replay (src/services/activity.ts → noteAction) with the same categories as the server's record; never an id.
+ */
+export function routeTemplate(method: string, path: string): string {
+  const parts = path.split('?')[0].split('/').filter(Boolean);
+  const out = parts.map((p, i) => (parts[i - 1] === 'workspaces' ? ':wid' : /^[a-z]+(-[a-z]+)*$/.test(p) && p.length <= 24 ? p : ':id'));
+  return `${method.toUpperCase()} /${out.join('/')}`;
 }
 
 // ── what an action means (analysis, not recording: the raw name stays the route, so this map can change later) ──

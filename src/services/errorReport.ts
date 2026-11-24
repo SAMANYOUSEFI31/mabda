@@ -3,6 +3,8 @@
  * Never what the person wrote: only the error's name, its message with quoted or non-Latin runs removed, the code locations of
  * the stack, and the page path without query or hash. The server cleans it again. A report never throws and never loops.
  */
+import { clarityFlag } from './clarity';
+
 const scrub = (s: unknown, max: number) => (typeof s === 'string' ? s : '')
   .replace(/"[^"]*"|'[^']*'|«[^»]*»|`[^`]*`|“[^”]*”/g, '…').replace(/[^\x20-\x7E]+/g, '…').replace(/\s+/g, ' ').trim().slice(0, max);
 
@@ -15,6 +17,8 @@ export function reportError(err: unknown, extra: { componentStack?: string } = {
     // the same error over and over (a render loop) is one report; at most 20 per page load
     if (key === last || sent >= 20) return;
     last = key; sent++;
+    // the replay of this moment is the one to watch: a crash of the page (a render error) or any other error
+    clarityFlag(extra.componentStack ? 'app_crash' : 'js_error');
     const stack = [e.stack ?? '', extra.componentStack ?? ''].join('\n').split('\n').filter((l) => /^\s*at\s|@/.test(l)).slice(0, 14).map((l) => scrub(l.replace(/[?#][^\s):]*/g, ''), 200)).join('\n');
     void fetch('/api/client-errors', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,

@@ -8,6 +8,7 @@ import { Alert, Button, Dialog, EmptyState, ErrorState, List, ListItem, PageSkel
 import { ownerApi } from '../../services/dataApi';
 import { TestDataSection } from './TestDataSection';
 import type { ErrorReportInfo, PersonInfo } from '../../services/dataApi';
+import { testerCode } from '../../core/testerCode';
 
 interface Props { open: boolean; onClose: () => void }
 
@@ -73,7 +74,7 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
                   <ListItem
                     key={p.id}
                     title={p.name}
-                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)} · ${(p.consentVersion ?? 0) >= OWNER_NOTICE_VERSION ? 'آگاهی از دسترسی تو را پذیرفته' : 'هنوز آگاهی را نپذیرفته'}` : 'هنوز وارد نشده'}
+                    description={p.disabledAt ? 'خاموش: لینکش کار نمی‌کند (داده‌اش می‌ماند)' : p.lastSeenAt ? `آخرین بار: ${formatJalaliDateTime(p.lastSeenAt)} · ${(p.consentVersion ?? 0) >= OWNER_NOTICE_VERSION ? 'آگاهی از دسترسی تو را پذیرفته' : 'هنوز آگاهی را نپذیرفته'} · کد بازپخش ${testerCode(p.id)}` : `هنوز وارد نشده · کد بازپخش ${testerCode(p.id)}`}
                     trailing={(
                       <span className="flex flex-wrap gap-inline-xs">
                         <Button size="sm" variant="ghost" iconStart="RefreshCw" disabled={busy} onClick={() => void replace(p)}>لینک تازه</Button>

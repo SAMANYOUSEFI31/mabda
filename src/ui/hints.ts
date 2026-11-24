@@ -16,6 +16,8 @@ export function setHintsOn(next: boolean) {
   on = next;
   try { localStorage.setItem(KEY, next ? 'on' : 'off'); } catch { /* private mode: the choice lasts this visit */ }
   listeners.forEach((l) => l());
+  // the user-test record listens (src/services/activity.ts), like «mabda:dialog»; the design system never imports a service
+  try { window.dispatchEvent(new CustomEvent('mabda:hints', { detail: { on: next } })); } catch { /* optional */ }
 }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 export function useHints(): [boolean, (v: boolean) => void] {

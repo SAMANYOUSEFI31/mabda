@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom';
 import { Button } from './Button.tsx';
 import { formatNumber } from './format.ts';
+import { UI_WORDS } from './privacy.tsx';
 
 /**
  * A short guided walk over the real interface (decisions.md §۴۸): a spotlight on one control, one or two sentences beside it,
@@ -55,6 +56,9 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
     };
   }, [open]);
   useEffect(() => { if (open) setI(0); }, [open]);
+  // the user-test record listens (src/services/activity.ts), like «mabda:dialog»: which step, of how many, and how it ended
+  const say = (action: 'start' | 'next' | 'back' | 'done' | 'skip', at: number) => { try { window.dispatchEvent(new CustomEvent('mabda:tour', { detail: { action, step: at + 1, steps: steps.length } })); } catch { /* optional */ } };
+  useEffect(() => { if (open) say('start', 0); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!open || !step) return null;
 
   const last = i === steps.length - 1;
@@ -73,19 +77,20 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
   }
 
   return createPortal(
-    <div className="mb-tour" onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } }}>
+    <div className="mb-tour" onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); say('skip', i); onClose(); } }}>
       {rect ? <div className="mb-tour__spot" aria-hidden="true" style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }} /> /* check:design-ignore (viewport geometry) */
         : <div className="mb-tour__scrim" aria-hidden="true" />}
-      <div ref={card} role="dialog" aria-modal="true" aria-labelledby="mb-tour-title" aria-describedby="mb-tour-body" dir="rtl"
+      {/* a step is the app's own words (TourStep is written in code), so a session replay may read it (privacy.tsx) */}
+      <div ref={card} role="dialog" aria-modal="true" aria-labelledby="mb-tour-title" aria-describedby="mb-tour-body" dir="rtl" {...UI_WORDS}
         className="mb-tour__card flex flex-col gap-stack-sm rounded-container border border-border-default bg-surface-overlay p-inset-lg shadow-raised" style={pos}>
         <p className="caption text-text-subtle">{formatNumber(i + 1)} از {formatNumber(steps.length)}</p>
         <h2 id="mb-tour-title" className="heading-sm text-text-default">{step.title}</h2>
         <p id="mb-tour-body" className="body-md text-text-default">{step.body}</p>
         <div className="flex flex-wrap items-center justify-between gap-inline-sm pt-stack-xs">
-          <Button size="sm" variant="ghost" onClick={onClose}>{last ? 'بستن' : 'بعداً'}</Button>
+          <Button size="sm" variant="ghost" onClick={() => { say(last ? 'done' : 'skip', i); onClose(); }}>{last ? 'بستن' : 'بعداً'}</Button>
           <span className="flex gap-inline-xs">
-            {i > 0 && <Button size="sm" variant="ghost" onClick={() => setI(i - 1)}>قبلی</Button>}
-            <Button size="sm" variant="secondary" data-tour-next="" onClick={() => (last ? onClose() : setI(i + 1))}>{last ? 'شروع کنم' : 'بعدی'}</Button>
+            {i > 0 && <Button size="sm" variant="ghost" onClick={() => { say('back', i - 1); setI(i - 1); }}>قبلی</Button>}
+            <Button size="sm" variant="secondary" data-tour-next="" onClick={() => { if (last) { say('done', i); onClose(); } else { say('next', i + 1); setI(i + 1); } }}>{last ? 'شروع کنم' : 'بعدی'}</Button>
           </span>
         </div>
       </div>
