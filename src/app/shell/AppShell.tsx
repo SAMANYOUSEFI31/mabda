@@ -72,7 +72,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
             </p>
           )}
           {/* keyed by the page: a new page fades in place (motion.md «رفتن بین صفحه‌ها») */}
-          <div key={activeTab === 'workstreams' ? 'assets' : activeTab} className={cx(pageEnterClass, 'space-y-stack-lg')}>{children}</div>
+          <div key={activeTab === 'workstreams' ? 'assets' : activeTab} className={cx('mb-page', pageEnterClass, 'space-y-stack-lg')}>{children}</div>
         </main>
       </div>
 

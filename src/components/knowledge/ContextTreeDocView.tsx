@@ -6,7 +6,7 @@
 import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
 import { SectionScrubber, useReadingPosition } from './readingPosition';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
@@ -80,6 +80,11 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   useEffect(() => { if (props.openNotesFor) setOpenNotes((s) => new Set(s).add(props.openNotesFor!.nodeId)); }, [props.openNotesFor]);
   // entering / leaving a section moves focus to its heading: keyboard and screen-reader users land IN the new place (Alt+↑ and the arrows keep working)
   useEffect(() => { if (!props.focusId) return; const t = requestAnimationFrame(() => document.getElementById(`node-${props.focusId}`)?.focus({ preventScroll: true })); return () => cancelAnimationFrame(t); }, [props.focusId]);
+  // «حقیقت» answers at once: the first two main sections (what fills the first screen) are drawn with the page, the rest right after,
+  // in a transition the browser can interrupt for a click or a key. Drawing all 34 sections of the sample at once held the page for
+  // 180–220ms on a desktop and about 900ms on a mid-range phone, with no answer to the press (INP)
+  const [allRoots, setAllRoots] = useState(false);
+  useEffect(() => { const t = requestAnimationFrame(() => startTransition(() => setAllRoots(true))); return () => cancelAnimationFrame(t); }, []);
   const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
   const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const quick = (id: string) => quickMoves(nodes, id);
@@ -145,17 +150,18 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
     return (
-      <section key={node.id} className={`flex flex-col gap-stack-md ${depth > 0 ? 'ps-inset-lg border-s border-border-subtle' : ''}`} aria-labelledby={`node-${node.id}`}>
-        <div className="flex flex-col gap-inline-sm border-b border-border-subtle pb-inset-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-space-0 flex-wrap items-baseline gap-x-inline-sm">
+      <section key={node.id} className={`mb-section flex flex-col gap-stack-md ${depth > 0 ? 'ps-inset-lg border-s border-border-subtle' : ''}`} aria-labelledby={`node-${node.id}`}>
+        <div className="mb-section-head border-b border-border-subtle pb-inset-sm">
+          <div className="mb-section-head__title flex flex-wrap items-baseline gap-x-inline-sm">
             <span className="label-md tabular-nums text-text-subtlest">{path}</span>
             <h3 id={`node-${node.id}`} tabIndex={-1} className="doc-anchor heading-xs text-text-default">{node.label}</h3>
             {node.description && <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>}
           </div>
-          <div className="flex flex-wrap items-center gap-inline-xs">
+          <div className="mb-section-head__actions">
             {/* one main action; everything else is under «⋯» */}
             {/* a scoped add: it says WHAT it adds (this list is truth) and opens locked to it, on this section (docs/ux/decisions.md §۲) */}
             <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن حقیقت به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن حقیقت</Button>
+            <span className="mb-section-head__more">
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>رفتن به بخش</Button>}
             <Menu
               label={`عملیات بخش ${node.label}`}
@@ -182,6 +188,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'حذف', icon: 'Trash2', intent: 'danger', onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
               ]}
             />
+            </span>
           </div>
         </div>
 
@@ -310,7 +317,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         </div>
       </div>
       <OutlineBar nodes={nodes} />
-      <div id="structure-tree" className="flex flex-col gap-stack-xl">{roots.map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
+      <div id="structure-tree" className="flex flex-col gap-stack-xl">{(allRoots ? roots : roots.slice(0, 2)).map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
   );

@@ -168,7 +168,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <div className="flex flex-col gap-stack-md">
             {path === 'memory' && <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />}
             {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
-            <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint="هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست." />
+            <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint={text.trim().length < 20 ? `دست‌کم ${formatNumber(20)} نویسه بنویس یا بچسبان. هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست.` : "هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست."} />
           </div>
         )}
 

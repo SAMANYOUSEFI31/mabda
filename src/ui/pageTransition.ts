@@ -1,31 +1,44 @@
 /**
- * Going from one page to another (motion.md «رفتن بین صفحه‌ها»): where the browser has View Transitions, the old page fades out
- * (80) and then the new one fades in (140) in the same place, «fade through», so the words of two pages never sit on top of each
- * other; the bars are not part of it. Elsewhere the new page simply fades in (`.mb-page-enter`), as before.
+ * Going from one page to another (motion.md «رفتن بین صفحه‌ها», decisions.md §۵۷): «fade through». The page being left fades out
+ * (exit = one step down, 80) and only then is the new one drawn, fading in (140) in the same place, so the words of two pages never
+ * sit on top of each other. The bars are not part of it: they stay live and the indicator glides at once (AppNavigation).
  *
- * «قطع و ادامه»: a second switch while one is running ends the first at once (skipTransition), so nothing waits for a fade.
- * The update runs synchronously inside the browser's callback (flushSync), so the new page is what the browser captures.
+ * Plain CSS on the page area, not View Transitions: while a view transition runs, the browser hit-tests its picture of the page,
+ * so every click and tap (a bar too) was lost for 300–500ms, and up to 1.4s on a mid-range phone after a heavy page. Here the page
+ * being left only stops taking pointer events; everything else answers at once.
+ *
+ * «قطع و ادامه»: a second switch while the first is still leaving goes straight to the newest page, with no second fade.
  */
-import { flushSync } from 'react-dom';
 
-type ViewTransitionLike = { finished: Promise<void>; skipTransition: () => void };
-type DocWithVT = Document & { startViewTransition?: (cb: () => void) => ViewTransitionLike };
+/** the class a new page wears: it fades in where it appears (the page area is keyed by the page, so it plays on every switch) */
+export const pageEnterClass = 'mb-page-enter';
 
-/** the class a new page wears: the plain fade-in only where the browser has no View Transitions (otherwise the fade is the browser's,
- * and a CSS animation on the page would replay when the transition ends) */
-export const pageEnterClass = typeof document !== 'undefined' && typeof (document as DocWithVT).startViewTransition === 'function' ? '' : 'mb-page-enter';
+let pending: { timer: number; update: () => void } | null = null;
 
-let running: ViewTransitionLike | null = null;
+/** the length of the exit step, from the motion tokens (0 when «کاهش حرکت» asks for no wait) */
+const exitMs = (el: Element): number => {
+  const v = getComputedStyle(el).getPropertyValue('--duration-instant').trim();
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? (v.endsWith('ms') ? n : n * 1000) : 80;
+};
 
 export function switchPage(update: () => void): void {
-  const doc = document as DocWithVT;
-  // a hidden tab (or a test without a screen) has nothing to show; the browser would skip it anyway
-  if (typeof doc.startViewTransition !== 'function' || document.visibilityState !== 'visible') { update(); return; }
-  running?.skipTransition();
-  const root = document.documentElement;
-  root.dataset.pageVt = '';
-  const vt = doc.startViewTransition(() => { flushSync(update); });
-  running = vt;
-  const done = () => { if (running === vt) { running = null; delete root.dataset.pageVt; } };
-  vt.finished.then(done, done);
+  const page = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('#main > .mb-page') : null;
+  if (pending) {
+    // a second switch during the exit: no second fade, the newest page comes now
+    clearTimeout(pending.timer);
+    pending = null;
+    page?.removeAttribute('data-leaving');
+    update();
+    return;
+  }
+  // a hidden tab (or a test without a screen) has nothing to show
+  if (!page || document.visibilityState !== 'visible') { update(); return; }
+  page.setAttribute('data-leaving', '');
+  const timer = window.setTimeout(() => {
+    pending = null;
+    page.removeAttribute('data-leaving');
+    update();
+  }, exitMs(page));
+  pending = { timer, update };
 }

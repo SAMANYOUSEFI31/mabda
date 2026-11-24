@@ -69,7 +69,13 @@ function useMedia(q: string): boolean {
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
-  const { currentWorkspace, allWorkspaces, activeTab, onTabChange } = p;
+  const { currentWorkspace, allWorkspaces } = p;
+  // the place she asked for shows as chosen at once (the indicator starts its glide on the same frame as the press), while the page
+  // itself is still on its way (src/ui/pageTransition.ts); once the page arrives, or anything else changes the page, the real one rules.
+  // Kept here, not in the app state, so the press re-renders only the bars, never the page being left
+  const [asked, setAsked] = useState<{ tab: string; from: string } | null>(null);
+  const activeTab = asked && asked.from === p.activeTab ? asked.tab : p.activeTab;
+  const onTabChange = (tab: string) => { setAsked({ tab, from: p.activeTab }); p.onTabChange(tab); };
   const [drawer, setDrawer] = useState(false);
   // navigation.md «رفتار در هر پهنا»: ≥1280 open, 1024–1279 narrow (icons only) unless the person opened it, 768–1023 always narrow
   // and «open» means a drawer OVER the page with a scrim (closes on a destination or Esc). The person's choice wins; remembered per device.
