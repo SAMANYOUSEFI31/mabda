@@ -262,8 +262,6 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (forced-colors:active){.mb-nav-glide{display:none}}
 /* a page arrives by fading in place (motion.md «رفتن بین صفحه‌ها»): nothing travels, so nothing jumps; fast, opacity only */
 .mb-page-enter{animation:mb-fade var(--duration-fast) var(--ease-enter)}
-/* the page being left (src/ui/pageTransition.ts): exit = one step down (80), and it takes no more clicks; the bars stay live */
-.mb-page[data-leaving]{animation:mb-out var(--duration-instant) var(--ease-exit) both;pointer-events:none}
 /* a part that opens in place (motion.md «بازشدن ردیف و بخش»): its height grows from nothing with ease-standard while its content
    fades in 40 later, so what is under it is pushed, not thrown. Only where the browser can grow to «auto» (interpolate-size);
    elsewhere it simply appears, as before. Closing is still immediate. «کاهش حرکت»: no growth, a fade only. */

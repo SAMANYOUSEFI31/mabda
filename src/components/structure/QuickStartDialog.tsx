@@ -55,6 +55,8 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // patterns.md §6: the primary stays live; a press with something missing says what, next to the field
+  const [need, setNeed] = useState<null | 'answers' | 'text' | 'pick'>(null);
   const [created, setCreated] = useState<ContextObject[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [pack, setPack] = useState<PackInfo | null>(null);
@@ -141,12 +143,12 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <>
             <Button variant="ghost" onClick={() => { setStep('choose'); setError(null); }}>بازگشت</Button>
             {path === 'questions'
-              ? <Button variant="primary" loading={busy} disabled={answered.length < 2} onClick={saveAnswers}>آماده‌سازی بسته</Button>
-              : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={text.trim().length < 20} onClick={extract}>استخراج دانش</Button>}
+              ? <Button variant="primary" loading={busy} onClick={() => { if (answered.length < 2) { setNeed('answers'); return; } setNeed(null); void saveAnswers(); }}>آماده‌سازی بسته</Button>
+              : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={!text.trim()} onClick={() => { if (text.trim().length < 20) { setNeed('text'); return; } setNeed(null); void extract(); }}>استخراج دانش</Button>}
           </>
         )
         : step === 'review' ? (
-          <><Button variant="ghost" onClick={() => setStep('pack')}>بدون تأیید ادامه بده</Button><Button variant="primary" loading={busy} disabled={!picked.size} onClick={confirm}>تأیید {formatNumber(picked.size)} مورد و ساخت بسته</Button></>
+          <><Button variant="ghost" onClick={() => setStep('pack')}>بدون تأیید ادامه بده</Button><Button variant="primary" loading={busy} onClick={() => { if (!picked.size) { setNeed('pick'); return; } setNeed(null); void confirm(); }}>تأیید {formatNumber(picked.size)} مورد و ساخت بسته</Button></>
         ) : (
           <Button variant="primary" onClick={onClose}>تمام شد</Button>
         )
@@ -168,7 +170,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
           <div className="flex flex-col gap-stack-md">
             {path === 'memory' && <Select label="این حافظه از کجاست؟" value={source} onChange={(e) => setSource(e.target.value)} options={SOURCES.map((s) => ({ value: s, label: s }))} />}
             {path === 'memory' && <p className="body-sm text-text-subtle">در آن ابزار بنویس: «هر چیزی که دربارهٔ من یاد گرفته‌ای را به‌صورت فهرست مرتب بنویس؛ حدس نزن.» و پاسخش را اینجا بچسبان.</p>}
-            <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} hint={text.trim().length < 20 ? `دست‌کم ${formatNumber(20)} نویسه بنویس یا بچسبان. هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست.` : "هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست."} />
+            <Textarea label={path === 'memory' ? 'حافظه' : 'متن'} rows={9} value={text} onChange={(e) => setText(e.target.value)} error={need === 'text' && text.trim().length < 20 ? `دست‌کم ${formatNumber(20)} نویسه لازم است؛ حالا ${formatNumber(text.trim().length)} است.` : undefined} hint={text.trim().length < 20 ? `دست‌کم ${formatNumber(20)} نویسه بنویس یا بچسبان. هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست.` : "هرچه استخراج شود «پیشنهادی» است و با نقل همان بخش از متن می‌آید؛ تا تأیید نکنی واقعیت نیست."} />
           </div>
         )}
 
@@ -177,7 +179,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
             {QUESTIONS.map((q) => (q.multiline
               ? <Textarea key={q.key} label={q.label} rows={2} value={answers[q.key] ?? ''} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />
               : <TextField key={q.key} label={q.label} value={answers[q.key] ?? ''} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />))}
-            <p className="body-sm text-text-subtle">به دست‌کم دو سؤال جواب بده؛ بقیه را هر وقت خواستی در «حقیقت» بنویس.</p>
+            <p className={need === 'answers' && answered.length < 2 ? 'body-sm text-text-danger' : 'body-sm text-text-subtle'} role={need === 'answers' && answered.length < 2 ? 'alert' : undefined}>به دست‌کم دو سؤال جواب بده؛ بقیه را هر وقت خواستی در «حقیقت» بنویس.</p>
           </div>
         )}
 
@@ -195,6 +197,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                     </li>
                   ))}
                 </ul>
+                {need === 'pick' && !picked.size && <p className="body-sm text-text-danger" role="alert">دست‌کم یکی را انتخاب کن، یا «بدون تأیید ادامه بده».</p>}
               </>
             )}
           </div>

@@ -38,6 +38,9 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
   useEffect(() => { setPendingImportFile(null); }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // patterns.md §6: the primary stays live; a press with something missing says what, where it is missing
+  const [need, setNeed] = useState<null | 'source' | 'kept'>(null);
+  const needKept = useRef<HTMLParagraphElement>(null);
   const [preview, setPreview] = useState<DocumentPreviewInfo | null>(null);
   const [chunks, setChunks] = useState<ImportChunk[]>([]);
   const [left, setLeft] = useState<Set<string>>(new Set());
@@ -74,8 +77,10 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
   const footer = done
     ? <Button variant="primary" onClick={onClose}>بستن</Button>
     : preview
-      ? <><Button variant="ghost" onClick={reset} disabled={busy}>برگشت</Button><Button variant="primary" iconStart="Check" loading={busy} disabled={!!preview.duplicate || kept.length === 0} onClick={save}>{kept.length ? `ساخت ${formatNumber(kept.length)} یادداشت` : 'ساخت یادداشت'}</Button></>
-      : <><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Eye" loading={busy} disabled={!file && !text.trim()} onClick={runPreview}>پیش‌نمایش</Button></>;
+      ? <><Button variant="ghost" onClick={reset} disabled={busy}>برگشت</Button>{preview.duplicate
+          ? <Button variant="primary" onClick={onClose}>بستن</Button>
+          : <Button variant="primary" iconStart="Check" loading={busy} onClick={() => { if (!kept.length) { setNeed('kept'); requestAnimationFrame(() => needKept.current?.scrollIntoView({ block: 'nearest' })); return; } setNeed(null); void save(); }}>{kept.length ? `ساخت ${formatNumber(kept.length)} یادداشت` : 'ساخت یادداشت'}</Button>}</>
+      : <><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Eye" loading={busy} onClick={() => { if (!file && !text.trim()) { setNeed('source'); return; } setNeed(null); void runPreview(); }}>پیش‌نمایش</Button></>;
 
   return (
     <Dialog
@@ -97,7 +102,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
               <span className="body-sm text-text-subtle">{file ? file.name : 'txt، md، docx یا pdf متنی، تا ۲۵ مگابایت'}</span>
               {file && <Button size="sm" variant="ghost" onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ''; }}>برداشتن فایل</Button>}
             </div>
-            <Textarea label={file ? 'یا متن را بچسبان (با فایل انتخاب‌شده کاری ندارد)' : 'یا متن را بچسبان'} dir="auto" rows={9} value={text} disabled={!!file} onChange={(e) => setText(e.target.value)} hint="متن بی‌تیتر و نامرتب هم درست وارد می‌شود." />
+            <Textarea label={file ? 'یا متن را بچسبان (با فایل انتخاب‌شده کاری ندارد)' : 'یا متن را بچسبان'} dir="auto" rows={9} value={text} disabled={!!file} onChange={(e) => setText(e.target.value)} error={need === 'source' && !file && !text.trim() ? 'یک فایل انتخاب کن یا متنی اینجا بچسبان.' : undefined} hint="متن بی‌تیتر و نامرتب هم درست وارد می‌شود." />
             {managedEnabled && <div><Button size="sm" variant="ghost" iconStart="FolderInput" onClick={onSwitch}>به‌جای این، حافظهٔ ابزار دیگر را وارد کن</Button></div>}
           </div>
         )}
@@ -125,6 +130,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
               </div>
             )}
 
+            {need === 'kept' && !kept.length && <p ref={needKept} className="body-sm text-text-danger" role="alert">همهٔ تکه‌ها کنار گذاشته شده‌اند؛ دست‌کم یکی را نگه دار.</p>}
             <ol className="flex flex-col gap-stack-sm">
               {chunks.map((c, i) => {
                 const off = left.has(c.id);

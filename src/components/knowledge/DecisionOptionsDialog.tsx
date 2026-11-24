@@ -40,7 +40,9 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
   const [reasons, setReasons] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { if (p.open) { setDraft(''); setChosen(null); setReasons({}); setError(null); } }, [p.open, p.item?.key]);
+  // patterns.md §6: «انتخاب این گزینه» stays live; a press with a reason missing marks each empty one where it is
+  const [tried, setTried] = useState(false);
+  useEffect(() => { if (p.open) { setDraft(''); setChosen(null); setReasons({}); setError(null); setTried(false); } }, [p.open, p.item?.key]);
 
   const item = p.item;
   const options = useMemo(() => (item ? optionsOf(p.noteContent, item.endLine ?? item.line, p.objects, p.nodes) : []), [item, p.noteContent, p.objects, p.nodes]);
@@ -60,7 +62,7 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
       open={p.open} onClose={p.onClose} size="xl" title={chosen ? 'چرا بقیه کنار رفتند؟' : 'گزینه‌های این تصمیم'}
       description={chosen ? `«${chosen.title}» انتخاب می‌شود. برای هر گزینهٔ دیگر یک دلیل کوتاه بنویس؛ با تصمیم می‌ماند.` : question}
       footer={chosen
-        ? <><Button variant="ghost" onClick={() => setChosen(null)}>برگشت</Button><Button variant="primary" loading={busy} disabled={!ready} onClick={confirm}>انتخاب این گزینه</Button></>
+        ? <><Button variant="ghost" onClick={() => { setChosen(null); setTried(false); }}>برگشت</Button><Button variant="primary" loading={busy} onClick={() => { if (!ready) { setTried(true); return; } void confirm(); }}>انتخاب این گزینه</Button></>
         : <><Button variant="ghost" iconStart="PackageOpen" disabled={options.length < 2} onClick={() => p.onAskAi(askText(question, options))}>پرسیدن نظر از ابزار دیگر</Button><Button variant="secondary" onClick={p.onClose}>بستن</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
@@ -99,7 +101,7 @@ export const DecisionOptionsDialog: React.FC<Props> = (p) => {
               <li key={o.line} className="flex flex-col gap-stack-xs rounded-control border border-border-default bg-surface-raised p-inset-lg">
                 <p className="title text-text-default">{o.title}</p>
                 {(conflicts[options.findIndex((x) => x.line === o.line)] ?? []).length > 0 && <p className="body-sm text-text-subtle">با «{conflicts[options.findIndex((x) => x.line === o.line)][0].constraint.title}» تناقض دارد.</p>}
-                <Textarea label="چرا کنار رفت؟" required rows={2} value={reasons[o.line] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.line]: e.target.value }))} />
+                <Textarea label="چرا کنار رفت؟" required rows={2} error={tried && !(reasons[o.line] ?? '').trim() ? 'یک دلیل کوتاه بنویس.' : undefined} value={reasons[o.line] ?? ''} onChange={(e) => setReasons((r) => ({ ...r, [o.line]: e.target.value }))} />
               </li>
             ))}
           </ul>

@@ -110,11 +110,11 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           );
   return (
         <div className="mb-page-frame space-y-stack-lg">
-          <div className="flex flex-col gap-stack-sm sm:flex-row sm:items-start sm:justify-between sm:gap-inline-md">
-            <div>
+          <div className="mb-page-head">
+            <div className="mb-page-head__title">
               <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
             </div>
-            <div className="flex flex-wrap items-center gap-inline-sm">
+            <div className="mb-page-head__actions">
               {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
               {/* the one outward step of the core loop (truth → another tool) is visible, as a quiet secondary; the rest are occasional
                   and stay in «بیشتر» (decisions.md §۴): weekly review and stale outputs already come to «منتظر تو» when they are due */}
