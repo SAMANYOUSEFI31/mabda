@@ -5,14 +5,14 @@
  * the running app; then the home page of the sample workspace and the source-of-truth page are captured, light and dark.
  *
  * Usage: node scripts/tokens/directions.mjs [baseUrl]   (default http://localhost:3100; the server must be running)
- * Output: docs/ux/identity-directions/<direction>-<page>-<width>-<mode>.png
+ * Output: docs/screens/identity-directions/<direction>-<page>-<width>-<mode>.png (در mabda-assets؛ gitignore شده)
  */
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { loadSources, buildTokensCss } from './build.mjs';
 
 const BASE = process.argv[2] || 'http://localhost:3100';
-const OUT = 'docs/ux/identity-directions';
+const OUT = 'docs/screens/identity-directions';
 mkdirSync(OUT, { recursive: true });
 
 const ok = (L, C, H) => ({ $value: { colorSpace: 'oklch', components: [L, C, H] } });
