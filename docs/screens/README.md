@@ -6,4 +6,4 @@
 - برای دیدن تصویرِ ارجاع‌شده در سندها (مثل `docs/ux/decisions.md`)، همان مسیر را در `mabda-assets` باز کن.
 - تصویر تازه که باید ماندگار شود: در clone محلی `mabda-assets` در همان مسیر بگذار و آنجا کامیت کن.
 - `gallery-manifest.json` و `states.md` (متن کم‌حجم) همین‌جا می‌مانند.
-- تصویرهای `docs/ux/identity-directions` و `docs/ux/rework` (حدود ۴ مگابایت) فعلاً در mabda ماندند چون سندها مستقیم به آن‌ها لینک می‌دهند.
+- تصویرهای `docs/ux/identity-directions` و `docs/ux/rework` به `docs/screens/identity-directions` و `docs/screens/ux-rework` در mabda-assets منتقل شدند (PR جدا). تصویرهای ممیزی (`audit-gemini-layout`، `audit-taste`، `card-boundary-study`) هم آنجاست.
