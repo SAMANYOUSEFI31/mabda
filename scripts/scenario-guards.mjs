@@ -210,6 +210,30 @@ try {
     await ctx.close();
   }
 
+  step('2C-6.6 · the phone\'s back closes the open dialog first, not the page (platform standard)');
+  {
+    const { ctx, page } = await open(390, 844);
+    await sample(page);
+    await nav(page, 'حقیقت');
+    const dlg = page.getByRole('dialog', { name: 'اسکلت شروع' });
+    const openIt = async () => { await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).click(); await page.getByRole('menuitem', { name: 'اسکلت شروع و قالب‌ها' }).click(); await dlg.waitFor({ timeout: 3000 }); };
+    await guard('[390] back closes the dialog and stays on the page; × leaves no extra step', async () => {
+      const url = page.url();
+      const before = await page.evaluate(() => history.length);
+      await openIt();
+      await page.goBack();
+      await dlg.waitFor({ state: 'detached', timeout: 3000 });
+      assert.equal(page.url(), url, 'back left the page');
+      assert.ok(await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).isVisible(), 'back left «حقیقت»');
+      await openIt();
+      await dlg.getByRole('button', { name: 'بستن' }).first().click();
+      await dlg.waitFor({ state: 'detached', timeout: 3000 });
+      await page.waitForFunction(() => !history.state?.mbOverlay, null, { timeout: 3000 });
+      assert.ok((await page.evaluate(() => history.length)) <= before + 1, 'each dialog must not pile up a step');
+    });
+    await ctx.close();
+  }
+
   step('1B-1.1 · inside a section, a tab of «سند» keeps the section in the address and the history');
   {
     const { ctx, page } = await open(1280);

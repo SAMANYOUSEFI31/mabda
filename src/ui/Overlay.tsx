@@ -62,6 +62,39 @@ function ghostExit(el: HTMLElement | null) {
   panel.addEventListener('animationcancel', done);
 }
 
+/**
+ * Back closes the top dialog (platform standard: on Android and in a browser, Back dismisses a modal before it leaves the page).
+ * While any dialog is open there is one extra history entry over the page (`mbOverlay`); Back consumes it and closes the top
+ * dialog through the same path as × (a dirty form still asks first). Closing any other way takes the entry back off, unheard by
+ * the rest of the app, so the page's own history (focus, the full-screen canvas) never sees a dialog come or go.
+ */
+const overlayStack: Array<() => void> = [];
+let overlaySync = false;
+let ignorePops = 0;
+const hasSentinel = () => { try { return !!(window.history.state as { mbOverlay?: boolean } | null)?.mbOverlay; } catch { return false; } };
+function syncOverlayHistory() {
+  if (overlaySync) return;
+  overlaySync = true;
+  // after the commit: a dialog that swaps for another in one step (the kinds of «افزودن») never touches history
+  queueMicrotask(() => {
+    overlaySync = false;
+    try {
+      if (overlayStack.length && !hasSentinel()) window.history.pushState({ ...(window.history.state ?? {}), mbOverlay: true }, '', window.location.href);
+      else if (!overlayStack.length && hasSentinel()) { ignorePops++; window.history.back(); }
+    } catch { /* optional */ }
+  });
+}
+if (typeof window !== 'undefined') {
+  // capture, so it runs before the page's own listeners and can keep a dialog's entry from reaching them
+  window.addEventListener('popstate', (e) => {
+    if (ignorePops > 0) { ignorePops--; e.stopImmediatePropagation(); return; }
+    if (!overlayStack.length) return; // a stale entry (a dialog that navigated away): the page handles it as usual
+    e.stopImmediatePropagation();
+    overlayStack[overlayStack.length - 1]();
+    syncOverlayHistory();
+  }, true);
+}
+
 export function Dialog({ open, onClose, title, description, children, footer, inline = false, size = 'md', alert = false, side = false, dirty = false, top = false, onDiscard, steady = false }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
@@ -98,7 +131,13 @@ export function Dialog({ open, onClose, title, description, children, footer, in
       }
     };
     document.addEventListener('keydown', onKey);
+    const back = () => closeRef.current?.();
+    overlayStack.push(back);
+    syncOverlayHistory();
     return () => {
+      const at = overlayStack.lastIndexOf(back);
+      if (at >= 0) overlayStack.splice(at, 1);
+      syncOverlayHistory();
       document.removeEventListener('keydown', onKey);
       siblings.forEach((n) => n.removeAttribute('inert'));
       document.body.style.overflow = prevOverflow;

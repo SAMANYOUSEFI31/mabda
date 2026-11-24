@@ -85,6 +85,16 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   }, [items, goTo]);
 
   const activeItem = items.find((i) => i.id === active);
+  // «اکنون» names the heading with the headings above it, the same form as «ساختار» (the last two, the whole path on hover)
+  const path = useMemo(() => {
+    const at = items.findIndex((i) => i.id === active);
+    if (at < 0) return [];
+    const out = [items[at].text];
+    let level = items[at].level;
+    for (let k = at - 1; k >= 0 && level > top; k--) if (items[k].level < level) { out.unshift(items[k].text); level = items[k].level; }
+    return out;
+  }, [items, active, top]);
+  const now = path.length > 2 ? `… › ${path.slice(-2).join(' › ')}` : path.join(' › ');
   const withOutline = items.length > 0 && view === 'read';
 
   const doc = markdown.trim().length === 0 ? (empty ?? null) : view === 'read' ? (
@@ -132,7 +142,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
             trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
             items={items.map((i) => ({ label: `${treeIndent(i.level - 1)}${i.text}`, text: i.text, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))}
           />
-          {activeItem && <SectionScrubber items={parts} active={partOf(active)} now={activeItem.text} anchorOf={sameId} endId="doc-body" onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(window.history.state, '', `#${id}`); }} label="جای خواندن در سند" />}
+          {activeItem && <SectionScrubber items={parts} active={partOf(active)} now={now} nowFull={path.join(' › ')} anchorOf={sameId} endId="doc-body" onGo={(id, o) => { reach(id, o); if (o.focus !== false) window.history.replaceState(window.history.state, '', `#${id}`); }} label="جای خواندن در سند" />}
         </div>
       )}
       {withOutline && markdown.trim().length > 0 ? (
