@@ -262,6 +262,32 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (forced-colors:active){.mb-nav-glide{display:none}}
 /* a page arrives by fading in place (motion.md «رفتن بین صفحه‌ها»): nothing travels, so nothing jumps; fast, opacity only */
 .mb-page-enter{animation:mb-fade var(--duration-fast) var(--ease-enter)}
+/* where the browser can (View Transitions; src/ui/pageTransition.ts), the old page first goes (exit = one step down, 80) and the new one
+   then fades in (fast): «fade through», so two pages' words are never seen on top of each other. Only the page area takes part;
+   the bars stay live (their glide runs as usual). The area's box does not morph or travel between the two. */
+::view-transition-old(root),::view-transition-new(root){animation:none}
+::view-transition-group(mb-page){animation:none}
+::view-transition-old(mb-page){animation:mb-out var(--duration-instant) var(--ease-exit) both}
+::view-transition-new(mb-page){animation:mb-fade var(--duration-fast) var(--ease-enter) var(--duration-instant) both}
+:root[data-page-vt] #main{view-transition-name:mb-page}
+/* the bars that float over the page (phone top bar, tab bar, the rail's name bar) keep their place above it during the fade */
+:root[data-page-vt] header[data-pin=app]{view-transition-name:mb-topbar}
+:root[data-page-vt] .mb-bottomnav.is-fixed{view-transition-name:mb-tabbar}
+:root[data-page-vt] .mb-rail-title{view-transition-name:mb-railtitle}
+::view-transition-group(mb-topbar),::view-transition-group(mb-tabbar),::view-transition-group(mb-railtitle),::view-transition-new(mb-topbar),::view-transition-new(mb-tabbar),::view-transition-new(mb-railtitle){animation:none}
+::view-transition-old(mb-topbar),::view-transition-old(mb-tabbar),::view-transition-old(mb-railtitle){animation:none;opacity:0}
+/* a part that opens in place (motion.md «بازشدن ردیف و بخش»): its height grows from nothing with ease-standard while its content
+   fades in 40 later, so what is under it is pushed, not thrown. Only where the browser can grow to «auto» (interpolate-size);
+   elsewhere it simply appears, as before. Closing is still immediate. «کاهش حرکت»: no growth, a fade only. */
+@supports (interpolate-size:allow-keywords){
+  .mb-reveal{interpolate-size:allow-keywords;overflow:clip;min-block-size:0;transition:block-size var(--duration-base) var(--ease-standard),opacity var(--duration-base) var(--ease-standard) calc(var(--duration-instant) / 2)}
+  @starting-style{.mb-reveal{block-size:0;opacity:0}}
+}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) .mb-reveal{transition-property:opacity}}
+:root[data-motion=reduced] .mb-reveal{transition-property:opacity}
+/* a large part that opens in place (Home «جزئیات بیشتر»): too tall to grow without throwing the page, so it only settles in — a fade
+   and 4px, base (motion.md «ورود»); the page then brings it into view. «کاهش حرکت»: the 4px is zero, a fade only. */
+.mb-appear{animation:mb-in var(--duration-base) var(--ease-enter)}
 /* ---------- Tabs / Segmented: a sunken track, the chosen one is a raised key ---------- */
 .mb-tabs-wrap{min-inline-size:0;max-inline-size:100%}
 .mb-tabs{display:inline-flex;gap:var(--inline-xs);padding:var(--space-0\.5);background:var(--tabs-track);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--tabs-radius);max-inline-size:100%;min-inline-size:0}
@@ -288,6 +314,19 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-tabs[role=tablist] .mb-tab{border-radius:0;padding-inline:var(--inset-sm);box-shadow:none;margin-block-end:calc(var(--border-width-thin) * -1);border-block-end:var(--border-width-thick) solid transparent}
 .mb-tabs[role=tablist] .mb-tab[aria-selected=true]{background:transparent;box-shadow:none;border-block-end-color:var(--border-bold);font-weight:600}
 .mb-tabpanel{margin-block-start:var(--stack-sm);padding:var(--inset-lg);color:var(--text-subtle);background:var(--card-surface);border:var(--border-width-thin) solid var(--border-subtle);border-radius:var(--card-radius)}
+/* the chosen tab or segment's mark glides (motion.md «تب و کنترل تکه‌ای»: base, ease-standard; useNavGlide in Navigation.tsx): one raised
+   key (or one ink line) moves, the words stay. The first place is set still; with «کاهش حرکت» base becomes fast. Forced colours: the
+   tab's own Highlight shows, the glide is hidden. */
+.mb-tab-glided{position:relative}
+.mb-tab-glided>.mb-tab{position:relative}
+.mb-tab-glide{position:absolute;inset-block-start:0;inset-inline-start:0;pointer-events:none;border-radius:var(--tabs-tab-radius);background:var(--tabs-selected-surface);box-shadow:var(--tabs-selected-shadow),inset 0 0 0 var(--border-width-thin) var(--border-default);opacity:0;transition:opacity var(--duration-fast) var(--ease-standard)}
+.mb-tab-glide[data-ready]{transition:transform var(--duration-base) var(--ease-standard),inline-size var(--duration-base) var(--ease-standard),block-size var(--duration-base) var(--ease-standard),opacity var(--duration-fast) var(--ease-standard)}
+.mb-tabs[role=tablist]>.mb-tab-glide{background:transparent;border-radius:0;box-shadow:inset 0 calc(var(--border-width-thick) * -1) 0 var(--border-bold)}
+@media not (forced-colors:active){
+  .mb-tab-glided>.mb-tab:is([aria-selected=true],[aria-checked=true]){background:transparent;box-shadow:none}
+  .mb-tabs[role=tablist].mb-tab-glided>.mb-tab[aria-selected=true]{border-block-end-color:transparent}
+}
+@media (forced-colors:active){.mb-tab-glide{display:none}}
 
 /* ---------- BottomNav ---------- */
 .mb-bottomnav{display:flex;inline-size:100%;background:var(--nav-surface);border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--safe-bottom);box-shadow:var(--shadow-overflow)}

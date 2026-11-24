@@ -14,6 +14,7 @@ import { defaultNodeId } from '../../core/nodeTree';
 import { useAiStatus } from '../../services/aiStatus';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../ui';
+import { switchPage } from '../../ui/pageTransition';
 import { errText } from '../shared';
 
 export type AppCoreScope = ReturnType<typeof useAppCore>;
@@ -111,7 +112,12 @@ export function useAppCore() {
 
   // UI state
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setTab] = useState<string>('home');
+  // every change of page goes through one door, so it moves the same way wherever it starts (motion.md «رفتن بین صفحه‌ها»)
+  // the page we are going to, set at once: a second call for the same page in the same click (a section link asks for «حقیقت» and
+  // then for its place) must not start a second fade over the first
+  const goingTo = useRef(activeTab);
+  const setActiveTab = useCallback((tab: string) => { if (tab === goingTo.current) return; goingTo.current = tab; switchPage(() => setTab(tab)); }, []);
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas'>('doc');
   // «فکر» is its own destination (not a view of the truth): a list to review and decide, and a canvas to think on
   const [thinkingView, setThinkingView] = useState<'list' | 'canvas'>('list');
