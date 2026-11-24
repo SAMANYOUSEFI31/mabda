@@ -374,7 +374,7 @@
 - در انتخابگر فضا «بازسازی فضای نمونه» فضای سومی (قهوهٔ دم‌نوش، کسب‌وکار) می‌سازد: سه مفهوم «نمونه» با سه رفتار.
 - `StarterDialog` («اسکلت شروع») به هیچ دکمه‌ای وصل نیست: `onOpenStarters` به `ContextTreeDocView` می‌رسد و آن‌جا استفاده نمی‌شود.
 - صفحهٔ اول‌اجرا (`FirstRunScreen`) فقط وقتی دیده می‌شود که هیچ فضایی نمانده باشد. در آن، چهار گزینهٔ نوع در ستون باریک دو خط می‌شوند («خالی» تنها در خط دوم).
-- تصویرها: `docs/screens/onboarding/ (در mabda-assets)، before-home-1280.png`، `before-home-390.png`، `before-switcher-1280.png`، `before-truth-1280.png`.
+- تصویرها (در mabda-assets): `docs/screens/onboarding/before-home-1280.png`، `before-home-390.png`، `before-switcher-1280.png`، `before-truth-1280.png`.
 
 ### راه‌ها
 - **الف) شروع خالی.** فقط صفحهٔ اول‌اجرا (نوع + نام)، بعد فضای خودش با شاخه‌های سطح اول. خوبی: هرچه می‌بیند مال خودش است و داده پاک است. کمبود: «صفحهٔ سفید»؛ نمی‌بیند جواب خوب، «قدیمی»، «جای خالی» یا خروجی چه شکلی است، و موتورها تا چند حقیقت چیزی برای نشان دادن ندارند. تصویر: `alt-A-firstrun-1280.png`، `alt-A-firstrun-390.png`، `alt-A-home-empty-1280.png`، `alt-A-home-empty-390.png`، `alt-A-truth-empty-1280.png` (همه از اپ واقعی).
