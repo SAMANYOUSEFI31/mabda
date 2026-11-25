@@ -437,7 +437,7 @@ const SubSections: React.FC<{ summaries: ReturnType<typeof childSummaries>; onOp
               <span className="title text-text-default">{s.node.label}</span>
               <span className="caption text-text-subtle">{formatNumber(s.knowledge)} دانش{s.openThoughts ? ` · ${formatNumber(s.openThoughts)} فکر باز` : ''}{s.stale ? ` · ${formatNumber(s.stale)} قدیمی` : ''}{s.subSections ? ` · ${formatNumber(s.subSections)} زیربخش` : ''}</span>
             </span>
-            <Icon name="ChevronLeft" size="md" className="shrink-0 text-icon-subtle" />
+            <Icon name="ChevronLeft" size="md" className="mb-fwd shrink-0 text-icon-subtle" />
           </button>
         </li>
       ))}

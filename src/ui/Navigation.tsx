@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
-import { Icon } from './Icon.tsx';
+import { Icon, useBecame } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { formatNumber } from './format.ts';
 import { UI_WORDS, UiText } from './privacy.tsx';
@@ -202,29 +202,45 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
   const current = value !== undefined ? value : inner;
   return (
     <nav aria-label={label} data-under={under || undefined} data-pin={fixed ? 'app-bottom' : undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
-      {items.map((it) => (
-        <button
-          key={it.id} type="button" aria-current={!it.action && current === it.id ? 'page' : undefined} data-testid={it.testId}
-          className={cx('mb-bottomnav__item', !it.action && current === it.id && 'is-active', it.action && 'is-action')}
-          onClick={() => { if (!it.action) setInner(it.id); onChange?.(it.id); }}
-        >
-          <span className="mb-bottomnav__icon">
-            <Icon name={it.icon} size="xl" />
-            {it.badge ? (
-              <>
-                <span className="mb-bottomnav__badge label-sm" aria-hidden="true">{it.badge > 99 ? `${formatNumber(99)}+` : formatNumber(it.badge)}</span>
-                <span className="mb-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
-              </>
-            ) : null}
-          </span>
-          {/* the drawn label may carry a break point at a ZWNJ, which a screen reader would read as a gap: it hears the plain word */}
-          {typeof it.label === 'string' && !it.action && it.label.includes('\u200c')
-            ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true" {...UI_WORDS}>{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
-            : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}><UiText>{it.label}</UiText></span>}
-        </button>
-      ))}
+      {items.map((it) => <BottomNavButton key={it.id} it={it} current={!it.action && current === it.id} onPress={() => { if (!it.action) setInner(it.id); onChange?.(it.id); }} />)}
     </nav>
   );
+}
+
+/** one bar button: when it becomes the current place its icon's ink is written in once (motion.md «آیکن و نشان») */
+function BottomNavButton({ it, current, onPress }: { it: BottomNavItem; current: boolean; onPress: () => void }) {
+  const ink = useBecame(current);
+  const badgeTurn = useTurns(it.badge ?? 0);
+  return (
+    <button
+      type="button" aria-current={current ? 'page' : undefined} data-ink={ink || undefined} data-testid={it.testId}
+      className={cx('mb-bottomnav__item', current && 'is-active', it.action && 'is-action')}
+      onClick={onPress}
+    >
+      <span className="mb-bottomnav__icon">
+        <Icon name={it.icon} size="xl" className="mb-nav-ico" />
+        {it.badge ? (
+          <>
+            {/* a count that changed while you look takes a short pop (motion.md «آیکن و نشان»); the first one is just there */}
+            <span key={badgeTurn} className="mb-bottomnav__badge label-sm" data-changed={badgeTurn > 0 || undefined} aria-hidden="true">{it.badge > 99 ? `${formatNumber(99)}+` : formatNumber(it.badge)}</span>
+            <span className="mb-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
+          </>
+        ) : null}
+      </span>
+      {/* the drawn label may carry a break point at a ZWNJ, which a screen reader would read as a gap: it hears the plain word */}
+      {typeof it.label === 'string' && !it.action && it.label.includes('\u200c')
+        ? <><span className="mb-bottomnav__label" data-label={it.label} aria-hidden="true" {...UI_WORDS}>{softBreaks(it.label)}</span><span className="mb-sr">{it.label}</span></>
+        : <span className={it.action ? 'mb-sr' : 'mb-bottomnav__label'} data-label={typeof it.label === 'string' ? it.label : undefined}><UiText>{it.label}</UiText></span>}
+    </button>
+  );
+}
+
+/** how many times `value` changed since the first render (0 = never): a key that replays a one-time movement on each change */
+function useTurns(value: unknown): number {
+  const prev = useRef(value);
+  const [turns, setTurns] = useState(0);
+  useEffect(() => { if (!Object.is(prev.current, value)) { prev.current = value; setTurns((n) => n + 1); } }, [value]);
+  return turns;
 }
 
 /* ---------------- NavItem (sidebar / drawer row) ---------------- */
@@ -250,11 +266,13 @@ export interface NavItemProps {
 const softBreaks = (t: string): ReactNode => (t.includes('\u200c') ? t.split('\u200c').flatMap((part, i) => (i ? [<Fragment key={i}>{'\u200c'}<wbr /></Fragment>, part] : [part])) : t);
 
 export function NavItem({ label, icon, trailing, selected, expanded, nested = false, compact = false, onClick, className, personal = false }: NavItemProps) {
+  const ink = useBecame(Boolean(selected));
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={selected ? 'page' : undefined}
+      data-ink={ink || undefined}
       aria-expanded={expanded}
       {...(compact ? { 'aria-label': trailing != null ? `${label}، ${trailing}` : String(label), title: String(label) } : {})}
       className={cx(
@@ -267,7 +285,8 @@ export function NavItem({ label, icon, trailing, selected, expanded, nested = fa
         className,
       )}
     >
-      {icon && <Icon name={icon} size="lg" className={selected ? 'text-icon-default' : 'text-icon-subtle'} strokeWidth={selected ? 2.25 : 1.75} />}
+      {/* weight 1.75 → 2.25 when current (iconography.md), as a transition: the ink soaks in rather than snapping */}
+      {icon && <Icon name={icon} size="lg" className={cx('mb-nav-ico', selected ? 'text-icon-default' : 'text-icon-subtle')} />}
       {compact ? (trailing != null && <span aria-hidden="true" className="absolute end-space-2 top-space-2 rounded-pill bg-bg-neutral-bold" style={{ inlineSize: 8, blockSize: 8 }} />) : (<>
         {/* the 600 copy reserves its width so the label never jumps when selected (navigation.md) */}
         <span className="mb-navlabel min-w-space-0 flex-1 break-words" data-label={typeof label === 'string' ? label : undefined}><UiText personal={personal}>{label}</UiText></span>

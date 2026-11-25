@@ -250,7 +250,7 @@ export interface ToastProps {
 export function Toast({ intent = 'info', children, action, onClose, className, announce = true, ...rest }: ToastProps & { /** false when a persistent live region elsewhere speaks it (ToastProvider) */ announce?: boolean } & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div role={announce ? (intent === 'danger' ? 'alert' : 'status') : undefined} className={cx('mb-toast', `mb-toast--${intent}`, className)} {...rest}>
-      <Icon name={STATUS_ICON[intent]} size="lg" className="mb-toast__icon" />
+      <Icon name={STATUS_ICON[intent]} size="lg" className="mb-toast__icon" draw={intent === 'success'} />
       <span className="mb-toast__text body-sm">{children}</span>
       {action && <Button size="sm" variant="ghost" onClick={action.onClick}>{action.label}</Button>}
       {onClose && <IconButton icon="X" label="بستن" size="sm" onClick={onClose} />}

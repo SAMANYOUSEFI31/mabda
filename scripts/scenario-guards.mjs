@@ -622,9 +622,10 @@ try {
       assert.ok(before > 0, 'no proposal to approve in the sample');
       await page.route(/\/objects\/[^/]+$/, (r) => (['PATCH', 'PUT'].includes(r.request().method()) ? wait(500).then(() => r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'guard', message: 'سرور این بار نپذیرفت (آزمون)' } }) })) : r.continue()));
       await approve.first().evaluate((b) => b.click());
-      await page.waitForFunction((n) => document.querySelectorAll('main button').length && [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید').length === n - 1, before, { timeout: 300 });
+      // shown = the row is decided on the press: its dot settles and the row goes inert while it leaves (motion.md «تأیید»)
+      await page.waitForFunction((n) => [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید' && !b.closest('[inert]')).length === n - 1, before, { timeout: 300 });
       await page.getByText('سرور این بار نپذیرفت (آزمون)').first().waitFor({ timeout: 3000 });
-      await page.waitForFunction((n) => [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید').length === n, before, { timeout: 2000 });
+      await page.waitForFunction((n) => [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید' && !b.closest('[inert]')).length === n, before, { timeout: 2000 });
       await page.unroute(/\/objects\/[^/]+$/);
     });
     await ctx.close();

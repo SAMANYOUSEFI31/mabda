@@ -9,7 +9,7 @@ import { MentionTextarea } from '../shared/MentionTextarea';
 import { NoteLines } from './NoteLines';
 import { canSplit } from '../../core/thinkingMarkers';
 import { isPendingNote } from '../../core/pendingNote';
-import { Badge, Button, IconButton, Textarea, formatJalaliDate } from '../../ui';
+import { Badge, Button, IconButton, Textarea, cx, formatJalaliDate, useLeaving } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 
 interface Props {
@@ -43,6 +43,8 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
     if ((await onAdd(nodeId, text)) === false) setDraft((d) => d || text);
   };
 
+  // a note added comes in under the others; a deleted one fades and its gap closes (motion.md «حذف و بایگانی ردیف»)
+  const { rows, rowRef } = useLeaving(notes, (n) => n.id);
   return (
     <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
       <div className="flex flex-wrap items-center gap-inline-sm">
@@ -50,10 +52,10 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
         <Badge intent="neutral" icon="Lock">فقط برای خودت؛ در خروجی‌ها و بسته‌ها نمی‌آید</Badge>
       </div>
 
-      {notes.length > 0 && (
+      {rows.length > 0 && (
         <ul className="flex flex-col gap-stack-sm" aria-label="یادداشت‌های این بخش">
-          {notes.map((n) => (
-            <li key={n.id} aria-busy={isPendingNote(n.id) || undefined} className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-raised p-inset-md">
+          {rows.map(({ item: n, key, entering }) => (
+            <li key={key} ref={rowRef(key)} aria-busy={isPendingNote(n.id) || undefined} className={cx(entering && 'mb-appear', 'flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-raised p-inset-md')}>
               {editing?.id === n.id ? (
                 <>
                   <MentionTextarea label="ویرایش یادداشت" rows={3} value={editing.text} onValueChange={(t) => setEditing({ ...editing, text: t })} objects={objects} />
