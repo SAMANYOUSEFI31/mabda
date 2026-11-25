@@ -14,11 +14,30 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
  */
 @layer components {
 *,*::before,*::after{box-sizing:border-box}
-:root{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+:root{-webkit-text-size-adjust:100%;text-size-adjust:100%;--motion-amp:1}
 .mb-btn,.mb-iconbtn,.mb-link,.mb-card--interactive,.mb-tab,.mb-check,.mb-radio,.mb-switch,.mb-bottomnav__item,.mb-menu__item,.mb-tag--toggle,.mb-li__row{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 ::selection{background:var(--bg-selection);color:var(--text-default)}
 .mb-icon{flex:none;display:block}
 .mb-icon--mirror:dir(rtl){scale:-1 1}
+/* «آیکن و نشان» (motion.md): an icon moves only when it says something, only once, only inside its own 24px box (no layout moves,
+ * no CLS), never on its own. Amplitudes are multiplied by --motion-amp, which «کاهش حرکت» sets to 0: then nothing travels or is
+ * drawn, the end state is simply there. */
+.mb-nav-ico{stroke-width:1.75;transition:stroke-width var(--duration-base) var(--ease-standard)}
+[aria-current=page] .mb-nav-ico{stroke-width:2.25}
+/* the meaning stroke is written in: a destination that became current, a check that says «done» */
+:is([data-ink],.mb-icon[data-draw]) .mb-ink{stroke-dasharray:1 1;animation:mb-ink var(--duration-slow) var(--ease-standard) backwards}
+@keyframes mb-ink{from{stroke-dashoffset:1}}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) .mb-ink{animation:none!important}}
+:root[data-motion=reduced] .mb-ink{animation:none!important}
+/* «out / down / up» arrows and the «forward» chevron lean 1.5–2px their own way while pointed at (pointer devices only) */
+.mb-ip,.mb-li__chev,.mb-fwd{transition:translate var(--duration-fast) var(--ease-standard)}
+@media (hover:hover){
+  :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--out{translate:calc(var(--motion-amp) * 1.5px) calc(var(--motion-amp) * -1.5px)}
+  :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--down{translate:0 calc(var(--motion-amp) * 1.5px)}
+  :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--up{translate:0 calc(var(--motion-amp) * -1.5px)}
+  :is(a,button,.mb-li__row,.mb-card--interactive):is(:hover,:focus-visible) :is(.mb-li__chev,.mb-fwd):dir(rtl){translate:calc(var(--motion-amp) * -2px) 0}
+  :is(a,button,.mb-li__row,.mb-card--interactive):is(:hover,:focus-visible) :is(.mb-li__chev,.mb-fwd):dir(ltr){translate:calc(var(--motion-amp) * 2px) 0}
+}
 /* direction-aware icons (arrows, chevrons that mean «next»): drawn for RTL, mirrored in LTR */
 .mb-flip:dir(ltr){transform:scaleX(-1)}
 .mb-flip-rtl:dir(rtl){transform:scaleX(-1)}
@@ -328,7 +347,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-bottomnav__item:not(.is-action):active::before{background:var(--interaction-pressed)}
 .mb-bottomnav__item.is-active{color:var(--text-default)}
 .mb-bottomnav__item.is-active>.mb-bottomnav__label{font-weight:600}
-.mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon svg{stroke-width:1.75}.mb-bottomnav__item.is-active .mb-bottomnav__icon svg{stroke-width:2.25;color:var(--icon-default)}
+.mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon svg{stroke-width:1.75;transition:stroke-width var(--duration-base) var(--ease-standard)}.mb-bottomnav__item.is-active .mb-bottomnav__icon svg{stroke-width:2.25;color:var(--icon-default)}
 .mb-bottomnav__label::after{content:attr(data-label);display:block;block-size:0;overflow:hidden;visibility:hidden;font-weight:600;overflow-wrap:anywhere}
 .mb-bottomnav__item.is-active::before{background:var(--bg-selected)}
 .mb-bottomnav__label{display:flex;flex-direction:column;align-items:center;font-size:var(--font-size-12);line-height:1.5;font-weight:500;max-inline-size:100%;white-space:normal;overflow-wrap:break-word;text-align:center}
@@ -338,6 +357,10 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (hover:hover){.mb-bottomnav__item.is-action:hover .mb-bottomnav__icon{background:var(--bg-neutral-bold-hover)}}
 .mb-bottomnav__item.is-action:active .mb-bottomnav__icon{background:var(--bg-neutral-bold-pressed)}
 .mb-bottomnav__badge{position:absolute;inset-block-start:calc(var(--space-2) * -1);inset-inline-start:calc(100% + var(--space-1) / 2);min-inline-size:var(--space-4);padding-inline:var(--space-1);border-radius:var(--radius-pill);background:var(--nav-badge-bg);color:var(--nav-badge-fg);line-height:var(--space-4);font-variant-numeric:tabular-nums}
+.mb-bottomnav__badge[data-changed]{animation:mb-badge var(--duration-base) var(--ease-enter)}
+@keyframes mb-badge{from{opacity:0;scale:.6}}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) .mb-bottomnav__badge[data-changed]{animation-name:mb-fade}}
+:root[data-motion=reduced] .mb-bottomnav__badge[data-changed]{animation-name:mb-fade}
 
 /* ---------- Popover / Menu ---------- */
 .mb-popover{position:relative;display:inline-flex}
@@ -552,6 +575,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-nuqta--xl{inline-size:var(--nuqta-size-xl);block-size:var(--nuqta-size-xl)}
 .mb-nuqta.is-truth{color:var(--nuqta-truth)}.mb-nuqta.is-stale{color:var(--nuqta-stale)}.mb-nuqta.is-conflict{color:var(--nuqta-conflict)}.mb-nuqta.is-brand{color:var(--nuqta-brand)}
 .mb-nuqta[data-settle]{animation:mb-settle var(--duration-slow) var(--ease-settle)}
+.mb-nuqta[data-swap]{animation:mb-fade var(--duration-fast) var(--ease-standard)}
 }
 @keyframes mb-settle{from{scale:1.9;opacity:0}}
 
@@ -561,6 +585,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-knowledge{position:relative;background:transparent;border:0;box-shadow:none;border-radius:var(--radius-container);padding-inline-start:var(--space-8)!important}
 .mb-knowledge__nuqta{position:absolute;inset-inline-start:var(--space-3);inset-block-start:calc(var(--space-3) + 0.5rem)}
 .mb-knowledge[data-knowledge=proposed],.mb-knowledge[data-knowledge=sample]{background:var(--bg-neutral-subtle)}
+.mb-knowledge{transition:background-color var(--duration-base) var(--ease-standard)}
 .mb-knowledge[data-knowledge=sample]{padding-inline-start:var(--space-4)!important}
 .mb-knowledge[data-knowledge=past]{color:var(--text-subtle)}
 /* «نقطه و قلم» (ui-audit.md, card study 1405/08/26): the passage's extent is the stroke the reed pen draws on from its dot, a
@@ -742,8 +767,8 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 /* «کاهش حرکت» (motion.md), in one place: from the device, or data-motion="reduced" on <html>. Nothing travels or grows; every
  * entry is a fade at `fast`, the skeleton holds still, the spinner keeps turning (it is the only sign of work). Components write no
  * conditions of their own. */
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]){--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}}
-:root[data-motion=reduced]{--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]){--motion-amp:0;--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}}
+:root[data-motion=reduced]{--motion-amp:0;--distance-sm:0px;--distance-md:0px;--distance-lg:0px;--scale-enter:1;--scale-press:1;--duration-base:var(--duration-fast);--duration-moderate:var(--duration-fast);--duration-slow:var(--duration-fast);--duration-stagger:0ms}
 @media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-dialog,.mb-skel){animation-name:mb-fade}:root:not([data-motion=full]) .mb-skel{animation:none}:root:not([data-motion=full]) .mb-nuqta[data-settle]{animation-name:mb-fade}:root:not([data-motion=full]) .mb-dialog-layer[data-state=closed] :is(.mb-dialog,.mb-scrim){animation-name:mb-out;animation-duration:var(--duration-instant)}:root:not([data-motion=full]){scroll-behavior:auto}}
 :root[data-motion=reduced] :is(.mb-dialog){animation-name:mb-fade}:root[data-motion=reduced] .mb-skel{animation:none}:root[data-motion=reduced] .mb-nuqta[data-settle]{animation-name:mb-fade}:root[data-motion=reduced] .mb-dialog-layer[data-state=closed] :is(.mb-dialog,.mb-scrim){animation-name:mb-out;animation-duration:var(--duration-instant)}
 /* theme switch: no motion — every transition is off for one frame so hundreds of things do not recolour together (src/ui/theme.ts) */

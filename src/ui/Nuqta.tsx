@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { cx } from './cx.ts';
 
 /**
@@ -42,10 +43,30 @@ export interface NuqtaProps {
   className?: string;
 }
 
+/**
+ * A dot that changes state where you are looking (motion.md «تأیید: پیشنهاد ← حقیقت»): becoming truth, it fills in from a little
+ * larger and settles (`ease-settle`, the one place a small overshoot is allowed); any other change of shape is a short cross-fade;
+ * turning «قدیمی» stays still (bad news wants no flourish). Never on the first render.
+ */
+function useChange(state: NuqtaState): { turn: number; kind?: 'settle' | 'swap' } {
+  const prev = useRef(state);
+  const [change, setChange] = useState<{ turn: number; kind?: 'settle' | 'swap' }>({ turn: 0 });
+  useEffect(() => {
+    const was = prev.current;
+    if (was === state) return;
+    prev.current = state;
+    if (state === 'stale') { setChange((c) => ({ turn: c.turn, kind: undefined })); return; }
+    setChange((c) => ({ turn: c.turn + 1, kind: state === 'truth' ? 'settle' : 'swap' }));
+  }, [state]);
+  return change;
+}
+
 export function Nuqta({ state, size = 'md', label, className }: NuqtaProps) {
   const name = label === false ? undefined : label ?? NUQTA_LABEL[state];
+  const change = useChange(state);
   return (
-    <svg viewBox="0 0 12 12" className={cx('mb-nuqta', `mb-nuqta--${size}`, COLOR[state], className)} data-nuqta={state}
+    <svg key={change.turn} viewBox="0 0 12 12" className={cx('mb-nuqta', `mb-nuqta--${size}`, COLOR[state], className)} data-nuqta={state}
+      data-settle={change.kind === 'settle' || undefined} data-swap={change.kind === 'swap' || undefined}
       role={name ? 'img' : undefined} aria-label={name} aria-hidden={name ? undefined : true} focusable="false">
       <Shape state={state} />
     </svg>

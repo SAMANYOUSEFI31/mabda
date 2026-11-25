@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { proposalContext } from '../../core/proposalContext';
 import { useAiStatus } from '../../services/aiStatus';
 import { importLabel } from '../../core/importLabel';
 import { SOURCE_FA } from '../../core/provenance';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
+import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark, useLeaving } from '../../ui';
 
 const KIND_FA = SOURCE_FA; // one dictionary with the provenance lines (core/provenance.ts)
 
@@ -40,6 +40,15 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
   const reasonOf = (id: string) => reasons[id]?.trim() || undefined;
   const { managedEnabled } = useAiStatus();
+  // a proposal that is decided does not vanish: an approved one shows its dot settling into «حقیقت», then the row fades and its
+  // gap closes (motion.md «تأیید: پیشنهاد ← حقیقت»); a rejected one just fades and closes. The list never jumps.
+  // (which ones were approved is remembered here: the parent may pass only the proposals, so the approved one is no longer in it)
+  const accepted = useRef(new Set<string>());
+  const { rows, rowRef } = useLeaving(pending, (o) => o.id, { delay: (o) => (accepted.current.has(o.id) ? 140 : 0) });
+  const truthNow = (o: ContextObject, leaving: boolean) => leaving && accepted.current.has(o.id);
+  const accept = (o: ContextObject, reason?: string) => { accepted.current.add(o.id); onAccept(o, reason); };
+  const reject = (o: ContextObject, reason?: string) => { accepted.current.delete(o.id); onReject(o, reason); };
+  const replace = (o: ContextObject, replacesId: string, reason?: string) => { accepted.current.add(o.id); onReplace(o, replacesId, reason); };
   // tools used now and then sit under one quiet trigger; the inbox itself is the content (thinking page stays calm)
   const actions = (
     <Menu
@@ -56,7 +65,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
   );
 
   // nothing waiting: one sentence and the ways to bring AI suggestions in — no big empty card
-  if (pending.length === 0) {
+  if (rows.length === 0) {
     return (
       <Card padding="md" id="proposal-inbox" className="flex flex-col justify-between gap-inline-md md:flex-row md:items-center" aria-label="صندوق پیشنهادها">
         <p className="body-md text-text-subtle">صندوق پیشنهادها خالی است. هر چیزی که وارد کنی و هنوز تأیید نشده باشد اینجا منتظر تأیید تو می‌ماند.</p>
@@ -79,9 +88,9 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
       </div>
 
       <ul className="flex flex-col gap-stack-md">
-        {pending.map((o) => (
-          <li key={o.id} data-knowledge="proposed" className="mb-knowledge flex flex-col gap-stack-sm p-inset-lg">
-            <Nuqta state="proposed" className="mb-knowledge__nuqta" />
+        {rows.map(({ item: o, key, leaving }) => (
+          <li key={key} ref={rowRef(key)} data-knowledge={truthNow(o, leaving) ? 'truth' : 'proposed'} className="mb-knowledge flex flex-col gap-stack-sm p-inset-lg">
+            <Nuqta state={truthNow(o, leaving) ? 'truth' : 'proposed'} className="mb-knowledge__nuqta" />
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <div className="flex flex-col gap-stack-xs">
                 <span className="headline text-text-default">{o.title}</span>
@@ -136,11 +145,11 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
                   </span>
                   <div className="flex flex-wrap items-center gap-inline-xs">
                     {replaces
-                      ? <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onReplace(o, replaces.id, reasonOf(o.id))}>جایگزینی</Button>
-                      : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => onAccept(o, reasonOf(o.id))}>تأیید</Button>}
+                      ? <Button size="sm" variant="secondary" iconStart="Check" onClick={() => replace(o, replaces.id, reasonOf(o.id))}>جایگزینی</Button>
+                      : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => accept(o, reasonOf(o.id))}>تأیید</Button>}
                     <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
-                    <Button size="sm" variant="ghost" iconStart="X" onClick={() => onReject(o, reasonOf(o.id))}>رد</Button>
-                    {replaces && <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={[{ label: 'تأیید کنار قبلی', icon: 'Check', onSelect: () => onAccept(o, reasonOf(o.id)) }]} />}
+                    <Button size="sm" variant="ghost" iconStart="X" onClick={() => reject(o, reasonOf(o.id))}>رد</Button>
+                    {replaces && <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={[{ label: 'تأیید کنار قبلی', icon: 'Check', onSelect: () => accept(o, reasonOf(o.id)) }]} />}
                   </div>
                 </div>
               );

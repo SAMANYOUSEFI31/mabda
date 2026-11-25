@@ -12,7 +12,7 @@ import { promotionTypesForThought, THINKING_FA, THOUGHT_KINDS } from '../../core
 import { aboutTargets, stripAbout } from '../../core/thoughtAbout';
 import type { AboutTarget } from '../../core/thoughtAbout';
 import { AboutPicker } from './AboutPicker';
-import { Badge, Button, Checkbox, Dialog, IconButton, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta } from '../../ui';
+import { Badge, Button, Checkbox, Dialog, IconButton, Menu, SegmentedControl, Spinner, Textarea, ThinkingBadge, THINKING_LABEL, formatNumber, Nuqta, cx, useLeaving } from '../../ui';
 import { formatJalaliDate } from '../../ui/format';
 import { dataApi } from '../../services/dataApi';
 import { DELETED_SECTION } from '../../core/nodeTree';
@@ -86,13 +86,15 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
     }
   };
 
-  if (items.length === 0) return empty ? <p className="body-sm text-text-subtle">{empty}</p> : null;
+  // a thought that leaves this list (made into a proposal, deleted, moved) fades and its gap closes; one just captured comes in
+  const { rows, rowRef } = useLeaving(items, (it) => it.key);
+  if (rows.length === 0) return empty ? <p className="body-sm text-text-subtle">{empty}</p> : null;
   return (
     <ul className="flex flex-col gap-stack-xs" aria-label="مورد فکری" data-selecting={selectedIds.length > 0 || undefined}>
-      {items.map((it) => {
+      {rows.map(({ item: it, entering }) => {
         const done = !!convertedTo(it, objects);
         return (
-          <li key={it.key} data-knowledge={done ? 'past' : 'thought'} className="mb-knowledge flex flex-col gap-stack-sm p-inset-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-inline-sm">
+          <li key={it.key} ref={rowRef(it.key)} data-knowledge={done ? 'past' : 'thought'} className={cx(entering && 'mb-appear', 'mb-knowledge flex flex-col gap-stack-sm p-inset-md sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-inline-sm')}>
             <Nuqta state={done ? 'past' : 'thought'} className="mb-knowledge__nuqta" />
             <span className="flex min-w-space-0 flex-1 flex-col gap-stack-xs">
               <span className={`body-md whitespace-pre-wrap ${done ? 'text-text-subtle line-through' : 'text-text-default'}`}>{stripAbout(it.text) || it.text}</span>
