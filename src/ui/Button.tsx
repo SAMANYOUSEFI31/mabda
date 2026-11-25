@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.ts';
-import { Icon } from './Icon.tsx';
+import { Icon, useBecame } from './Icon.tsx';
 import type { IconName } from './Icon.tsx';
 import { useShownBusy } from './useShownBusy.ts';
 import { UiText } from './privacy.tsx';
@@ -30,6 +30,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 ) {
   const inert = disabled || loading;
   const spin = useShownBusy(loading);
+  // «کپی» → «کپی شد»: when the icon turns into a check after a press, the tick is written in (motion.md «آیکن و نشان»)
+  const done = useBecame(iconStart === 'Check');
   const asLink = Boolean(href) && !inert;
   const Tag = (asLink ? 'a' : 'button') as 'button';
   const tagProps = asLink ? { href } : { type, disabled: inert };
@@ -44,9 +46,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...rest}
     >
       <span className="mb-btn__content">
-        {iconStart && <Icon name={iconStart} size="md" />}
+        {iconStart && <Icon name={iconStart} size="md" draw={done} />}
         <span className="mb-btn__label"><UiText personal={personal}>{children}</UiText></span>
-        {iconEnd && <Icon name={iconEnd} size="md" className="mb-flip" />}
+        {iconEnd && <Icon name={iconEnd} size="md" className={cx('mb-flip', iconEnd === 'ChevronLeft' && 'mb-fwd')} />}
       </span>
       {spin && (
         <span className="mb-btn__spin" aria-hidden="true"><Icon name="LoaderCircle" size="md" className="mb-spin" /></span>

@@ -1,5 +1,5 @@
 export { cx } from './cx.ts';
-export { Icon, STATUS_ICON } from './Icon.tsx';
+export { Icon, STATUS_ICON, useBecame } from './Icon.tsx';
 export type { IconName, IconSize } from './Icon.tsx';
 export { Button, IconButton, Link } from './Button.tsx';
 export type { ButtonProps, IconButtonProps, LinkProps } from './Button.tsx';
@@ -29,3 +29,4 @@ export { MarginList, MarginItem, MarginNote } from './Margin.tsx';
 export type { NuqtaState, NuqtaSize, NuqtaProps } from './Nuqta.tsx';
 export { StateTally } from './Tally.tsx';
 export type { TallyRow } from './Tally.tsx';
+export { leave, useLeaving } from './leaving.ts';
