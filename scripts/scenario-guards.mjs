@@ -51,13 +51,17 @@ const sample = async (page) => {
 const nav = async (page, name) => {
   await page.evaluate((n) => { const bs = [...document.querySelectorAll('nav button')].filter((b) => b.textContent.includes(n)); (bs.find((b) => b.offsetParent) ?? bs[0])?.click(); }, name);
   await page.waitForFunction((n) => [...document.querySelectorAll('nav button[aria-current=page]')].some((b) => b.textContent.includes(n)), name);
-  await page.waitForLoadState('networkidle'); await page.locator('main h1').first().waitFor();
+  // the bar answers on the press; the page itself arrives when it is built (a transition, src/ui/pageTransition.ts): wait for its title
+  await page.waitForFunction((n) => (document.querySelector('main h1')?.textContent ?? '').startsWith(`${n}:`), name);
+  await page.waitForLoadState('networkidle');
   await page.waitForFunction(() => !document.querySelector('main')?.innerText.includes('در حال بار شدن')); await settled(page);
 };
 const radio = async (page, name) => {
   const r = page.locator('[role=radio]').filter({ hasText: new RegExp(`^${name}$`) }).first();
   await r.evaluate((n) => n.click());
   await page.waitForFunction((el) => el.getAttribute('aria-checked') === 'true', await r.elementHandle());
+  // the key answers on the press; the view arrives when it is built (a transition): wait until no transition is still pending
+  await page.waitForFunction(() => !document.querySelector('main .mb-seg[data-pending]'));
   await page.waitForLoadState('networkidle'); await settled(page);
 };
 /** scroll and wait until the page is really there (a pinned header or a lazy section can move it) */
@@ -554,6 +558,74 @@ try {
       await page.waitForTimeout(400);
       r = await read();
       assert.ok(r.bar > 40 && Math.abs(r.outline - r.bar) <= 1, `up: bar ends at ${r.bar}, «فهرست» at ${r.outline}`);
+    });
+    await ctx.close();
+  }
+
+  step('motion.md «رفتن بین صفحه‌ها»، «قطع و ادامه»، «علت پیش از نتیجه» · audit round 4 (goal: a press answers within 100ms, a view never blanks behind «loading», a page she comes back to is where she left it, a press on «تأیید» shows at once and a refusal puts it back)');
+  {
+    const { ctx, page } = await open(390); await sample(page);
+    await page.waitForLoadState('networkidle'); await page.waitForTimeout(1500); // pages and views load ahead while idle (warmChunks)
+    const cdp = await ctx.newCDPSession(page); await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 }); // a mid-range phone
+    await guard('[390, CPU ×4] the bottom bar marks «حقیقت» on the press (≤150ms in the dev build), before the page is built', async () => {
+      const r = await page.evaluate(() => new Promise((done) => {
+        const b = [...document.querySelectorAll('nav[aria-label="منوی پایینی موبایل"] button')].find((x) => x.textContent.includes('حقیقت'));
+        const t0 = performance.now(); let marked = null; let page = null;
+        b.click();
+        const tick = () => {
+          const t = performance.now() - t0;
+          if (marked === null && b.getAttribute('aria-current') === 'page') marked = t;
+          if (page === null && (document.querySelector('main h1')?.textContent ?? '').startsWith('حقیقت:')) page = t;
+          if ((marked === null || page === null) && t < 4000) requestAnimationFrame(tick); else done({ marked, page });
+        };
+        requestAnimationFrame(tick);
+      }));
+      // the goal is 100ms (motion.md «پاسخ به لمس زیر ۱۰۰»; the production build measured 24ms at ×4). This server runs React's development
+      // build, about twice as slow, on a machine that may be busy: the tolerance is 150, the order below is the real invariant
+      assert.ok(r.marked !== null && r.marked <= 150, `marked after ${Math.round(r.marked)}ms`);
+      assert.ok(r.page !== null && r.marked <= r.page, `the page (${Math.round(r.page)}ms) came before the mark (${Math.round(r.marked)}ms)`);
+    });
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await page.waitForFunction(() => (document.querySelector('main h1')?.textContent ?? '').startsWith('حقیقت:'));
+    await guard('[390] the views of «حقیقت» and «فکر», each opened for the first time: no frame with «در حال بار شدن» and never an empty page', async () => {
+      const watch = (label) => page.evaluate((label) => new Promise((done) => {
+        const btn = [...document.querySelectorAll('main .mb-seg [role=radio]')].find((x) => x.textContent.trim() === label);
+        const t0 = performance.now(); let blank = 0;
+        btn.click();
+        const tick = () => {
+          const m = document.querySelector('main');
+          if (/در حال بار شدن/.test(m.innerText) || m.innerText.trim().length < 80) blank++;
+          if (performance.now() - t0 < 900) requestAnimationFrame(tick); else done(blank);
+        };
+        requestAnimationFrame(tick);
+      }), label);
+      for (const v of ['سند', 'جدول', 'نمای کلی', 'ساختار']) assert.equal(await watch(v), 0, `«${v}»: frames with a placeholder or a blank page`);
+      await nav(page, 'فکر');
+      for (const v of ['بوم', 'فهرست']) assert.equal(await watch(v), 0, `«${v}»: frames with a placeholder or a blank page`);
+    });
+    await guard('[390] a page she comes back to from the bar opens where she left it; pressing the page she is on takes her to its top', async () => {
+      await scrollTo(page, 900);
+      await nav(page, 'حقیقت'); await nav(page, 'فکر');
+      await page.waitForFunction(() => Math.abs(scrollY - 900) < 3, null, { timeout: 2000 }).catch(() => {});
+      assert.ok(Math.abs(await page.evaluate(() => scrollY) - 900) < 3, `back on «فکر» at ${await page.evaluate(() => scrollY)}, left at 900`);
+      await page.evaluate(() => [...document.querySelectorAll('nav[aria-label="منوی پایینی موبایل"] button')].find((x) => x.textContent.includes('فکر')).click());
+      await page.waitForFunction(() => scrollY < 2, null, { timeout: 3000 });
+    });
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await open(1280); await sample(page);
+    await nav(page, 'فکر');
+    await guard('[1280] «تأیید» shows on the press; when the server refuses, the item is back and the reason is shown', async () => {
+      const approve = page.locator('main button', { hasText: /^تأیید$/ });
+      const before = await approve.count();
+      assert.ok(before > 0, 'no proposal to approve in the sample');
+      await page.route(/\/objects\/[^/]+$/, (r) => (['PATCH', 'PUT'].includes(r.request().method()) ? wait(500).then(() => r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'guard', message: 'سرور این بار نپذیرفت (آزمون)' } }) })) : r.continue()));
+      await approve.first().evaluate((b) => b.click());
+      await page.waitForFunction((n) => document.querySelectorAll('main button').length && [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید').length === n - 1, before, { timeout: 300 });
+      await page.getByText('سرور این بار نپذیرفت (آزمون)').first().waitFor({ timeout: 3000 });
+      await page.waitForFunction((n) => [...document.querySelectorAll('main button')].filter((b) => b.textContent.trim() === 'تأیید').length === n, before, { timeout: 2000 });
+      await page.unroute(/\/objects\/[^/]+$/);
     });
     await ctx.close();
   }
