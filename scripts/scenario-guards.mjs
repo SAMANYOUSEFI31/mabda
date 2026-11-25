@@ -483,6 +483,81 @@ try {
     await ctx.close();
   }
 
+  step('layout.md «چه چیزی بالا می‌ماند» · the app\'s bars stay on top of everything a page pins (goal: «خانه / حقیقت / …» and the top bar are always readable and tappable; a page bar sticks UNDER them)');
+  for (const [w, h, rail] of [[390, 667, false], [390, 844, false], [1280, 900, true]]) {
+    const { ctx, page } = await open(w, h);
+    if (rail) { await page.evaluate(() => localStorage.setItem('mabda.sidebar', 'hidden')); await page.reload({ waitUntil: 'networkidle' }); await page.getByText(/^خانه: /).waitFor(); }
+    await sample(page);
+    const covered = () => page.evaluate(() => {
+      const out = [];
+      // by role and by name, so a bar that lost its pin mark is still checked
+      const bars = [...new Set(document.querySelectorAll('[data-pin=app], [data-pin=app-bottom], .mb-bottomnav.is-fixed, [data-testid=rail-title]'))].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
+      for (const bar of bars) {
+        const r = bar.getBoundingClientRect();
+        for (let x = r.left + 4; x < r.right - 4; x += 12) {
+          const hit = document.elementFromPoint(x, r.top + r.height / 2);
+          if (hit && !bar.contains(hit)) { out.push(`«${(hit.closest('[data-pin]')?.dataset.testid || hit.className || hit.tagName).toString().slice(0, 40)}» over ${bar.dataset.pin}`); break; }
+        }
+      }
+      // a page's own bar, once stuck, sits under the top app bars, never on them
+      const top = Math.max(0, ...bars.filter((b) => getComputedStyle(b).insetBlockStart === '0px' && b.getBoundingClientRect().top < 1).map((b) => b.getBoundingClientRect().bottom));
+      for (const sub of document.querySelectorAll('[data-pin=sub]')) {
+        const r = sub.getBoundingClientRect();
+        if (r.height && getComputedStyle(sub).position === 'sticky' && r.top < top - 1 && r.bottom > 0) out.push(`${sub.dataset.testid} sticks at ${Math.round(r.top)}, under the app bar's ${Math.round(top)}`);
+      }
+      return out;
+    });
+    await guard(`[${w}×${h}${rail ? ' rail' : ''}] Home, Thinking, Truth (structure, document), Outputs: nothing covers the app's bars, at the top and scrolled`, async () => {
+      const found = [];
+      // the first two screens in quarter-window steps (a page bar that has not stuck yet passes behind the bottom bar somewhere in
+      // there, whatever the window's height), then deep in the page where the page bars are stuck
+      const at = async (where) => {
+        const { max, under } = await page.evaluate(() => ({
+          max: document.documentElement.scrollHeight - innerHeight,
+          // where each of the page's sticky things, still in the flow, would sit right behind the bottom bar
+          under: [...document.querySelectorAll('main *')].filter((e) => getComputedStyle(e).position === 'sticky' && e.getBoundingClientRect().height > 0)
+            .map((e) => Math.round(e.getBoundingClientRect().top + scrollY - innerHeight + 30)),
+        }));
+        const ys = [...new Set([0, 0.5, 1, 1.5, 2].map((k) => Math.round(k * h)).concat(under, Math.round(max * 0.6)).map((y) => Math.max(0, Math.min(max, y))))];
+        for (const y of ys) {
+          await page.evaluate((v) => window.scrollTo(0, v), y);
+          // a page bar moving to its new place (a bar above came or went) is judged where it lands, not on the way
+          const landed = () => page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => {}))));
+          await settled(page); await settled(page); await landed(); await settled(page); await landed();
+          for (const p of await covered()) found.push(`${where} @${y}: ${p}`);
+        }
+      };
+      for (const tab of ['خانه', 'فکر', 'حقیقت', 'خروجی‌ها']) {
+        await nav(page, tab);
+        if (tab === 'حقیقت') for (const view of ['ساختار', 'سند']) { await radio(page, view); await at(`${tab} › ${view}`); }
+        else await at(tab);
+      }
+      const uniq = [...new Set(found.map((f) => f.replace(/ @\d+:/, ':')))];
+      assert.deepEqual(uniq, [], uniq.join(' | '));
+    });
+    await ctx.close();
+  }
+
+  step('layout.md «چه چیزی بالا می‌ماند» · the phone\'s top bar steps aside while reading down and is back on the first move up (goal: reading height; the space and search one small scroll away)');
+  {
+    const { ctx, page } = await open(390, 740); await sample(page);
+    await nav(page, 'حقیقت'); await radio(page, 'ساختار');
+    const read = () => page.evaluate(() => ({ away: document.querySelector('header[data-pin=app]').hasAttribute('data-away'), bar: Math.round(document.querySelector('header[data-pin=app]').getBoundingClientRect().bottom), outline: Math.round(document.querySelector('[data-testid=structure-outline]').getBoundingClientRect().top) }));
+    await guard('[390×740] down: the top bar is away and «فهرست» takes its place; up: the bar is back and «فهرست» is under it', async () => {
+      await page.mouse.wheel(0, 1400);
+      await page.waitForFunction(() => document.querySelector('header[data-pin=app]')?.hasAttribute('data-away'));
+      await page.waitForTimeout(400); // the bars travel together for duration-base
+      let r = await read();
+      assert.ok(r.bar <= 0 && r.outline === 0, `down: bar ends at ${r.bar}, «فهرست» at ${r.outline}`);
+      await page.mouse.wheel(0, -120);
+      await page.waitForFunction(() => !document.querySelector('header[data-pin=app]')?.hasAttribute('data-away'));
+      await page.waitForTimeout(400);
+      r = await read();
+      assert.ok(r.bar > 40 && Math.abs(r.outline - r.bar) <= 1, `up: bar ends at ${r.bar}, «فهرست» at ${r.outline}`);
+    });
+    await ctx.close();
+  }
+
   step('§۵۳ PWA · installable');
   await guard('manifest and icons are served', async () => {
     const m = await (await fetch(`${BASE}/manifest.webmanifest`)).json();

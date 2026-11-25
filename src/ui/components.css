@@ -165,6 +165,9 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-table{inline-size:100%;border-collapse:collapse;color:var(--text-default)}
 .mb-table__caption{caption-side:top;text-align:start;padding:var(--inset-md) var(--inset-lg);color:var(--text-default);border-block-end:var(--border-width-thin) solid var(--border-subtle)}
 .mb-table th{padding:var(--inset-sm) var(--inset-lg);text-align:start;color:var(--text-subtle);background:var(--surface-sunken);border-block-end:var(--border-width-thin) solid var(--border-default);white-space:nowrap}
+/* a table that fits (data-fit, measured in Table): clip, not a scroller, so its column names stay under the app's bars on a long table */
+.mb-table-wrap[data-fit]{overflow-x:clip}
+.mb-table-wrap[data-fit] thead th{position:sticky;inset-block-start:calc(var(--pin-top,0px) + var(--pin-sub,0px));z-index:var(--layer-raised);box-shadow:0 var(--border-width-thin) 0 var(--border-default);transition:inset-block-start var(--duration-base) var(--ease-standard)}
 .mb-table td{padding:var(--inset-md) var(--inset-lg);border-block-end:var(--border-width-thin) solid var(--border-subtle)}
 .mb-table tbody tr:last-child td{border-block-end:0}
 .mb-table tbody tr.is-clickable{cursor:pointer}
@@ -316,7 +319,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 
 /* ---------- BottomNav ---------- */
 .mb-bottomnav{display:flex;inline-size:100%;background:var(--nav-surface);border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-end:var(--safe-bottom);box-shadow:var(--shadow-overflow)}
-.mb-bottomnav.is-fixed{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--layer-sticky)}
+.mb-bottomnav.is-fixed{position:fixed;inset-inline:0;inset-block-end:0;z-index:var(--layer-chrome)}
 /* spec navigation.md «نوار پایین»: bar 56; the selected state is one neutral tile (48 tall, radius 12) holding icon AND label */
 .mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-block-start:var(--space-1);gap:var(--space-1);min-block-size:calc(var(--touch-target-comfortable) + var(--space-2));
   border:0;background:transparent;color:var(--text-subtle);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-standard)}
@@ -592,7 +595,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-chip-strip{scrollbar-width:none;overscroll-behavior-inline:contain}
 .mb-chip-strip::-webkit-scrollbar{display:none}
 /* §۳۳: the space name over the page once its title has scrolled away, rail only */
-.mb-rail-title{position:fixed;inset-block-start:0;inset-inline-start:var(--sidebar-rail);inset-inline-end:0;z-index:var(--layer-sticky);animation:mb-rail-title-in var(--duration-fast) var(--ease-enter)}
+.mb-rail-title{position:fixed;inset-block-start:0;inset-inline-start:var(--sidebar-rail);inset-inline-end:0;z-index:var(--layer-chrome);animation:mb-rail-title-in var(--duration-fast) var(--ease-enter)}
 @keyframes mb-rail-title-in{from{opacity:0}}
 @media (prefers-reduced-motion:reduce){.mb-rail-title{animation:none}}
 .mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2);padding-block:var(--inset-lg);gap:var(--stack-md)}
