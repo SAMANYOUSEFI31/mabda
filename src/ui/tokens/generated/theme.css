@@ -360,6 +360,7 @@
 @utility z-base { z-index: var(--layer-base); }
 @utility z-raised { z-index: var(--layer-raised); }
 @utility z-sticky { z-index: var(--layer-sticky); }
+@utility z-chrome { z-index: var(--layer-chrome); }
 @utility z-dropdown { z-index: var(--layer-dropdown); }
 @utility z-scrim { z-index: var(--layer-scrim); }
 @utility z-dialog { z-index: var(--layer-dialog); }

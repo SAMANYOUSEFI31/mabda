@@ -132,6 +132,7 @@
   --layer-base: 0;
   --layer-raised: 100;
   --layer-sticky: 200;
+  --layer-chrome: 250;
   --layer-dropdown: 300;
   --layer-scrim: 400;
   --layer-dialog: 500;

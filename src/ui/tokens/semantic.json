@@ -1221,7 +1221,12 @@
       "$value": 100
     },
     "sticky": {
+      "$description": "a page's own pinned bar (the section path, «فهرست» and the scrubber, the document menu): it scrolls UNDER the app's bars, never over them",
       "$value": 200
+    },
+    "chrome": {
+      "$description": "the app's own bars (the phone's top bar and bottom bar, the rail's name bar): above everything a page pins, below every menu and dialog",
+      "$value": 250
     },
     "dropdown": {
       "$value": 300

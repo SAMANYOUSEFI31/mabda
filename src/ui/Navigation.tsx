@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cx } from './cx.ts';
 import { Icon } from './Icon.tsx';
@@ -114,8 +114,19 @@ export interface TableProps<Row extends Record<string, unknown>> {
 
 export function Table<Row extends Record<string, unknown>>({ caption, columns, rows, onRowClick, empty, className }: TableProps<Row>) {
   const clickable = Boolean(onRowClick);
+  // a table that fits its width is not a sideways scroller: then its column names can stick under the app's bars while a long
+  // table scrolls by (layout.md «چه چیزی بالا می‌ماند»). One that scrolls sideways keeps its own scroller and its names scroll away.
+  const wrap = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(false);
+  useEffect(() => {
+    const el = wrap.current; if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const table = el.firstElementChild as HTMLElement | null;
+    const on = () => setFit((table?.offsetWidth ?? Infinity) <= el.clientWidth + 1);
+    const ro = new ResizeObserver(on); ro.observe(el); if (table) ro.observe(table); on();
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className={cx('mb-table-wrap', className)} role="region" aria-label={caption} tabIndex={0}>
+    <div ref={wrap} data-fit={fit || undefined} className={cx('mb-table-wrap', className)} role="region" aria-label={caption} tabIndex={0}>
       <table className="mb-table">
         {caption && <caption className="mb-table__caption label-md">{caption}</caption>}
         <thead>
@@ -185,7 +196,7 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
   const [inner, setInner] = useState(defaultValue || items[0]?.id);
   const current = value !== undefined ? value : inner;
   return (
-    <nav aria-label={label} data-under={under || undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
+    <nav aria-label={label} data-under={under || undefined} data-pin={fixed ? 'app-bottom' : undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
       {items.map((it) => (
         <button
           key={it.id} type="button" aria-current={!it.action && current === it.id ? 'page' : undefined} data-testid={it.testId}

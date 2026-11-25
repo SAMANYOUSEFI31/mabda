@@ -87,12 +87,25 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   // «کاغذ کالک» only while content passes under a bar: the top bar once scrolled, the bottom bar until the end (navigation.md)
   // titleGone: the page's own title («خانه: فضا») has scrolled out of view; in the rail nothing else names the space (decisions.md §۳۳)
   const [under, setUnder] = useState({ top: false, bottom: true, titleGone: false });
+  // the phone's top bar is partly persistent (layout.md «چه چیزی بالا می‌ماند»): it steps aside while she reads DOWN and comes back
+  // on the first move UP, at the top of the page, and whenever focus is in it. What it holds (the space, search, the account) is
+  // not needed mid-read; the reading height is (a 667-tall phone lost 27% of it to three pinned bars). The bottom bar stays.
+  const [topAway, setTopAway] = useState(false);
+  const lastY = useRef(0);
   useEffect(() => {
     const on = () => {
-      const d = document.documentElement; const y = window.scrollY;
+      const d = document.documentElement;
+      const max = d.scrollHeight - window.innerHeight;
+      const y = Math.max(0, Math.min(window.scrollY, max)); // the rubber band past either end is not a direction
       const h1 = document.querySelector('#main h1');
-      const next = { top: y > 0, bottom: d.scrollHeight - window.innerHeight - y > 1, titleGone: !!h1 && h1.getBoundingClientRect().bottom < 0 };
+      const next = { top: y > 0, bottom: max - y > 1, titleGone: !!h1 && h1.getBoundingClientRect().bottom < 0 };
       setUnder((u) => (u.top === next.top && u.bottom === next.bottom && u.titleGone === next.titleGone ? u : next));
+      const dy = y - lastY.current;
+      const bar = document.querySelector<HTMLElement>('header[data-pin=app]');
+      const barH = bar?.offsetHeight ?? 0;
+      if (y <= barH || (bar && bar.contains(document.activeElement))) { setTopAway(false); lastY.current = y; }
+      else if (dy > 8) { setTopAway(true); lastY.current = y; }
+      else if (dy < -8) { setTopAway(false); lastY.current = y; }
     };
     on(); window.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on);
     const ro = new ResizeObserver(on); ro.observe(document.body);
@@ -324,7 +337,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       {/* Rail only: once the page title scrolls away, a compact bar names the space again, like a large title collapsing into
           the toolbar (Apple HIG «Navigation bars»). The open sidebar already shows the name, so it never appears there (§۳۳, §۴۸). */}
       {!docked && under.titleGone && (
-        <div data-testid="rail-title" data-under className="mb-glass mb-rail-title hidden items-center border-b border-border-default px-inset-lg py-inset-xs md:flex">
+        <div data-testid="rail-title" data-pin="app" data-under className="mb-glass mb-rail-title hidden items-center border-b border-border-default px-inset-lg py-inset-xs md:flex">
           {/* a name, not a second switcher (§۴۸): the rail's mark at the top already opens the space menu, two controls for one
               action is noise (Nielsen 8). It only answers «where am I» once the page title has gone */}
           <span className="body-sm min-w-space-0 truncate text-text-subtle" aria-hidden="true">{currentWorkspace.name}</span>
@@ -332,7 +345,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
       )}
 
       {/* Mobile top bar: brand + current workspace. The plan is NOT repeated here. */}
-      <header data-pin="app" data-under={under.top || undefined} className="mb-glass sticky top-space-0 z-sticky flex items-center justify-between gap-inline-md border-b border-border-default px-inset-lg py-inset-sm md:hidden">
+      <header data-pin="app" data-under={under.top || undefined} data-away={topAway || undefined} onFocus={() => setTopAway(false)} className="mb-glass mb-appbar sticky top-space-0 z-chrome flex items-center justify-between gap-inline-md border-b border-border-default px-inset-lg py-inset-sm md:hidden">
         <span className="flex min-w-space-0 flex-1 items-center">{workspacePicker(true)}</span>
         <span className="flex items-center gap-inline-xs">
           <IconButton icon="Search" label="جستجو" variant="secondary" onClick={p.onOpenSearch} />

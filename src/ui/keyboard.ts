@@ -59,8 +59,9 @@ export function installKeyboard(): () => void {
     if (box) { const b = box.getBoundingClientRect(); top = Math.max(top, b.top + MARGIN); bottom = Math.min(bottom, b.bottom - MARGIN); }
     else {
       // the page: its sticky top bar covers the first rows
-      const bar = document.querySelector<HTMLElement>('[data-pin="app"]');
-      if (bar && getComputedStyle(bar).display !== 'none') top = Math.max(top, vv.offsetTop + bar.getBoundingClientRect().height + MARGIN);
+      // (--pin-top: the tallest visible app bar, measured in pinned.ts; a hidden one counts 0)
+      const bar = parseFloat(getComputedStyle(root).getPropertyValue('--pin-top')) || 0;
+      top = Math.max(top, vv.offsetTop + bar + MARGIN);
     }
     const r = a.getBoundingClientRect();
     const d = shiftInto({ top: r.top, bottom: r.bottom }, { top, bottom });

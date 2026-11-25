@@ -134,9 +134,14 @@ section[data-reading] { border-inline-start-color: var(--icon-subtle); }
 /* a short window (a phone or a small tablet on its side): only the app's bar pins; a second pinned bar would take a third of the
    height that is left for reading */
 @media (max-height: 559px) { .focus-bar, .doc-bar { position: static; } }
+/* the phone's top bar steps aside while she reads down and is back on the first move up (layout.md «چه چیزی بالا می‌ماند»); a page
+   bar under it follows it up in the same motion (--pin-top counts a bar that stepped aside as 0, src/ui/pinned.ts) */
+.mb-appbar { transition: translate var(--duration-base) var(--ease-standard); }
+.mb-appbar[data-away] { translate: 0 -100%; }
+.focus-bar, .doc-bar, .think-bar { transition: inset-block-start var(--duration-base) var(--ease-standard); }
 /* keyboard focus and «jump to» stop below whatever is pinned, never under it (WCAG 2.4.11), and above the phone's bottom bar */
 html { scroll-padding-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-2)); }
-@media (max-width: 767px) { html { scroll-padding-block-end: calc(var(--space-20) + var(--safe-bottom)); } }
+html { scroll-padding-block-end: calc(var(--pin-bottom, 0px) + var(--space-2)); }
 
 /* a short window (phone on its side): the page's own top padding shrinks so the first section starts higher; no text is hidden
    (layout.md «چرخش و قد کوتاه»: what orients her stays, only spacing gives way) */

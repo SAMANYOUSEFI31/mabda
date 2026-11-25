@@ -3158,10 +3158,20 @@
    "css": "--layer-sticky",
    "level": "semantic",
    "type": "number",
-   "description": null,
+   "description": "a page's own pinned bar (the section path, «فهرست» and the scrubber, the document menu): it scrolls UNDER the app's bars, never over them",
    "alias": null,
    "light": 200,
    "dark": 200
+  },
+  {
+   "token": "layer.chrome",
+   "css": "--layer-chrome",
+   "level": "semantic",
+   "type": "number",
+   "description": "the app's own bars (the phone's top bar and bottom bar, the rail's name bar): above everything a page pins, below every menu and dialog",
+   "alias": null,
+   "light": 250,
+   "dark": 250
   },
   {
    "token": "layer.dropdown",
