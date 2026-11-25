@@ -25,16 +25,30 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-nav-ico{stroke-width:1.75;transition:stroke-width var(--duration-base) var(--ease-standard)}
 [aria-current=page] .mb-nav-ico{stroke-width:2.25}
 /* the meaning stroke is written in: a destination that became current, a check that says «done» */
+.mb-turn{opacity:0;transform-box:view-box;transform-origin:12px 12px}
+[data-ink] .mb-turn{animation:mb-turn var(--duration-slow) var(--ease-standard)}
+@keyframes mb-turn{0%{opacity:1;scale:1 1}80%{opacity:1}100%{opacity:0;scale:-1 1}}
 :is([data-ink],.mb-icon[data-draw]) .mb-ink{stroke-dasharray:1 1;animation:mb-ink var(--duration-slow) var(--ease-standard) backwards}
 @keyframes mb-ink{from{stroke-dashoffset:1}}
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) .mb-ink{animation:none!important}}
-:root[data-motion=reduced] .mb-ink{animation:none!important}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-ink,.mb-turn){animation:none!important}}
+:root[data-motion=reduced] :is(.mb-ink,.mb-turn){animation:none!important}
+/* a menu or picker that is open turns its ▾ over (state, not hover) */
+:is(button,[role=button]) .lucide-chevron-down{transition:rotate var(--duration-base) var(--ease-standard)}
+[aria-expanded=true] > .mb-btn__content .lucide-chevron-down,[aria-expanded=true] > .lucide-chevron-down{rotate:calc(var(--motion-amp) * 180deg)}
+.lucide-refresh-cw,.lucide-rotate-ccw,.lucide-send{transition:rotate var(--duration-base) var(--ease-standard),translate var(--duration-fast) var(--ease-standard)}
 /* «out / down / up» arrows and the «forward» chevron lean 1.5–2px their own way while pointed at (pointer devices only) */
 .mb-ip,.mb-li__chev,.mb-fwd{transition:translate var(--duration-fast) var(--ease-standard)}
 @media (hover:hover){
   :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--out{translate:calc(var(--motion-amp) * 1.5px) calc(var(--motion-amp) * -1.5px)}
   :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--down{translate:0 calc(var(--motion-amp) * 1.5px)}
   :is(a,button,.mb-li__row):is(:hover,:focus-visible) .mb-ip--up{translate:0 calc(var(--motion-amp) * -1.5px)}
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible) .mb-ip--lift-a{translate:calc(var(--motion-amp) * -0.75px) calc(var(--motion-amp) * -1.5px)}
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible) .mb-ip--lift-b{translate:calc(var(--motion-amp) * 0.75px) calc(var(--motion-amp) * -1.5px)}
+  /* «دوباره» and «برگرداندن»: the arrows start their turn; «ارسال»: the plane leans the way it flies */
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible):not(:disabled) .lucide-refresh-cw{rotate:calc(var(--motion-amp) * 60deg)}
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible):not(:disabled) .lucide-rotate-ccw{rotate:calc(var(--motion-amp) * -60deg)}
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible):not(:disabled) .lucide-send{translate:calc(var(--motion-amp) * 1.5px) calc(var(--motion-amp) * -1.5px)}
+  :is(a,button,[role=menuitem]):is(:hover,:focus-visible):not(:disabled) .lucide-send.mb-icon--mirror:dir(rtl){translate:calc(var(--motion-amp) * -1.5px) calc(var(--motion-amp) * -1.5px)}
   :is(a,button,.mb-li__row,.mb-card--interactive):is(:hover,:focus-visible) :is(.mb-li__chev,.mb-fwd):dir(rtl){translate:calc(var(--motion-amp) * -2px) 0}
   :is(a,button,.mb-li__row,.mb-card--interactive):is(:hover,:focus-visible) :is(.mb-li__chev,.mb-fwd):dir(ltr){translate:calc(var(--motion-amp) * 2px) 0}
 }
@@ -283,7 +297,13 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-nav-glided>.mb-nav-current::before{display:none}
 @media (forced-colors:active){.mb-nav-glide{display:none}}
 /* a page arrives by fading in place (motion.md «رفتن بین صفحه‌ها»): nothing travels, so nothing jumps; fast, opacity only */
-.mb-page-enter{animation:mb-fade var(--duration-fast) var(--ease-enter)}
+.mb-page-enter{animation:mb-in var(--duration-base) var(--ease-enter)}
+/* another view of the same place: from the side of its key in the switch (pageTransition.ts); RTL «forward» = from the end (left) */
+.mb-view-enter[data-axis]{animation:var(--duration-base) var(--ease-enter) backwards}
+.mb-view-enter[data-axis=fwd]:dir(rtl),.mb-view-enter[data-axis=back]:dir(ltr){animation-name:mb-axis-from-left}
+.mb-view-enter[data-axis=back]:dir(rtl),.mb-view-enter[data-axis=fwd]:dir(ltr){animation-name:mb-axis-from-right}
+@keyframes mb-axis-from-left{from{opacity:0;translate:calc(var(--distance-lg) * -1) 0}}
+@keyframes mb-axis-from-right{from{opacity:0;translate:var(--distance-lg) 0}}
 /* a part that opens in place (motion.md «بازشدن ردیف و بخش»): its height grows from nothing with ease-standard while its content
    fades in 40 later, so what is under it is pushed, not thrown. Only where the browser can grow to «auto» (interpolate-size);
    elsewhere it simply appears, as before. Closing is still immediate. «کاهش حرکت»: no growth, a fade only. */

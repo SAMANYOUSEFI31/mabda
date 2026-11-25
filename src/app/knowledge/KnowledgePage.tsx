@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Button, Dialog, EmptyState, IconButton, Menu, SegmentedControl, formatNumber } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { PageSuspense, lazyNamed } from '../lazy';
-import { pageEnterClass, switchPage } from '../../ui/pageTransition';
+import { switchPage, useViewAxis, viewEnterClass } from '../../ui/pageTransition';
 import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
@@ -20,11 +20,15 @@ const ContextTableView = lazyNamed(() => import('../../components/knowledge/Cont
 const DocWorkspace = lazyNamed(() => import('../../components/knowledge/DocWorkspace'), 'DocWorkspace', { warm: true });
 const FilesPanel = lazyNamed(() => import('../../components/files/FilesPanel'), 'FilesPanel');
 
+const VIEW_ORDER = ['doc', 'canvas', 'read', 'table'] as const;
+
 export type KnowledgePageProps = Pick<ReadyScope, 'approvals' | 'askDeleteNote' | 'contextViewMode' | 'contradictions' | 'currentWorkspace' | 'data' | 'extractingNoteId' | 'focusNodeId' | 'focusNotes' | 'goFocus' | 'handleAddNote' | 'handleDeleteFile' | 'handleDeleteSamples' | 'handleMoveFile' | 'handleExtractNote' | 'handleProcessFile' | 'handleSplitNote' | 'handleUpdateNote' | 'handleUploadFile' | 'nodeOp' | 'nodes' | 'openContext' | 'openCounts' | 'openThinkingSpace' | 'quota' | 'renderCanvas' | 'reviewIdSet' | 'setAiRequest' | 'setArchiveOpen' | 'setContextViewMode' | 'setEffectNodeId' | 'setIsPacksOpen' | 'setIsStarterOpen' | 'setNodeDialog' | 'setReadNodeId' | 'setTemplateDraft' | 'setThoughtDialog' | 'setThreadNodeId' | 'toast' | 'vf' | 'wid' | 'workspaceContexts'>;
 
 export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contradictions, currentWorkspace, data, extractingNoteId, focusNodeId, focusNotes, goFocus, handleAddNote, handleDeleteFile, handleDeleteSamples, handleMoveFile, handleExtractNote, handleProcessFile, handleSplitNote, handleUpdateNote, handleUploadFile, nodeOp, nodes, openContext, openCounts, openThinkingSpace, quota, renderCanvas, reviewIdSet, setAiRequest, setArchiveOpen, setContextViewMode, setEffectNodeId, setIsPacksOpen, setIsStarterOpen, setNodeDialog, setReadNodeId, setTemplateDraft, setThoughtDialog, setThreadNodeId, toast, vf, wid, workspaceContexts }: KnowledgePageProps) {
   // the files are an occasional task (§۵۴ ۱۴): a side panel from «⋯ › فایل‌ها», not a tail under every section
   const [filesOpen, setFilesOpen] = useState(false);
+  // the four views sit side by side in the switch: the new one comes from the side of its key (pageTransition.ts)
+  const axis = useViewAxis(contextViewMode, VIEW_ORDER);
   return (
         <div className="space-y-stack-lg">
           {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
@@ -74,7 +78,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
 
           <div id="context-view" style={{ scrollMarginTop: 80 }} />
           {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
-          <div key={contextViewMode} className={pageEnterClass}>
+          <div key={contextViewMode} className={viewEnterClass} data-axis={axis}>
           {contextViewMode === 'canvas' ? renderCanvas('truth') : <div className="mb-page-frame space-y-stack-lg">
           {contextViewMode === 'read' ? (
             <PageSuspense><DocWorkspace
