@@ -112,11 +112,21 @@ export function useBoards(p: AppCoreScope & SearchAndFocusScope & UsageCountersS
 
   // the status changes on the version she saw: confirming a proposal another tab rewrote meanwhile is a 409, never a silent «yes»
   // to a text she did not read (the same rule as edit / replace / supersede, decisions.md §۵۳ ۲)
+  // Optimistic (motion.md «علت پیش از نتیجه»: the answer to a press within 100ms): the new status shows on the press, the server's
+  // copy replaces it when it arrives, and a failure puts the item back as it was (the error says why, «دوباره» is the same press).
+  // On a slow mobile network the press used to show nothing for a whole round trip (236ms at 150ms RTT, audit round 4)
   const setStatus = async (id: string, status: ContextObject['status'], reason?: string) => {
-    const seen = workspaceContexts.find((o) => o.id === id)?.updatedAt;
+    const before = workspaceContexts.find((o) => o.id === id);
+    const seen = before?.updatedAt;
+    const here = (d: { workspace: { id: string } }) => d.workspace.id === wid;
+    if (before) patch((d) => (here(d) ? { ...d, objects: d.objects.map((o) => (o.id === id ? { ...o, status } : o)) } : d));
     const r = await attempt(() => dataApi.updateObject(wid, id, { status, ...(reason ? { reason } : {}), ...(seen ? { expectedUpdatedAt: seen } : {}) }));
-    if (!r) return undefined;
-    patch((d) => ({ ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale }));
+    if (!r) {
+      // only what this press changed goes back (a reload after a conflict already holds the stored copy)
+      if (before) patch((d) => (here(d) ? { ...d, objects: d.objects.map((o) => (o.id === id && o.status === status && o.updatedAt === before.updatedAt ? before : o)) } : d));
+      return undefined;
+    }
+    patch((d) => (here(d) ? { ...d, objects: d.objects.map((o) => (o.id === id ? r.object : o)), stale: r.stale } : d));
     return r.impact;
   };
 

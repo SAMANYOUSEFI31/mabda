@@ -23,7 +23,7 @@ import type { ThinkingItemsScope } from '../thinking/useThinkingItems';
 import type { UsageCountersScope } from './useUsageCounters';
 
 /** the canvas is a separate chunk: loaded the first time a canvas is opened */
-const ContextCanvas = lazyNamed(() => import('../../components/canvas/ContextCanvas'), 'ContextCanvas');
+const ContextCanvas = lazyNamed(() => import('../../components/canvas/ContextCanvas'), 'ContextCanvas', { warm: true });
 
 export type RemovalAndDialogsScope = ReturnType<typeof useRemovalAndDialogs>;
 

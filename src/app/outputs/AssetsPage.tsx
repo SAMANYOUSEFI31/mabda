@@ -22,7 +22,7 @@ import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
-const AssetLibrary = lazyNamed(() => import('../../components/outputs/AssetLibrary'), 'AssetLibrary');
+const AssetLibrary = lazyNamed(() => import('../../components/outputs/AssetLibrary'), 'AssetLibrary', { warm: true });
 
 export type AssetsPageProps = Pick<ReadyScope, 'currentWorkspace' | 'data' | 'deliverables' | 'extractingAssetId' | 'focusAsset' | 'handleArchiveDeliverable' | 'handleDeleteDeliverable' | 'handleExtractFromAsset' | 'openContext' | 'openSpecEditor' | 'setActiveTab' | 'setAiRequest' | 'setArchiveOpen' | 'setIsImportOpen' | 'setIsPacksOpen' | 'setIsSpecLibraryOpen' | 'setPendingRebuild' | 'setSelectedSpecId' | 'specs' | 'stale' | 'workspaceContexts'>;
 

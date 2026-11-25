@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Code splitting on a REAL server (docs/architecture.md → «بار شدن تکه‌تکه»):
- *   1. the home loads without the heavy pages: the thinking space / canvas / dialogs are NOT requested until they are needed;
+ *   1. the first screen does not wait for the heavy pages; pages and views load ahead once it is up (idle), dialogs only when opened;
  *   2. a page that cannot load (the network is cut for that one file) shows a clear message with «دوباره», never a blank page;
  *      after the network is back, «دوباره» brings the page;
  *   3. a dialog is loaded the first time it is opened.
@@ -41,14 +41,21 @@ try {
     const click = (loc) => loc.evaluate((n) => n.click());
     const nav = (m, d) => click(page.locator(mobile ? `nav[aria-label="منوی پایینی موبایل"] button:has-text("${m}")` : `nav[aria-label="بخش‌های اصلی نرم‌افزار"] button:has-text("${d}")`));
 
-    step(`[${width}] 1: the home does not request the heavy pages`);
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    // the thinking space cannot load in this run (step 2): blocked from the start, so loading it ahead (warmChunks) fails as well
+    await page.route('**/components/thinking/ThinkingSpace.tsx*', (route) => route.abort('failed'));
+
+    step(`[${width}] 1: the first screen does not wait for the heavy pages; they load only after it (idle), dialogs only when opened`);
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.getByText(/^خانه: /).waitFor({ timeout: 20000 });
-    for (const heavy of ['ContextCanvas', 'ThinkingSpace', 'WeeklyReviewDialog', 'TruthCompareDialog', 'ContextDetailModal', 'WorkstreamStudio']) assert.ok(!requested.includes(heavy), `${heavy} was requested at the start`);
-    assert.ok(requested.includes('AppView') && requested.includes('HomeTodo'), 'the shell and the home are there');
+    const atFirstScreen = [...requested];
+    for (const heavy of ['ContextCanvas', 'WeeklyReviewDialog', 'TruthCompareDialog', 'ContextDetailModal', 'WorkstreamStudio']) assert.ok(!atFirstScreen.includes(heavy), `${heavy} was requested before the first screen`);
+    assert.ok(requested.includes('AppView') && requested.includes('HomePage'), 'the shell and the home are there');
+    await page.waitForLoadState('networkidle');
+    // pages and views load ahead while idle (src/app/lazy.tsx warmChunks: a view opens with no «loading» placeholder); dialogs never do
+    for (const dialog of ['WeeklyReviewDialog', 'TruthCompareDialog', 'ContextDetailModal', 'ThoughtDialog']) assert.ok(!requested.includes(dialog), `${dialog} was loaded ahead`);
+    assert.ok(!requested.includes('WorkstreamStudio'), 'the frozen studio is never loaded ahead');
 
     step(`[${width}] 2: a page that cannot load says so and offers «دوباره»`);
-    await page.route('**/components/thinking/ThinkingSpace.tsx*', (route) => route.abort('failed'));
     await nav('فکر', 'فکر');
     const alert = page.getByRole('alert').filter({ hasText: 'این بخش بار نشد' });
     await alert.waitFor({ timeout: 10000 });

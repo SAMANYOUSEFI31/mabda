@@ -71,13 +71,18 @@ export interface SegmentedControlProps {
 
 export function SegmentedControl({ items, value, defaultValue, onChange, label, fullWidth = false, className, personal = false }: SegmentedControlProps) {
   const [inner, setInner] = useState(defaultValue !== undefined ? defaultValue : items[0]?.id);
-  const current = value !== undefined ? value : inner;
+  // a controlled choice shows at once (the key starts its glide on the press), while what it changes may still be on its way
+  // (a view built in a transition, src/ui/pageTransition.ts); once the value arrives, or anything else changes it, the value rules.
+  // Local state: the press re-renders only this control, never the page under it
+  const [asked, setAsked] = useState<{ id: string; from: string | undefined } | null>(null);
+  const waiting = value !== undefined && !!asked && asked.from === value; // what was pressed has not arrived yet
+  const current = waiting ? asked!.id : value !== undefined ? value : inner;
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const root = useRef<HTMLDivElement>(null);
   // the raised key slides from the old choice to the new one (motion.md «تب و کنترل تکه‌ای»: base, ease-standard)
   const segGlide = useNavGlide<HTMLDivElement>(':scope > [aria-checked=true]', ['aria-checked'], 'mb-tab-glide');
   const rootRef = useCallback((n: HTMLDivElement | null) => { root.current = n; segGlide.ref(n); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const pick = (id: string) => { setInner(id); onChange?.(id); };
+  const pick = (id: string) => { setInner(id); if (value !== undefined && id !== value) setAsked({ id, from: value }); onChange?.(id); };
   const onKey = (e: React.KeyboardEvent, index: number) => {
     const rtl = isRtl(root.current);
     const step = ({ ArrowLeft: rtl ? 1 : -1, ArrowRight: rtl ? -1 : 1, ArrowUp: -1, ArrowDown: 1 } as Record<string, number>)[e.key];
@@ -90,7 +95,7 @@ export function SegmentedControl({ items, value, defaultValue, onChange, label, 
     refs.current[enabled[at].id]?.focus();
   };
   return (
-    <div role="radiogroup" aria-label={label} ref={rootRef} className={cx('mb-tabs', 'mb-seg', 'mb-tab-glided', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
+    <div role="radiogroup" aria-label={label} ref={rootRef} data-pending={waiting || undefined} className={cx('mb-tabs', 'mb-seg', 'mb-tab-glided', fullWidth === 'phone' ? 'mb-tabs--full-phone' : fullWidth && 'mb-tabs--full', className)}>
       {segGlide.glide}
       {items.map((it, i) => (
         <button
