@@ -9,7 +9,7 @@ import {
   History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive, CircleDot,
   ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
-  SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
+  SunMoon, FolderInput, RotateCcw, Compass, Gauge, ChevronsUpDown,
   createLucideIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -33,9 +33,12 @@ const InkLightbulb = createLucideIcon('lightbulb', [
   ['path', { d: 'M9 18h6', key: 'x1upvd' }],
   ['path', { d: 'M10 22h4', key: 'ceow96' }],
 ]);
+// «حقیقت» is read: when it becomes the current place a page turns, the left leaf lifting over the spine to the right, the way a
+// Persian book is read. The leaf (`mb-turn`) is a copy of the left page's outline, invisible except while it turns.
 const InkBookOpen = createLucideIcon('book-open', [
-  ['path', { d: 'M12 7v14', key: '1akyts', ...ink }],
+  ['path', { d: 'M12 7v14', key: '1akyts' }],
   ['path', { d: 'M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z', key: 'ruj8y' }],
+  ['path', { d: 'M12 7a4 4 0 0 0-4-4H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h6a3 3 0 0 1 3 3', key: 'mb-leaf', className: 'mb-turn' }],
 ]);
 const InkPackage = createLucideIcon('package', [
   ['path', { d: 'M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z', key: '1a0edw' }],
@@ -52,6 +55,13 @@ const OutExternalLink = createLucideIcon('external-link', [
   ['path', { d: 'M15 3h6v6', key: '1q9fwt', className: 'mb-ip mb-ip--out' }],
   ['path', { d: 'M10 14 21 3', key: 'gplh6r', className: 'mb-ip mb-ip--out' }],
   ['path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6', key: 'a6xqqp' }],
+]);
+// «درخواست برای ابزار دیگر» packs what she knows to take elsewhere: pointed at, the two flaps lift a little, the box opening
+const OutPackageOpen = createLucideIcon('package-open', [
+  ['path', { d: 'M12 22v-9', key: 'x3hkom' }],
+  ['path', { d: 'M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z', key: '2ntwy6', className: 'mb-ip mb-ip--lift-a' }],
+  ['path', { d: 'M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13', key: '1pmm1c' }],
+  ['path', { d: 'M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z', key: '12ttoo', className: 'mb-ip mb-ip--lift-b' }],
 ]);
 const OutDownload = createLucideIcon('download', [
   ['path', { d: 'M12 15V3', key: 'm9g1x1', className: 'mb-ip mb-ip--down' }],
@@ -73,7 +83,7 @@ const ICONS = {
   Layers, Table2, Upload: OutUpload, History, Wallet, Undo2, Clock, FolderTree, ListChecks, Link2, Archive,
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
-  SunMoon, FolderInput, PackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
+  SunMoon, FolderInput, PackageOpen: OutPackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
 } as const;
 
 export type IconName = keyof typeof ICONS;
