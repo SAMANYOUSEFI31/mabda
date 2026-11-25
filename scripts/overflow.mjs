@@ -16,10 +16,11 @@ import { chromium } from 'playwright';
 
 const BASE = process.argv[2] || 'http://localhost:3100';
 // sizes: width x height, «t» = a touch device (layout.md «چرخش و قد کوتاه»): the five widths standing, then a phone on its side,
-// a tablet on its side and a short laptop window. WIDTHS=… still picks plain widths at the usual height.
+// a tablet on its side and a short laptop window, a short phone (667: an iPhone SE, and what a tall phone's browser leaves with
+// its own bars shown), and «r» = the sidebar narrowed to the rail (its name bar pins at the top). WIDTHS=… still picks plain widths.
 const SIZES = (process.env.WIDTHS ? process.env.WIDTHS.split(',').map((w) => `${w}x${Number(w) < 768 ? 844 : 900}${Number(w) < 768 ? 't' : ''}`)
-  : (process.env.SIZES || '390x844t,768x900,1024x900,1280x900,1440x900,844x390t,1024x768t,1280x600').split(','))
-  .map((s) => { const m = /^(\d+)x(\d+)(t?)$/.exec(s); return { width: Number(m[1]), height: Number(m[2]), touch: !!m[3] }; });
+  : (process.env.SIZES || '390x844t,768x900,1024x900,1280x900,1440x900,844x390t,1024x768t,1280x600,390x667t,1280x900r').split(','))
+  .map((s) => { const m = /^(\d+)x(\d+)(t?)(r?)$/.exec(s); return { width: Number(m[1]), height: Number(m[2]), touch: !!m[3], rail: !!m[4] }; });
 
 const measure = (userText = '') => {
   const MEANT = '.mb-table-wrap, [data-testid=canvas-stage], pre, code, [data-scroll-x]';
@@ -128,17 +129,17 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const found = new Map(); // problem → where
 const note = (where, list) => { for (const p of list) if (!found.has(p)) found.set(p, where); };
 
-for (const { width: w0, height, touch } of SIZES) {
+for (const { width: w0, height, touch, rail } of SIZES) {
   // a size is named by its width, and by width×height when it is not the usual standing one
   const width = w0;
-  const label = (height === (w0 < 768 ? 844 : 900)) ? `${w0}` : `${w0}×${height}`;
+  const label = `${(height === (w0 < 768 ? 844 : 900)) ? `${w0}` : `${w0}×${height}`}${rail ? ' rail' : ''}`;
   // a phone is a phone: touch, and the system's overlay scrollbars that take no room (a desktop window keeps its classic bar)
   const ctx = await browser.newContext({ viewport: { width, height }, locale: 'fa-IR', ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   const page = await ctx.newPage();
   // TEXT=200: the browser's own text size at 200% (WCAG 1.4.4); the page zoom at 200% is the 640×450 size (a 1280×900 window)
   if (process.env.TEXT) await page.addInitScript((p) => { document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${p}%`; }); }, Number(process.env.TEXT));
   await page.goto(BASE, { waitUntil: 'networkidle' });
-  await page.evaluate((wide) => { localStorage.clear(); if (wide) localStorage.setItem('mabda.sidebar', 'docked'); }, width >= 1024);
+  await page.evaluate(([wide, rail]) => { localStorage.clear(); if (rail) localStorage.setItem('mabda.sidebar', 'hidden'); else if (wide) localStorage.setItem('mabda.sidebar', 'docked'); }, [width >= 1024, rail]);
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
   const settle = () => page.waitForTimeout(450);
@@ -165,7 +166,22 @@ for (const { width: w0, height, touch } of SIZES) {
   };
   // after scrolling: nothing that stays pinned (the app's bar, a page's own bar, the phone's bottom bar) covers another pinned thing,
   // and every control inside a pinned bar can still be reached where it is drawn (layout.md «چه چیزی بالا می‌ماند»)
+  // the app's own bars (`data-pin="app"`, `data-pin="app-bottom"`) are drawn over everything a page pins or scrolls, at the top
+  // of the page too: a page bar that has not stuck yet passes UNDER the phone's bottom bar (it once drew over «خانه / حقیقت / …»)
+  const chromeOnTop = () => page.evaluate(() => {
+    const out = [];
+    const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.pin ? `[pin=${e.dataset.pin}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
+    for (const bar of document.querySelectorAll('[data-pin=app], [data-pin=app-bottom]')) {
+      const r = bar.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || r.bottom <= 0 || r.top >= innerHeight) continue;
+      for (const fy of [0.25, 0.5, 0.75]) for (let x = r.left + 4; x < r.right - 4; x += 12) {
+        const hit = document.elementFromPoint(x, r.top + r.height * fy);
+        if (hit && !bar.contains(hit) && !hit.closest('[role=dialog], [role=menu], [role=listbox], .mb-toast-stack, .mb-dialog-layer, .mb-skip')) { out.push(`${name(hit.closest('[data-pin]') || hit)} is drawn over the app's bar ${name(bar)}`); break; }
+      }
+    }
+    return [...new Set(out)];
+  });
   const pinCheck = async (where) => {
+    note(`${label} ${where} (top)`, await chromeOnTop());
     const tall = await page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 200);
     if (!tall) return;
     await page.evaluate(() => window.scrollTo(0, Math.floor((document.documentElement.scrollHeight - innerHeight) * 0.6)));
@@ -193,6 +209,7 @@ for (const { width: w0, height, touch } of SIZES) {
       }
       return out;
     }));
+    note(`${label} ${where} (scrolled)`, await chromeOnTop());
     await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
   };
   const escAll = async () => { for (let i = 0; i < 4 && await page.locator('[role=dialog]:not([inert] *), [role=alertdialog], [role=menu]').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); } };
