@@ -8,7 +8,7 @@ import { Icon, type IconName } from './Icon.tsx';
 const html = (name: IconName, draw = false) => renderToStaticMarkup(createElement(Icon, { name, draw }));
 
 test('destinations and checks have one stroke to write in, with pathLength 1', () => {
-  for (const name of ['House', 'Lightbulb', 'BookOpen', 'Package', 'Check', 'CircleCheck'] as IconName[]) {
+  for (const name of ['Package', 'Check', 'CircleCheck'] as IconName[]) {
     const out = html(name);
     assert.equal(out.match(/class="mb-ink"/g)?.length, 1, `${name}: one ink stroke`);
     assert.match(out, /pathLength="1"/, `${name}: pathLength`);
@@ -25,4 +25,20 @@ test('out / down / up arrows mark only the arrow', () => {
 test('draw is opt-in: an icon is still unless asked', () => {
   assert.doesNotMatch(html('Check'), /data-draw/);
   assert.match(html('Check', true), /data-draw="true"/);
+});
+
+test('«حقیقت» turns a page instead: one leaf, hidden until it turns', () => {
+  const out = html('BookOpen');
+  assert.equal(out.match(/class="mb-turn"/g)?.length, 1);
+  assert.doesNotMatch(out, /mb-ink/);
+});
+
+test('«درخواست برای ابزار دیگر» lifts its two flaps', () => {
+  const out = html('PackageOpen');
+  assert.match(out, /mb-ip--lift-a/); assert.match(out, /mb-ip--lift-b/);
+});
+
+test('«خانه» swings its door, «فکر» has four hidden rays', () => {
+  assert.equal(html('House').match(/class="mb-door"/g)?.length, 1);
+  assert.equal(html('Lightbulb').match(/class="mb-ray"/g)?.length, 4);
 });

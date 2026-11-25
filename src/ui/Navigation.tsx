@@ -210,7 +210,7 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
 /** one bar button: when it becomes the current place its icon's ink is written in once (motion.md «آیکن و نشان») */
 function BottomNavButton({ it, current, onPress }: { it: BottomNavItem; current: boolean; onPress: () => void }) {
   const ink = useBecame(current);
-  const badgeTurn = useTurns(it.badge ?? 0);
+  const { turn: badgeTurn, roll } = useCount(it.badge ?? 0);
   return (
     <button
       type="button" aria-current={current ? 'page' : undefined} data-ink={ink || undefined} data-testid={it.testId}
@@ -221,8 +221,12 @@ function BottomNavButton({ it, current, onPress }: { it: BottomNavItem; current:
         <Icon name={it.icon} size="xl" className="mb-nav-ico" />
         {it.badge ? (
           <>
-            {/* a count that changed while you look takes a short pop (motion.md «آیکن و نشان»); the first one is just there */}
-            <span key={badgeTurn} className="mb-bottomnav__badge label-sm" data-changed={badgeTurn > 0 || undefined} aria-hidden="true">{it.badge > 99 ? `${formatNumber(99)}+` : formatNumber(it.badge)}</span>
+            {/* a count that changed while you look (motion.md «آیکن و نشان»): a badge that was not there comes in small and grows;
+                a number that changes rolls like a counter, the new one from below when it grew and from above when it shrank, inside
+                the badge's own box (nothing around it moves). The first one is just there */}
+            <span key={roll === 'new' ? badgeTurn : 'badge'} className="mb-bottomnav__badge label-sm" data-changed={roll === 'new' || undefined} aria-hidden="true">
+              <span key={badgeTurn} className="mb-bottomnav__num" data-roll={roll === 'up' || roll === 'down' ? roll : undefined}>{it.badge > 99 ? `${formatNumber(99)}+` : formatNumber(it.badge)}</span>
+            </span>
             <span className="mb-sr">{formatNumber(it.badge)} {it.badgeLabel || 'مورد تازه'}</span>
           </>
         ) : null}
@@ -235,12 +239,14 @@ function BottomNavButton({ it, current, onPress }: { it: BottomNavItem; current:
   );
 }
 
-/** how many times `value` changed since the first render (0 = never): a key that replays a one-time movement on each change */
-function useTurns(value: unknown): number {
-  const prev = useRef(value);
-  const [turns, setTurns] = useState(0);
-  useEffect(() => { if (!Object.is(prev.current, value)) { prev.current = value; setTurns((n) => n + 1); } }, [value]);
-  return turns;
+/** how a count changed in the render it changed in (no frame late): `turn` counts the changes (a key that replays a one-time
+ *  movement), `roll` says which way: 'new' from nothing, 'up' or 'down'; nothing on the first render */
+function useCount(value: number): { turn: number; roll?: 'new' | 'up' | 'down' } {
+  const s = useRef<{ value: number; turn: number; roll?: 'new' | 'up' | 'down' }>({ value, turn: 0 });
+  if (s.current.value !== value) {
+    s.current = { value, turn: s.current.turn + 1, roll: !s.current.value ? 'new' : value > s.current.value ? 'up' : 'down' };
+  }
+  return s.current;
 }
 
 /* ---------------- NavItem (sidebar / drawer row) ---------------- */
