@@ -25,13 +25,19 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-nav-ico{stroke-width:1.75;transition:stroke-width var(--duration-base) var(--ease-standard)}
 [aria-current=page] .mb-nav-ico{stroke-width:2.25}
 /* the meaning stroke is written in: a destination that became current, a check that says «done» */
+.mb-door{transform-box:view-box;transform-origin:9px 21px}
+[data-ink] .mb-door{animation:mb-door var(--duration-slow) var(--ease-standard)}
+@keyframes mb-door{40%{scale:.3 1}}
+.mb-ray{opacity:0;stroke-dasharray:1 1;stroke-dashoffset:1}
+[data-ink] .mb-ray{animation:mb-ray var(--duration-slow) var(--ease-enter)}
+@keyframes mb-ray{0%{opacity:1;stroke-dashoffset:1}45%{opacity:1;stroke-dashoffset:0}100%{opacity:0;stroke-dashoffset:0}}
 .mb-turn{opacity:0;transform-box:view-box;transform-origin:12px 12px}
 [data-ink] .mb-turn{animation:mb-turn var(--duration-slow) var(--ease-standard)}
 @keyframes mb-turn{0%{opacity:1;scale:1 1}80%{opacity:1}100%{opacity:0;scale:-1 1}}
 :is([data-ink],.mb-icon[data-draw]) .mb-ink{stroke-dasharray:1 1;animation:mb-ink var(--duration-slow) var(--ease-standard) backwards}
 @keyframes mb-ink{from{stroke-dashoffset:1}}
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-ink,.mb-turn){animation:none!important}}
-:root[data-motion=reduced] :is(.mb-ink,.mb-turn){animation:none!important}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-ink,.mb-turn,.mb-door,.mb-ray){animation:none!important}}
+:root[data-motion=reduced] :is(.mb-ink,.mb-turn,.mb-door,.mb-ray){animation:none!important}
 /* a menu or picker that is open turns its ▾ over (state, not hover) */
 :is(button,[role=button]) .lucide-chevron-down{transition:rotate var(--duration-base) var(--ease-standard)}
 [aria-expanded=true] > .mb-btn__content .lucide-chevron-down,[aria-expanded=true] > .lucide-chevron-down{rotate:calc(var(--motion-amp) * 180deg)}
@@ -377,10 +383,16 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (hover:hover){.mb-bottomnav__item.is-action:hover .mb-bottomnav__icon{background:var(--bg-neutral-bold-hover)}}
 .mb-bottomnav__item.is-action:active .mb-bottomnav__icon{background:var(--bg-neutral-bold-pressed)}
 .mb-bottomnav__badge{position:absolute;inset-block-start:calc(var(--space-2) * -1);inset-inline-start:calc(100% + var(--space-1) / 2);min-inline-size:var(--space-4);padding-inline:var(--space-1);border-radius:var(--radius-pill);background:var(--nav-badge-bg);color:var(--nav-badge-fg);line-height:var(--space-4);font-variant-numeric:tabular-nums}
+.mb-bottomnav__badge{overflow:clip}
+.mb-bottomnav__num{display:block}
 .mb-bottomnav__badge[data-changed]{animation:mb-badge var(--duration-base) var(--ease-enter)}
 @keyframes mb-badge{from{opacity:0;scale:.6}}
-@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) .mb-bottomnav__badge[data-changed]{animation-name:mb-fade}}
-:root[data-motion=reduced] .mb-bottomnav__badge[data-changed]{animation-name:mb-fade}
+.mb-bottomnav__num[data-roll=up]{animation:mb-roll-up var(--duration-base) var(--ease-enter)}
+.mb-bottomnav__num[data-roll=down]{animation:mb-roll-down var(--duration-base) var(--ease-enter)}
+@keyframes mb-roll-up{from{opacity:0;translate:0 70%}}
+@keyframes mb-roll-down{from{opacity:0;translate:0 -70%}}
+@media (prefers-reduced-motion:reduce){:root:not([data-motion=full]) :is(.mb-bottomnav__badge[data-changed],.mb-bottomnav__num[data-roll]){animation-name:mb-fade}}
+:root[data-motion=reduced] :is(.mb-bottomnav__badge[data-changed],.mb-bottomnav__num[data-roll]){animation-name:mb-fade}
 
 /* ---------- Popover / Menu ---------- */
 .mb-popover{position:relative;display:inline-flex}

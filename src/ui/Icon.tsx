@@ -23,15 +23,21 @@ import { cx } from './cx.ts';
  *  · `mb-ip`   the arrow of «out / down / up», nudged 1.5px along its own direction while the control is pointed at.
  */
 const ink = { className: 'mb-ink', pathLength: '1' } as const;
+// «خانه»: the door swings open on its hinge and closes behind you
 const InkHouse = createLucideIcon('house', [
   ['path', { d: 'M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', key: 'r6nss1' }],
-  ['path', { d: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', key: '5wwlr5', ...ink }],
+  ['path', { d: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8', key: '5wwlr5', className: 'mb-door' }],
 ]);
+// «فکر»: the bulb lights: four short rays are drawn out from it and fade (they are not there otherwise)
+const ray = { className: 'mb-ray', pathLength: '1' } as const;
 const InkLightbulb = createLucideIcon('lightbulb', [
-  // drawn from its start at the base of the glass, round the top and back down: an idea being sketched
-  ['path', { d: 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5', key: '1gvzjb', ...ink }],
+  ['path', { d: 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5', key: '1gvzjb' }],
   ['path', { d: 'M9 18h6', key: 'x1upvd' }],
   ['path', { d: 'M10 22h4', key: 'ceow96' }],
+  ['path', { d: 'M3.6 8.5H1.6', key: 'mb-ray-1', ...ray }],
+  ['path', { d: 'M20.4 8.5h2', key: 'mb-ray-2', ...ray }],
+  ['path', { d: 'M5 3.4 3.6 2', key: 'mb-ray-3', ...ray }],
+  ['path', { d: 'M19 3.4 20.4 2', key: 'mb-ray-4', ...ray }],
 ]);
 // «حقیقت» is read: when it becomes the current place a page turns, the left leaf lifting over the spine to the right, the way a
 // Persian book is read. The leaf (`mb-turn`) is a copy of the left page's outline, invisible except while it turns.
@@ -43,8 +49,9 @@ const InkBookOpen = createLucideIcon('book-open', [
 const InkPackage = createLucideIcon('package', [
   ['path', { d: 'M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z', key: '1a0edw' }],
   ['path', { d: 'M12 22V12', key: 'd0xqtd' }],
-  ['polyline', { points: '3.29 7 12 12 20.71 7', key: 'ousv84', ...ink }],
-  ['path', { d: 'm7.5 4.27 9 5.15', key: '1c824w' }],
+  ['polyline', { points: '3.29 7 12 12 20.71 7', key: 'ousv84' }],
+  // «خروجی‌ها»: the tape is drawn across the lid: packed and ready to go
+  ['path', { d: 'm7.5 4.27 9 5.15', key: '1c824w', ...ink }],
 ]);
 const InkCheck = createLucideIcon('check', [['path', { d: 'M20 6 9 17l-5-5', key: '1gmf2c', ...ink }]]);
 const InkCircleCheck = createLucideIcon('circle-check', [
