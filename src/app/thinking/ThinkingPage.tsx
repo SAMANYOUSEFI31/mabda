@@ -9,12 +9,13 @@ import { optionsOf } from '../../core/decisionOptions';
 import { requestAdd } from '../../core/addRequest';
 import { Button, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
+import { pageEnterClass, switchPage } from '../../ui/pageTransition';
 import type { ReadyScope } from '../shared';
 import { ContradictionPanel } from '../../components/knowledge/ContradictionPanel';
 import { LIMITS } from '../../core/limits';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
-const ThinkingSpace = lazyNamed(() => import('../../components/thinking/ThinkingSpace'), 'ThinkingSpace');
+const ThinkingSpace = lazyNamed(() => import('../../components/thinking/ThinkingSpace'), 'ThinkingSpace', { warm: true });
 
 export type ThinkingPageProps = Pick<ReadyScope, 'canJudge' | 'contradictions' | 'handleCheckContradictions' | 'handleKeepContradiction' | 'handleSeparateContradiction' | 'judgedToday' | 'judging' | 'vf' | 'currentWorkspace' | 'data' | 'focusNodeId' | 'handleAcceptProposal' | 'handleAcceptReview' | 'handleApproveDraft' | 'handleConvertItem' | 'handleDeriveThought' | 'handleRejectDraft' | 'handleRejectProposal' | 'handleReplaceWithProposal' | 'handleReviseThought' | 'handleSynthesizeThought' | 'nodes' | 'openContext' | 'previewTruth' | 'renderCanvas' | 'scopeChip' | 'setCompare' | 'setIsImportOpen' | 'setIsMemoryOpen' | 'setOptionsItemKey' | 'setPackTarget' | 'setSpaceNode' | 'setThinkingView' | 'setThoughtDialog' | 'spaceNode' | 'startSectionFromThought' | 'startThoughtAi' | 'thinking' | 'thinkingView' | 'workspaceContexts'>;
 
@@ -33,13 +34,15 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
               <SegmentedControl
                 label="نمای فکر"
                 value={thinkingView}
-                onChange={(id) => setThinkingView(id as 'list' | 'canvas')}
+                onChange={(id) => switchPage(() => setThinkingView(id as 'list' | 'canvas'))}
                 items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
               />
               {/* adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳) */}
             </div>
           </div></div>
           <div id="thinking-view" />
+          {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
+          <div key={thinkingView} className={pageEnterClass}>
           {thinkingView === 'canvas' ? renderCanvas('thinking') : (
             <div className="mb-page-frame">
             <PageSuspense><ThinkingSpace
@@ -79,6 +82,7 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
             /></PageSuspense>
             </div>
           )}
+          </div>
         </div>
   );
 }

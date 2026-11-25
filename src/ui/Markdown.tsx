@@ -8,7 +8,12 @@ export interface HeadingAnchor { id: string; text: string }
 interface MarkdownProps { children: string; className?: string; variant?: 'compact' | 'document'; anchors?: HeadingAnchor[] }
 
 /** the Markdown engine (react-markdown + GFM, ~100 kB) is a separate chunk: pages that never show Markdown never download it */
-const Impl = lazy(() => import('./MarkdownImpl.tsx').then((m) => ({ default: m.MarkdownImpl })));
+let loaded: typeof import('./MarkdownImpl.tsx').MarkdownImpl | undefined;
+let pending: Promise<typeof import('./MarkdownImpl.tsx')> | undefined;
+const fetchImpl = () => (pending ??= import('./MarkdownImpl.tsx').then((m) => { loaded = m.MarkdownImpl; return m; }, (e) => { pending = undefined; throw e; }));
+const Impl = lazy(() => fetchImpl().then((m) => ({ default: m.MarkdownImpl })));
+/** load the engine ahead (src/app/lazy.tsx `warmChunks`): once here it renders at once, with no plain-text flash in between */
+export function warmMarkdown(): Promise<unknown> { return fetchImpl().catch(() => undefined); }
 
 /** the text itself, unformatted: what shows while the engine loads (and if it cannot load): never blank, never lost */
 function Plain({ children, className, variant = 'compact' }: MarkdownProps) {
@@ -30,6 +35,8 @@ class PlainOnError extends Component<{ props: MarkdownProps; children: ReactNode
  * Raw HTML in the source is NOT rendered, so model output cannot inject markup.
  */
 export function Markdown(props: MarkdownProps) {
+  // already loaded: straight to the formatted text (a lazy component suspends once even then, and React holds its fallback 300ms)
+  if (loaded) { const L = loaded; return <PlainOnError props={props}><L {...props} /></PlainOnError>; }
   return (
     <PlainOnError props={props}>
       <Suspense fallback={<Plain {...props} />}><Impl {...props} /></Suspense>

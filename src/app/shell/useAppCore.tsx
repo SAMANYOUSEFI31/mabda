@@ -12,7 +12,7 @@ import { approvalsOf } from '../../core/versionHistory';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { defaultNodeId } from '../../core/nodeTree';
 import { useAiStatus } from '../../services/aiStatus';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '../../ui';
 import { switchPage } from '../../ui/pageTransition';
 import { errText } from '../shared';
@@ -117,7 +117,20 @@ export function useAppCore() {
   // the page we are going to, set at once: a second call for the same page in the same click (a section link asks for «حقیقت» and
   // then for its place) must not start a second fade over the first
   const goingTo = useRef(activeTab);
-  const setActiveTab = useCallback((tab: string) => { if (tab === goingTo.current) return; goingTo.current = tab; switchPage(() => setTab(tab)); }, []);
+  // where she was on each page of each space (taste-review.md «جای اسکرول»): a page she comes BACK to from the bars or a shortcut
+  // opens where she left it, like a tab bar on iOS and Android; anywhere else (a link to a place, a new destination) opens at its top
+  const scrollMemo = useRef(new Map<string, number>());
+  const scrollTarget = useRef(0);
+  const widRef = useRef(currentWorkspaceId);
+  widRef.current = currentWorkspaceId;
+  const setActiveTab = useCallback((tab: string, opts?: { restore?: boolean }) => {
+    if (tab === goingTo.current) return;
+    // the page on screen is the one last shown (a page still being built is not on screen yet)
+    scrollMemo.current.set(`${widRef.current}:${tabSeen.current}`, window.scrollY);
+    scrollTarget.current = opts?.restore ? scrollMemo.current.get(`${widRef.current}:${tab}`) ?? 0 : 0;
+    goingTo.current = tab;
+    switchPage(() => setTab(tab));
+  }, []);
   const [contextViewMode, setContextViewMode] = useState<'doc' | 'read' | 'table' | 'canvas'>('doc');
   // «فکر» is its own destination (not a view of the truth): a list to review and decide, and a canvas to think on
   const [thinkingView, setThinkingView] = useState<'list' | 'canvas'>('list');
@@ -126,8 +139,17 @@ export function useAppCore() {
   // switching a view never moves the page (layout.md «بی‌جابه‌جایی»): the title, the view switch and «افزودن» stay where they are,
   // as in «فکر». (It used to scroll to the canvas, when the canvas sat below panels that are gone.)
   // a new destination opens at its top (the scroll of the previous page must not carry over)
+  // before the new page is painted (layout effect), so it never shows for a frame at the old page's offset. A long page is built
+  // in parts (the truth's sections arrive a frame later): until it is tall enough, try again for a few frames
   const tabSeen = useRef(activeTab);
-  useEffect(() => { if (tabSeen.current === activeTab) return; tabSeen.current = activeTab; window.scrollTo({ top: 0 }); }, [activeTab]);
+  useLayoutEffect(() => {
+    if (tabSeen.current === activeTab) return;
+    tabSeen.current = activeTab;
+    const y = scrollTarget.current;
+    let tries = 0;
+    const go = () => { window.scrollTo({ top: y }); if (Math.abs(window.scrollY - y) > 2 && tries++ < 12) requestAnimationFrame(go); };
+    go();
+  }, [activeTab]);
   const [selectedContextObject, setSelectedContextObject] = useState<ContextObject | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [modalDefaultNodeId, setModalDefaultNodeId] = useState('');

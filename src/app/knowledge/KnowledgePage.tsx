@@ -12,11 +12,12 @@ import { useState } from 'react';
 import { Button, Dialog, EmptyState, IconButton, Menu, SegmentedControl, formatNumber } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { PageSuspense, lazyNamed } from '../lazy';
+import { pageEnterClass, switchPage } from '../../ui/pageTransition';
 import type { ReadyScope } from '../shared';
 
 /** separate chunks: loaded the first time they are needed (src/app/lazy.tsx) */
-const ContextTableView = lazyNamed(() => import('../../components/knowledge/ContextTableView'), 'ContextTableView');
-const DocWorkspace = lazyNamed(() => import('../../components/knowledge/DocWorkspace'), 'DocWorkspace');
+const ContextTableView = lazyNamed(() => import('../../components/knowledge/ContextTableView'), 'ContextTableView', { warm: true });
+const DocWorkspace = lazyNamed(() => import('../../components/knowledge/DocWorkspace'), 'DocWorkspace', { warm: true });
 const FilesPanel = lazyNamed(() => import('../../components/files/FilesPanel'), 'FilesPanel');
 
 export type KnowledgePageProps = Pick<ReadyScope, 'approvals' | 'askDeleteNote' | 'contextViewMode' | 'contradictions' | 'currentWorkspace' | 'data' | 'extractingNoteId' | 'focusNodeId' | 'focusNotes' | 'goFocus' | 'handleAddNote' | 'handleDeleteFile' | 'handleDeleteSamples' | 'handleMoveFile' | 'handleExtractNote' | 'handleProcessFile' | 'handleSplitNote' | 'handleUpdateNote' | 'handleUploadFile' | 'nodeOp' | 'nodes' | 'openContext' | 'openCounts' | 'openThinkingSpace' | 'quota' | 'renderCanvas' | 'reviewIdSet' | 'setAiRequest' | 'setArchiveOpen' | 'setContextViewMode' | 'setEffectNodeId' | 'setIsPacksOpen' | 'setIsStarterOpen' | 'setNodeDialog' | 'setReadNodeId' | 'setTemplateDraft' | 'setThoughtDialog' | 'setThreadNodeId' | 'toast' | 'vf' | 'wid' | 'workspaceContexts'>;
@@ -46,7 +47,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 label="نمای حقیقت"
                 fullWidth="phone"
                 value={contextViewMode}
-                onChange={(id) => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas')}
+                onChange={(id) => switchPage(() => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas'))}
                 items={[
                   { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
                   { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
@@ -72,6 +73,8 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           </div></div>
 
           <div id="context-view" style={{ scrollMarginTop: 80 }} />
+          {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
+          <div key={contextViewMode} className={pageEnterClass}>
           {contextViewMode === 'canvas' ? renderCanvas('truth') : <div className="mb-page-frame space-y-stack-lg">
           {contextViewMode === 'read' ? (
             <PageSuspense><DocWorkspace
@@ -146,6 +149,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           /></PageSuspense></div>}
           </Dialog>
           </div>}
+          </div>
         </div>
   );
 }

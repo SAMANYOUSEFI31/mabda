@@ -115,7 +115,12 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const moved = useRef(false);
   const setDock = (n: boolean) => { moved.current = true; setPref(n ? 'docked' : 'hidden'); setOverlay(false); try { localStorage.setItem('mabda.sidebar', n ? 'docked' : 'hidden'); } catch { /* optional */ } };
   const toggleDock = () => { if (!roomy) setOverlay((v) => !v); else setDock(!docked); };
-  const go = (tab: Parameters<typeof onTabChange>[0]) => { setOverlay(false); onTabChange(tab); };
+  // the page she is already on, pressed again: back to its top (as a tab bar does on iOS and Android); otherwise go there
+  const go = (tab: Parameters<typeof onTabChange>[0]) => {
+    setOverlay(false);
+    if (tab === activeTab) { const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'reduced'; window.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' }); }
+    onTabChange(tab);
+  };
   // the drawer is modal: focus goes in, Tab stays in, Esc closes, and focus returns to what opened it (overlays.md «رفتار»)
   const drawerRef = React.useRef<HTMLElement>(null);
   useEffect(() => {
@@ -367,7 +372,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
         className="md:hidden"
         label="منوی پایینی موبایل"
         value={activeTab === 'workstreams' ? 'assets' : activeTab}
-        onChange={(id) => (id === 'capture' ? requestAdd({ kind: defaultAddKind(activeTab) }) : onTabChange(id))}
+        onChange={(id) => (id === 'capture' ? requestAdd({ kind: defaultAddKind(activeTab) }) : go(id))}
         items={[
           { id: 'home', label: 'خانه', icon: 'House' },
           { id: 'thinking', label: 'فکر', icon: 'Lightbulb' },

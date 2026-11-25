@@ -11,7 +11,8 @@ import type { ReactNode } from 'react';
 import type { ReadyScope } from '../shared';
 import { Shortcuts } from '../../components/shell/Shortcuts';
 import { WelcomeTour } from '../../components/shell/WelcomeTour';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { warmChunks } from '../lazy';
 import { Button } from '../../ui';
 import { cx } from '../../ui/cx';
 import { pageEnterClass } from '../../ui/pageTransition';
@@ -24,6 +25,8 @@ const topSections = (nodes: ReadyScope['nodes']) => primarySections(nodes);
 
 export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMode, currentWorkspace, deliverables, handleResetDemo, liveWorkspaces, openSpecEditor, pageAction, selectedSpecId, setActiveTab, setArchiveOpen, setChatScope, setContextViewMode, setCurrentWorkspaceId, setDemoConfirm, setDemoDelete, setIsAccountModalOpen, setIsMemoryOpen, setIsNewWorkspaceModalOpen, setIsOnboardingOpen, setIsSpecLibraryOpen, setPaletteOpen, setSelectedSpecId, setUsageOpen, specs, thinkingBadge, workspaceContexts, workspaces, children, dialogs }: AppShellProps) {
   const [tourAgain, setTourAgain] = useState(0);
+  // the pages' and views' code loads while the app is idle, so a view she opens for the first time is there at once (src/app/lazy.tsx)
+  useEffect(() => { warmChunks(); }, []);
   return (
     <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* WCAG 2.4.1: the first Tab offers to skip the bars and lands in the page itself */}
@@ -45,7 +48,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         onOpenLedger={() => setActiveTab('ledger')}
         onOpenMemory={() => { setActiveTab('context'); setIsMemoryOpen(true); }}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => setActiveTab(tab, { restore: true })}
         sections={topSections(nodes)}
         focusNodeId={focusNodeId}
         onOpenSection={(id) => { setActiveTab('context'); goFocus(id); }}
@@ -56,7 +59,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
       />
 
       <WelcomeTour request={tourAgain} />
-      <Shortcuts onGoTab={setActiveTab} onGoSpace={(i) => { const ws = liveWorkspaces[i]; if (ws) { setChatScope(undefined); setCurrentWorkspaceId(ws.id); } }} />
+      <Shortcuts onGoTab={(tab) => setActiveTab(tab, { restore: true })} onGoSpace={(i) => { const ws = liveWorkspaces[i]; if (ws) { setChatScope(undefined); setCurrentWorkspaceId(ws.id); } }} />
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-space-0">
 
