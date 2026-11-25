@@ -10,6 +10,8 @@ import { formatNumber } from '../../ui';
 import { recordOfChoice } from '../../core/decisionOptions';
 import { sectionNameFromThought } from '../../core/thoughts';
 import { useState } from 'react';
+import type { Note } from '../../types';
+import { PENDING_NOTE } from '../../core/pendingNote';
 import type { AppCoreScope } from '../shell/useAppCore';
 import type { ThinkingItemsScope } from './useThinkingItems';
 
@@ -71,9 +73,16 @@ export function useNotes(p: AppCoreScope & ThinkingItemsScope) {
     patch((d) => ({ ...d, objects: [r.object, ...d.objects], thoughts: r.thoughts }));
     toast.show({ intent: 'success', message: `تصمیم ثبت شد؛ ${formatNumber(p.others.length)} گزینهٔ دیگر با دلیل ماندند. در «فکر» منتظر تأیید توست.` });
   };
+  /** optimistic: the note shows on the press (marked pending until the server has it); a failure takes it away again and
+   * returns false, so the writer keeps her text (NodeNotes puts it back in the field) */
   const handleAddNote = async (nodeId: string, content: string): Promise<boolean> => {
+    const now = new Date().toISOString();
+    const temp: Note = { id: `${PENDING_NOTE}${now}-${Math.random().toString(36).slice(2, 8)}`, workspaceId: wid, nodeId, content, createdAt: now, updatedAt: now };
+    const here = (d: { workspace: { id: string } }) => d.workspace.id === wid;
+    patch((d) => (here(d) ? { ...d, notes: [temp, ...d.notes] } : d));
     const r = await attempt(() => dataApi.createNote(wid, nodeId, content));
-    if (r) patch((d) => ({ ...d, notes: [r.note, ...d.notes], thoughts: r.thoughts }));
+    if (r) patch((d) => (here(d) ? { ...d, notes: [r.note, ...d.notes.filter((n) => n.id !== temp.id)], thoughts: r.thoughts } : d));
+    else patch((d) => (here(d) ? { ...d, notes: d.notes.filter((n) => n.id !== temp.id) } : d));
     return !!r;
   };
   /**
