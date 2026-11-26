@@ -652,7 +652,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-chip-strip{scrollbar-width:none;overscroll-behavior-inline:contain}
 .mb-chip-strip::-webkit-scrollbar{display:none}
 /* §۳۳: the space name over the page once its title has scrolled away, rail only */
-.mb-rail-title{position:fixed;inset-block-start:0;inset-inline-start:var(--sidebar-rail);inset-inline-end:0;z-index:var(--layer-chrome);animation:mb-rail-title-in var(--duration-fast) var(--ease-enter)}
+.mb-rail-title{position:fixed;inset-block-start:0;inset-inline-start:calc(max(0px,(100% - var(--container-shell)) / 2) + var(--sidebar-rail));inset-inline-end:max(0px,calc((100% - var(--container-shell)) / 2));z-index:var(--layer-chrome);animation:mb-rail-title-in var(--duration-fast) var(--ease-enter)}
 @keyframes mb-rail-title-in{from{opacity:0}}
 @media (prefers-reduced-motion:reduce){.mb-rail-title{animation:none}}
 .mb-rail{inline-size:var(--sidebar-rail);padding-inline:var(--space-2);padding-block:var(--inset-lg);gap:var(--stack-md)}
@@ -683,7 +683,7 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
  * A container query on the content, not the viewport: the sidebar (64–360) and the detail panel take from the page width.
  * 58.5rem = 936px of host = measure-min 600 + space-12 48 + margin 288 (container queries cannot read custom properties). */
 @layer components{
-.mb-margin{container:mb-margin / inline-size;display:flex;flex-direction:column;gap:var(--stack-sm);max-inline-size:var(--container-doc)}
+.mb-margin{container:mb-margin / inline-size;display:flex;flex-direction:column;gap:var(--stack-sm)}
 .mb-margin__row{display:grid;grid-template-columns:minmax(0,var(--container-prose));row-gap:var(--space-1)}
 .mb-margin__text{min-inline-size:0}
 .mb-margin__note{display:flex;flex-direction:column;gap:var(--space-2);padding-inline-start:var(--space-8)}
@@ -722,7 +722,18 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
    margin (identity.md «متن و حاشیه»): the 680px reading column at the start, the margin in what is left. Only a canvas, which is
    a surface and not a page of text, takes the whole main area (it bleeds, as a picture does in print). Before, each page chose its
    own width (680, 1080, 1280) and all of them hugged the right edge of a centred 1280 area */
-@layer components{ .mb-page-frame{max-inline-size:var(--container-doc);inline-size:100%;margin-inline:auto;container:mb-frame / inline-size} }
+@layer components{ .mb-page-frame{inline-size:100%;container:mb-frame / inline-size} }
+/* THE app frame (layout.md «قاب برنامه»): the side bar and the page are one unit. Up to --container-shell it is the window; past it the
+   unit is centred and what is left of the window is quiet paper on both sides. The page frame fills the main area of that unit, so
+   folding the bar into the rail gives its width to the page (the bar and the page share one width, they never drift apart). Before,
+   the bar was glued to the window's edge and the page (capped at 1080) floated in the middle of the rest of the window, 603px apart at 2560.
+   Reading width is kept by the text column inside the frame (680px), not by narrowing the frame */
+@layer components{
+.mb-shell{inline-size:100%;max-inline-size:var(--container-shell);margin-inline:auto}
+}
+/* past the frame's width the bar no longer touches the window's edge: a hairline closes its outer side too, so it reads as the
+   frame's own column (90rem = --container-shell; a media query cannot read a custom property) */
+@media (min-width: 90.0625rem){ .mb-shell > aside{border-inline-start:var(--border-width-thin) solid var(--border-default)} }
 /* text and margin inside the frame: one column below the width where both fit (the same 54rem as Home's margin and
    `.mb-margin__row`), the margin first in the DOM when it holds the filters of the text (reading order = what is seen) */
 @layer components{

@@ -1452,6 +1452,16 @@
    "dark": "1080px"
   },
   {
+   "token": "container.shell",
+   "css": "--container-shell",
+   "level": "semantic",
+   "type": "dimension",
+   "description": "the app's one frame on a wide screen: the side bar and the page are ONE unit, centred together, never the bar at the window's edge and the page floating far from it (layout.md «قاب برنامه»)",
+   "alias": null,
+   "light": "1440px",
+   "dark": "1440px"
+  },
+  {
    "token": "radius.none",
    "css": "--radius-none",
    "level": "semantic",

@@ -109,7 +109,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
   );
 
   return (
-    <div className={`mx-auto flex w-full flex-col gap-stack-md ${items.length ? 'max-w-wide' : 'max-w-reading'}`}>
+    <div className={`mx-auto flex w-full flex-col gap-stack-md ${items.length ? '' : 'max-w-reading'}`}>
       {header}
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <SegmentedControl

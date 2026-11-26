@@ -28,7 +28,8 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
   // the pages' and views' code loads while the app is idle, so a view she opens for the first time is there at once (src/app/lazy.tsx)
   useEffect(() => { warmChunks(); }, []);
   return (
-    <div className="flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
+    // one frame for the bar and the page (layout.md «قاب برنامه»): on a wide screen they are centred together, the bar never alone at the window's edge
+    <div className="mb-shell flex min-h-screen flex-col bg-surface-page text-text-default md:flex-row pb-space-24 md:pb-space-0">
       {/* WCAG 2.4.1: the first Tab offers to skip the bars and lands in the page itself */}
       <a href="#main" className="mb-skip" onClick={(e) => { e.preventDefault(); const m = document.getElementById('main'); m?.focus(); m?.scrollIntoView({ block: 'start' }); }}>پرش به محتوا</a>
       {/* Sleek Right Sidebar Navigation & Mobile Drawer */}
@@ -64,7 +65,7 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
       <div className="flex-1 flex flex-col min-w-space-0">
 
         {/* Main Canvas */}
-        <main id="main" tabIndex={-1} className="max-w-wide mx-auto w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
+        <main id="main" tabIndex={-1} className="w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
           {/* §۳۷: the sample says what it is, once, quietly — a line of text, not a warning box («متن و حاشیه») */}
           {currentWorkspace.isDemo && (

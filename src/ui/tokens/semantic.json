@@ -389,6 +389,13 @@
         "unit": "px"
       },
       "$description": "cap of the document view: text + gap + margin + padding (layout.md)"
+    },
+    "shell": {
+      "$value": {
+        "value": 1440,
+        "unit": "px"
+      },
+      "$description": "the app's one frame on a wide screen: the side bar and the page are ONE unit, centred together, never the bar at the window's edge and the page floating far from it (layout.md «قاب برنامه»)"
     }
   },
   "radius": {

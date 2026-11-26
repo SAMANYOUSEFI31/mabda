@@ -16,8 +16,8 @@ mkdirSync(OUT, { recursive: true });
 const SIZES = process.env.ALL_WIDTHS
   ? [[320, 640], [360, 740], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1280, 900], [1440, 900], [1920, 1080]].map(([width, height]) => ({ name: String(width) + (width > height ? 'l' : ''), width, height }))
   // plus a short laptop and a short phone: menus and dialogs that fit 900/844 can still break at 768/667 (implementation-plan 0.7)
-  // plus 768 (day and night, for the gallery) and 1440 (light only): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
-  : [{ name: '390', width: 390, height: 844, touch: true }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667, touch: true }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
+  // plus 768 (day and night, for the gallery), 1440, 1920 and 2560 (light only: the app frame is centred past 1440): no page, dialog, sheet or tab bar may scroll sideways, or a tab bar up and down, at any of the five widths
+  : [{ name: '390', width: 390, height: 844, touch: true }, { name: '1280', width: 1280, height: 900 }, { name: '1024', width: 1024, height: 768, touch: true }, { name: '390s', width: 390, height: 667, touch: true }, { name: '768', width: 768, height: 1024 }, { name: '1440', width: 1440, height: 900, lightOnly: true }, { name: '1920', width: 1920, height: 1080, lightOnly: true }, { name: '2560', width: 2560, height: 1440, lightOnly: true }, { name: '844l', width: 844, height: 390, touch: true }].filter((s) => !process.env.ONLY || process.env.ONLY.split(',').includes(s.name));
 const TABS = [
   { id: 'home', label: 'خانه' },
   { id: 'context', label: 'حقیقت', desktopLabel: 'حقیقت' },
@@ -204,6 +204,19 @@ const audit = () => {
       const marker = document.querySelector(`#canvas-arrow-${kind}`);
       if (!marker || parseFloat(marker.getAttribute('markerWidth')) < 10) out.edges.push(`${kind}: arrow head too small`);
     }
+  }
+  // the bar and the page are one unit (layout.md «قاب برنامه»): the page frame starts one page padding from the side bar at every
+  // width, never floating in the middle of what the bar leaves (it was 603px from the bar at 2560); the unit is centred past the cap
+  const bar = [...document.querySelectorAll('aside')].find((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).position === 'sticky');
+  const frame = document.querySelector('main .mb-page-frame');
+  if (bar && frame) {
+    const b = bar.getBoundingClientRect(), f = frame.getBoundingClientRect();
+    const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+    const gap = Math.round(rtl ? b.left - f.right : f.left - b.right);
+    if (gap > 48) out.edges.push(`shell: page frame ${gap}px from the side bar`);
+    const sh = bar.closest('.mb-shell'), host = sh?.parentElement?.getBoundingClientRect(), r = sh?.getBoundingClientRect();
+    if (!sh) out.edges.push('shell: side bar outside .mb-shell');
+    else if (Math.abs((r.left - host.left) - (host.right - r.right)) > 1) out.edges.push(`shell: not centred (${Math.round(r.left - host.left)} vs ${Math.round(host.right - r.right)})`);
   }
   return out;
 };
