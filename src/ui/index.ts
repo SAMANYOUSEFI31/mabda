@@ -7,7 +7,7 @@ export { BrandMark, Badge, Caution, Tag, Avatar, Card, Divider, Stat, EmptyState
 export type { Intent, StatusIntent, BadgeProps, TagProps, CardProps, AlertProps, ProgressProps, KnowledgeState } from './Display.tsx';
 export { DateField } from './DateField.tsx';
 export type { DateFieldProps } from './DateField.tsx';
-export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard } from './Forms.tsx';
+export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard, FieldShell } from './Forms.tsx';
 export type { TextFieldProps, TextareaProps, SelectProps, SelectOption } from './Forms.tsx';
 export { Dialog, Toast, ToastProvider, useToast, Popover, Menu, MenuChoiceRow } from './Overlay.tsx';
 export { InfoTip } from './InfoTip.tsx';

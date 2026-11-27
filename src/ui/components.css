@@ -897,3 +897,13 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 .mb-tour__scrim{position:fixed;inset:0;z-index:var(--layer-dialog);background:var(--bg-scrim)}
 .mb-tour__card{position:fixed;z-index:var(--layer-popover)}
 @media (prefers-reduced-motion: reduce){.mb-tour__spot{transition:none}}
+/* a page's «⋯»: beside the actions where they sit beside the title; in the title's row (end edge) where the actions wrap under it,
+   so a full-width view switch keeps its row and «⋯» never sits alone (docs/ux/research/headers-trees-persian-type.md س۴) */
+@layer components{
+.mb-page-head__top-more{display:inline-flex}
+.mb-page-head__end-more{display:none}
+}
+@container mb-frame (min-width: 54rem){
+  .mb-page-head__top-more{display:none}
+  .mb-page-head__end-more{display:inline-flex}
+}

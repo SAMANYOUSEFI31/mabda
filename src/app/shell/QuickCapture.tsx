@@ -14,10 +14,10 @@ import { QUICK_CAPTURE_EVENT, defaultSectionFor } from '../../core/quickCapture'
 import { ADD_DESCRIPTION, ADD_EVENT, defaultAddKind, dialogOpen, importableFile, markAddSwitchable, requestAdd, setPendingAddText, setPendingImportFile } from '../../core/addRequest';
 import type { AddRequest } from '../../core/addRequest';
 import { AddKindSwitch } from '../../components/shared/AddKindSwitch';
-import { Button, Dialog, Select } from '../../ui';
+import { Button, Dialog } from '../../ui';
+import { NodePickerField } from '../../components/structure/NodePicker';
 import { registerPaletteCommand } from '../../core/globalSearch';
 import { Deferred, lazyNamed } from '../lazy';
-import { flatten, treeIndent } from '../../core/nodeTree';
 import type { ReadyScope } from '../shared';
 import { letterKeysOn } from '../../core/shortcuts';
 
@@ -146,7 +146,7 @@ function FileAdd({ nodeId, scoped, nodes, onClose, onUpload, onImportInstead }: 
             <Button size="sm" variant="ghost" iconStart="FolderInput" onClick={() => onImportInstead(file)}>وارد کردن سند به‌جایش</Button>
           </div>
         )}
-        <Select label="کجا برود؟" value={node} onChange={(e) => setNode(e.target.value)} options={flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))} />
+        <NodePickerField label="کجا برود؟" nodes={nodes} value={node} onChange={setNode} />
       </div>
     </Dialog>
   );

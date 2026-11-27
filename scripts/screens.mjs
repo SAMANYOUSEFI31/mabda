@@ -267,7 +267,10 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
-  await page.getByRole('button', { name: /^افزودن حقیقت به / }).first().click(); await shoot('dialog-context'); await closeDialog();
+  await page.getByRole('button', { name: /^افزودن حقیقت به / }).first().click(); await shoot('dialog-context');
+  // the section picker over it: a panel at the inline-end edge / a sheet on a phone, with the tree and a search (NodePicker)
+  await page.getByRole('dialog').getByRole('button', { name: /^در: / }).first().click(); await shoot('picker-node');
+  await page.getByLabel('جستجوی بخش').fill('مال'); await shoot('picker-node-search'); await closeDialog(); await closeDialog();
 
   await goTab(TABS[2]); await shoot('assets');
 

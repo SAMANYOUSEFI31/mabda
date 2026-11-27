@@ -6,12 +6,13 @@
 import { ADD_DESCRIPTION } from '../../core/addRequest';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, Thought, TreeNode } from '../../types';
-import { Alert, Button, Checkbox, Dialog, Select, formatNumber } from '../../ui';
+import { Alert, Button, Checkbox, Dialog, formatNumber } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
 import { THINKING_FA, THOUGHT_KINDS, composeThought, guessThoughtKind } from '../../core/thoughts';
 import type { ThinkingKind } from '../../core/thinkingMarkers';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak } from '../../core/batchLines';
-import { defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
+import { defaultNodeId } from '../../core/nodeTree';
 import { findExactDuplicate, findNearDuplicate } from '../../core/quickCapture';
 import { getSlotProvider } from '../../core/suggestionSlots';
 import type { SlotSuggestion } from '../../core/suggestionSlots';
@@ -77,7 +78,6 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
   // there is no «no place» in the data: a thought with no section chosen lands in the default section (the first one). The list says so
   // by name instead of promising a «تازه‌ها» that does not exist (docs/ux/decisions.md §۷)
   const fallback = defaultNodeId(nodes);
-  const sectionOptions = useMemo(() => flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}${n.id === fallback ? ' (پیش‌فرض)' : ''}` })), [nodes, fallback]);
   const shownNode = node || fallback;
   const exact = useMemo(() => (open ? findExactDuplicate(text, thoughts, objects) : null), [open, text, thoughts, objects]);
   const slotDup = useSlot('duplicate', text, node, open && !exact);
@@ -162,7 +162,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
             {!kindTouched && text.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
           </div>
         )}
-        <Select label="کجا برود؟" value={shownNode} onChange={(e) => onNodeChange(e.target.value)} options={sectionOptions} hint={node ? undefined : `اگر جای دیگری انتخاب نکنی، در «${nodes.find((n) => n.id === fallback)?.label ?? ''}» می‌ماند.`} />
+        <NodePickerField label="کجا برود؟" nodes={nodes} value={shownNode} onChange={onNodeChange} marks={fallback ? { [fallback]: 'پیش‌فرض' } : undefined} hint={node ? undefined : `اگر جای دیگری انتخاب نکنی، در «${nodes.find((n) => n.id === fallback)?.label ?? ''}» می‌ماند.`} />
         {placeNode && (
           <div className="flex flex-wrap items-center gap-inline-sm" data-testid="quick-capture-place">
             <span className="body-sm text-text-subtle">جای پیشنهادی: {placeNode.label}</span>

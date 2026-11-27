@@ -79,7 +79,7 @@ try {
       await page.getByTestId('thinking-space').locator('li', { hasText: text }).getByRole('button', { name: 'بیشتر', exact: true }).click(); await page.getByRole('menuitem', { name: 'ساخت بخش از این فکر' }).click();
       const dlg = page.getByRole('dialog');
       assert.ok((await dlg.getByLabel('نام بخش').inputValue()).length > 3, 'a name is suggested from the thought');
-      await dlg.getByLabel('زیر کدام بخش؟').selectOption(parentValue);
+      await dlg.getByLabel('زیر کدام بخش؟').click(); await page.getByRole('dialog', { name: 'زیر کدام بخش؟' }).locator(`[data-value="${parentValue}"]`).click();
       if (!parentValue) await shot('1-section-from-thought');
       await dlg.getByRole('button', { name: 'افزودن بخش' }).click();
       await page.getByText(/ساخته شد/).first().waitFor();

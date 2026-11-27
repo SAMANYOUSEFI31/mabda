@@ -144,7 +144,7 @@ try {
     await nav('حقیقت', 'حقیقت');
     await page.getByRole('button', { name: 'عملیات بخش کارگاه' }).first().evaluate((n) => n.click());
     await page.getByRole('menuitem', { name: 'جابه‌جایی…' }).click();
-    await page.getByRole('dialog').getByLabel('کجا برود؟').selectOption({ label: 'سطح اصلی (بخش اصلی)' });
+    await page.getByRole('dialog').getByLabel('کجا برود؟').click(); await page.getByRole('dialog', { name: 'کجا برود؟' }).getByRole('button', { name: 'سطح اصلی (بخش اصلی)' }).click();
     await page.getByTestId('move-effect').getByText(/«بدون تخفیف آفر»/).waitFor();
     await shot('6-move-effect');
     await page.getByRole('dialog').getByRole('button', { name: 'جابه‌جا کن' }).click();

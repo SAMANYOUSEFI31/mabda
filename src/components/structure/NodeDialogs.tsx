@@ -5,9 +5,10 @@
 
 import React, { useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, Thought, TreeNode } from '../../types';
-import { canDelete, canMove, contentOf, defaultTransferTarget, flatten, treeIndent, ROOT_TARGET, subtreeIds } from '../../core/nodeTree';
+import { canDelete, canMove, contentOf, defaultTransferTarget, ROOT_TARGET, subtreeIds } from '../../core/nodeTree';
 import { moveEffect } from '../../core/nodeMove';
-import { Alert, Button, Dialog, RadioGroup, Select, TextField, Textarea, formatNumber } from '../../ui';
+import { Alert, Button, Dialog, RadioGroup, TextField, Textarea, formatNumber } from '../../ui';
+import { NodePickerField } from './NodePicker';
 import { nodeRemovalPlan } from '../../core/removal';
 import type { RemovalMode } from '../../core/removal';
 import { ClosedSection } from '../shared/ClosedSection';
@@ -45,9 +46,6 @@ interface Props {
   relationships?: ContextRelationship[];
   onDelete: (nodeId: string, transferTo?: string, mode?: RemovalMode) => Promise<void>;
 }
-
-const options = (nodes: TreeNode[], exclude: Set<string> = new Set()) =>
-  flatten(nodes).filter(({ node }) => !exclude.has(node.id)).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
 
 /** The dialogs of the node tree: create under any node, rename (system nodes too), move, delete (empty or with transfer). */
 export const NodeDialogs: React.FC<Props> = (props) => (props.state ? <NodeDialogBody key={`${props.state.kind}-${'nodeId' in props.state ? props.state.nodeId : props.state.parentId}`} {...props} state={props.state} /> : null);
@@ -117,7 +115,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         >
           <TextField id="node-label" label="نام بخش" required autoFocus value={label} error={labelError || undefined} onChange={(e) => { setLabel(e.target.value); if (labelError && e.target.value.trim()) setLabelError(''); }} placeholder="مثلاً: کمپین پاییز" />
           {state.kind === 'create' && state.chooseParent && (
-            <Select label="زیر کدام بخش؟" value={createParent} onChange={(e) => setCreateParent(e.target.value)} options={[{ value: '', label: 'بخش اصلی (سطح اول)' }, ...flatten(nodes).map((x) => ({ value: x.node.id, label: `${treeIndent(x.depth)}${x.node.label}` }))]} />
+            <NodePickerField label="زیر کدام بخش؟" nodes={nodes} value={createParent} onChange={setCreateParent} extra={[{ value: '', label: 'بخش اصلی (سطح اول)' }]} />
           )}
           <Textarea label="توضیح کوتاه (اختیاری)" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </form>
@@ -148,7 +146,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         }
       >
         <div className="flex flex-col gap-stack-md">
-          <Select label="کجا برود؟" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, { value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }, ...options(nodes, exclude)]} />
+          <NodePickerField label="کجا برود؟" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" extra={[{ value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }]} disabledIds={exclude} />
           {!check.ok && check.reason && <Alert intent="warning">{check.reason}</Alert>}
           {effect && effect.sentences.length > 0 && (
             <div data-testid="move-effect">
@@ -208,7 +206,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
                   : `${parts} می‌روند؛ چیزی پاک یا بایگانی نمی‌شود.`}
               />
             ) : <Alert intent="info" title={`${parts} در این بخش هست`}>همه به «{dest || 'جای دیگر'}» می‌روند و برای هر دانش در تاریخچه می‌ماند چرا و کجا رفت.</Alert>}
-            {(plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <Select label={archiveMode ? 'یادداشت‌ها، فکرها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} value={chosen} onChange={(e) => setTarget(e.target.value)} options={options(nodes, new Set(subtreeIds(nodes, node.id)))} /> : null}
+            {(plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <NodePickerField label={archiveMode ? 'یادداشت‌ها، فکرها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} nodes={nodes} value={chosen} onChange={setTarget} disabledIds={new Set(subtreeIds(nodes, node.id))} /> : null}
           </>
         )}
         {plan.ok && plan.tree.length > 1 && (

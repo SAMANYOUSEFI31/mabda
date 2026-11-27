@@ -15,7 +15,7 @@ interface FieldShellProps {
   disabled?: boolean; className?: string; children: ReactNode; counter?: ReactNode; personal?: boolean;
 }
 
-function FieldShell({ id, label, required, hint, error, disabled, className, children, counter, personal = false }: FieldShellProps) {
+export function FieldShell({ id, label, required, hint, error, disabled, className, children, counter, personal = false }: FieldShellProps) {
   return (
     <div className={cx('mb-field', error && 'is-invalid', disabled && 'is-disabled', className)}>
       {label && (

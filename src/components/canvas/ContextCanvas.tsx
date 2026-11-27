@@ -16,8 +16,8 @@ import type { CanvasAction, HistoryEntry } from '../../core/canvasHistory';
 import { clusterItems, edgeBudget, FIRST_VIEW_K, LOD_FAR_BELOW, lodOf, MIN_SCREEN_TEXT, readablePx } from '../../core/canvasLod';
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import type { MenuItem } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
 import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
-import { flatten, treeIndent } from '../../core/nodeTree';
 import { requestAdd } from '../../core/addRequest';
 import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
@@ -1107,7 +1107,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {fromItems && (
           <div className="flex flex-col gap-stack-sm">
             <TextField label="نام بخش" required autoFocus value={fromItems.label} onChange={(e) => setFromItems({ ...fromItems, label: e.target.value })} />
-            <Select label="زیر کدام بخش" value={fromItems.parentId} onChange={(e) => setFromItems({ ...fromItems, parentId: e.target.value })} options={[{ value: '', label: 'بخش اصلی تازه' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />
+            <NodePickerField label="زیر کدام بخش" nodes={p.nodes} value={fromItems.parentId} onChange={(v) => setFromItems({ ...fromItems, parentId: v })} extra={[{ value: '', label: 'بخش اصلی تازه' }]} />
             <ul className="body-sm flex flex-col gap-stack-xs text-text-subtle" aria-label="موارد انتخاب‌شده">{picked.slice(0, 6).map((i) => <li key={i.id}>{i.label}</li>)}{picked.length > 6 && <li>و {formatNumber(picked.length - 6)} مورد دیگر</li>}</ul>
           </div>
         )}
@@ -1118,7 +1118,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
         {newNote && (
           <div className="flex flex-col gap-stack-md">
             <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز «افزودن فکر» را بزن." />
-            <Select label="به کدام بخش مربوط است؟" value={newNote.nodeId} onChange={(e) => setNewNote({ ...newNote, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
+            <NodePickerField label="به کدام بخش مربوط است؟" nodes={p.nodes} value={newNote.nodeId} onChange={(v) => setNewNote({ ...newNote, nodeId: v })} />
           </div>
         )}
       </Dialog>

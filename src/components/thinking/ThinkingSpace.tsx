@@ -11,9 +11,10 @@ import { effectiveObjects } from '../../core/effectiveContext';
 import { THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
-import { flatten, treeIndent, subtreeIds } from '../../core/nodeTree';
+import { subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl, Select, Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
+import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -138,7 +139,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           ))}
         </div>
         <div className="mb-thinking-filters__scope flex items-end gap-inline-xs">
-          <div className="w-overlay-xs max-w-full"><Select label="کدام بخش؟" value={p.nodeId ?? ''} onChange={(e) => p.onNodeChange(e.target.value || undefined)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} /></div>
+          <div className="w-overlay-xs max-w-full"><NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} /></div>
         </div>
       </aside>}
 
@@ -288,7 +289,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           <div className="flex flex-col gap-stack-md">
             <Textarea label="نتیجهٔ تازه" rows={4} value={synthesis.text} onChange={(e) => setSynthesis({ ...synthesis, text: e.target.value })} />
             <SegmentedControl label="نوع فکر" value={synthesis.kind} onChange={(value) => setSynthesis({ ...synthesis, kind: value as ThoughtKind })} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
-            <Select label="بخش فکر تازه" value={synthesis.nodeId} onChange={(e) => setSynthesis({ ...synthesis, nodeId: e.target.value })} options={flatten(p.nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))} />
+            <NodePickerField label="بخش فکر تازه" nodes={p.nodes} value={synthesis.nodeId} onChange={(v) => setSynthesis({ ...synthesis, nodeId: v })} />
           </div>
         </Dialog>
       )}

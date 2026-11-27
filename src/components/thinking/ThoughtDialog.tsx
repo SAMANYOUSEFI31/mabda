@@ -9,6 +9,7 @@ import { composeThought, guessThoughtKind, THINKING_FA, THOUGHT_KINDS } from '..
 import type { ThinkingKind } from '../../core/thinkingMarkers';
 import { flatten, treeIndent } from '../../core/nodeTree';
 import { Button, Dialog, IconButton, SegmentedControl, Select, formatNumber } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak, joinToPrevious, splitFromPrevious } from '../../core/batchLines';
 import type { NotePayload } from '../../core/thoughtBatch';
@@ -94,7 +95,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
         </div>
         {!batch && <SegmentedControl label="این یک…" value={kind} onChange={(v) => { setKind(v as ThinkingKind); setTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
         {batch && <SegmentedControl label="نوع خط‌هایی که نوعشان معلوم نیست" value={defKind} onChange={(v) => setDefKind(v as ThinkingKind)} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />}
-        <Select label={batch ? 'بخش همهٔ فکرها (اختیاری)' : 'دربارهٔ کدام بخش؟ (اختیاری)'} value={node} onChange={(e) => setNode(e.target.value)} options={sectionOptions} />
+        <NodePickerField label={batch ? 'بخش همهٔ فکرها (اختیاری)' : 'دربارهٔ کدام بخش؟ (اختیاری)'} nodes={nodes} value={node} onChange={setNode} extra={[{ value: '', label: 'بدون بخش مشخص' }]} />
         <AboutPicker objects={objects} nodes={nodes} value={about} onChange={setAbout} />
         {batch && (
           <div className="flex flex-col gap-stack-sm" data-testid="thought-batch-preview">

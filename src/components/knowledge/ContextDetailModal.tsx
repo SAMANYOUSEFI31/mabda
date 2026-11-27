@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
 import type { ReviewNeed } from '../../core/decisionGraph';
-import { DELETED_SECTION, defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
+import { DELETED_SECTION, defaultNodeId } from '../../core/nodeTree';
 import { scopeEffect } from '../../core/scopeMove';
 import { indirectReach, redundantLinks } from '../../core/dependencyReduction';
 import { thoughtsAbout, stripAbout } from '../../core/thoughtAbout';
@@ -40,6 +40,7 @@ import type { MonitorDraft } from '../metrics/Monitor';
 import { dataApi } from '../../services/dataApi';
 import { saveThenClose } from '../../core/saveFlow';
 import { DateField, Alert, Badge, Button, Card, Checkbox, Dialog, Markdown, Menu, Nuqta, SegmentedControl, Select, Tabs, TextField, Textarea, formatJalaliDate, formatNumber } from '../../ui';
+import { NodePicker, NodePickerField } from '../structure/NodePicker';
 
 interface ContextDetailModalProps {
   /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
@@ -215,6 +216,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   const [nodeId, setNodeId] = useState(object?.nodeId || defaultNodeIdProp || defaultNodeId(nodes));
   /** switching to «فکر» carries the section only when she picked it here; otherwise the thought keeps its own default («تازه‌ها») */
   const [nodePicked, setNodePicked] = useState(false);
+  const [nodePickerOpen, setNodePickerOpen] = useState(false);
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );
@@ -525,12 +527,9 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               return <Button key={id} type="button" size="sm" role="radio" aria-checked={on} variant={on ? 'secondary' : 'ghost'} iconStart={on ? 'Check' : undefined} onClick={() => { setType(id === 'Assumption' ? 'Fact' : id); setAssumption(id === 'Assumption'); setTypeTouched(true); }}>{label}</Button>;
             })}
           </div>
-          <Menu
-            label="این دانش در کدام بخش باشد؟"
-            className="scroll-menu"
-            trigger={<Button type="button" size="sm" variant="ghost" iconStart="FolderTree">در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>}
-            items={flatten(nodes).map(({ node, depth }) => ({ label: `${treeIndent(depth)}${node.label}`, icon: node.id === nodeId ? 'Check' as const : undefined, onSelect: () => { setNodeId(node.id); setNodePicked(true); } }))}
-          />
+          {/* the section opens as a panel (a sheet on a phone) with the whole tree and a search, not a floating list (NodePicker) */}
+          <Button type="button" size="sm" variant="ghost" iconStart="FolderTree" aria-haspopup="dialog" onClick={() => setNodePickerOpen(true)}>در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>
+          <NodePicker open={nodePickerOpen} onClose={() => setNodePickerOpen(false)} title="این دانش در کدام بخش باشد؟" nodes={nodes} value={nodeId} onPick={(v) => { setNodeId(v); setNodePicked(true); }} />
         </div>
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
         {type === 'Fact' && assumption && <p className="body-sm text-text-subtle">فرض یعنی هنوز ثابت نشده: هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید و جدا، زیر «فرض‌های فعال» می‌آید. تاریخ بازبینی‌اش در «جزئیات بیشتر» است.</p>}
@@ -663,7 +662,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
               const reachChanges = promote.to === 'global' || object.reach === 'global';
               return (
                 <div className="flex flex-col gap-stack-sm rounded-control border border-border-selected p-inset-lg" role="group" aria-label="کجا اعمال شود">
-                  <Select label="این دانش در کدام بخش خانه دارد؟" value={promote.to} onChange={(e) => setPromote({ ...promote, to: e.target.value })} options={[{ value: 'global', label: 'همه‌جا' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}${n.id === object.nodeId && object.reach !== 'global' ? ' (الان)' : ''}` }))]} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
+                  <NodePickerField label="این دانش در کدام بخش خانه دارد؟" nodes={nodes} value={promote.to} onChange={(v) => setPromote({ ...promote, to: v })} extra={[{ value: 'global', label: 'همه‌جا' }]} marks={object.nodeId && object.reach !== 'global' ? { [object.nodeId]: 'الان' } : undefined} hint="بالاتر = به بخش‌های بیشتری می‌رسد. هر دانش یک خانه دارد؛ برای چند بخش، اولین والد مشترکشان را انتخاب کن." />
                   <p className="body-sm text-text-default" aria-live="polite" data-testid="scope-effect">{unchanged ? 'همین‌جاست؛ چیزی عوض نمی‌شود.' : eff.sentence}</p>
                   <Textarea label={reachChanges ? 'دلیل (لازم)' : 'دلیل (اختیاری)'} rows={2} value={promote.reason} onChange={(e) => setPromote({ ...promote, reason: e.target.value })} />
                   <div><Button type="button" size="sm" variant="secondary" disabled={unchanged || (reachChanges && !promote.reason.trim())} onClick={async () => { await onPatchObject(object.id, promote.to === 'global' ? { reach: 'global', reason: promote.reason.trim() } : { nodeId: promote.to, ...(object.reach === 'global' ? { reach: 'position' as const } : {}), reason: promote.reason.trim() }); onClose(); }}>انتقال به این جا</Button></div>

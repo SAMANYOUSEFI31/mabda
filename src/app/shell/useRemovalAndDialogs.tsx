@@ -103,7 +103,9 @@ export function useRemovalAndDialogs(p: AppCoreScope & NotesScope & SearchAndFoc
   const handleAcceptProposal = async (o: ContextObject, reason?: string) => {
     track('action.accept-proposal');
     const impact = await setStatus(o.id, 'Confirmed', reason);
-    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim() }); }
+    // «واگرد» like «رد»: a confirm is one tap on a phone, so a slip must be one tap to take back (Nielsen 3, user control; the
+    // same message and time as rejecting). It puts the suggestion back as a suggestion; the stale marks follow the server's answer
+    if (impact) { showImpact(impact); toast.show({ intent: 'success', message: `«${o.title}» تأیید شد و حالا واقعیت است. ${acceptanceSentence(o.title, outputsUsing(o.id, deliverables), formatNumber)}`.trim(), duration: 8000, action: { label: 'واگرد', onClick: () => { void attempt(() => dataApi.updateObject(wid, o.id, { status: 'Proposed' })).then((r) => { if (r) { patch((d) => ({ ...d, objects: d.objects.map((x) => (x.id === o.id ? r.object : x)), stale: r.stale })); toast.show({ intent: 'success', message: `«${o.title}» دوباره پیشنهاد است.` }); } }); } } }); }
   };
   /** «رد کردن» a proposal: no question first, the message offers «واگرد» (patterns.md §۴) */
   const handleRejectProposal = async (o: ContextObject, reason?: string) => {
