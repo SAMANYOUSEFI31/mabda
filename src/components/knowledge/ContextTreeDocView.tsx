@@ -301,7 +301,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               disclosure) and the past (a filter). They were two blocks and a framed card, and pushed the section's title to y≈600 at 390 */}
           {(above.length > 0 || pastToggle) && (
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
-              {above.length > 0 ? <Button size="sm" variant="ghost" className="-ms-inset-md" iconStart={aboveOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={aboveOpen} aria-controls="from-above" onClick={() => setAboveOpen((v) => !v)}>از بالا به اینجا می‌رسد ({formatNumber(above.length)})</Button> : <span />}
+              {above.length > 0 ? <Button size="sm" variant="ghost" iconStart={aboveOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={aboveOpen} aria-controls="from-above" onClick={() => setAboveOpen((v) => !v)}>از بالا به اینجا می‌رسد ({formatNumber(above.length)})</Button> : <span />}
               {pastToggle}
             </div>
           )}

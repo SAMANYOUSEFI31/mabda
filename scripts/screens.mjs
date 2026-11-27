@@ -103,10 +103,11 @@ const audit = () => {
   // a badge over its icon, a floating button over a card, two-line rows spilling into each other
   const label = (e) => `<${e.tagName.toLowerCase()}> "${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 24)}"`;
   const live = (e) => vis(e) && !e.closest('[inert], [aria-hidden=true]:not(svg), [data-testid=canvas-stage], .mb-sr, .sr-only') && parseFloat(getComputedStyle(e).opacity) > 0.05;
-  const topLayer = document.querySelector('[role=dialog], [role=alertdialog], [role=menu]');
+  // the TOP layer is the last one opened (a picker held against a field of a dialog is over that dialog, not beside it)
+  const topLayer = [...document.querySelectorAll('[role=dialog], [role=alertdialog], [role=menu]')].filter(vis).pop();
   const pieces = [...document.querySelectorAll('button, a[href], input, select, textarea, svg, body *')].filter((e, i, a) => a.indexOf(e) === i).filter((e) => {
     if (!live(e)) return false;
-    if (topLayer && !topLayer.contains(e) && !e.closest('[role=dialog], [role=alertdialog], [role=menu]')) return false; // behind a modal or open menu
+    if (topLayer && !topLayer.contains(e)) return false; // behind a modal, an open menu or a picker
     if (e.matches('button, a[href], input, select, textarea, svg')) return true;
     return [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
   });

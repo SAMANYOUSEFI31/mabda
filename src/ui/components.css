@@ -949,3 +949,11 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @media (pointer:fine){
   .mb-menu__item,.mb-nodepicker__row{min-block-size:calc(var(--space-8) + var(--space-1))}
 }
+/* a dialog's foot on a phone: the main step on top, a full row under the thumb; the rest share ONE row under it, so an icon-only
+   «⋯» never takes a row of its own (it did, centred between «کپی» and «بستن»). Text steps fill that row; «⋯» keeps its size */
+@media (max-width:767px){
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot{flex-direction:row;flex-wrap:wrap-reverse;align-items:center}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > *{flex:1 1 auto}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-btn--primary,.mb-btn--danger-bold){flex-basis:100%}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-iconbtn,.mb-popover:has(> .mb-iconbtn)){flex:0 0 auto}
+}
