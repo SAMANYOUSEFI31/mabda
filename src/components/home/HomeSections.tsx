@@ -38,12 +38,14 @@ interface Props {
 
 function Row({ lead, text, button, icon, onClick }: { lead: React.ReactNode; text: string; button: string; icon?: IconName; onClick: () => void }) {
   return (
-    <li className="flex flex-col gap-stack-xs py-stack-sm sm:flex-row sm:items-center sm:justify-between sm:gap-inline-md">
-      <span className="flex min-w-space-0 items-start gap-inline-sm">
+    // the action sits at the row's end edge at every width, top-aligned on a phone: one column of actions to scan, and no row of its own
+    // under each item (it doubled every item's height at 390; research «محصولات پردکمه»: Divar, Digikala, GitHub keep a row one row)
+    <li className="flex items-start justify-between gap-inline-md py-stack-sm sm:items-center">
+      <span className="flex min-w-space-0 flex-1 items-start gap-inline-sm">
         <span className="mt-stack-xs flex shrink-0 text-icon-subtle">{lead}</span>
         <span className="body-md text-text-default">{text}</span>
       </span>
-      <Button size="sm" variant="secondary" iconStart={icon} className="self-start sm:self-auto shrink-0" onClick={onClick}>{button}</Button>
+      <Button size="sm" variant="secondary" iconStart={icon} className="shrink-0" onClick={onClick}>{button}</Button>
     </li>
   );
 }

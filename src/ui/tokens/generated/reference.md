@@ -101,9 +101,9 @@ Every number the design-system docs rely on, resolved from the DTCG source for b
 
 | style | size | weight | line-height |
 | --- | --- | --- | --- |
-| `display-lg` | 3.5rem (56px) | 700 | 1.3 |
-| `display-md` | 2.5rem (40px) | 700 | 1.3 |
-| `display-sm` | 1.875rem (30px) | 700 | 1.35 |
+| `display-lg` | 3.5rem (56px) | 700 | 1.4286 |
+| `display-md` | 2.5rem (40px) | 700 | 1.4 |
+| `display-sm` | 1.875rem (30px) | 700 | 1.4 |
 | `heading-xl` | 2.25rem (36px) | 700 | 1.4444 |
 | `heading-lg` | 1.75rem (28px) | 700 | 1.5 |
 | `heading-md` | 1.375rem (22px) | 600 | 1.5455 |

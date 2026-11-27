@@ -160,7 +160,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           <div className="mb-section-head__actions">
             {/* one main action; everything else is under «⋯» */}
             {/* a scoped add: it says WHAT it adds (this list is truth) and opens locked to it, on this section (docs/ux/decisions.md §۲) */}
-            <Button size="sm" variant="secondary" iconStart="Plus" aria-label={`افزودن حقیقت به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن حقیقت</Button>
+            {/* quiet (ghost), not a framed button: it repeats once per section (34 times in the full sample), and what repeats weighs
+                least (docs/ux/research/headers-trees-persian-type.md د۳). It keeps its words and «+», so it still says what it adds */}
+            <Button size="sm" variant="ghost" iconStart="Plus" aria-label={`افزودن حقیقت به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن حقیقت</Button>
             <span className="mb-section-head__more">
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>رفتن به بخش</Button>}
             <Menu
@@ -302,21 +304,18 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   return (
     // no frame around the tree: the knowledge cards are the only raised surface, so «raised = recorded» reads at a glance
     <section className="flex flex-col gap-stack-xl" aria-label="ساختار حقیقت">
-      <div className="flex flex-col gap-inline-md border-b border-border-default pb-inset-lg sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="heading-sm text-text-default">ساختار حقیقت</h2>
-          <p className="body-sm mt-stack-xs text-text-subtle">
-            هر بخش شاخه‌ای از درخت است با حقیقت‌هایش. برای خواندن پیوسته، «سند» را بزن.
-          </p>
-        </div>
+      {/* one toolbar row, no second title: «ساختار» is already the chosen view in the switch above it, and its explanation moved to
+          the page title's «؟» (docs/ux/research/headers-trees-persian-type.md §۲). The heading stays for screen readers' heading list */}
+      <h2 className="sr-only">ساختار حقیقت</h2>
+      <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
         <div className="flex flex-wrap items-center gap-inline-sm">
           {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
           {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <span className="flex items-center"><StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} /><InfoTip term="نشانه‌ها">◆ حقیقت: تأییدشده و منبع هر خروجی. ◇ پیشنهاد: هنوز تأیید نشده و به هیچ خروجی نمی‌رود. نشانهٔ دوتایی زرد یعنی قدیمی: چیزی که به آن تکیه دارد عوض شده و پیش از استفاده باید نگاهش کنی.</InfoTip></span>; })()}
           {pastToggle}
-          <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
         </div>
+        <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
       </div>
-      <OutlineBar nodes={nodes} />
+      <OutlineBar nodes={nodes} counts={activeObjects.reduce((m, o) => (o.nodeId ? m.set(o.nodeId, (m.get(o.nodeId) ?? 0) + 1) : m), new Map<string, number>())} />
       <div id="structure-tree" className="flex flex-col gap-stack-xl">{(allRoots ? roots : roots.slice(0, 2)).map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
       {compareDialog}
     </section>
@@ -339,7 +338,9 @@ const nodeAnchor = (id: string) => `node-${id}`;
  * from the wrapper, so the sample business space had 3 items and the bar did not show at all.
  * The section being read also inks its own start rule: the page itself says where she is, not only the bar.
  */
-const OutlineBar: React.FC<{ nodes: TreeNode[] }> = ({ nodes }) => {
+/** `counts`: what each section holds itself (not its sub-sections, so the numbers never count twice), shown at the end edge of its
+ * row in «فهرست»: a branch's size is seen before it is opened (Nielsen 1; research د۲). An empty section shows ۰: a gap is news */
+const OutlineBar: React.FC<{ nodes: TreeNode[]; counts: Map<string, number> }> = ({ nodes, counts }) => {
   const all = useMemo(() => { const pd = primaryDepth(nodes); return flatten(nodes).map(({ node, depth }) => ({ id: node.id, label: node.label, level: Math.max(1, depth - pd + 1) })); }, [nodes]);
   const parts = useMemo(() => all.filter((i) => i.level === 1), [all]);
   const on = all.length >= OUTLINE_FROM;
@@ -359,7 +360,7 @@ const OutlineBar: React.FC<{ nodes: TreeNode[] }> = ({ nodes }) => {
   return (
     <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
-        items={all.map((i) => ({ label: `${treeIndent(i.level - 1)}${i.label}`, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
+        items={all.map((i) => ({ label: <span className="flex w-full items-baseline justify-between gap-inline-md"><span>{`${treeIndent(i.level - 1)}${i.label}`}</span><span className="body-sm tabular-nums text-text-subtle" aria-label={`${formatNumber(counts.get(i.id) ?? 0)} مورد`}>{formatNumber(counts.get(i.id) ?? 0)}</span></span>, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
       <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} endId="structure-tree" label="جای خواندن در بخش‌ها" />
     </div>
   );

@@ -7,7 +7,7 @@
 
 import { optionsOf } from '../../core/decisionOptions';
 import { requestAdd } from '../../core/addRequest';
-import { Button, SegmentedControl } from '../../ui';
+import { Button, InfoTip, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { switchPage, useViewAxis, viewEnterClass } from '../../ui/pageTransition';
 import type { ReadyScope } from '../shared';
@@ -30,8 +30,10 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
               in the frame in both views so «فهرست / بوم» does not move under the pointer */}
           <div className="mb-page-frame"><div className="mb-page-head">
             <div className="mb-page-head__title">
-              <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
-              <p className="text-body-sm text-text-subtle mt-stack-xs">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</p>
+              <div className="flex items-center gap-inline-xs">
+                <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
+                <InfoTip term="فکر">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</InfoTip>
+              </div>
             </div>
             <div className="mb-page-head__actions">
               <SegmentedControl

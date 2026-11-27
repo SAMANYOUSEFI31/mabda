@@ -9,7 +9,7 @@ import { ContextTreeDocView } from '../../components/knowledge/ContextTreeDocVie
 import { effectiveObjects } from '../../core/effectiveContext';
 import { dataApi } from '../../services/dataApi';
 import { useState } from 'react';
-import { Button, Dialog, EmptyState, IconButton, Menu, SegmentedControl, formatNumber } from '../../ui';
+import { Button, Dialog, EmptyState, IconButton, InfoTip, Menu, SegmentedControl, formatNumber } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { switchPage, useViewAxis, viewEnterClass } from '../../ui/pageTransition';
@@ -34,12 +34,14 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
           <div className="mb-page-frame"><div className="mb-page-head">
             <div className="mb-page-head__title">
-              <h1 className="text-heading-md font-bold text-text-default">
-                حقیقت: {currentWorkspace.name}
-              </h1>
-              <p className="text-body-sm text-text-subtle mt-stack-xs">
-                «مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد.»
-              </p>
+              {/* one line of title, its explanation one tap away (docs/ux/research/headers-trees-persian-type.md §۱): a standing sentence under
+                  every title pushed the first truth below the fold on a phone, and was read once */}
+              <div className="flex items-center gap-inline-xs">
+                <h1 className="text-heading-md font-bold text-text-default">
+                  حقیقت: {currentWorkspace.name}
+                </h1>
+                <InfoTip term="حقیقت">مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.</InfoTip>
+              </div>
             </div>
 
             {/* patterns.md «نماها و «…»»: the four views are one choice, all visible. The page's occasional tasks (a file, the files, the
@@ -47,6 +49,10 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                 with Home and «خروجی‌ها»: the view choice, then the page's tools, «⋯» always last at the end edge; one row beside the title
                 where both fit, else under it (`.mb-page-head`). It wrapped into two rows at every desktop width and pushed the title 4px down */}
             <div className="mb-page-head__actions">
+              {/* the view switch and «⋯» share one row at every width: on a phone the switch fills what «⋯» leaves (research س۴).
+                  «بسته‌های دانش» is an occasional task, so it joined the others under «⋯» (it took a row of its own on a phone) */}
+              <div className="flex min-w-space-0 flex-1 flex-nowrap items-center gap-inline-sm sm:flex-none">
+              <div className="min-w-space-0 flex-1">
               <SegmentedControl
                 label="نمای حقیقت"
                 fullWidth="phone"
@@ -59,12 +65,13 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                   { id: 'table', label: 'جدول', icon: 'Table2' },
                 ]}
               />
-              {vf.packs && <Button variant="secondary" iconStart="Package" onClick={() => setIsPacksOpen(true)}>بسته‌های دانش</Button>}
+              </div>
               <Menu
                 label="کارهای دیگر حقیقت"
                 align="end"
                 trigger={<IconButton icon="Ellipsis" label="کارهای دیگر حقیقت" variant="secondary" />}
                 items={[
+                  ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Package' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => setFilesOpen(true) }] : []),
                   // the start skeletons and her own saved templates (§۵۳ ۱۱): «ذخیره به‌عنوان قالب» in each section's ⋯ had no way back
@@ -73,6 +80,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                   { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
                 ]}
               />
+              </div>
             </div>
           </div></div>
 

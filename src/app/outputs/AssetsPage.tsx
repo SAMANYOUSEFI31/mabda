@@ -16,7 +16,7 @@ import { REQUEST_KINDS } from '../../core/aiRequest';
 import type { RequestKind } from '../../core/aiRequest';
 import { dataApi } from '../../services/dataApi';
 import type { GeneratedDeliverable } from '../../types';
-import { Button, EmptyState, IconButton, Menu, useToast } from '../../ui';
+import { Button, EmptyState, IconButton, InfoTip, Menu, useToast } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -74,13 +74,15 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
   return (
     <div className="mb-page-frame space-y-stack-lg">
       <div className="mb-page-head">
-        <div className="mb-page-head__title flex flex-col gap-stack-xs">
+        <div className="mb-page-head__title flex items-center gap-inline-xs">
           <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
-          <p className="text-body-sm text-pretty text-text-subtle">هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.</p>
+          <InfoTip term="خروجی‌ها">هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.</InfoTip>
         </div>
         {/* the page's one outward step (the same quiet secondary as on Home); the rest are occasional and stay in «بیشتر» */}
         <div className="mb-page-head__actions">
           {live.length > 0 && requestButton}
+          {/* «⋯» wraps together with the button before it, never alone on a line (as in .mb-section-head__more; 390px split it) */}
+          <span className="flex flex-nowrap items-center gap-inline-sm">
           {importButton}
           <Menu
             label="بیشتر"
@@ -93,6 +95,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
               { label: 'خروجی‌های بایگانی‌شده', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
             ]}
           />
+          </span>
         </div>
       </div>
       {managedEnabled && <FrozenBuild specs={specs} openSpecEditor={openSpecEditor} setIsSpecLibraryOpen={setIsSpecLibraryOpen} setSelectedSpecId={setSelectedSpecId} setActiveTab={setActiveTab} />}
