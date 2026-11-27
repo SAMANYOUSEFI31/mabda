@@ -371,7 +371,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await shoot('home-demo');
   await page.locator('button[aria-controls="home-all"]').click(); await page.waitForTimeout(250); await shoot('home-all');
   await page.locator('button[aria-controls="home-all"]').click();
-  await page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first().click();
+  { const b = page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first(); if (await b.isVisible().catch(() => false)) await b.click(); else { await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click(); } } // a page's own steps are in its «⋯» where the head is narrow (PageHead)
   await page.getByRole('dialog').getByRole('radio', { name: 'ممیزی' }).click();
   await page.locator('#ai-request-line').fill('طرح تخفیف پاییز با خط قرمزهای ما جور است؟');
   await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('تخفیف پاییز')));

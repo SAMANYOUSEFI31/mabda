@@ -9,7 +9,8 @@ import { ContextTreeDocView } from '../../components/knowledge/ContextTreeDocVie
 import { effectiveObjects } from '../../core/effectiveContext';
 import { dataApi } from '../../services/dataApi';
 import { useState } from 'react';
-import { Button, Dialog, EmptyState, IconButton, InfoTip, Menu, SegmentedControl, formatNumber } from '../../ui';
+import { Button, Dialog, EmptyState, PageHead, SegmentedControl, formatNumber } from '../../ui';
+import type { MenuItem } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { switchPage, useViewAxis, viewEnterClass } from '../../ui/pageTransition';
@@ -29,12 +30,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
   const [filesOpen, setFilesOpen] = useState(false);
   // the four views sit side by side in the switch: the new one comes from the side of its key (pageTransition.ts)
   const axis = useViewAxis(contextViewMode, VIEW_ORDER);
-  const moreMenu = (
-              <Menu
-                label="کارهای دیگر حقیقت"
-                align="end"
-                trigger={<IconButton icon="Ellipsis" label="کارهای دیگر حقیقت" variant="secondary" />}
-                items={[
+  const moreItems: MenuItem[] = [
                   ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Package' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => setFilesOpen(true) }] : []),
@@ -42,48 +38,29 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
                   { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
                   { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
-                ]}
-              />
-  );
+                ];
   return (
         <div className="space-y-stack-lg">
-          {/* the page frame every page shares (decisions.md §۵۳ ۹); only «نمای کلی», a canvas, takes the whole main area */}
-          <div className="mb-page-frame"><div className="mb-page-head">
-            <div className="mb-page-head__title">
-              {/* one line of title, its explanation one tap away (docs/ux/research/headers-trees-persian-type.md §۱): a standing sentence under
-                  every title pushed the first truth below the fold on a phone, and was read once */}
-              <div className="flex items-center gap-inline-xs">
-                <h1 className="text-heading-md font-bold text-pretty text-text-default">
-                  حقیقت: {currentWorkspace.name}
-                </h1>
-                <InfoTip term="حقیقت">مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.</InfoTip>
-                <span className="mb-page-head__top-more ms-auto">{moreMenu}</span>
-              </div>
-            </div>
-
-            {/* patterns.md «نماها و «…»»: the four views are one choice, all visible. The page's occasional tasks (a file, the files, the
-                archive) sit at the TOP under «⋯», so they never wait behind every section (docs/ux/decisions.md §۳). One header grammar
-                with Home and «خروجی‌ها»: the view choice, then the page's tools, «⋯» always last at the end edge; one row beside the title
-                where both fit, else under it (`.mb-page-head`). It wrapped into two rows at every desktop width and pushed the title 4px down */}
-            <div className="mb-page-head__actions">
-              {/* «بسته‌های دانش» is an occasional task, so it joined the others under «⋯» (it took a row of its own on a phone). Where the
-                  actions sit under the title, «⋯» moves to the title's row at the end edge (like a phone's navigation bar), so the four
-                  views keep their full row and nothing waits on a line of its own (research س۴; .mb-page-head__top-more) */}
-              <SegmentedControl
-                label="نمای حقیقت"
-                fullWidth="phone"
-                value={contextViewMode}
-                onChange={(id) => switchPage(() => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas'))}
-                items={[
-                  { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
-                  { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
-                  { id: 'read', label: 'سند', icon: 'BookOpen' },
-                  { id: 'table', label: 'جدول', icon: 'Table2' },
-                ]}
-              />
-              <span className="mb-page-head__end-more">{moreMenu}</span>
-            </div>
-          </div></div>
+          {/* the page frame every page shares (decisions.md §۵۳ ۹; only «نمای کلی», a canvas, takes the whole main area); the four views are one choice, all visible (patterns.md «نماها»);
+              the page's occasional tasks under «⋯», at the end of the title's row on a phone (PageHead) */}
+          <div className="mb-page-frame"><PageHead
+            title={`حقیقت: ${currentWorkspace.name}`}
+            info={{ term: 'حقیقت', text: 'مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.' }}
+            moreLabel="کارهای دیگر حقیقت"
+            more={moreItems}
+            views={<SegmentedControl
+              label="نمای حقیقت"
+              fullWidth="phone"
+              value={contextViewMode}
+              onChange={(id) => switchPage(() => setContextViewMode(id as 'doc' | 'read' | 'table' | 'canvas'))}
+              items={[
+                { id: 'doc', label: 'ساختار', icon: 'FolderTree' },
+                { id: 'canvas', label: 'نمای کلی', icon: 'Workflow' },
+                { id: 'read', label: 'سند', icon: 'BookOpen' },
+                { id: 'table', label: 'جدول', icon: 'Table2' },
+              ]}
+            />}
+          /></div>
 
           <div id="context-view" style={{ scrollMarginTop: 80 }} />
           {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}

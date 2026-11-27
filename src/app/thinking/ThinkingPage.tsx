@@ -7,7 +7,7 @@
 
 import { optionsOf } from '../../core/decisionOptions';
 import { requestAdd } from '../../core/addRequest';
-import { Button, InfoTip, SegmentedControl } from '../../ui';
+import { Button, PageHead, SegmentedControl } from '../../ui';
 import { PageSuspense, lazyNamed } from '../lazy';
 import { switchPage, useViewAxis, viewEnterClass } from '../../ui/pageTransition';
 import type { ReadyScope } from '../shared';
@@ -28,23 +28,18 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
           {/* the page frame every page shares (decisions.md §۵۳ ۹): the header spans the frame like Home's; the list keeps the 680px
               reading column (§۵۱) with the filters in the margin beside it. Only the canvas takes the whole main area; the header stays
               in the frame in both views so «فهرست / بوم» does not move under the pointer */}
-          <div className="mb-page-frame"><div className="mb-page-head">
-            <div className="mb-page-head__title">
-              <div className="flex items-center gap-inline-xs">
-                <h1 className="text-heading-md font-bold text-text-default">فکر: {currentWorkspace.name}</h1>
-                <InfoTip term="فکر">هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.</InfoTip>
-              </div>
-            </div>
-            <div className="mb-page-head__actions">
-              <SegmentedControl
-                label="نمای فکر"
-                value={thinkingView}
-                onChange={(id) => switchPage(() => setThinkingView(id as 'list' | 'canvas'))}
-                items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
-              />
-              {/* adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳) */}
-            </div>
-          </div></div>
+          <div className="mb-page-frame"><PageHead
+            title={`فکر: ${currentWorkspace.name}`}
+            info={{ term: 'فکر', text: 'هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.' }}
+            // adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳)
+            views={<SegmentedControl
+              label="نمای فکر"
+              fullWidth="phone"
+              value={thinkingView}
+              onChange={(id) => switchPage(() => setThinkingView(id as 'list' | 'canvas'))}
+              items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
+            />}
+          /></div>
           <div id="thinking-view" />
           {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
           <div key={thinkingView} className={viewEnterClass} data-axis={axis}>

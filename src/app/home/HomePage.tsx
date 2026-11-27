@@ -19,7 +19,7 @@ import { gapAnswer, gapDraft } from '../../core/homeActions';
 import { resolveNodeId } from '../../core/nodeTree';
 import { CHANGE_KIND_FA } from '../../core/changeLog';
 import { spaceTally } from '../../core/spaceTally';
-import { Button, Card, EmptyState, IconButton, Menu } from '../../ui';
+import { Button, Card, EmptyState, IconButton, Menu, PageHead } from '../../ui';
 import { Deferred, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
 
@@ -110,31 +110,21 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
           );
   return (
         <div className="mb-page-frame space-y-stack-lg">
-          <div className="mb-page-head">
-            <div className="mb-page-head__title">
-              <h1 className="text-heading-md font-bold text-text-default">خانه: {currentWorkspace.name}</h1>
-            </div>
-            <div className="mb-page-head__actions">
-              {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own. «افزودن» is the top bar's (and the phone bar's) */}
-              {/* the one outward step of the core loop (truth → another tool) is visible, as a quiet secondary; the rest are occasional
-                  and stay in «بیشتر» (decisions.md §۴): weekly review and stale outputs already come to «منتظر تو» when they are due */}
-              {workspaceContexts.length > 0 && <Button variant="secondary" iconStart="PackageOpen" onClick={() => setAiRequest({ scopeNodeId: '' })}>درخواست برای ابزار دیگر</Button>}
-              {workspaceContexts.length > 0 && <Menu
-                label="بیشتر"
-                align="end"
-                trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="secondary" />}
-                items={[
-                  // grouped by job (decisions.md §۲۶): the request's other half and its saved form, then the looks back at the truth.
-                  // «شروع سریع» lives once, in the account menu («راهنما و شروع سریع»)
-                  { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
-                  { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
-                  { divider: true },
-                  { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
-                  { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
-                ]}
-              />}
-            </div>
-          </div>
+          {/* «خانه» answers «what needs me now» (patterns.md §۸): no main button of its own; «افزودن» is the top bar's (and the phone
+              bar's). The one outward step of the loop (truth → another tool) is visible where there is room; the rest are occasional
+              (decisions.md §۴, §۲۶: grouped by job). PageHead puts all of it in the title's «⋯» on a phone */}
+          <PageHead
+            title={`خانه: ${currentWorkspace.name}`}
+            moreLabel="بیشتر"
+            actions={workspaceContexts.length > 0 ? [{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => setAiRequest({ scopeNodeId: '' }) }] : []}
+            more={workspaceContexts.length > 0 ? [
+              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+              { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+              { divider: true },
+              { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
+              { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
+            ] : []}
+          />
           {!started && (
             // §۳۷، §۴۸: the shortest way to the first real thing is writing it, not a wizard: «شروع سریع» waits in the account menu
             <EmptyState

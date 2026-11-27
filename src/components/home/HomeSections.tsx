@@ -45,7 +45,9 @@ function Row({ lead, text, button, icon, onClick }: { lead: React.ReactNode; tex
         <span className="mt-stack-xs flex shrink-0 text-icon-subtle">{lead}</span>
         <span className="body-md text-text-default">{text}</span>
       </span>
-      <Button size="sm" variant="secondary" iconStart={icon} className="shrink-0" onClick={onClick}>{button}</Button>
+      {/* a text button (M3 «text button» at a list row's end): the step repeats on every row, so it is quiet; the verb stays visible
+          so it still reads as what happens (research §۴ «کار تکراری هر ردیف آرام»). The row's own text is the thing, not the frame */}
+      <Button size="sm" variant="ghost" iconStart={icon} className="shrink-0" onClick={onClick}>{button}</Button>
     </li>
   );
 }

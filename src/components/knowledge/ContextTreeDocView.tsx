@@ -277,6 +277,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     );
   };
 
+  // «از بالا به اینجا می‌رسد» in a focused section: closed by default, and closed again when another section is focused
+  const [aboveOpen, setAboveOpen] = useState(false);
+  useEffect(() => { setAboveOpen(false); }, [props.focusId]);
   const pastToggle = pastCount > 0 ? <Switch label={`نمایش گذشته‌ها (${formatNumber(pastCount)})`} checked={showPast} onChange={(e) => setShowPast(e.target.checked)} /> : null;
   const compareDialog = (
     <Dialog open={!!compare} onClose={() => setCompare(null)} size="md" title="پیش‌تر و اکنون" description={compare ? `«${compare.after.title}»` : undefined}
@@ -290,12 +293,19 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const path = pathTo(nodes, focusNode.id);
     const above = fromAbove(nodes, objects, props.relationships ?? [], focusNode.id, new Date());
     return (
-      <section className="focus-scope flex flex-col gap-stack-xl" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
+      <section className="focus-scope flex flex-col gap-stack-lg" data-testid="focused-section" onKeyDown={(e: React.KeyboardEvent) => { if (e.altKey && e.key === 'ArrowUp' && !e.nativeEvent.isComposing) { e.preventDefault(); props.onFocus!(path.length > 1 ? path[path.length - 2].id : null); } }}>
         <FocusBar path={path} onGo={(id) => props.onFocus!(id)} />
-        {pastToggle}
         {compareDialog}
-        <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-xl">
-          {above.length > 0 && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
+        <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-lg">
+          {/* the section's view tools are ONE row, like the structure's own toolbar (research س۲، س۳): what reaches it from above (a
+              disclosure) and the past (a filter). They were two blocks and a framed card, and pushed the section's title to y≈600 at 390 */}
+          {(above.length > 0 || pastToggle) && (
+            <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
+              {above.length > 0 ? <Button size="sm" variant="ghost" className="-ms-inset-md" iconStart={aboveOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={aboveOpen} aria-controls="from-above" onClick={() => setAboveOpen((v) => !v)}>از بالا به اینجا می‌رسد ({formatNumber(above.length)})</Button> : <span />}
+              {pastToggle}
+            </div>
+          )}
+          {above.length > 0 && aboveOpen && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
           {renderNode(focusNode, '', 0, true)}
         </div>
       </section>
@@ -398,24 +408,18 @@ const FocusBar: React.FC<{ path: Array<{ id: string; label: string }>; onGo: (id
 };
 
 /** unlike a folder, a section inherits from above: shown calmly, closed by default, each with where it comes from */
-const FromAbove: React.FC<{ items: ReturnType<typeof fromAbove>; onOpen: (o: ContextObject) => void }> = ({ items, onOpen }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <section className="flex flex-col gap-stack-sm rounded-control border border-border-subtle bg-surface-sunken p-inset-md" aria-label="از بالا به اینجا می‌رسد" data-testid="from-above">
-      <Button size="sm" variant="ghost" iconStart={open ? 'ChevronUp' : 'ChevronDown'} aria-expanded={open} onClick={() => setOpen((v) => !v)} className="self-start">از بالا به اینجا می‌رسد ({formatNumber(items.length)})</Button>
-      {open && (
-        <ul className="flex flex-col gap-stack-xs">
-          {items.map(({ item, fromLabel }) => (
-            <li key={item.object.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
-              <button type="button" className="body-md inline-flex min-h-touch items-center text-start text-text-default underline-offset-2 hover:underline" onClick={() => onOpen(item.object)}>{item.object.title}</button>
-              <span className="caption text-text-subtle">{item.origin === 'global' ? ORIGIN_FA.global : `از «${fromLabel}»`}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-};
+const FromAbove: React.FC<{ items: ReturnType<typeof fromAbove>; onOpen: (o: ContextObject) => void }> = ({ items, onOpen }) => (
+  <section id="from-above" className="rounded-control border border-border-subtle bg-surface-sunken px-inset-md py-inset-xs" aria-label="از بالا به اینجا می‌رسد" data-testid="from-above">
+    <ul className="flex flex-col">
+      {items.map(({ item, fromLabel }) => (
+        <li key={item.object.id} className="flex flex-wrap items-center justify-between gap-inline-sm">
+          <button type="button" className="body-md inline-flex min-h-touch items-center text-start text-text-default underline-offset-2 hover:underline" onClick={() => onOpen(item.object)}>{item.object.title}</button>
+          <span className="caption text-text-subtle">{item.origin === 'global' ? ORIGIN_FA.global : `از «${fromLabel}»`}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+);
 
 /** sub-sections as cards with calm counters; one tap goes in */
 const SubSections: React.FC<{ summaries: ReturnType<typeof childSummaries>; onOpen: (id: string) => void }> = ({ summaries, onOpen }) => (

@@ -16,7 +16,7 @@ import { REQUEST_KINDS } from '../../core/aiRequest';
 import type { RequestKind } from '../../core/aiRequest';
 import { dataApi } from '../../services/dataApi';
 import type { GeneratedDeliverable } from '../../types';
-import { Button, EmptyState, IconButton, InfoTip, Menu, useToast } from '../../ui';
+import { Button, EmptyState, PageHead, useToast } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { PageSuspense, lazyNamed } from '../lazy';
 import type { ReadyScope } from '../shared';
@@ -68,36 +68,26 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
     toast.show({ intent: 'success', message: 'فایل JSON همهٔ خروجی‌ها دانلود شد.' });
   };
   const requestButton = <Button variant="secondary" iconStart="PackageOpen" onClick={() => void request()}>درخواست برای ابزار دیگر</Button>;
-  // the loop has two halves and this page is where both live: send (the request) and bring back (the answer). The answer's way
-  // in sat under «⋯», so the path from a request to an output of her own could not be found (decisions.md §۴۹)
-  const importButton = <Button variant="secondary" iconStart="Upload" onClick={() => setIsImportOpen(true)}>وارد کردن پاسخ</Button>;
   return (
     <div className="mb-page-frame space-y-stack-lg">
-      <div className="mb-page-head">
-        <div className="mb-page-head__title flex items-center gap-inline-xs">
-          <h1 className="text-heading-md font-bold text-text-default">خروجی‌ها: {currentWorkspace.name}</h1>
-          <InfoTip term="خروجی‌ها">هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.</InfoTip>
-        </div>
-        {/* the page's one outward step (the same quiet secondary as on Home); the rest are occasional and stay in «بیشتر» */}
-        <div className="mb-page-head__actions">
-          {live.length > 0 && requestButton}
-          {/* «⋯» wraps together with the button before it, never alone on a line (as in .mb-section-head__more; 390px split it) */}
-          <span className="flex flex-nowrap items-center gap-inline-sm">
-          {importButton}
-          <Menu
-            label="بیشتر"
-            align="end"
-            trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ خروجی‌ها" variant="secondary" />}
-            items={[
-              { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
-              { divider: true },
-              ...(live.length > 0 ? [{ label: 'خروجی گرفتن JSON', icon: 'Download' as const, onSelect: exportJson }] : []),
-              { label: 'خروجی‌های بایگانی‌شده', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
-            ]}
-          />
-          </span>
-        </div>
-      </div>
+      {/* the loop's two halves live here: send (the request) and bring back (the answer); the answer's way in sat under «⋯» and
+          could not be found (decisions.md §۴۹), so both are visible where there is room. On a phone they are the first two items of
+          the title's «⋯» (PageHead) */}
+      <PageHead
+        title={`خروجی‌ها: ${currentWorkspace.name}`}
+        info={{ term: 'خروجی‌ها', text: 'هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.' }}
+        moreLabel="بیشتر دربارهٔ خروجی‌ها"
+        actions={[
+          ...(live.length > 0 ? [{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen' as const, onSelect: () => void request() }] : []),
+          { label: 'وارد کردن پاسخ', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+        ]}
+        more={[
+          { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+          { divider: true },
+          ...(live.length > 0 ? [{ label: 'خروجی گرفتن JSON', icon: 'Download' as const, onSelect: exportJson }] : []),
+          { label: 'خروجی‌های بایگانی‌شده', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
+        ]}
+      />
       {managedEnabled && <FrozenBuild specs={specs} openSpecEditor={openSpecEditor} setIsSpecLibraryOpen={setIsSpecLibraryOpen} setSelectedSpecId={setSelectedSpecId} setActiveTab={setActiveTab} />}
       <PageSuspense><AssetLibrary
         focus={focusAsset}

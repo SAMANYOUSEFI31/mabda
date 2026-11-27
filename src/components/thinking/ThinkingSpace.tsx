@@ -4,7 +4,7 @@
  */
 
 import type { AboutTarget } from '../../core/thoughtAbout';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContextObject, ContextRelationship, Note, ThoughtKind, TreeNode } from '../../types';
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
 import { effectiveObjects } from '../../core/effectiveContext';
@@ -14,7 +14,7 @@ import type { SpaceKind } from '../../core/thinkingSpace';
 import { subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
 import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
-import { NodePickerField } from '../structure/NodePicker';
+import { NodePicker, NodePickerField } from '../structure/NodePicker';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -119,6 +119,8 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     ...(p.onCompareIfApproved ? [{ label: 'فهرست تغییرها', icon: 'Layers' as const, onSelect: p.onCompareIfApproved }] : []),
   ];
 
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const scopeChip = useRef<HTMLButtonElement>(null);
   return (
     // the page frame's text and margin (decisions.md §۵۳ ۹): the filters are the margin (what to show), the list is the text. Wide,
     // the margin stands beside the list like Home's «در این فضا»; narrow, the filters come first, as before. The DOM order is the
@@ -132,13 +134,20 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip mb-thinking-filters__kinds -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0">
           {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
               six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
+          {/* where the filters are one row (a narrow frame), «which section» is a chip at the row's start that opens the same picker
+              (a sheet on a phone): Android's and iOS's dropdown filter chip. It was a full-width field on a row of its own */}
+          <Button ref={scopeChip} personal size="sm" className="mb-thinking-filters__scope-chip shrink-0" variant={p.nodeId ? 'secondary' : 'ghost'} iconEnd="ChevronDown" aria-haspopup="dialog" aria-expanded={scopeOpen}
+            aria-label={`کدام بخش؟، ${p.nodeId ? p.nodes.find((n) => n.id === p.nodeId)?.label ?? 'همهٔ بخش‌ها' : 'همهٔ بخش‌ها'}`} onClick={() => setScopeOpen((v) => !v)}>
+            {p.nodeId ? p.nodes.find((n) => n.id === p.nodeId)?.label ?? 'همهٔ بخش‌ها' : 'همهٔ بخش‌ها'}
+          </Button>
+          <NodePicker open={scopeOpen} onClose={() => setScopeOpen(false)} anchor={scopeChip} title="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onPick={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
           {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
             <Button key={c.id} size="sm" className="shrink-0" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
               {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
             </Button>
           ))}
         </div>
-        <div className="mb-thinking-filters__scope flex items-end gap-inline-xs">
+        <div className="mb-thinking-filters__scope items-end gap-inline-xs">
           <div className="w-overlay-xs max-w-full"><NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} /></div>
         </div>
       </aside>}

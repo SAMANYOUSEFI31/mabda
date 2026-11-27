@@ -77,7 +77,7 @@ try {
     await page.keyboard.press('Escape');
 
     step(`[${width}] «درخواست برای ابزار دیگر»: the text to copy has the examples next to the rule`);
-    await page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first().click();
+    { const b = page.getByRole('main').getByRole('button', { name: 'درخواست برای ابزار دیگر', exact: true }).first(); if (await b.isVisible().catch(() => false)) await b.click(); else { await page.getByRole('main').getByRole('button', { name: 'بیشتر', exact: true }).first().click(); await page.getByRole('menuitem', { name: 'درخواست برای ابزار دیگر' }).click(); } } // a page's own steps are in its «⋯» where the head is narrow (PageHead)
     await page.getByRole('dialog').getByLabel('درخواستت را در یک خط بنویس').fill('یک متن تبلیغ برای باشگاه بنویس');
     await page.waitForFunction(() => [...document.querySelectorAll('[role=dialog] textarea[readonly]')].some((t) => t.value.includes('مثال درست: ممکن است سود کنید') && t.value.includes('مثال نادرست: سود تضمینی ۳۰٪')), null, { timeout: 15000 });
     await shot('2-request');

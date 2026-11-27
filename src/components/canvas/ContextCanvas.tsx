@@ -810,7 +810,31 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       )}
     </div>
   );
-  const toolbar = compact ? compactBar : (
+  // a phone, not full screen: the same one-row grammar as the full-screen bar (§۵۳ ۸), but the page's own bar stays above it, so
+  // no «بستن» and no title. What a phone does on a board is look, find and fit: those stay; undo, redo, connecting and the layouts
+  // move under «⋯» (Hick; HIG: a toolbar of a phone holds a handful of items). It wrapped into two rows (search field, then six icons)
+  const phoneBar = (
+    <div role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar" className={`flex flex-col gap-stack-xs ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`}>
+      <div className="flex items-center gap-inline-xs">
+        <IconButton icon="Search" label="جستجوی کارت" aria-pressed={searchOpen} aria-expanded={searchOpen} onClick={() => setSearchOpen((v) => !v)} />
+        <Popover label="گزینه‌های نما" align="start" trigger={<Button size="sm" variant="secondary" iconStart="Filter">گزینه‌ها{optionsCount ? ` (${formatNumber(optionsCount)})` : ''}</Button>}>{options}</Popover>
+        <IconButton icon="Fullscreen" label="متناسب‌سازی" onClick={fitAll} />
+        <IconButton id="canvas-fs" icon="Maximize" label="تمام‌صفحه (F)" aria-pressed={fullscreen} onClick={() => setFullscreen(true)} />
+        <span className="ms-auto">
+          <Menu label="بیشتر" align="end" trigger={<IconButton icon="Ellipsis" label="بیشتر" />} items={[
+            { label: 'واگرد', icon: 'Undo2', disabled: !canUndo(hist) || busy, onSelect: () => void doUndo() },
+            { label: 'از نو', icon: 'Redo2', disabled: !canRedo(hist) || busy, onSelect: () => void doRedo() },
+            ...(!lineage ? [{ label: connectMode ? 'پایان وصل کردن' : 'وصل کن (دو کارت را پشت‌سرهم بزن)', icon: 'Link2' as const, onSelect: toggleConnect }] : []),
+            ...(layouts.length > 1 ? [{ divider: true, heading: 'چیدمان بوم' } as const, ...layouts.map((k) => ({ label: `${LAYOUT_FA[k]}${k === layout ? ' (همین)' : ''}`, icon: 'Workflow' as const, disabled: k === layout, onSelect: () => { setLayout(k); clearSelection(); } }))] : []),
+            { divider: true },
+            ...moreItems,
+          ]} />
+        </span>
+      </div>
+      {searchOpen && search}
+    </div>
+  );
+  const toolbar = compact ? compactBar : isMobile && !fullscreen ? phoneBar : (
     <div className={`flex flex-wrap items-center gap-inline-sm ${sheet ? 'order-last border-t border-border-default pt-inset-sm' : ''}`} role="toolbar" aria-label="نوار ابزار بوم" data-testid="canvas-toolbar">
       {layouts.length > 1 && <SegmentedControl label="چیدمان بوم" value={layout} onChange={(id) => { setLayout(id as CanvasLayout); clearSelection(); }} items={layouts.map((k) => ({ id: k, label: LAYOUT_FA[k] }))} />}
       {search}
@@ -887,8 +911,10 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       )}
       {aboutOpen && <Alert intent="info" title={`چیدمان «${LAYOUT_FA[layoutEff]}»: ${aboutText.question}`} onClose={() => setAboutOpen(false)}>{aboutText.what}</Alert>}
       {!aboutOpen && !compact && (
-        <div className="flex flex-wrap items-center justify-between gap-inline-sm">
-          <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>
+        <div className="flex flex-wrap items-center justify-between gap-inline-sm empty:hidden">
+          {/* the question this layout answers: a line where there is room; on a phone it is one tap away («⋯» › «این چیدمان چیست؟»),
+              since a standing sentence is read once and takes a row every time (research س۱) */}
+          {!isMobile && <p className="body-sm text-text-subtle" data-testid="layout-about">{aboutText.question}</p>}
           {(only || onlyReview || showPending || rowsBy === 'facet') && !lineage && <span role="status" data-testid="filter-active" className="body-sm rounded-pill border border-border-selected bg-bg-selected px-inset-sm text-text-default">نما فیلتر دارد: {[only === 'constraint' ? 'فقط خط قرمزها' : only === 'pending' ? 'فقط پیشنهادها' : '', onlyReview ? 'فقط نیاز به بازبینی' : '', showPending ? 'با آنچه در راه است' : '', rowsBy === 'facet' ? 'ردیف‌ها: بُعد' : ''].filter(Boolean).join(' · ')}</span>}
           {mode === 'thinking' && p.onPreviewTruth && <Button size="sm" variant="ghost" iconStart="Eye" aria-label="اگر همه را تأیید کنم، نمای کلی حقیقت" onClick={p.onPreviewTruth}>اگر همه را تأیید کنم</Button>}
         </div>
