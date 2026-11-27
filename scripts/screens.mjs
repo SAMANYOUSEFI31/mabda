@@ -92,7 +92,9 @@ const audit = () => {
       const hitPseudo = innerWidth >= 768 ? /mb-btn--sm|mb-iconbtn--sm|mb-tab\b|mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className) : /mb-tag__remove|mb-page|mb-check__input|mb-radio__input|mb-switch__input/.test(el.className);
       // controls INSIDE the canvas stage scale with the zoom by design (docs/canvas-design.md); every one has a ≥ 44px equivalent in the inspector / menu
       if (el.closest('[data-testid=canvas-stage]')) continue;
-      if ((r.height < 43.5 || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
+      // 44 is the touch standard (HIG 44pt, M3 48dp); with a fine pointer a dense list's row may be 36 (Fitts; WCAG 2.5.8 floor 24; GitHub and Linear use 32)
+      const min = !matchMedia('(pointer: coarse)').matches && el.matches('[role=menuitem], [role=treeitem], [role=menuitemradio]') ? 35.5 : 43.5;
+      if ((r.height < min || r.width < 43.5) && !hitPseudo && !(el.type === 'checkbox' || el.type === 'radio')) {
         out.touch.push(`${Math.round(r.width)}x${Math.round(r.height)} <${el.tagName.toLowerCase()}> "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)}"`);
       }
     }

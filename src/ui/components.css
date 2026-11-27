@@ -943,3 +943,9 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 @container mb-frame (min-width: 54rem){
   .mb-page-head__wide{display:flex}
 }
+
+/* density by pointer (docs/design-principles.md «قاعده‌های خودمان، زیر سؤال»): 44px is a finger's target; with a mouse a row of a
+   menu or a picker is 36px, so a long list is seen whole (GitHub and Linear: 32; WCAG 2.5.8 floor: 24). Buttons keep 44 */
+@media (pointer:fine){
+  .mb-menu__item,.mb-nodepicker__row{min-block-size:calc(var(--space-8) + var(--space-1))}
+}
