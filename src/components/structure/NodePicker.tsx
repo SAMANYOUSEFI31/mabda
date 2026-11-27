@@ -7,8 +7,8 @@ import { Dialog, FieldShell, Icon, TextField, cx, formatNumber } from '../../ui'
  * Choosing a section of the tree («کدام بخش؟»). It opens as a panel at the inline-end edge on a wide screen and as a sheet on a phone
  * (Dialog `side`), not as a dropdown: the tree is long (34 sections in the full sample), its levels are what tells two sections apart,
  * and a dropdown showed them as em-spaces in a system list with no search (NN/g: past ~15 options a list with search beats a
- * dropdown; Hick: search turns a scan into a type). Each row is a full-width touch target with its real indent, the current one is
- * marked, and a search shows each match with its path, so two sections with the same name are still told apart.
+ * dropdown; Hick: search turns a scan into a type). Each row is a full-width touch target with its real indent (main sections in
+ * the label weight, like a sidebar's groups), the current one is marked with a check, and a search shows each match with its path, so two sections with the same name are still told apart.
  * docs/ux/research/headers-trees-persian-type.md «انتخاب‌گرها».
  */
 export interface NodePickerOption { value: string; label: string }
@@ -47,7 +47,7 @@ export function NodePicker({ open, onClose, title, nodes, value, onPick, extra =
           {!needle && extra.map((o) => (
             <li key={`x-${o.value}`}>
               <button type="button" data-value={o.value} className={row} aria-current={o.value === value || undefined} onClick={() => pick(o.value)}>
-                <span className={cx('flex-1 body-md', o.value === value ? 'font-semibold text-text-default' : 'text-text-default')}>{o.label}</span>
+                <span className="flex-1 label-lg text-text-default">{o.label}</span>
                 {o.value === value && <Icon name="Check" size="md" className="text-icon-default" />}
               </button>
             </li>
@@ -60,9 +60,8 @@ export function NodePicker({ open, onClose, title, nodes, value, onPick, extra =
               <li key={node.id}>
                 <button type="button" data-value={node.id} className={row} aria-current={on || undefined} disabled={disabledIds?.has(node.id)} onClick={() => pick(node.id)}
                   style={needle ? undefined : { paddingInlineStart: `calc(var(--inset-sm) + ${depth} * var(--space-6))` }}>
-                  {!needle && depth > 0 && <span aria-hidden="true" className="h-icon-md border-s border-border-default" />}
                   <span className="flex min-w-space-0 flex-1 flex-col">
-                    <span className={cx('body-md', on ? 'font-semibold text-text-default' : 'text-text-default')}>{node.label}{marks?.[node.id] && <span className="body-sm font-normal text-text-subtle"> ({marks[node.id]})</span>}</span>
+                    <span className={cx(!needle && depth === 0 ? 'label-lg' : 'body-md', 'text-text-default')}>{node.label}{marks?.[node.id] && <span className="body-sm font-normal text-text-subtle"> ({marks[node.id]})</span>}</span>
                     {path && <span className="body-sm text-text-subtle">{path}</span>}
                   </span>
                   {on && <Icon name="Check" size="md" className="text-icon-default" />}

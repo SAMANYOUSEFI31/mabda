@@ -53,7 +53,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               {/* one line of title, its explanation one tap away (docs/ux/research/headers-trees-persian-type.md §۱): a standing sentence under
                   every title pushed the first truth below the fold on a phone, and was read once */}
               <div className="flex items-center gap-inline-xs">
-                <h1 className="text-heading-md font-bold text-text-default">
+                <h1 className="text-heading-md font-bold text-pretty text-text-default">
                   حقیقت: {currentWorkspace.name}
                 </h1>
                 <InfoTip term="حقیقت">مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.</InfoTip>

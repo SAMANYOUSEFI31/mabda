@@ -360,7 +360,7 @@ const OutlineBar: React.FC<{ nodes: TreeNode[]; counts: Map<string, number> }> =
   return (
     <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
-        items={all.map((i) => ({ label: <span className="flex w-full items-baseline justify-between gap-inline-md"><span>{`${treeIndent(i.level - 1)}${i.label}`}</span><span className="body-sm tabular-nums text-text-subtle" aria-label={`${formatNumber(counts.get(i.id) ?? 0)} مورد`}>{formatNumber(counts.get(i.id) ?? 0)}</span></span>, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
+        items={all.map((i) => ({ label: <span className="mb-menu-row flex w-full items-baseline justify-between gap-inline-md"><span>{`${treeIndent(i.level - 1)}${i.label}`}</span><span className="body-sm tabular-nums text-text-subtle" aria-label={`${formatNumber(counts.get(i.id) ?? 0)} مورد`}>{formatNumber(counts.get(i.id) ?? 0)}</span></span>, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
       <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} endId="structure-tree" label="جای خواندن در بخش‌ها" />
     </div>
   );

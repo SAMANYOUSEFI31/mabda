@@ -907,3 +907,6 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
   .mb-page-head__top-more{display:none}
   .mb-page-head__end-more{display:inline-flex}
 }
+/* a menu row with a value at its end edge (e.g. «فهرست»'s count per section): the label's wrapper takes the row, so the values
+   line up in one column (Gestalt: alignment), not one after each name */
+@layer components{ .mb-menu__item > span:has(> .mb-menu-row){flex:1;min-inline-size:0} }
