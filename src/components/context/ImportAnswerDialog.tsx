@@ -11,7 +11,7 @@ import { contextTypeOf, isContextKind } from '../../core/answerParser';
 import { ACTION_FA, mapAnswer } from '../../core/answerMapping';
 import type { BlockMapping, MapAction } from '../../core/answerMapping';
 import { PACK_MARKER_RE } from '../../core/contextPack';
-import { flatten, treeIndent } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import { dataApi, DataApiError } from '../../services/dataApi';
 import { Alert, Badge, Button, Dialog, Markdown, Select, Textarea, formatNumber, Caution } from '../../ui';
 import { clientId } from '../../core/ids';
@@ -118,7 +118,6 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
     try { if (await onSaveAsset(asset)) mark(b.id, 'در خروجی‌ها ذخیره شد'); } finally { setSavingAsset(null); }
   };
 
-  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   const actionOptions = (m: BlockMapping) => [
     { value: 'new', label: ACTION_FA.new },
     ...(m.targetId ? [{ value: 'update', label: `${ACTION_FA.update} «${titleOf(m.targetId)}»` }, { value: 'duplicate', label: `${ACTION_FA.duplicate} «${titleOf(m.targetId)}»` }] : []),
@@ -179,7 +178,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
                     <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md" data-testid="block-mapping">
                       <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
                         <Select label="کجا می‌رود؟" value={c.action} onChange={(e) => setChoice((s) => ({ ...s, [b.id]: { ...c, action: e.target.value as MapAction } }))} options={actionOptions(m)} />
-                        {c.action === 'new' && <Select label="در کدام بخش؟" value={c.nodeId} onChange={(e) => setChoice((s) => ({ ...s, [b.id]: { ...c, nodeId: e.target.value } }))} options={sectionOptions} />}
+                        {c.action === 'new' && <NodePickerField label="در کدام بخش؟" nodes={nodes} value={c.nodeId} onChange={(v) => setChoice((s) => ({ ...s, [b.id]: { ...c, nodeId: v } }))} extra={[{ value: '', label: 'بدون بخش مشخص' }]} />}
                       </div>
                       <p className="body-sm text-text-subtle"><Badge intent="neutral" icon={false}>{BASIS_FA[m.basis]}</Badge> {m.reason}</p>
                       {c.action === 'update' && <p className="body-sm text-text-subtle">متن موجود دست نمی‌خورد؛ یک پیش‌نویس ساخته می‌شود و در «فکر» تأییدش می‌کنی.</p>}

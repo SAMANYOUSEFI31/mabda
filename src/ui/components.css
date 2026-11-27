@@ -910,3 +910,26 @@ html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 /* a menu row with a value at its end edge (e.g. «فهرست»'s count per section): the label's wrapper takes the row, so the values
    line up in one column (Gestalt: alignment), not one after each name */
 @layer components{ .mb-menu__item > span:has(> .mb-menu-row){flex:1;min-inline-size:0} }
+
+/* ---------- section picker (src/components/structure/NodePicker.tsx) ---------- */
+@layer components{
+.mb-nodepicker__tree{display:flex;flex-direction:column;gap:var(--space-1)}
+.mb-nodepicker__row{display:flex;align-items:center;gap:var(--inline-sm);min-block-size:var(--touch-target-min);inline-size:100%;padding-inline:var(--inset-sm);border-radius:var(--radius-control-sm);text-align:start;cursor:pointer;outline-offset:calc(var(--space-1) * -0.5)}
+.mb-nodepicker__row:is(:hover,:focus-visible):not(.is-disabled){background:var(--interaction-hover)}
+.mb-nodepicker__row:active:not(.is-disabled){background:var(--interaction-pressed)}
+/* a result with its path is two lines: room above and below, so the path reads as its own row's and not the next one's (Gestalt proximity) */
+.mb-nodepicker__row.has-path{padding-block:var(--stack-xs)}
+.mb-nodepicker__row.is-disabled{cursor:not-allowed}
+/* held against its field: the search stays at the top while the tree scrolls under it */
+.mb-anchored.mb-nodepicker{max-inline-size:min(var(--overlay-width-sm), calc(100vw - var(--space-8)));padding:var(--inset-sm)}
+.mb-nodepicker__search{position:sticky;inset-block-start:calc(var(--inset-sm) * -1);margin:calc(var(--inset-sm) * -1) calc(var(--inset-sm) * -1) 0;padding:var(--inset-sm);background:inherit;z-index:var(--layer-raised)}
+}
+/* the fold toggle of a section with sub-sections: its own full-height tap area at the row's start (the rest of the row picks) */
+@layer components{
+.mb-nodepicker__twisty{display:inline-flex;flex:none;align-items:center;justify-content:center;align-self:stretch;inline-size:var(--touch-target-min);margin-inline-start:calc(var(--inset-sm) * -1);margin-inline-end:calc(var(--inline-sm) * -1);color:var(--icon-subtle);border-radius:var(--radius-control-sm)}
+.mb-nodepicker__twisty:not(:empty){cursor:pointer}
+.mb-nodepicker__twisty:not(:empty):hover{background:var(--interaction-hover);color:var(--icon-default)}
+}
+/* phone: the picker's sheet takes its content's height (up to the top of the screen), not the «full» stop of a form sheet.
+   Not layered, and more specific than that rule (above), on purpose */
+@media (max-width:767px){.mb-dialog-layer.is-side:not(.is-alert):not(.is-top) .mb-dialog.mb-dialog:has(.mb-nodepicker--sheet){block-size:auto;max-block-size:calc(var(--app-h) - var(--safe-top) - var(--space-3))}}

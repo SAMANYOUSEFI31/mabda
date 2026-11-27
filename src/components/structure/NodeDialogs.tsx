@@ -146,7 +146,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         }
       >
         <div className="flex flex-col gap-stack-md">
-          <NodePickerField label="کجا برود؟" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" extra={[{ value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }]} disabledIds={exclude} />
+          <NodePickerField label="کجا برود؟" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" extra={[{ value: ROOT_TARGET, label: 'سطح اصلی (بخش اصلی)' }]} disabledIds={exclude} disabledReason="خودش یا زیرش" />
           {!check.ok && check.reason && <Alert intent="warning">{check.reason}</Alert>}
           {effect && effect.sentences.length > 0 && (
             <div data-testid="move-effect">
@@ -206,7 +206,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
                   : `${parts} می‌روند؛ چیزی پاک یا بایگانی نمی‌شود.`}
               />
             ) : <Alert intent="info" title={`${parts} در این بخش هست`}>همه به «{dest || 'جای دیگر'}» می‌روند و برای هر دانش در تاریخچه می‌ماند چرا و کجا رفت.</Alert>}
-            {(plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <NodePickerField label={archiveMode ? 'یادداشت‌ها، فکرها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} nodes={nodes} value={chosen} onChange={setTarget} disabledIds={new Set(subtreeIds(nodes, node.id))} /> : null}
+            {(plan.counts.notes + plan.counts.thoughts + plan.counts.files > 0 || !archiveMode) && (chosen || nodes.length > 1) ? <NodePickerField label={archiveMode ? 'یادداشت‌ها، فکرها و فایل‌ها کجا بروند؟' : 'کجا برود؟'} nodes={nodes} value={chosen} onChange={setTarget} disabledIds={new Set(subtreeIds(nodes, node.id))} disabledReason="همین بخش یا زیرش" /> : null}
           </>
         )}
         {plan.ok && plan.tree.length > 1 && (

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { TreeNode } from '../../types';
 import React, { useState } from 'react';
 import { MyTemplates } from '../structure/MyTemplates';
 import type { Workspace } from '../../types';
@@ -17,7 +18,7 @@ interface Props {
   onChange: (ids: string[]) => Promise<void>;
   /** the user's own templates (saved from a node or a custom workstream): bring one into this workspace */
   onApplyTemplate: (templateId: string, parentId?: string) => Promise<void>;
-  nodes: Array<{ id: string; label: string }>;
+  nodes: TreeNode[];
 }
 
 /** The library of ready-made workstreams. A workspace shows only the ones it took from here (plus its own). Removing one only hides it: outputs already built stay in «دارایی‌ها». */

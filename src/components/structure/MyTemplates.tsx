@@ -9,14 +9,16 @@
  * tree. A saved workstream template stays stored (the workshop is frozen, not deleted) and is listed only where `kinds` asks.
  */
 
+import type { TreeNode } from '../../types';
 import React, { useEffect, useState } from 'react';
 import { dataApi } from '../../services/dataApi';
-import { Badge, Button, Select, useToast } from '../../ui';
+import { Badge, Button, useToast } from '../../ui';
+import { NodePickerField } from './NodePicker';
 
 interface Props {
   open: boolean;
   workspaceId: string;
-  nodes: Array<{ id: string; label: string }>;
+  nodes: TreeNode[];
   onApplyTemplate: (templateId: string, parentId?: string) => Promise<void>;
   kinds?: Array<'node' | 'workstream'>;
 }
@@ -33,7 +35,7 @@ export const MyTemplates: React.FC<Props> = ({ open, workspaceId, nodes, onApply
       <h3 className="label-md text-text-default">قالب‌های من</h3>
       {shown.length === 0 ? <p className="body-sm text-text-subtle">هنوز قالبی نساخته‌ای: از منوی هر بخش «ذخیره به‌عنوان قالب» را بزن.</p> : (
         <>
-          <Select label="بخش‌های قالب زیر کدام بخش بیایند؟" value={parent || (nodes[0]?.id ?? '')} onChange={(e) => setParent(e.target.value)} options={nodes.map((n) => ({ value: n.id, label: n.label }))} />
+          <NodePickerField label="بخش‌های قالب زیر کدام بخش بیایند؟" nodes={nodes} value={parent || (nodes[0]?.id ?? '')} onChange={setParent} />
           {shown.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-border-default p-inset-lg">
               <span className="label-md text-text-default">{t.name}{kinds.length > 1 && <> <Badge intent="neutral" icon={false}>{t.kind === 'node' ? 'بخش' : 'جریان کار'}</Badge></>}</span>

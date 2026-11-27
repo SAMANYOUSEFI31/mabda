@@ -23,7 +23,8 @@ import { asAiError, streamChat } from '../../services/apiClient';
 import { useAiStatus } from '../../services/aiStatus';
 import { AiErrorNotice, PlanLine } from '../shared/AiNotices';
 import { BlockView } from '../shared/BlockView';
-import { flatten, treeIndent, subtreeIds, ancestorIds } from '../../core/nodeTree';
+import { flatten, subtreeIds, ancestorIds } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import {
   Badge, Button, Card, Dialog, Icon, IconButton, Markdown, Select, Spinner, Switch, TextField,
   formatJalaliDate, formatNumber, formatTime, useToast,
@@ -406,12 +407,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
 
         <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-sm sm:flex-row sm:items-end">
           <div className="sm:flex-1">
-            <Select
-              label="محدودهٔ گفتگو"
-              value={activeSession.scopeNodeId ?? ''}
-              onChange={(e) => handleScope(e.target.value)}
-              options={[{ value: '', label: 'کل درخت' }, ...flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }))]}
-            />
+            <NodePickerField label="محدودهٔ گفتگو" nodes={nodes} value={activeSession.scopeNodeId ?? ''} onChange={handleScope} extra={[{ value: '', label: 'کل درخت' }]} />
           </div>
           <div className="sm:flex-1">
             <Select

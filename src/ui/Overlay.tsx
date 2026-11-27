@@ -123,6 +123,9 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
+      // only the top layer hears a key: a picker or a second dialog over this one closes alone, and a menu or popover that
+      // already took this Escape (useDismiss, capture phase) is not a reason to close the dialog under it too
+      if (e.defaultPrevented || overlayStack[overlayStack.length - 1] !== back) return;
       if (e.key === 'Escape') { e.preventDefault(); closeRef.current?.(); }
       if (e.key === 'Tab') {
         const list = Array.from(items());
@@ -327,10 +330,11 @@ function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | n
   useEffect(() => {
     if (!active) return;
     const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) cb.current(); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); cb.current(true); } };
+    // capture, and marked as taken: a dialog under the menu hears the same Escape later and leaves it alone
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); cb.current(true); } };
     document.addEventListener('pointerdown', down);
-    document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key); };
+    document.addEventListener('keydown', key, true);
+    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key, true); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 }
@@ -444,6 +448,50 @@ export function Popover({ trigger, children, label, align = 'start', side = 'bot
           className={cx('mb-popover__panel', 'is-portal', side === 'top' && 'is-top')}>{children}</div>, document.body)}
     </span>
   );
+}
+
+/* ---------------- AnchoredPanel ---------------- */
+/**
+ * A panel held against a field it belongs to (a picker inside a form or a dialog), in the overlay layer like a popover.
+ * Unlike Popover the caller owns the trigger and the open state. It is a layer of its own: Back and Escape close it before
+ * the dialog under it (overlayStack), an outside press closes it, and Tab past its edge returns to the field.
+ */
+export function AnchoredPanel({ anchor, open, onClose, label, children, className, minWidth = 320 }: {
+  anchor: React.RefObject<HTMLElement | null>; open: boolean; onClose: () => void; label: string; children: ReactNode; className?: string; minWidth?: number;
+}) {
+  const panel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<CSSProperties | null>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const place = useCallback(() => {
+    const a = anchor.current, m = panel.current;
+    if (!a || !m) return;
+    m.style.inlineSize = `${Math.max(a.getBoundingClientRect().width, minWidth)}px`;
+    setPos({ ...placeAgainst(a, m, 'start', 'bottom'), inlineSize: m.style.inlineSize });
+  }, [anchor, minWidth]);
+  useLayoutEffect(() => { if (open) place(); else setPos(null); }, [open, place]);
+  useFollow(open, panel, place);
+  useDismiss(open, [panel, anchor], (esc) => { closeRef.current(); if (esc) anchor.current?.focus(); });
+  useEffect(() => {
+    if (!open) return;
+    const back = () => closeRef.current();
+    overlayStack.push(back);
+    syncOverlayHistory();
+    return () => { const at = overlayStack.lastIndexOf(back); if (at >= 0) overlayStack.splice(at, 1); syncOverlayHistory(); };
+  }, [open]);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab' || !panel.current) return;
+    const list = Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((n) => n.tabIndex >= 0);
+    if (!list.length) return;
+    if ((e.shiftKey && document.activeElement === list[0]) || (!e.shiftKey && document.activeElement === list[list.length - 1])) {
+      e.preventDefault(); closeRef.current(); anchor.current?.focus();
+    }
+  };
+  if (!open) return null;
+  return createPortal(
+    <div ref={panel} role="dialog" aria-label={label} onKeyDown={onKey}
+      style={pos ?? { position: 'fixed', insetBlockStart: 0, insetInlineStart: 0, visibility: 'hidden' }}
+      className={cx('mb-popover__panel', 'is-portal', 'mb-anchored', className)}>{children}</div>, document.body);
 }
 
 /* ---------------- Menu ---------------- */

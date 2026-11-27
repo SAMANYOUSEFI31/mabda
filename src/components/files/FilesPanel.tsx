@@ -7,10 +7,10 @@ import { defaultNodeId } from '../../core/nodeTree';
 import React, { useRef, useState } from 'react';
 import type { StoredFile, TreeNode } from '../../types';
 import type { FileChargeInfo, FileQuotaInfo } from '../../types/state';
-import { flatten, treeIndent } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import { useAiStatus } from '../../services/aiStatus';
 import { DangerDialog } from '../shared/Removal';
-import { Alert, Badge, Button, Card, EmptyState, IconButton, Progress, Select, formatNumber } from '../../ui';
+import { Alert, Badge, Button, Card, EmptyState, IconButton, Progress, formatNumber } from '../../ui';
 
 interface Props {
   files: StoredFile[];
@@ -41,7 +41,6 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
   const [pendingDelete, setPendingDelete] = useState<StoredFile | null>(null);
   const [nodeId, setNodeId] = useState(() => defaultNodeId(nodes));
   const [busy, setBusy] = useState<string | null>(null);
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const nodeLabel = (id?: string) => (id ? nodes.find((n) => n.id === id)?.label : undefined);
 
   const run = async (id: string, fn: () => Promise<void>) => {
@@ -76,7 +75,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
         </div>
         <div className="flex flex-col gap-inline-sm sm:flex-row sm:items-end">
           <div className="sm:w-overlay-xs">
-            <Select label="محل در درخت" value={nodeId} onChange={(e) => setNodeId(e.target.value)} options={nodeOptions} />
+            <NodePickerField label="محل در درخت" nodes={nodes} value={nodeId} onChange={setNodeId} />
           </div>
           <input ref={input} type="file" accept=".txt,.md,.pdf,.docx" className="sr-only" aria-label="انتخاب فایل" tabIndex={-1} onChange={(e) => void pick(e.target.files?.[0])} />
           <Button variant="secondary" iconStart="Upload" loading={busy === 'upload'} onClick={() => input.current?.click()}>بارگذاری فایل</Button>
@@ -119,7 +118,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
               {!nodeLabel(f.nodeId) && (
                 // a file with no living section is not in any section's list: it says so here and gets one in one step (NEW-05)
                 <div className="flex flex-wrap items-end gap-inline-sm">
-                  <Select label="این فایل در هیچ بخشی نیست؛ بگذارش در" placeholder="یک بخش انتخاب کن" value="" options={nodeOptions} disabled={busy === f.id} onChange={(e) => { const to = e.target.value; if (to) void run(f.id, () => onMove(f.id, to)); }} />
+                  <NodePickerField label="این فایل در هیچ بخشی نیست؛ بگذارش در" placeholder="یک بخش انتخاب کن" nodes={nodes} value="" disabled={busy === f.id} onChange={(to) => { if (to) void run(f.id, () => onMove(f.id, to)); }} />
                 </div>
               )}
               {f.summary && <p className="body-sm whitespace-pre-wrap text-text-default">{f.summary}</p>}

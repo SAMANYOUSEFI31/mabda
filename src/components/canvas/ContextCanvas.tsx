@@ -1047,7 +1047,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
                 <div className="flex flex-wrap gap-inline-xs">{LANES.map((l) => <Button key={l} size="sm" variant="secondary" disabled={(activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking')) === l} onClick={() => { setActions(null); void request({ objectId: activeObj.id, lane: l }); }}>{LANE_FA[l]}</Button>)}</div>
               </div>
             )}
-            <Select label="انتقال به بخش" value={activeObj.nodeId} onChange={(e) => { setActions(null); void request({ objectId: activeObj.id, lane: activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking'), nodeId: e.target.value }); }} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />
+            <NodePickerField label="انتقال به بخش" nodes={p.nodes} value={activeObj.nodeId} marks={{ [activeObj.nodeId]: 'الان' }} onChange={(v) => { setActions(null); void request({ objectId: activeObj.id, lane: activeItem?.lane ?? (activeObj.status === 'Confirmed' ? 'confirmed' : 'thinking'), nodeId: v }); }} />
             <div className="flex flex-wrap gap-inline-xs">
               <Button size="sm" variant="secondary" iconStart="Link2" onClick={() => { setActions(null); setConnectMode(true); setConnectFrom(activeObj.id); setSelection([`o:${activeObj.id}`]); }}>وصل کن</Button>
               <Button size="sm" variant="ghost" onClick={() => { setActions(null); p.onOpenObject(activeObj); }}>باز کردن</Button>
@@ -1091,7 +1091,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
       <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «واگرد» برمی‌گردد."
         footer={<><Button variant="ghost" onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
-        {moveTo && <Select label="بخش" hint={moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId ? 'این مورد همین حالا در این بخش است؛ بخش دیگری انتخاب کن.' : undefined} value={moveTo.nodeId} onChange={(e) => setMoveTo({ ...moveTo, nodeId: e.target.value })} options={p.nodes.map((n) => ({ value: n.id, label: n.label }))} />}
+        {moveTo && <NodePickerField label="بخش" hint={moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId ? 'این مورد همین حالا در این بخش است؛ بخش دیگری انتخاب کن.' : undefined} nodes={p.nodes} value={moveTo.nodeId} onChange={(v) => setMoveTo({ ...moveTo, nodeId: v })} />}
       </Dialog>
 
       <Dialog open={!!fromItems} onClose={() => setFromItems(null)} size="sm" title={`ساخت بخش از ${formatNumber(picked.length)} مورد`}

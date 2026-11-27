@@ -4,7 +4,7 @@
  */
 
 import type { Contradiction } from '../../types';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ContextDraft, ContextObject, RedlineExample, Metric, MetricDirection, GeneratedDeliverable, ContextProvenance, ContextRelationship, ContextStatus, ContextType, TreeNode } from '../../types';
 import { dependentsOf, planDecisions } from '../../core/decisionGraph';
 import type { ReviewNeed } from '../../core/decisionGraph';
@@ -217,6 +217,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
   /** switching to «فکر» carries the section only when she picked it here; otherwise the thought keeps its own default («تازه‌ها») */
   const [nodePicked, setNodePicked] = useState(false);
   const [nodePickerOpen, setNodePickerOpen] = useState(false);
+  const nodePickerBtn = useRef<HTMLButtonElement>(null);
   const [provenance, setProvenance] = useState<ContextProvenance>(
     object?.provenance || 'User Input'
   );
@@ -528,8 +529,8 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
             })}
           </div>
           {/* the section opens as a panel (a sheet on a phone) with the whole tree and a search, not a floating list (NodePicker) */}
-          <Button type="button" size="sm" variant="ghost" iconStart="FolderTree" aria-haspopup="dialog" onClick={() => setNodePickerOpen(true)}>در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>
-          <NodePicker open={nodePickerOpen} onClose={() => setNodePickerOpen(false)} title="این دانش در کدام بخش باشد؟" nodes={nodes} value={nodeId} onPick={(v) => { setNodeId(v); setNodePicked(true); }} />
+          <Button ref={nodePickerBtn} type="button" size="sm" variant="ghost" iconStart="FolderTree" aria-haspopup="dialog" aria-expanded={nodePickerOpen} onClick={() => setNodePickerOpen((o) => !o)}>در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>
+          <NodePicker open={nodePickerOpen} onClose={() => setNodePickerOpen(false)} anchor={nodePickerBtn} title="این دانش در کدام بخش باشد؟" nodes={nodes} value={nodeId} onPick={(v) => { setNodeId(v); setNodePicked(true); }} />
         </div>
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
         {type === 'Fact' && assumption && <p className="body-sm text-text-subtle">فرض یعنی هنوز ثابت نشده: هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید و جدا، زیر «فرض‌های فعال» می‌آید. تاریخ بازبینی‌اش در «جزئیات بیشتر» است.</p>}

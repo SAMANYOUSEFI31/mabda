@@ -7,8 +7,7 @@ import React, { useEffect, useState } from 'react';
 import type { ContextObject, TreeNode } from '../../types';
 import { composeThought, guessThoughtKind, THINKING_FA, THOUGHT_KINDS } from '../../core/thoughts';
 import type { ThinkingKind } from '../../core/thinkingMarkers';
-import { flatten, treeIndent } from '../../core/nodeTree';
-import { Button, Dialog, IconButton, SegmentedControl, Select, formatNumber } from '../../ui';
+import { Button, Dialog, IconButton, SegmentedControl, formatNumber } from '../../ui';
 import { NodePickerField } from '../structure/NodePicker';
 import { composeThoughtBatch, isBatch, parseThoughtBatch } from '../../core/thoughtBatch';
 import { insertSoftBreak, joinToPrevious, splitFromPrevious } from '../../core/batchLines';
@@ -63,7 +62,6 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
   useEffect(() => { if (open) { setText(initialText ?? ''); setKind(initialKind ?? 'idea'); setTouched(!!initialKind); setNode(nodeId); setDefKind('idea'); setAbout(initialAbout ?? []); setLineKind({}); setLineNode({}); setDropped(new Set()); } }, [open, nodeId, initialKind, initialAbout, initialText]);
   const batch = !!onSaveMany && isBatch(text);
   const lines = batch ? parseThoughtBatch(text, defKind).filter((l) => !dropped.has(l.id)) : [];
-  const sectionOptions = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   useEffect(() => { if (!touched) setKind(guessThoughtKind(text)); }, [text, touched]);
 
   const save = async () => {
@@ -112,7 +110,7 @@ export const ThoughtDialog: React.FC<Props> = ({ open, onClose, nodes, objects, 
                     {l.rest.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => setText((t) => splitFromPrevious(t, l.rest[l.rest.length - 1]))}>خط آخر را جدا کن</Button>}
                   </div>
                   <SegmentedControl label="نوع" value={lineKind[l.id] ?? l.kind} onChange={(v) => setLineKind((m) => ({ ...m, [l.id]: v as ThinkingKind }))} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
-                  <Select label="بخش این خط" value={lineNode[l.id] ?? node} onChange={(e) => setLineNode((m) => ({ ...m, [l.id]: e.target.value }))} options={sectionOptions} />
+                  <NodePickerField label="بخش این خط" nodes={nodes} value={lineNode[l.id] ?? node} onChange={(v) => setLineNode((m) => ({ ...m, [l.id]: v }))} extra={[{ value: '', label: 'بدون بخش مشخص' }]} />
                 </li>
               ))}
             </ul>

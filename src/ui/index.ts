@@ -9,7 +9,7 @@ export { DateField } from './DateField.tsx';
 export type { DateFieldProps } from './DateField.tsx';
 export { TextField, Textarea, Select, Checkbox, Switch, RadioGroup, OptionCard, FieldShell } from './Forms.tsx';
 export type { TextFieldProps, TextareaProps, SelectProps, SelectOption } from './Forms.tsx';
-export { Dialog, Toast, ToastProvider, useToast, Popover, Menu, MenuChoiceRow } from './Overlay.tsx';
+export { Dialog, Toast, ToastProvider, useToast, Popover, AnchoredPanel, Menu, MenuChoiceRow } from './Overlay.tsx';
 export { InfoTip } from './InfoTip.tsx';
 export { Tour, tourDue, markTourDone } from './Tour.tsx';
 export type { TourStep } from './Tour.tsx';

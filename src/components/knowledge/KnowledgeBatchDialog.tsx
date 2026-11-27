@@ -8,8 +8,9 @@ import type { ContextType, TreeNode } from '../../types';
 import { parseKnowledgeBatch } from '../../core/knowledgeBatch';
 import { insertSoftBreak, joinToPrevious, splitFromPrevious } from '../../core/batchLines';
 import { TYPE_CHIP_FA } from '../../core/knowledgeGuess';
-import { flatten, treeIndent } from '../../core/nodeTree';
-import { Button, Dialog, IconButton, SegmentedControl, Select, Textarea, formatNumber } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
+const NO_SECTION = [{ value: '', label: 'بدون بخش مشخص' }];
+import { Button, Dialog, IconButton, SegmentedControl, Textarea, formatNumber } from '../../ui';
 
 export interface BatchProposal { type: ContextType; title: string; content: string; nodeId: string }
 interface Props {
@@ -40,7 +41,6 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
   };
   useEffect(() => { if (open) { setText(''); setNode(''); setKind({}); setLineNode({}); setDropped(new Set()); } }, [open]);
   const lines = parseKnowledgeBatch(text).filter((l) => !dropped.has(l.id));
-  const sections = [{ value: '', label: 'بدون بخش مشخص' }, ...flatten(nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))];
   const save = async () => {
     if (!lines.length) return;
     setBusy(true);
@@ -56,7 +56,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
         <Textarea label="دانش‌ها را بنویس یا بچسبان" rows={5} value={text} onChange={(e) => { setText(e.target.value); setDropped(new Set()); }} placeholder={'لحن ما گرم و محترمانه است\nهرگز تخفیف بیش از ۲۰٪ نمی‌دهیم'} hint="Enter: دانش بعدی · Shift+Enter: خط تازه در همین دانش. نوع هر مورد را خودمان حدس می‌زنیم و می‌توانی عوضش کنی؛ یا اول خط [واقعیت]، [تصمیم] یا [خط قرمز] بنویس." />
         <div><Button type="button" size="sm" variant="ghost" iconStart="CornerDownLeft" onClick={softBreak}>خط تازه در همین دانش</Button></div>
         </div>
-        <Select label="بخش همه (اختیاری)" value={node} onChange={(e) => setNode(e.target.value)} options={sections} />
+        <NodePickerField label="بخش همه (اختیاری)" nodes={nodes} value={node} onChange={setNode} extra={NO_SECTION} />
         {lines.length > 0 && (
           <div className="flex flex-col gap-stack-sm" data-testid="knowledge-batch-preview">
             <p className="body-sm text-text-subtle" aria-live="polite">{formatNumber(lines.length)} دانش پیشنهادی پیدا شد؛ هنوز چیزی ذخیره نشده.</p>
@@ -72,7 +72,7 @@ export const KnowledgeBatchDialog: React.FC<Props> = ({ open, onClose, nodes, on
                     {l.rest.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => setText((t) => splitFromPrevious(t, l.rest[l.rest.length - 1]))}>خط آخر را جدا کن</Button>}
                   </div>
                   <SegmentedControl label="نوع" value={kind[l.id] ?? l.type} onChange={(v) => setKind((m) => ({ ...m, [l.id]: v as ContextType }))} items={TYPES.map((t) => ({ id: t, label: TYPE_CHIP_FA[t] }))} />
-                  <Select label="بخش این خط" value={lineNode[l.id] ?? node} onChange={(e) => setLineNode((m) => ({ ...m, [l.id]: e.target.value }))} options={sections} />
+                  <NodePickerField label="بخش این خط" nodes={nodes} value={lineNode[l.id] ?? node} onChange={(v) => setLineNode((m) => ({ ...m, [l.id]: v }))} extra={NO_SECTION} />
                 </li>
               ))}
             </ul>

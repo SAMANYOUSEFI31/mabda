@@ -6,9 +6,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { ContextObject, GeneratedDeliverable, TreeNode, Workspace } from '../../types';
 import { dataApi, DataApiError } from '../../services/dataApi';
-import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Select, Spinner, StatusBadge, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
+import { Alert, Badge, Button, Dialog, EmptyState, SegmentedControl, Spinner, StatusBadge, TypeBadge, formatJalaliDate, formatNumber, useToast } from '../../ui';
 import { DangerDialog, PurgeDialog } from '../shared/Removal';
-import { DELETED_SECTION, flatten, treeIndent } from '../../core/nodeTree';
+import { DELETED_SECTION } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 
 type Section = 'knowledge' | 'removals' | 'outputs' | 'workspaces';
 interface Props {
@@ -41,7 +42,6 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   const [dropOut, setDropOut] = useState<GeneratedDeliverable | null>(null);
   /** knowledge whose section is gone: where she wants it back (default: the server's nearest living section above) */
   const [dest, setDest] = useState<Record<string, string>>({});
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const load = useCallback(async () => { try { setData(await dataApi.archive(workspaceId)); setError(null); } catch (e) { setError(e instanceof DataApiError ? e.message : 'خطای ناشناخته.'); } }, [workspaceId]);
   useEffect(() => { void load(); }, [load]);
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION;
@@ -80,7 +80,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
                 <>{nodeLabel(o.nodeId)} · {formatJalaliDate(o.updatedAt)}</>,
                 <>
                   {o.status === 'Archived' && data.restoreTo?.[o.id] && (
-                    <Select label="برگردان به" options={nodeOptions} value={dest[o.id] ?? data.restoreTo[o.id]} onChange={(e) => setDest((d) => ({ ...d, [o.id]: e.target.value }))} />
+                    <NodePickerField label="برگردان به" nodes={nodes} value={dest[o.id] ?? data.restoreTo[o.id]} onChange={(v) => setDest((d) => ({ ...d, [o.id]: v }))} />
                   )}
                   {o.status === 'Archived' && <Button size="sm" variant="secondary" iconStart="Undo2" loading={busy === `r${o.id}`} onClick={() => { const to = data.restoreTo?.[o.id] ? (dest[o.id] ?? data.restoreTo[o.id]) : undefined; void run(`r${o.id}`, () => dataApi.restoreObject(workspaceId, o.id, to), to ? `«${o.title}» به «${nodeLabel(to)}» برگشت.` : `«${o.title}» برگشت.`); }}>برگردان</Button>}
                   <Button size="sm" variant="ghost" iconStart="Trash2" aria-label={`حذف دائمی «${o.title}»`} onClick={() => setPurge(o)}>حذف دائمی…</Button>

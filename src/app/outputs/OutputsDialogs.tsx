@@ -17,7 +17,7 @@ export type OutputsDialogsProps = Pick<ReadyScope, 'addSpec' | 'currentWorkspace
 export function OutputsDialogs({ addSpec, currentWorkspace, editingSpec, handleApplyTemplate, handleSetLibrarySpecs, isCustomSpecModalOpen, isSpecLibraryOpen, nodes, setActiveTab, setIsCustomSpecModalOpen, setIsSpecLibraryOpen, setSelectedSpecId, specs }: OutputsDialogsProps) {
   return (
     <>
-    {currentWorkspace && <Deferred when={isSpecLibraryOpen}><SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes.map((n) => ({ id: n.id, label: n.label }))} /></Deferred>}
+    {currentWorkspace && <Deferred when={isSpecLibraryOpen}><SpecLibraryDialog open={isSpecLibraryOpen} workspace={currentWorkspace} onClose={() => setIsSpecLibraryOpen(false)} onChange={handleSetLibrarySpecs} onApplyTemplate={handleApplyTemplate} nodes={nodes} /></Deferred>}
     {/* Custom Spec Modal (F8) */}
     <Deferred when={isCustomSpecModalOpen}><SpecEditorModal
       key={editingSpec?.id ?? 'new'}

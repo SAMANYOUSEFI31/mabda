@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { TreeNode } from '../../types';
 import React, { useState } from 'react';
 import { STARTERS } from '../../core/starters';
 import { Alert, Button, Dialog, formatNumber } from '../../ui';
@@ -15,7 +16,7 @@ interface Props {
   onApply: (starterId: string) => Promise<void>;
   onRemoveAll: () => Promise<void>;
   /** «قالب‌های من» (sections saved as templates) */
-  templates?: { workspaceId: string; nodes: Array<{ id: string; label: string }>; onApply: (templateId: string, parentId?: string) => Promise<void> };
+  templates?: { workspaceId: string; nodes: TreeNode[]; onApply: (templateId: string, parentId?: string) => Promise<void> };
 }
 
 /** «اسکلت شروع»: grey examples for one kind of business. They show the SHAPE of a good answer; no AI or engine ever sees them, and writing your own over one replaces it. */

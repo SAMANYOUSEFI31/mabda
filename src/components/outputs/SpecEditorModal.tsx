@@ -5,7 +5,8 @@
 
 import React, { useState } from 'react';
 import type { DeliverableSpec, OutputBandId, TreeNode, WorkstreamSpec } from '../../types';
-import { defaultNodeId, flatten, treeIndent } from '../../core/nodeTree';
+import { defaultNodeId } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import { validateSpec, wouldCreateCycle } from '../../core/specGraph';
 import { Alert, Button, Card, Checkbox, Dialog, IconButton, Select, TextField, Textarea, formatNumber } from '../../ui';
 
@@ -107,7 +108,6 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
   const specId = React.useRef(initial?.id ?? `spec_custom_${uid()}`).current;
 
 
-  const nodeOptions = flatten(nodes).map(({ node, depth }) => ({ value: node.id, label: `${treeIndent(depth)}${node.label}` }));
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }));
   const graph = draft.deliverables.map((d, i) => ({ id: d.id, order: i + 1, dependsOn: d.dependsOn }));
   const titleOf = (id: string) => draft.deliverables.find((d) => d.id === id)?.title.trim() || 'خروجی بدون عنوان';
@@ -121,7 +121,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
         render={(it, patch) => (
           <div className="grid grid-cols-1 gap-inline-sm sm:grid-cols-2">
             <TextField label="نام دانش لازم" value={it.label} onChange={(e) => patch({ label: e.target.value })} />
-            <Select label="شاخه" value={it.nodeId} onChange={(e) => patch({ nodeId: e.target.value })} options={nodeOptions} />
+            <NodePickerField label="شاخه" nodes={nodes} value={it.nodeId} onChange={(v) => patch({ nodeId: v })} />
             <div className="sm:col-span-2"><TextField label="توضیح (برای پرسش جای خالی)" value={it.description} onChange={(e) => patch({ description: e.target.value })} /></div>
           </div>
         )}

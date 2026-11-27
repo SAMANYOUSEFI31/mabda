@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import type { Contradiction, ContextObject, TreeNode } from '../../types';
-import { flatten, treeIndent } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import { Badge, Button, Card, Select, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
 
 interface Props {
@@ -86,7 +86,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
           <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: `مورد اول: ${c.itemA.title}` }, { value: c.itemB.id, label: `مورد دوم: ${c.itemB.title}` }]} />
         </div>
         <div className="lg:flex-1">
-          <Select label="به این بخش" value={target} onChange={(e) => setTarget(e.target.value)} options={[{ value: '', label: 'انتخاب کن…' }, ...flatten(nodes).map(({ node, depth }) => (node.id === moving.nodeId ? { value: node.id, label: `${treeIndent(depth)}${node.label} (همین‌جاست)`, disabled: true } : { value: node.id, label: `${treeIndent(depth)}${node.label}` }))]} />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
+          <NodePickerField label="به این بخش" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" disabledIds={new Set([moving.nodeId])} disabledReason="همین‌جاست" />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
         </div>
         <Button variant="secondary" iconStart="Network" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
       </div>

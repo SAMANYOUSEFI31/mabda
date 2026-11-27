@@ -6,10 +6,10 @@
 import { tehranDay } from '../../core/tehranDate';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ContextChange, ContextObject, GeneratedDeliverable, TreeNode } from '../../types';
-import { flatten, treeIndent } from '../../core/nodeTree';
+import { NodePickerField } from '../structure/NodePicker';
 import { affectedOutputs, approvalMoments, compareDays, compareTruth, customRange, groupBySection, mostImportant, presetMoments, reasonFor, successionOf, summarySentence, toMarkdown, truthAt, truthIfApproved } from '../../core/truthCompare';
 import type { ChangeKind, TruthDelta } from '../../core/truthCompare';
-import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, Select, TextField, TypeBadge, formatJalaliDate, formatJalaliDateTime, formatNumber, useToast } from '../../ui';
+import { DateField, Alert, Badge, Button, Checkbox, Dialog, SegmentedControl, TextField, TypeBadge, formatJalaliDate, formatJalaliDateTime, formatNumber, useToast } from '../../ui';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
 export type CompareMode = 'week' | 'approval' | 'pending' | 'custom';
@@ -129,7 +129,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
               </div>
             )}
           </div>
-          <Select label="کجا؟" value={scope} onChange={(e) => setScope(e.target.value)} options={[{ value: '', label: 'همهٔ بخش‌ها' }, ...flatten(p.nodes).map(({ node: n, depth }) => ({ value: n.id, label: `${treeIndent(depth)}${n.label}` }))]} />
+          <NodePickerField label="کجا؟" nodes={p.nodes} value={scope} onChange={setScope} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
         </div>
 
         {mode === 'approval' && !range && <Alert intent="info">هنوز تأییدی ثبت نشده که با آن مقایسه کنیم.</Alert>}
