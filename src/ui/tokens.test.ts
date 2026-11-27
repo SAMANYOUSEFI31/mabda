@@ -106,3 +106,19 @@ test('every nuqta size is large enough to tell its seven shapes apart (≥ 12px)
   assert.ok(sizes.length >= 3, 'nuqta sizes not found');
   for (const [, name, px] of sizes) assert.ok(Number(px) >= 12, `--nuqta-size-${name} is ${px}px; under 12 the state shapes cannot be told apart`);
 });
+
+// Persian type floor (docs/ux/research/headers-trees-persian-type.md ت۱، ت۲): dots and teeth fall above and below the baseline, so
+// no text style may sit under 1.4 (six Iranian products measured: none sets a title under 1.4), and running text (body, caption)
+// not under 1.6. Digits (numeric-*) and code carry no dots and are exempt. The tokens once drifted to 1.3 for display while
+// typography.md said 1.44, with nothing to catch it
+test('Persian line-height floor: text ≥ 1.4, running text ≥ 1.6', () => {
+  const sem = JSON.parse(readFileSync(join(import.meta.dirname, 'tokens/semantic.json'), 'utf8')) as { type: Record<string, { $value?: { lineHeight?: number } }> };
+  const low: string[] = [];
+  for (const [name, tok] of Object.entries(sem.type)) {
+    const lh = tok?.$value?.lineHeight;
+    if (typeof lh !== 'number' || /^(numeric|code)/.test(name)) continue;
+    const floor = /^(body|caption)/.test(name) ? 1.6 : 1.4;
+    if (lh < floor) low.push(`${name} ${lh} < ${floor}`);
+  }
+  assert.deepEqual(low, []);
+});
