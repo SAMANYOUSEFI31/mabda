@@ -63,7 +63,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
   };
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-lg" aria-label="همهٔ کارها">
+    <Card padding="xl" className="flex flex-col gap-stack-md" aria-label="همهٔ کارها">
       <div className="flex flex-col gap-stack-xs">
         <div className="flex flex-wrap items-center gap-inline-sm">
           <h2 className="heading-sm text-text-default">همهٔ کارها</h2>

@@ -272,7 +272,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
 
         {focused
           ? (kids.length > 0 && <SubSections summaries={childSummaries(nodes, activeObjects, props.openCounts ?? new Map(), props.staleIds ?? new Set(), node.id)} onOpen={(id) => props.onFocus?.(id)} />)
-          : (kids.length > 0 && <div className="flex flex-col gap-stack-xl">{kids.map((k, i) => renderNode(k, `${path}${formatNumber(i + 1)}.`, depth + 1))}</div>)}
+          : (kids.length > 0 && <div className="flex flex-col gap-stack-lg">{kids.map((k, i) => renderNode(k, `${path}${formatNumber(i + 1)}.`, depth + 1))}</div>)}
       </section>
     );
   };
@@ -313,7 +313,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   }
   return (
     // no frame around the tree: the knowledge cards are the only raised surface, so «raised = recorded» reads at a glance
-    <section className="flex flex-col gap-stack-xl" aria-label="ساختار حقیقت">
+    <section className="flex flex-col gap-stack-lg" aria-label="ساختار حقیقت">
       {/* one toolbar row, no second title: «ساختار» is already the chosen view in the switch above it, and its explanation moved to
           the page title's «؟» (docs/ux/research/headers-trees-persian-type.md §۲). The heading stays for screen readers' heading list */}
       <h2 className="sr-only">ساختار حقیقت</h2>

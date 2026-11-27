@@ -36,7 +36,7 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
     return check ? <Card padding="lg" id="contradictions" aria-label="تناقض‌ها"><CheckBar check={check} /></Card> : null;
   }
   return (
-    <Card padding="xl" id="contradictions" className="flex flex-col gap-stack-lg" aria-label="تناقض‌ها">
+    <Card padding="xl" id="contradictions" className="flex flex-col gap-stack-md" aria-label="تناقض‌ها">
       <div className="flex flex-col gap-stack-xs border-b border-border-default pb-inset-lg">
         <div className="flex items-center gap-inline-sm">
           <h2 className="heading-sm text-text-default">تناقض‌ها</h2>

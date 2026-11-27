@@ -50,8 +50,10 @@ export const MetricQuickEntry: React.FC<Props> = ({ metrics, measurements, objec
   };
   return (
     <section className="flex flex-col gap-stack-sm" aria-label={MX.thisWeek}>
-      <h3 className="title text-text-default">{MX.thisWeek}</h3>
-      <p className="body-sm text-text-subtle">{MX.thisWeekHint}</p>
+      <div className="flex flex-col gap-stack-xs">
+        <h3 className="title text-text-default">{MX.thisWeek}</h3>
+        <p className="body-sm text-text-subtle">{MX.thisWeekHint}</p>
+      </div>
       <div className="grid grid-cols-1 gap-inline-md sm:grid-cols-2">
         {active.map((m) => {
           const last = latestOf(m.id, measurements);

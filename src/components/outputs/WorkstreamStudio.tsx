@@ -353,7 +353,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
               </List>
             </div>
 
-            <Card padding="xl" className="flex flex-col gap-stack-lg lg:col-span-2">
+            <Card padding="xl" className="flex flex-col gap-stack-md lg:col-span-2">
               <div className="flex items-start justify-between gap-inline-sm">
                 <div className="flex min-w-space-0 flex-col gap-stack-xs">
                   <h3 className="heading-xs text-text-default">{currentDeliverableSpec.title}</h3>

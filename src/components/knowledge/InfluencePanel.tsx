@@ -96,8 +96,10 @@ export const InfluencePanel: React.FC<Props> = ({ influence, nodes, onOpenObject
       </section>
 
       <section className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg" aria-label="اثرپذیران">
-        <h3 className="heading-xs text-text-default">چه چیزی از این اثر می‌گیرد؟</h3>
-        <p className="body-sm text-text-subtle"><Badge intent="neutral" icon={false}>محدوده</Badge> {scopeText}.{shapes.scope.exceptNodeIds.length > 0 ? ` (به‌جز ${shapes.scope.exceptNodeIds.slice(0, 3).map(label).join('، ')}${shapes.scope.exceptNodeIds.length > 3 ? '…' : ''} که این‌جا اعمال نمی‌شود)` : ''}</p>
+        <div className="flex flex-col gap-stack-xs">
+          <h3 className="heading-xs text-text-default">چه چیزی از این اثر می‌گیرد؟</h3>
+          <p className="body-sm text-text-subtle"><Badge intent="neutral" icon={false}>محدوده</Badge> {scopeText}.{shapes.scope.exceptNodeIds.length > 0 ? ` (به‌جز ${shapes.scope.exceptNodeIds.slice(0, 3).map(label).join('، ')}${shapes.scope.exceptNodeIds.length > 3 ? '…' : ''} که این‌جا اعمال نمی‌شود)` : ''}</p>
+        </div>
         <Group title="تصمیم‌هایی که روی آن سوارند" empty="چیزی روی آن سوار نیست." count={shapes.dependents.length}>
           {shapes.dependents.map((o) => <Row key={o.id} o={o} onOpen={onOpenObject} />)}
         </Group>

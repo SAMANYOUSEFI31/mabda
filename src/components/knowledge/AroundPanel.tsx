@@ -89,8 +89,10 @@ const Related: React.FC<{ object: ContextObject; allObjects: ContextObject[]; co
   if (!state.items.length) return null;
   return (
     <section className="flex flex-col gap-stack-sm rounded-control border border-border-default p-inset-lg" aria-label="مرتبط‌های معنایی" data-testid="around-related">
-      <h4 className="label-md text-text-default">مرتبط (پیشنهادی) ({formatNumber(state.items.length)})</h4>
-      <p className="body-sm text-text-subtle">فقط پیشنهاد است؛ هیچ رابطه‌ای ثبت نشده است.</p>
+      <div className="flex flex-col gap-stack-xs">
+        <h4 className="label-md text-text-default">مرتبط (پیشنهادی) ({formatNumber(state.items.length)})</h4>
+        <p className="body-sm text-text-subtle">فقط پیشنهاد است؛ هیچ رابطه‌ای ثبت نشده است.</p>
+      </div>
       <ul className="flex flex-col gap-stack-sm">
         {state.items.map((s) => {
           const o = allObjects.find((x) => x.id === s.objectId);

@@ -50,8 +50,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
           </Card>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
-            <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>
-            <p className="body-sm text-text-subtle">پشتیبان همهٔ این فضا را در یک فایل می‌دهد: دانش با همهٔ نسخه‌ها، فکرها، رابطه‌ها، تغییرها، بوم، فایل‌ها و عددها. برگرداندن پشتیبان همیشه یک فضای تازه می‌سازد و روی چیزی نمی‌نویسد.</p>
+            <div className="flex flex-col gap-stack-xs">
+              <span className="label-md text-text-default">پشتیبان‌گیری و خروجی داده</span>
+              <p className="body-sm text-text-subtle">پشتیبان همهٔ این فضا را در یک فایل می‌دهد: دانش با همهٔ نسخه‌ها، فکرها، رابطه‌ها، تغییرها، بوم، فایل‌ها و عددها. برگرداندن پشتیبان همیشه یک فضای تازه می‌سازد و روی چیزی نمی‌نویسد.</p>
+            </div>
             <Button variant="secondary" iconStart="Download" fullWidth onClick={onExportAllData}>پشتیبان کامل «{currentWorkspace.name}»</Button>
             <Button variant="secondary" iconStart="Upload" fullWidth disabled={restoring} onClick={() => fileRef.current?.click()}>{restoring ? 'در حال برگرداندن…' : 'برگرداندن از فایل پشتیبان…'}</Button>
             <input
@@ -67,8 +69,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, cur
           </div>
 
           <div className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg">
-            <span className="label-md text-text-default">بایگانی و حذف</span>
-            <p className="body-sm text-text-subtle">بایگانی برمی‌گردد و تاریخچه را نگه می‌دارد؛ «حذف دائمی» برنمی‌گردد.</p>
+            <div className="flex flex-col gap-stack-xs">
+              <span className="label-md text-text-default">بایگانی و حذف</span>
+              <p className="body-sm text-text-subtle">بایگانی برمی‌گردد و تاریخچه را نگه می‌دارد؛ «حذف دائمی» برنمی‌گردد.</p>
+            </div>
             <Button variant="secondary" iconStart="Archive" fullWidth onClick={() => { onClose(); onOpenArchive(); }}>بایگانی و حذف‌های اخیر</Button>
             <Button variant="secondary" iconStart="Archive" fullWidth onClick={async () => { await onArchiveWorkspace(); closeAll(); }}>بایگانی فضا «{currentWorkspace.name}»</Button>
           </div>

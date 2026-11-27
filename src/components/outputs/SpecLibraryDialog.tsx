@@ -54,8 +54,10 @@ export const SpecLibraryDialog: React.FC<Props> = ({ open, workspace, onClose, o
         {fitting.map(row)}
         {others.length > 0 && (
           <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-label="برای کار و کسب‌وکار">
-            <h3 className="label-md text-text-default">برای کار و کسب‌وکار</h3>
-            <p className="body-sm text-text-subtle">برای فضا نوشته شده‌اند؛ اگر به کارت می‌آیند، اینجا هم می‌شود برداشت.</p>
+            <div className="flex flex-col gap-stack-xs">
+              <h3 className="label-md text-text-default">برای کار و کسب‌وکار</h3>
+              <p className="body-sm text-text-subtle">برای فضا نوشته شده‌اند؛ اگر به کارت می‌آیند، اینجا هم می‌شود برداشت.</p>
+            </div>
             {others.map(row)}
           </section>
         )}

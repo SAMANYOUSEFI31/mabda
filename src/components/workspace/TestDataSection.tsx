@@ -33,8 +33,10 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
   const testers = k?.people.filter((p) => p.role === 'tester' || p.role === 'local') ?? [];
   return (
     <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-labelledby="testdata-h">
-      <h3 id="testdata-h" className="label-md text-text-default">دادهٔ آزمون</h3>
-      <p className="body-sm text-text-subtle">کارهایی که افراد کردند، بدون متنی که نوشتند. هر بار از رویدادهای خام دوباره حساب می‌شود؛ فایل خام برای تحلیل‌های دیگر است.</p>
+      <div className="flex flex-col gap-stack-xs">
+        <h3 id="testdata-h" className="label-md text-text-default">دادهٔ آزمون</h3>
+        <p className="body-sm text-text-subtle">کارهایی که افراد کردند، بدون متنی که نوشتند. هر بار از رویدادهای خام دوباره حساب می‌شود؛ فایل خام برای تحلیل‌های دیگر است.</p>
+      </div>
       {error ? <ErrorState title="داده‌ها باز نشد" description={error} onRetry={() => void load()} />
         : !k || !s ? <PageSkeleton label="در حال حساب کردن" />
         : (

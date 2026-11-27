@@ -88,8 +88,10 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
         </section>
 
         <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-labelledby="errors-h">
-          <h3 id="errors-h" className="label-md text-text-default">خطاهای گزارش‌شده</h3>
-          <p className="body-sm text-text-subtle">آنچه روی دستگاه افراد یا سرور خراب شد؛ بدون هیچ متنی که نوشته‌اند.</p>
+          <div className="flex flex-col gap-stack-xs">
+            <h3 id="errors-h" className="label-md text-text-default">خطاهای گزارش‌شده</h3>
+            <p className="body-sm text-text-subtle">آنچه روی دستگاه افراد یا سرور خراب شد؛ بدون هیچ متنی که نوشته‌اند.</p>
+          </div>
           {!errors.length ? <p className="body-sm text-text-subtle">خطایی گزارش نشده است.</p> : (
             <List label="خطاهای گزارش‌شده">
               {errors.slice(0, 30).map((e) => (
@@ -102,8 +104,10 @@ export const PeopleDialog: React.FC<Props> = ({ open, onClose }) => {
         <TestDataSection open={open} />
 
         <section className="flex flex-col gap-stack-sm border-t border-border-default pt-inset-lg" aria-labelledby="backup-h">
-          <h3 id="backup-h" className="label-md text-text-default">پشتیبان کل داده‌ها</h3>
-          <p className="body-sm text-text-subtle">سرور هر روز خودش یک نسخه نگه می‌دارد (۱۴ روز آخر). این دکمه همین حالا یک نسخهٔ کامل از دادهٔ همهٔ افراد می‌دهد تا جای دیگری هم نگهش داری.</p>
+          <div className="flex flex-col gap-stack-xs">
+            <h3 id="backup-h" className="label-md text-text-default">پشتیبان کل داده‌ها</h3>
+            <p className="body-sm text-text-subtle">سرور هر روز خودش یک نسخه نگه می‌دارد (۱۴ روز آخر). این دکمه همین حالا یک نسخهٔ کامل از دادهٔ همهٔ افراد می‌دهد تا جای دیگری هم نگهش داری.</p>
+          </div>
           <div><Button variant="secondary" iconStart="Download" onClick={() => { window.location.href = ownerApi.backupUrl; }}>دانلود نسخهٔ کامل</Button></div>
         </section>
       </div>
