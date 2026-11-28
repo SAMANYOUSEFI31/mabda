@@ -10,6 +10,10 @@ import {
   ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map as MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
   SunMoon, FolderInput, RotateCcw, Compass, Gauge, ChevronsUpDown,
+  // one icon, one meaning (docs/design-system/iconography.md «یک آیکن، یک معنا»)
+  CircleDashed, FlaskConical, MessageCircleQuestionMark, BookUp, Replace, Footprints, GitCompareArrows, Combine, ListTree, Library,
+  MapPin, GraduationCap, Move, Split, FolderPlus, CopyPlus, ArrowDownFromLine, ScanText, Paperclip, Hash, Printer, Code, SearchCheck,
+  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate,
   createLucideIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -91,6 +95,9 @@ const ICONS = {
   CircleDot, ZoomIn, ZoomOut, Maximize, Workflow,
   CircleHelp, Globe, StickyNote, Keyboard, Redo2, Minimize2, PanelRight, PanelLeft, Map: MapIcon, Filter, Fullscreen, PictureInPicture2, CornerDownLeft,
   SunMoon, FolderInput, PackageOpen: OutPackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
+  CircleDashed, FlaskConical, MessageCircleQuestion: MessageCircleQuestionMark, BookUp, Replace, Footprints, GitCompareArrows, Combine, ListTree, Library,
+  MapPin, GraduationCap, Move, Split, FolderPlus, CopyPlus, ArrowDownFromLine, ScanText, Paperclip, Hash, Printer, Code, SearchCheck,
+  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate,
 } as const;
 
 export type IconName = keyof typeof ICONS;

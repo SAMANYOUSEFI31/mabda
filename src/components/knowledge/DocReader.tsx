@@ -116,7 +116,7 @@ export const DocReader: React.FC<DocReaderProps> = ({ markdown, fileName, empty,
           label="شیوهٔ نمایش سند"
           value={view}
           onChange={(id) => setView(id as 'read' | 'source')}
-          items={[{ id: 'read', label: 'خوانا', icon: 'BookOpen' }, { id: 'source', label: 'Markdown', icon: 'FileText' }]}
+          items={[{ id: 'read', label: 'خوانا', icon: 'BookOpen' }, { id: 'source', label: 'Markdown', icon: 'Code' }]}
         />
         <div className="flex flex-wrap items-center gap-inline-xs">
           {refs && <Switch label="با ارجاع‌ها" checked={refs.checked} onChange={(e) => refs.onChange(e.target.checked)} />}

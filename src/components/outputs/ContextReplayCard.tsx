@@ -103,10 +103,10 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             align="end"
             trigger={<IconButton icon="Ellipsis" label={`بیشتر دربارهٔ ${deliverable.title}`} size="sm" />}
             items={[
-              ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'Eye' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
+              ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'SearchCheck' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
               ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
               ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'PackageOpen' as const, onSelect: () => onRerequest(deliverable) }] : []),
-              { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'History' as const, onSelect: () => setTraceOpen((v) => !v) },
+              { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'Footprints' as const, onSelect: () => setTraceOpen((v) => !v) },
               ...(onArchive || onDelete ? [{ divider: true } as const] : []),
               ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
               ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),

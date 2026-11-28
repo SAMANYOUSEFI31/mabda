@@ -64,7 +64,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       ) : (
         <div className="flex flex-col gap-stack-md">
           <div className="flex flex-wrap items-center gap-inline-sm">
-            <Badge intent="neutral" icon="FileText">حدود {formatNumber(pack.tokens)} توکن</Badge>
+            <Badge intent="neutral" icon="Hash">حدود {formatNumber(pack.tokens)} توکن</Badge>
             <Badge intent="neutral" icon={false}>{formatNumber(pack.chars)} نویسه</Badge>
             <Badge icon={false}>{formatNumber(pack.counts.confirmed)} واقعیت تأییدشده</Badge>
             {pack.counts.proposed > 0 && <Caution>{formatNumber(pack.counts.proposed)} پیشنهادی (تأییدنشده)</Caution>}

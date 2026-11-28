@@ -29,7 +29,7 @@ function MabdaLabel({ entry, className, iconOnly = false }: { entry: Entry; clas
 export const TYPE_META: Record<ContextType, Entry> = {
   Fact: { label: 'واقعیت', icon: 'FileText', cls: 'bg-bg-neutral-subtle text-text-subtle border-border-default' },
   Decision: { label: 'تصمیم', icon: 'Target', cls: 'bg-bg-neutral-subtle text-text-subtle border-border-default' },
-  Constraint: { label: 'خط قرمز', icon: 'Lock', cls: 'bg-bg-neutral-subtle text-text-default border-border-default [&_svg]:text-mabda-type-constraint-icon' },
+  Constraint: { label: 'خط قرمز', icon: 'Ban', cls: 'bg-bg-neutral-subtle text-text-default border-border-default [&_svg]:text-mabda-type-constraint-icon' },
 };
 export function TypeBadge({ value, className, iconOnly }: { value: ContextType; className?: string; iconOnly?: boolean }) {
   return <MabdaLabel entry={TYPE_META[value]} className={className} iconOnly={iconOnly} />;
@@ -37,9 +37,9 @@ export function TypeBadge({ value, className, iconOnly }: { value: ContextType; 
 
 export const STATUS_META: Record<ContextStatus, Entry> = {
   Confirmed: { label: 'حقیقت', icon: 'CircleCheck', cls: 'bg-mabda-status-confirmed-bg text-mabda-status-confirmed-fg border-mabda-status-confirmed-border' },
-  Proposed: { label: 'پیشنهاد', icon: 'Lightbulb', cls: 'bg-mabda-status-proposed-bg text-mabda-status-proposed-fg border-mabda-status-proposed-border' },
-  'Needs Review': { label: 'قدیمی', icon: 'TriangleAlert', cls: 'bg-mabda-status-needs-review-bg text-mabda-status-needs-review-fg border-mabda-status-needs-review-border' },
-  Superseded: { label: 'گذشته (جایگزین شد)', icon: 'History', cls: 'bg-mabda-status-superseded-bg text-mabda-status-superseded-fg border-mabda-status-superseded-border' },
+  Proposed: { label: 'پیشنهاد', icon: 'CircleDashed', cls: 'bg-mabda-status-proposed-bg text-mabda-status-proposed-fg border-mabda-status-proposed-border' },
+  'Needs Review': { label: 'قدیمی', icon: 'Clock', cls: 'bg-mabda-status-needs-review-bg text-mabda-status-needs-review-fg border-mabda-status-needs-review-border' },
+  Superseded: { label: 'گذشته (جایگزین شد)', icon: 'Replace', cls: 'bg-mabda-status-superseded-bg text-mabda-status-superseded-fg border-mabda-status-superseded-border' },
   Archived: { label: 'گذشته (بایگانی)', icon: 'Archive', cls: 'bg-mabda-status-archived-bg text-mabda-status-archived-fg border-mabda-status-archived-border' },
 };
 /** a status is the knowledge-state dot and its word — one state, one sign, everywhere (plan 2.2); no coloured pill */
@@ -58,7 +58,7 @@ export function StatusBadge({ value, className, iconOnly, conflict }: { value: C
 
 export const GAP_META: Record<GapItem['importance'], Entry> = {
   required: { label: 'ضروری', icon: 'OctagonAlert', cls: 'bg-mabda-gap-required-bg text-mabda-gap-required-fg border-mabda-gap-required-border' },
-  suggested: { label: 'پیشنهادی', icon: 'Lightbulb', cls: 'bg-mabda-gap-suggested-bg text-mabda-gap-suggested-fg border-mabda-gap-suggested-border' },
+  suggested: { label: 'پیشنهادی', icon: 'CircleDashed', cls: 'bg-mabda-gap-suggested-bg text-mabda-gap-suggested-fg border-mabda-gap-suggested-border' },
   optional: { label: 'اختیاری', icon: 'Minus', cls: 'bg-mabda-gap-optional-bg text-mabda-gap-optional-fg border-mabda-gap-optional-border' },
 };
 export function GapBadge({ value, className, iconOnly }: { value: GapItem['importance']; className?: string; iconOnly?: boolean }) {
@@ -77,7 +77,7 @@ export function ReadinessBadge({ value, className, iconOnly }: { value: Readines
 export const MODE_META: Record<ExecutionMode, Entry> = {
   fast: { label: 'سریع', icon: 'Gauge', cls: 'bg-mabda-mode-fast-bg text-mabda-mode-fast-fg border-mabda-mode-fast-border' },
   auto: { label: 'متعادل (خودکار)', icon: 'CircleDot', cls: 'bg-mabda-mode-auto-bg text-mabda-mode-auto-fg border-mabda-mode-auto-border' },
-  critique: { label: 'عمیق (نقد)', icon: 'Eye', cls: 'bg-mabda-mode-critique-bg text-mabda-mode-critique-fg border-mabda-mode-critique-border' },
+  critique: { label: 'عمیق (نقد)', icon: 'SearchCheck', cls: 'bg-mabda-mode-critique-bg text-mabda-mode-critique-fg border-mabda-mode-critique-border' },
   sensitive: { label: 'اجرای حساس', icon: 'Shield', cls: 'bg-mabda-mode-sensitive-bg text-mabda-mode-sensitive-fg border-mabda-mode-sensitive-border' },
 };
 export function ModeBadge({ value, className, iconOnly }: { value: ExecutionMode; className?: string; iconOnly?: boolean }) {
@@ -112,7 +112,7 @@ export const CONTEXT_STATUS_OPTIONS = (Object.keys(STATUS_META) as ContextStatus
 
 /** where an object applies: a Constraint says «همه‌جا» or «فقط این بخش»; any other object is shown only when it was widened or ended */
 const REACH_GLOBAL: Entry = { label: 'همه‌جا', icon: 'Layers', cls: 'bg-surface-sunken text-text-default border-border-default' };
-const REACH_POSITION: Entry = { label: 'فقط این بخش', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' };
+const REACH_POSITION: Entry = { label: 'فقط این بخش', icon: 'MapPin', cls: 'bg-surface-sunken text-text-default border-border-default' };
 export function ReachBadge({ object, className }: { object: Pick<ContextObject, 'type' | 'reach'>; className?: string }) {
   const reach = object.reach ?? (object.type === 'Constraint' ? 'global' : 'position');
   if (object.type !== 'Constraint' && reach === 'position') return null;
@@ -121,18 +121,18 @@ export function ReachBadge({ object, className }: { object: Pick<ContextObject, 
 
 /** why an object is (or is not) in force at a node — src/core/effectiveContext.ts. Label + icon, never colour alone. */
 export const ORIGIN_META: Record<'own' | 'inherited' | 'global' | 'overridden' | 'expired', Entry> = {
-  own: { label: 'مال این بخش', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
-  inherited: { label: 'از بخش بالاتر', icon: 'Network', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  own: { label: 'مال این بخش', icon: 'MapPin', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  inherited: { label: 'از بخش بالاتر', icon: 'ArrowDownFromLine', cls: 'bg-surface-sunken text-text-default border-border-default' },
   global: { label: 'همه‌جا', icon: 'Layers', cls: 'bg-surface-sunken text-text-default border-border-default' },
   overridden: { label: 'کنار گذاشته‌شده', icon: 'Minus', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
-  expired: { label: 'قدیمی', icon: 'History', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
+  expired: { label: 'قدیمی', icon: 'Clock', cls: 'bg-surface-sunken text-text-subtle border-border-default' },
 };
 export function OriginBadge({ value, className }: { value: keyof typeof ORIGIN_META; className?: string }) {
   return <MabdaLabel entry={ORIGIN_META[value]} className={className} />;
 }
 
 /** a working assumption: «فرض» — never shown as fact. Label + icon, never colour alone. */
-const ASSUMPTION: Entry = { label: 'فرض', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' };
+const ASSUMPTION: Entry = { label: 'فرض', icon: 'FlaskConical', cls: 'bg-surface-sunken text-text-default border-border-default' };
 export function AssumptionBadge({ object, className }: { object: Pick<ContextObject, 'assumption'>; className?: string }) {
   return object.assumption ? <MabdaLabel entry={ASSUMPTION} className={className} /> : null;
 }
@@ -140,8 +140,8 @@ export function AssumptionBadge({ object, className }: { object: Pick<ContextObj
 /** the kinds of a thinking item (derived from a note line): idea, question, assumption, open decision */
 const THINKING: Record<'idea' | 'question' | 'assumption' | 'open_decision', Entry> = {
   idea: { label: 'ایده', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' },
-  question: { label: 'سؤال', icon: 'MessageSquare', cls: 'bg-surface-sunken text-text-default border-border-default' },
-  assumption: { label: 'فرض', icon: 'Lightbulb', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  question: { label: 'سؤال', icon: 'MessageCircleQuestion', cls: 'bg-surface-sunken text-text-default border-border-default' },
+  assumption: { label: 'فرض', icon: 'FlaskConical', cls: 'bg-surface-sunken text-text-default border-border-default' },
   open_decision: { label: 'تصمیم باز', icon: 'Target', cls: 'bg-surface-sunken text-text-default border-border-default' },
 };
 export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING; className?: string }) {
@@ -150,7 +150,7 @@ export function ThinkingBadge({ kind, className }: { kind: keyof typeof THINKING
 export const THINKING_LABEL = Object.fromEntries(Object.entries(THINKING).map(([k, v]) => [k, v.label])) as Record<keyof typeof THINKING, string>;
 
 /** an example that came with a starter / template: grey, «نمونه». It is never knowledge and no AI or engine sees it. */
-const SAMPLE: Entry = { label: 'نمونه', icon: 'Eye', cls: 'bg-surface-sunken text-text-subtle border-border-default' };
+const SAMPLE: Entry = { label: 'نمونه', icon: 'Shapes', cls: 'bg-surface-sunken text-text-subtle border-border-default' };
 export function SampleBadge({ className }: { className?: string }) {
   return <MabdaLabel entry={SAMPLE} className={className} />;
 }

@@ -17,7 +17,7 @@ function Marks({ item }: { item: SceneItem }) {
   return (
     <>
       {item.review && <Caution>بازبینی</Caution>}
-      {item.assumption && <span className={small} title="فرض: واقعیت نیست" role="img" aria-label="فرض"><Icon name="CircleHelp" size="xs" /></span>}
+      {item.assumption && <span className={small} title="فرض: واقعیت نیست" role="img" aria-label="فرض"><Icon name="FlaskConical" size="xs" /></span>}
       {item.expired && <span className={small} title="قدیمی شده" role="img" aria-label="قدیمی"><Icon name="Clock" size="xs" /></span>}
       {item.global && <span className={small} title="برای کل درخت" role="img" aria-label="دامنهٔ کل"><Icon name="Globe" size="xs" /></span>}
     </>
@@ -157,7 +157,7 @@ export const CanvasNoteCard = React.memo(function CanvasNoteCard(p: NoteProps) {
               {p.selected && (
                 <span className="flex items-center">
                   <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => p.onEdit(item)} />
-                  <IconButton icon="Lightbulb" label="پیشنهاد به حقیقت" size="sm" onClick={() => p.onConvert(item)} />
+                  <IconButton icon="BookUp" label="پیشنهاد به حقیقت" size="sm" onClick={() => p.onConvert(item)} />
                   <IconButton icon="Trash2" label="حذف یادداشت" size="sm" onClick={() => p.onDelete(item)} />
                 </span>
               )}

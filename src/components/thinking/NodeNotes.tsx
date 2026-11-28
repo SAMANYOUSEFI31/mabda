@@ -49,7 +49,7 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
     <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-subtle bg-surface-sunken p-inset-md">
       <div className="flex flex-wrap items-center gap-inline-sm">
         <span className="label-md text-text-default">یادداشت آزاد</span>
-        <Badge intent="neutral" icon="Lock">فقط برای خودت؛ در خروجی‌ها و بسته‌ها نمی‌آید</Badge>
+        <Badge intent="neutral" icon="EyeOff">فقط برای خودت؛ در خروجی‌ها و بسته‌ها نمی‌آید</Badge>
       </div>
 
       {rows.length > 0 && (
@@ -70,14 +70,14 @@ export const NodeNotes: React.FC<Props> = ({ nodeId, notes, objects, extractingI
                   {onSplit && !isPendingNote(n.id) && canSplit(n.content) && (
                     <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control-sm border border-border-subtle p-inset-sm">
                       <span className="body-sm text-text-subtle">این بخش بزرگ شده؛ تبدیل به بخش؟ متن اصلی یادداشت می‌ماند.</span>
-                      <Button size="sm" variant="secondary" iconStart="Network" onClick={() => onSplit(n.id)}>تبدیل به بخش</Button>
+                      <Button size="sm" variant="secondary" iconStart="FolderPlus" onClick={() => onSplit(n.id)}>تبدیل به بخش</Button>
                     </div>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                     <span className="caption text-text-subtle">{formatJalaliDate(n.updatedAt)}</span>
                     {/* a note still on its way has no actions yet: they would reach the server with an id it never gave */}
                     {!isPendingNote(n.id) && <div className="flex items-center gap-inline-xs">
-                      {managedEnabled && <Button size="sm" variant="secondary" iconStart="FolderInput" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
+                      {managedEnabled && <Button size="sm" variant="secondary" iconStart="ScanText" loading={extractingId === n.id} onClick={() => onExtract(n.id)}>
                         استخراج
                       </Button>}
                       <IconButton icon="Pencil" label="ویرایش یادداشت" size="sm" onClick={() => setEditing({ id: n.id, text: n.content, base: n.updatedAt })} />

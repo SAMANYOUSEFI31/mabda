@@ -181,7 +181,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             side="top"
             trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="ghost" />}
             items={[
-              { label: 'ذخیره به‌عنوان درخواست', icon: 'Package', disabled: !ready || thoughtIds.length > 0, onSelect: () => { void save(); } },
+              { label: 'ذخیره به‌عنوان درخواست', icon: 'PackageOpen', disabled: !ready || thoughtIds.length > 0, onSelect: () => { void save(); } },
               { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
             ]}
           />
@@ -256,7 +256,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
           <ClosedSection keepMounted title={<>با {formatNumber(result.included.length)} مورد از دانشت · حدود {formatNumber(result.tokens)} توکن — جزئیات</>}>
           <div className="mt-stack-md flex flex-col gap-stack-md">
             <div className="flex flex-wrap items-center gap-inline-sm" aria-live="polite">
-              <Badge intent="neutral" icon="FileText">حدود {formatNumber(result.tokens)} توکن</Badge>
+              <Badge intent="neutral" icon="Hash">حدود {formatNumber(result.tokens)} توکن</Badge>
               <Badge icon={false}>شامل شد ({formatNumber(result.included.length)})</Badge>
               <Badge intent="neutral" icon={false}>خارج شد ({formatNumber(result.excluded.length)})</Badge>
               {result.counts.assumptions > 0 && <Badge intent="neutral" icon={false}>{formatNumber(result.counts.assumptions)} فرض (جدا)</Badge>}

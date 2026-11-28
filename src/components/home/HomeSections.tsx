@@ -8,7 +8,7 @@ import type { HomeAction, HomeSections as Sections } from '../../core/homeAction
 import { Button, Icon, InfoTip, MarginItem, MarginList, MarginNote, Nuqta, StateTally, cx, formatJalaliDate, formatNumber } from '../../ui';
 import type { IconName, NuqtaState, TallyRow } from '../../ui';
 
-const ICON: Record<HomeAction['kind'], IconName> = { stale: 'RefreshCw', contradiction: 'TriangleAlert', review: 'Network', ready: 'Target', proposals: 'Inbox', weekly: 'ListChecks', due: 'Clock', thinking: 'CircleHelp', monitor: 'TrendingUp', unlinked: 'Link2', drafts: 'Pencil' };
+const ICON: Record<HomeAction['kind'], IconName> = { stale: 'Clock', contradiction: 'TriangleAlert', review: 'Clock', ready: 'CircleCheck', proposals: 'Inbox', weekly: 'ListChecks', due: 'CalendarDays', thinking: 'MessageCircleQuestion', monitor: 'TrendingUp', unlinked: 'Link2', drafts: 'Pencil' };
 /** each section opens with a few, so the first thing she reads is short; the rest are one tap away, in place */
 const FIRST = 3;
 

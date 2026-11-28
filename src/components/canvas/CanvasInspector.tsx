@@ -126,7 +126,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         {sum && <p className="body-sm text-text-subtle" data-testid="inspector-summary">{sum.sentence}</p>}
         {/* at most two actions in the first view; everything else is one click away under «بیشتر» */}
         <div className="flex flex-wrap gap-inline-xs" data-testid="inspector-actions">
-          {item.review ? <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button> : p.onLineage ? <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button> : moveBtn}
+          {item.review ? <Button size="sm" variant="secondary" onClick={() => void p.onAcceptReview(o.id)}>بدون تغییر بپذیر</Button> : p.onLineage ? <Button size="sm" variant="secondary" iconStart="Focus" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button> : moveBtn}
           <Button size="sm" variant="secondary" onClick={() => p.onOpenObject(o)}>باز کردن</Button>
         </div>
         {inf && <InfluencePanel compact influence={inf} nodes={p.nodes} onOpenObject={p.onOpenObject} onOpenAssets={p.onOpenAssets} />}
@@ -141,7 +141,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
           <div className="flex flex-wrap items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} />{item.assumption && <Badge intent="neutral" icon={false}>فرض</Badge>}{item.expired && <Badge intent="neutral" icon={false}>قدیمی</Badge>}</div>
           <div className="flex flex-wrap gap-inline-xs">
             {(item.review || p.onLineage) && moveBtn}
-            {item.review && p.onLineage && <Button size="sm" variant="secondary" iconStart="Workflow" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button>}
+            {item.review && p.onLineage && <Button size="sm" variant="secondary" iconStart="Focus" onClick={() => p.onLineage!(o.id)}>دور این مورد</Button>}
             {p.placed && p.onUnplace ? <Button size="sm" variant="ghost" onClick={() => p.onUnplace!(o.id)}>از بوم فکر بردار</Button> : p.onPlace && scene.layout !== 'free' ? <Button size="sm" variant="ghost" onClick={() => p.onPlace!(o.id)}>بگذار در بوم فکر</Button> : null}
           </div>
         </DetailSection>

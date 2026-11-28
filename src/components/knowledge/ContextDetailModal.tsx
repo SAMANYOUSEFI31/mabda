@@ -426,7 +426,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 side="top"
                 trigger={<Button type="button" variant="ghost" iconStart="Ellipsis">بیشتر</Button>}
                 items={[
-                  { label: 'جایگزین کردن', icon: 'History', onSelect: () => setIsSupersedingMode(true) },
+                  { label: 'جایگزین کردن', icon: 'Replace', onSelect: () => setIsSupersedingMode(true) },
                   ...(currentMonitor && onStopMonitor ? [{ label: MX.stop, icon: 'TrendingUp' as const, onSelect: () => { void onStopMonitor(currentMonitor.id); onClose(); } }] : []),
                   { label: 'بایگانی', icon: 'Archive', onSelect: () => { onArchive(object.id); onClose(); } },
                 ]}

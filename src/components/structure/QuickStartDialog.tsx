@@ -144,7 +144,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
             <Button variant="ghost" onClick={() => { setStep('choose'); setError(null); }}>بازگشت</Button>
             {path === 'questions'
               ? <Button variant="primary" loading={busy} onClick={() => { if (answered.length < 2) { setNeed('answers'); return; } setNeed(null); void saveAnswers(); }}>آماده‌سازی بسته</Button>
-              : <Button variant="primary" iconStart="FolderInput" loading={busy} disabled={!text.trim()} onClick={() => { if (text.trim().length < 20) { setNeed('text'); return; } setNeed(null); void extract(); }}>استخراج دانش</Button>}
+              : <Button variant="primary" iconStart="ScanText" loading={busy} disabled={!text.trim()} onClick={() => { if (text.trim().length < 20) { setNeed('text'); return; } setNeed(null); void extract(); }}>استخراج دانش</Button>}
           </>
         )
         : step === 'review' ? (
@@ -249,7 +249,7 @@ const Wizard: React.FC<Props> = ({ onClose, workspaceId, onImported, onCreateObj
                   <p className="body-sm text-text-subtle">این خروجی از {formatNumber(sample.usedContext.length)} حقیقت ساخته شد؛ اگر یکی را عوض کنی، خروجی «نیاز به بازبینی» می‌گیرد.</p>
                 </div>
               ) : (
-                <div><Button variant="secondary" iconStart="Eye" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
+                <div><Button variant="secondary" iconStart="Shapes" loading={sampling} disabled={!ai.available || !pack} onClick={makeSample}>ساخت جملهٔ موقعیت‌یابی</Button></div>
               )}
             </section>}
           </div>

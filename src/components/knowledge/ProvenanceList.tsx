@@ -6,8 +6,9 @@
 import React from 'react';
 import type { Provenance, ProvenanceLink } from '../../core/provenance';
 import { Button, Icon } from '../../ui';
+import type { IconName } from '../../ui';
 
-const ICON: Record<ProvenanceLink['kind'], 'Lightbulb' | 'Download' | 'History' | 'Layers'> = { thought: 'Lightbulb', source: 'Download', replaced: 'History', replacedBy: 'History', output: 'Layers' };
+const ICON: Record<ProvenanceLink['kind'], IconName> = { thought: 'Lightbulb', source: 'Quote', replaced: 'Replace', replacedBy: 'Replace', output: 'Package' };
 
 /** «منشأ»: where a piece of knowledge came from and where it went. Quiet by design (a small list, only what exists); each link goes to its target. */
 export const ProvenanceList: React.FC<{ provenance: Provenance; onOpen: (l: ProvenanceLink) => void }> = ({ provenance, onOpen }) => {

@@ -123,7 +123,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
             {preview && (
               <>
                 <div className="flex flex-wrap items-center gap-inline-xs" aria-live="polite">
-                  <Badge intent="neutral" icon="FileText">حدود {formatNumber(preview.tokens)} توکن</Badge>
+                  <Badge intent="neutral" icon="Hash">حدود {formatNumber(preview.tokens)} توکن</Badge>
                   <Badge icon={false}>{formatNumber(preview.explain.items.length)} مورد می‌آید</Badge>
                   <Badge intent="neutral" icon={false}>{formatNumber(preview.explain.skipped.length)} نمی‌آید</Badge>
                 </div>
@@ -158,7 +158,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
               <div className="flex flex-wrap gap-inline-xs">
                 <Button size="sm" variant="secondary" iconStart="Copy" loading={busy === `c${p.id}`} onClick={() => copy(p)}>کپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => setEditing({ id: p.id, name: p.name, instruction: p.instruction, selection: p.selection, kind: p.kind, template: p.template })}>ویرایش</Button>
-                <Button size="sm" variant="ghost" iconStart="FileText" loading={busy === `p${p.id}`} onClick={() => print(p)}>نسخهٔ چاپی</Button>
+                <Button size="sm" variant="ghost" iconStart="Printer" loading={busy === `p${p.id}`} onClick={() => print(p)}>نسخهٔ چاپی</Button>
                 <Button size="sm" variant="ghost" iconStart="Trash2" onClick={async () => { try { const r = await dataApi.deleteSavedPack(workspaceId, p.id); await load(); const gone = r.pack; toast.show({ intent: 'success', message: `بستهٔ «${p.name}» حذف شد.`, duration: 10000, ...(gone ? { action: { label: 'واگرد', onClick: () => { void dataApi.restoreSavedPack(workspaceId, gone).then(load); } } } : {}) }); } catch (e) { toast.show({ intent: 'danger', message: e instanceof DataApiError ? e.message : 'حذف نشد؛ دوباره.' }); } }}>حذف</Button>
               </div>
             </li>

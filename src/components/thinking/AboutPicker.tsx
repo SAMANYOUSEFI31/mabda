@@ -40,7 +40,7 @@ export const AboutPicker: React.FC<Props> = ({ objects, nodes, value, onChange }
       <span className="label-md text-text-default">دربارهٔ چه چیز دیگری هم هست؟ (اختیاری){value.length ? ` (${formatNumber(value.length)})` : ''}</span>
       {value.length > 0 && (
         <div className="flex flex-wrap gap-inline-xs">
-          {value.map((t) => <Button personal key={`${t.kind}:${t.id}`} type="button" size="sm" variant="secondary" iconStart={t.kind === 'node' ? 'FolderTree' : 'FileText'} iconEnd="X" aria-label={`برداشتن ${t.label}`} onClick={() => onChange(value.filter((x) => !(x.kind === t.kind && x.id === t.id)))}>{t.label}</Button>)}
+          {value.map((t) => <Button personal key={`${t.kind}:${t.id}`} type="button" size="sm" variant="secondary" iconStart={t.kind === 'node' ? 'FolderTree' : 'BookOpen'} iconEnd="X" aria-label={`برداشتن ${t.label}`} onClick={() => onChange(value.filter((x) => !(x.kind === t.kind && x.id === t.id)))}>{t.label}</Button>)}
         </div>
       )}
       <TextField label="بخش یا دانش" iconStart="Search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="چند حرف از نام…" disabled={value.length >= MAX} hint={value.length >= MAX ? 'بیشتر از ۸ مورد لازم نیست.' : 'فکر در فیلتر هرکدام از این‌ها هم دیده می‌شود.'} />
@@ -49,7 +49,7 @@ export const AboutPicker: React.FC<Props> = ({ objects, nodes, value, onChange }
           {matches.map((t) => (
             <li key={`${t.kind}:${t.id}`}>
               <button type="button" onClick={() => add(t)} className="body-md flex min-h-touch w-full items-center gap-inline-sm rounded-control-sm border border-border-subtle px-inset-md text-start text-text-default hover:bg-interaction-hover">
-                <Icon name={t.kind === 'node' ? 'FolderTree' : 'FileText'} size="md" className="text-icon-subtle" />
+                <Icon name={t.kind === 'node' ? 'FolderTree' : 'BookOpen'} size="md" className="text-icon-subtle" />
                 <span className="flex-1">{t.label}</span>
                 <span className="caption text-text-subtle">{t.kind === 'node' ? 'بخش' : 'دانش'}</span>
               </button>

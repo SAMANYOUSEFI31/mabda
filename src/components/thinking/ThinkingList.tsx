@@ -118,16 +118,16 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   something is ticked; always visible on touch (nothing is hover-only) */}
               {onToggleSelection && it.id && !done && <span className="think-pick"><Checkbox aria-label={`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`} label={<span className="sr-only">{`انتخاب فکر «${stripAbout(it.text).slice(0, 40)}»`}</span>} checked={selectedIds.includes(it.id)} onChange={(e) => { if (it.id) onToggleSelection(it.id, e.target.checked); }} /></span>}
               {onGoToNode && <Button size="sm" variant="ghost" onClick={() => onGoToNode(it.nodeId)}>رفتن به بخش</Button>}
-              {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="Layers" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
+              {!done && onOptions && it.kind === 'open_decision' && it.noteId && <Button size="sm" variant="secondary" iconStart="ListTree" onClick={() => onOptions(it)}>{optionCount?.(it) ? `گزینه‌ها (${formatNumber(optionCount(it))})` : 'گزینه‌ها'}</Button>}
               {!done && promotionTypesForThought(it.kind).length > 0 && (
                 <Menu
                   label="انتقال فکر به دانش"
                   align="end"
-                  trigger={<Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === it.key}>پیشنهاد به حقیقت</Button>}
+                  trigger={<Button size="sm" variant="secondary" iconStart="BookUp" loading={busy === it.key}>پیشنهاد به حقیقت</Button>}
                   items={promotionTypesForThought(it.kind).map((type) => ({
                     // where it lands is said, not assumed: the proposal goes to the thought's section (it is changeable when approving)
                     label: `پیشنهاد ${type === 'Fact' ? (it.kind === 'assumption' ? 'فرض' : 'واقعیت') : type === 'Decision' ? 'تصمیم' : 'خط قرمز'}${nodes ? ` در «${label(it.nodeId)}»` : ''}`,
-                    icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Shield',
+                    icon: type === 'Fact' ? 'FileText' : type === 'Decision' ? 'Target' : 'Ban',
                     onSelect: () => void run(it, type),
                   }))}
                 />
@@ -139,10 +139,10 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
                   trigger={<IconButton icon="Ellipsis" size="sm" label="کارهای بیشتر برای فکر" />}
                   items={[
                     // «ساخت بخش» is used now and then: under «بیشتر», not on every row
-                    ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'Network' as const, onSelect: () => onToSection(it) }] : []),
-                    ...(it.id ? [{ label: 'باز کردن تاریخچه', icon: 'Clock' as const, onSelect: () => void openHistory(it) }] : []),
+                    ...(!done && onToSection && it.noteId ? [{ label: 'ساخت بخش از این فکر', icon: 'FolderPlus' as const, onSelect: () => onToSection(it) }] : []),
+                    ...(it.id ? [{ label: 'باز کردن تاریخچه', icon: 'History' as const, onSelect: () => void openHistory(it) }] : []),
                     ...(!done && onRevise ? [{ label: 'بازنگری متن، نوع یا «دربارهٔ»', icon: 'Pencil' as const, onSelect: () => { setDraftText(it.text); setDraftKind(it.kind); setDraftAbout(nodes ? aboutTargets(it.text, objects, nodes, it) : []); setManage({ item: it, mode: 'revise' }); } }] : []),
-                    ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'Network' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
+                    ...(!done && onDerive ? [{ label: 'ساخت فکر تازه از این', icon: 'CopyPlus' as const, onSelect: () => { setDraftText(''); setDraftKind('idea'); setManage({ item: it, mode: 'derive' }); } }] : []),
                   ]}
                 />
               )}
