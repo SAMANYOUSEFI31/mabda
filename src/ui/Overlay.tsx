@@ -346,7 +346,10 @@ function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | n
 export function floatArea(trigger: Element): { top: number; bottom: number; left: number; right: number } { // check:design-ignore: viewport geometry is physical (getBoundingClientRect)
   const vw = document.documentElement.clientWidth, vh = window.innerHeight, gap = 8;
   const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--inset-lg')) || 16;
-  let top = gap, bottom = vh - gap, left = gutter, right = vw - gutter;
+  // the part of the screen she can see (iOS: above the keyboard, and not the part a toolbar or the home bar takes)
+  const vv = window.visualViewport;
+  const seeTop = vv ? vv.offsetTop : 0, seeBottom = vv ? vv.offsetTop + vv.height : vh;
+  let top = seeTop + gap, bottom = seeBottom - gap - safeBottom(), left = gutter, right = vw - gutter;
   for (const bar of document.querySelectorAll<HTMLElement>('[data-pin], .mb-bottomnav.is-fixed')) {
     if (bar.contains(trigger)) continue;
     // a page's own pinned bar belongs to the page: a menu of the app's shell (the sidebar, the rail) may pass over it, never over the app's bars
@@ -354,8 +357,8 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
     const pos = getComputedStyle(bar).position;
     if (pos !== 'fixed' && pos !== 'sticky') continue;
     const r = bar.getBoundingClientRect();
-    if (!r.width || !r.height || r.bottom <= 0 || r.top >= vh) continue;
-    if (r.top < vh / 3) top = Math.max(top, r.bottom + gap); else bottom = Math.min(bottom, r.top - gap);
+    if (!r.width || !r.height || r.bottom <= seeTop || r.top >= seeBottom) continue;
+    if (r.top < seeTop + (seeBottom - seeTop) / 3) top = Math.max(top, r.bottom + gap); else bottom = Math.min(bottom, r.top - gap);
   }
   const main = trigger.closest('main');
   if (main && !trigger.closest('[role=dialog], .mb-dialog-layer')) {
@@ -366,16 +369,40 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
   return { top, bottom, left, right };
 }
 
+/** the home bar's height (env() is not readable from script: measured once on a probe) */
+let safeB: number | null = null;
+function safeBottom(): number {
+  if (safeB !== null) return safeB;
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;padding-bottom:env(safe-area-inset-bottom, 0px)';
+  document.body.appendChild(probe); safeB = probe.offsetHeight; probe.remove();
+  return safeB;
+}
+
+/** a menu that scrolls ends in the middle of a row (never on a row's edge, which reads as «this is all») */
+function peek(m: HTMLElement, h: number, natural: number): number {
+  if (natural <= h + 1) return h;
+  const rows = Array.from(m.querySelectorAll<HTMLElement>('[role^=menuitem], [role=option], [role=treeitem]'));
+  let best = h;
+  for (const r of rows) {
+    const mid = r.offsetTop + r.offsetHeight / 2;
+    if (mid <= h) best = mid; else break;
+  }
+  return Math.max(Math.min(h, 160), Math.round(best));
+}
+
 /** place a floating panel against its trigger inside floatArea: preferred side, flips when there is no room, slides to fit,
  *  scrolls itself only when taller than the room there is */
 function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', side: 'top' | 'bottom', fill = false): CSSProperties {
   const tr = t.getBoundingClientRect();
   const gap = 8;
   let a = floatArea(t);
-  // the bars give way only when the menu cannot be whole between them (a short window): every item seen beats a bar seen
-  // for the moment the menu is open (overlays.md «جای لایه‌های شناور»)
+  // the app's bars never give way (round 3, the iPhone test: a long «⋯» lay over the top bar and the tab bar, and the frame
+  // she navigates by vanished): a menu taller than the room between them scrolls inside it, and its last row in view is cut
+  // through its middle, so it is seen that more follow (iOS menus, M3 menus). Only a room too short to hold a few rows at all
+  // (a phone on its side with the keyboard up) lets the bars go
   m.style.maxBlockSize = '';
-  if (m.scrollHeight + 2 > a.bottom - a.top) a = { ...a, top: gap, bottom: window.innerHeight - gap };
+  if (a.bottom - a.top < 160) { const vv = window.visualViewport; a = { ...a, top: (vv?.offsetTop ?? 0) + gap, bottom: (vv ? vv.offsetTop + vv.height : window.innerHeight) - gap }; }
   const kept = m.scrollTop;
   requestAnimationFrame(() => { m.scrollTop = kept; });
   m.style.maxBlockSize = '';
@@ -389,7 +416,7 @@ function placeAgainst(t: HTMLElement, m: HTMLElement, align: 'start' | 'end', si
   // so nothing is hidden behind the menu's own scroll; only a menu taller than the whole area scrolls
   const whole = a.bottom - a.top;
   const cover = natural > Math.max(above, below) && whole > Math.max(above, below);
-  const mh = cover ? Math.min(natural, whole) : Math.max(Math.min(natural, up ? above : below), Math.min(natural, 160));
+  const mh = peek(m, cover ? Math.min(natural, whole) : Math.max(Math.min(natural, up ? above : below), Math.min(natural, 160)), natural);
   let y = cover ? (up ? tr.bottom - mh : tr.top) : up ? tr.top - gap - mh : tr.bottom + gap;
   y = Math.max(a.top, Math.min(y, a.bottom - mh));
   const rtl = getComputedStyle(t).direction === 'rtl';
@@ -410,7 +437,8 @@ function useFollow(open: boolean, panel: React.RefObject<HTMLElement | null>, pl
     window.addEventListener('resize', on);
     window.addEventListener('scroll', on, true);
     window.visualViewport?.addEventListener('resize', on);
-    return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); window.visualViewport?.removeEventListener('resize', on); };
+    window.visualViewport?.addEventListener('scroll', on);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); window.visualViewport?.removeEventListener('resize', on); window.visualViewport?.removeEventListener('scroll', on); };
   }, [open, place, panel]);
 }
 
