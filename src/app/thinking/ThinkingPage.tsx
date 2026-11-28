@@ -42,7 +42,6 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
               items={[{ id: 'list', label: 'فهرست', icon: 'ListChecks' }, { id: 'canvas', label: 'بوم', icon: 'Workflow' }]}
             />}
           /></div>
-          <div id="thinking-view" />
           {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
           <div key={thinkingView} className={viewEnterClass} data-axis={axis}>
           {thinkingView === 'canvas' ? renderCanvas('thinking') : (

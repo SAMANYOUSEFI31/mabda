@@ -343,7 +343,7 @@ export function buildDemo(now: Date): DemoData {
   ];
 
   // ── three sample assets, written by hand (NOT AI output); lineage = the exact object versions they were made from ─────────
-  const label = '> **نمونهٔ دستی:** این خروجی را هوش مصنوعی نساخته است؛ برای دیدن ردپا و «نیاز به بازبینی» در فضای نمونه گذاشته شده.';
+  const label = '> این متن را هوش مصنوعی نساخته؛ دستی برای فضای نمونه نوشته شده.';
   const made = (id: string, specId: string, delId: string, title: string, body: string, used: Array<[string, number]>, d: number): GeneratedDeliverable => ({
     id, workspaceId: W, workstreamId: specId, deliverableId: delId, title, content: `${label}\n\n${body}`, executionMode: 'auto', usedContext: used.map(([i, v]) => ({ id: i, version: v })), rebuildCount: 0, createdAt: at(d, 15), source: { kind: 'user', label: 'نمونهٔ دستی', at: at(d, 15) },
   });

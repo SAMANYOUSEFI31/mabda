@@ -81,49 +81,47 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
   return (
     // on the paper, not in a box: a hairline under each one, like the rows of «ساختار»
     <article className="flex flex-col gap-stack-md border-b border-border-subtle pb-inset-lg" aria-label={deliverable.title}>
-      {/* the same anatomy as a canvas card: title · a row of badges · a short line · one action (+ «⋯») */}
-      <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
-        <div className="flex min-w-space-0 flex-col gap-stack-xs">
-          <h2 className="title text-text-default">{deliverable.title}</h2>
-          <div className="flex flex-wrap items-center gap-inline-xs">
-            {sample ? <Badge intent="neutral" icon="Pencil">نمونهٔ دستی</Badge> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
-            {stale && <Caution>به‌روز نیست</Caution>}
-            {deliverable.rebuildCount > 0 && <Badge icon="RefreshCw">بازسازی‌شده ({formatNumber(deliverable.rebuildCount)})</Badge>}
-            {deliverable.checks && deliverable.checks.length > 0 && (passedAll ? <Badge icon={false}>{formatNumber(deliverable.checks.length)} معیار برقرار</Badge> : <Caution>{formatNumber(deliverable.checks.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks.length)} معیار برقرار</Caution>)}
+      {/* one title row (title · copy · «⋯») and ONE quiet line of facts under it (user, 2026-11-28: no row per fact, no repeated signal).
+          «به‌روز نیست» is said by the group heading and the callout below, not a third time as a badge */}
+      <div className="flex flex-col gap-stack-xs">
+        <div className="flex items-start gap-inline-sm">
+          <h2 className="title min-w-space-0 flex-1 text-text-default">{deliverable.title}</h2>
+          <div className="flex shrink-0 items-center gap-inline-xs">
+            {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت از این دانش</Button>}
+            <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={() => void handleCopy()}>{copied ? 'کپی شد' : 'کپی'}</Button>
+            <Menu
+              label="بیشتر دربارهٔ این خروجی"
+              align="end"
+              trigger={<IconButton icon="Ellipsis" label={`بیشتر دربارهٔ ${deliverable.title}`} size="sm" />}
+              items={[
+                ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'SearchCheck' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
+                ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
+                ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'RefreshCw' as const, onSelect: () => onRerequest(deliverable) }] : []),
+                { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'Footprints' as const, onSelect: () => setTraceOpen((v) => !v) },
+                ...(onArchive || onDelete ? [{ divider: true } as const] : []),
+                ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
+                ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),
+              ]}
+            />
           </div>
-          <span className="caption text-text-subtle">
-            {formatJalaliDate(deliverable.createdAt)}
-          </span>
         </div>
-        <div className="flex shrink-0 items-center gap-inline-xs">
-          {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت از این دانش</Button>}
-          <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={() => void handleCopy()}>{copied ? 'کپی شد' : 'کپی خروجی'}</Button>
-          <Menu
-            label="بیشتر دربارهٔ این خروجی"
-            align="end"
-            trigger={<IconButton icon="Ellipsis" label={`بیشتر دربارهٔ ${deliverable.title}`} size="sm" />}
-            items={[
-              ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'SearchCheck' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
-              ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
-              ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'RefreshCw' as const, onSelect: () => onRerequest(deliverable) }] : []),
-              { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'Footprints' as const, onSelect: () => setTraceOpen((v) => !v) },
-              ...(onArchive || onDelete ? [{ divider: true } as const] : []),
-              ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
-              ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),
-            ]}
-          />
-        </div>
+        <p className="caption flex flex-wrap items-center gap-inline-xs text-text-subtle">
+          {sample ? <span>نمونهٔ دستی</span> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
+          {(sample || ai.managedEnabled) && <span aria-hidden="true">·</span>}
+          <span>{formatJalaliDate(deliverable.createdAt)}</span>
+          {deliverable.rebuildCount > 0 && <><span aria-hidden="true">·</span><span>{formatNumber(deliverable.rebuildCount)} بار بازسازی</span></>}
+          {hasChecks && <><span aria-hidden="true">·</span>{passedAll ? <span>{formatNumber(deliverable.checks!.length)} معیار برقرار</span> : <Caution>{formatNumber(deliverable.checks!.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks!.length)} معیار برقرار</Caution>}</>}
+        </p>
       </div>
 
-      {/* «به‌روز نیست»: ONE sentence of reason and ONE action */}
+      {/* «به‌روز نیست»: the reason and ONE action; the heading of its group already says it (the hidden words keep it for a screen reader) */}
       {stale && (
         <Alert
           intent="warning"
-          title="این خروجی به‌روز نیست"
           action={canRebuild ? <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>{rebuildLabel}</Button>
             : onRerequest ? <Button variant="secondary" size="sm" iconStart="RefreshCw" onClick={() => onRerequest(deliverable)}>درخواست دوباره</Button> : undefined}
         >
-          {stale.reasons[0]?.message}{stale.reasons.length > 1 ? ` (و ${formatNumber(stale.reasons.length - 1)} دلیل دیگر)` : ''}
+          <span className="sr-only">این خروجی به‌روز نیست: </span>{stale.reasons[0]?.message}{stale.reasons.length > 1 ? ` (و ${formatNumber(stale.reasons.length - 1)} دلیل دیگر)` : ''}
         </Alert>
       )}
 

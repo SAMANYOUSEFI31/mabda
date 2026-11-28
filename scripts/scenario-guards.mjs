@@ -345,7 +345,7 @@ try {
     const { ctx, page } = await open(1280); await sample(page);
     const staleCount = async () => {
       await nav(page, 'خروجی‌ها');
-      const t = page.getByRole('tab', { name: /^به‌روز نیست/ });
+      const t = page.getByRole('heading', { name: /^به‌روز نیست/ });
       if (!(await t.count())) return 0;
       return Number((await t.first().innerText()).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/\D/g, ''));
     };

@@ -67,7 +67,6 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             />}
           /></div>
 
-          <div id="context-view" style={{ scrollMarginTop: 80 }} />
           {/* keyed by the view: a new view fades in place like a new page (taste-review.md «تعویض نما»), built in a transition */}
           <div key={contextViewMode} className={viewEnterClass} data-axis={axis}>
           {contextViewMode === 'canvas' ? renderCanvas('truth') : <div className="mb-page-frame space-y-stack-lg">

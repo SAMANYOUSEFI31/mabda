@@ -67,12 +67,13 @@ export function AppShell({ activeTab, focusNodeId, goFocus, nodes, contextViewMo
         {/* Main Canvas */}
         <main id="main" tabIndex={-1} className="w-full px-inset-lg sm:px-inset-2xl py-inset-xl flex-1 space-y-stack-lg">
           {(activeTab === 'workstreams' || activeTab === 'chat') && <AiStatusBanner />}
-          {/* §۳۷: the sample says what it is, once, quietly — a line of text, not a warning box («متن و حاشیه») */}
+          {/* §۳۷: the sample says what it is, once, quietly — a line of text, not a warning box («متن و حاشیه»); its one action sits at the
+              end of that line, not on a row of its own (user, 2026-11-28: no purposeless height) */}
           {currentWorkspace.isDemo && (
             // in the page frame, like every page's header (§۵۳ ۹): its first word starts where the title under it starts
-            <p className="mb-page-frame body-sm flex flex-wrap items-center gap-inline-sm text-text-subtle" data-testid="sample-note">
-              <span>این فضای نمونه است و مال یک آدم فرضی است؛ هرچه این‌جا عوض کنی فقط همین‌جا می‌ماند و در فضای خودت نمی‌آید.</span>
-              <Button size="sm" variant="ghost" iconStart="RotateCcw" onClick={() => setDemoConfirm(true)}>برگرداندن به حالت اول</Button>
+            <p className="mb-page-frame body-sm flex items-center justify-between gap-inline-sm text-text-subtle" data-testid="sample-note">
+              <span className="min-w-space-0">فضای نمونهٔ یک آدم فرضی؛ هرچه عوض کنی فقط همین‌جا می‌ماند.</span>
+              <Button size="sm" variant="ghost" iconStart="RotateCcw" className="shrink-0" onClick={() => setDemoConfirm(true)}>بازنشانی</Button>
             </p>
           )}
           {/* keyed by the page: a new page fades in place (motion.md «رفتن بین صفحه‌ها») */}

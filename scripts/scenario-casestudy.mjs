@@ -118,8 +118,8 @@ try {
     step(`[${width}] assets: three hand-made samples, two need a review, no «ساخت با AI» (internal AI is off)`);
     await nav('خروجی‌ها', 'خروجی‌ها');
     assert.equal(await page.getByText('نمونهٔ دستی', { exact: true }).count(), 3);
-    await page.getByRole('tab', { name: /^به‌روز نیست/ }).waitFor();
-    await page.waitForFunction(() => [...document.querySelectorAll('span, div')].filter((e) => e.children.length < 3 && e.textContent.trim() === 'به‌روز نیست').length >= 2, null, { timeout: 8000 });
+    await page.getByRole('heading', { name: /^به‌روز نیست \(۲\)/ }).waitFor();
+    assert.equal(await page.getByRole('alert').filter({ hasText: 'این خروجی به‌روز نیست' }).count(), 2, 'two stale outputs, each with its reason');
     assert.equal(await page.getByRole('button', { name: 'ساخت با AI' }).count(), 0, 'internal AI is frozen: no build button on a sample');
     assert.ok((await page.getByText(/به «.*» وابسته است و «.*» تغییر کرده/).count()) >= 1, 'dependency_changed reason');
     await shot('6-assets');
