@@ -107,8 +107,10 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
     );
   };
   const snippetOf = (h: SearchHit) => h.snippet ?? (h.wantsSnippet ? snippetFor(index, query, h) : undefined);
+  // no standing description above the field (root-cause audit: the field and what it finds are the page): the hint is the
+  // field's placeholder and, before anything is typed and nothing was opened yet, the one line in the empty list
   return (
-    <Dialog open top onClose={onClose} size="lg" title="جستجو و فرمان‌ها" description="هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.">
+    <Dialog open top onClose={onClose} size="lg" title="جستجو و فرمان‌ها">
       <div className="flex flex-col gap-stack-md" onKeyDown={onKey}>
         <div className="flex items-center gap-inline-sm rounded-control border border-border-default bg-surface-sunken px-inset-md focus-within:focus-ring">
           <Icon name="Search" size="md" />
@@ -121,7 +123,7 @@ const Palette: React.FC<Props> = ({ index, onClose, onPick, onAddThought }) => {
         </div>
         {flat.length === 0 && (
             <div className="flex flex-col items-start gap-stack-sm" role="status">
-              <p className="body-md text-text-subtle">{query.trim() ? `چیزی با «${query.trim()}» پیدا نشد.` : 'شروع به نوشتن کن.'}</p>
+              <p className="body-md text-text-subtle">{query.trim() ? `چیزی با «${query.trim()}» پیدا نشد.` : 'هر چیزی را با چند حرف پیدا کن یا یک فرمان را اجرا کن. یادداشت‌ها فقط برای پیدا کردن‌اند و به هیچ ابزاری فرستاده نمی‌شوند.'}</p>
               {query.trim() && onAddThought && <Button size="sm" variant="secondary" iconStart="Lightbulb" onClick={() => { onAddThought(query.trim()); onClose(); }}>افزودن به‌عنوان فکر</Button>}
             </div>
           )}
