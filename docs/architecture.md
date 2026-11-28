@@ -310,6 +310,6 @@
 | فکر | `thinking` (جا: `ThinkingSpace`، زبانهٔ `thinking`)، `thought` (یک مورد: `ThoughtKind`) | دو نام برای دو چیز: جا و یک مورد؛ عمداً |
 | بخش | `node` (`TreeNode`) | `section` در نام‌های رابط |
 | درخواست برای ابزار دیگر | `aiRequest` | `pack` (`SavedPacksDialog`، «بسته‌های دانش») |
-| نوار چسبان | `data-sticky="app|secondary"`، `--sticky-top`، `--sticky-secondary`، `--fixed-bottom-inset` | `data-pin`، `--pin-*` (عوض شد؛ «pin» در محصول یعنی سنجاق کردن) |
+| نوار چسبان | `data-sticky` («app» یا «secondary»)، `--sticky-top`، `--sticky-secondary`، `--fixed-bottom-inset` | `data-pin`، `--pin-*` (عوض شد؛ «pin» در محصول یعنی سنجاق کردن) |
 | جلوگیری از کلیکِ ضربهٔ بستن | `preventClickThrough()` | `swallowClick` (عوض شد) |
 
