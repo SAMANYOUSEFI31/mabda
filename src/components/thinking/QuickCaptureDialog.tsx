@@ -127,7 +127,7 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
       dirty={!!text.trim()} onDiscard={() => { onTextChange(''); setPerLine(false); }}
       description={switcher ? ADD_DESCRIPTION : 'هرچه هنوز حقیقت نیست: ایده، سؤال، فرض یا تصمیم باز.'}
       // «باز بماند» sits by the button it changes (like «Create more» beside «Create»): never below the fold of the body
-      footer={<><Button variant="ghost" onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button>
+      footer={<><Button variant="ghost" data-dismiss onClick={onClose}>{saved > 0 ? 'تمام' : 'انصراف'}</Button><Button variant="primary" loading={busy} disabled={!text.trim() || (split && lines.length === 0)} onClick={save}>{count > 1 ? `افزودن ${formatNumber(count)} فکر` : 'افزودن فکر'}</Button>
         <div className="flex flex-wrap items-center gap-inline-sm md:order-first md:me-auto"><Checkbox label="بعد از ثبت باز بماند" checked={continuous} onChange={(e) => onContinuousChange(e.target.checked)} />
           {/* the proof of a save sits in the footer, which is always on screen: in the body it fell below a phone's fold (§۴۸) */}
           <span className="body-sm text-text-subtle" role="status">{saved > 0 ? `${formatNumber(saved)} مورد ثبت شد.` : ''}</span></div></>}

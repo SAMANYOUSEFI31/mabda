@@ -58,7 +58,7 @@ export function useSearchAndFocus(p: AppCoreScope) {
   const [focusNodeId, setFocusNodeId] = useState<string | null>(nodeFromUrl);
   const urlOf = (id: string | null) => (id ? `#node=${encodeURIComponent(id)}` : window.location.pathname + window.location.search);
   /** every state remembers where it came FROM, so «برگشت» (the arrow, the phone's back, the browser's back) climbs one level instead of leaving */
-  const pushFocus = (id: string | null, prev: string | null) => { try { window.history.pushState({ node: id, prev }, '', urlOf(id)); } catch { /* optional */ } };
+  const pushFocus = (id: string | null, prev: string | null) => { try { window.history.pushState({ node: id, prev, tab: (window.history.state as { tab?: string } | null)?.tab }, '', urlOf(id)); } catch { /* optional */ } };
   const goFocus = (id: string | null) => {
     const cur = focusNodeId;
     if (id === cur) return;
@@ -84,7 +84,7 @@ export function useSearchAndFocus(p: AppCoreScope) {
     if (!path.length) return; // the section is not in this workspace's tree (yet): wait
     climbedRef.current = true;
     if (path.length < 2) return;
-    try { window.history.replaceState({ node: null, prev: null }, '', window.location.pathname + window.location.search); } catch { return; }
+    try { window.history.replaceState({ node: null, prev: null, tab: (window.history.state as { tab?: string } | null)?.tab }, '', window.location.pathname + window.location.search); } catch { return; }
     let prev: string | null = null;
     for (const step of path) { pushFocus(step, prev); prev = step; }
   }, [nodes, focusNodeId]); // eslint-disable-line react-hooks/exhaustive-deps

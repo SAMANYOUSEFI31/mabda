@@ -432,7 +432,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 ]}
               />
             )}
-            <Button variant="ghost" onClick={onClose}>انصراف</Button>
+            <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
             {approveMode
               ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { if (await onApproveDraft!(object!.id)) onClose(); }}>جایگزینی</Button>
               : <Button variant="primary" type="submit" form="context-detail-form" loading={saving}>

@@ -87,7 +87,7 @@ export const PurgeDialog: React.FC<{ workspaceId: string; object: ContextObject 
       alert size="md" open onClose={onClose} title={step === 1 ? `حذف دائمی «${object.title}»` : 'آخرین تأیید'}
       description={step === 1 ? 'متن این مورد از همهٔ جاهای برنامه پاک می‌شود و برنمی‌گردد. اول ببین چه چیزی را لمس می‌کند.' : 'بعد از این، هیچ ردّی از متنش نمی‌ماند؛ فقط یک ردّ بی‌محتوا: «یک مورد حذف دائمی شد».'}
       footer={step === 1
-        ? <><Button variant="ghost" onClick={onClose}>انصراف</Button><Button variant="secondary" disabled={!impact} onClick={() => setStep(2)}>ادامه</Button></>
+        ? <><Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button><Button variant="secondary" disabled={!impact} onClick={() => setStep(2)}>ادامه</Button></>
         : <><Button variant="ghost" onClick={() => setStep(1)}>برگشت</Button><Button variant="danger" iconStart="Trash2" disabled={!ack} loading={busy} onClick={run}>حذف دائمی</Button></>}
     >
       <div className="flex flex-col gap-stack-md">

@@ -53,7 +53,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       description="Markdown فشرده با دانش تأییدشده، جاهای خالی، معیارها و خط قرمزها و قالب پاسخی که ابزار باید رعایت کند."
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>بستن</Button>
+          <Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>
           <Button variant="secondary" iconStart="Upload" onClick={() => { onClose(); onOpenImport(); }}>وارد کردن پاسخ ابزار دیگر</Button>
           <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!pack} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
         </>

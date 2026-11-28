@@ -24,7 +24,7 @@ export const StarterDialog: React.FC<Props> = ({ open, samplesCount, onClose, on
   const [busy, setBusy] = useState<string | null>(null);
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
   return (
-    <Dialog open={open} onClose={onClose} size="md" title="اسکلت شروع" description="نوع فضا را انتخاب کن؛ چند نمونهٔ خاکستری در بخش‌ها می‌نشیند تا ببینی جواب خوب چه شکلی است." footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}>
+    <Dialog open={open} onClose={onClose} size="md" title="اسکلت شروع" description="نوع فضا را انتخاب کن؛ چند نمونهٔ خاکستری در بخش‌ها می‌نشیند تا ببینی جواب خوب چه شکلی است." footer={<Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-md">
         <Alert intent="info">نمونه‌ها «دانش» نیستند: به هیچ موتوری (جای خالی، آمادگی، تناقض) و هیچ بسته‌ای نمی‌رسند و در سقف‌ها شمرده نمی‌شوند. هر کدام را ویرایش کنی مال خودت می‌شود.</Alert>
         {STARTERS.map((st) => (

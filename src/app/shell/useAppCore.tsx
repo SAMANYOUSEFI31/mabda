@@ -111,8 +111,23 @@ export function useAppCore() {
   };
 
   // UI state
+  const tabHistory = (from: string, to: string) => {
+    try {
+      const st = (window.history.state ?? {}) as { tab?: string; mbOverlay?: boolean; node?: unknown };
+      const plain = st.mbOverlay === undefined && st.node === undefined;
+      // back to the start: the entry «خانه» left is the start (inside a section or under a dialog, this entry just says «خانه»)
+      if (to === 'home') { if (st.tab && st.tab !== 'home') { if (plain) window.history.back(); else window.history.replaceState({ tab: 'home' }, '', window.location.pathname + window.location.search); } return; }
+      // a dialog that sends to a page is closing: its entry becomes the page's (it would otherwise be a stale step of back)
+      if (from === 'home' && !st.mbOverlay) window.history.pushState({ tab: to }, '', window.location.pathname + window.location.search);
+      else window.history.replaceState({ tab: to }, '', window.location.pathname + window.location.search);
+    } catch { /* optional */ }
+  };
   const [selectedSpecId, setSelectedSpecId] = useState<string>('main_positioning');
-  const [activeTab, setTab] = useState<string>('home');
+  // the page is in the history (Android «Principles of navigation»: one fixed start, and back = up): «خانه» is the start; going
+  // from it to another page adds ONE entry, moving between the other pages replaces that entry (no trap of tabs to back out of),
+  // so the system's back from any page lands on «خانه» and from «خانه» leaves. A reload keeps the page it was on
+  const tabOfHistory = () => { try { const t = (window.history.state as { tab?: unknown } | null)?.tab; return typeof t === 'string' ? t : 'home'; } catch { return 'home'; } };
+  const [activeTab, setTab] = useState<string>(tabOfHistory);
   // every change of page goes through one door, so it moves the same way wherever it starts (motion.md «رفتن بین صفحه‌ها»)
   // the page we are going to, set at once: a second call for the same page in the same click (a section link asks for «حقیقت» and
   // then for its place) must not start a second fade over the first
@@ -123,8 +138,9 @@ export function useAppCore() {
   const scrollTarget = useRef(0);
   const widRef = useRef(currentWorkspaceId);
   widRef.current = currentWorkspaceId;
-  const setActiveTab = useCallback((tab: string, opts?: { restore?: boolean }) => {
+  const setActiveTab = useCallback((tab: string, opts?: { restore?: boolean; fromHistory?: boolean }) => {
     if (tab === goingTo.current) return;
+    if (!opts?.fromHistory) tabHistory(goingTo.current, tab);
     // the page on screen is the one last shown (a page still being built is not on screen yet)
     scrollMemo.current.set(`${widRef.current}:${tabSeen.current}`, window.scrollY);
     scrollTarget.current = opts?.restore ? scrollMemo.current.get(`${widRef.current}:${tab}`) ?? 0 : 0;
@@ -182,6 +198,11 @@ export function useAppCore() {
   const nodes = data?.nodes ?? [];
   const workspaceContexts = data?.objects ?? [];
   // the old «گفتگو» destination: it left the navigation; anything that still points to it lands in «درخواست برای AI»
+  useEffect(() => {
+    const on = () => setActiveTab(tabOfHistory(), { restore: true, fromHistory: true });
+    window.addEventListener('popstate', on);
+    return () => window.removeEventListener('popstate', on);
+  }, [setActiveTab]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (activeTab === 'chat') { setActiveTab('home'); setAiRequest({ scopeNodeId: chatScope ?? '' }); } }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── notes ──────────────────────────────────────────────────────────────────────────────────────

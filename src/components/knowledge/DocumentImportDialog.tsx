@@ -80,7 +80,7 @@ export const DocumentImportDialog: React.FC<Props> = ({ workspaceId, onClose, on
       ? <><Button variant="ghost" onClick={reset} disabled={busy}>برگشت</Button>{preview.duplicate
           ? <Button variant="primary" onClick={onClose}>بستن</Button>
           : <Button variant="primary" iconStart="Check" loading={busy} onClick={() => { if (!kept.length) { setNeed('kept'); requestAnimationFrame(() => needKept.current?.scrollIntoView({ block: 'nearest' })); return; } setNeed(null); void save(); }}>{kept.length ? `ساخت ${formatNumber(kept.length)} یادداشت` : 'ساخت یادداشت'}</Button>}</>
-      : <><Button variant="ghost" onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Eye" loading={busy} onClick={() => { if (!file && !text.trim()) { setNeed('source'); return; } setNeed(null); void runPreview(); }}>پیش‌نمایش</Button></>;
+      : <><Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button><Button variant="primary" iconStart="Eye" loading={busy} onClick={() => { if (!file && !text.trim()) { setNeed('source'); return; } setNeed(null); void runPreview(); }}>پیش‌نمایش</Button></>;
 
   return (
     <Dialog

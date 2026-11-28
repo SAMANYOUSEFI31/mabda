@@ -131,7 +131,7 @@ const Importer: React.FC<Props> = ({ workspaceId, onClose, nodes = [], objects =
       size="xl"
       title="وارد کردن پاسخ ابزار دیگر"
       description="متن را همان‌طور که از ابزار گرفتی بچسبان. برای هر مورد می‌گوییم کجا می‌رود و چرا؛ تو تأیید یا عوضش می‌کنی. هیچ‌چیز خودکار ثبت نمی‌شود."
-      footer={<Button variant="ghost" onClick={onClose}>بستن</Button>}
+      footer={<Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>}
     >
       <div className="flex flex-col gap-stack-lg">
         <Textarea label="پاسخ ابزار" rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={'## Decision: …\n## Asset: …'} />

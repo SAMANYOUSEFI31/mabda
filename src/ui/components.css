@@ -978,6 +978,18 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
   .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-btn--primary,.mb-btn--danger-bold){flex-basis:100%}
   .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-iconbtn,.mb-popover:has(> .mb-iconbtn)){flex:0 0 auto}
 }
+/* one way to leave a sheet on a phone (root-cause audit, blind spot 1/2): the × at the head, the pull down, the system back.
+   A «انصراف» in the foot was the same step a second time and took a row of the thumb's reach (HIG sheets: Cancel OR ×,
+   not both; Material bottom sheets: no cancel button). A foot left with nothing else goes too. An alert has no ×: it keeps it.
+   With the keyboard up the field is what matters (Telegram, Notes, Keep): the sheet's line of explanation steps aside and the
+   main step shares one row with its option («بعد از ثبت باز بماند»), so ~240px of a 420px visible height stays for writing */
+@media (max-width:767px){
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > [data-dismiss]{display:none}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot:not(:has(> :not([data-dismiss]))){display:none}
+  html[data-keyboard] .mb-dialog__desc,html[data-keyboard] .mb-dialog__grab{display:none}
+  html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot{flex-wrap:nowrap;padding-block:var(--space-2)}
+  html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-btn--primary,.mb-btn--danger-bold){flex:0 0 auto}
+}
 /* a group whose parts are boxes (a contradiction and its two sides): a box only where there is room. On a phone it is a plain
    part of the page and its parts are the one level of boxes (the same rule as a section, «.mb-card--section» above); two
    groups in a row are told apart by a line, as a list's rows are */

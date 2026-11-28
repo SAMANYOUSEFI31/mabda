@@ -3,7 +3,9 @@
  * Closing layers on a phone (docs/design-system/overlays.md «حرکت‌های دست و بستن»), the regressions found on a real phone:
  *   1. a tap outside a menu closes it and does nothing else (closing the space menu once opened a truth under it);
  *   2. the next tap works at once (a closing layer never holds a tap);
- *   3. a sheet dragged down from its body, at the body's top, closes; dragged a little, it settles back.
+ *   3. a sheet dragged down from its body, at the body's top, closes; dragged a little, it settles back;
+ *   4. the system's back (Android, an installed PWA) from any page lands on «خانه», not out of the app; with a sheet open it
+ *      closes the sheet first; from «خانه» it leaves (Android «Principles of navigation»: one fixed start).
  * Needs a running app with the owner sample (MABDA_ALLOW_SAMPLES=1):
  *   CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/scenario-dismiss.mjs [http://localhost:3100]
  */
@@ -58,6 +60,29 @@ await guard('a sheet pulled down from its body closes; a small pull settles back
   await touchDrag('.mb-dialog__body', 400);
   await page.waitForTimeout(600);
   assert.equal(await page.locator('.mb-dialog-layer:not(.is-inline)[data-state=open]').count(), 0, 'a long pull did not close it');
+});
+
+await guard('back from any page goes to «خانه»; a sheet first; from «خانه» it leaves', async () => {
+  const pg = await ctx.newPage(); // a fresh history: one entry, the start
+  await pg.goto(BASE, { waitUntil: 'networkidle' });
+  const at = async () => (await pg.locator('.mb-bottomnav [aria-current=page]').textContent()).trim();
+  const navTo = async (label) => { await pg.locator('.mb-bottomnav button', { hasText: label }).first().tap(); await pg.waitForTimeout(500); };
+  const len = () => pg.evaluate(() => history.length);
+  const start = await len();
+  await navTo('فکر'); await navTo('حقیقت');
+  assert.equal(await at(), 'حقیقت');
+  assert.equal(await len(), start + 1, 'moving between pages stacked entries');
+  await pg.locator('header[data-pin=app] button[aria-label="حساب کاربری"]').tap();
+  await pg.locator('.mb-dialog').waitFor();
+  await pg.goBack(); await pg.waitForTimeout(500);
+  assert.equal(await pg.locator('.mb-dialog-layer:not(.is-inline)[data-state=open]').count(), 0, 'back did not close the sheet');
+  assert.equal(await at(), 'حقیقت', 'back with a sheet open left the page');
+  await pg.goBack(); await pg.waitForTimeout(500);
+  assert.equal(await at(), 'خانه', 'back from a page did not land on «خانه»');
+  await navTo('فکر'); await navTo('خانه');
+  assert.equal(await at(), 'خانه');
+  assert.equal(await pg.evaluate(() => history.state?.tab ?? 'home'), 'home', '«خانه» is not the start entry');
+  await pg.close();
 });
 
 await browser.close();

@@ -104,7 +104,7 @@ export const TruthCompareDialog: React.FC<Props> = (p) => {
     <Dialog
       open={p.open} onClose={p.onClose} size="xl" title={whatIf ? 'اگر همه را تأیید کنم' : 'حقیقت چه عوض شد؟'}
       description={whatIf ? 'حقیقت امروز در برابر وقتی همهٔ پیشنهادها و پیش‌نویس‌های منتظر تأیید شوند؛ هر کدام را می‌شود از این فرض بیرون گذاشت.' : 'دو لحظه را مقایسه کن؛ افزوده، حذف، تغییر و جابه‌جایی، بخش‌به‌بخش.'}
-      footer={<><Button variant="ghost" onClick={p.onClose}>بستن</Button><Button variant="secondary" iconStart="Copy" disabled={!counted || counted.counts.total === 0} onClick={() => void copy()}>کپی Markdown</Button></>}
+      footer={<><Button variant="ghost" data-dismiss onClick={p.onClose}>بستن</Button><Button variant="secondary" iconStart="Copy" disabled={!counted || counted.counts.total === 0} onClick={() => void copy()}>کپی Markdown</Button></>}
     >
       <div className="flex flex-col gap-stack-lg">
         {/* two questions, two groups (decisions.md «مقایسهٔ منبع»): WHEN (one choice; the date fields exist only for «دلخواه», so a
