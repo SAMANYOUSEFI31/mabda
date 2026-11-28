@@ -390,7 +390,9 @@ function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | n
     if (!active) return;
     // a tap outside closes the layer and does nothing else (iOS and Android menus, overlays.md «بستن»): the click that follows
     // the same tap would otherwise land on what was under it (the phone test: closing the space menu opened a truth)
-    const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) { cb.current(); preventClickThrough(); } };
+    // a layer opened FROM this one (a section picker inside a filter popover) is a later portal: a press in it is not «outside»
+    const nested = (t: Node) => { const layer = (t as Element).closest?.('.is-portal, .mb-dialog-layer'); return !!layer && refs.some((r) => !!r.current?.closest('.is-portal') && !!(r.current.compareDocumentPosition(layer) & Node.DOCUMENT_POSITION_FOLLOWING)); };
+    const down = (e: PointerEvent) => { const t = e.target as Node; if (!refs.some((r) => r.current?.contains(t)) && !nested(t)) { cb.current(); preventClickThrough(); } };
     // capture, and marked as taken: a dialog under the menu hears the same Escape later and leaves it alone
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); cb.current(true); } };
     document.addEventListener('pointerdown', down);

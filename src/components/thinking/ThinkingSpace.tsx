@@ -14,7 +14,7 @@ import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
 import { subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { Badge, Button, Card, Checkbox, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
+import { Badge, Button, Card, Checkbox, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark, Popover, useMedia, PHONE } from '../../ui';
 import { NodePickerField } from '../structure/NodePicker';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
@@ -132,6 +132,17 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     ...(p.onCompareIfApproved ? [{ label: 'فهرست تغییرها', icon: 'GitCompareArrows' as const, onSelect: p.onCompareIfApproved }] : []),
   ];
 
+  const phone = useMedia(PHONE);
+  const filterLabel = activeFilters ? `فیلترها (${formatNumber(activeFilters)})` : 'فیلترها';
+  const facets = (
+    <div className="flex flex-col gap-stack-lg">
+      <fieldset className="flex flex-col gap-stack-sm">
+        <legend className="label-md mb-stack-sm text-text-default">چه چیزی؟</legend>
+        {offered.map((c) => <Checkbox key={c.id} label={`${c.label} (${formatNumber(count(c.id))})`} checked={kinds.includes(c.id)} onChange={() => toggleKind(c.id)} />)}
+      </fieldset>
+      <NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
+    </div>
+  );
   return (
     // one reading column at every width (the page frame, decisions.md §۵۳ ۹; 680, the reading measure): on a wide frame a row's
     // action stayed ~600px from its title (Gestalt proximity, Fitts) once the filter margin was gone; its filters are the title row's «فیلترها (n)»
@@ -143,20 +154,23 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           It opens the facets in a sheet with the live count (iOS Mail and Files; Android Gmail; Divar, Digikala on a phone). What
           waits for her is the first group of the list under its own heading, so no «منتظر تو» shortcut beside it */}
       {!nothingYet && <>
-        {slot && createPortal(
-          <Button size="sm" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" data-testid="thinking-filter-button" onClick={() => setFiltersOpen(true)}>
-            {activeFilters ? `فیلترها (${formatNumber(activeFilters)})` : 'فیلترها'}
-          </Button>, slot)}
-        <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} side size="md" title="فیلتر فکرها"
+        {/* the same facets in the place that fits the device: a phone gets a sheet with the live count and «نمایش N مورد» (iOS
+            Mail, Android Gmail, Divar); a tablet or a computer gets a panel held against the button (Gmail's and Linear's filter
+            menus): no full-height sheet for six checkboxes, the list stays in view and changes as she ticks (round 4) */}
+        {slot && createPortal(phone
+          ? <Button size="sm" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" data-testid="thinking-filter-button" onClick={() => setFiltersOpen(true)}>{filterLabel}</Button>
+          : <Popover label="فیلتر فکرها" align="end" trigger={<Button size="sm" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" data-testid="thinking-filter-button">{filterLabel}</Button>}>
+              <div className="flex w-overlay-xs max-w-full flex-col gap-stack-lg p-inset-lg">{facets}
+                <div className="flex items-center justify-between gap-inline-sm border-t border-border-subtle pt-inset-sm">
+                  <span className="body-sm text-text-subtle" aria-live="polite">{formatNumber(shownCount)} مورد</span>
+                  {activeFilters > 0 && <Button size="sm" variant="ghost" onClick={clearFilters}>پاک‌کردن فیلترها</Button>}
+                </div>
+              </div>
+            </Popover>, slot)}
+        {phone && <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} side size="md" title="فیلتر فکرها"
           footer={<><Button variant="primary" onClick={() => setFiltersOpen(false)}>{`نمایش ${formatNumber(shownCount)} مورد`}</Button>{activeFilters > 0 && <Button variant="ghost" onClick={clearFilters}>پاک‌کردن فیلترها</Button>}</>}>
-          <div className="flex flex-col gap-stack-lg">
-            <fieldset className="flex flex-col gap-stack-sm">
-              <legend className="label-md mb-stack-sm text-text-default">چه چیزی؟</legend>
-              {offered.map((c) => <Checkbox key={c.id} label={`${c.label} (${formatNumber(count(c.id))})`} checked={kinds.includes(c.id)} onChange={() => toggleKind(c.id)} />)}
-            </fieldset>
-            <NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
-          </div>
-        </Dialog>
+          {facets}
+        </Dialog>}
       </>}
 
       <div className="flex flex-col gap-stack-lg">
