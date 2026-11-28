@@ -189,24 +189,67 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, inline]);
 
-  // phones: the sheet follows a drag down from its head; a quarter of its height (or a quick flick) closes it, like × (overlays.md «برگه»)
+  // phones: the sheet follows the finger down (overlays.md «برگه»; iOS sheets, M3 bottom sheets): from its head at any time, and
+  // from its body when the body is at its top and the finger moves down first (so the body's own scroll is never taken). A
+  // quarter of its height, or a quick flick, closes it like ×; less and it settles back (not a jump). Pulled up it gives a little
+  // and no more (rubber band: the sheet is already as high as it goes)
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const canDrag = () => !!panel.current && !inline && !side && !alert && !!closeRef.current && window.matchMedia('(max-width: 767px)').matches;
+  const pull = (p: HTMLElement, dy: number) => { p.style.transition = 'none'; p.style.transform = `translateY(${dy >= 0 ? dy : -Math.min(12, -dy / 5)}px)`; };
+  const release = (p: HTMLElement, dy: number, ms: number) => {
+    const flick = dy > 40 && dy / Math.max(1, ms) > 0.5;
+    const closing = dy > p.offsetHeight / 4 || flick;
+    // closing: the exit starts from where the finger left it (the inert copy keeps this offset), never a jump back first
+    if (!closing || dirtyRef.current) { p.style.transition = 'transform var(--duration-base) var(--ease-standard)'; p.style.transform = ''; window.setTimeout(() => { p.style.transition = ''; }, 300); }
+    if (closing) closeRef.current?.();
+  };
   const drag = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = panel.current;
-    if (!p || inline || side || alert || !requestClose || !window.matchMedia('(max-width: 767px)').matches) return;
+    if (!p || !canDrag()) return;
     if ((e.target as HTMLElement).closest('button,a,input,select,textarea')) return;
     const y0 = e.clientY, t0 = performance.now();
     let dy = 0;
-    const move = (ev: PointerEvent) => { dy = Math.max(0, ev.clientY - y0); p.style.transform = `translateY(${dy}px)`; };
+    const move = (ev: PointerEvent) => { dy = ev.clientY - y0; pull(p, dy); };
     const up = () => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
-      const flick = dy > 40 && dy / Math.max(1, performance.now() - t0) > 0.5;
-      const closing = dy > p.offsetHeight / 4 || flick;
-      // closing: the exit starts from where the finger left it (the inert copy keeps this offset), never a jump back first
-      if (!closing || dirty) p.style.transform = '';
-      if (closing) requestClose();
+      release(p, Math.max(0, dy), performance.now() - t0);
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   };
+  useEffect(() => {
+    const p = panel.current;
+    const body = p?.querySelector<HTMLElement>('.mb-dialog__body');
+    if (!open || !p || !body) return;
+    let state: 'off' | 'maybe' | 'drag' = 'off', x0 = 0, y0 = 0, t0 = 0, dy = 0;
+    const start = (e: TouchEvent) => {
+      state = 'off';
+      if (!canDrag() || e.touches.length !== 1 || body.scrollTop > 0) return;
+      // a field (selecting text), and anything that scrolls or drags sideways of its own (a chip strip, a canvas), keep the finger
+      const t = e.target as HTMLElement;
+      if (t.closest('input,textarea,select,[contenteditable],[data-own-drag]')) return;
+      state = 'maybe'; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = performance.now(); dy = 0;
+    };
+    const move = (e: TouchEvent) => {
+      if (state === 'off') return;
+      const ddy = e.touches[0].clientY - y0, ddx = e.touches[0].clientX - x0;
+      if (state === 'maybe') {
+        if (Math.abs(ddy) < 6 && Math.abs(ddx) < 6) return;
+        state = ddy > 0 && Math.abs(ddy) > Math.abs(ddx) && body.scrollTop <= 0 ? 'drag' : 'off';
+        if (state === 'off') return;
+        y0 = e.touches[0].clientY; t0 = performance.now();
+      }
+      e.preventDefault();
+      dy = e.touches[0].clientY - y0;
+      pull(p, dy);
+    };
+    const end = () => { if (state === 'drag') release(p, Math.max(0, dy), performance.now() - t0); state = 'off'; };
+    body.addEventListener('touchstart', start, { passive: true });
+    body.addEventListener('touchmove', move, { passive: false });
+    body.addEventListener('touchend', end); body.addEventListener('touchcancel', end);
+    return () => { body.removeEventListener('touchstart', start); body.removeEventListener('touchmove', move); body.removeEventListener('touchend', end); body.removeEventListener('touchcancel', end); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, inline, side, alert, !!children]);
 
   if (!open) return null;
   const node = (
@@ -324,12 +367,27 @@ export function useToast(): ToastApi {
 }
 
 /* ---------------- outside click / Escape ---------------- */
+/** the click of the tap that dismissed a layer is eaten (capture, before anything hears it); a tap that makes no click (a
+ *  scroll: pointercancel; a drag that ends elsewhere) leaves nothing behind: it is cleared just after the finger lifts */
+export function swallowClick() {
+  let t = 0;
+  const kill = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); done(); };
+  const lift = () => { clearTimeout(t); t = window.setTimeout(done, 350); };
+  const done = () => { document.removeEventListener('click', kill, true); document.removeEventListener('pointerup', lift, true); document.removeEventListener('pointercancel', done, true); clearTimeout(t); };
+  document.addEventListener('click', kill, true);
+  document.addEventListener('pointerup', lift, true);
+  document.addEventListener('pointercancel', done, true);
+  t = window.setTimeout(done, 5000);
+}
+
 function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | null>>, onDismiss: (viaEscape?: boolean) => void) {
   const cb = useRef(onDismiss);
   cb.current = onDismiss;
   useEffect(() => {
     if (!active) return;
-    const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) cb.current(); };
+    // a tap outside closes the layer and does nothing else (iOS and Android menus, overlays.md «بستن»): the click that follows
+    // the same tap would otherwise land on what was under it (the phone test: closing the space menu opened a truth)
+    const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) { cb.current(); swallowClick(); } };
     // capture, and marked as taken: a dialog under the menu hears the same Escape later and leaves it alone
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); cb.current(true); } };
     document.addEventListener('pointerdown', down);
