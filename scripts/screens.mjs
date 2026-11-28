@@ -268,12 +268,12 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.locator('main .mb-seg [role=radio]', { hasText: 'جدول' }).first().click(); await page.waitForTimeout(600); await shoot('context-table');
   await page.locator('main .mb-seg [role=radio]', { hasText: 'سند' }).first().click(); await page.waitForTimeout(600); await shoot('context-read');
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
-  await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
+  await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click(); await page.waitForTimeout(800);
   // add context dialog
   // a section's «افزودن حقیقت»: a button where the head is wide, the first item of the section's «⋯» on a phone
   const addTruth = page.getByRole('button', { name: /^افزودن حقیقت به / }).locator('visible=true').first();
   if (await addTruth.count()) await addTruth.click();
-  else { await page.getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); await page.getByRole('menuitem', { name: 'افزودن حقیقت' }).first().click(); }
+  else { await page.getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); await page.getByRole('menuitem', { name: /^افزودن حقیقت/ }).first().click({ timeout: 5000 }).catch(async () => { await page.keyboard.press('Escape'); await page.getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); await page.getByRole('menuitem', { name: /^افزودن حقیقت/ }).first().click(); }); }
   await shoot('dialog-context');
   // the section picker over it: a panel at the inline-end edge / a sheet on a phone, with the tree and a search (NodePicker)
   await page.getByRole('dialog').getByRole('button', { name: /^در: / }).first().click(); await shoot('picker-node');
