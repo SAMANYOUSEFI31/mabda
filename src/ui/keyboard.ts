@@ -70,19 +70,68 @@ export function installKeyboard(): () => void {
     else window.scrollBy(0, d);
   };
 
-  const update = () => {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => {
+  let up = false, keptY = 0, track = 0, trackUntil = 0;
+  const sync = () => {
+    if (Math.round(vv.width) !== fullAt) { fullAt = Math.round(vv.width); full = 0; }
+    full = Math.max(full, vv.height, window.innerHeight);
+    const now = full - vv.height > 120 && typing(document.activeElement);
+    // the visible part is given to CSS only while the keyboard is up. With it down a sheet takes the whole screen (100dvh, from
+    // the top): iOS 26 can leave visualViewport 24px short, or offset, after the keyboard closes (WebKit 297779), and a sheet
+    // that followed it would stop short of the bottom with the page showing under it
+    if (now) {
       root.style.setProperty('--vv-h', `${Math.round(vv.height)}px`);
       root.style.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
-      if (Math.round(vv.width) !== fullAt) { fullAt = Math.round(vv.width); full = 0; }
-      full = Math.max(full, vv.height, window.innerHeight);
-      root.toggleAttribute('data-keyboard', full - vv.height > 120 && typing(document.activeElement));
+    } else { root.style.removeProperty('--vv-h'); root.style.removeProperty('--vv-top'); }
+    root.toggleAttribute('data-keyboard', now);
+    if (now !== up) {
+      up = now;
+      // the keyboard went down: iOS scrolled the window to show the field and leaves it there, past the page's end (an empty
+      // band under the content) or, under a sheet, somewhere else on the page. Put the page back where she left it
+      if (!now) {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const y = document.querySelector('.mb-dialog-layer:not(.is-inline)') ? keptY : Math.min(window.scrollY, Math.max(0, max));
+        if (Math.abs(window.scrollY - y) > 1) window.scrollTo(window.scrollX, y);
+      }
+    }
+  };
+  // while the keyboard slides (iOS reports it in steps, Android every frame) the sheet follows it frame by frame, not one
+  // event late: that late frame is the gap with the page showing between the sheet and the keyboard
+  const follow = (ms: number) => {
+    trackUntil = performance.now() + ms;
+    if (track) return;
+    const step = () => { sync(); bring(); track = performance.now() < trackUntil ? requestAnimationFrame(step) : 0; };
+    track = requestAnimationFrame(step);
+  };
+  const update = (e?: Event) => {
+    if (e?.type === 'focusin' && !up && typing(e.target as Element)) keptY = window.scrollY;
+    sync();
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      sync();
       // after the new size is laid out (the sheet follows --vv-h in this frame), then once more when the keyboard has settled
       requestAnimationFrame(bring);
       clearTimeout(settle);
-      settle = window.setTimeout(bring, 350);
+      settle = window.setTimeout(() => { sync(); bring(); }, 350);
     });
+    if (e?.type === 'focusin' || e?.type === 'focusout') follow(700);
+  };
+  // A field focused while its sheet is still sliding in (autofocus, or focus a frame after opening) sits low on the screen at
+  // that moment, so the browser scrolls the page and the sheet's body to «show» it, and they stay scrolled when the sheet has
+  // arrived: the page jumps, and the field ends under the sheet's head. Such a field is focused without that scroll (the
+  // keyboard code above brings it into view itself), and on a touch screen the sheet arrives with a short fade instead of the
+  // slide, so the one movement she sees is the keyboard's (motion.md «یک حرکت در یک زمان»)
+  const proto = HTMLElement.prototype;
+  const focus = proto.focus;
+  proto.focus = function (this: HTMLElement, opts?: FocusOptions) {
+    const sheet = typing(this) ? this.closest<HTMLElement>('.mb-dialog-layer:not(.is-inline) .mb-dialog') : null;
+    if (!sheet) return focus.call(this, opts);
+    const sliding = sheet.getAnimations?.().filter((a) => a.playState === 'running') ?? [];
+    if (sliding.length && matchMedia('(pointer: coarse)').matches) {
+      sliding.forEach((a) => a.cancel());
+      const cs = getComputedStyle(root);
+      sheet.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: parseFloat(cs.getPropertyValue('--duration-fast')) || 150, easing: cs.getPropertyValue('--ease-enter').trim() || 'linear' });
+    }
+    return focus.call(this, { ...opts, preventScroll: true });
   };
   vv.addEventListener('resize', update);
   vv.addEventListener('scroll', update);
@@ -92,6 +141,6 @@ export function installKeyboard(): () => void {
   return () => {
     vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update);
     document.removeEventListener('focusin', update); document.removeEventListener('focusout', update);
-    cancelAnimationFrame(frame); clearTimeout(settle);
+    cancelAnimationFrame(frame); cancelAnimationFrame(track); clearTimeout(settle); proto.focus = focus;
   };
 }
