@@ -369,8 +369,9 @@ try {
       });
       assert.ok(!/^(PATCH|no )/.test(edited), edited);
       // a fresh load reads the server again (and may open another space first: go back to the sample without rebuilding it)
-      await page.reload({ waitUntil: 'networkidle' }); await page.getByText(/^خانه: /).waitFor();
-      if (!(await page.getByText('خانه: قهوهٔ تخصصی آنلاین').count())) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: /قهوهٔ تخصصی آنلاین/ }).first().click(); await page.getByText('خانه: قهوهٔ تخصصی آنلاین').waitFor(); }
+      // (a reload keeps the page she was on: the tab lives in the history entry, so wait for any page's title, not Home's)
+      await page.reload({ waitUntil: 'networkidle' }); await page.waitForFunction(() => /: /.test(document.querySelector('main h1')?.textContent ?? ''));
+      if (!(await page.evaluate(() => document.querySelector('main h1')?.textContent.includes('قهوهٔ تخصصی آنلاین')))) { await page.getByRole('button', { name: /^فضا: / }).first().click(); await page.getByRole('menuitem', { name: /قهوهٔ تخصصی آنلاین/ }).first().click(); await page.waitForFunction(() => document.querySelector('main h1')?.textContent.includes('قهوهٔ تخصصی آنلاین')); }
       const after = await staleCount();
       assert.ok(after > before, `«${edited}» changed, but the outputs page still counts ${after} (was ${before})`);
     });

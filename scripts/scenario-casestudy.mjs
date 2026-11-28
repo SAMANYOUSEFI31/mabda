@@ -74,7 +74,7 @@ try {
     await page.getByText('پیشنهاد ابزار بیرونی').first().waitFor().catch(() => {});
     await page.getByText(/پاسخ بیرونی/).first().waitFor();
     await page.getByText(/دلیل پیشنهاد/).first().waitFor();
-    await page.getByText(/تغییر پیشنهادی/).first().waitFor();
+    await page.getByText(/^منبع: /).first().waitFor();
 
     step(`[${width}] weekly review: three sections, then the summary`);
     await page.getByRole('button', { name: /بازبینی هفتگی/ }).first().click();

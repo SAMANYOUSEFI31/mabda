@@ -10,7 +10,7 @@ import { importLabel } from '../../core/importLabel';
 import { SOURCE_FA } from '../../core/provenance';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark, useLeaving, useMedia, PHONE } from '../../ui';
+import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, useLeaving, useMedia, PHONE } from '../../ui';
 
 const KIND_FA = SOURCE_FA; // one dictionary with the provenance lines (core/provenance.ts)
 
@@ -97,7 +97,7 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
             <div className="flex flex-wrap items-center justify-between gap-inline-sm">
               <div className="flex flex-col gap-stack-xs">
                 <span className="headline text-text-default">{o.title}</span>
-                <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {label(o.nodeId)}{sampleMark(o)}</span>
+                <span className="body-sm text-text-subtle">{TYPE_META[o.type].label} · {label(o.nodeId)}</span>
               </div>
             </div>
             {hints?.[o.id] && <p className="body-sm text-text-subtle">{hints[o.id]}</p>}
@@ -105,17 +105,16 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
               const ctx = proposalContext(o, objects);
               return (
                 <>
-                  <div className="flex flex-col gap-stack-xs">
-                    <span className="label-sm text-text-subtle">تغییر پیشنهادی</span>
-                    {ctx.replaces ? (
-                      <>
-                        <p className="body-sm text-text-default">جای «{ctx.replaces.title}» را می‌گیرد{ctx.replaces.title !== o.title ? ` با عنوان «${o.title}»` : ''}:</p>
-                        <BeforeAfter before={ctx.replaces.content} after={o.content} />
-                      </>
-                    ) : (
-                      <p className="body-md text-text-default">{o.content}</p>
-                    )}
-                  </div>
+                  {/* «تغییر پیشنهادی» names a change; a new item is just its text, and a text that only repeats its title is not said twice */}
+                  {ctx.replaces ? (
+                    <div className="flex flex-col gap-stack-xs">
+                      <span className="label-sm text-text-subtle">تغییر پیشنهادی</span>
+                      <p className="body-sm text-text-default">جای «{ctx.replaces.title}» را می‌گیرد{ctx.replaces.title !== o.title ? ` با عنوان «${o.title}»` : ''}:</p>
+                      <BeforeAfter before={ctx.replaces.content} after={o.content} />
+                    </div>
+                  ) : o.content.trim() !== o.title.trim() && (
+                    <p className="body-md text-text-default">{o.content}</p>
+                  )}
                   {!ctx.replaces && ctx.related.length > 0 && (
                     <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-subtle bg-surface-raised p-inset-md">
                       <span className="label-sm text-text-subtle">همین حوالی از قبل ثبت شده؛ ناسازگاری دارند؟</span>

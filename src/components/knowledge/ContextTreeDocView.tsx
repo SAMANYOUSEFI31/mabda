@@ -111,7 +111,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
     const before = objects.filter((o) => o.supersededById === obj.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />} action={<button type="button" className="body-sm inline-flex min-h-touch min-w-touch items-center justify-center text-text-default underline underline-offset-2" onClick={() => setCompare({ before: before[0], after: obj })}>مقایسه</button>}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
-    if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'MapPin'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
+    // the reach is said only where it is NOT the default (a red line everywhere, anything else in its section): said under every
+    // red line it was the same sentence six times in a row (user, 2026-11-28: no repeated signal)
+    if (reach !== (obj.type === 'Constraint' ? 'global' : 'position')) notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'MapPin'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
     return notes.length ? <>{notes}</> : undefined;
   };
   const card = (obj: ContextObject) => {
