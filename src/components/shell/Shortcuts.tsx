@@ -43,7 +43,7 @@ export const Shortcuts: React.FC<Props> = ({ onGoTab, onGoSpace }) => {
   }, []);
   return (
     <Dialog open={open} onClose={() => setOpen(false)} size="sm" title="میان‌برهای صفحه‌کلید"
-      footer={<Button variant="secondary" onClick={() => setOpen(false)}>بستن</Button>}>
+      footer={<Button variant="secondary" data-dismiss onClick={() => setOpen(false)}>بستن</Button>}>
       <div className="flex flex-col gap-stack-md">
         <Switch label="میان‌برهای تک‌کلیدی (N، /، ?، G)" checked={on} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setOn(e.target.checked); setLetterKeys(e.target.checked); }} />
         <dl className="flex flex-col divide-y divide-border-subtle">

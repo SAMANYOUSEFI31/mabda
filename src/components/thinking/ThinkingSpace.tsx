@@ -318,7 +318,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
           size="md"
           title="ساخت فکر ترکیبی"
           description={`یک نتیجهٔ تازه بنویس. ${formatNumber(selectedThoughts.length)} فکر مبدأ دست‌نخورده می‌مانند و فقط پیوند مشتق‌سازی ثبت می‌شود.`}
-          footer={<><Button variant="ghost" disabled={synthesisBusy} onClick={() => setSynthesis(null)}>انصراف</Button><Button variant="primary" loading={synthesisBusy} disabled={!synthesis.text.trim()} onClick={() => void saveSynthesis()}>ساخت فکر تازه</Button></>}
+          footer={<><Button variant="ghost" data-dismiss disabled={synthesisBusy} onClick={() => setSynthesis(null)}>انصراف</Button><Button variant="primary" loading={synthesisBusy} disabled={!synthesis.text.trim()} onClick={() => void saveSynthesis()}>ساخت فکر تازه</Button></>}
         >
           <div className="flex flex-col gap-stack-md">
             <Textarea label="نتیجهٔ تازه" rows={4} value={synthesis.text} onChange={(e) => setSynthesis({ ...synthesis, text: e.target.value })} />

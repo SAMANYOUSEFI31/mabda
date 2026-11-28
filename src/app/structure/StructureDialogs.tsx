@@ -82,7 +82,7 @@ export function StructureDialogs({ attempt, data, ensureLibrarySpec, handleApply
       onClose={() => setTemplateDraft(null)}
       size="sm"
       title="ذخیره به‌عنوان قالب"
-      footer={<><Button variant="ghost" onClick={() => setTemplateDraft(null)}>انصراف</Button><Button variant="primary" disabled={!templateDraft?.name.trim()} onClick={handleSaveTemplate}>ذخیرهٔ قالب</Button></>}
+      footer={<><Button variant="ghost" data-dismiss onClick={() => setTemplateDraft(null)}>انصراف</Button><Button variant="primary" disabled={!templateDraft?.name.trim()} onClick={handleSaveTemplate}>ذخیرهٔ قالب</Button></>}
     >
       <div className="flex flex-col gap-stack-sm">
         <TextField label="نام قالب" value={templateDraft?.name ?? ''} onChange={(e) => setTemplateDraft((d) => (d ? { ...d, name: e.target.value } : d))} />

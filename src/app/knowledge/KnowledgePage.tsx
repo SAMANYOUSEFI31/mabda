@@ -30,7 +30,12 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
   const [filesOpen, setFilesOpen] = useState(false);
   // the four views sit side by side in the switch: the new one comes from the side of its key (pageTransition.ts)
   const axis = useViewAxis(contextViewMode, VIEW_ORDER);
+  // «گذشته‌ها» is a view option (what to show, how much), used now and then: in «⋯» with its count, not a switch on a row of the
+  // page's own (root-cause audit, the role table: «گزینهٔ نمایش» goes in the view's menu)
+  const [showPast, setShowPast] = useState(false);
+  const pastCount = workspaceContexts.filter((o) => o.status === 'Superseded').length;
   const moreItems: MenuItem[] = [
+                  ...(contextViewMode === 'doc' && pastCount > 0 ? [{ label: showPast ? `پنهان کردن گذشته‌ها (${formatNumber(pastCount)})` : `نمایش گذشته‌ها (${formatNumber(pastCount)})`, icon: 'Replace' as const, onSelect: () => setShowPast((v) => !v) }, { divider: true }] : []),
                   ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Bookmark' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'Paperclip' as const, onSelect: () => setFilesOpen(true) }] : []),
@@ -79,6 +84,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
             /></PageSuspense>
           ) : contextViewMode === 'doc' ? (
             <ContextTreeDocView
+              showPast={showPast}
               objects={workspaceContexts}
               conflicts={contradictions}
               relationships={data.relationships ?? []}

@@ -21,7 +21,7 @@ export function ThinkingDialogs({ handleDeleteNote, handleSaveThought, handleSav
     <Dialog
       open={!!noteDeleteAsk} onClose={() => setNoteDeleteAsk(null)} size="sm" title="حذف یادداشت"
       description={noteDeleteAsk ? `این یادداشت ${formatNumber(noteDeleteAsk.open)} فکر باز دارد. فکرها مال خودت‌اند؛ اگر چیزی نگویی می‌مانند و روی هر کدام نوشته می‌شود «یادداشت حذف شد».` : undefined}
-      footer={<><Button variant="ghost" onClick={() => setNoteDeleteAsk(null)}>انصراف</Button><Button variant="danger" iconStart="Trash2" onClick={() => { const ask = noteDeleteAsk; setNoteDeleteAsk(null); if (ask) void handleDeleteNote(ask.id, noteDeleteWithThoughts); }}>حذف یادداشت</Button></>}
+      footer={<><Button variant="ghost" data-dismiss onClick={() => setNoteDeleteAsk(null)}>انصراف</Button><Button variant="danger" iconStart="Trash2" onClick={() => { const ask = noteDeleteAsk; setNoteDeleteAsk(null); if (ask) void handleDeleteNote(ask.id, noteDeleteWithThoughts); }}>حذف یادداشت</Button></>}
     >
       <div className="flex flex-col gap-stack-xs">
         <Checkbox label={`فکرهای باز هم بروند (${formatNumber(noteDeleteAsk?.open ?? 0)} فکر)`} checked={noteDeleteWithThoughts} onChange={(e) => setNoteDeleteWithThoughts(e.target.checked)} />

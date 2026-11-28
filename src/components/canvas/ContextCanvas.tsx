@@ -1050,7 +1050,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       {mode === 'thinking' && (
         <Dialog open={anchorOpen} onClose={() => setAnchorOpen(false)} size="sm" title="کارت حقیقت را کنار فکرها بیاور"
           description="همان کارتِ حقیقت است، نه کپی؛ اینجا فقط جایش را عوض می‌کنی و متنش از اینجا ویرایش نمی‌شود."
-          footer={<><Button variant="ghost" onClick={() => setAnchorOpen(false)}>انصراف</Button><Button variant="primary" disabled={!anchorId} onClick={() => { void p.onPlaceObject(anchorId, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); setAnchorOpen(false); }}>بگذار روی بوم فکر</Button></>}>
+          footer={<><Button variant="ghost" data-dismiss onClick={() => setAnchorOpen(false)}>انصراف</Button><Button variant="primary" disabled={!anchorId} onClick={() => { void p.onPlaceObject(anchorId, 40 + (placedIds.size % 4) * 260, 40 + Math.floor(placedIds.size / 4) * 150); setLayout('free'); setAnchorOpen(false); }}>بگذار روی بوم فکر</Button></>}>
           <Select label="کدام کارت؟" value={anchorId} onChange={(e) => setAnchorId(e.target.value)} options={[{ value: '', label: 'یکی را انتخاب کن' }, ...placeable(p.objects.filter((o) => o.status === 'Confirmed' && !o.sample), p.canvas.free).map((o) => ({ value: o.id, label: o.title }))]} />
         </Dialog>
       )}
@@ -1079,7 +1079,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
 
       <Dialog
         open={!!pending} onClose={() => setPending(null)} size="sm" title={pending?.kind === 'accept' ? 'تأیید این مورد؟' : 'برگرداندن مورد تأییدشده'}
-        footer={<><Button variant="ghost" onClick={() => setPending(null)}>انصراف</Button><Button variant="primary" loading={busy} onClick={confirmPending}>{pending?.kind === 'accept' ? 'تأیید' : 'برگردان'}</Button></>}
+        footer={<><Button variant="ghost" data-dismiss onClick={() => setPending(null)}>انصراف</Button><Button variant="primary" loading={busy} onClick={confirmPending}>{pending?.kind === 'accept' ? 'تأیید' : 'برگردان'}</Button></>}
       >
         {pending && (
           <div className="flex flex-col gap-stack-md">
@@ -1111,13 +1111,13 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       </Dialog>
 
       <Dialog open={!!moveTo} onClose={() => setMoveTo(null)} size="sm" title="جابه‌جا کن به بخش…" description="فقط بخشِ این مورد عوض می‌شود؛ جایش روی بوم همان می‌ماند. با «واگرد» برمی‌گردد."
-        footer={<><Button variant="ghost" onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
+        footer={<><Button variant="ghost" data-dismiss onClick={() => setMoveTo(null)}>انصراف</Button><Button variant="primary" disabled={!moveTo?.nodeId || moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId} loading={busy} onClick={async () => { const it = moveTo && byId.get(moveTo.itemId); if (moveTo && it) { await changeSection(it, moveTo.nodeId); setMoveTo(null); } }}>جابه‌جا کن</Button></>}>
         {moveTo && <NodePickerField label="بخش" hint={moveTo.nodeId === byId.get(moveTo.itemId)?.nodeId ? 'این مورد همین حالا در این بخش است؛ بخش دیگری انتخاب کن.' : undefined} nodes={p.nodes} value={moveTo.nodeId} onChange={(v) => setMoveTo({ ...moveTo, nodeId: v })} />}
       </Dialog>
 
       <Dialog open={!!fromItems} onClose={() => setFromItems(null)} size="sm" title={`ساخت بخش از ${formatNumber(picked.length)} مورد`}
         description="بخش تازه ساخته می‌شود و این موارد در آن قرار می‌گیرند؛ متنشان عوض نمی‌شود و هر جابه‌جایی در تاریخچه می‌ماند."
-        footer={<><Button variant="ghost" onClick={() => setFromItems(null)}>انصراف</Button><Button variant="primary" disabled={!fromItems?.label.trim() || picked.length === 0} loading={busy} onClick={async () => {
+        footer={<><Button variant="ghost" data-dismiss onClick={() => setFromItems(null)}>انصراف</Button><Button variant="primary" disabled={!fromItems?.label.trim() || picked.length === 0} loading={busy} onClick={async () => {
           if (!fromItems || !p.onSectionFromItems) return;
           setBusy(true);
           try {
@@ -1135,7 +1135,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
       </Dialog>
 
       <Dialog open={!!newNote} onClose={() => setNewNote(null)} size="sm" title="یادداشت آزاد روی بوم"
-        footer={<><Button variant="ghost" onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
+        footer={<><Button variant="ghost" data-dismiss onClick={() => setNewNote(null)}>انصراف</Button><Button variant="primary" disabled={!newNote?.content.trim()} loading={busy} onClick={async () => { if (!newNote) return; setBusy(true); try { await p.onCreateNote({ content: newNote.content.trim(), x: newNote.x, y: newNote.y, nodeId: newNote.nodeId }); setNewNote(null); setLayout('free'); } finally { setBusy(false); } }}>ذخیره</Button></>}>
         {newNote && (
           <div className="flex flex-col gap-stack-md">
             <Textarea label="یادداشت خام" rows={4} value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} hint="این یادداشت در فهرست فکرها نمی‌آید و در خروجی‌ها و بسته‌ها نیست. برای ایده، سؤال یا فرض باز «افزودن فکر» را بزن." />

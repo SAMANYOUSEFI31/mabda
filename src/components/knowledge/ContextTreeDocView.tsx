@@ -14,13 +14,15 @@ import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, flatten, primaryDepth, quickMoves, sectionPath, treeIndent } from '../../core/nodeTree';
 import { spaceTally } from '../../core/spaceTally';
 import type { MenuItem } from '../../ui';
-import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState, useMedia, PHONE } from '../../ui';
+import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState, useMedia, PHONE } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
 import { BeforeAfter } from '../shared/BeforeAfter';
 
 interface ContextTreeDocViewProps {
+  /** show the superseded truths too (the page's «⋯ › نمایش گذشته‌ها») */
+  showPast?: boolean;
   /** the app's unresolved contradictions, so the «تناقض» marker matches the counters (UX-04) */
   conflicts?: Contradiction[];
   objects: ContextObject[];
@@ -73,8 +75,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   /** «نمایش گذشته‌ها» (NEW-06): what was replaced stays out of the way by default and comes back, in its section, on request */
   const narrow = useMedia(PHONE); // a phone: the section's steps fold into its «⋯» (mb-section-head__wide hides them)
-  const [showPast, setShowPast] = useState(false);
-  const pastCount = objects.filter((o) => o.status === 'Superseded').length;
+  const showPast = !!props.showPast;
   const shownObjects = showPast ? objects.filter((o) => o.status !== 'Archived') : activeObjects;
   /** «پیش‌تر» → the two texts side by side */
   const [compare, setCompare] = useState<{ before: ContextObject; after: ContextObject } | null>(null);
@@ -293,10 +294,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   // «از بالا به اینجا می‌رسد» in a focused section: closed by default, and closed again when another section is focused
   const [aboveOpen, setAboveOpen] = useState(false);
   useEffect(() => { setAboveOpen(false); }, [props.focusId]);
-  const pastToggle = pastCount > 0 ? <Switch label={`نمایش گذشته‌ها (${formatNumber(pastCount)})`} checked={showPast} onChange={(e) => setShowPast(e.target.checked)} /> : null;
   const compareDialog = (
     <Dialog open={!!compare} onClose={() => setCompare(null)} size="md" title="پیش‌تر و اکنون" description={compare ? `«${compare.after.title}»` : undefined}
-      footer={<><Button variant="ghost" onClick={() => setCompare(null)}>بستن</Button><Button variant="secondary" onClick={() => { const o = compare!.after; setCompare(null); props.onSelectObject(o); }}>تاریخچهٔ کامل</Button></>}>
+      footer={<><Button variant="ghost" data-dismiss onClick={() => setCompare(null)}>بستن</Button><Button variant="secondary" onClick={() => { const o = compare!.after; setCompare(null); props.onSelectObject(o); }}>تاریخچهٔ کامل</Button></>}>
       {compare && <BeforeAfter before={compare.before.content} after={compare.after.content} />}
     </Dialog>
   );
@@ -312,10 +312,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         <div key={focusNode.id} className="focus-enter flex flex-col gap-stack-lg">
           {/* the section's view tools are ONE row, like the structure's own toolbar (research س۲، س۳): what reaches it from above (a
               disclosure) and the past (a filter). They were two blocks and a framed card, and pushed the section's title to y≈600 at 390 */}
-          {(above.length > 0 || pastToggle) && (
+          {above.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
               {above.length > 0 ? <Button size="sm" variant="ghost" iconStart={aboveOpen ? 'ChevronUp' : 'ChevronDown'} aria-expanded={aboveOpen} aria-controls="from-above" onClick={() => setAboveOpen((v) => !v)}>از بالا به اینجا می‌رسد ({formatNumber(above.length)})</Button> : <span />}
-              {pastToggle}
             </div>
           )}
           {above.length > 0 && aboveOpen && <FromAbove items={above} onOpen={(o) => props.onSelectObject(o)} />}
@@ -334,7 +333,6 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
         <div className="flex flex-wrap items-center gap-inline-sm">
           {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
           {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <span className="flex items-center"><StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} /><InfoTip term="نشانه‌ها">◆ حقیقت: تأییدشده و منبع هر خروجی. ◇ پیشنهاد: هنوز تأیید نشده و به هیچ خروجی نمی‌رود. نشانهٔ دوتایی زرد یعنی قدیمی: چیزی که به آن تکیه دارد عوض شده و پیش از استفاده باید نگاهش کنی.</InfoTip></span>; })()}
-          {pastToggle}
         </div>
         <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
       </div>

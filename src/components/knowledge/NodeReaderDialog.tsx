@@ -29,7 +29,7 @@ export const NodeReaderDialog: React.FC<Props> = ({ nodeId, nodes, objects, rela
       size="xl"
       title={node ? `سند: ${node.label}` : 'سند'}
       description="همهٔ دانش فعال این بخش و زیرشاخه‌هایش، به همان شکلی که در خروجی‌ها و بسته‌ها می‌آید."
-      footer={<Button variant="secondary" onClick={onClose}>بستن</Button>}
+      footer={<Button variant="secondary" data-dismiss onClick={onClose}>بستن</Button>}
     >
       <DocReader
         markdown={markdown}

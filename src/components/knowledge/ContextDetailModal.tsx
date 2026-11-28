@@ -417,7 +417,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       footer={
         isEditing && tab !== 'edit' ? (
           // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button
-          <Button variant="secondary" onClick={onClose}>بستن</Button>
+          <Button variant="secondary" data-dismiss onClick={onClose}>بستن</Button>
         ) : (
           <>
             {isEditing && !isSupersedingMode && object && (

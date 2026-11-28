@@ -86,7 +86,9 @@ try {
 
     await tryStep('past', async () => {
       await nav('حقیقت', 'حقیقت'); await radio('ساختار');
-      await page.getByRole('switch', { name: /^نمایش گذشته‌ها/ }).or(page.getByRole('checkbox', { name: /^نمایش گذشته‌ها/ })).first().click();
+      // «گذشته‌ها» is a view option in the page's «⋯» (root-cause audit: the role table)
+      await page.getByRole('button', { name: 'کارهای دیگر حقیقت' }).locator('visible=true').first().click();
+      await page.getByRole('menuitem', { name: /^نمایش گذشته‌ها/ }).click();
       await page.getByText('دورهٔ پایه ۲ میلیون تومان است.').first().scrollIntoViewIfNeeded();
       await shot('past');
     });

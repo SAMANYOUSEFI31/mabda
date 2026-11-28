@@ -87,7 +87,7 @@ const Packs: React.FC<Props> = ({ workspaceId, nodes, objects, onClose, onOpenOb
       open onClose={onClose} size="xl" title="بسته‌های دانش"
       description="یک‌بار بساز، با یک کلیک در هر ابزاری بچسبان. فقط دانش تأییدشده «واقعیت» است؛ فرض‌ها و گزینه‌های ردشده جدا و با دستور صریح می‌روند."
       footer={editing
-        ? <><Button variant="ghost" onClick={() => setEditing(null)}>انصراف</Button><Button variant="primary" loading={busy === 'save'} disabled={!editing.name.trim()} onClick={save}>ذخیرهٔ بسته</Button></>
+        ? <><Button variant="ghost" data-dismiss onClick={() => setEditing(null)}>انصراف</Button><Button variant="primary" loading={busy === 'save'} disabled={!editing.name.trim()} onClick={save}>ذخیرهٔ بسته</Button></>
         : <><Button variant="secondary" iconStart="Plus" onClick={() => setEditing({ name: '', instruction: '', selection: EMPTY })}>بستهٔ تازه</Button><Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button></>}
     >
       {error && <Alert intent="danger">{error}</Alert>}

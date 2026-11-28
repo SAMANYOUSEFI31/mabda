@@ -43,7 +43,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       onClose={() => setDemoConfirm(false)}
       size="sm"
       title="بازنشانی فضای نمونه؟"
-      footer={<><Button variant="ghost" onClick={() => setDemoConfirm(false)}>انصراف</Button><Button variant="primary" loading={demoBusy} onClick={handleResetDemo}>بازنشانی</Button></>}
+      footer={<><Button variant="ghost" data-dismiss onClick={() => setDemoConfirm(false)}>انصراف</Button><Button variant="primary" loading={demoBusy} onClick={handleResetDemo}>بازنشانی</Button></>}
     >
       <p className="body-md text-text-default">همهٔ داده‌های «فضای نمونه» (دانش، یادداشت، خروجی، تاریخچه) پاک و از نو ساخته می‌شود. فضاهای دیگرت دست نمی‌خورند.</p>
     </Dialog>
@@ -56,7 +56,7 @@ export function WorkspaceDialogs({ currentWorkspace, demoBusy, demoConfirm, demo
       description="هر فضا دانش، خروجی‌ها و تاریخچهٔ جدای خودش را دارد."
       footer={
         <>
-          <Button variant="ghost" onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
+          <Button variant="ghost" data-dismiss onClick={() => setIsNewWorkspaceModalOpen(false)}>انصراف</Button>
           <Button variant="primary" type="submit" form="new-workspace-form">افزودن فضا</Button>
         </>
       }

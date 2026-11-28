@@ -91,7 +91,7 @@ export const TestDataSection: React.FC<{ open: boolean }> = ({ open }) => {
             <Dialog open={purging !== null} onClose={() => { if (purging !== 'busy') setPurging(null); }} size="sm" title="پاک کردن دادهٔ آزمون"
               description="همهٔ رویدادها و گزارش‌های خطای دستگاه برای همیشه پاک می‌شوند. فضاها و دانش افراد دست نمی‌خورند."
               footer={<>
-                <Button variant="ghost" disabled={purging === 'busy'} onClick={() => setPurging(null)}>انصراف</Button>
+                <Button variant="ghost" data-dismiss disabled={purging === 'busy'} onClick={() => setPurging(null)}>انصراف</Button>
                 <Button variant="danger" loading={purging === 'busy'} onClick={() => void purge()}>برای همیشه پاک کن</Button>
               </>}>
               <div className="flex flex-col gap-stack-sm">
