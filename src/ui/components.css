@@ -901,19 +901,6 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-skip{position:fixed;inset-block-start:var(--space-2);inset-inline-start:var(--space-2);z-index:var(--layer-tooltip);padding:var(--inset-sm) var(--inset-md);border-radius:var(--radius-control);background:var(--surface-overlay);color:var(--text-default);box-shadow:var(--shadow-overlay);translate:0 calc(-100% - var(--space-4));opacity:0}
 .mb-skip:focus-visible,.mb-skip:focus{translate:none;opacity:1;outline:var(--focus-width) solid var(--border-focus);outline-offset:var(--focus-offset)}
 }
-/* a list's first entry (motion.md «هماهنگی» 5): rows come in one after another, 30ms apart, the eighth and later together; only rows
-   that mount, so a re-render never replays it. With «کاهش حرکت» the stagger and the travel are zero: a plain fade */
-@layer components{
-.mb-stagger>*{animation:mb-in var(--duration-base) var(--ease-enter) backwards}
-.mb-stagger>:nth-child(2){animation-delay:var(--duration-stagger)}
-.mb-stagger>:nth-child(3){animation-delay:calc(var(--duration-stagger) * 2)}
-.mb-stagger>:nth-child(4){animation-delay:calc(var(--duration-stagger) * 3)}
-.mb-stagger>:nth-child(5){animation-delay:calc(var(--duration-stagger) * 4)}
-.mb-stagger>:nth-child(6){animation-delay:calc(var(--duration-stagger) * 5)}
-.mb-stagger>:nth-child(7){animation-delay:calc(var(--duration-stagger) * 6)}
-.mb-stagger>:nth-child(n+8){animation-delay:calc(var(--duration-stagger) * 7)}
-}
-
 /* guided walk (Tour.tsx, §۴۸): one lit control, the rest of the page under the scrim */
 .mb-tour__spot{position:fixed;z-index:var(--layer-dialog);border-radius:var(--radius-control);box-shadow:0 0 0 100vmax var(--bg-scrim);pointer-events:none;transition:top var(--duration-base) var(--ease-standard),left var(--duration-base) var(--ease-standard),width var(--duration-base) var(--ease-standard),height var(--duration-base) var(--ease-standard)}
 .mb-tour__scrim{position:fixed;inset:0;z-index:var(--layer-dialog);background:var(--bg-scrim)}

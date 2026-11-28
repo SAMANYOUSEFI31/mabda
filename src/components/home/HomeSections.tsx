@@ -5,7 +5,7 @@
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import type { HomeAction, HomeSections as Sections } from '../../core/homeActions';
-import { Button, Icon, InfoTip, MarginItem, MarginList, MarginNote, Nuqta, StateTally, cx, formatJalaliDate, formatNumber } from '../../ui';
+import { Button, Icon, InfoTip, MarginItem, MarginList, MarginNote, Nuqta, StateTally, formatJalaliDate, formatNumber } from '../../ui';
 import type { IconName, NuqtaState, TallyRow } from '../../ui';
 
 const ICON: Record<HomeAction['kind'], IconName> = { stale: 'Clock', contradiction: 'TriangleAlert', review: 'Clock', ready: 'CircleCheck', proposals: 'Inbox', weekly: 'ListChecks', due: 'CalendarDays', thinking: 'MessageCircleQuestion', monitor: 'TrendingUp', unlinked: 'Link2', drafts: 'Pencil' };
@@ -59,9 +59,9 @@ function Section<T>({ id, title, items, render, info }: { id: string; title: str
   return (
     <section aria-labelledby={id} className="flex flex-col">
       <div className="flex items-center gap-inline-xs"><h2 id={id} className="heading-sm text-text-default">{title}</h2>{info && <InfoTip term={title}>{info}</InfoTip>}</div>
-      {/* motion.md «هماهنگی» 5: the stagger is for the list's first entry only. «N مورد دیگر» opens the rest at once: staggered, the
-          eighth row came 210ms after the press (rule 2 allows 100) */}
-      <ul className={cx(!all && 'mb-stagger', 'flex flex-col divide-y divide-border-subtle')}>{shown.map(render)}</ul>
+      {/* no entrance of its own (motion.md «هماهنگی» 5): the page arrives as one piece; rows coming in one after another on top of it
+          was a second motion for the same arrival (round 4, the user) */}
+      <ul className="flex flex-col divide-y divide-border-subtle">{shown.map(render)}</ul>
       {items.length > FIRST && (
         <div className="pt-stack-xs">
           <Button size="sm" variant="ghost" className="-ms-inset-md" iconEnd={all ? 'ChevronUp' : 'ChevronDown'} aria-expanded={all} onClick={() => setAll((v) => !v)}>
