@@ -306,7 +306,7 @@ for (const { width: w0, height, touch, rail } of SIZES) {
     const nav = width < 768 ? page.getByRole('navigation', { name: 'منوی پایینی موبایل' }) : page.getByRole('navigation', { name: 'بخش‌های اصلی نرم‌افزار' });
     await nav.getByRole('button', { name: 'حقیقت', exact: true }).first().click().catch(() => {}); await settle();
     await page.locator('main .mb-seg [role=radio]').filter({ hasText: 'ساختار' }).first().click().catch(() => {}); await settle();
-    await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click({ timeout: 3000 }).catch(() => {}); await settle();
+    await (async (pg) => { const b = pg.locator('main').getByRole('button', { name: /^رفتن به بخش/ }).locator('visible=true').first(); if (await b.count()) return b.click(); await pg.locator('main').getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); return pg.getByRole('menuitem', { name: 'رفتن به بخش' }).first().click(); })(page).catch(() => {}); await settle();
     if (await page.getByTestId('focus-bar').count()) { await check('context › section'); await pinCheck('context › section'); } else note(`${label} context › section`, ['walk could not enter a section']);
     // away and back: the section comes back as it was, without the page slipping
     await nav.getByRole('button', { name: 'فکر', exact: true }).first().click().catch(() => {}); await settle(); await check('thinking (from a section)');

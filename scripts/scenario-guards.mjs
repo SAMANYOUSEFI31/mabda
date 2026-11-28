@@ -244,7 +244,7 @@ try {
     await sample(page);
     await nav(page, 'حقیقت'); await radio(page, 'ساختار');
     const id = await page.locator('h3[id^=node-]').first().evaluate((h) => h.id.slice('node-'.length));
-    await page.getByRole('button', { name: /^رفتن به بخش / }).first().click();
+    await (async (pg) => { const b = pg.locator('main').getByRole('button', { name: /^رفتن به بخش/ }).locator('visible=true').first(); if (await b.count()) return b.click(); await pg.locator('main').getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); return pg.getByRole('menuitem', { name: 'رفتن به بخش' }).first().click(); })(page); // a phone folds it into the section's «⋯»
     await page.locator('[data-testid=focused-section]').waitFor();
     await radio(page, 'سند');
     await guard('[1280] changing the document tab keeps #node= and the entry\'s state', async () => {

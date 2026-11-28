@@ -64,7 +64,7 @@ for (const scheme of (process.env.SCHEMES || 'light,dark').split(',')) for (cons
   await page.waitForTimeout(300); await sectionMenu.click().catch(() => {}); await shot('menu-low');
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // a section, away to «فکر», and back: the page is where it was (layout.md «بی‌جابه‌جایی»)
-  await page.locator('main').getByRole('button', { name: /^رفتن به بخش / }).first().click().catch(() => {}); await page.waitForTimeout(700);
+  await (async (pg) => { const b = pg.locator('main').getByRole('button', { name: /^رفتن به بخش/ }).locator('visible=true').first(); if (await b.count()) return b.click(); await pg.locator('main').getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); return pg.getByRole('menuitem', { name: 'رفتن به بخش' }).first().click(); })(page).catch(() => {}); await page.waitForTimeout(700);
   await go('فکر', 'فکر'); await page.waitForTimeout(500); await go('حقیقت', 'حقیقت'); await shot('section-back');
   await go('خانه', 'خانه');
 

@@ -45,7 +45,7 @@ export const TRUSTED: Array<{ file: string; expr: string; why: string }> = [
   { file: 'src/components/knowledge/ArchiveDialog.tsx', expr: "label: label('removals', 'بخش‌ها')", why: 'label(k, t) = t, or t with a count' },
   { file: 'src/components/knowledge/ArchiveDialog.tsx', expr: "label: label('outputs', 'خروجی‌ها')", why: 'label(k, t) = t, or t with a count' },
   { file: 'src/components/knowledge/ArchiveDialog.tsx', expr: "label: label('workspaces', 'فضاها')", why: 'label(k, t) = t, or t with a count' },
-  { file: 'src/components/knowledge/ContextDetailModal.tsx', expr: '{label}', why: 'from KIND_CHIPS, a literal list in the same file' },
+  { file: 'src/components/knowledge/ContextDetailModal.tsx', expr: 'items={KIND_CHIPS}', why: 'KIND_CHIPS: a literal list in the same file' },
   { file: 'src/components/home/HomeSections.tsx', expr: '{button}', why: 'HomeAction.button: every one is a literal in src/core/homeActions.ts, or the literal «افزودن»' },
   { file: 'src/components/outputs/SpecEditorModal.tsx', expr: '{addLabel}', why: 'every caller of Rows passes a literal addLabel' },
   { file: 'src/components/shared/AddKindSwitch.tsx', expr: 'items={ADD_KINDS}', why: 'ADD_KINDS in src/core/addRequest.ts: literal labels' },

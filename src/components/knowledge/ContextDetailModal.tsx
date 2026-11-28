@@ -522,12 +522,10 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
           hint={titleTouched || !content.trim() ? undefined : 'خودکار از متن ساخته شد.'}
         />
         <div className="flex flex-wrap items-center gap-inline-sm">
-          <div role="radiogroup" aria-label="نوع" className="flex flex-wrap gap-inline-xs">
-            {KIND_CHIPS.map(({ id, label }) => {
-              const on = id === 'Assumption' ? type === 'Fact' && assumption : type === id && !(id === 'Fact' && assumption);
-              return <Button key={id} type="button" size="sm" role="radio" aria-checked={on} variant={on ? 'secondary' : 'ghost'} iconStart={on ? 'Check' : undefined} onClick={() => { setType(id === 'Assumption' ? 'Fact' : id); setAssumption(id === 'Assumption'); setTypeTouched(true); }}>{label}</Button>;
-            })}
-          </div>
+          {/* the kind is a choice in a form: a segmented control, the same shape as a thought's kind (QuickCaptureDialog) */}
+          <SegmentedControl label="نوع" fullWidth="phone" value={type === 'Fact' && assumption ? 'Assumption' : (KIND_CHIPS.some((c) => c.id === type) ? type : 'Fact')}
+            onChange={(id) => { setType(id === 'Assumption' ? 'Fact' : id as ContextObject['type']); setAssumption(id === 'Assumption'); setTypeTouched(true); }}
+            items={KIND_CHIPS} />
           {/* the section opens as a panel (a sheet on a phone) with the whole tree and a search, not a floating list (NodePicker) */}
           <Button ref={nodePickerBtn} type="button" size="sm" variant="ghost" iconStart="FolderTree" aria-haspopup="dialog" aria-expanded={nodePickerOpen} onClick={() => setNodePickerOpen((o) => !o)}>در: {nodes.find((n) => n.id === nodeId)?.label ?? nodes[0]?.label ?? 'بدون بخش'}</Button>
           <NodePicker open={nodePickerOpen} onClose={() => setNodePickerOpen(false)} anchor={nodePickerBtn} title="این دانش در کدام بخش باشد؟" nodes={nodes} value={nodeId} onPick={(v) => { setNodeId(v); setNodePicked(true); }} />

@@ -270,7 +270,11 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.locator('[role=radio]').filter({ hasText: /^Markdown$/ }).first().click(); await shoot('context-markdown');
   await page.locator('[role=radio]').filter({ hasText: /^ساختار$/ }).first().click();
   // add context dialog
-  await page.getByRole('button', { name: /^افزودن حقیقت به / }).first().click(); await shoot('dialog-context');
+  // a section's «افزودن حقیقت»: a button where the head is wide, the first item of the section's «⋯» on a phone
+  const addTruth = page.getByRole('button', { name: /^افزودن حقیقت به / }).locator('visible=true').first();
+  if (await addTruth.count()) await addTruth.click();
+  else { await page.getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); await page.getByRole('menuitem', { name: 'افزودن حقیقت' }).first().click(); }
+  await shoot('dialog-context');
   // the section picker over it: a panel at the inline-end edge / a sheet on a phone, with the tree and a search (NodePicker)
   await page.getByRole('dialog').getByRole('button', { name: /^در: / }).first().click(); await shoot('picker-node');
   await page.getByLabel('جستجوی بخش').fill('مال'); await shoot('picker-node-search'); await closeDialog(); await closeDialog();
@@ -321,7 +325,7 @@ for (const scheme of SCHEMES) for (const baseSize of SIZES) {
   await page.getByRole('region', { name: 'اعلان‌ها' }).getByRole('button', { name: 'بستن' }).first().click({ timeout: 800 }).catch(() => {});
   await goTab(TABS[1]); await shoot('context-doc-cafe');
   // «واردِ یک بخش شدن»: a section alone, a sub-section deeper, then back out with the on-screen button
-  await page.getByRole('button', { name: /^رفتن به بخش/ }).first().click(); await shoot('context-focus');
+  await (async (pg) => { const b = pg.locator('main').getByRole('button', { name: /^رفتن به بخش/ }).locator('visible=true').first(); if (await b.count()) return b.click(); await pg.locator('main').getByRole('button', { name: /^عملیات بخش / }).locator('visible=true').first().click(); return pg.getByRole('menuitem', { name: 'رفتن به بخش' }).first().click(); })(page); await shoot('context-focus');
   await page.getByTestId('sub-section').first().click(); await shoot('context-focus-deep');
   await page.getByRole('button', { name: /^برگشت به/ }).first().click(); await page.getByRole('button', { name: /^برگشت به/ }).first().click({ timeout: 1500 }).catch(() => {});
   await page.getByRole('radiogroup', { name: 'نمای حقیقت' }).getByRole('radio', { name: 'نمای کلی' }).click();

@@ -5,8 +5,8 @@
 
 import { ADD_DESCRIPTION } from '../../core/addRequest';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { ContextObject, Thought, TreeNode } from '../../types';
-import { Alert, Button, Checkbox, Dialog, formatNumber } from '../../ui';
+import type { ContextObject, Thought, ThoughtKind, TreeNode } from '../../types';
+import { Alert, Button, Checkbox, Dialog, SegmentedControl, formatNumber } from '../../ui';
 import { NodePickerField } from '../structure/NodePicker';
 import { THINKING_FA, THOUGHT_KINDS, composeThought, guessThoughtKind } from '../../core/thoughts';
 import type { ThinkingKind } from '../../core/thinkingMarkers';
@@ -152,13 +152,11 @@ export const QuickCaptureDialog: React.FC<Props> = ({ open, onClose, nodes, obje
           </div>
         </div>
         {!split && (
-          // the same «انتخاب بزرگ» chips as the type of new knowledge (ContextDetailModal): one pattern for «what kind is this?»
-          <div className="flex flex-col gap-stack-xs">
-            <div role="radiogroup" aria-label="نوع فکر" className="flex flex-wrap gap-inline-xs">
-              {THOUGHT_KINDS.map((k) => (
-                <Button key={k} type="button" size="sm" role="radio" aria-checked={kind === k} variant={kind === k ? 'secondary' : 'ghost'} iconStart={kind === k ? 'Check' : undefined} onClick={() => { setKind(k); setKindTouched(true); }}>{THINKING_FA[k]}</Button>
-              ))}
-            </div>
+                    <div className="flex flex-col gap-stack-xs">
+            {/* «what kind is this?» is a choice in a form: one shape everywhere, a segmented control (4 options, HIG: up to 5), as
+                the same choice already was when editing or combining thoughts (ThinkingList, ThinkingSpace). Chips with a tick read
+                as a filter of several (root-cause audit: one role, one shape) */}
+            <SegmentedControl label="نوع فکر" fullWidth="phone" value={kind} onChange={(v) => { setKind(v as ThoughtKind); setKindTouched(true); }} items={THOUGHT_KINDS.map((k) => ({ id: k, label: THINKING_FA[k] }))} />
             {!kindTouched && text.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
           </div>
         )}
