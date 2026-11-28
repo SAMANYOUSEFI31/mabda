@@ -441,6 +441,14 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-alert__text{color:var(--text-default)}
 .mb-alert__text p{margin:0}
 .mb-alert__action{margin-block-start:var(--stack-xs)}
+/* an alert of one sentence and one action, where the frame is wide: the action at the end of the sentence's line, not on a row of its
+   own (round 4, desktop density; the same rule as a list row: what to do sits on the line it is about) */
+@container mb-frame (min-width: 54rem){
+  .mb-alert__content:not(:has(.mb-alert__title)):has(.mb-alert__action){flex-direction:row;align-items:center;justify-content:space-between;gap:var(--inline-md)}
+  .mb-alert__content:not(:has(.mb-alert__title)) > .mb-alert__action{margin-block-start:0;flex:none}
+  .mb-alert:has(.mb-alert__content:not(:has(.mb-alert__title)) > .mb-alert__action){align-items:center}
+  .mb-alert:has(.mb-alert__content:not(:has(.mb-alert__title)) > .mb-alert__action) .mb-alert__icon{margin-block-start:0}
+}
 .mb-alert__close{margin:calc(var(--space-2) * -1)}
 .mb-alert__icon{margin-block-start:var(--space-0\.5)}
 .mb-alert--info{background:var(--bg-info-subtle);border-color:var(--border-info-subtle)}.mb-alert--info .mb-alert__icon{color:var(--icon-info)}

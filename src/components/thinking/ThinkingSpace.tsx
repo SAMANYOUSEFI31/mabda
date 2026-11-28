@@ -144,9 +144,10 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     </div>
   );
   return (
-    // one reading column at every width (the page frame, decisions.md §۵۳ ۹; 680, the reading measure): on a wide frame a row's
-    // action stayed ~600px from its title (Gestalt proximity, Fitts) once the filter margin was gone; its filters are the title row's «فیلترها (n)»
-    <div className="flex w-full max-w-reading flex-col gap-stack-lg" data-testid="thinking-space">
+    // the list fills the page frame, like every page's content (decisions.md §۵۳ ۹): a 680 column at the start of a wide frame left
+    // the other half of the page empty and the page lopsided (the user, round 4). The reading measure belongs to blocks of running
+    // text, not to a list of short rows and side-by-side pairs. Its filters are the title row's «فیلترها (n)»
+    <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
       {/* the filters are filters (round 3, «نقش‌کور»): one facet «what» with several at once (OR, faceted search, NN/g) and the
           section (AND), behind ONE control in the title's row, «فیلترها (n)», at every width (round 4, the user on a computer: the

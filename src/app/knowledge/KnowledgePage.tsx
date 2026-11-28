@@ -73,16 +73,19 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           <div key={contextViewMode} className={viewEnterClass} data-axis={axis}>
           {contextViewMode === 'canvas' ? renderCanvas('truth') : <div className="mb-page-frame space-y-stack-lg">
           {contextViewMode === 'read' ? (
-            <PageSuspense><DocWorkspace
-              nodes={nodes}
-              objects={workspaceContexts}
-              relationships={data.relationships}
-              approvals={approvals}
-              fileName={currentWorkspace.name}
-              empty={<EmptyState title="هنوز دانشی ثبت نشده است" />}
-              onOpenSuggestions={() => openThinkingSpace()}
-              focusNodeId={focusNodeId}
-            /></PageSuspense>
+            // a section chosen in the side bar is a new place, like a page: it arrives with the page's own entrance (motion.md);
+            // «ساختار» has its own («رفتن به عمق»), «سند» and «جدول» had none, so a click there seemed to do nothing (round 4)
+            <div key={focusNodeId ?? ''} className="mb-page-enter">            <PageSuspense><DocWorkspace
+                nodes={nodes}
+                objects={workspaceContexts}
+                relationships={data.relationships}
+                approvals={approvals}
+                fileName={currentWorkspace.name}
+                empty={<EmptyState title="هنوز دانشی ثبت نشده است" />}
+                onOpenSuggestions={() => openThinkingSpace()}
+                focusNodeId={focusNodeId}
+              /></PageSuspense>
+            </div>
           ) : contextViewMode === 'doc' ? (
             <ContextTreeDocView
               showPast={showPast}
@@ -122,14 +125,15 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               onExtractNote={handleExtractNote}
             />
           ) : (
-            <PageSuspense><ContextTableView
-              objects={workspaceContexts}
-              conflicts={contradictions}
-              nodes={nodes}
-              onSelectObject={(obj) => openContext(obj)}
-              samples={data.samples ?? []}
-              focusNodeId={focusNodeId}
-            /></PageSuspense>
+            <div key={focusNodeId ?? ''} className="mb-page-enter">            <PageSuspense><ContextTableView
+                objects={workspaceContexts}
+                conflicts={contradictions}
+                nodes={nodes}
+                onSelectObject={(obj) => openContext(obj)}
+                samples={data.samples ?? []}
+                focusNodeId={focusNodeId}
+              /></PageSuspense>
+            </div>
           )}
 
           {/* the files (§۵۴ ۱۴): each section already shows its own files where they belong; the whole list (process, move, delete)

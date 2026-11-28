@@ -64,7 +64,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
   const moving = moveId === c.itemA.id ? c.itemA : c.itemB;
   const run = async (key: string, fn: () => Promise<void>) => { setBusy(key); try { await fn(); } finally { setBusy(null); } };
   const column = (o: ContextObject, ordinal: string) => (
-    <div className="flex flex-col gap-stack-sm rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg">
+    <div className="flex flex-col gap-stack-xs rounded-control-sm border border-border-default bg-surface-sunken p-inset-md">
       <div className="flex flex-wrap items-center justify-between gap-inline-sm">
         <span className="label-md text-text-default">{ordinal}: {o.title}</span>
         <span className="flex items-center gap-inline-xs"><TypeBadge value={o.type} /><StatusBadge value={o.status} /></span>
@@ -72,9 +72,10 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
       <span className="body-sm text-text-subtle">بخش: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
       <p className="body-md text-text-default">{o.content}</p>
       {/* the two claims sit side by side in a grid that makes them equally tall; the action belongs to the card's foot, so both
-          buttons share one line however long either text is (decisions.md §۴۹) */}
+          buttons share one line however long either text is (decisions.md §۴۹). The width of the thumb on a phone, its own width where a
+          pointer aims (round 4: a 450px bar on a computer was weight without purpose; Fitts needs size only where the target is small) */}
       <div className="mt-auto pt-stack-xs">
-        <Button variant="secondary" size="sm" fullWidth iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
+        <Button variant="secondary" size="sm" fullWidth className="md:w-auto" iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
       </div>
     </div>
   );

@@ -92,8 +92,7 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   );
 
   return (
-    // the reading measure (680) at every width: an output is text to read and copy, and its «کپی» stays near its title
-    <div className="flex w-full max-w-reading flex-col gap-stack-lg">
+    <div className="flex flex-col gap-stack-lg">
       {/* «به‌روز نیست» is a group that needs her, not a second place (root-cause audit «نقش‌کور»): no tabs that read as two
           pages when one is part of the other. It comes first under its own heading, the rest under theirs (iOS Settings, Mail) */}
       {live.length === 0 ? (
