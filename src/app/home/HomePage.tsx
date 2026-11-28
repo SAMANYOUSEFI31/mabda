@@ -74,7 +74,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               «منتظر تو» (the due items below), and each expectation is read on its monitored truth */}
 
           {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
-            <Card padding="xl" id="open-thinking" className="flex flex-col gap-stack-md" aria-label="سؤال‌ها و تصمیم‌های باز">
+            <Card section id="open-thinking" className="flex flex-col gap-stack-md" aria-label="سؤال‌ها و تصمیم‌های باز">
               <div className="flex flex-col gap-stack-xs">
                 <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
                 <p className="body-sm text-text-subtle">سؤال‌ها و تصمیم‌های بازِ فکرهایت، از خط‌های یادداشت‌ها و از فکرهایی که خودت ثبت کرده‌ای؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز در خروجی‌ها و بسته‌ها نمی‌آیند.</p>
@@ -116,14 +116,14 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               bar's). The one outward step of the loop (truth → another tool) is visible where there is room; the rest are occasional
               (decisions.md §۴, §۲۶: grouped by job). PageHead puts all of it in the title's «⋯» on a phone */}
           <PageHead
-            title={`خانه: ${currentWorkspace.name}`}
+            title="خانه" context={currentWorkspace.name}
             moreLabel="بیشتر"
             actions={workspaceContexts.length > 0 ? [{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => setAiRequest({ scopeNodeId: '' }) }] : []}
             more={workspaceContexts.length > 0 ? [
               { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
               { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
               { divider: true },
-              { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'Layers', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
+              { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'GitCompareArrows', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
               { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
             ] : []}
           />

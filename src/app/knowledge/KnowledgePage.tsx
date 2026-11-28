@@ -33,7 +33,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
   const moreItems: MenuItem[] = [
                   ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Package' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
-                  ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'FileText' as const, onSelect: () => setFilesOpen(true) }] : []),
+                  ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'Paperclip' as const, onSelect: () => setFilesOpen(true) }] : []),
                   // the start skeletons and her own saved templates (§۵۳ ۱۱): «ذخیره به‌عنوان قالب» in each section's ⋯ had no way back
                   { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
@@ -44,7 +44,7 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
           {/* the page frame every page shares (decisions.md §۵۳ ۹; only «نمای کلی», a canvas, takes the whole main area); the four views are one choice, all visible (patterns.md «نماها»);
               the page's occasional tasks under «⋯», at the end of the title's row on a phone (PageHead) */}
           <div className="mb-page-frame"><PageHead
-            title={`حقیقت: ${currentWorkspace.name}`}
+            title="حقیقت" context={currentWorkspace.name}
             info={{ term: 'حقیقت', text: 'مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.' }}
             moreLabel="کارهای دیگر حقیقت"
             more={moreItems}

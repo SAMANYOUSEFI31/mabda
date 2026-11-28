@@ -74,7 +74,7 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
           could not be found (decisions.md §۴۹), so both are visible where there is room. On a phone they are the first two items of
           the title's «⋯» (PageHead) */}
       <PageHead
-        title={`خروجی‌ها: ${currentWorkspace.name}`}
+        title="خروجی‌ها" context={currentWorkspace.name}
         info={{ term: 'خروجی‌ها', text: 'هر چه از حقیقت‌هایت برای جای دیگری ساختی یا فرستادی، با ردپایش اینجا می‌ماند؛ اگر حقیقتی که در آن بود عوض شود، می‌گوید.' }}
         moreLabel="بیشتر دربارهٔ خروجی‌ها"
         actions={[
@@ -124,7 +124,7 @@ function FrozenBuild({ specs, openSpecEditor, setIsSpecLibraryOpen, setSelectedS
     <section className="flex flex-col gap-stack-md" aria-label="بساز" data-testid="outputs-build">
       <h2 className="heading-sm text-text-default">بساز</h2>
       {specs.length === 0 ? (
-        <EmptyState title="هنوز چیزی برای ساختن انتخاب نکرده‌ای" description="از کتابخانه یکی را بردار یا خودت یکی بنویس." action={<Button variant="secondary" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
+        <EmptyState title="هنوز چیزی برای ساختن انتخاب نکرده‌ای" description="از کتابخانه یکی را بردار یا خودت یکی بنویس." action={<Button variant="secondary" iconStart="Library" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>} />
       ) : (
         <ul className="flex flex-col" aria-label="جریان‌های کار">
           {specs.map((sp) => (
@@ -140,7 +140,7 @@ function FrozenBuild({ specs, openSpecEditor, setIsSpecLibraryOpen, setSelectedS
       )}
       <div className="flex flex-wrap gap-inline-sm">
         <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => openSpecEditor()}>جریان کار تازه</Button>
-        {specs.length > 0 && <Button size="sm" variant="ghost" iconStart="Layers" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>}
+        {specs.length > 0 && <Button size="sm" variant="ghost" iconStart="Library" onClick={() => setIsSpecLibraryOpen(true)}>افزودن از کتابخانه</Button>}
       </div>
     </section>
   );

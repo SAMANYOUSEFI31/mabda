@@ -223,11 +223,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const workspacePicker = (compact: boolean) => (
     <Menu
       label="فضاها"
-      className="min-w-space-0 flex-1"
+      className={compact ? 'min-w-space-0 max-w-full' : 'min-w-space-0 flex-1'}
       trigger={(
-        <button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} className="flex min-h-touch w-full min-w-space-0 items-center gap-inline-sm rounded-control px-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed">
+        // the phone's bar: mark, name and ⌃⌄ are one control, as wide as its name (iOS title menu): the chevron follows the name
+        // instead of standing at the far side next to search. A name too long for the bar ends in «…» (a bar is one line; the
+        // whole name is in the menu it opens). The sidebar keeps the full-width row with the chevron at its end (a switcher row)
+        <button type="button" aria-label={`فضا: ${currentWorkspace.name}، عوض کردن فضا`} className={`flex min-h-touch min-w-space-0 items-center gap-inline-sm rounded-control px-inset-sm text-start transition-colors hover:bg-interaction-hover active:bg-interaction-pressed ${compact ? 'max-w-full' : 'w-full'}`}>
           <BrandMark size={compact ? 'sm' : undefined} />
-          <span className={compact ? 'body-sm min-w-space-0 flex-1 truncate text-text-subtle' : 'label-md min-w-space-0 flex-1 truncate text-text-default'}>{currentWorkspace.name}</span>
+          <span className={compact ? 'body-sm min-w-space-0 truncate text-text-subtle' : 'label-md min-w-space-0 flex-1 truncate text-text-default'}>{currentWorkspace.name}</span>
           <Icon name="ChevronsUpDown" size="md" className="shrink-0 text-icon-subtle" />
         </button>
       )}

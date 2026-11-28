@@ -68,7 +68,7 @@ function ShellSkeleton() {
           <PageSkeleton label="در حال آوردن فضا" />
         </main>
       </div>
-      <div aria-hidden="true" className="mb-bottomnav fixed bottom-space-0 start-space-0 end-space-0 h-space-20 md:hidden" />
+      <div aria-hidden="true" className="mb-bottomnav fixed bottom-space-0 start-space-0 end-space-0 md:hidden"><div className="h-space-16" /></div>
     </div>
   );
 }

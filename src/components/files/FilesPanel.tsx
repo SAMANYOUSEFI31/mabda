@@ -65,7 +65,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
   const total = quota?.quota ?? 0;
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-md">
+    <Card section className="flex flex-col gap-stack-md">
       <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
         <div className="flex flex-col gap-stack-xs">
           <h2 className="heading-sm text-text-default">فایل‌ها</h2>
@@ -108,7 +108,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
                 </div>
                 <div className="flex items-center gap-inline-xs">
                   {managed && (f.status === 'uploaded' || f.status === 'failed') && (
-                    <Button size="sm" variant="secondary" iconStart="FolderInput" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
+                    <Button size="sm" variant="secondary" iconStart="ScanText" loading={busy === f.id} onClick={() => run(f.id, () => onProcess(f.id))}>
                       {f.status === 'failed' ? 'دوباره' : 'پردازش'}
                     </Button>
                   )}

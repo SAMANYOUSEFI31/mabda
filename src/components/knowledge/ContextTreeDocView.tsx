@@ -98,9 +98,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const marginFor = (obj: ContextObject) => {
     const reach = obj.reach ?? (obj.type === 'Constraint' ? 'global' : 'position');
     const notes: React.ReactNode[] = [];
-    if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="TriangleAlert">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
-    else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="Lightbulb">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
-    else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="History">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
+    if (obj.status === 'Needs Review') notes.push(<MarginNote key="s" icon="Clock">چیزی که این به آن تکیه دارد عوض شده؛ پیش از استفاده نگاهش کن.</MarginNote>);
+    else if (obj.status === 'Proposed') notes.push(<MarginNote key="s" icon="CircleDashed">هنوز پیشنهاد است؛ تا تأیید نکنی به هیچ ابزاری داده نمی‌شود.</MarginNote>);
+    else if (obj.status === 'Superseded' || obj.status === 'Archived') notes.push(<MarginNote key="s" icon="Replace">{obj.status === 'Superseded' ? 'جایگزین شده؛ فقط برای سابقه می‌ماند.' : 'بایگانی شده؛ فقط برای سابقه می‌ماند.'}</MarginNote>);
     // a change she wrote and kept as a draft: said where the text is, not only inside the dialog (Nielsen 1: the state is visible)
     if (obj.draft) notes.push(<MarginNote key="d" lead={<Nuqta state="proposed" size="sm" />} action={<button type="button" className="body-sm inline-flex min-h-touch min-w-touch items-center justify-center text-text-default underline underline-offset-2" onClick={() => props.onSelectObject(obj)}>دیدن تغییر</button>}>تغییری نوشته‌ای که هنوز جایگزین نشده؛ تا تأییدش نکنی، همین متن معتبر است.</MarginNote>);
     const other = conflictWith.get(obj.id);
@@ -108,7 +108,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     // past: what this replaced, in the margin of the item that replaced it (the newest one; the rest are counted)
     const before = objects.filter((o) => o.supersededById === obj.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     if (before.length) notes.push(<MarginNote key="p" lead={<Nuqta state="past" size="sm" />} action={<button type="button" className="body-sm inline-flex min-h-touch min-w-touch items-center justify-center text-text-default underline underline-offset-2" onClick={() => setCompare({ before: before[0], after: obj })}>مقایسه</button>}>پیش‌تر: {before[0].content}{before.length > 1 ? ` (و ${formatNumber(before.length - 1)} مورد پیش‌تر)` : ''}</MarginNote>);
-    if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'Target'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
+    if (obj.type === 'Constraint' || reach !== 'position') notes.push(<MarginNote key="r" icon={reach === 'global' ? 'Layers' : 'MapPin'}>{reach === 'global' ? 'همه‌جای این فضا اعمال می‌شود.' : 'فقط در همین بخش اعمال می‌شود.'}</MarginNote>);
     return notes.length ? <>{notes}</> : undefined;
   };
   const card = (obj: ContextObject) => {
@@ -150,7 +150,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
     const sources = [...nodeObjects.filter((o) => o.source).reduce((m, o) => m.set(o.source!.label ?? 'ورودی', (m.get(o.source!.label ?? 'ورودی') ?? 0) + 1), new Map<string, number>())];
 
     return (
-      <section key={node.id} className={`mb-section flex flex-col gap-stack-md ${depth > 0 ? 'ps-inset-lg border-s border-border-subtle' : ''}`} aria-labelledby={`node-${node.id}`}>
+      <section key={node.id} className={`mb-section flex flex-col gap-stack-md ${depth > 0 ? 'mb-section--sub border-s border-border-subtle' : ''}`} aria-labelledby={`node-${node.id}`}>
         <div className="mb-section-head border-b border-border-subtle pb-inset-sm">
           <div className="mb-section-head__title flex flex-wrap items-baseline gap-x-inline-sm">
             <span className="label-md tabular-nums text-text-subtlest">{path}</span>
@@ -177,10 +177,10 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { divider: true },
                 { label: 'افزودن فایل به این بخش', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: node.id, scoped: true }) },
                 { label: 'افزودن زیربخش', icon: 'Plus', onSelect: () => props.onNodeAction({ kind: 'create', parentId: node.id }) },
-                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'Target' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
-                { label: 'ذخیره به‌عنوان قالب', icon: 'Package', onSelect: () => props.onSaveAsTemplate(node.id) },
+                ...(managedEnabled ? [{ label: 'مربی دانش', icon: 'GraduationCap' as const, onSelect: () => props.onNodeAction({ kind: 'coach', nodeId: node.id }) }] : []),
+                { label: 'ذخیره به‌عنوان قالب', icon: 'LayoutTemplate', onSelect: () => props.onSaveAsTemplate(node.id) },
                 { label: 'تغییر نام', icon: 'Pencil', onSelect: () => props.onNodeAction({ kind: 'rename', nodeId: node.id }) },
-                { label: 'جابه‌جایی…', icon: 'Network', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
+                { label: 'جابه‌جایی…', icon: 'Move', onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id }) },
                 // the quick moves: reorder at once (nothing changes for what reaches it); a change of level shows its effect first
                 { label: 'بالاتر ببر', icon: 'ChevronUp', disabled: quick(node.id).up === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).up!) },
                 { label: 'پایین‌تر ببر', icon: 'ChevronDown', disabled: quick(node.id).down === undefined, onSelect: () => void props.onReorderNode(node.id, quick(node.id).down!) },
@@ -199,7 +199,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
           // state: the branch's own row above already has «افزودن»
           <div className="flex flex-wrap items-center justify-between gap-inline-sm rounded-control border border-dashed border-border-default px-inset-md py-inset-sm">
             <p className="body-sm text-text-subtle">هنوز چیزی در این شاخه نیست.</p>
-            <Button variant="ghost" size="sm" iconStart="FileText" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button>
+            <Button variant="ghost" size="sm" iconStart="StickyNote" onClick={() => toggleNotes(node.id)}>یادداشت‌ها</Button>
           </div>
         ) : (
           <>
@@ -228,7 +228,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <section className="flex flex-col gap-stack-sm" aria-label={`فکر و یادداشتِ ${node.label}`}>
                 <div className="flex flex-wrap items-center gap-inline-xs">
                   {props.openCount(node.id) > 0 && <Button size="sm" variant="ghost" iconStart="Lightbulb" data-testid="open-thoughts" onClick={() => props.onOpenThinking(node.id)}>{formatNumber(props.openCount(node.id))} فکر باز</Button>}
-                  {(nodeNotes.length > 0 || notesOpen) && <Button size="sm" variant="ghost" iconStart="FileText" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>}
+                  {(nodeNotes.length > 0 || notesOpen) && <Button size="sm" variant="ghost" iconStart="StickyNote" aria-expanded={notesOpen} onClick={() => toggleNotes(node.id)}>یادداشت‌ها ({formatNumber(nodeNotes.length)})</Button>}
                 </div>
                 {notesOpen && (
                   <NodeNotes

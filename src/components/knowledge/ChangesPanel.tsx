@@ -31,13 +31,13 @@ export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION;
 
   return (
-    <Card padding="xl" id="changes" className="flex flex-col gap-stack-md" aria-label="چه چیزی عوض شد">
+    <Card section id="changes" className="flex flex-col gap-stack-md" aria-label="چه چیزی عوض شد">
       <div className="flex flex-wrap items-center justify-between gap-inline-md">
         <div className="flex flex-col gap-stack-xs">
           <h2 className="heading-sm text-text-default">چه چیزی عوض شد؟</h2>
           <p className="body-sm text-text-subtle">تغییرهای دانش در {formatNumber(DEFAULT_DAYS)} روز اخیر به تفکیک عامل، و خروجی‌هایی که با هر تغییر نیاز به بازبینی پیدا کرده‌اند.</p>
         </div>
-        {onCompare && <Button variant="secondary" size="sm" iconStart="Layers" onClick={onCompare}>مقایسهٔ دو لحظه</Button>}
+        {onCompare && <Button variant="secondary" size="sm" iconStart="GitCompareArrows" onClick={onCompare}>مقایسهٔ دو لحظه</Button>}
         <Button variant="secondary" size="sm" aria-expanded={open} iconEnd={open ? 'ChevronUp' : 'ChevronDown'} onClick={onToggle}>{open ? 'بستن' : 'نمایش'}</Button>
       </div>
 

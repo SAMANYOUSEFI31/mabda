@@ -36,7 +36,7 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
     return check ? <Card padding="lg" id="contradictions" aria-label="تناقض‌ها"><CheckBar check={check} /></Card> : null;
   }
   return (
-    <Card padding="xl" id="contradictions" className="flex flex-col gap-stack-md" aria-label="تناقض‌ها">
+    <Card section id="contradictions" className="flex flex-col gap-stack-md" aria-label="تناقض‌ها">
       <div className="flex flex-col gap-stack-xs border-b border-border-default pb-inset-lg">
         <div className="flex items-center gap-inline-sm">
           <h2 className="heading-sm text-text-default">تناقض‌ها</h2>
@@ -73,7 +73,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
     </div>
   );
   return (
-    <div className="flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
+    <div className="mb-group flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
       <p className="label-md text-text-default">{c.reason}</p>
       <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
         {column(c.itemA, 'مورد اول')}
@@ -88,7 +88,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
         <div className="lg:flex-1">
           <NodePickerField label="به این بخش" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" disabledIds={new Set([moving.nodeId])} disabledReason="همین‌جاست" />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
         </div>
-        <Button variant="secondary" iconStart="Network" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
+        <Button variant="secondary" iconStart="Split" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
       </div>
     </div>
   );

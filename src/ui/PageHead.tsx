@@ -19,10 +19,17 @@ export interface PageAction { label: string; icon: IconName; onSelect: () => voi
  * Where the head is narrow or wide is decided by the page frame's width (container query `mb-frame`, components.css), not by
  * the screen, so a narrow window on a computer gets the same compact head as a phone.
  */
-export function PageHead({ title, info, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
-  title: string; info?: { term: string; text: ReactNode }; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
+export function PageHead({ title, context, info, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
+  title: string;
+  /** what the page is OF (the space's name): written after the title where the head is wide; where it is narrow (a phone) the
+   *  app bar right above already names it, so it is left to screen readers there, and the title keeps to one line */
+  context?: string;
+  info?: { term: string; text: ReactNode }; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
 }) {
-  const cut = title.lastIndexOf(' ');
+  const full = context ? `${title}: ${context}` : title;
+  // the words before the last one, and the last one, which is glued to ⓘ; with a context, the last word is the context's
+  const lead = context ? context.slice(0, context.lastIndexOf(' ') + 1) : title.slice(0, title.lastIndexOf(' ') + 1);
+  const last = context ? context.slice(context.lastIndexOf(' ') + 1) : title.slice(title.lastIndexOf(' ') + 1);
   const narrowItems: MenuItem[] = [...actions.map((a) => ({ label: a.label, icon: a.icon, onSelect: a.onSelect })), ...(actions.length && more.length ? [{ divider: true }] : []), ...more];
   return (
     <div className="mb-page-head">
@@ -30,8 +37,10 @@ export function PageHead({ title, info, views, actions = [], more = [], moreLabe
         <div className="min-w-space-0 flex-1">
           {/* ⓘ is glued to the title's last word (one no-wrap run), so it never wraps to a line of its own. It sits in the heading
               for that, and the heading's name stays the title alone (aria-label) */}
-          <h1 className="text-heading-md font-bold text-pretty text-text-default" aria-label={info ? title : undefined}>
-            {info ? <>{title.slice(0, cut + 1)}<span className="whitespace-nowrap">{title.slice(cut + 1)}<span className="mb-page-head__info"><InfoTip term={info.term}>{info.text}</InfoTip></span></span></> : title}
+          <h1 className="text-heading-md font-bold text-pretty text-text-default" aria-label={info || context ? full : undefined}>
+            {context ? (
+              <>{title}<span className="mb-page-head__context">: {lead}</span><span className="whitespace-nowrap"><span className="mb-page-head__context">{last}</span>{info && <span className="mb-page-head__info"><InfoTip term={info.term}>{info.text}</InfoTip></span>}</span></>
+            ) : info ? <>{lead}<span className="whitespace-nowrap">{last}<span className="mb-page-head__info"><InfoTip term={info.term}>{info.text}</InfoTip></span></span></> : title}
           </h1>
         </div>
         {narrowItems.length > 0 && <span className="mb-page-head__top-more"><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={narrowItems} /></span>}

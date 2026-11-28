@@ -29,7 +29,7 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
               reading column (§۵۱) with the filters in the margin beside it. Only the canvas takes the whole main area; the header stays
               in the frame in both views so «فهرست / بوم» does not move under the pointer */}
           <div className="mb-page-frame"><PageHead
-            title={`فکر: ${currentWorkspace.name}`}
+            title="فکر" context={currentWorkspace.name}
             info={{ term: 'فکر', text: 'هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.' }}
             // adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳)
             views={<SegmentedControl

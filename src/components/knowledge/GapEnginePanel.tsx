@@ -43,7 +43,7 @@ export const GapEnginePanel: React.FC<GapEnginePanelProps> = ({
   };
 
   return (
-    <Card padding="xl" className="flex flex-col gap-stack-md">
+    <Card section className="flex flex-col gap-stack-md">
       {/* Header & readiness */}
       <div className="flex flex-col justify-between gap-inline-lg border-b border-border-default pb-inset-lg md:flex-row md:items-center">
         <div className="flex flex-col gap-stack-xs">
