@@ -5,6 +5,7 @@
 
 import type { Contradiction } from '../../types';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { NodePickerField } from '../structure/NodePicker';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../../types';
 import { conflictPartners, DISPLAY_LABEL, displayState } from '../../core/displayState';
 import {
@@ -103,12 +104,13 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
           onChange={(e) => setSelectedStatus(e.target.value)}
           options={[{ value: 'all', label: 'تمام وضعیت‌ها' }, ...CONTEXT_STATUS_OPTIONS]}
         />
-        <Select
+        <NodePickerField
           className={facetNames.length > 0 ? undefined : 'col-span-2 lg:col-span-1'}
           label="شاخهٔ درخت"
+          nodes={nodes}
           value={selectedNode}
-          onChange={(e) => setSelectedNode(e.target.value)}
-          options={[{ value: 'all', label: 'تمام شاخه‌ها' }, ...nodes.map((n) => ({ value: n.id, label: n.label }))]}
+          onChange={setSelectedNode}
+          extra={[{ value: 'all', label: 'تمام شاخه‌ها' }]}
         />
         {facetNames.length > 0 && (
           <Select
