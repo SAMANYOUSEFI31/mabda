@@ -13,7 +13,8 @@ import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFo
 import { ORIGIN_FA } from '../../core/effectiveContext';
 import { childrenOf, flatten, primaryDepth, quickMoves, sectionPath, treeIndent } from '../../core/nodeTree';
 import { spaceTally } from '../../core/spaceTally';
-import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState } from '../../ui';
+import type { MenuItem } from '../../ui';
+import { Badge, Button, InfoTip, StateTally, Card, Dialog, EmptyState, Icon, Menu, IconButton, Switch, MarginItem, MarginList, MarginNote, Nuqta, NUQTA_LABEL, PROVENANCE_LABEL, SampleBadge, TYPE_META, TypeBadge, formatNumber, knowledgeState, useMedia, PHONE } from '../../ui';
 import type { NodeDialogState } from '../structure/NodeDialogs';
 import { NodeNotes } from '../thinking/NodeNotes';
 import { useAiStatus } from '../../services/aiStatus';
@@ -71,6 +72,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   const { managedEnabled } = useAiStatus();
   const activeObjects = objects.filter((o) => o.status !== 'Archived' && o.status !== 'Superseded');
   /** «نمایش گذشته‌ها» (NEW-06): what was replaced stays out of the way by default and comes back, in its section, on request */
+  const narrow = useMedia(PHONE); // a phone: the section's steps fold into its «⋯» (mb-section-head__wide hides them)
   const [showPast, setShowPast] = useState(false);
   const pastCount = objects.filter((o) => o.status === 'Superseded').length;
   const shownObjects = showPast ? objects.filter((o) => o.status !== 'Archived') : activeObjects;
@@ -158,18 +160,26 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
             {node.description && <span className="body-sm hidden text-text-subtle sm:inline">({node.description})</span>}
           </div>
           <div className="mb-section-head__actions">
-            {/* one main action; everything else is under «⋯» */}
+            {/* one main action; everything else is under «⋯». On a phone even that one folds into «⋯» beside the title: it repeated
+                under every section (34 times in the full sample), two rows of the same buttons per section (root-cause audit, blind
+                spot 4: a step that is the same on every item and used now and then belongs once, in the item's «⋯») */}
             {/* a scoped add: it says WHAT it adds (this list is truth) and opens locked to it, on this section (docs/ux/decisions.md §۲) */}
-            {/* quiet (ghost), not a framed button: it repeats once per section (34 times in the full sample), and what repeats weighs
-                least (docs/ux/research/headers-trees-persian-type.md د۳). It keeps its words and «+», so it still says what it adds */}
+            <span className="mb-section-head__wide">
             <Button size="sm" variant="ghost" iconStart="Plus" aria-label={`افزودن حقیقت به ${node.label}`} onClick={() => props.onAddNewToNode(node.id)}>افزودن حقیقت</Button>
-            <span className="mb-section-head__more">
             {!focused && props.onFocus && <Button size="sm" variant="ghost" iconEnd="ChevronLeft" aria-label={`رفتن به بخش ${node.label}`} onClick={() => props.onFocus!(node.id)}>رفتن به بخش</Button>}
+            </span>
+            <span className="mb-section-head__more">
             <Menu
               label={`عملیات بخش ${node.label}`}
               align="end"
               trigger={<IconButton icon="Ellipsis" label={`عملیات بخش ${node.label}`} size="sm" />}
               items={[
+                ...(narrow ? [
+                  { label: 'افزودن حقیقت', icon: 'Plus' as const, onSelect: () => props.onAddNewToNode(node.id) },
+                  ...(!focused && props.onFocus ? [{ label: 'رفتن به بخش', icon: 'ChevronLeft' as const, onSelect: () => props.onFocus!(node.id) }] : []),
+                  { divider: true },
+                ] : []),
+                ...([
                 { label: 'روی این بخش فکر کن', icon: 'Lightbulb', onSelect: () => props.onOpenThinking(node.id) },
                 { label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => props.onOpenAiRequest(node.id) },
                 { label: 'خواندن سند', icon: 'BookOpen', onSelect: () => props.onReadNode(node.id) },
@@ -188,6 +198,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
                 { label: 'بگذار زیر بخش قبلی', icon: 'ArrowLeft', disabled: !quick(node.id).indent, onSelect: () => props.onNodeAction({ kind: 'move', nodeId: node.id, preset: quick(node.id).indent!.parentId }) },
                 { divider: true },
                 { label: 'حذف', icon: 'Trash2', intent: 'danger', onSelect: () => props.onNodeAction({ kind: 'delete', nodeId: node.id }) },
+              ] as MenuItem[]),
               ]}
             />
             </span>
@@ -208,7 +219,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
               <div role="group" className="flex flex-col gap-stack-sm" aria-label="الان درست است">
                 <div className="flex flex-wrap items-center justify-between gap-inline-sm">
                   <h4 className="label-md text-text-default">الان درست است</h4>
-                  <span className="flex items-center"><Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button><InfoTip term="چیزهایی که اینجا اعمال می‌شود">خط قرمزها و تصمیم‌هایی که برای «همه‌جا» یا برای بخش بالاتر ثبت شده‌اند، اینجا هم معتبرند، حتی اگر در این بخش نوشته نشده باشند. هر خروجی که از این بخش ساخته شود آن‌ها را رعایت می‌کند.</InfoTip></span>
+                  {/* said once where it changes: a sub-section that receives exactly what its parent does would repeat the same
+                      line under every heading (root-cause audit, blind spot 4) */}
+                  {(!node.parentId || props.effectCount(node.id) !== props.effectCount(node.parentId)) && <span className="flex items-center"><Button size="sm" variant="ghost" iconStart="Layers" onClick={() => props.onShowEffect(node.id)}>{formatNumber(props.effectCount(node.id))} چیز اینجا اعمال می‌شود</Button><InfoTip term="چیزهایی که اینجا اعمال می‌شود">خط قرمزها و تصمیم‌هایی که برای «همه‌جا» یا برای بخش بالاتر ثبت شده‌اند، اینجا هم معتبرند، حتی اگر در این بخش نوشته نشده باشند. هر خروجی که از این بخش ساخته شود آن‌ها را رعایت می‌کند.</InfoTip></span>}
                 </div>
                 {established.length === 0 ? (
                   // «جای خالی»: a hollow gap dot and why the slot matters, not a bare «nothing yet»

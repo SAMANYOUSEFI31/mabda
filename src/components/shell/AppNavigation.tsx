@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Workspace, WorkstreamSpec } from '../../types';
-import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, useHints, THEME_LABEL, THEME_ORDER } from '../../ui';
+import { BottomNav, BrandMark, Button, Dialog, Icon, IconButton, Menu, MenuChoiceRow, NavItem, useNavGlide, useTheme, useHints, useMedia, THEME_LABEL, THEME_ORDER } from '../../ui';
 import type { IconName, MenuItem, ThemePref } from '../../ui';
 import { useAiStatus } from '../../services/aiStatus';
 import { importLabel } from '../../core/importLabel';
@@ -61,12 +61,6 @@ const SEARCH_KEYS = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(
 // what a space is for; «خالی» named only how it started, and read «… · خالی» beside a space full of truths: no word for it
 const PURPOSE_FA = { personal: 'شخصی', work: 'کاری', project: 'پروژه', empty: '' } as const;
 
-/** a media query as state (navigation.md breakpoints) */
-function useMedia(q: string): boolean {
-  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
-  useEffect(() => { const mq = window.matchMedia(q); const f = () => setM(mq.matches); f(); mq.addEventListener('change', f); return () => mq.removeEventListener('change', f); }, [q]);
-  return m;
-}
 
 export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const { currentWorkspace, allWorkspaces } = p;

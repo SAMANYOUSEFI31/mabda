@@ -32,3 +32,4 @@ export type { NuqtaState, NuqtaSize, NuqtaProps } from './Nuqta.tsx';
 export { StateTally } from './Tally.tsx';
 export type { TallyRow } from './Tally.tsx';
 export { leave, useLeaving } from './leaving.ts';
+export { useMedia, PHONE } from './useMedia.ts';

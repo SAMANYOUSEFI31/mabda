@@ -788,6 +788,12 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-section-head__title{min-inline-size:0}
 .mb-section-head__actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--inline-xs)}
 .mb-section-head__more{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--inline-xs)}
+.mb-section-head__wide{display:flex;flex-wrap:nowrap;align-items:center;gap:var(--inline-xs)}
+}
+/* a phone: the title and its «⋯» on one row; the section's steps are inside «⋯» (ContextTreeDocView, useMedia(PHONE)) */
+@media (max-width:767px){
+  .mb-section-head.mb-section-head{flex-direction:row;align-items:center;justify-content:space-between}
+  .mb-section-head__wide{display:none}
 }
 @container mb-section (min-width: 34rem){
   .mb-section-head{flex-direction:row;align-items:center;justify-content:space-between}
@@ -997,13 +1003,13 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
   .mb-group.mb-group{border:0;border-radius:0;padding:0;background:none}
   .mb-group + .mb-group{border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-start:var(--inset-lg)}
 }
-/* a sub-section steps in by one line and a gap, so the tree is seen (Truth, «ساختار»). On a phone each step is 12, not 16, and
-   from the third level on the text no longer moves in: four levels at 16 kept a third of a 390 screen for indents, and the
-   section's number (۱.۲.۱) already says how deep it is (round 3, the iPhone test) */
+/* a sub-section steps in by one line and a gap, so the tree is seen (Truth, «ساختار»), where there is room. On a phone the text
+   never moves in: each 12px was 3% of the line, and at the fourth level a truth began ~75px from the edge on a 260px line. The
+   depth is said by the section's number (۱.۲.۱), its heading's size and the pinned «اکنون: … › …» bar, as iOS Settings and Files
+   say it, by type and path, not by steps (root-cause audit, blind spot 3). Every truth starts 16px from the edge, like the page */
 .mb-section--sub{padding-inline-start:var(--inset-lg)}
 @media (max-width:767px){
-  .mb-section--sub{padding-inline-start:var(--space-3)}
-  .mb-section--sub .mb-section--sub .mb-section--sub{padding-inline-start:0;border-inline-start:0}
+  .mb-section--sub.mb-section--sub{padding-inline-start:0;border-inline-start:0}
 }
 
 /* a phone sheet's text starts where the page's text starts (16 from the screen's edge, the page gutter), not 24: one edge for

@@ -17,7 +17,7 @@ import { clusterItems, edgeBudget, FIRST_VIEW_K, LOD_FAR_BELOW, lodOf, MIN_SCREE
 import { fromJsonCanvas, toJsonCanvas } from '../../core/jsonCanvas';
 import type { MenuItem } from '../../ui';
 import { NodePickerField } from '../structure/NodePicker';
-import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast } from '../../ui';
+import { Alert, Badge, Button, Dialog, EmptyState, IconButton, Menu, Popover, RadioGroup, SegmentedControl, Select, Switch, TextField, Textarea, formatNumber, useToast, useMedia } from '../../ui';
 import { requestAdd } from '../../core/addRequest';
 import { CanvasEdges, routeSceneEdges } from './CanvasEdges';
 import { CanvasInspector } from './CanvasInspector';
@@ -103,11 +103,6 @@ const SHORTCUTS: Array<[string, string]> = [['F', 'تمام‌صفحه (ESC خر
 const MODE_LAYOUTS: Record<'truth' | 'thinking', CanvasLayout[]> = { truth: ['overview'], thinking: ['free'] };
 const readPrefs = (): Partial<{ layouts: Partial<Record<'truth' | 'thinking', CanvasLayout>>; rowOrder: string[] }> => { try { return JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}'); } catch { return {}; } };
 const readTips = (): number[] => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) ?? '[]'); } catch { return []; } };
-function useMedia(q: string): boolean {
-  const [m, setM] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(q).matches : false));
-  useEffect(() => { const mq = window.matchMedia(q); const h = () => setM(mq.matches); mq.addEventListener('change', h); return () => mq.removeEventListener('change', h); }, [q]);
-  return m;
-}
 
 /** One scene engine serves the truth overview and the free thinking canvas. See docs/canvas-design.md for their distinct jobs. */
 export const ContextCanvas: React.FC<CanvasProps> = (p) => {

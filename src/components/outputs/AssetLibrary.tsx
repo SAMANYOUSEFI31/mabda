@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ContextChange, ContextObject, GeneratedDeliverable, Workspace } from '../../types';
 import { ContextReplayCard } from './ContextReplayCard';
 import type { StaleAsset } from '../../core/impactEngine';
 import { useAiStatus } from '../../services/aiStatus';
-import { Button, EmptyState, Tabs, formatNumber } from '../../ui';
+import { Button, EmptyState, formatNumber } from '../../ui';
 
 interface AssetLibraryProps {
   currentWorkspace: Workspace;
@@ -58,10 +58,8 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   emptyAction,
 }) => {
   const { managedEnabled } = useAiStatus();
-  const [filter, setFilter] = useState<string>('all');
   useEffect(() => {
     if (!focus) return undefined;
-    setFilter('all');
     const t = setTimeout(() => { const el = document.getElementById(`asset-${focus.id}`); el?.scrollIntoView({ block: 'start' }); el?.focus({ preventScroll: true }); }, 80);
     return () => clearTimeout(t);
   }, [focus]);
@@ -69,55 +67,53 @@ export const AssetLibrary: React.FC<AssetLibraryProps> = ({
   const live = deliverables.filter((d) => d.workspaceId === currentWorkspace.id && !d.archivedAt);
   const staleIds = new Set(stale.map((x) => x.deliverableId));
   const staleLive = live.filter((d) => staleIds.has(d.id));
-  const filtered = filter === 'stale' ? staleLive : live;
+  const rest = live.filter((d) => !staleIds.has(d.id));
+  const card = (del: GeneratedDeliverable) => (
+    <div key={del.id} id={`asset-${del.id}`} tabIndex={-1} className="doc-anchor flex flex-col gap-stack-sm">
+      <ContextReplayCard
+        deliverable={del}
+        allContextObjects={allContextObjects}
+        stale={stale.find((x) => x.deliverableId === del.id)}
+        changes={changes}
+        onOpenContextObject={onOpenContextModal}
+        onRebuild={onRebuild}
+        onRerequest={onRerequest}
+        missing={missingOf?.(del)}
+        onArchive={onArchive}
+        onDelete={onDelete}
+      />
+      {/* reading knowledge out of an output needs the managed AI: with it off the button is not offered (no dead end) */}
+      {managedEnabled && <div className="flex flex-wrap items-center justify-end">
+        <Button variant="secondary" size="sm" iconStart="ScanText" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
+          پیشنهاد دانش از این خروجی
+        </Button>
+      </div>}
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-stack-lg">
-      {staleLive.length > 0 && <Tabs
-        label="فیلتر خروجی‌ها"
-        value={filter}
-        onChange={setFilter}
-        items={[
-          { id: 'all', label: `همه (${formatNumber(live.length)})` },
-          { id: 'stale', label: `به‌روز نیست (${formatNumber(staleLive.length)})` },
-        ]}
-      />}
-
-      {filtered.length === 0 ? (
-        live.length === 0 ? (
-          <EmptyState
-            title="هنوز خروجی‌ای نداری"
-            description="درخواستی برای ابزار دیگر آماده کن و پاسخش را برگردان؛ اینجا با ردپایش می‌ماند و اگر حقیقتی که در آن بود عوض شود، می‌گوید."
-            action={emptyAction}
-          />
-        ) : (
-          <EmptyState kind="filtered" title="با این فیلتر چیزی نیست" action={<Button variant="secondary" onClick={() => setFilter('all')}>پاک‌کردن فیلترها</Button>} />
-        )
+      {/* «به‌روز نیست» is a group that needs her, not a second place (root-cause audit «نقش‌کور»): no tabs that read as two
+          pages when one is part of the other. It comes first under its own heading, the rest under theirs (iOS Settings, Mail) */}
+      {live.length === 0 ? (
+        <EmptyState
+          title="هنوز خروجی‌ای نداری"
+          description="درخواستی برای ابزار دیگر آماده کن و پاسخش را برگردان؛ اینجا با ردپایش می‌ماند و اگر حقیقتی که در آن بود عوض شود، می‌گوید."
+          action={emptyAction}
+        />
+      ) : staleLive.length === 0 ? (
+        <div className="flex flex-col gap-stack-lg">{live.map(card)}</div>
       ) : (
-        <div className="flex flex-col gap-stack-lg">
-          {filtered.map((del) => (
-            <div key={del.id} id={`asset-${del.id}`} tabIndex={-1} className="doc-anchor flex flex-col gap-stack-sm">
-              <ContextReplayCard
-                deliverable={del}
-                allContextObjects={allContextObjects}
-                stale={stale.find((x) => x.deliverableId === del.id)}
-                changes={changes}
-                onOpenContextObject={onOpenContextModal}
-                onRebuild={onRebuild}
-                onRerequest={onRerequest}
-                missing={missingOf?.(del)}
-                onArchive={onArchive}
-                onDelete={onDelete}
-              />
-              {/* reading knowledge out of an output needs the managed AI: with it off the button is not offered (no dead end) */}
-              {managedEnabled && <div className="flex flex-wrap items-center justify-end">
-                <Button variant="secondary" size="sm" iconStart="ScanText" loading={extractingId === del.id} onClick={() => onExtractKnowledge(del)}>
-                  پیشنهاد دانش از این خروجی
-                </Button>
-              </div>}
-            </div>
-          ))}
-        </div>
+        <>
+          <section aria-labelledby="assets-stale" className="flex flex-col gap-stack-md">
+            <h2 id="assets-stale" className="heading-sm text-text-default">به‌روز نیست ({formatNumber(staleLive.length)})</h2>
+            <div className="flex flex-col gap-stack-lg">{staleLive.map(card)}</div>
+          </section>
+          {rest.length > 0 && <section aria-labelledby="assets-rest" className="flex flex-col gap-stack-md">
+            <h2 id="assets-rest" className="heading-sm text-text-default">بقیه ({formatNumber(rest.length)})</h2>
+            <div className="flex flex-col gap-stack-lg">{rest.map(card)}</div>
+          </section>}
+        </>
       )}
     </div>
   );
