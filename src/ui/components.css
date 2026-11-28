@@ -381,7 +381,10 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
    edge 4px under the bar's top line (two parallel edges that close read as one double line), and kept the label 8px from its icon.
    Now the pill is 8px from the line, and the label sits 2px under it, so icon and name read as one thing (proximity) */
 .mb-bottomnav__item{position:relative;isolation:isolate;flex:1;min-inline-size:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-block:calc(var(--space-1) * 1.5) var(--space-2);gap:calc(var(--space-1) / 2);min-block-size:calc(var(--space-16) + var(--space-1) / 2);
-  border:0;background:transparent;color:var(--text-subtle);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-standard)}
+  border:0;background:transparent;color:var(--text-subtlest);font-weight:500;cursor:pointer;transition:color var(--duration-fast) var(--ease-standard)}
+/* the tabs not shown are «subtlest» (4.96:1 light, 7.67:1 dark on the bar: still readable), so the shown one, in full ink, stands
+   out by its ink too and not only by its weight and pill: 2.99:1 and 2.13:1 between them (it was 2.04 and 1.41 with «subtle»:
+   in the dark theme the two nearly matched) */
 .mb-bottomnav__item:not(.is-action) .mb-bottomnav__icon::before{content:"";position:absolute;z-index:calc(var(--layer-base) - 1);inset:0;border-radius:var(--radius-pill);background:transparent;transition:background-color var(--duration-fast) var(--ease-standard)}
 .mb-bottomnav__item.is-action{padding-block-start:var(--space-3)} /* 40 tall, centred on icon + label (6 + 52/2 = 32) */
 .mb-bottomnav__item[data-force~=hover]{color:var(--text-default)}@media (hover:hover){.mb-bottomnav__item:hover{color:var(--text-default)}.mb-bottomnav__item:not(.is-action):hover .mb-bottomnav__icon::before{background:var(--interaction-hover)}}
