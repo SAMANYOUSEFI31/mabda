@@ -239,7 +239,7 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-inputwrap.has-start .mb-field__input{padding-inline-start:calc(var(--inset-md) + var(--icon-md) + var(--inline-sm))}
 .mb-inputwrap.has-end .mb-field__input{padding-inline-end:calc(var(--inset-md) + var(--icon-md) + var(--inline-sm))}
 .mb-field__input--sm{min-block-size:var(--control-sm)}.mb-field__input--lg{min-block-size:var(--control-lg)}
-.mb-field__input:read-only:not(:disabled):not(select){background:var(--surface-sunken);border-color:var(--border-default)}
+.mb-field__input:read-only:not(:disabled):not(select):not(button){background:var(--surface-sunken);border-color:var(--border-default)}
 .mb-field__input--multi{padding-block:var(--inset-sm);resize:vertical;min-block-size:calc(var(--control-md) * 2);line-height:var(--line-height-relaxed)}
 .mb-field__input[dir=ltr]{font-family:var(--font-latin)}
 .mb-field__input::placeholder{color:var(--text-subtlest);opacity:1}
@@ -867,9 +867,10 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
   .mb-dialog-layer:not(.is-alert) .mb-dialog,.mb-dialog-layer.is-steady .mb-dialog{max-block-size:calc(100dvh - var(--space-4));block-size:calc(100dvh - var(--space-4))}
   .mb-dialog__top{padding-block:var(--space-3) var(--space-2)}
 }
-/* phone: a sheet that holds a form, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
-   switching a tab or typing never moves its title; other sheets take their content's height up to 90dvh */
-@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, select, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(var(--app-h) - var(--safe-top) - var(--space-3));max-block-size:none}}
+/* phone: a sheet that holds a typed field, tabs or a segmented control opens at the «full» stop and keeps it (overlays.md «ارتفاع»), so
+   switching a tab or typing never moves its title (a select raises no keyboard: a sheet of selects, like the filters, is as tall
+   as its content); other sheets take their content's height up to 90dvh */
+@media (max-width:767px){.mb-dialog-layer:not(.is-alert):not(.is-top) .mb-dialog:is(:has(.mb-tabs, textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])), .mb-dialog-layer.is-steady *){block-size:calc(var(--app-h) - var(--safe-top) - var(--space-3));max-block-size:none}}
 /* a switch between kinds: the last box is held still until the next is in place, which then arrives without motion (Overlay.tsx) */
 :root[data-add-switch] .mb-dialog-layer.is-steady :is(.mb-dialog,.mb-scrim),
 .mb-dialog-layer[data-hold] :is(.mb-dialog,.mb-scrim),
@@ -999,3 +1000,8 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 /* while a modal layer is open the page under it does not scroll-chain or pull-to-refresh (Android Chrome reloads on a pull at
    the top: a pull inside a sheet must never reload the page and lose what is being typed) */
 html:has(.mb-dialog-layer:not(.is-inline):not([data-state=closed])){overscroll-behavior:none}
+/* a block of reading text inside a wider frame (an output's text on a wide screen): its lines stop at the reading measure
+   (680px ≈ 75 characters; WCAG 1.4.8 ≤ 80, Bringhurst 45–75), the box around it keeps the frame's width */
+.mb-reading > *{max-inline-size:var(--container-reading)}
+/* a thin upright line between two groups of chips in one row (a state, then kinds): grouping by a line, not by a gap */
+.mb-chip-sep{flex:none;align-self:center;inline-size:var(--border-width-thin);block-size:var(--space-5);background:var(--border-default)}

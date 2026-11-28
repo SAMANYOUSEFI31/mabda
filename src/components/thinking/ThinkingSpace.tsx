@@ -141,10 +141,15 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             {p.nodeId ? p.nodes.find((n) => n.id === p.nodeId)?.label ?? 'همهٔ بخش‌ها' : 'همهٔ بخش‌ها'}
           </Button>
           <NodePicker open={scopeOpen} onClose={() => setScopeOpen(false)} anchor={scopeChip} title="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onPick={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
-          {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c) => (
-            <Button key={c.id} size="sm" className="shrink-0" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
-              {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
-            </Button>
+          {/* one choice at a time (choice chips, M3): each answers one question («what waits for me?», «my open questions?»), and
+              «همه» is the way back. «منتظر تو» is a state, not a kind of thought: a thin line sets it apart from the kinds after it */}
+          {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c, i, shown) => (
+            <React.Fragment key={c.id}>
+              {c.id !== 'all' && c.id !== 'waiting' && shown[i - 1]?.id === 'waiting' && <span className="mb-chip-sep" aria-hidden="true" />}
+              <Button size="sm" className="shrink-0" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
+                {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
+              </Button>
+            </React.Fragment>
           ))}
         </div>
         <div className="mb-thinking-filters__scope items-end gap-inline-xs">

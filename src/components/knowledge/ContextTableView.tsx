@@ -9,7 +9,7 @@ import { NodePickerField } from '../structure/NodePicker';
 import { ContextObject, ContextStatus, ContextType, TreeNode } from '../../types';
 import { conflictPartners, DISPLAY_LABEL, displayState } from '../../core/displayState';
 import {
-  Button, Card, CONTEXT_STATUS_OPTIONS, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, ReachBadge, SampleBadge, Select, StatusBadge, Table, TextField, TypeBadge,
+  Button, Card, CONTEXT_STATUS_OPTIONS, Dialog, formatNumber, CONTEXT_TYPE_OPTIONS, EmptyState, PROVENANCE_LABEL, ReachBadge, SampleBadge, Select, StatusBadge, Table, TextField, TypeBadge,
 } from '../../ui';
 
 interface ContextTableViewProps {
@@ -72,6 +72,10 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
     return n ? n.label : nodeId;
   };
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = [selectedType, selectedStatus, selectedNode, selectedFacet].filter((v) => v !== 'all').length;
+  const clearFilters = () => { setSelectedType('all'); setSelectedStatus('all'); setSelectedNode('all'); setSelectedFacet('all'); };
+
   const rows = filteredObjects as unknown as Array<Record<string, unknown> & ContextObject>;
 
   return (
@@ -81,9 +85,61 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
         <p className="body-sm mt-stack-xs text-text-subtle">جستجو کن، بر اساس نوع، وضعیت یا بخش فیلتر کن و ببین هر مورد از کجا آمده.</p>
       </div>
 
+      {/* a phone (round 3, «things that are filters should look like filters»): the search stays in view, the three or four
+          selects go behind one «فیلترها» button that says how many are on (Material and iOS: a filter sheet when the facets do
+          not fit one row; here they took three rows above the first result). They are the same fields, in a sheet */}
+      <div className="flex items-end gap-inline-sm md:hidden">
+        <TextField
+          className="min-w-space-0 flex-1"
+          label="جستجو"
+          iconStart="Search"
+          placeholder="عنوان یا متن…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(true)}>
+          {activeFilters ? `فیلترها (${formatNumber(activeFilters)})` : 'فیلترها'}
+        </Button>
+      </div>
+      <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} side size="md" title="فیلترها"
+        footer={<>
+          <Button variant="secondary" onClick={() => setFiltersOpen(false)}>{`نمایش ${formatNumber(filteredObjects.length)} مورد`}</Button>
+          {activeFilters > 0 && <Button variant="ghost" onClick={clearFilters}>پاک‌کردن فیلترها</Button>}
+        </>}>
+        <div className="flex flex-col gap-stack-md">
+        <Select
+          label="نوع"
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          options={[{ value: 'all', label: 'تمام انواع' }, ...CONTEXT_TYPE_OPTIONS]}
+        />
+        <Select
+          label="وضعیت"
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          options={[{ value: 'all', label: 'تمام وضعیت‌ها' }, ...CONTEXT_STATUS_OPTIONS]}
+        />
+        <NodePickerField
+          className={facetNames.length > 0 ? undefined : 'col-span-2 lg:col-span-1'}
+          label="شاخهٔ درخت"
+          nodes={nodes}
+          value={selectedNode}
+          onChange={setSelectedNode}
+          extra={[{ value: 'all', label: 'تمام شاخه‌ها' }]}
+        />
+        {facetNames.length > 0 && (
+          <Select
+            label="بُعد"
+            value={selectedFacet}
+            onChange={(e) => setSelectedFacet(e.target.value)}
+            options={[{ value: 'all', label: 'همهٔ بُعدها' }, ...facetNames.map((f) => ({ value: f, label: f }))]}
+          />
+        )}
+        </div>
+      </Dialog>
       {/* one row on a wide screen for however many filters there are (4, or 5 with «بُعد»), and on a narrow one no select left alone
           on its row: with an odd number of selects the last spans both columns */}
-      <div className={`grid grid-cols-2 gap-inline-md ${facetNames.length > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      <div className={`hidden md:grid grid-cols-2 gap-inline-md ${facetNames.length > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <TextField
           className="col-span-2 lg:col-span-1"
           label="جستجو"
@@ -123,7 +179,7 @@ export const ContextTableView: React.FC<ContextTableViewProps> = ({
       </div>
 
       {filteredObjects.length === 0 && (
-        <EmptyState kind="filtered" title="با این فیلترها چیزی نیست" description="عبارت جستجو را عوض کن یا فیلترها را پاک کن." action={<Button variant="secondary" onClick={() => { setSearch(''); setSelectedType('all'); setSelectedStatus('all'); setSelectedNode('all'); setSelectedFacet('all'); }}>پاک‌کردن فیلترها</Button>} />
+        <EmptyState kind="filtered" title="با این فیلترها چیزی نیست" description="عبارت جستجو را عوض کن یا فیلترها را پاک کن." action={<Button variant="secondary" onClick={() => { setSearch(''); clearFilters(); }}>پاک‌کردن فیلترها</Button>} />
       )}
 
       {/* Mobile: card list */}
