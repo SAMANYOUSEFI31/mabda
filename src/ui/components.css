@@ -303,13 +303,14 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
    under the pointer (the hover fill is close to the selected one) */
 .mb-nav-current::before{content:"";position:absolute;inset-block:var(--space-2);inset-inline-start:0;inline-size:var(--space-0\.5);border-radius:var(--radius-full);background:var(--border-selected)}
 /* the glide (motion.md «نشانگر ناوبری»): one fill under the top places of the sidebar and rail moves to the chosen one; inside a
-   glided nav the chosen item draws no fill of its own. A nested place keeps its own fill (the glide is not on it). */
+   glided nav the chosen item draws no fill of its own. The places of a group inside the nav (the sections of «حقیقت») share the same
+   glide: one «you are here», one motion at every level (its size follows the item, so a narrower nested place eases into place). */
 .mb-nav-glided{position:relative}
 .mb-nav-glide{position:absolute;inset-block-start:0;inset-inline-start:0;pointer-events:none;border-radius:var(--radius-control);background:var(--bg-selected);opacity:0;transition:opacity var(--duration-fast) var(--ease-standard)}
 .mb-nav-glide::before{content:"";position:absolute;inset-block:var(--space-2);inset-inline-start:0;inline-size:var(--space-0\.5);border-radius:var(--radius-full);background:var(--border-selected)}
-.mb-nav-glide[data-ready]{transition:transform var(--duration-base) var(--ease-standard),opacity var(--duration-fast) var(--ease-standard)}
-@media not (forced-colors:active){.mb-nav-glided>.mb-nav-current{background:transparent!important}}
-.mb-nav-glided>.mb-nav-current::before{display:none}
+.mb-nav-glide[data-ready]{transition:transform var(--duration-base) var(--ease-standard),inline-size var(--duration-base) var(--ease-standard),block-size var(--duration-base) var(--ease-standard),opacity var(--duration-fast) var(--ease-standard)}
+@media not (forced-colors:active){:is(.mb-nav-glided,.mb-nav-glided>[role=group])>.mb-nav-current{background:transparent!important}}
+:is(.mb-nav-glided,.mb-nav-glided>[role=group])>.mb-nav-current::before{display:none}
 @media (forced-colors:active){.mb-nav-glide{display:none}}
 /* a page arrives by fading in place (motion.md «رفتن بین صفحه‌ها»): nothing travels, so nothing jumps; fast, opacity only */
 .mb-page-enter{animation:mb-in var(--duration-base) var(--ease-enter)}

@@ -326,13 +326,14 @@ export function Breadcrumb({ items, label = 'مسیر صفحه', className }: { 
 /**
  * The sidebar's «you are here» glides from the old place to the new one (motion.md «نشانگر ناوبری»: the same rule as a tab's
  * indicator — base, ease-standard, transform only). One fill moves; the items do not. It follows the direct children of the nav
- * that carry aria-current (the top places); a nested place (a section of «منبع») keeps its own still fill and the glide fades.
+ * that carry aria-current (the top places) and the places of a group inside it (the sections of «حقیقت»): one «you are here», one
+ * motion at every level, so a move from «حقیقت» to one of its sections, or between sections, glides like a move between top places.
  * Reduced motion: the duration tokens make it a short fade-free jump (components.css). Forced colours: hidden, the item's own
  * Highlight shows.
  */
 export function useNavGlide<T extends HTMLElement>(
   /** which child is chosen: the top places of a nav by default; a tab bar or segmented control passes its own (motion.md «تب و کنترل تکه‌ای») */
-  current = ':scope > [aria-current=page]', attrs: string[] = ['aria-current'], className = 'mb-nav-glide',
+  current = ':scope > [aria-current=page], :scope > [role=group] > [aria-current=page]', attrs: string[] = ['aria-current'], className = 'mb-nav-glide',
 ) {
   // callback refs: the sidebar and the rail mount and unmount as the width changes, so the glide is set up per element
   const [nav, ref] = useState<T | null>(null);
