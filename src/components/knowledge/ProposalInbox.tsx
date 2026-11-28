@@ -10,7 +10,7 @@ import { importLabel } from '../../core/importLabel';
 import { SOURCE_FA } from '../../core/provenance';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import type { ContextObject, ObjectSource, TreeNode } from '../../types';
-import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark, useLeaving } from '../../ui';
+import { Badge, Button, Card, IconButton, Menu, PROVENANCE_LABEL, TextField, TypeBadge, formatJalaliDate, formatNumber, Nuqta, TYPE_META, sampleMark, useLeaving, useMedia, PHONE } from '../../ui';
 
 const KIND_FA = SOURCE_FA; // one dictionary with the provenance lines (core/provenance.ts)
 
@@ -35,6 +35,9 @@ interface Props {
 
 /** Suggested, imported and pasted content waits here. Nothing is a fact until the user confirms it. */
 export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onReplace, onEdit, onReject, onOpenImport, onOpenPack, onOpenMemory, keepOrder, hints, nested }) => {
+  // a phone: the decision and its everyday alternative (تأیید · رد) stay seen; ویرایش and the optional reason go into the card's
+  // «⋯» (root-cause audit, blind spot 4: a card was ~260px, so not even two fitted on a 390 screen)
+  const narrow = useMedia(PHONE);
   const pending = objects.filter((o) => o.status === 'Proposed').sort(keepOrder ? () => 0 : (a, b) => (b.source?.at ?? b.createdAt).localeCompare(a.source?.at ?? a.createdAt));
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const [reasons, setReasons] = useState<Record<string, string | undefined>>({}); // undefined = field closed
@@ -141,15 +144,18 @@ export const ProposalInbox: React.FC<Props> = ({ objects, nodes, onAccept, onRep
                     <span className="body-sm text-text-subtle">
                       منبع: {o.provenance === 'Sample' ? `${PROVENANCE_LABEL.Sample} · ${formatJalaliDate(o.createdAt)}` : o.source ? `${KIND_FA[o.source.kind]}${o.source.label ? ` («${o.source.label}»)` : ''} · ${formatJalaliDate(o.source.at)}` : `${PROVENANCE_LABEL[o.provenance]} · ${formatJalaliDate(o.createdAt)}`}
                     </span>
-                    <Button size="sm" variant="ghost" iconStart="MessageSquare" aria-label={`${reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'} برای «${o.title}»`} aria-expanded={reasonOpen} onClick={toggleReason}>{reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'}</Button>
+                    {!narrow && <Button size="sm" variant="ghost" iconStart="MessageSquare" aria-label={`${reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'} برای «${o.title}»`} aria-expanded={reasonOpen} onClick={toggleReason}>{reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل'}</Button>}
                   </span>
                   <div className="flex flex-wrap items-center gap-inline-xs">
                     {replaces
                       ? <Button size="sm" variant="secondary" iconStart="Check" onClick={() => replace(o, replaces.id, reasonOf(o.id))}>جایگزینی</Button>
                       : <Button size="sm" variant="secondary" iconStart="Check" onClick={() => accept(o, reasonOf(o.id))}>تأیید</Button>}
-                    <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>
+                    {!narrow && <Button size="sm" variant="ghost" iconStart="Pencil" onClick={() => onEdit(o)}>ویرایش</Button>}
                     <Button size="sm" variant="ghost" iconStart="X" onClick={() => reject(o, reasonOf(o.id))}>رد</Button>
-                    {replaces && <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={[{ label: 'تأیید کنار قبلی', icon: 'Check', onSelect: () => accept(o, reasonOf(o.id)) }]} />}
+                    {(replaces || narrow) && <Menu label={`کارهای بیشتر برای «${o.title}»`} align="end" trigger={<IconButton icon="Ellipsis" size="sm" label={`کارهای بیشتر برای «${o.title}»`} />} items={[
+                      ...(narrow ? [{ label: 'ویرایش', icon: 'Pencil' as const, onSelect: () => onEdit(o) }, { label: reasonOpen ? 'برداشتن دلیل' : 'افزودن دلیل', icon: 'MessageSquare' as const, onSelect: toggleReason }] : []),
+                      ...(replaces ? [{ label: 'تأیید کنار قبلی', icon: 'Check' as const, onSelect: () => accept(o, reasonOf(o.id)) }] : []),
+                    ]} />}
                   </div>
                 </div>
               );
