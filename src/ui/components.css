@@ -173,11 +173,11 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 /* ---------- Card: a sheet on the desk ---------- */
 .mb-card{display:block;inline-size:100%;text-align:start;color:var(--text-default);background:var(--card-surface);border:var(--border-width-thin) solid var(--card-border);border-radius:var(--card-radius);box-shadow:var(--card-shadow);font:inherit;
   transition:border-color var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard),scale var(--duration-instant) var(--ease-standard)}
-.mb-card--pad-md{padding:var(--inset-md)}.mb-card--pad-lg{padding:var(--inset-lg)}.mb-card--pad-xl,.mb-card--panel{padding:var(--inset-xl)}
-/* one container level on a phone (round 3, the iPhone test; iOS Settings, M3 lists): a section's card would put its items in a box
+.mb-card--pad-md{padding:var(--inset-md)}.mb-card--pad-lg{padding:var(--inset-lg)}.mb-card--pad-xl{padding:var(--inset-xl)}
+/* one container level at every width (round 3 on the iPhone, round 4 on a computer; iOS Settings, M3 lists): a section's card would put its items in a box
    inside a box, and each box's padding again between the text and the screen's edge (a 390 screen kept 290 for the words).
    The section's heading and its line sit on the page, like the page's other headings; only its items are boxes */
-@media (max-width:767px){.mb-card--panel{background:none;border:0;border-radius:0;box-shadow:none;padding:0}}
+.mb-card.mb-card--panel{background:none;border:0;border-radius:0;box-shadow:none;padding:0}
 .mb-card--interactive{cursor:pointer;text-decoration:none}
 .mb-card.is-selected{background:var(--bg-selected);border-color:var(--border-selected)}
 .mb-card--interactive[data-force~=hover]{border-color:var(--card-border-hover);box-shadow:var(--card-shadow-hover)}@media (hover:hover){.mb-card--interactive:hover{border-color:var(--card-border-hover);box-shadow:var(--card-shadow-hover)}}
@@ -752,24 +752,6 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 /* past the frame's width the bar no longer touches the window's edge: a hairline closes its outer side too, so it reads as the
    frame's own column (90rem = --container-shell; a media query cannot read a custom property) */
 @media (min-width: 90.0625rem){ .mb-shell > aside{border-inline-start:var(--border-width-thin) solid var(--border-default)} }
-/* text and margin inside the frame: one column below the width where both fit (the same 54rem as Home's margin and
-   `.mb-margin__row`), the margin first in the DOM when it holds the filters of the text (reading order = what is seen) */
-@layer components{
-.mb-text-margin{display:flex;flex-direction:column;gap:var(--stack-lg)}
-.mb-text-margin__main{min-inline-size:0}
-.mb-thinking-filters{display:flex;flex-direction:column;gap:var(--stack-sm)}
-.mb-thinking-filters__scope,.mb-thinking-filters__kinds{display:none}
-}
-@container mb-frame (min-width: 54rem){
-  .mb-text-margin{display:grid;grid-template-columns:minmax(0,var(--container-prose)) minmax(0,1fr);column-gap:var(--space-10);align-items:start}
-  .mb-text-margin__main{grid-column:1;grid-row:1}
-  .mb-text-margin__aside{grid-column:2;grid-row:1;position:sticky;inset-block-start:calc(var(--sticky-top,0px) + var(--space-4));padding-block-start:var(--stack-sm);border-block-start:var(--border-width-thin) solid var(--border-subtle)}
-  .mb-thinking-filters{gap:var(--stack-lg)}
-  .mb-thinking-filters__kinds{display:flex}
-  .mb-thinking-filters__scope{display:flex;flex-direction:column;align-items:flex-start}
-  .mb-thinking-filters__bar{display:none}
-  .mb-thinking-filters__scope > .w-overlay-xs{inline-size:100%}
-}
 /* a page's header: the title, then its actions (a view choice, the page's tools, «⋯» last at the end edge). Beside the title only
    where the frame holds both on one line (the same 54rem as the text and its margin); under it otherwise, never split over two rows
    with the title pulled to their middle */
@@ -994,13 +976,10 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
   html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot{flex-wrap:nowrap;padding-block:var(--space-2)}
   html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-btn--primary,.mb-btn--danger-bold){flex:0 0 auto}
 }
-/* a group whose parts are boxes (a contradiction and its two sides): a box only where there is room. On a phone it is a plain
-   part of the page and its parts are the one level of boxes (the same rule as a section, «.mb-card--panel» above); two
-   groups in a row are told apart by a line, as a list's rows are */
-@media (max-width:767px){
-  .mb-box-wide-only.mb-box-wide-only{border:0;border-radius:0;padding:0;background:none}
-  .mb-box-wide-only + .mb-box-wide-only{border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-start:var(--inset-lg)}
-}
+/* a group whose parts are boxes (a contradiction and its two sides) is a plain part of the page at every width: its parts are the
+   one level of boxes (the same rule as a section, «.mb-card--panel» above). Two groups in a row are told apart by a line, as a
+   list's rows are. It was a box on a computer (three boxes deep there; round 4: a rule learnt on the phone holds on every screen) */
+.mb-group-rule + .mb-group-rule{border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-start:var(--inset-lg)}
 /* a sub-section steps in by one line and a gap, so the tree is seen (Truth, «ساختار»), where there is room. On a phone the text
    never moves in: each 12px was 3% of the line, and at the fourth level a truth began ~75px from the edge on a 260px line. The
    depth is said by the section's number (۱.۲.۱), its heading's size and the pinned «اکنون: … › …» bar, as iOS Settings and Files

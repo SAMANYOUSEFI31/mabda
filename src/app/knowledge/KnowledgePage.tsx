@@ -50,7 +50,9 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
               the page's occasional tasks under «⋯», at the end of the title's row on a phone (PageHead) */}
           <div className="mb-page-frame"><PageHead
             title="حقیقت" context={currentWorkspace.name}
-            info={{ term: 'حقیقت', text: 'مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن.' }}
+            info={{ term: 'حقیقت', text: 'مبدأ منبع حقیقت توست، برای کار، پروژه و زندگی. هر کار از آن شروع می‌شود و هر خروجی به آن برمی‌گردد. هر بخش شاخه‌ای از درخت است با حقیقت‌هایش؛ برای خواندن پیوسته، «سند» را بزن. ◆ حقیقت: تأییدشده و منبع هر خروجی. ◇ پیشنهاد: هنوز تأیید نشده و به هیچ خروجی نمی‌رود. نشانهٔ دوتایی زرد یعنی قدیمی: چیزی که به آن تکیه دارد عوض شده و پیش از استفاده باید نگاهش کنی.' }}
+            // the structure's tally («۴۳ حقیقت · ۱ قدیمی»): ContextTreeDocView puts it here, by the title (its numbers are the view's)
+            tools={contextViewMode === 'doc' ? <span id="truth-tally-slot" className="contents" /> : undefined}
             moreLabel="کارهای دیگر حقیقت"
             more={moreItems}
             views={<SegmentedControl

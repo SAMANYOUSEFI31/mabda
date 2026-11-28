@@ -7,6 +7,7 @@ import { requestAdd } from '../../core/addRequest';
 import type { Contradiction } from '../../types';
 import { SectionScrubber, useReadingPosition } from './readingPosition';
 import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { conflictPartners, displayState } from '../../core/displayState';
 import { ContextObject, ContextRelationship, Note, StoredFile, TreeNode } from '../../types';
 import { abbreviate, childSummaries, fromAbove, pathTo } from '../../core/nodeFocus';
@@ -87,6 +88,9 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   // in a transition the browser can interrupt for a click or a key. Drawing all 34 sections of the sample at once held the page for
   // 180–220ms on a desktop and about 900ms on a mid-range phone, with no answer to the press (INP)
   const [allRoots, setAllRoots] = useState(false);
+  // the page head's slot for the tally (KnowledgePage passes it as PageHead `tools` in this view)
+  const [tallySlot, setTallySlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setTallySlot(document.getElementById('truth-tally-slot')); }, []);
   useEffect(() => { const t = requestAnimationFrame(() => startTransition(() => setAllRoots(true))); return () => cancelAnimationFrame(t); }, []);
   const [showAllIn, setShowAllIn] = useState<Set<string>>(new Set());
   const toggleAll = (id: string) => setShowAllIn((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -331,15 +335,14 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
       {/* one toolbar row, no second title: «ساختار» is already the chosen view in the switch above it, and its explanation moved to
           the page title's «؟» (docs/ux/research/headers-trees-persian-type.md §۲). The heading stays for screen readers' heading list */}
       <h2 className="sr-only">ساختار حقیقت</h2>
-      <div className="flex flex-wrap items-center justify-between gap-inline-sm border-b border-border-default pb-inset-sm">
-        <div className="flex flex-wrap items-center gap-inline-sm">
-          {/* the same count, word and look as «خانه» (src/core/spaceTally.ts): what the document holds, by state */}
-          {activeObjects.length > 0 && (() => { const t = spaceTally(objects, 0); return <span className="flex items-center"><StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} /><InfoTip term="نشانه‌ها">◆ حقیقت: تأییدشده و منبع هر خروجی. ◇ پیشنهاد: هنوز تأیید نشده و به هیچ خروجی نمی‌رود. نشانهٔ دوتایی زرد یعنی قدیمی: چیزی که به آن تکیه دارد عوض شده و پیش از استفاده باید نگاهش کنی.</InfoTip></span>; })()}
-        </div>
-        <Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button>
-      </div>
+      {/* the page's tally (how many truths, how many stale) is a summary of the page, so it sits in the page's title row (PageHead
+          `tools`), as Mail and Linear put a list's count by its name; it took a row of its own and a line under it (round 4). Its legend of the marks is in the title's one «ⓘ»: two «ⓘ» in one row */}
+      {tallySlot && activeObjects.length > 0 && createPortal((() => { const t = spaceTally(objects, 0); return <StateTally layout="inline" label="در این فضا" rows={[{ state: 'truth', count: t.truth, label: 'حقیقت', always: true }, { state: 'stale', count: t.stale, label: 'قدیمی' }]} />; })(), tallySlot)}
       <OutlineBar nodes={nodes} counts={activeObjects.reduce((m, o) => (o.nodeId ? m.set(o.nodeId, (m.get(o.nodeId) ?? 0) + 1) : m), new Map<string, number>())} />
       <div id="structure-tree" className="flex flex-col gap-stack-xl">{(allRoots ? roots : roots.slice(0, 2)).map((r, i) => renderNode(r, `${formatNumber(i + 1)}.`, 0))}</div>
+      {/* a new main section is added where the main sections end, as a list's «+» row is (Notion, Files): it had a toolbar row of
+          its own at the top of the tree, above the sections it adds to */}
+      <div><Button size="sm" variant="ghost" iconStart="Plus" onClick={() => props.onNodeAction({ kind: 'create', parentId: '' })}>بخش اصلی تازه</Button></div>
       {compareDialog}
     </section>
   );

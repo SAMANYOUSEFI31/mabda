@@ -133,23 +133,17 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   ];
 
   return (
-    // the page frame's text and margin (decisions.md §۵۳ ۹): the filters are the margin (what to show), the list is the text. Wide,
-    // the margin stands beside the list like Home's «در این فضا»; narrow, the filters come first, as before. The DOM order is the
-    // same at every width (filters, then list), so the reading order never differs from what is seen (WCAG 1.3.2)
-    <div className="mb-text-margin" data-testid="thinking-space">
+    // one reading column at every width (the page frame, decisions.md §۵۳ ۹); its filters are the title row's «فیلترها (n)»
+    <div className="flex flex-col gap-stack-lg" data-testid="thinking-space">
       {/* a space with no thought at all: no filters to choose from yet, only the empty state and its one action */}
-      {nothingYet ? null : <aside className="mb-text-margin__aside mb-thinking-filters" aria-label="فیلتر فکرها">
-        {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
-            a narrow frame: the row has the page to itself, the section picker under it (§۳۶، §۳۹); a wide frame: one column in the
-            margin, each kind with its count, like the state tally of Home's margin */}
-        {/* the filters are filters (round 3, the root-cause audit «نقش‌کور»): one facet «what» with several at once (OR, faceted
-            search, NN/g), and the section (AND). A wide frame: the margin lists the kinds as toggles with a tick and a count, like
-            Home's tally. Narrow: ONE control in the title's row, «فیلترها (n)», that opens the same facets in a sheet with the live
-            count (iOS Mail and Files; Android Gmail, Play, Divar, Digikala). No «منتظر تو» shortcut beside it: what waits for her is
-            already the first group of the list, under its own heading (an attention group, not a filter), so a shortcut would only
-            hide the rest; the facet keeps it one tap inside the sheet */}
+      {/* the filters are filters (round 3, «نقش‌کور»): one facet «what» with several at once (OR, faceted search, NN/g) and the
+          section (AND), behind ONE control in the title's row, «فیلترها (n)», at every width (round 4, the user on a computer: the
+          wide margin column was a second way to the same thing, and a facet column is for catalogues with many facets, not six).
+          It opens the facets in a sheet with the live count (iOS Mail and Files; Android Gmail; Divar, Digikala on a phone). What
+          waits for her is the first group of the list under its own heading, so no «منتظر تو» shortcut beside it */}
+      {!nothingYet && <>
         {slot && createPortal(
-          <Button size="sm" className="mb-thinking-filters__bar" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" data-testid="thinking-filter-button" onClick={() => setFiltersOpen(true)}>
+          <Button size="sm" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" data-testid="thinking-filter-button" onClick={() => setFiltersOpen(true)}>
             {activeFilters ? `فیلترها (${formatNumber(activeFilters)})` : 'فیلترها'}
           </Button>, slot)}
         <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} side size="md" title="فیلتر فکرها"
@@ -162,20 +156,9 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
             <NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
           </div>
         </Dialog>
-        <div role="group" aria-label="چه چیزی؟" data-testid="thinking-kind-chips" className="mb-thinking-filters__kinds flex-col items-start gap-inline-xs">
-          <Button size="sm" variant={kinds.length ? 'ghost' : 'secondary'} aria-pressed={!kinds.length} onClick={() => setKinds([])}>همه</Button>
-          {offered.map((c) => (
-            <Button key={c.id} size="sm" variant={kinds.includes(c.id) ? 'secondary' : 'ghost'} iconStart={kinds.includes(c.id) ? 'Check' : undefined} aria-pressed={kinds.includes(c.id)} onClick={() => toggleKind(c.id)}>
-              {c.label} ({formatNumber(count(c.id))})
-            </Button>
-          ))}
-        </div>
-        <div className="mb-thinking-filters__scope items-end gap-inline-xs">
-          <div className="w-overlay-xs max-w-full"><NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} /></div>
-        </div>
-      </aside>}
+      </>}
 
-      <div className="mb-text-margin__main flex flex-col gap-stack-lg">
+      <div className="flex flex-col gap-stack-lg">
       {p.lead}
       {empty && (nothingYet || (kind === 'all' && !p.nodeId)
         ? <EmptyState title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={p.onNewThought && <Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>افزودن فکر</Button>} />

@@ -79,16 +79,17 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
     </div>
   );
   return (
-    <div className="mb-box-wide-only flex flex-col gap-stack-md rounded-control border border-border-default p-inset-lg">
+    <div className="mb-group-rule flex flex-col gap-stack-md">
       <p className="label-md text-text-default">{c.reason}</p>
       <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
         {column(c.itemA, 'مورد اول')}
         {column(c.itemB, 'مورد دوم')}
       </div>
-      {!both
-        ? <div className="border-t border-border-subtle pt-inset-sm"><Button variant="ghost" size="sm" iconStart="Split" aria-expanded={false} onClick={() => setBoth(true)}>هر دو درست‌اند؟ جدا کن…</Button></div>
-        : <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md lg:flex-row lg:items-end" data-testid="contradiction-both" ref={bothRef}>
-        <span className="label-md text-text-default lg:pb-inset-sm">هر دو درست‌اند؟</span>
+      {/* a disclosure, not a one-way door (round 4): the same button opens and closes the fields, its chevron says which */}
+      <div>
+        <Button variant="ghost" size="sm" iconStart={both ? 'ChevronUp' : 'ChevronDown'} aria-expanded={both} aria-controls={`both-${c.id}`} onClick={() => setBoth((v) => !v)}>هر دو درست‌اند؟ جدا کن</Button>
+      </div>
+      {both && <div id={`both-${c.id}`} className="flex flex-col gap-inline-sm lg:flex-row lg:items-end" data-testid="contradiction-both" ref={bothRef}>
         <div className="lg:flex-1">
           {/* the two claims of a contradiction often share a title («بودجهٔ سفر نوروز» twice): the choice names them as the columns above do */}
           <Select label="کدام را جابه‌جا کنیم" value={moveId} onChange={(e) => setMoveId(e.target.value)} options={[{ value: c.itemA.id, label: `مورد اول: ${c.itemA.title}` }, { value: c.itemB.id, label: `مورد دوم: ${c.itemB.title}` }]} />

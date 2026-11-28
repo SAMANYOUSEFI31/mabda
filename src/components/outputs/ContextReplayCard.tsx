@@ -85,7 +85,18 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           «به‌روز نیست» is said by the group heading and the callout below, not a third time as a badge */}
       <div className="flex flex-col gap-stack-xs">
         <div className="flex items-start gap-inline-sm">
-          <h2 className="title min-w-space-0 flex-1 text-text-default">{deliverable.title}</h2>
+          {/* the facts sit beside the title where the line holds both (a computer), under it where it does not (a phone): one
+              wrapping line, never a row reserved for them (round 4; Mail, Linear) */}
+          <div className="flex min-w-space-0 flex-1 flex-wrap items-baseline gap-x-inline-md gap-y-stack-xs">
+          <h2 className="title min-w-space-0 text-text-default">{deliverable.title}</h2>
+          <p className="caption flex flex-wrap items-center gap-inline-xs text-text-subtle">
+          {sample ? <span>نمونهٔ دستی</span> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
+          {(sample || ai.managedEnabled) && <span aria-hidden="true">·</span>}
+          <span>{formatJalaliDate(deliverable.createdAt)}</span>
+          {deliverable.rebuildCount > 0 && <><span aria-hidden="true">·</span><span>{formatNumber(deliverable.rebuildCount)} بار بازسازی</span></>}
+          {hasChecks && <><span aria-hidden="true">·</span>{passedAll ? <span>{formatNumber(deliverable.checks!.length)} معیار برقرار</span> : <Caution>{formatNumber(deliverable.checks!.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks!.length)} معیار برقرار</Caution>}</>}
+          </p>
+          </div>
           <div className="flex shrink-0 items-center gap-inline-xs">
             {sample && !stale && canRebuild && <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>ساخت از این دانش</Button>}
             <Button variant="secondary" size="sm" iconStart={copied ? 'Check' : 'Copy'} onClick={() => void handleCopy()}>{copied ? 'کپی شد' : 'کپی'}</Button>
@@ -97,21 +108,14 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
                 ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'SearchCheck' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
                 ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
                 ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'RefreshCw' as const, onSelect: () => onRerequest(deliverable) }] : []),
-                { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'Footprints' as const, onSelect: () => setTraceOpen((v) => !v) },
-                ...(onArchive || onDelete ? [{ divider: true } as const] : []),
+                // «ردپای دانش» is not here: it is the disclosure under the text, with its count (one way to one thing, round 4)
+                ...((onArchive || onDelete) && (deliverable.critiqueFeedback || (!stale && (canRebuild ? !sample : onRerequest))) ? [{ divider: true } as const] : []),
                 ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
                 ...(onDelete ? [{ label: 'حذف', icon: 'Trash2' as const, intent: 'danger' as const, onSelect: () => onDelete(deliverable) }] : []),
               ]}
             />
           </div>
         </div>
-        <p className="caption flex flex-wrap items-center gap-inline-xs text-text-subtle">
-          {sample ? <span>نمونهٔ دستی</span> : (ai.managedEnabled && <ModeBadge value={deliverable.executionMode} />)}
-          {(sample || ai.managedEnabled) && <span aria-hidden="true">·</span>}
-          <span>{formatJalaliDate(deliverable.createdAt)}</span>
-          {deliverable.rebuildCount > 0 && <><span aria-hidden="true">·</span><span>{formatNumber(deliverable.rebuildCount)} بار بازسازی</span></>}
-          {hasChecks && <><span aria-hidden="true">·</span>{passedAll ? <span>{formatNumber(deliverable.checks!.length)} معیار برقرار</span> : <Caution>{formatNumber(deliverable.checks!.filter((c) => c.passed).length)} از {formatNumber(deliverable.checks!.length)} معیار برقرار</Caution>}</>}
-        </p>
       </div>
 
       {/* «به‌روز نیست»: the reason and ONE action; the heading of its group already says it (the hidden words keep it for a screen reader) */}
