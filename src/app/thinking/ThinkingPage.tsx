@@ -33,6 +33,7 @@ export function ThinkingPage({ canJudge, contradictions, handleCheckContradictio
             info={{ term: 'فکر', text: 'هرچه هنوز حقیقت نیست اینجاست. هر چیز فقط با تأیید تو حقیقت می‌شود.' }}
             // the list's «فیلترها (n)» (ThinkingSpace puts it here: its state is the list's); the canvas has its own tools
             tools={thinkingView === 'list' ? <span id="thinking-filter-slot" className="contents" /> : undefined}
+            toolsEnd
             // adding a thought is the top bar's «افزودن» (and the phone bar's): one way for one thing (patterns.md §۳)
             views={<SegmentedControl
               label="نمای فکر"

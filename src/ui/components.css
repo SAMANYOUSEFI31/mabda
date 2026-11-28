@@ -795,6 +795,7 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 @container mb-frame (min-width: 54rem){
   .mb-page-head{flex-direction:row;align-items:flex-start;justify-content:space-between;gap:var(--inline-md)}
   .mb-page-head__actions{flex-wrap:nowrap;flex-shrink:0;inline-size:auto}
+  .mb-page-head__title{flex:1}
 }
 /* one column (no margin beside it): the header, the list and what opens under it share the reading column's two edges, so the
    row buttons end where the header's actions end. Before, the header ran to the frame's edge and the column stopped at 680px

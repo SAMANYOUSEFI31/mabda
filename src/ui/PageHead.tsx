@@ -19,7 +19,7 @@ export interface PageAction { label: string; icon: IconName; onSelect: () => voi
  * Where the head is narrow or wide is decided by the page frame's width (container query `mb-frame`, components.css), not by
  * the screen, so a narrow window on a computer gets the same compact head as a phone.
  */
-export function PageHead({ title, context, info, tools, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
+export function PageHead({ title, context, info, tools, toolsEnd = false, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
   title: string;
   /** what the page is OF (the space's name): written after the title where the head is wide; where it is narrow (a phone) the
    *  app bar right above already names it, so it is left to screen readers there, and the title keeps to one line */
@@ -27,7 +27,10 @@ export function PageHead({ title, context, info, tools, views, actions = [], mor
   info?: { term: string; text: ReactNode };
   /** controls of what the page shows that stay in the title's row at every width, before «⋯» (a page's «فیلترها (n)», as in
    *  Mail and Files on iOS and Gmail on Android): a filter is not a secondary step, so it never folds into «⋯» */
-  tools?: ReactNode; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
+  tools?: ReactNode;
+  /** where the tools sit: by the title (a count belongs to what it counts: Truth's «۴۳ حقیقت») or at the end edge with the page's other
+   *  controls (a filter: GitHub, HIG toolbars «trailing», Fitts: controls clustered at one edge) */
+  toolsEnd?: boolean; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
 }) {
   const full = context ? `${title}: ${context}` : title;
   // the words before the last one, and the last one, which is glued to ⓘ; with a context, the last word is the context's
@@ -37,7 +40,7 @@ export function PageHead({ title, context, info, tools, views, actions = [], mor
   return (
     <div className="mb-page-head">
       <div className="mb-page-head__title flex items-start gap-inline-sm">
-        <div className="min-w-space-0 flex-1">
+        <div className="min-w-space-0">
           {/* ⓘ is glued to the title's last word (one no-wrap run), so it never wraps to a line of its own. It sits in the heading
               for that, and the heading's name stays the title alone (aria-label) */}
           <h1 className="text-heading-md font-bold text-pretty text-text-default" aria-label={info || context ? full : undefined}>
@@ -46,8 +49,8 @@ export function PageHead({ title, context, info, tools, views, actions = [], mor
             ) : info ? <>{lead}<span className="whitespace-nowrap">{last}<span className="mb-page-head__info"><InfoTip term={info.term}>{info.text}</InfoTip></span></span></> : title}
           </h1>
         </div>
-        {tools && <span className="flex shrink-0 items-center gap-inline-xs">{tools}</span>}
-        {overflowItemsNarrow.length > 0 && <span className="mb-page-head__overflow--narrow"><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={overflowItemsNarrow} /></span>}
+        {tools && <span className={`flex shrink-0 items-center gap-inline-xs ${toolsEnd ? 'ms-auto' : ''}`}>{tools}</span>}
+        {overflowItemsNarrow.length > 0 && <span className={`mb-page-head__overflow--narrow ${toolsEnd && tools ? '' : 'ms-auto'}`}><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={overflowItemsNarrow} /></span>}
       </div>
       {(views || actions.length > 0 || more.length > 0) && (
         <div className={views ? 'mb-page-head__actions' : 'mb-page-head__actions mb-page-head__wide-only'}>
