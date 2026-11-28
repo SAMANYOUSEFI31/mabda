@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Contradiction, ContextObject, TreeNode } from '../../types';
 import { NodePickerField } from '../structure/NodePicker';
 import { Badge, Button, Card, Select, StatusBadge, TypeBadge, formatNumber, Caution } from '../../ui';
@@ -53,6 +53,12 @@ export const ContradictionPanel: React.FC<Props> = ({ contradictions, nodes, onK
 const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKeep']; onSeparate: Props['onSeparate'] }> = ({ c, nodes, onKeep, onSeparate }) => {
   const [moveId, setMoveId] = useState(c.itemB.id);
   const [target, setTarget] = useState('');
+  // the rarer answer («both are true») is one quiet button until chosen: its two fields were always open, under every pair, and
+  // took more height than the claims themselves (progressive disclosure; the frequent answer, «keep this one», stays one tap)
+  const [both, setBoth] = useState(false);
+  const bothRef = useRef<HTMLDivElement>(null);
+  // the button that opened the fields is gone: focus goes to the first of them, not to the page
+  useEffect(() => { if (both) bothRef.current?.querySelector<HTMLElement>('select, button')?.focus(); }, [both]);
   const [busy, setBusy] = useState<string | null>(null);
   const label = (id: string) => nodes.find((n) => n.id === id)?.label ?? id;
   const moving = moveId === c.itemA.id ? c.itemA : c.itemB;
@@ -79,7 +85,9 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
         {column(c.itemA, 'مورد اول')}
         {column(c.itemB, 'مورد دوم')}
       </div>
-      <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md lg:flex-row lg:items-end">
+      {!both
+        ? <div className="border-t border-border-subtle pt-inset-sm"><Button variant="ghost" size="sm" iconStart="Split" aria-expanded={false} onClick={() => setBoth(true)}>هر دو درست‌اند؟ جدا کن…</Button></div>
+        : <div className="flex flex-col gap-inline-sm border-t border-border-subtle pt-inset-md lg:flex-row lg:items-end" data-testid="contradiction-both" ref={bothRef}>
         <span className="label-md text-text-default lg:pb-inset-sm">هر دو درست‌اند؟</span>
         <div className="lg:flex-1">
           {/* the two claims of a contradiction often share a title («بودجهٔ سفر نوروز» twice): the choice names them as the columns above do */}
@@ -89,7 +97,7 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
           <NodePickerField label="به این بخش" nodes={nodes} value={target} onChange={setTarget} placeholder="انتخاب کن…" disabledIds={new Set([moving.nodeId])} disabledReason="همین‌جاست" />{/* its own section stays in the list, disabled: dropped, its sub-sections looked like children of the one above (§۴۸) */}
         </div>
         <Button variant="secondary" iconStart="Split" disabled={!target} loading={busy === 'sep'} onClick={() => run('sep', () => onSeparate(c, moveId, target))}>بخش‌ها را جدا کن</Button>
-      </div>
+      </div>}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { timed } from './timing.testkit';
-import { diffWords, isSame, sidesOf, titleSimilarity, tokenize } from './textDiff';
+import { diffWords, isSame, mergeable, sidesOf, titleSimilarity, tokenize } from './textDiff';
 
 const join = (segs: ReturnType<typeof diffWords>, kind: string) => segs.filter((s) => s.kind === kind).map((s) => s.text);
 
@@ -100,4 +100,10 @@ test('versionTexts: an edit that does not carry the text (only the type) keeps t
     ch('c3', { fromVersion: 2, toVersion: 3, at: '2026-01-03T00:00:00Z', before: { content: 'یک' }, after: { content: 'دو' } }),
   ]);
   assert.deepEqual(v.map((x) => [x.version, x.content]), [[1, 'یک'], [2, 'یک'], [3, 'دو']]);
+});
+
+test('mergeable: a small edit reads as one tracked change, a rewrite or no change does not', () => {
+  assert.equal(mergeable(diffWords('معادل سه ماه هزینهٔ ثابت را نقد نگه می‌دارم', 'معادل شش ماه هزینهٔ ثابت را نقد نگه می‌دارم')), true);
+  assert.equal(mergeable(diffWords('سفر نوروز به اصفهان می‌رویم', 'امسال تعطیلات را در خانه می‌مانیم و کار می‌کنیم')), false);
+  assert.equal(mergeable(diffWords('یک متن', 'یک متن')), false);
 });

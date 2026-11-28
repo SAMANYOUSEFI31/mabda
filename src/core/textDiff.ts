@@ -88,3 +88,15 @@ export function diffSummary(segments: DiffSegment[], fa: (n: number) => string =
   if (added) parts.push(`${fa(added)} کلمه اضافه`);
   return parts.join('، ');
 }
+
+/**
+ * When to show one text instead of two: a small edit (the changed words are at most 35% of the words; at 55% a test case read as a jumble), on a phone. There the two
+ * stacked copies repeated the same sentence twice, a box each, and doubled the card's height; a tracked change says it once. A
+ * rewrite stays as «قبل / بعد»: interleaved, most of it would be struck and underlined and nothing would read. Wide: side by side.
+ */
+export function mergeable(segments: DiffSegment[]): boolean {
+  const { removed, added } = diffStats(segments);
+  if (!removed && !added) return false;
+  const words = segments.reduce((n, s) => n + (s.text.trim() ? s.text.trim().split(/\s+/).length : 0), 0);
+  return removed + added <= 0.35 * words;
+}
