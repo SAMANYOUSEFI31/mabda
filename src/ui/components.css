@@ -749,6 +749,9 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
    a surface and not a page of text, takes the whole main area (it bleeds, as a picture does in print). Before, each page chose its
    own width (680, 1080, 1280) and all of them hugged the right edge of a centred 1280 area */
 @layer components{ .mb-page-frame{inline-size:100%;container:mb-frame / inline-size} }
+/* the measure belongs to running text, wherever it sits: a paragraph in a full-width list row or card stops at the reading column
+   (680 ≈ 70 Persian characters; WCAG 1.4.8 ≤ 80), while the row, card and its actions keep the frame's width (round 4) */
+@layer components{ .mb-page-frame p:is(.body-md,.body-reading,.body-sm){max-inline-size:var(--container-prose)} }
 /* THE app frame (layout.md «قاب برنامه»): the side bar and the page are one unit. Up to --container-shell it is the window; past it the
    unit is centred and what is left of the window is quiet paper on both sides. The page frame fills the main area of that unit, so
    folding the bar into the rail gives its width to the page (the bar and the page share one width, they never drift apart). Before,
