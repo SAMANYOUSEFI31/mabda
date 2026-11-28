@@ -999,3 +999,7 @@ html:has(.mb-dialog-layer:not(.is-inline):not([data-state=closed])){overscroll-b
    (680px ≈ 75 characters; WCAG 1.4.8 ≤ 80, Bringhurst 45–75), the box around it keeps the frame's width */
 .mb-output-preview > *{max-inline-size:var(--container-reading)}
 /* a thin upright line between two groups of chips in one row (a state, then kinds): grouping by a line, not by a gap */
+
+/* a pair of claims to compare (ContradictionPanel): side by side only when the pair itself has room, one column under it */
+@layer components{ .mb-pair{container:mb-pair / inline-size} }
+@container mb-pair (min-width: 40rem){ .mb-pair__sides{grid-template-columns:repeat(2,minmax(0,1fr))} }

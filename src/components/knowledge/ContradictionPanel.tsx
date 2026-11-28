@@ -72,17 +72,20 @@ const Pair: React.FC<{ c: Contradiction; nodes: TreeNode[]; onKeep: Props['onKee
       <span className="body-sm text-text-subtle">بخش: {label(o.nodeId)} · نسخهٔ {formatNumber(o.version)}</span>
       <p className="body-md text-text-default">{o.content}</p>
       {/* the two claims sit side by side in a grid that makes them equally tall; the action belongs to the card's foot, so both
-          buttons share one line however long either text is (decisions.md §۴۹). The width of the thumb on a phone, its own width where a
-          pointer aims (round 4: a 450px bar on a computer was weight without purpose; Fitts needs size only where the target is small) */}
+          buttons share one line however long either text is (decisions.md §۴۹). Its own width at every size: the touch height already
+          meets Fitts on a phone, and full width is for a sheet's footer, not a button inside a card (research round 4: Divar, Digikala,
+          GitHub, Wikipedia diff) */}
       <div className="mt-auto pt-stack-xs">
-        <Button variant="secondary" size="sm" fullWidth className="md:w-auto" iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
+        <Button variant="secondary" size="sm" iconStart="Check" loading={busy === `keep:${o.id}`} onClick={() => run(`keep:${o.id}`, () => onKeep(c, o.id))}>این را نگه دار</Button>
       </div>
     </div>
   );
   return (
-    <div className="mb-group-rule flex flex-col gap-stack-md">
+    <div className="mb-group-rule mb-pair flex flex-col gap-stack-md">
       <p className="label-md text-text-default">{c.reason}</p>
-      <div className="grid grid-cols-1 gap-inline-lg md:grid-cols-2">
+      {/* side by side only when the PAIR has room (≥40rem), not the screen: at 768 beside the rail two 300px columns made each claim
+          a narrow strip; Wikipedia's diff does the same, one column on a narrow width, earlier at the start */}
+      <div className="mb-pair__sides grid gap-inline-lg">
         {column(c.itemA, 'مورد اول')}
         {column(c.itemB, 'مورد دوم')}
       </div>
