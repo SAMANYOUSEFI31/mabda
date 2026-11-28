@@ -60,7 +60,7 @@ const audit = () => {
   }
   const seen = new Set();
   for (const el of document.querySelectorAll('body *')) {
-    if (!vis(el)) continue;
+    if (!vis(el) || el.closest(".sr-only, .mb-sr")) continue; // text only a screen reader hears has no contrast to see
     const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
     if (own) {
       const fs = parseFloat(getComputedStyle(el).fontSize);
