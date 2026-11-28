@@ -195,7 +195,10 @@ export function Dialog({ open, onClose, title, description, children, footer, in
   // and no more (rubber band: the sheet is already as high as it goes)
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
-  const canDrag = () => !!panel.current && !inline && !side && !alert && !!closeRef.current && window.matchMedia('(max-width: 767px)').matches;
+  // one rule with the grab handle (components.css): a sheet that shows the handle closes by a pull, every one of them. A side panel
+  // IS a bottom sheet on a phone, and it showed the handle but would not move (the truth table's «فیلترها»); a top sheet and an
+  // alert have no handle and no pull
+  const canDrag = () => !!panel.current && !inline && !top && !alert && !!closeRef.current && window.matchMedia('(max-width: 767px)').matches;
   const pull = (p: HTMLElement, dy: number) => { p.style.transition = 'none'; p.style.transform = `translateY(${dy >= 0 ? dy : -Math.min(12, -dy / 5)}px)`; };
   const release = (p: HTMLElement, dy: number, ms: number) => {
     const flick = dy > 40 && dy / Math.max(1, ms) > 0.5;
@@ -249,7 +252,7 @@ export function Dialog({ open, onClose, title, description, children, footer, in
     body.addEventListener('touchend', end); body.addEventListener('touchcancel', end);
     return () => { body.removeEventListener('touchstart', start); body.removeEventListener('touchmove', move); body.removeEventListener('touchend', end); body.removeEventListener('touchcancel', end); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, inline, side, alert, !!children]);
+  }, [open, inline, top, alert, !!children]);
 
   if (!open) return null;
   const node = (

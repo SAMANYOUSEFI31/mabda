@@ -62,6 +62,20 @@ await guard('a sheet pulled down from its body closes; a small pull settles back
   assert.equal(await page.locator('.mb-dialog-layer:not(.is-inline)[data-state=open]').count(), 0, 'a long pull did not close it');
 });
 
+await guard('every sheet that shows a grab handle closes by a pull (the truth table «فیلترها», a side panel on a phone)', async () => {
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.locator('.mb-bottomnav button', { hasText: 'حقیقت' }).first().tap(); await page.waitForTimeout(600);
+  await page.getByRole('radio', { name: 'جدول' }).or(page.getByRole('tab', { name: 'جدول' })).or(page.getByRole('button', { name: 'جدول', exact: true })).first().tap(); await page.waitForTimeout(600);
+  await page.getByRole('button', { name: /^فیلترها/ }).first().tap();
+  await page.locator('.mb-dialog-layer.is-side .mb-dialog').waitFor();
+  await page.waitForTimeout(400);
+  const grab = await page.locator('.mb-dialog-layer.is-side .mb-dialog__grab').isVisible();
+  assert.ok(grab, 'the filters sheet shows no handle');
+  await touchDrag('.mb-dialog-layer.is-side .mb-dialog__body', 400);
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator('.mb-dialog-layer:not(.is-inline)[data-state=open]').count(), 0, 'a long pull did not close it');
+});
+
 await guard('back from any page goes to «خانه»; a sheet first; from «خانه» it leaves', async () => {
   const pg = await ctx.newPage(); // a fresh history: one entry, the start
   await pg.goto(BASE, { waitUntil: 'networkidle' });

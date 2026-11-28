@@ -35,6 +35,11 @@ test('filters: by kind and by node (a node with its whole sub-tree)', () => {
   assert.deepEqual(thinkingSpace(base, { kind: 'waiting' }).waiting.length, 2);
   assert.deepEqual(thinkingSpace(base, { kind: 'waiting' }).thoughts, []);
   assert.deepEqual(thinkingSpace(base, { kind: 'question' }).thoughts.map((x) => x.nodeId).sort(), ['brand', 'offer']);
+  // several kinds at once: OR within the facet; the waiting items are one of them
+  const two = thinkingSpace(base, { kinds: ['question', 'waiting'] });
+  assert.equal(two.waiting.length, 2);
+  assert.ok(two.thoughts.length > 0 && two.thoughts.every((x) => x.kind === 'question'));
+  assert.deepEqual(thinkingSpace(base, { kinds: [] }).thoughts.length, thinkingSpace(base).thoughts.length, 'none chosen = all');
   assert.deepEqual(thinkingSpace(base, { nodeId: 'product' }).waiting.map((w) => w.object.id), ['b'], 'offer is under product');
   assert.deepEqual(thinkingSpace(base, { nodeId: 'brand' }).thoughts.map((x) => x.nodeId), ['brand']);
   assert.equal(openThoughtCount({ objects, notes }, 'offer'), 4, 'one waiting + three open thoughts in that node');

@@ -19,12 +19,15 @@ export interface PageAction { label: string; icon: IconName; onSelect: () => voi
  * Where the head is narrow or wide is decided by the page frame's width (container query `mb-frame`, components.css), not by
  * the screen, so a narrow window on a computer gets the same compact head as a phone.
  */
-export function PageHead({ title, context, info, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
+export function PageHead({ title, context, info, tools, views, actions = [], more = [], moreLabel = 'بیشتر' }: {
   title: string;
   /** what the page is OF (the space's name): written after the title where the head is wide; where it is narrow (a phone) the
    *  app bar right above already names it, so it is left to screen readers there, and the title keeps to one line */
   context?: string;
-  info?: { term: string; text: ReactNode }; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
+  info?: { term: string; text: ReactNode };
+  /** controls of what the page shows that stay in the title's row at every width, before «⋯» (a page's «فیلترها (n)», as in
+   *  Mail and Files on iOS and Gmail on Android): a filter is not a secondary step, so it never folds into «⋯» */
+  tools?: ReactNode; views?: ReactNode; actions?: PageAction[]; more?: MenuItem[]; moreLabel?: string;
 }) {
   const full = context ? `${title}: ${context}` : title;
   // the words before the last one, and the last one, which is glued to ⓘ; with a context, the last word is the context's
@@ -43,6 +46,7 @@ export function PageHead({ title, context, info, views, actions = [], more = [],
             ) : info ? <>{lead}<span className="whitespace-nowrap">{last}<span className="mb-page-head__info"><InfoTip term={info.term}>{info.text}</InfoTip></span></span></> : title}
           </h1>
         </div>
+        {tools && <span className="flex shrink-0 items-center gap-inline-xs">{tools}</span>}
         {narrowItems.length > 0 && <span className="mb-page-head__top-more"><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={narrowItems} /></span>}
       </div>
       {(views || actions.length > 0 || more.length > 0) && (

@@ -758,16 +758,16 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-text-margin{display:flex;flex-direction:column;gap:var(--stack-lg)}
 .mb-text-margin__main{min-inline-size:0}
 .mb-thinking-filters{display:flex;flex-direction:column;gap:var(--stack-sm)}
-.mb-thinking-filters__scope{display:none}
+.mb-thinking-filters__scope,.mb-thinking-filters__kinds{display:none}
 }
 @container mb-frame (min-width: 54rem){
   .mb-text-margin{display:grid;grid-template-columns:minmax(0,var(--container-prose)) minmax(0,1fr);column-gap:var(--space-10);align-items:start}
   .mb-text-margin__main{grid-column:1;grid-row:1}
   .mb-text-margin__aside{grid-column:2;grid-row:1;position:sticky;inset-block-start:calc(var(--pin-top,0px) + var(--space-4));padding-block-start:var(--stack-sm);border-block-start:var(--border-width-thin) solid var(--border-subtle)}
   .mb-thinking-filters{gap:var(--stack-lg)}
-  .mb-thinking-filters__kinds{flex-direction:column;align-items:flex-start;overflow:visible;margin-inline:0;padding-inline:0}
+  .mb-thinking-filters__kinds{display:flex}
   .mb-thinking-filters__scope{display:flex;flex-direction:column;align-items:flex-start}
-  .mb-thinking-filters__scope-chip{display:none}
+  .mb-thinking-filters__bar{display:none}
   .mb-thinking-filters__scope > .w-overlay-xs{inline-size:100%}
 }
 /* a page's header: the title, then its actions (a view choice, the page's tools, «⋯» last at the end edge). Beside the title only

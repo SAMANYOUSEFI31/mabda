@@ -16,7 +16,8 @@ import { convertedTo, thinkingOf } from './thinkingMarkers';
 import type { NoteThinkingItem, ThinkingKind } from './thinkingMarkers';
 
 export type SpaceKind = ThinkingKind | 'waiting';
-export interface SpaceFilter { kind?: SpaceKind; nodeId?: string }
+/** `kinds`: several at once, OR within the facet (faceted search, NN/g); with the section, AND. `kind` is one of them (kept) */
+export interface SpaceFilter { kind?: SpaceKind; kinds?: SpaceKind[]; nodeId?: string }
 export interface WaitingItem { type: 'proposal' | 'review' | 'draft'; object: ContextObject }
 export interface SpaceView {
   waiting: WaitingItem[];
@@ -54,7 +55,8 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
   const inNode = (id: string) => !ids || ids.has(id);
   // a thought is also in the view of every section / knowledge it names with @«…» (its «دربارهٔ»), not only its home
   const inScope = (t: NoteThinkingItem) => !ids || thoughtInScope(t, ids, objects, nodes);
-  const k = filter.kind;
+  const ks = filter.kinds?.length ? new Set(filter.kinds) : filter.kind ? new Set([filter.kind]) : null;
+  const has = (x: SpaceKind) => !ks || ks.has(x);
   const thoughtsScoped = thoughtsAll.filter(inScope);
   // the order of «منتظر تصمیم تو»: the upper section's item before its sub-sections' (ties only; depends_on layers come first)
   const layers = layerIndex(planDecisions(objects, input.relationships ?? []));
@@ -64,14 +66,14 @@ export function thinkingSpace(input: { objects: ContextObject[]; notes: Pick<Not
     for (const [id, below] of r.below) structure[id] = below.length;
     return r.items;
   };
-  const waitingShown = !k || k === 'waiting' ? waitingAll.filter((w) => inNode(w.object.nodeId)) : [];
+  const waitingShown = has('waiting') ? waitingAll.filter((w) => inNode(w.object.nodeId)) : [];
   const newest = (w: WaitingItem) => w.object.source?.at ?? w.object.createdAt;
   const waitingOrdered = (['proposal', 'review', 'draft'] as const).flatMap((t) => orderWaiting(waitingShown.filter((w) => w.type === t).sort(t === 'proposal' ? (a, b) => newest(b).localeCompare(newest(a)) : () => 0)));
   return {
     structure,
     waiting: waitingOrdered,
-    thoughts: !k || (k !== 'waiting' && k !== 'assumption') ? thoughtsAll.filter((t) => inScope(t) && (!k || t.kind === k)) : k === 'assumption' ? thoughtsAll.filter((t) => inScope(t) && t.kind === 'assumption') : [],
-    assumptions: !k || k === 'assumption' ? assumptionsAll.filter((o) => inNode(o.nodeId)) : [],
+    thoughts: thoughtsAll.filter((t) => inScope(t) && has(t.kind)),
+    assumptions: has('assumption') ? assumptionsAll.filter((o) => inNode(o.nodeId)) : [],
     // a chip says how many it will show when tapped: the section filter applies to the counts too (NEW-08), the kind filter does not
     counts: {
       waiting: waitingAll.filter((w) => inNode(w.object.nodeId)).length,

@@ -56,7 +56,7 @@ export const TRUSTED: Array<{ file: string; expr: string; why: string }> = [
   { file: 'src/components/shared/Removal.tsx', expr: '{confirmLabel}', why: 'checked at its call sites (CHECKED → DangerDialog)' },
   { file: 'src/components/shell/AppNavigation.tsx', expr: '{p.addAction.label}', why: 'pageAction in src/app/shell/useRemovalAndDialogs.tsx: the literal «افزودن»' },
   { file: 'src/components/structure/QuickStartDialog.tsx', expr: 'q.label', why: 'q is an entry of QUESTIONS (the app\'s questions)' },
-  { file: 'src/components/thinking/ThinkingSpace.tsx', expr: "{c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}", why: 'c is an entry of CHIPS, a literal list in the same file' },
+  { file: 'src/components/thinking/ThinkingSpace.tsx', expr: '{c.label} ({formatNumber(count(c.id))})', why: 'c is an entry of KINDS, a literal list in the same file' },
 ];
 
 const walk = (p: string): string[] => (statSync(p).isDirectory() ? readdirSync(p).flatMap((f) => walk(join(p, f))) : /\.tsx$/.test(p) && !/\.test\./.test(p) ? [p] : []);

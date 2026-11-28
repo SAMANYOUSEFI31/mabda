@@ -5,6 +5,7 @@
 
 import type { AboutTarget } from '../../core/thoughtAbout';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ContextObject, ContextRelationship, Note, ThoughtKind, TreeNode } from '../../types';
 import { STRUCTURE_REASON } from '../../core/decisionOrder';
 import { effectiveObjects } from '../../core/effectiveContext';
@@ -13,8 +14,8 @@ import { thinkingSpace } from '../../core/thinkingSpace';
 import type { SpaceKind } from '../../core/thinkingSpace';
 import { subtreeIds } from '../../core/nodeTree';
 import type { NoteThinkingItem } from '../../core/thinkingMarkers';
-import { Badge, Button, Card, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
-import { NodePicker, NodePickerField } from '../structure/NodePicker';
+import { Badge, Button, Card, Checkbox, Dialog, EmptyState, IconButton, Menu, SegmentedControl,  Textarea, formatNumber, Nuqta, TYPE_META, sampleMark } from '../../ui';
+import { NodePickerField } from '../structure/NodePicker';
 import { BeforeAfter } from '../shared/BeforeAfter';
 import { ProposalInbox } from '../knowledge/ProposalInbox';
 import { ThinkingList } from './ThinkingList';
@@ -55,8 +56,9 @@ interface Props {
   proposals: Omit<ProposalProps, 'objects' | 'nodes' | 'keepOrder' | 'hints'>;
 }
 
-const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
-  { id: 'all', label: 'همه' }, { id: 'waiting', label: 'منتظر تو' }, { id: 'idea', label: 'ایده' }, { id: 'question', label: 'سؤال' }, { id: 'assumption', label: 'فرض' }, { id: 'open_decision', label: 'تصمیم باز' },
+/** what the list holds, one facet: the decisions waiting for her and the four kinds of thought. Several at once (OR), none = all */
+const KINDS: Array<{ id: SpaceKind; label: string }> = [
+  { id: 'waiting', label: 'منتظر تو' }, { id: 'idea', label: 'ایده' }, { id: 'question', label: 'سؤال' }, { id: 'assumption', label: 'فرض' }, { id: 'open_decision', label: 'تصمیم باز' },
 ];
 
 /**
@@ -64,14 +66,20 @@ const CHIPS: Array<{ id: SpaceKind | 'all'; label: string }> = [
  * (a status change, not a move): فکر ← پیشنهادی ← تأییدشده. «منتظر تصمیم تو» is on top: it is a passage, not a place.
  */
 export const ThinkingSpace: React.FC<Props> = (p) => {
-  const [kind, setKind] = useState<SpaceKind | 'all'>('all');
+  const [kinds, setKinds] = useState<SpaceKind[]>([]);
+  const kind = kinds.length ? kinds.join() : 'all'; // a key: what is chosen, for the effects and the empty state
+  const toggleKind = (k: SpaceKind) => setKinds((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // the page's title row holds the filter button (PageHead `tools`); the slot is there once the head is on screen
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setSlot(document.getElementById('thinking-filter-slot')); }, []);
   const [anchorsOpen, setAnchorsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // selecting is not a mode (§۵۴ ۱۵): each open thought has its own box, and the actions appear once one is ticked
   const selectMode = selectedIds.length > 0;
   const [synthesis, setSynthesis] = useState<{ text: string; kind: ThoughtKind; nodeId: string } | null>(null);
   const [synthesisBusy, setSynthesisBusy] = useState(false);
-  const view = useMemo(() => thinkingSpace({ objects: p.objects, notes: p.notes, thoughts: p.thoughts, nodes: p.nodes, relationships: p.relationships }, { kind: kind === 'all' ? undefined : kind, nodeId: p.nodeId }), [p.objects, p.notes, p.thoughts, p.nodes, p.relationships, kind, p.nodeId]);
+  const view = useMemo(() => thinkingSpace({ objects: p.objects, notes: p.notes, thoughts: p.thoughts, nodes: p.nodes, relationships: p.relationships }, { kinds, nodeId: p.nodeId }), [p.objects, p.notes, p.thoughts, p.nodes, p.relationships, kinds, p.nodeId]);
   const selectedThoughts = view.thoughts.filter((t) => !!t.id && selectedIds.includes(t.id));
   const selectedThoughtIds = selectedThoughts.flatMap((t) => t.id ? [t.id] : []);
   const selectableCount = view.thoughts.filter((t) => !!t.id).length;
@@ -110,7 +118,12 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
   const proposalHints = Object.fromEntries(proposalsHere.map((o) => [o.id, reasonOf(o.id)]).filter(([, r]) => r)) as Record<string, string>;
   const empty = view.waiting.length + view.thoughts.length + view.assumptions.length === 0;
   const nothingYet = !p.nodeId && Object.values(view.counts).every((n) => !n);
-  const count = (k: SpaceKind | 'all') => (k === 'all' ? Object.values(view.counts).reduce((a, b) => a + b, 0) : view.counts[k]);
+  const count = (k: SpaceKind) => view.counts[k];
+  const shownCount = view.waiting.length + view.thoughts.length + view.assumptions.length;
+  const activeFilters = kinds.length + (p.nodeId ? 1 : 0);
+  const clearFilters = () => { setKinds([]); p.onNodeChange(undefined); };
+  // a kind with nothing in it is not offered (decisions.md §۳۰); a chosen one stays even at zero, so she can see where she is
+  const offered = KINDS.filter((c) => kinds.includes(c.id) || count(c.id) > 0);
 
   // patterns.md «نماها و «…»»: nothing here hides behind «…». Choosing several thoughts is a plain button; «if I approve them all»
   // sits on the «منتظر تصمیم تو» heading it is about, and only when something is waiting
@@ -119,8 +132,6 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
     ...(p.onCompareIfApproved ? [{ label: 'فهرست تغییرها', icon: 'GitCompareArrows' as const, onSelect: p.onCompareIfApproved }] : []),
   ];
 
-  const [scopeOpen, setScopeOpen] = useState(false);
-  const scopeChip = useRef<HTMLButtonElement>(null);
   return (
     // the page frame's text and margin (decisions.md §۵۳ ۹): the filters are the margin (what to show), the list is the text. Wide,
     // the margin stands beside the list like Home's «در این فضا»; narrow, the filters come first, as before. The DOM order is the
@@ -131,25 +142,32 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
         {/* phone: one row that scrolls sideways (the chip cut at the edge says there is more), as filter chips do on Android and iOS;
             a narrow frame: the row has the page to itself, the section picker under it (§۳۶، §۳۹); a wide frame: one column in the
             margin, each kind with its count, like the state tally of Home's margin */}
-        <div role="radiogroup" aria-label="نوع فکر" data-testid="thinking-kind-chips" data-scroll-x className="mb-chip-strip mb-thinking-filters__kinds -mx-inset-lg flex gap-inline-xs overflow-x-auto px-inset-lg py-space-1 sm:mx-space-0 sm:px-space-0">
-          {/* a kind with nothing in it is not offered (decisions.md §۳۰): a filter that can only show «nothing» is noise, and on a phone
-              six chips took two rows. The chosen one stays even at zero, so she can see where she is */}
-          {/* where the filters are one row (a narrow frame), «which section» is a chip at the row's start that opens the same picker
-              (a sheet on a phone): Android's and iOS's dropdown filter chip. It was a full-width field on a row of its own */}
-          <Button ref={scopeChip} personal size="sm" className="mb-thinking-filters__scope-chip shrink-0" variant={p.nodeId ? 'secondary' : 'ghost'} iconEnd="ChevronDown" aria-haspopup="dialog" aria-expanded={scopeOpen}
-            aria-label={`کدام بخش؟، ${p.nodeId ? p.nodes.find((n) => n.id === p.nodeId)?.label ?? 'همهٔ بخش‌ها' : 'همهٔ بخش‌ها'}`} onClick={() => setScopeOpen((v) => !v)}>
-            {p.nodeId ? p.nodes.find((n) => n.id === p.nodeId)?.label ?? 'همهٔ بخش‌ها' : 'همهٔ بخش‌ها'}
-          </Button>
-          <NodePicker open={scopeOpen} onClose={() => setScopeOpen(false)} anchor={scopeChip} title="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onPick={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
-          {/* one choice at a time (choice chips, M3): each answers one question («what waits for me?», «my open questions?»), and
-              «همه» is the way back. «منتظر تو» is a state, not a kind of thought: a thin line sets it apart from the kinds after it */}
-          {CHIPS.filter((c) => c.id === 'all' || c.id === kind || count(c.id) > 0).map((c, i, shown) => (
-            <React.Fragment key={c.id}>
-              {c.id !== 'all' && c.id !== 'waiting' && shown[i - 1]?.id === 'waiting' && <span className="mb-chip-sep" aria-hidden="true" />}
-              <Button size="sm" className="shrink-0" variant={kind === c.id ? 'secondary' : 'ghost'} role="radio" aria-checked={kind === c.id} onClick={() => setKind(c.id)}>
-                {c.label}{count(c.id) ? ` (${formatNumber(count(c.id))})` : ''}
-              </Button>
-            </React.Fragment>
+        {/* the filters are filters (round 3, the root-cause audit «نقش‌کور»): one facet «what» with several at once (OR, faceted
+            search, NN/g), and the section (AND). A wide frame: the margin lists the kinds as toggles with a tick and a count, like
+            Home's tally. Narrow: ONE control in the title's row, «فیلترها (n)», that opens the same facets in a sheet with the live
+            count (iOS Mail and Files; Android Gmail, Play, Divar, Digikala). No «منتظر تو» shortcut beside it: what waits for her is
+            already the first group of the list, under its own heading (an attention group, not a filter), so a shortcut would only
+            hide the rest; the facet keeps it one tap inside the sheet */}
+        {slot && createPortal(
+          <Button size="sm" className="mb-thinking-filters__bar" variant={activeFilters ? 'secondary' : 'ghost'} iconStart="Filter" aria-haspopup="dialog" data-testid="thinking-filter-button" onClick={() => setFiltersOpen(true)}>
+            {activeFilters ? `فیلترها (${formatNumber(activeFilters)})` : 'فیلترها'}
+          </Button>, slot)}
+        <Dialog open={filtersOpen} onClose={() => setFiltersOpen(false)} side size="md" title="فیلتر فکرها"
+          footer={<><Button variant="primary" onClick={() => setFiltersOpen(false)}>{`نمایش ${formatNumber(shownCount)} مورد`}</Button>{activeFilters > 0 && <Button variant="ghost" onClick={clearFilters}>پاک‌کردن فیلترها</Button>}</>}>
+          <div className="flex flex-col gap-stack-lg">
+            <fieldset className="flex flex-col gap-stack-sm">
+              <legend className="label-md mb-stack-sm text-text-default">چه چیزی؟</legend>
+              {offered.map((c) => <Checkbox key={c.id} label={`${c.label} (${formatNumber(count(c.id))})`} checked={kinds.includes(c.id)} onChange={() => toggleKind(c.id)} />)}
+            </fieldset>
+            <NodePickerField label="کدام بخش؟" nodes={p.nodes} value={p.nodeId ?? ''} onChange={(v) => p.onNodeChange(v || undefined)} extra={[{ value: '', label: 'همهٔ بخش‌ها' }]} />
+          </div>
+        </Dialog>
+        <div role="group" aria-label="چه چیزی؟" data-testid="thinking-kind-chips" className="mb-thinking-filters__kinds flex-col items-start gap-inline-xs">
+          <Button size="sm" variant={kinds.length ? 'ghost' : 'secondary'} aria-pressed={!kinds.length} onClick={() => setKinds([])}>همه</Button>
+          {offered.map((c) => (
+            <Button key={c.id} size="sm" variant={kinds.includes(c.id) ? 'secondary' : 'ghost'} iconStart={kinds.includes(c.id) ? 'Check' : undefined} aria-pressed={kinds.includes(c.id)} onClick={() => toggleKind(c.id)}>
+              {c.label} ({formatNumber(count(c.id))})
+            </Button>
           ))}
         </div>
         <div className="mb-thinking-filters__scope items-end gap-inline-xs">
@@ -161,7 +179,7 @@ export const ThinkingSpace: React.FC<Props> = (p) => {
       {p.lead}
       {empty && (nothingYet || (kind === 'all' && !p.nodeId)
         ? <EmptyState title="اینجا هنوز فکری نیست" description="یک ایده، سؤال یا تصمیم باز را همین‌جا بنویس؛ لازم نیست چیزی بلد باشی." action={p.onNewThought && <Button variant="secondary" iconStart="Plus" onClick={p.onNewThought}>افزودن فکر</Button>} />
-        : empty && <EmptyState kind="filtered" title={kind === 'all' ? 'در این بخش فکری نیست' : 'با این فیلتر فکری نیست'} action={<Button variant="secondary" onClick={() => { setKind('all'); p.onNodeChange(undefined); }}>پاک‌کردن فیلترها</Button>} />)}
+        : empty && <EmptyState kind="filtered" title={kind === 'all' ? 'در این بخش فکری نیست' : 'با این فیلتر فکری نیست'} action={<Button variant="secondary" onClick={clearFilters}>پاک‌کردن فیلترها</Button>} />)}
 
       {view.waiting.length > 0 && (
         <section className="flex flex-col gap-stack-md" aria-label="منتظر تو">
