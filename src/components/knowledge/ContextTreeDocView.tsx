@@ -296,7 +296,7 @@ export const ContextTreeDocView: React.FC<ContextTreeDocViewProps> = (props) => 
   useEffect(() => { setAboveOpen(false); }, [props.focusId]);
   const compareDialog = (
     <Dialog open={!!compare} onClose={() => setCompare(null)} size="md" title="پیش‌تر و اکنون" description={compare ? `«${compare.after.title}»` : undefined}
-      footer={<><Button variant="ghost" data-dismiss onClick={() => setCompare(null)}>بستن</Button><Button variant="secondary" onClick={() => { const o = compare!.after; setCompare(null); props.onSelectObject(o); }}>تاریخچهٔ کامل</Button></>}>
+      footer={<><Button variant="ghost" data-cancel onClick={() => setCompare(null)}>بستن</Button><Button variant="secondary" onClick={() => { const o = compare!.after; setCompare(null); props.onSelectObject(o); }}>تاریخچهٔ کامل</Button></>}>
       {compare && <BeforeAfter before={compare.before.content} after={compare.after.content} />}
     </Dialog>
   );
@@ -379,7 +379,7 @@ const OutlineBar: React.FC<{ nodes: TreeNode[]; counts: Map<string, number> }> =
   const path = active ? sectionPath(nodes, active) : [];
   const now = path.length > 2 ? `… › ${path.slice(-2).join(' › ')}` : path.join(' › ');
   return (
-    <div data-pin="sub" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
+    <div data-sticky="secondary" data-testid="structure-outline" className="doc-bar flex items-center gap-inline-sm">
       <Menu label="فهرست بخش‌ها" align="start" trigger={<Button size="sm" variant="secondary" iconStart="ListChecks">فهرست</Button>}
         items={all.map((i) => ({ label: <span className="mb-menu-row flex w-full items-baseline justify-between gap-inline-md"><span>{`${treeIndent(i.level - 1)}${i.label}`}</span><span className="body-sm tabular-nums text-text-subtle" aria-label={`${formatNumber(counts.get(i.id) ?? 0)} مورد`}>{formatNumber(counts.get(i.id) ?? 0)}</span></span>, text: i.label, onSelect: () => { setTimeout(() => goTo(i.id), 60); } }))} />
       <SectionScrubber items={parts} active={part} now={now} nowFull={path.join(' › ')} anchorOf={nodeAnchor} onGo={goTo} endId="structure-tree" label="جای خواندن در بخش‌ها" />
@@ -393,7 +393,7 @@ const FocusBar: React.FC<{ path: Array<{ id: string; label: string }>; onGo: (id
   const parent = path.length > 1 ? path[path.length - 2].id : null;
   const crumb = 'body-sm inline-flex min-h-touch min-w-touch items-center justify-center rounded-control-sm px-inset-xs text-text-subtle hover:bg-interaction-hover';
   return (
-    <div data-pin="sub" className="focus-bar flex items-center gap-inline-sm" data-testid="focus-bar">
+    <div data-sticky="secondary" className="focus-bar flex items-center gap-inline-sm" data-testid="focus-bar">
       <IconButton icon="ArrowRight" label={parent ? 'برگشت به بخش بالاتر' : 'برگشت به همهٔ بخش‌ها'} variant="secondary" onClick={() => onGo(parent)} />
       <nav aria-label="مسیر بخش" className="min-w-space-0 flex-1">
         <ol className="flex flex-wrap items-center gap-inline-xs">

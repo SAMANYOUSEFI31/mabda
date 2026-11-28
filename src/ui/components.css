@@ -1,9 +1,9 @@
 /* the device's safe areas (notch, home bar): used by sheets, the bottom bar and toasts; 0 where there is none */
 :root{--safe-top:env(safe-area-inset-top, 0px);--safe-bottom:env(safe-area-inset-bottom, 0px)}
 /* the height a person can actually see: with the phone's keyboard open it is the visible part above it (keyboard.ts sets
-   --vv-h and --vv-top from visualViewport); a sheet and its layer follow it, so the field being typed in never slides out of view */
-:root{--app-h:var(--vv-h, 100dvh)}
-@media (max-width:767px){.mb-dialog-layer{inset:auto 0 auto 0;inset-block-start:var(--vv-top, 0px);block-size:var(--app-h)}}
+   --visual-viewport-height and --visual-viewport-top from visualViewport); a sheet and its layer follow it, so the field being typed in never slides out of view */
+:root{--app-h:var(--visual-viewport-height, 100dvh)}
+@media (max-width:767px){.mb-dialog-layer{inset:auto 0 auto 0;inset-block-start:var(--visual-viewport-top, 0px);block-size:var(--app-h)}}
 /* while she types on a phone the bottom bar steps aside: it would sit on the keyboard and cover the field (keyboard.ts) */
 html[data-keyboard] .mb-bottomnav.is-fixed{display:none}
 /*
@@ -173,11 +173,11 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 /* ---------- Card: a sheet on the desk ---------- */
 .mb-card{display:block;inline-size:100%;text-align:start;color:var(--text-default);background:var(--card-surface);border:var(--border-width-thin) solid var(--card-border);border-radius:var(--card-radius);box-shadow:var(--card-shadow);font:inherit;
   transition:border-color var(--duration-base) var(--ease-standard),box-shadow var(--duration-base) var(--ease-standard),scale var(--duration-instant) var(--ease-standard)}
-.mb-card--pad-md{padding:var(--inset-md)}.mb-card--pad-lg{padding:var(--inset-lg)}.mb-card--pad-xl,.mb-card--section{padding:var(--inset-xl)}
+.mb-card--pad-md{padding:var(--inset-md)}.mb-card--pad-lg{padding:var(--inset-lg)}.mb-card--pad-xl,.mb-card--panel{padding:var(--inset-xl)}
 /* one container level on a phone (round 3, the iPhone test; iOS Settings, M3 lists): a section's card would put its items in a box
    inside a box, and each box's padding again between the text and the screen's edge (a 390 screen kept 290 for the words).
    The section's heading and its line sit on the page, like the page's other headings; only its items are boxes */
-@media (max-width:767px){.mb-card--section{background:none;border:0;border-radius:0;box-shadow:none;padding:0}}
+@media (max-width:767px){.mb-card--panel{background:none;border:0;border-radius:0;box-shadow:none;padding:0}}
 .mb-card--interactive{cursor:pointer;text-decoration:none}
 .mb-card.is-selected{background:var(--bg-selected);border-color:var(--border-selected)}
 .mb-card--interactive[data-force~=hover]{border-color:var(--card-border-hover);box-shadow:var(--card-shadow-hover)}@media (hover:hover){.mb-card--interactive:hover{border-color:var(--card-border-hover);box-shadow:var(--card-shadow-hover)}}
@@ -215,7 +215,7 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-table th{padding:var(--inset-sm) var(--inset-lg);text-align:start;color:var(--text-subtle);background:var(--surface-sunken);border-block-end:var(--border-width-thin) solid var(--border-default);white-space:nowrap}
 /* a table that fits (data-fit, measured in Table): clip, not a scroller, so its column names stay under the app's bars on a long table */
 .mb-table-wrap[data-fit]{overflow-x:clip}
-.mb-table-wrap[data-fit] thead th{position:sticky;inset-block-start:calc(var(--pin-top,0px) + var(--pin-sub,0px));z-index:var(--layer-raised);box-shadow:0 var(--border-width-thin) 0 var(--border-default);transition:inset-block-start var(--duration-base) var(--ease-standard)}
+.mb-table-wrap[data-fit] thead th{position:sticky;inset-block-start:calc(var(--sticky-top,0px) + var(--sticky-secondary,0px));z-index:var(--layer-raised);box-shadow:0 var(--border-width-thin) 0 var(--border-default);transition:inset-block-start var(--duration-base) var(--ease-standard)}
 .mb-table td{padding:var(--inset-md) var(--inset-lg);border-block-end:var(--border-width-thin) solid var(--border-subtle)}
 .mb-table tbody tr:last-child td{border-block-end:0}
 .mb-table tbody tr.is-clickable{cursor:pointer}
@@ -460,7 +460,7 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 .mb-toast-stack{position:fixed;inset-block-end:calc(var(--inset-lg) + var(--safe-bottom));inset-inline:var(--inset-lg);z-index:var(--layer-toast);display:flex;flex-direction:column;align-items:center;gap:var(--stack-sm);pointer-events:none}
 .mb-toast-stack>*{pointer-events:auto}
 /* phones: above the bottom bar (its height is the comfortable target + 8), never on top of it */
-@media (max-width:767px){.mb-toast-stack{inset-block-end:calc(var(--pin-bottom, var(--space-16)) + var(--inset-md))}}
+@media (max-width:767px){.mb-toast-stack{inset-block-end:calc(var(--fixed-bottom-inset, var(--space-16)) + var(--inset-md))}}
 @keyframes mb-in{from{opacity:0;translate:0 var(--distance-sm)}}
 .mb-popover__panel.is-top{animation-name:mb-in-up}
 @keyframes mb-in-up{from{opacity:0;translate:0 calc(var(--distance-sm) * -1)}}
@@ -763,7 +763,7 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 @container mb-frame (min-width: 54rem){
   .mb-text-margin{display:grid;grid-template-columns:minmax(0,var(--container-prose)) minmax(0,1fr);column-gap:var(--space-10);align-items:start}
   .mb-text-margin__main{grid-column:1;grid-row:1}
-  .mb-text-margin__aside{grid-column:2;grid-row:1;position:sticky;inset-block-start:calc(var(--pin-top,0px) + var(--space-4));padding-block-start:var(--stack-sm);border-block-start:var(--border-width-thin) solid var(--border-subtle)}
+  .mb-text-margin__aside{grid-column:2;grid-row:1;position:sticky;inset-block-start:calc(var(--sticky-top,0px) + var(--space-4));padding-block-start:var(--stack-sm);border-block-start:var(--border-width-thin) solid var(--border-subtle)}
   .mb-thinking-filters{gap:var(--stack-lg)}
   .mb-thinking-filters__kinds{display:flex}
   .mb-thinking-filters__scope{display:flex;flex-direction:column;align-items:flex-start}
@@ -927,12 +927,10 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 /* a page's «⋯»: beside the actions where they sit beside the title; in the title's row (end edge) where the actions wrap under it,
    so a full-width view switch keeps its row and «⋯» never sits alone (docs/ux/research/headers-trees-persian-type.md س۴) */
 @layer components{
-.mb-page-head__top-more{display:inline-flex}
-.mb-page-head__end-more{display:none}
+.mb-page-head__overflow--narrow{display:inline-flex}
 }
 @container mb-frame (min-width: 54rem){
-  .mb-page-head__top-more{display:none}
-  .mb-page-head__end-more{display:inline-flex}
+  .mb-page-head__overflow--narrow{display:none}
 }
 /* a menu row with a value at its end edge (e.g. «فهرست»'s count per section): the label's wrapper takes the row, so the values
    line up in one column (Gestalt: alignment), not one after each name */
@@ -962,12 +960,12 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 @media (max-width:767px){.mb-dialog-layer.is-side:not(.is-alert):not(.is-top) .mb-dialog.mb-dialog:has(.mb-nodepicker--sheet){block-size:auto;max-block-size:calc(var(--app-h) - var(--safe-top) - var(--space-3))}}
 /* PageHead: the page's own steps show beside the title only where the frame has room; else they are in the title row's «⋯» */
 @layer components{
-.mb-page-head__wide{display:none}
+.mb-page-head__wide-only{display:none}
 .mb-page-head__info{display:inline-flex;vertical-align:middle;margin-inline-start:var(--inline-xs)}
 .mb-page-head__context{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @container mb-frame (min-width: 54rem){
-  .mb-page-head__wide{display:flex}
+  .mb-page-head__wide-only{display:flex}
   .mb-page-head__context{position:static;inline-size:auto;block-size:auto;overflow:visible;clip-path:none;white-space:normal}
 }
 
@@ -990,18 +988,18 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
    With the keyboard up the field is what matters (Telegram, Notes, Keep): the sheet's line of explanation steps aside and the
    main step shares one row with its option («بعد از ثبت باز بماند»), so ~240px of a 420px visible height stays for writing */
 @media (max-width:767px){
-  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > [data-dismiss]{display:none}
-  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot:not(:has(> :not([data-dismiss]))){display:none}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > [data-cancel]{display:none}
+  .mb-dialog-layer:not(.is-alert) .mb-dialog__foot:not(:has(> :not([data-cancel]))){display:none}
   html[data-keyboard] .mb-dialog__desc,html[data-keyboard] .mb-dialog__grab{display:none}
   html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot{flex-wrap:nowrap;padding-block:var(--space-2)}
   html[data-keyboard] .mb-dialog-layer:not(.is-alert) .mb-dialog__foot > :is(.mb-btn--primary,.mb-btn--danger-bold){flex:0 0 auto}
 }
 /* a group whose parts are boxes (a contradiction and its two sides): a box only where there is room. On a phone it is a plain
-   part of the page and its parts are the one level of boxes (the same rule as a section, «.mb-card--section» above); two
+   part of the page and its parts are the one level of boxes (the same rule as a section, «.mb-card--panel» above); two
    groups in a row are told apart by a line, as a list's rows are */
 @media (max-width:767px){
-  .mb-group.mb-group{border:0;border-radius:0;padding:0;background:none}
-  .mb-group + .mb-group{border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-start:var(--inset-lg)}
+  .mb-box-wide-only.mb-box-wide-only{border:0;border-radius:0;padding:0;background:none}
+  .mb-box-wide-only + .mb-box-wide-only{border-block-start:var(--border-width-thin) solid var(--border-default);padding-block-start:var(--inset-lg)}
 }
 /* a sub-section steps in by one line and a gap, so the tree is seen (Truth, «ساختار»), where there is room. On a phone the text
    never moves in: each 12px was 3% of the line, and at the fourth level a truth began ~75px from the edge on a 260px line. The
@@ -1020,6 +1018,5 @@ button,a[href],select,summary,label,[role=button],[role=menuitem],[role=option],
 html:has(.mb-dialog-layer:not(.is-inline):not([data-state=closed])){overscroll-behavior:none}
 /* a block of reading text inside a wider frame (an output's text on a wide screen): its lines stop at the reading measure
    (680px ≈ 75 characters; WCAG 1.4.8 ≤ 80, Bringhurst 45–75), the box around it keeps the frame's width */
-.mb-reading > *{max-inline-size:var(--container-reading)}
+.mb-output-preview > *{max-inline-size:var(--container-reading)}
 /* a thin upright line between two groups of chips in one row (a state, then kinds): grouping by a line, not by a gap */
-.mb-chip-sep{flex:none;align-self:center;inline-size:var(--border-width-thin);block-size:var(--space-5);background:var(--border-default)}

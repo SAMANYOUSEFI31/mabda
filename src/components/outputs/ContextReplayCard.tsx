@@ -134,7 +134,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
       )}
 
       {/* Main content (Markdown; blocks keep per-block actions) */}
-      <div className="mb-reading flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
+      <div className="mb-output-preview flex flex-col gap-stack-md rounded-control-sm border border-border-default bg-surface-sunken p-inset-lg text-text-default">
         {deliverable.blocks && deliverable.blocks.length > 0 ? (
           deliverable.blocks.map((b) => (
             <BlockView key={b.id} block={b} onAddToContext={(blk) => onOpenContextObject(contextDraftFromBlock(blk, deliverable.workspaceId))} />

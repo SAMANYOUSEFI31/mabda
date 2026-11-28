@@ -125,7 +125,7 @@ function FileAdd({ nodeId, scoped, nodes, onClose, onUpload, onImportInstead }: 
   const add = async () => { if (!file) { setErr('هنوز فایلی انتخاب نکرده‌ای.'); return; } setBusy(true); try { await onUpload(file, node); onClose(); } finally { setBusy(false); } };
   return (
     <Dialog open onClose={onClose} size="md" title={scoped ? 'افزودن فایل' : 'افزودن'} description={scoped ? 'فایل کنار دانش این بخش نگه داشته می‌شود؛ استخراج دانش از آن در «فایل‌ها» است.' : ADD_DESCRIPTION} dirty={!!file} steady={!scoped}
-      footer={<><Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن فایل</Button></>}>
+      footer={<><Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button><Button variant="primary" loading={busy} disabled={!file} onClick={add}>افزودن فایل</Button></>}>
       <div className="flex flex-col gap-stack-md">
         {!scoped && <AddKindSwitch value="file" nodeId={node} onLeave={onClose} />}
         {/* the browser's own picker says «No file chosen» in English: a Persian row instead, the real input stays for the keyboard */}

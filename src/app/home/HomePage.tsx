@@ -74,7 +74,7 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
               «منتظر تو» (the due items below), and each expectation is read on its monitored truth */}
 
           {(thinking.some((i) => (i.kind === 'question' || i.kind === 'open_decision') && !convertedTo(i, workspaceContexts)) || dueAssumptions.length + dueDecisions.length > 0) && (
-            <Card section id="open-thinking" className="flex flex-col gap-stack-md" aria-label="سؤال‌ها و تصمیم‌های باز">
+            <Card panel id="open-thinking" className="flex flex-col gap-stack-md" aria-label="سؤال‌ها و تصمیم‌های باز">
               <div className="flex flex-col gap-stack-xs">
                 <h2 className="heading-sm text-text-default">سؤال‌ها و تصمیم‌های باز</h2>
                 <p className="body-sm text-text-subtle">سؤال‌ها و تصمیم‌های بازِ فکرهایت، از خط‌های یادداشت‌ها و از فکرهایی که خودت ثبت کرده‌ای؛ همهٔ بخش‌ها اینجا جمع می‌شوند. یادداشت‌ها هرگز در خروجی‌ها و بسته‌ها نمی‌آیند.</p>

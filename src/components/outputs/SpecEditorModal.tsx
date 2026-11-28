@@ -148,7 +148,7 @@ const SpecEditor: React.FC<Props> = ({ onClose, onSaveSpec, nodes, specs, initia
       description="هر جریان کار یک مشخصهٔ داده‌محور است: دانش لازم، خروجی‌های وابسته، معیار پذیرش و خط قرمز. خط قرمزهای تأییدشدهٔ فضای کار خودکار به‌عنوان خط قرمز اعمال می‌شوند."
       footer={
         <>
-          <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
+          <Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button>
           <Button variant="primary" type="submit" form="spec-editor-form" loading={saving} iconEnd="ArrowLeft">ذخیره و فعال‌سازی</Button>
         </>
       }

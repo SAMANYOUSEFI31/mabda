@@ -1,7 +1,7 @@
 /**
  * Where she is in a long page, and how to get anywhere in it: one rule for «ساختار» and «سند» (docs/ux/decisions.md §۵۲).
  *
- * - The reading line is a quarter of the way down the READABLE part of the window (under --pin-top + --pin-sub), sliding to the
+ * - The reading line is a quarter of the way down the READABLE part of the window (under --sticky-top + --sticky-secondary), sliding to the
  *   bottom on the last screen: src/core/readingLine.ts (§۵۳ ۵). A fraction of the whole window ignored the pinned bars (a third of a
  *   phone); a line right under them (§۵۲) kept a passed section lit on a tall screen.
  * - A section she chose stays «اکنون» until she scrolls herself: a short last section never reaches the line.
@@ -19,7 +19,7 @@ export interface ReadingItem { id: string; label: string; level: number }
 const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const pinned = () => {
   const s = getComputedStyle(document.documentElement);
-  return (parseFloat(s.getPropertyValue('--pin-top')) || 0) + (parseFloat(s.getPropertyValue('--pin-sub')) || 0);
+  return (parseFloat(s.getPropertyValue('--sticky-top')) || 0) + (parseFloat(s.getPropertyValue('--sticky-secondary')) || 0);
 };
 
 export const useReadingPosition = (items: ReadingItem[], anchorOf: (id: string) => string, on = true) => {

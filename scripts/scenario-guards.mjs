@@ -147,7 +147,7 @@ try {
       await guard(`[1280 @${y}] the lit outline item is the section being read`, async () => {
         const read = () => page.evaluate(() => {
           const s = getComputedStyle(document.documentElement);
-          const pinned = (parseFloat(s.getPropertyValue('--pin-top')) || 0) + (parseFloat(s.getPropertyValue('--pin-sub')) || 0);
+          const pinned = (parseFloat(s.getPropertyValue('--sticky-top')) || 0) + (parseFloat(s.getPropertyValue('--sticky-secondary')) || 0);
           const el = document.scrollingElement; const atEnd = el.scrollTop >= el.scrollHeight - innerHeight - 2;
           const nav = document.querySelector('nav.doc-outline'); const cur = nav.querySelector('[aria-current=location]');
           const ids = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href').slice(1));
@@ -495,17 +495,17 @@ try {
     const covered = () => page.evaluate(() => {
       const out = [];
       // by role and by name, so a bar that lost its pin mark is still checked
-      const bars = [...new Set(document.querySelectorAll('[data-pin=app], [data-pin=app-bottom], .mb-bottomnav.is-fixed, [data-testid=rail-title]'))].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
+      const bars = [...new Set(document.querySelectorAll('[data-sticky=app], [data-sticky=app-bottom], .mb-bottomnav.is-fixed, [data-testid=rail-title]'))].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
       for (const bar of bars) {
         const r = bar.getBoundingClientRect();
         for (let x = r.left + 4; x < r.right - 4; x += 12) {
           const hit = document.elementFromPoint(x, r.top + r.height / 2);
-          if (hit && !bar.contains(hit)) { out.push(`«${(hit.closest('[data-pin]')?.dataset.testid || hit.className || hit.tagName).toString().slice(0, 40)}» over ${bar.dataset.pin}`); break; }
+          if (hit && !bar.contains(hit)) { out.push(`«${(hit.closest('[data-sticky]')?.dataset.testid || hit.className || hit.tagName).toString().slice(0, 40)}» over ${bar.dataset.sticky}`); break; }
         }
       }
       // a page's own bar, once stuck, sits under the top app bars, never on them
       const top = Math.max(0, ...bars.filter((b) => getComputedStyle(b).insetBlockStart === '0px' && b.getBoundingClientRect().top < 1).map((b) => b.getBoundingClientRect().bottom));
-      for (const sub of document.querySelectorAll('[data-pin=sub]')) {
+      for (const sub of document.querySelectorAll('[data-sticky=secondary]')) {
         const r = sub.getBoundingClientRect();
         if (r.height && getComputedStyle(sub).position === 'sticky' && r.top < top - 1 && r.bottom > 0) out.push(`${sub.dataset.testid} sticks at ${Math.round(r.top)}, under the app bar's ${Math.round(top)}`);
       }
@@ -546,15 +546,15 @@ try {
   {
     const { ctx, page } = await open(390, 740); await sample(page);
     await nav(page, 'حقیقت'); await radio(page, 'ساختار');
-    const read = () => page.evaluate(() => ({ away: document.querySelector('header[data-pin=app]').hasAttribute('data-away'), bar: Math.round(document.querySelector('header[data-pin=app]').getBoundingClientRect().bottom), outline: Math.round(document.querySelector('[data-testid=structure-outline]').getBoundingClientRect().top) }));
+    const read = () => page.evaluate(() => ({ away: document.querySelector('header[data-sticky=app]').hasAttribute('data-away'), bar: Math.round(document.querySelector('header[data-sticky=app]').getBoundingClientRect().bottom), outline: Math.round(document.querySelector('[data-testid=structure-outline]').getBoundingClientRect().top) }));
     await guard('[390×740] down: the top bar is away and «فهرست» takes its place; up: the bar is back and «فهرست» is under it', async () => {
       await page.mouse.wheel(0, 1400);
-      await page.waitForFunction(() => document.querySelector('header[data-pin=app]')?.hasAttribute('data-away'));
+      await page.waitForFunction(() => document.querySelector('header[data-sticky=app]')?.hasAttribute('data-away'));
       await page.waitForTimeout(400); // the bars travel together for duration-base
       let r = await read();
       assert.ok(r.bar <= 0 && r.outline === 0, `down: bar ends at ${r.bar}, «فهرست» at ${r.outline}`);
       await page.mouse.wheel(0, -120);
-      await page.waitForFunction(() => !document.querySelector('header[data-pin=app]')?.hasAttribute('data-away'));
+      await page.waitForFunction(() => !document.querySelector('header[data-sticky=app]')?.hasAttribute('data-away'));
       await page.waitForTimeout(400);
       r = await read();
       assert.ok(r.bar > 40 && Math.abs(r.outline - r.bar) <= 1, `up: bar ends at ${r.bar}, «فهرست» at ${r.outline}`);

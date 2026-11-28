@@ -96,7 +96,7 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
   padding?: 'none' | 'md' | 'lg' | 'xl';
   /** a section of a page (a panel with its own heading and items), not an item: a card where there is room; on a phone a plain
    *  part of the page, its heading on the page and only its items in boxes (one container level, as in iOS Settings) */
-  section?: boolean;
+  panel?: boolean;
   interactive?: boolean;
   href?: string;
   onClick?: (e: React.SyntheticEvent) => void;
@@ -110,9 +110,9 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick
 /** sample: an example Mabda wrote to show the shape of things; not the user's knowledge, not a thought of theirs */
 export type KnowledgeState = 'thought' | 'proposed' | 'truth' | 'stale' | 'conflict' | 'past' | 'gap' | 'sample';
 
-export function Card({ interactive = false, href, selected, knowledge, padding = 'lg', section = false, className, children, onClick, ...rest }: CardProps) {
+export function Card({ interactive = false, href, selected, knowledge, padding = 'lg', panel = false, className, children, onClick, ...rest }: CardProps) {
   const isInteractive = interactive || Boolean(href) || Boolean(onClick);
-  const cls = cx('mb-card', knowledge && 'mb-knowledge', section ? 'mb-card--section' : padding !== 'none' && `mb-card--pad-${padding}`, isInteractive && 'mb-card--interactive', selected && 'is-selected', className);
+  const cls = cx('mb-card', knowledge && 'mb-knowledge', panel ? 'mb-card--panel' : padding !== 'none' && `mb-card--pad-${padding}`, isInteractive && 'mb-card--interactive', selected && 'is-selected', className);
   if (knowledge) (rest as Record<string, unknown>)['data-knowledge'] = knowledge;
   // «مورد دانش»: one Nuqta component (shape + readable name) hangs at the inline start; samples are not knowledge, so none
   if (knowledge && knowledge !== 'sample') children = <><Nuqta state={knowledge} className="mb-knowledge__nuqta" />{children}</>;

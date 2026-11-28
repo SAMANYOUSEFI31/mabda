@@ -5,7 +5,7 @@
  * part (visualViewport), Android Chrome with `interactive-widget=resizes-content` (index.html) shrinks both, and each of
  * them scrolls the page by its own rules when a field takes focus (iOS scrolls the window even under a fixed sheet).
  * So nothing here relies on one browser's behaviour. Three facts are read from the one API they all share (visualViewport):
- *   1. the visible part → CSS `--vv-h` / `--vv-top`: sheets are sized and placed inside it;
+ *   1. the visible part → CSS `--visual-viewport-height` / `--visual-viewport-top`: sheets are sized and placed inside it;
  *   2. whether a keyboard is up → `data-keyboard` on <html>: the bottom bar steps aside. «Up» = the visible part is clearly
  *      shorter than the tallest it has been at this width (not window.innerHeight, which shrinks with it on Android);
  *   3. where the focused field is → it is brought inside the visible part by scrolling ITS OWN scroll container (a sheet's
@@ -59,8 +59,8 @@ export function installKeyboard(): () => void {
     if (box) { const b = box.getBoundingClientRect(); top = Math.max(top, b.top + MARGIN); bottom = Math.min(bottom, b.bottom - MARGIN); }
     else {
       // the page: its sticky top bar covers the first rows
-      // (--pin-top: the tallest visible app bar, measured in pinned.ts; a hidden one counts 0)
-      const bar = parseFloat(getComputedStyle(root).getPropertyValue('--pin-top')) || 0;
+      // (--sticky-top: the tallest visible app bar, measured in pinned.ts; a hidden one counts 0)
+      const bar = parseFloat(getComputedStyle(root).getPropertyValue('--sticky-top')) || 0;
       top = Math.max(top, vv.offsetTop + bar + MARGIN);
     }
     const r = a.getBoundingClientRect();
@@ -79,9 +79,9 @@ export function installKeyboard(): () => void {
     // the top): iOS 26 can leave visualViewport 24px short, or offset, after the keyboard closes (WebKit 297779), and a sheet
     // that followed it would stop short of the bottom with the page showing under it
     if (now) {
-      root.style.setProperty('--vv-h', `${Math.round(vv.height)}px`);
-      root.style.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
-    } else { root.style.removeProperty('--vv-h'); root.style.removeProperty('--vv-top'); }
+      root.style.setProperty('--visual-viewport-height', `${Math.round(vv.height)}px`);
+      root.style.setProperty('--visual-viewport-top', `${Math.round(vv.offsetTop)}px`);
+    } else { root.style.removeProperty('--visual-viewport-height'); root.style.removeProperty('--visual-viewport-top'); }
     root.toggleAttribute('data-keyboard', now);
     if (now !== up) {
       up = now;
@@ -108,7 +108,7 @@ export function installKeyboard(): () => void {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
       sync();
-      // after the new size is laid out (the sheet follows --vv-h in this frame), then once more when the keyboard has settled
+      // after the new size is laid out (the sheet follows --visual-viewport-height in this frame), then once more when the keyboard has settled
       requestAnimationFrame(bring);
       clearTimeout(settle);
       settle = window.setTimeout(() => { sync(); bring(); }, 350);

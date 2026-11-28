@@ -82,14 +82,14 @@ const measure = (userText = '') => {
     // it is seen: what is drawn at its middle is the layer itself, not something over it
     const hit = document.elementFromPoint((r.left + r.right) / 2, (r.top + Math.min(r.bottom, innerHeight)) / 2);
     if (hit && !f.contains(hit)) out.push(`floating layer is covered: ${name(f)} under ${name(hit)}`);
-    for (const bar of document.querySelectorAll('[data-pin], .mb-bottomnav.is-fixed')) {
+    for (const bar of document.querySelectorAll('[data-sticky], .mb-bottomnav.is-fixed')) {
       if (opener && bar.contains(opener)) continue;
       if (opener && bar.closest('main') && !opener.closest('main')) continue; // a shell menu may pass over a page's own bar
       const pos = getComputedStyle(bar).position; if (pos !== 'fixed' && pos !== 'sticky') continue;
       const q = bar.getBoundingClientRect(); if (!q.height || q.bottom <= 0 || q.top >= innerHeight) continue;
       const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top), w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
       // …unless the layer could not be whole between the bars (a short window): then the bars give way, never the items
-      const room = innerHeight - [...document.querySelectorAll('[data-pin], .mb-bottomnav.is-fixed')].filter((b) => /fixed|sticky/.test(getComputedStyle(b).position)).reduce((n, b) => n + b.getBoundingClientRect().height, 0) - 16;
+      const room = innerHeight - [...document.querySelectorAll('[data-sticky], .mb-bottomnav.is-fixed')].filter((b) => /fixed|sticky/.test(getComputedStyle(b).position)).reduce((n, b) => n + b.getBoundingClientRect().height, 0) - 16;
       if (h > 1 && w > 1 && f.scrollHeight + 2 <= room) out.push(`floating layer covers a pinned bar: ${name(f)} over ${name(bar)} by ${Math.round(h)}px`);
     }
     const main = opener?.closest('main');
@@ -166,16 +166,16 @@ for (const { width: w0, height, touch, rail } of SIZES) {
   };
   // after scrolling: nothing that stays pinned (the app's bar, a page's own bar, the phone's bottom bar) covers another pinned thing,
   // and every control inside a pinned bar can still be reached where it is drawn (layout.md «چه چیزی بالا می‌ماند»)
-  // the app's own bars (`data-pin="app"`, `data-pin="app-bottom"`) are drawn over everything a page pins or scrolls, at the top
+  // the app's own bars (`data-sticky="app"`, `data-sticky="app-bottom"`) are drawn over everything a page pins or scrolls, at the top
   // of the page too: a page bar that has not stuck yet passes UNDER the phone's bottom bar (it once drew over «خانه / حقیقت / …»)
   const chromeOnTop = () => page.evaluate(() => {
     const out = [];
-    const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.pin ? `[pin=${e.dataset.pin}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
-    for (const bar of document.querySelectorAll('[data-pin=app], [data-pin=app-bottom]')) {
+    const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.sticky ? `[sticky=${e.dataset.sticky}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
+    for (const bar of document.querySelectorAll('[data-sticky=app], [data-sticky=app-bottom]')) {
       const r = bar.getBoundingClientRect(); if (r.width < 1 || r.height < 1 || r.bottom <= 0 || r.top >= innerHeight) continue;
       for (const fy of [0.25, 0.5, 0.75]) for (let x = r.left + 4; x < r.right - 4; x += 12) {
         const hit = document.elementFromPoint(x, r.top + r.height * fy);
-        if (hit && !bar.contains(hit) && !hit.closest('[role=dialog], [role=menu], [role=listbox], .mb-toast-stack, .mb-dialog-layer, .mb-skip')) { out.push(`${name(hit.closest('[data-pin]') || hit)} is drawn over the app's bar ${name(bar)}`); break; }
+        if (hit && !bar.contains(hit) && !hit.closest('[role=dialog], [role=menu], [role=listbox], .mb-toast-stack, .mb-dialog-layer, .mb-skip')) { out.push(`${name(hit.closest('[data-sticky]') || hit)} is drawn over the app's bar ${name(bar)}`); break; }
       }
     }
     return [...new Set(out)];
@@ -188,7 +188,7 @@ for (const { width: w0, height, touch, rail } of SIZES) {
     await page.waitForTimeout(400);
     note(`${label} ${where} (scrolled)`, await page.evaluate(() => {
       const out = [];
-      const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.pin ? `[pin=${e.dataset.pin}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
+      const name = (e) => `${e.tagName.toLowerCase()}${e.dataset.testid ? `[${e.dataset.testid}]` : ''}${e.dataset.sticky ? `[sticky=${e.dataset.sticky}]` : ''}"${(e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 20)}"`;
       const pinned = [...document.querySelectorAll('body *')].filter((e) => {
         if (e.closest('[inert], [role=dialog], .mb-toast-stack, .mb-dialog-layer')) return false;
         const cs = getComputedStyle(e); if (cs.position !== 'sticky' && cs.position !== 'fixed') return false;
@@ -205,7 +205,7 @@ for (const { width: w0, height, touch, rail } of SIZES) {
       for (const bar of pinned) for (const c of bar.querySelectorAll('button, a[href], input, [role=button], [role=tab]')) {
         const r = c.getBoundingClientRect(); if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight) continue;
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        if (hit && !c.contains(hit) && !hit.contains(c)) out.push(`${name(c)} is covered by ${name(hit.closest('[data-pin], .mb-bottomnav, aside, header') || hit)}`);
+        if (hit && !c.contains(hit) && !hit.contains(c)) out.push(`${name(c)} is covered by ${name(hit.closest('[data-sticky], .mb-bottomnav, aside, header') || hit)}`);
       }
       return out;
     }));

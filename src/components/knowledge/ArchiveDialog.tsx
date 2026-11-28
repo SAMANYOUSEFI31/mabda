@@ -64,7 +64,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, workspaces, currentWorkspa
   return (
     <>
       <Dialog open onClose={onClose} size="lg" title="بایگانی" description="هرچه کنار گذاشته‌ای اینجاست. «برگردان» همه‌چیز را همان‌طور که بود برمی‌گرداند؛ «حذف دائمی» برنمی‌گردد."
-        footer={<Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>}>
+        footer={<Button variant="ghost" data-cancel onClick={onClose}>بستن</Button>}>
         <div className="flex flex-col gap-stack-md">
           <SegmentedControl label="بخش بایگانی" value={section} onChange={(v) => setSection(v as Section)} items={[
             { id: 'knowledge', label: label('knowledge', 'دانش') }, { id: 'removals', label: label('removals', 'بخش‌ها') },

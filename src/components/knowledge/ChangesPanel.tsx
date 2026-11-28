@@ -31,7 +31,7 @@ export const ChangesPanel: React.FC<Props> = ({ open, onToggle, changes, objects
   const nodeLabel = (id: string) => nodes.find((n) => n.id === id)?.label ?? DELETED_SECTION;
 
   return (
-    <Card section id="changes" className="flex flex-col gap-stack-md" aria-label="چه چیزی عوض شد">
+    <Card panel id="changes" className="flex flex-col gap-stack-md" aria-label="چه چیزی عوض شد">
       <div className="flex flex-wrap items-center justify-between gap-inline-md">
         <div className="flex flex-col gap-stack-xs">
           <h2 className="heading-sm text-text-default">چه چیزی عوض شد؟</h2>

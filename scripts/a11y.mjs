@@ -59,8 +59,8 @@ for (const width of SIZES) for (const scheme of SCHEMES) {
         const ring = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow !== 'none' || a.matches(':has(:focus-visible)')
           || ['::after', '::before'].some((p) => { const c = getComputedStyle(a, p); return c.content !== 'none' && !/rgba\(0, 0, 0, 0\)|transparent/.test(c.backgroundColor); });
         const name = `${a.tagName.toLowerCase()}«${(a.getAttribute('aria-label') || a.textContent || '').trim().slice(0, 20)}»`;
-        const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pin-top')) || 0;
-        const fixed = cs.position === 'fixed' || a.closest('[data-pin], nav, aside, header');
+        const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-top')) || 0;
+        const fixed = cs.position === 'fixed' || a.closest('[data-sticky], nav, aside, header');
         if (!ring) return `focus ring missing: ${name}`;
         if (!fixed && (b.bottom < top + 1 || b.top > innerHeight)) return `focus hidden off screen or under the bar: ${name}`;
         return null;

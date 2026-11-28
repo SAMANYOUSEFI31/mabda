@@ -298,3 +298,18 @@
 - **قاعدهٔ SQL قابل‌حمل:** کد تازه همیشه `user_id` دارد و فقط SQL می‌نویسد که روی هر دو موتور درست است (جز سه شکلی که `server/db/sql/translate.ts` ترجمه می‌کند). خواندن schema فقط با `db.tables()` / `db.columns()`، نه `sqlite_master` یا `PRAGMA`. migration تازه باید روی هر دو اجرا شود؛ تست‌ها روی Postgres این را می‌گیرند.
 - **سقف فضا در برگرداندن پشتیبان** (`RESTORE_WORKSPACE_CAP` = `LIMITS.workspaces`): نگهبان دیسک است، همان سقف ساختن فضا؛ هیچ چیز داخل فایل به‌عنوان سهمیه خوانده نمی‌شود.
 - **CSRF ورود:** کسی می‌تواند مرورگر دیگری را با لینک خودش وارد کند؛ پذیرفته شد چون فقط دادهٔ مهاجم دیده می‌شود و «خروج از این دستگاه» و نام نفر در منو آن را آشکار می‌کند.
+
+## واژه‌نامهٔ یک‌جا: واژهٔ رابط ← نام در کد
+
+یک مفهوم در کد چند نام قدیمی دارد (از پیش از شاخهٔ دور سوم). تا یکی‌سازی در یک PR جدا، این جدول مرجع است: کد تازه نام کانونی را به کار می‌برد.
+
+| واژهٔ رابط | نام کانونی در کد | نام‌های قدیمی هم‌معنا (برای یکی‌سازی بعدی) |
+| --- | --- | --- |
+| خروجی | `Deliverable` (داده)، `outputs` (پوشهٔ رابط) | `Asset` (`AssetLibrary`، `AssetsPage`، زبانهٔ `assets`)، `Output` |
+| حقیقت | `context` (داده و زبانه: `ContextObject`، `contextViewMode`) | `knowledge` (`KnowledgePage`، پوشهٔ `knowledge`) |
+| فکر | `thinking` (جا: `ThinkingSpace`، زبانهٔ `thinking`)، `thought` (یک مورد: `ThoughtKind`) | دو نام برای دو چیز: جا و یک مورد؛ عمداً |
+| بخش | `node` (`TreeNode`) | `section` در نام‌های رابط |
+| درخواست برای ابزار دیگر | `aiRequest` | `pack` (`SavedPacksDialog`، «بسته‌های دانش») |
+| نوار چسبان | `data-sticky="app|secondary"`، `--sticky-top`، `--sticky-secondary`، `--fixed-bottom-inset` | `data-pin`، `--pin-*` (عوض شد؛ «pin» در محصول یعنی سنجاق کردن) |
+| جلوگیری از کلیکِ ضربهٔ بستن | `preventClickThrough()` | `swallowClick` (عوض شد) |
+

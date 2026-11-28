@@ -33,7 +33,7 @@ export function PageHead({ title, context, info, tools, views, actions = [], mor
   // the words before the last one, and the last one, which is glued to ⓘ; with a context, the last word is the context's
   const lead = context ? context.slice(0, context.lastIndexOf(' ') + 1) : title.slice(0, title.lastIndexOf(' ') + 1);
   const last = context ? context.slice(context.lastIndexOf(' ') + 1) : title.slice(title.lastIndexOf(' ') + 1);
-  const narrowItems: MenuItem[] = [...actions.map((a) => ({ label: a.label, icon: a.icon, onSelect: a.onSelect })), ...(actions.length && more.length ? [{ divider: true }] : []), ...more];
+  const overflowItemsNarrow: MenuItem[] = [...actions.map((a) => ({ label: a.label, icon: a.icon, onSelect: a.onSelect })), ...(actions.length && more.length ? [{ divider: true }] : []), ...more];
   return (
     <div className="mb-page-head">
       <div className="mb-page-head__title flex items-start gap-inline-sm">
@@ -47,13 +47,13 @@ export function PageHead({ title, context, info, tools, views, actions = [], mor
           </h1>
         </div>
         {tools && <span className="flex shrink-0 items-center gap-inline-xs">{tools}</span>}
-        {narrowItems.length > 0 && <span className="mb-page-head__top-more"><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={narrowItems} /></span>}
+        {overflowItemsNarrow.length > 0 && <span className="mb-page-head__overflow--narrow"><Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="ghost" />} items={overflowItemsNarrow} /></span>}
       </div>
       {(views || actions.length > 0 || more.length > 0) && (
-        <div className={views ? 'mb-page-head__actions' : 'mb-page-head__actions mb-page-head__wide'}>
+        <div className={views ? 'mb-page-head__actions' : 'mb-page-head__actions mb-page-head__wide-only'}>
           {views}
           {(actions.length > 0 || more.length > 0) && (
-            <span className="mb-page-head__wide flex-nowrap items-center gap-inline-sm">
+            <span className="mb-page-head__wide-only flex-nowrap items-center gap-inline-sm">
               {actions.map((a) => <Button key={a.label} variant="secondary" iconStart={a.icon} onClick={a.onSelect}>{a.label}</Button>)}
               {more.length > 0 && <Menu label={moreLabel} align="end" trigger={<IconButton icon="Ellipsis" label={moreLabel} variant="secondary" />} items={more} />}
             </span>

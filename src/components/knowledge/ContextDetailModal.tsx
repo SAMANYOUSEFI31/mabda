@@ -417,7 +417,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
       footer={
         isEditing && tab !== 'edit' ? (
           // nothing to save on «نسخه‌ها» or «اطراف»: one way out, no save button
-          <Button variant="secondary" data-dismiss onClick={onClose}>بستن</Button>
+          <Button variant="secondary" data-cancel onClick={onClose}>بستن</Button>
         ) : (
           <>
             {isEditing && !isSupersedingMode && object && (
@@ -432,7 +432,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
                 ]}
               />
             )}
-            <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
+            <Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button>
             {approveMode
               ? <Button variant="primary" type="button" iconStart="Check" onClick={async () => { if (await onApproveDraft!(object!.id)) onClose(); }}>جایگزینی</Button>
               : <Button variant="primary" type="submit" form="context-detail-form" loading={saving}>

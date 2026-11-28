@@ -30,7 +30,7 @@ const touchDrag = (sel, dy) => page.evaluate(async ({ sel, dy }) => {
 
 await guard('a tap outside the space menu only closes it; the next tap works', async () => {
   const thinking = await page.locator('.mb-bottomnav button', { hasText: 'فکر' }).boundingBox();
-  await page.locator('header[data-pin=app] button[aria-haspopup="menu"]').tap();
+  await page.locator('header[data-sticky=app] button[aria-haspopup="menu"]').tap();
   await page.locator('[role=menu]').waitFor();
   await page.touchscreen.tap(thinking.x + thinking.width / 2, thinking.y + thinking.height / 2);
   await page.waitForTimeout(400);
@@ -42,7 +42,7 @@ await guard('a tap outside the space menu only closes it; the next tap works', a
 });
 
 await guard('a menu closed by its own trigger opens again on the very next tap', async () => {
-  const trigger = page.locator('header[data-pin=app] button[aria-haspopup="menu"]');
+  const trigger = page.locator('header[data-sticky=app] button[aria-haspopup="menu"]');
   await trigger.tap(); await page.locator('[role=menu]').waitFor();
   await trigger.tap(); await trigger.tap();
   await page.waitForTimeout(150);
@@ -51,7 +51,7 @@ await guard('a menu closed by its own trigger opens again on the very next tap',
 });
 
 await guard('a sheet pulled down from its body closes; a small pull settles back', async () => {
-  await page.locator('header[data-pin=app] button[aria-label="حساب کاربری"]').tap();
+  await page.locator('header[data-sticky=app] button[aria-label="حساب کاربری"]').tap();
   await page.locator('.mb-dialog').waitFor();
   await touchDrag('.mb-dialog__body', 30);
   await page.waitForTimeout(400);
@@ -86,7 +86,7 @@ await guard('back from any page goes to «خانه»; a sheet first; from «خا
   await navTo('فکر'); await navTo('حقیقت');
   assert.equal(await at(), 'حقیقت');
   assert.equal(await len(), start + 1, 'moving between pages stacked entries');
-  await pg.locator('header[data-pin=app] button[aria-label="حساب کاربری"]').tap();
+  await pg.locator('header[data-sticky=app] button[aria-label="حساب کاربری"]').tap();
   await pg.locator('.mb-dialog').waitFor();
   await pg.goBack(); await pg.waitForTimeout(500);
   assert.equal(await pg.locator('.mb-dialog-layer:not(.is-inline)[data-state=open]').count(), 0, 'back did not close the sheet');

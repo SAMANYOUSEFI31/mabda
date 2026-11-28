@@ -78,7 +78,7 @@ try {
       await page.mouse.click(box.x + 4, box.y + box.height - 6); await page.waitForTimeout(900);
       assert.equal(await scrub.getAttribute('aria-valuenow'), await scrub.getAttribute('aria-valuemax'), 'a tap at the far end jumps to the last section');
       const lastTop = await page.evaluate((id) => document.getElementById(id).getBoundingClientRect().top, last);
-      const under = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); return parseFloat(s.getPropertyValue('--pin-top')) + parseFloat(s.getPropertyValue('--pin-sub')); });
+      const under = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); return parseFloat(s.getPropertyValue('--sticky-top')) + parseFloat(s.getPropertyValue('--sticky-secondary')); });
       assert.ok(lastTop >= under - 1, `the heading lands under the pinned bars (${lastTop} vs ${under})`);
     } else {
       const cur = page.locator('nav[aria-label="فهرست سند"] a[aria-current=location]');

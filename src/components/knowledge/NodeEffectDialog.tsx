@@ -52,7 +52,7 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
     { title: 'اینجا اثر ندارند', list: items.filter((i) => i.origin === 'overridden' || i.origin === 'expired') },
   ];
   return (
-    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که خروجی‌ها و بسته‌های این بخش از آن ساخته می‌شوند. خط قرمز هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" data-dismiss onClick={onClose}>بستن</Button>}>
+    <Dialog open onClose={onClose} size="lg" title={`آنچه در «${node?.label ?? nodeId}» اثر دارد`} description="همان فهرستی که خروجی‌ها و بسته‌های این بخش از آن ساخته می‌شوند. خط قرمز هر بخش فقط به همان بخش و زیرشاخه‌هایش می‌رسد." footer={<Button variant="secondary" data-cancel onClick={onClose}>بستن</Button>}>
       <div className="flex flex-col gap-stack-lg">
         {items.length === 0 && <EmptyState title="هیچ خط قرمز یا دانشی روی این بخش اثر ندارد" />}
         {sections.filter((s) => s.list.length > 0).map((sec) => (
@@ -85,7 +85,7 @@ const Body: React.FC<Props & { nodeId: string }> = ({ nodeId, nodes, objects, re
             <Select label="با کدام مورد این بخش؟" value={by} onChange={(e) => setBy(e.target.value)} options={mine.filter((m) => !overrideProblem(m, setAside.object, nodes)).map((m) => ({ value: m.id, label: m.title }))} />
             <Textarea label="دلیل (لازم)" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
             {error && <Alert intent="danger">{error}</Alert>}
-            <div className="flex flex-wrap gap-inline-sm"><Button variant="secondary" loading={busy} disabled={!by || !reason.trim()} onClick={submit}>کنار بگذار</Button><Button variant="ghost" data-dismiss onClick={() => setSetAside(null)}>انصراف</Button></div>
+            <div className="flex flex-wrap gap-inline-sm"><Button variant="secondary" loading={busy} disabled={!by || !reason.trim()} onClick={submit}>کنار بگذار</Button><Button variant="ghost" data-cancel onClick={() => setSetAside(null)}>انصراف</Button></div>
           </div>
         )}
       </div>

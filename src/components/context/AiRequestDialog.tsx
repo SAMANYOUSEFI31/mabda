@@ -174,7 +174,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
       open onClose={onClose} size="xl" title="درخواست برای ابزار دیگر" description={thoughtIds.length ? 'دانش تأییدشده جدا می‌آید؛ فکرهای انتخاب‌شده با برچسب «تأییدنشده» می‌آیند و هرگز واقعیت نیستند.' : 'مبدأ از دانش تأییدشدهٔ تو متنی آماده می‌کند که در هر ابزار هوش مصنوعی بچسبانی. نوع کار قالب جواب را تعیین می‌کند.'}
       footer={
         <>
-          <Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>
+          <Button variant="ghost" data-cancel onClick={onClose}>بستن</Button>
           <Menu
             label="بیشتر"
             align="start"

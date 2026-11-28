@@ -157,7 +157,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
           size="md"
           title={manage.mode === 'revise' ? 'بازنگری فکر' : 'ساخت فکر تازه از این'}
           description={manage.mode === 'revise' ? 'تغییر متن یا نوع، شناسهٔ همین فکر را نگه می‌دارد؛ فقط تغییر معنایی متن در تاریخچه می‌آید.' : 'فکر تازه شناسهٔ جدا دارد و به فکر مبدأ پیوند می‌خورد؛ فکر مبدأ دست‌نخورده می‌ماند.'}
-          footer={<><Button variant="ghost" data-dismiss disabled={busy !== null} onClick={() => setManage(null)}>انصراف</Button><Button variant="primary" loading={busy === manage.item.key} disabled={!draftText.trim()} onClick={() => void runManage()}>{manage.mode === 'revise' ? 'ذخیرهٔ بازنگری' : 'ساخت فکر مشتق'}</Button></>}
+          footer={<><Button variant="ghost" data-cancel disabled={busy !== null} onClick={() => setManage(null)}>انصراف</Button><Button variant="primary" loading={busy === manage.item.key} disabled={!draftText.trim()} onClick={() => void runManage()}>{manage.mode === 'revise' ? 'ذخیرهٔ بازنگری' : 'ساخت فکر مشتق'}</Button></>}
         >
           <div className="flex flex-col gap-stack-md">
             <Textarea label="متن فکر" rows={4} value={draftText} onChange={(e) => setDraftText(e.target.value)} />
@@ -174,7 +174,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
           size="md"
           title="تاریخچهٔ فکر"
           description="مسیر تغییرات، بازنگری‌ها و منشأ این فکر؛ بدون اثر روی حقیقت."
-          footer={<Button variant="ghost" data-dismiss onClick={() => setHistoryItem(null)}>بستن</Button>}
+          footer={<Button variant="ghost" data-cancel onClick={() => setHistoryItem(null)}>بستن</Button>}
         >
           {historyLoading ? (
             <div className="flex justify-center p-inset-lg"><Spinner size="md" /></div>

@@ -372,7 +372,7 @@ export function useToast(): ToastApi {
 /* ---------------- outside click / Escape ---------------- */
 /** the click of the tap that dismissed a layer is eaten (capture, before anything hears it); a tap that makes no click (a
  *  scroll: pointercancel; a drag that ends elsewhere) leaves nothing behind: it is cleared just after the finger lifts */
-export function swallowClick() {
+export function preventClickThrough() {
   let t = 0;
   const kill = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); done(); };
   const lift = () => { clearTimeout(t); t = window.setTimeout(done, 350); };
@@ -390,7 +390,7 @@ function useDismiss(active: boolean, refs: Array<React.RefObject<HTMLElement | n
     if (!active) return;
     // a tap outside closes the layer and does nothing else (iOS and Android menus, overlays.md «بستن»): the click that follows
     // the same tap would otherwise land on what was under it (the phone test: closing the space menu opened a truth)
-    const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) { cb.current(); swallowClick(); } };
+    const down = (e: PointerEvent) => { if (!refs.some((r) => r.current?.contains(e.target as Node))) { cb.current(); preventClickThrough(); } };
     // capture, and marked as taken: a dialog under the menu hears the same Escape later and leaves it alone
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); e.stopPropagation(); cb.current(true); } };
     document.addEventListener('pointerdown', down);
@@ -409,17 +409,17 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
   const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--inset-lg')) || 16;
   // the part of the screen she can see (iOS: above the keyboard, and not the part a toolbar or the home bar takes)
   const vv = window.visualViewport;
-  const seeTop = vv ? vv.offsetTop : 0, seeBottom = vv ? vv.offsetTop + vv.height : vh;
-  let top = seeTop + gap, bottom = seeBottom - gap - safeBottom(), left = gutter, right = vw - gutter;
-  for (const bar of document.querySelectorAll<HTMLElement>('[data-pin], .mb-bottomnav.is-fixed')) {
+  const visibleTop = vv ? vv.offsetTop : 0, visibleBottom = vv ? vv.offsetTop + vv.height : vh;
+  let top = visibleTop + gap, bottom = visibleBottom - gap - safeBottom(), left = gutter, right = vw - gutter;
+  for (const bar of document.querySelectorAll<HTMLElement>('[data-sticky], .mb-bottomnav.is-fixed')) {
     if (bar.contains(trigger)) continue;
     // a page's own pinned bar belongs to the page: a menu of the app's shell (the sidebar, the rail) may pass over it, never over the app's bars
     if (bar.closest('main') && !trigger.closest('main')) continue;
     const pos = getComputedStyle(bar).position;
     if (pos !== 'fixed' && pos !== 'sticky') continue;
     const r = bar.getBoundingClientRect();
-    if (!r.width || !r.height || r.bottom <= seeTop || r.top >= seeBottom) continue;
-    if (r.top < seeTop + (seeBottom - seeTop) / 3) top = Math.max(top, r.bottom + gap); else bottom = Math.min(bottom, r.top - gap);
+    if (!r.width || !r.height || r.bottom <= visibleTop || r.top >= visibleBottom) continue;
+    if (r.top < visibleTop + (visibleBottom - visibleTop) / 3) top = Math.max(top, r.bottom + gap); else bottom = Math.min(bottom, r.top - gap);
   }
   const main = trigger.closest('main');
   if (main && !trigger.closest('[role=dialog], .mb-dialog-layer')) {
@@ -431,13 +431,13 @@ export function floatArea(trigger: Element): { top: number; bottom: number; left
 }
 
 /** the home bar's height (env() is not readable from script: measured once on a probe) */
-let safeB: number | null = null;
+let safeAreaBottomCache: number | null = null;
 function safeBottom(): number {
-  if (safeB !== null) return safeB;
+  if (safeAreaBottomCache !== null) return safeAreaBottomCache;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;visibility:hidden;padding-bottom:env(safe-area-inset-bottom, 0px)';
-  document.body.appendChild(probe); safeB = probe.offsetHeight; probe.remove();
-  return safeB;
+  document.body.appendChild(probe); safeAreaBottomCache = probe.offsetHeight; probe.remove();
+  return safeAreaBottomCache;
 }
 
 /** a menu that scrolls ends in the middle of a row (never on a row's edge, which reads as «this is all») */

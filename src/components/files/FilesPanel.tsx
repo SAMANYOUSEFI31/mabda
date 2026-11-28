@@ -65,7 +65,7 @@ export const FilesPanel: React.FC<Props> = ({ files, nodes, quota, onUpload, onP
   const total = quota?.quota ?? 0;
 
   return (
-    <Card section className="flex flex-col gap-stack-md">
+    <Card panel className="flex flex-col gap-stack-md">
       <div className="flex flex-col justify-between gap-inline-md sm:flex-row sm:items-start">
         <div className="flex flex-col gap-stack-xs">
           <h2 className="heading-sm text-text-default">فایل‌ها</h2>

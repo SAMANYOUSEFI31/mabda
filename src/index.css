@@ -94,9 +94,9 @@
    window it scrolls INSIDE that column: its bar sits against the rule, on the side facing the text (inline-end: the left in RTL),
    and shows only while the pointer is over the outline. Before, the bar floated with no edge between outline and text and read as
    the document's own scroll bar (decisions.md §۵۳ ۵) */
-.doc-outline { position: sticky; inset-block-start: calc(var(--pin-top, 0px) + var(--space-4)); max-block-size: calc(100dvh - var(--pin-top, 0px) - var(--space-8)); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border-inline-end: var(--border-width-thin) solid var(--border-subtle); padding-inline-end: var(--space-2); }
+.doc-outline { position: sticky; inset-block-start: calc(var(--sticky-top, 0px) + var(--space-4)); max-block-size: calc(100dvh - var(--sticky-top, 0px) - var(--space-8)); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border-inline-end: var(--border-width-thin) solid var(--border-subtle); padding-inline-end: var(--space-2); }
 /* on phones the outline is a menu: it stays under the app bar while a long document scrolls */
-.doc-bar { position: sticky; inset-block-start: var(--pin-top, 0px); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
+.doc-bar { position: sticky; inset-block-start: var(--sticky-top, 0px); z-index: var(--layer-sticky); padding-block: var(--space-2); background: var(--surface-page); }
 /* the section being read inks its own start rule (decisions.md §۵۲): the page says where she is, beside the bar's line */
 section[data-reading] { border-inline-start-color: var(--icon-subtle); }
 .doc-bar .mb-menu { max-block-size: calc(100dvh - var(--space-40)); overflow-y: auto; }
@@ -129,19 +129,19 @@ section[data-reading] { border-inline-start-color: var(--icon-subtle); }
 @media (prefers-reduced-motion: reduce) { .focus-enter { animation: none; } }
 
 /* the path bar of a section we are inside stays in view while the section scrolls: UNDER the app's bar, never in its place
-   (layout.md «چه چیزی بالا می‌ماند»; --pin-top is measured in src/ui/pinned.ts) */
-.focus-bar { position: sticky; inset-block-start: var(--pin-top, 0px); z-index: var(--layer-sticky, 10); background: var(--surface-raised); padding-block: var(--inset-xs, 4px); }
+   (layout.md «چه چیزی بالا می‌ماند»; --sticky-top is measured in src/ui/pinned.ts) */
+.focus-bar { position: sticky; inset-block-start: var(--sticky-top, 0px); z-index: var(--layer-sticky, 10); background: var(--surface-raised); padding-block: var(--inset-xs, 4px); }
 /* a short window (a phone or a small tablet on its side): only the app's bar pins; a second pinned bar would take a third of the
    height that is left for reading */
 @media (max-height: 559px) { .focus-bar, .doc-bar { position: static; } }
 /* the phone's top bar steps aside while she reads down and is back on the first move up (layout.md «چه چیزی بالا می‌ماند»); a page
-   bar under it follows it up in the same motion (--pin-top counts a bar that stepped aside as 0, src/ui/pinned.ts) */
+   bar under it follows it up in the same motion (--sticky-top counts a bar that stepped aside as 0, src/ui/pinned.ts) */
 .mb-appbar { transition: translate var(--duration-base) var(--ease-standard); }
 .mb-appbar[data-away] { translate: 0 -100%; }
 .focus-bar, .doc-bar, .think-bar { transition: inset-block-start var(--duration-base) var(--ease-standard); }
 /* keyboard focus and «jump to» stop below whatever is pinned, never under it (WCAG 2.4.11), and above the phone's bottom bar */
-html { scroll-padding-block-start: calc(var(--pin-top, 0px) + var(--pin-sub, 0px) + var(--space-2)); }
-html { scroll-padding-block-end: calc(var(--pin-bottom, 0px) + var(--space-2)); }
+html { scroll-padding-block-start: calc(var(--sticky-top, 0px) + var(--sticky-secondary, 0px) + var(--space-2)); }
+html { scroll-padding-block-end: calc(var(--fixed-bottom-inset, 0px) + var(--space-2)); }
 
 /* a short window (phone on its side): the page's own top padding shrinks so the first section starts higher; no text is hidden
    (layout.md «چرخش و قد کوتاه»: what orients her stays, only spacing gives way) */
@@ -156,4 +156,4 @@ li:hover .think-pick, li:focus-within .think-pick, [data-selecting] .think-pick 
 @media (forced-colors: active) { .think-pick { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .think-pick { transition: none; } }
 /* what to do with the ticked thoughts stays in view while she ticks further down the list */
-.think-bar { position: sticky; inset-block-start: calc(var(--pin-top, 0px) + var(--space-2)); z-index: var(--layer-sticky); }
+.think-bar { position: sticky; inset-block-start: calc(var(--sticky-top, 0px) + var(--space-2)); z-index: var(--layer-sticky); }

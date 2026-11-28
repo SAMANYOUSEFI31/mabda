@@ -1,9 +1,9 @@
 /**
- * What stays pinned while a page scrolls (layout.md «چه چیزی بالا می‌ماند»). The app's own bar (`data-pin="app"`: the desktop top
- * bar, the phone top bar) is the only thing at the very top; a page's own bar (`data-pin="sub"`: the section path, the document
- * menu) pins UNDER it, never in its place. Their heights are measured here and given to CSS as --pin-top and --pin-sub, so
+ * What stays pinned while a page scrolls (layout.md «چه چیزی بالا می‌ماند»). The app's own bar (`data-sticky="app"`: the desktop top
+ * bar, the phone top bar) is the only thing at the very top; a page's own bar (`data-sticky="secondary"`: the section path, the document
+ * menu) pins UNDER it, never in its place. Their heights are measured here and given to CSS as --sticky-top and --sticky-secondary, so
  * nothing pinned covers another, and keyboard focus and anchors stop below them (scroll-padding). The phone's bottom bar is
- * measured too (--pin-bottom): focus and anchors stop above it, whatever its height with the system's home bar.
+ * measured too (--fixed-bottom-inset): focus and anchors stop above it, whatever its height with the system's home bar.
  * A bar stepping aside (`data-away`: the phone's top bar while she reads down) counts 0, so the page's bar moves up into its place.
  * Layers: the app's bars sit on --layer-chrome, above every page's own pinned bar (--layer-sticky). A page bar that has not stuck
  * yet is ordinary content: it scrolls under the phone's bottom bar like the text around it, never over it.
@@ -18,13 +18,13 @@ export function installPinned(): () => void {
   const measure = () => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
-      root.style.setProperty('--pin-top', `${Math.round(visibleHeight('[data-pin=app]'))}px`);
-      root.style.setProperty('--pin-sub', `${Math.round(visibleHeight('[data-pin=sub]', true))}px`);
-      root.style.setProperty('--pin-bottom', `${Math.round(visibleHeight('[data-pin=app-bottom]'))}px`);
+      root.style.setProperty('--sticky-top', `${Math.round(visibleHeight('[data-sticky=app]'))}px`);
+      root.style.setProperty('--sticky-secondary', `${Math.round(visibleHeight('[data-sticky=secondary]', true))}px`);
+      root.style.setProperty('--fixed-bottom-inset', `${Math.round(visibleHeight('[data-sticky=app-bottom]'))}px`);
     });
   };
   const ro = new ResizeObserver(measure);
-  const watch = () => { ro.disconnect(); document.querySelectorAll('[data-pin]').forEach((e) => ro.observe(e)); measure(); };
+  const watch = () => { ro.disconnect(); document.querySelectorAll('[data-sticky]').forEach((e) => ro.observe(e)); measure(); };
   // bars come and go with pages: watch the document for new ones (cheap: only attribute-bearing nodes are observed)
   let pending = false;
   const mo = new MutationObserver(() => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; watch(); }); });

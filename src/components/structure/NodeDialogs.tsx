@@ -72,7 +72,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
     const n = nodes.find((x) => x.id === state.nodeId);
     if (!n) return null;
     return (
-      <Dialog open onClose={onClose} size="lg" title={`مربی دانش برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد دانش؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>}>
+      <Dialog open onClose={onClose} size="lg" title={`مربی دانش برای «${n.label}»`} description="سؤال روشن‌کننده، نمایش ابهام و پیشنهاد دانش؛ هیچ‌چیز بدون تأیید تو ثبت نمی‌شود." footer={<Button variant="ghost" data-cancel onClick={onClose}>بستن</Button>}>
         <CoachPanel workspaceId={workspaceId} scope="node" nodeId={n.id} nodes={nodes} seedText={[n.label, n.description].filter(Boolean).join(': ')} onSaveProposals={onSaveProposals} onLedger={onLedger} />
       </Dialog>
     );
@@ -89,7 +89,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         description={state.kind === 'create' ? (state.thought ? 'فکر حل‌شده می‌شود؛ یادداشت اصلی بدون تغییر می‌ماند.' : managedEnabled ? 'بعد از افزودن بخش، مربی دانش برای روشن‌کردن آن باز می‌شود.' : undefined) : undefined}
         footer={
           <>
-            <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
+            <Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button>
             <Button variant="primary" type="submit" form="node-form" loading={busy}>
               {state.kind === 'create' ? 'افزودن بخش' : 'ذخیرهٔ نام'}
             </Button>
@@ -140,7 +140,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
         description="دانش، یادداشت، فایل، رابطه و تاریخچهٔ این بخش (و زیربخش‌هایش) با آن می‌روند."
         footer={
           <>
-            <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
+            <Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button>
             <Button variant="primary" loading={busy} disabled={!check.ok} onClick={() => run(() => onMove(node.id, parent, moveReason.trim() || undefined))}>جابه‌جا کن</Button>
           </>
         }
@@ -182,7 +182,7 @@ const NodeDialogBody: React.FC<Props & { state: NonNullable<NodeDialogState> }> 
       description={empty ? undefined : 'چیزی بی‌صدا گم نمی‌شود: هر دو حالت برگشت‌پذیرند و بعد از حذف «واگرد» می‌آید.'}
       footer={
         <>
-          <Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button>
+          <Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button>
           <Button variant="danger" iconStart={archiveMode ? 'Archive' : 'Trash2'} loading={busy} disabled={!plan.ok} onClick={() => run(() => onDelete(node.id, empty ? undefined : chosen || undefined, delMode))}>
             {empty ? 'حذف' : archiveMode ? 'بایگانی شاخه' : 'حذف و بردن محتوا'}
           </Button>

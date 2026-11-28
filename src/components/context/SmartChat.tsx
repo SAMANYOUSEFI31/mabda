@@ -633,7 +633,7 @@ export const SmartChat: React.FC<SmartChatProps> = ({
         description="با حذف نشست، پیام‌های آن از این دستگاه پاک می‌شود."
         footer={
           <>
-            <Button variant="ghost" data-dismiss onClick={() => setPendingDeleteId(null)}>انصراف</Button>
+            <Button variant="ghost" data-cancel onClick={() => setPendingDeleteId(null)}>انصراف</Button>
             <Button variant="danger-bold" onClick={confirmDeleteSession}>حذف گفتگو</Button>
           </>
         }

@@ -201,7 +201,7 @@ export function BottomNav({ items, value, defaultValue, onChange, label = 'نا�
   const [inner, setInner] = useState(defaultValue || items[0]?.id);
   const current = value !== undefined ? value : inner;
   return (
-    <nav aria-label={label} data-under={under || undefined} data-pin={fixed ? 'app-bottom' : undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
+    <nav aria-label={label} data-under={under || undefined} data-sticky={fixed ? 'app-bottom' : undefined} className={cx('mb-bottomnav', 'mb-glass', fixed && 'is-fixed', className)}>
       {items.map((it) => <BottomNavButton key={it.id} it={it} current={!it.action && current === it.id} onPress={() => { if (!it.action) setInner(it.id); onChange?.(it.id); }} />)}
     </nav>
   );

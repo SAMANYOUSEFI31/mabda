@@ -27,7 +27,7 @@ export const ConnectDialog: React.FC<Props> = ({ open, from, to, options, busy, 
   const needsReason = cur?.type === 'overrides';
   return (
     <Dialog open={open} onClose={onClose} size="sm" title="وصل کن" description={from && to ? `بین «${from}» و «${to}» چه رابطه‌ای هست؟` : undefined}
-      footer={<><Button variant="ghost" data-dismiss onClick={onClose}>انصراف</Button><Button variant="primary" disabled={!cur || !!cur.blocked || (needsReason && !reason.trim())} loading={busy} onClick={() => cur && onConfirm(cur, reason.trim())}>وصل کن</Button></>}>
+      footer={<><Button variant="ghost" data-cancel onClick={onClose}>انصراف</Button><Button variant="primary" disabled={!cur || !!cur.blocked || (needsReason && !reason.trim())} loading={busy} onClick={() => cur && onConfirm(cur, reason.trim())}>وصل کن</Button></>}>
       <div className="flex flex-col gap-stack-md" data-testid="connect-dialog">
         <RadioGroup legend="یک جمله را انتخاب کن" value={choice ?? ''} onChange={(v) => setChoice(v as ConnectChoice)}
           options={options.map((o) => ({ value: o.choice, label: <span className="flex flex-col"><span>{o.label}</span>{o.blocked && <span className="body-sm text-text-subtle">{o.blocked}</span>}</span>, disabled: !!o.blocked }))} />
