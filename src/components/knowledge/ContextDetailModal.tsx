@@ -534,7 +534,7 @@ const ContextDetailForm: React.FC<ContextDetailModalProps> = ({
         </div>
         {!typeTouched && content.trim() && <p className="body-sm text-text-subtle">نوع را خودمان حدس زدیم؛ اگر درست نیست، عوضش کن.</p>}
         {type === 'Fact' && assumption && <p className="body-sm text-text-subtle">فرض یعنی هنوز ثابت نشده: هرگز به‌عنوان واقعیت در خروجی‌ها و بسته‌ها نمی‌آید و جدا، زیر «فرض‌های فعال» می‌آید. تاریخ بازبینی‌اش در «جزئیات بیشتر» است.</p>}
-        {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListChecks" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
+        {!object && onOpenBatch && <div><Button type="button" size="sm" variant="ghost" iconStart="ListPlus" onClick={() => { onClose(); onOpenBatch(); }}>چند دانش داری؟ یکجا وارد کن</Button></div>}
         {linkSuggestions.length > 0 && (
           <ul className="flex flex-col gap-stack-xs" aria-label="پیشنهاد رابطه">
             {linkSuggestions.map((sg) => (

@@ -13,7 +13,7 @@ import {
   // one icon, one meaning (docs/design-system/iconography.md «یک آیکن، یک معنا»)
   CircleDashed, FlaskConical, MessageCircleQuestionMark, BookUp, Replace, Footprints, GitCompareArrows, Combine, ListTree, Library,
   MapPin, GraduationCap, Move, Split, FolderPlus, CopyPlus, ArrowDownFromLine, ScanText, Paperclip, Hash, Printer, Code, SearchCheck,
-  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate,
+  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate, Users, ScanSearch, FileX, LayoutGrid, CalendarCheck, Bookmark, ListPlus,
   createLucideIcon,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -97,7 +97,7 @@ const ICONS = {
   SunMoon, FolderInput, PackageOpen: OutPackageOpen, RotateCcw, Compass, Gauge, ChevronsUpDown,
   CircleDashed, FlaskConical, MessageCircleQuestion: MessageCircleQuestionMark, BookUp, Replace, Footprints, GitCompareArrows, Combine, ListTree, Library,
   MapPin, GraduationCap, Move, Split, FolderPlus, CopyPlus, ArrowDownFromLine, ScanText, Paperclip, Hash, Printer, Code, SearchCheck,
-  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate,
+  Shapes, EyeOff, Ban, Focus, Quote, LayoutTemplate, Users, ScanSearch, FileX, LayoutGrid, CalendarCheck, Bookmark, ListPlus,
 } as const;
 
 export type IconName = keyof typeof ICONS;

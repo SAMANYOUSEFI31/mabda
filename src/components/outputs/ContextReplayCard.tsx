@@ -105,7 +105,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
             items={[
               ...(deliverable.critiqueFeedback ? [{ label: 'نقد و چک‌لیست', icon: 'SearchCheck' as const, onSelect: () => { setShowCritique(true); setTraceOpen(true); } }] : []),
               ...(canRebuild && !stale && !sample ? [{ label: rebuildLabel, icon: 'RefreshCw' as const, disabled: isRebuilding, onSelect: () => onRebuild(deliverable) }] : []),
-              ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'PackageOpen' as const, onSelect: () => onRerequest(deliverable) }] : []),
+              ...(!canRebuild && !stale && onRerequest ? [{ label: 'درخواست دوباره', icon: 'RefreshCw' as const, onSelect: () => onRerequest(deliverable) }] : []),
               { label: traceOpen ? 'بستن ردپای دانش' : hasChecks ? 'ردپای دانش و معیارها' : 'ردپای دانش', icon: 'Footprints' as const, onSelect: () => setTraceOpen((v) => !v) },
               ...(onArchive || onDelete ? [{ divider: true } as const] : []),
               ...(onArchive ? [{ label: 'بایگانی', icon: 'Archive' as const, onSelect: () => onArchive(deliverable) }] : []),
@@ -121,7 +121,7 @@ export const ContextReplayCard: React.FC<ContextReplayCardProps> = ({
           intent="warning"
           title="این خروجی به‌روز نیست"
           action={canRebuild ? <Button variant="secondary" size="sm" iconStart="RefreshCw" loading={isRebuilding} onClick={() => onRebuild(deliverable)}>{rebuildLabel}</Button>
-            : onRerequest ? <Button variant="secondary" size="sm" iconStart="PackageOpen" onClick={() => onRerequest(deliverable)}>درخواست دوباره</Button> : undefined}
+            : onRerequest ? <Button variant="secondary" size="sm" iconStart="RefreshCw" onClick={() => onRerequest(deliverable)}>درخواست دوباره</Button> : undefined}
         >
           {stale.reasons[0]?.message}{stale.reasons.length > 1 ? ` (و ${formatNumber(stale.reasons.length - 1)} دلیل دیگر)` : ''}
         </Alert>

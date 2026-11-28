@@ -54,7 +54,7 @@ export const ContextPackDialog: React.FC<Props> = ({ workspaceId, target, onClos
       footer={
         <>
           <Button variant="ghost" data-dismiss onClick={onClose}>بستن</Button>
-          <Button variant="secondary" iconStart="Upload" onClick={() => { onClose(); onOpenImport(); }}>وارد کردن پاسخ ابزار دیگر</Button>
+          <Button variant="secondary" iconStart="FolderInput" onClick={() => { onClose(); onOpenImport(); }}>وارد کردن پاسخ ابزار دیگر</Button>
           <Button variant="primary" iconStart={copied ? 'Check' : 'Copy'} disabled={!pack} onClick={copy}>{copied ? 'کپی شد' : 'کپی'}</Button>
         </>
       }

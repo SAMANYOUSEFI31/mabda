@@ -79,10 +79,10 @@ export function AssetsPage({ currentWorkspace, data, deliverables, extractingAss
         moreLabel="بیشتر دربارهٔ خروجی‌ها"
         actions={[
           ...(live.length > 0 ? [{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen' as const, onSelect: () => void request() }] : []),
-          { label: 'وارد کردن پاسخ', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
+          { label: 'وارد کردن پاسخ', icon: 'FolderInput', onSelect: () => setIsImportOpen(true) },
         ]}
         more={[
-          { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+          { label: 'بسته‌های دانش', icon: 'Bookmark', onSelect: () => setIsPacksOpen(true) },
           { divider: true },
           ...(live.length > 0 ? [{ label: 'خروجی گرفتن JSON', icon: 'Download' as const, onSelect: exportJson }] : []),
           { label: 'خروجی‌های بایگانی‌شده', icon: 'Archive', onSelect: () => setArchiveOpen(true) },

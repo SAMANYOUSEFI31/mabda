@@ -120,11 +120,11 @@ export function HomePage({ attentionGaps, attentionSpec, canJudge, changesOpen, 
             moreLabel="بیشتر"
             actions={workspaceContexts.length > 0 ? [{ label: 'درخواست برای ابزار دیگر', icon: 'PackageOpen', onSelect: () => setAiRequest({ scopeNodeId: '' }) }] : []}
             more={workspaceContexts.length > 0 ? [
-              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => setIsImportOpen(true) },
-              { label: 'بسته‌های دانش', icon: 'Package', onSelect: () => setIsPacksOpen(true) },
+              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'FolderInput', onSelect: () => setIsImportOpen(true) },
+              { label: 'بسته‌های دانش', icon: 'Bookmark', onSelect: () => setIsPacksOpen(true) },
               { divider: true },
               { label: 'مقایسهٔ حقیقت در دو لحظه', icon: 'GitCompareArrows', onSelect: () => setCompare({ mode: 'week', scopeNodeId: focusNodeId ?? undefined }) },
-              { label: 'بازبینی هفتگی', icon: 'ListChecks', onSelect: () => setWeeklyOpen(true) },
+              { label: 'بازبینی هفتگی', icon: 'CalendarCheck', onSelect: () => setWeeklyOpen(true) },
             ] : []}
           />
           {!started && (

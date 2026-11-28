@@ -305,7 +305,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
           items={[
             { label: 'تعریف جریان کار سفارشی', icon: 'Plus', onSelect: () => onOpenSpecEditor() },
             ...(isCustomSpec ? [{ label: 'ویرایش این جریان کار', icon: 'Pencil' as const, onSelect: () => onOpenSpecEditor(currentSpec) }] : []),
-            ...(isCustomSpec && onSaveTemplate ? [{ label: 'ذخیره به‌عنوان قالب', icon: 'Package' as const, onSelect: () => onSaveTemplate(currentSpec) }] : []),
+            ...(isCustomSpec && onSaveTemplate ? [{ label: 'ذخیره به‌عنوان قالب', icon: 'LayoutTemplate' as const, onSelect: () => onSaveTemplate(currentSpec) }] : []),
             { divider: true },
             { label: 'کپی جریان کار برای استفاده در هر ابزار', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, title: currentSpec.title }) },
           ]}
@@ -365,7 +365,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                   trigger={<IconButton icon="Ellipsis" label="بیشتر دربارهٔ این خروجی" size="sm" />}
                   items={[
                     { label: 'کپی برای استفاده در هر ابزار', icon: 'Copy', onSelect: () => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title }) },
-                    { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: onOpenImport },
+                    { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'FolderInput', onSelect: onOpenImport },
                     { label: moreOpen ? 'بستن جزئیات اجرا' : 'جزئیات اجرا (حالت، معیارها)', icon: 'Settings', onSelect: () => setMoreOpen((v) => !v) },
                   ]}
                 />
@@ -436,7 +436,7 @@ export const WorkstreamStudio: React.FC<WorkstreamStudioProps> = ({
                 <div className="flex flex-col justify-between gap-inline-md border-t border-border-subtle pt-inset-lg sm:flex-row sm:items-center">
                   <p className="body-sm text-text-subtle">دانش این خروجی را کپی کن و در هر ابزاری که می‌خواهی بچسبان؛ پاسخ ابزار را برگردان تا کنار بقیه نگه داری.</p>
                   <div className="flex flex-wrap items-center gap-inline-sm">
-                    <Button variant="secondary" size="lg" iconStart="Upload" onClick={onOpenImport}>وارد کردن پاسخ ابزار دیگر</Button>
+                    <Button variant="secondary" size="lg" iconStart="FolderInput" onClick={onOpenImport}>وارد کردن پاسخ ابزار دیگر</Button>
                     <Button variant="primary" size="lg" iconStart="Copy" disabled={lock.locked} onClick={() => onOpenPack({ specId: currentSpec.id, deliverableId: currentDeliverableSpec.id, title: currentDeliverableSpec.title })}>کپی برای استفاده در هر ابزار</Button>
                   </div>
                 </div>

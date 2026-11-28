@@ -27,7 +27,7 @@ const CheckBar: React.FC<{ check: NonNullable<Props['check']> }> = ({ check }) =
     <span className="body-sm text-text-subtle">
       {check.used === null ? '' : `${formatNumber(check.used)} قضاوت امروز از سقف ${formatNumber(check.cap)}`}
     </span>
-    <Button variant="secondary" size="sm" iconStart="Search" loading={check.busy} onClick={check.onCheck}>بررسی تناقض</Button>
+    <Button variant="secondary" size="sm" iconStart="ScanSearch" loading={check.busy} onClick={check.onCheck}>بررسی تناقض</Button>
   </div>
 );
 

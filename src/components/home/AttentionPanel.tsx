@@ -75,7 +75,7 @@ export const AttentionPanel: React.FC<Props> = ({ specTitle, gaps, contradiction
 
       <div className="flex flex-wrap items-center gap-inline-sm">
         <Button variant="ghost" size="sm" iconStart="History" onClick={onOpenChanges}>در ۷ روز اخیر چه چیزی عوض شد؟</Button>
-        {showWeekly && <Button variant="ghost" size="sm" iconStart="ListChecks" onClick={onOpenWeekly}>بازبینی هفتگی (۵ دقیقه)</Button>}
+        {showWeekly && <Button variant="ghost" size="sm" iconStart="CalendarCheck" onClick={onOpenWeekly}>بازبینی هفتگی (۵ دقیقه)</Button>}
         {showWeekly && weeklyDue && <Badge icon={false}>موعد بازبینی</Badge>}
       </div>
 

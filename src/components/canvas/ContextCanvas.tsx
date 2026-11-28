@@ -769,7 +769,7 @@ export const ContextCanvas: React.FC<CanvasProps> = (p) => {
           ...(mode === 'thinking' ? [{ label: 'یادداشت آزاد روی بوم', icon: 'StickyNote' as const, onSelect: () => setNewNote({ content: '', nodeId: '', ...freeNoteSpot() }) }, { label: 'کارت حقیقت را کنار فکرها بیاور…', icon: 'BookOpen' as const, onSelect: () => { setAnchorId(''); setAnchorOpen(true); } }, { divider: true, heading: 'چیدمان' } as const] : []),
           ...(isMobile || compact ? [{ label: 'بزرگ‌نمایی', icon: 'ZoomIn' as const, disabled: zoomInOff, onSelect: () => (farList ? leaveFar() : zoomAt(1.25)) }, { label: 'کوچک‌نمایی', icon: 'ZoomOut' as const, disabled: zoomOutOff, onSelect: () => zoomAt(1 / 1.25) }] : []),
           ...(mode === 'thinking' && frames.length > 0 ? [{ label: 'جابه‌جا کردن یک بخش…', icon: 'FolderTree' as const, onSelect: () => setFrameDlg(frames[0].nodeId) }] : []),
-          { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'Workflow', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
+          { label: 'چیدمان خودکار (پاک کردن ترتیب دستی)', icon: 'LayoutGrid', onSelect: () => { void (async () => { setBusy(true); try { await p.onAutoLayout(); } finally { setBusy(false); } })(); } },
           { label: aboutOpen ? 'بستن توضیح این چیدمان' : 'این چیدمان چیست؟', icon: 'CircleHelp', onSelect: () => setAboutOpen((v) => !v) },
           { divider: true, heading: 'فایل JSON Canvas' },
           { label: 'خروجی گرفتن', icon: 'Download', onSelect: exportCanvas },

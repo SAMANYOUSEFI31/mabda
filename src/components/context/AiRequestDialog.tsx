@@ -182,7 +182,7 @@ const Inner: React.FC<Props> = ({ workspaceId, nodes, scopeNodeId, initialKind, 
             trigger={<IconButton icon="Ellipsis" label="بیشتر" variant="ghost" />}
             items={[
               { label: 'ذخیره به‌عنوان درخواست', icon: 'PackageOpen', disabled: !ready || thoughtIds.length > 0, onSelect: () => { void save(); } },
-              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'Upload', onSelect: () => { onClose(); onOpenImport(); } },
+              { label: 'وارد کردن پاسخ ابزار دیگر', icon: 'FolderInput', onSelect: () => { onClose(); onOpenImport(); } },
             ]}
           />
           {/* internal AI is frozen (MABDA_MANAGED_AI): «همین‌جا جواب بده» exists only with the flag on; otherwise the copy is the only action */}

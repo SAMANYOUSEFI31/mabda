@@ -82,7 +82,7 @@ export const CanvasInspector: React.FC<Props> = (p) => {
         <ul className="flex flex-col gap-stack-xs">{p.selection.slice(0, 8).map((id) => <li key={id}><button type="button" className="body-sm text-start text-text-default underline-offset-2 hover:underline" onClick={() => p.onSelect(id)}>{titleOf(id)}</button></li>)}</ul>
         {p.selection.length > 8 && <p className="body-sm text-text-subtle">و {formatNumber(p.selection.length - 8)} مورد دیگر.</p>}
         <div className="flex flex-wrap gap-inline-xs">
-          {p.onMakeSection && <Button size="sm" variant="secondary" iconStart="FolderTree" onClick={p.onMakeSection}>ساخت بخش از این موارد</Button>}
+          {p.onMakeSection && <Button size="sm" variant="secondary" iconStart="FolderPlus" onClick={p.onMakeSection}>ساخت بخش از این موارد</Button>}
           <Button size="sm" variant="ghost" onClick={p.onClear}>پاک کردن انتخاب</Button>
         </div>
       </div>

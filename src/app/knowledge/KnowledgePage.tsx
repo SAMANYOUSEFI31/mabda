@@ -31,11 +31,11 @@ export function KnowledgePage({ approvals, askDeleteNote, contextViewMode, contr
   // the four views sit side by side in the switch: the new one comes from the side of its key (pageTransition.ts)
   const axis = useViewAxis(contextViewMode, VIEW_ORDER);
   const moreItems: MenuItem[] = [
-                  ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Package' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
+                  ...(vf.packs ? [{ label: 'بسته‌های دانش', icon: 'Bookmark' as const, onSelect: () => setIsPacksOpen(true) }, { divider: true }] : []),
                   { label: 'افزودن فایل', icon: 'Upload', onSelect: () => requestAdd({ kind: 'file', nodeId: focusNodeId ?? undefined, scoped: true }) },
                   ...(data.files.length ? [{ label: `فایل‌ها (${formatNumber(data.files.length)})`, icon: 'Paperclip' as const, onSelect: () => setFilesOpen(true) }] : []),
                   // the start skeletons and her own saved templates (§۵۳ ۱۱): «ذخیره به‌عنوان قالب» in each section's ⋯ had no way back
-                  { label: 'اسکلت شروع و قالب‌ها', icon: 'FolderTree', onSelect: () => setIsStarterOpen(true) },
+                  { label: 'اسکلت شروع و قالب‌ها', icon: 'LayoutTemplate', onSelect: () => setIsStarterOpen(true) },
                   { divider: true },
                   { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: () => setArchiveOpen(true) },
                 ];

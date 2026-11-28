@@ -209,7 +209,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = (p) => {
   const [hintsOn, setHints] = useHints();
   const accountItems: MenuItem[] = [
     { label: 'حساب و داده‌ها', icon: 'User', onSelect: p.onOpenAccountModal },
-    ...(online && session?.user?.role === 'owner' ? [{ label: 'افراد آزمون', icon: 'Link2' as const, onSelect: () => setPeopleOpen(true) }] : []),
+    ...(online && session?.user?.role === 'owner' ? [{ label: 'افراد آزمون', icon: 'Users' as const, onSelect: () => setPeopleOpen(true) }] : []),
     ...(ai.managedEnabled ? [{ label: 'مصرف', icon: 'Wallet' as const, onSelect: p.onOpenLedger }] : []),
     ...(p.onOpenUsage && ai.admin ? [{ label: 'استفاده از امکانات', icon: 'ChartColumn' as const, onSelect: p.onOpenUsage }] : []),
     { label: 'بایگانی و حذف‌های اخیر', icon: 'Archive', onSelect: p.onOpenArchive },

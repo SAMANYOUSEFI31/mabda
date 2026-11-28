@@ -111,7 +111,7 @@ export const ThinkingList: React.FC<Props> = ({ items, objects, nodes, workspace
               )}
               {it.sourceState === 'line_deleted' && <Badge intent="neutral" icon="Info">خط از یادداشت حذف شد؛ فکر می‌ماند</Badge>}
               {it.sourceState === 'note_deleted' && <Badge intent="neutral" icon="Info">یادداشتش حذف شد؛ فکر می‌ماند</Badge>}
-              {it.resolvedRemoved && <Badge intent="neutral" icon="Archive">منبع حذف‌شده</Badge>}
+              {it.resolvedRemoved && <Badge intent="neutral" icon="FileX">منبع حذف‌شده</Badge>}
             </span>
             <span className="flex flex-wrap items-center gap-inline-xs">
               {/* §۵۴ ۱۵: a box on every open thought, no «انتخاب» mode first. Quiet on a desk until the row is pointed at or focused, or
